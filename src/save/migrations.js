@@ -7,6 +7,7 @@
 // CURRENT_VERSION lives in src/data/saveVersion.js (the single source of truth) and is re-exported
 // here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
+import { migrateSurveyCustody } from '../data/surveyCartography.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { UNIQUE_WRECK_STATE_SCHEMA_VERSION } from '../data/uniqueWrecks.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
@@ -412,6 +413,11 @@ export const MIGRATIONS = [
         if (!Object.hasOwn(data, key)) data[key] = null;
       }
     },
+  },
+  {
+    from: 21,
+    to: 22,
+    fn: migrateSurveyCustody,
   },
 ];
 

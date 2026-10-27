@@ -427,7 +427,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "afcaf11a19551032b48a77c32e92095529afbf92dc8c26ec40fd1cc5a1104082",
+  "contentHash": "8c73471464e23d3e63fbd03b02c66c206a5b18ff62779d580808a0f89dce597d",
   "dynamicGroups": [
     {
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-hatch-1-hull.dynamic",
@@ -624,18 +624,18 @@
     {
       "bounds": {
         "max": [
-          12.962638854980469,
-          1.0993608236312866,
+          12.962638543618189,
+          1.0993607806545314,
           11.9756498336792
         ],
         "min": [
-          -10.000406265258789,
-          -1.0993608236312866,
+          -10.000405953896509,
+          -1.0993607806545314,
           -11.9756498336792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a522bd0815139b5f3fcabd6a7f92084b4d7d7ec1819a46934141fde529b007ac",
+      "geometryHash": "5f0d8bb46e9fc9952efcde415532fbf5bfedb3d1dcfd0cb110243e04db52e686",
       "id": "sf.render.mothlight-lod1.node.collision-mothlight-core.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -649,18 +649,18 @@
     {
       "bounds": {
         "max": [
-          9.820627212524414,
-          2.0618700981140137,
+          9.820627043469656,
+          2.061870052553305,
           13.205951690673828
         ],
         "min": [
-          -8.646018028259277,
-          -0.9559876322746277,
+          -8.64601785920452,
+          -0.9559875867139191,
           -13.205945014953613
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3340307feb475a0eb27f7539c42dd4f0f65459ecdb9188c41540f96f36a64e18",
+      "geometryHash": "e3f8c2af743ed15ef074099e01b3cd1596bc97626c346f8495200051746a8c0c",
       "id": "sf.render.mothlight-lod1.node.lod1-armor.primitive.0",
       "indexCount": 8808,
       "indexed": true,
@@ -675,17 +675,17 @@
       "bounds": {
         "max": [
           12.51932430267334,
-          1.4888290166854858,
-          0.43848514556884766
+          1.4888290059960958,
+          0.4384851446966156
         ],
         "min": [
           7.561476230621338,
-          0.17110387980937958,
-          -0.43848520517349243
+          0.17110389049876962,
+          -0.43848520430126037
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58ab8212465d795cebdf61a92af9a3af7974f556a6f5192d875f88addd021a2b",
+      "geometryHash": "3d9229f2f0417481091f4f8dd549e11ff8042e759008e48bb8781c50f385b5ff",
       "id": "sf.render.mothlight-lod1.node.lod1-beacon-amber.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -699,18 +699,18 @@
     {
       "bounds": {
         "max": [
-          12.498159408569336,
-          1.0433801412582397,
+          12.498159588160004,
+          1.043380130270981,
           15.993523597717285
         ],
         "min": [
-          -9.077746391296387,
-          -0.08510361611843109,
+          -9.077746570887054,
+          -0.08510360513117243,
           -15.993523597717285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8442e31c96fbc805b7bf02a16fb073ba975c797db4cdad9a9791b720e20322a",
+      "geometryHash": "187d7ce121e69e4f4fbc72ce747eceebfa125beddadd7fabc7c3da83f89128b7",
       "id": "sf.render.mothlight-lod1.node.lod1-brushedmetal.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -725,17 +725,17 @@
       "bounds": {
         "max": [
           -5.499538421630859,
-          2.2698943614959717,
-          0.7495498657226562
+          2.2698943378793115,
+          0.7495499002654097
         ],
         "min": [
           -7.600315570831299,
-          1.8700882196426392,
-          -0.7497870326042175
+          1.8700882432592993,
+          -0.749787067146971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b7fa86bda61686bad19c1f3107cf3355bb77ca24425365dc4beb46da1518abb",
+      "geometryHash": "f0940a57b7e5a118a8941bfb96fd67946be7100033fb2b8d3f0c9626be283891",
       "id": "sf.render.mothlight-lod1.node.lod1-canopy.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -749,18 +749,18 @@
     {
       "bounds": {
         "max": [
-          -9.739745140075684,
-          0.3567621111869812,
+          -9.739745523792294,
+          0.35676212448510913,
           4.7064032554626465
         ],
         "min": [
-          -10.121176719665527,
-          -1.0552211999893188,
+          -10.121176335948917,
+          -1.0552212132874468,
           -4.704999923706055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82ca57b7d5d414868d5a409104e74a0825ba056db06b5d75ab538ec49e4bf44b",
+      "geometryHash": "77cc06664a8c9b7b497716fd6e17eea61d7e01b634511ddd683e6e74bf517336",
       "id": "sf.render.mothlight-lod1.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 405,
       "indexed": true,
@@ -774,18 +774,18 @@
     {
       "bounds": {
         "max": [
-          12.9551362991333,
-          1.0959651470184326,
+          12.955136031209813,
+          1.095965047400257,
           11.969542503356934
         ],
         "min": [
-          -9.992264747619629,
-          -1.098895788192749,
+          -9.992264479696141,
+          -1.0988956885745733,
           -11.971536636352539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e97e405b231424daf7cff84b49333f78fcba7472ddcd850b291374f058f7c89e",
+      "geometryHash": "922e9e5bc5d6f2cd1eb9c86202d32f869da53722d07155ba386058858df9c93c",
       "id": "sf.render.mothlight-lod1.node.lod1-hull.primitive.0",
       "indexCount": 45,
       "indexed": true,
@@ -799,18 +799,18 @@
     {
       "bounds": {
         "max": [
-          12.96109390258789,
-          1.903764009475708,
+          12.961093394870625,
+          1.903764062408096,
           13.11618709564209
         ],
         "min": [
-          -10.121212005615234,
-          -1.099697232246399,
+          -10.121211497897969,
+          -1.099697285178787,
           -13.113668441772461
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b728a0e5b499d6ee05ff3a92b1f584f46459580edd491b253500e1304ff99c3",
+      "geometryHash": "b9c78d5b2113cfd3baebb53f8bf207663deee419332884a8e50d87446635a176",
       "id": "sf.render.mothlight-lod1.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3588,
       "indexed": true,
@@ -835,7 +835,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f517d2cefef2f55b0786f9ece100fed686ed535c39f360895f28407d0f6a168f",
+      "geometryHash": "3f13f3e559b4db7dd925961e7f6edbd5a6b9f83e34756b39a3e01cde8502de87",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-hatch-1-hull.primitive.0",
       "indexCount": 444,
       "indexed": true,
@@ -860,7 +860,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cc63726cd1447c46c378857b0503a24b30fc119607359aca2830aa187ac701c",
+      "geometryHash": "f19048adf286a1555d436c8bd8987af165738af5c931236163bc86baf20913b4",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-hatch-1-livery.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -885,7 +885,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1946557c545090f9a90b5ce1f2d19299e7ebb1ca55050db7dcdde1cc16d128bc",
+      "geometryHash": "f73c57ccf02d44ebb13971b5c488a2be0620a51ea32b2edb1152db523b0c4a11",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-hatch-2-hull.primitive.0",
       "indexCount": 444,
       "indexed": true,
@@ -910,7 +910,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6130089e1e4c57dafa6ef47802e566de2ff79bf5c4fed0ecda7451dba1687d36",
+      "geometryHash": "e6d767391eed0bc8e9b9fcce0bbb0b87e0f3f46d86cadd5b701671bf78ac0f08",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-hatch-2-livery.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -935,7 +935,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ae1f8cf888fa2db3d4ee4ebeb92a30a2e2d9a7ddd4d4def037493ec11c4cd57",
+      "geometryHash": "4cc7d19d82abf7d3350474ec1160b128242fe676b0696995ecad93edfad3c5a4",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-1-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -960,7 +960,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6dfd7e76e44835e29455f77a37416c5a8620a4bcb01a46ef5bd9c008f8210bf",
+      "geometryHash": "80814c166db2f44bed5caa40fc194a9b10b84202b8b9694e0d149685e14d7deb",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-2-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -985,7 +985,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd48c0bddd8835821aa1fec837c73756f8769e1d7b14be61ea8a5f44c003c929",
+      "geometryHash": "2e68400bcae4efdc26b9dcd1e9079b73a3c79a4ac02602f293c86cd706c3b906",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-3-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -1010,7 +1010,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af77777ae3c9c4325a0c651755222873795fa1d0ca0029886915b199ce756301",
+      "geometryHash": "5a5e607deccf4f76967ac87483fa09daac60f8cac07884e104636317979c93b1",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-4-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -1035,7 +1035,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5194d16796142613b50234421e1de22227b2131daa98c75ecf8ac811ac66be61",
+      "geometryHash": "c384e4b087073f10c937649e5174f844763ed30e4a912c655dac52115158e487",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-5-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -1060,7 +1060,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d43b6572516f7c1fe17abb966fdc53e908bb7f78f19111bc2d02477ef40bb526",
+      "geometryHash": "5890f088457bbed77c32fbc6b02542454eb6a8d66a742df50ff9653fce0e5f56",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-iris-6-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -1085,7 +1085,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "859e7e7e620f74a4c317359227093903c0ac828765bb22878cf8ddad75afcc58",
+      "geometryHash": "394419ff6d7c5183846e2108537b4722c49c63652dc19037f61d3bddbb146a4c",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-1-armor.primitive.0",
       "indexCount": 1050,
       "indexed": true,
@@ -1110,7 +1110,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07df33fe194e7f71ef3f37b48fcb2263c523396cc7cd4745724673494f5e7831",
+      "geometryHash": "e8fb1d4a3c70e5bdfb9fb9072eb9bc27216e37730c7b6592b9a55c15e727d2ab",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-1-beacon-amber.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1135,7 +1135,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f341164678e2719be7d157955464e51a499746b0b6cac333d5aa3570d6d37f8",
+      "geometryHash": "333db8c1051c50c0cf5bb4b7d8e894dac06a1b8bc454bc7a9874b0a1f5cd6561",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-1-ceramic.primitive.0",
       "indexCount": 906,
       "indexed": true,
@@ -1160,7 +1160,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7cdf3da5549569ba7612a504a1e6cb6aeb9a8ab6a777097233c21b5b22a0988",
+      "geometryHash": "30148c2a912f0a9fe886b7faa965f96b0c204bb36cf77d839d90b2b1cf758db9",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-1-mechanicaldark.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1185,7 +1185,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3c1a38b3dcf4b9ac2ebed8fbb3f159866002c37e19599f410d3be9725c11808",
+      "geometryHash": "c128e0de21672684cb47d67dbebd49b07e7dfa435bb3fb26a4d49d4fb9cfbbbe",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-2-armor.primitive.0",
       "indexCount": 1050,
       "indexed": true,
@@ -1210,7 +1210,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06af96bfe81469d60b54f68e7479e662bc8c4b4a8c7c70656236a1605ea5f354",
+      "geometryHash": "fb5d024a188b0c19fd549c4964083c088395a4b780400c98348bb838ad8e8bf3",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-2-beacon-amber.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1235,7 +1235,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29c593cf5390f191049b93005ab3c6f0b6b84b9cbbed426286d56c7d81f65728",
+      "geometryHash": "343c14e3a535e5f1229f7a2366a12f6cb0e6789f1b542db35a94a39e6a872937",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-2-ceramic.primitive.0",
       "indexCount": 906,
       "indexed": true,
@@ -1260,7 +1260,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f19a89ef5f4efa6168ffd287b14cc9a41b715f9b1d34ba9e8952f799629aae0a",
+      "geometryHash": "94c040ae29692df1f03c6d9b6905155db3e1672a8af1351d89e5410f61735616",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-2-mechanicaldark.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1285,7 +1285,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de18a8a53e8b712cc33a9542b22f3524b577466d5f4470cc526e61fe3c2264b5",
+      "geometryHash": "970fa93632c6652283dabd4b23b1238639db4b1dd1ccfe6ffeada06c9ca3d9a4",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-3-armor.primitive.0",
       "indexCount": 1050,
       "indexed": true,
@@ -1310,7 +1310,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c46f130633d3520dde85fb9e9511b218ab3b11c6f8c02fff876f713158cdf03d",
+      "geometryHash": "29c8d8d8a53d82def8d23fa71417d92a7460c0ac02f68c7443c88ab6e88acbaa",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-3-beacon-amber.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1335,7 +1335,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e44387ee1d4c53602db2830c48d6e652cd59e83158c8a523c6217663874593e",
+      "geometryHash": "42d5c0de4fa3ab9e9186952c76c2c665833464e2119c385520c4a45f0717f2fb",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-3-ceramic.primitive.0",
       "indexCount": 906,
       "indexed": true,
@@ -1360,7 +1360,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a41fa0857b52039e7ed29a8381e133db264b9677a48f000fa5c77c7d5ebb822",
+      "geometryHash": "841b55ae124a987403a36df903a3a54a5d3ac900516838cd379008ddb5b35bc9",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-3-mechanicaldark.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1385,7 +1385,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fa1e3541129d2dffe4755786d4fa84a8a25c3a78c053529f814d7a161d96f1d",
+      "geometryHash": "0664c9fb3a194bee4526e9c569fb0fc208e95d9a442d6533d577052db9efa79d",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-4-armor.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -1410,7 +1410,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b40b6dc454957edb90c04408e0832599f2468a3d701aaf9987a6179654f909a",
+      "geometryHash": "f7aa42c326a669d244148ea5e0ce61f7fc6b3e095b555c2e1a99c6711eaa4692",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-4-beacon-amber.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1435,7 +1435,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26083a99182cabd420f7078aded8453bbf0a013c1a3bf0fd2562f0c3518b0703",
+      "geometryHash": "2cab67964c9258fc37927f51b1add48ae02a4ea3de74098928c575028a8dda74",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-4-ceramic.primitive.0",
       "indexCount": 912,
       "indexed": true,
@@ -1460,7 +1460,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "874c371e11db26af38a63e7a4827c1f295dc95ea7bddc5ee57e15049c50f3ba3",
+      "geometryHash": "31632bf52693518afaa5e48b101ee6601beddfa8397c84c1fec7c006f2645e01",
       "id": "sf.render.mothlight-lod1.node.lod1-motion-mothlight-stock-4-mechanicaldark.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1694,19 +1694,19 @@
     {
       "id": "sf.render.mothlight-lod1.node.collision-mothlight-core",
       "localTransform": [
-        1,
+        11.9756498336792,
         0,
         0,
         0,
         0,
-        1,
+        11.9756498336792,
         0,
         0,
         0,
         0,
-        1,
+        11.9756498336792,
         0,
-        0,
+        1.4811162948608398,
         0,
         0,
         1
@@ -1722,19 +1722,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        11.9756498336792,
         0,
         0,
         0,
         0,
-        1,
+        11.9756498336792,
         0,
         0,
         0,
         0,
-        1,
+        11.9756498336792,
         0,
-        0,
+        1.4811162948608398,
         0,
         0,
         1
@@ -1743,21 +1743,21 @@
     {
       "id": "sf.render.mothlight-lod1.node.lod1-armor",
       "localTransform": [
-        1,
+        13.20594835281372,
         0,
         0,
         0,
         0,
-        1,
+        13.20594835281372,
         0,
         0,
         0,
         0,
-        1,
+        13.20594835281372,
         0,
-        0,
-        0,
-        0,
+        0.5873045921325684,
+        0.552941232919693,
+        0.000003337860107421875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1771,42 +1771,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        13.20594835281372,
         0,
         0,
         0,
         0,
-        1,
+        13.20594835281372,
         0,
         0,
         0,
         0,
-        1,
+        13.20594835281372,
         0,
-        0,
-        0,
-        0,
+        0.5873045921325684,
+        0.552941232919693,
+        0.000003337860107421875,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lod1.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        2.478924036026001,
         0,
         0,
         0,
         0,
-        1,
+        2.478924036026001,
         0,
         0,
         0,
         0,
-        1,
+        2.478924036026001,
         0,
-        0,
-        0,
-        0,
+        10.040400266647339,
+        0.8299664482474327,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1820,41 +1820,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        2.478924036026001,
         0,
         0,
         0,
         0,
-        1,
+        2.478924036026001,
         0,
         0,
         0,
         0,
-        1,
+        2.478924036026001,
         0,
-        0,
-        0,
-        0,
+        10.040400266647339,
+        0.8299664482474327,
+        -2.9802322387695312e-8,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lod1.node.lod1-brushedmetal",
       "localTransform": [
-        1,
+        15.993523597717285,
         0,
         0,
         0,
         0,
-        1,
+        15.993523597717285,
         0,
         0,
         0,
         0,
-        1,
+        15.993523597717285,
         0,
-        0,
-        0,
+        1.7102065086364746,
+        0.4791382625699043,
         0,
         1
       ],
@@ -1869,20 +1869,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        15.993523597717285,
         0,
         0,
         0,
         0,
-        1,
+        15.993523597717285,
         0,
         0,
         0,
         0,
-        1,
+        15.993523597717285,
         0,
-        0,
-        0,
+        1.7102065086364746,
+        0.4791382625699043,
         0,
         1
       ]
@@ -1890,21 +1890,21 @@
     {
       "id": "sf.render.mothlight-lod1.node.lod1-canopy",
       "localTransform": [
-        1,
+        1.0503885746002197,
         0,
         0,
         0,
         0,
-        1,
+        1.0503885746002197,
         0,
         0,
         0,
         0,
-        1,
+        1.0503885746002197,
         0,
-        0,
-        0,
-        0,
+        -6.549926996231079,
+        2.0699912905693054,
+        -0.00011858344078063965,
         1
       ],
       "materialPipelineKey": "blend",
@@ -1918,42 +1918,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        1.0503885746002197,
         0,
         0,
         0,
         0,
-        1,
+        1.0503885746002197,
         0,
         0,
         0,
         0,
-        1,
+        1.0503885746002197,
         0,
-        0,
-        0,
-        0,
+        -6.549926996231079,
+        2.0699912905693054,
+        -0.00011858344078063965,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lod1.node.lod1-hook-drive-core",
       "localTransform": [
-        1,
+        4.705701589584351,
         0,
         0,
         0,
         0,
-        1,
+        4.705701589584351,
         0,
         0,
         0,
         0,
-        1,
+        4.705701589584351,
         0,
-        0,
-        0,
-        0,
+        -9.930460929870605,
+        -0.3492295444011688,
+        0.0007016658782958984,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1967,42 +1967,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        4.705701589584351,
         0,
         0,
         0,
         0,
-        1,
+        4.705701589584351,
         0,
         0,
         0,
         0,
-        1,
+        4.705701589584351,
         0,
-        0,
-        0,
-        0,
+        -9.930460929870605,
+        -0.3492295444011688,
+        0.0007016658782958984,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lod1.node.lod1-hull",
       "localTransform": [
-        1,
+        11.970539569854736,
         0,
         0,
         0,
         0,
-        1,
+        11.970539569854736,
         0,
         0,
         0,
         0,
-        1,
+        11.970539569854736,
         0,
-        0,
-        0,
-        0,
+        1.481435775756836,
+        -0.0014653205871582031,
+        -0.0009970664978027344,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2016,42 +2016,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        11.970539569854736,
         0,
         0,
         0,
         0,
-        1,
+        11.970539569854736,
         0,
         0,
         0,
         0,
-        1,
+        11.970539569854736,
         0,
-        0,
-        0,
-        0,
+        1.481435775756836,
+        -0.0014653205871582031,
+        -0.0009970664978027344,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lod1.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        13.114927768707275,
         0,
         0,
         0,
         0,
-        1,
+        13.114927768707275,
         0,
         0,
         0,
         0,
-        1,
+        13.114927768707275,
         0,
-        0,
-        0,
-        0,
+        1.4199409484863281,
+        0.40203338861465454,
+        0.0012593269348144531,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2065,21 +2065,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lod1.body",
       "worldTransform": [
-        1,
+        13.114927768707275,
         0,
         0,
         0,
         0,
-        1,
+        13.114927768707275,
         0,
         0,
         0,
         0,
-        1,
+        13.114927768707275,
         0,
-        0,
-        0,
-        0,
+        1.4199409484863281,
+        0.40203338861465454,
+        0.0012593269348144531,
         1
       ]
     },
@@ -4471,36 +4471,36 @@
       "uri": "mothlight_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 620064,
-    "sha256": "ca8f5bb00b6c3f7bb4af62e3f4e65c75e392071e8f4e30fa8f94e33f1d32a095",
+    "bytes": 521084,
+    "sha256": "8c590c7ffa3d67afcfa858b70685378f0696b8f62cb490e7e4668c8df5833675",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        1.4207134246826172,
-        0.5850985646247864,
+        1.42071352286011,
+        0.5850985263502623,
         0
       ],
       "max": [
-        12.962638854980469,
-        2.2698943614959717,
+        12.962638543618189,
+        2.2698943378793115,
         15.993523597717285
       ],
       "min": [
-        -10.121212005615234,
-        -1.099697232246399,
+        -10.121211497897969,
+        -1.099697285178787,
         -15.993523597717285
       ],
       "size": [
-        23.083850860595703,
-        3.3695915937423706,
+        23.083850041516158,
+        3.3695916230580982,
         31.98704719543457
       ]
     },
@@ -5998,21 +5998,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.20594835281372,
           0,
           0,
           0,
           0,
-          1,
+          13.20594835281372,
           0,
           0,
           0,
           0,
-          1,
+          13.20594835281372,
           0,
-          0,
-          0,
-          0,
+          0.5873045921325684,
+          0.552941232919693,
+          0.000003337860107421875,
           1
         ],
         "name": "LOD1_Armor",
@@ -6025,21 +6025,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.478924036026001,
           0,
           0,
           0,
           0,
-          1,
+          2.478924036026001,
           0,
           0,
           0,
           0,
-          1,
+          2.478924036026001,
           0,
-          0,
-          0,
-          0,
+          10.040400266647339,
+          0.8299664482474327,
+          -2.9802322387695312e-8,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -6052,20 +6052,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.993523597717285,
           0,
           0,
           0,
           0,
-          1,
+          15.993523597717285,
           0,
           0,
           0,
           0,
-          1,
+          15.993523597717285,
           0,
-          0,
-          0,
+          1.7102065086364746,
+          0.4791382625699043,
           0,
           1
         ],
@@ -6079,21 +6079,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.0503885746002197,
           0,
           0,
           0,
           0,
-          1,
+          1.0503885746002197,
           0,
           0,
           0,
           0,
-          1,
+          1.0503885746002197,
           0,
-          0,
-          0,
-          0,
+          -6.549926996231079,
+          2.0699912905693054,
+          -0.00011858344078063965,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -6106,21 +6106,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.705701589584351,
           0,
           0,
           0,
           0,
-          1,
+          4.705701589584351,
           0,
           0,
           0,
           0,
-          1,
+          4.705701589584351,
           0,
-          0,
-          0,
-          0,
+          -9.930460929870605,
+          -0.3492295444011688,
+          0.0007016658782958984,
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
@@ -6129,21 +6129,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            4.705701589584351,
             0,
             0,
             0,
             0,
-            1,
+            4.705701589584351,
             0,
             0,
             0,
             0,
-            1,
+            4.705701589584351,
             0,
-            0,
-            0,
-            0,
+            -9.930460929870605,
+            -0.3492295444011688,
+            0.0007016658782958984,
             1
           ],
           "lod": "lod1"
@@ -6152,21 +6152,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.970539569854736,
           0,
           0,
           0,
           0,
-          1,
+          11.970539569854736,
           0,
           0,
           0,
           0,
-          1,
+          11.970539569854736,
           0,
-          0,
-          0,
-          0,
+          1.481435775756836,
+          -0.0014653205871582031,
+          -0.0009970664978027344,
           1
         ],
         "name": "LOD1_Hull",
@@ -6179,21 +6179,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.114927768707275,
           0,
           0,
           0,
           0,
-          1,
+          13.114927768707275,
           0,
           0,
           0,
           0,
-          1,
+          13.114927768707275,
           0,
-          0,
-          0,
-          0,
+          1.4199409484863281,
+          0.40203338861465454,
+          0.0012593269348144531,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -6962,19 +6962,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mothlight_lod1.glb"
   },
-  "runtimeHash": "17a78fa1d29c795526f64b873c4e4a753c7bc21c943460dd040c65532899f333",
+  "runtimeHash": "9dbaf2dc90cfb876b2868d3d363bb91229bb18dbddc5db1b37d76372639184dd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.962638854980469,
-          2.2698943614959717,
+          12.962638543618189,
+          2.2698943378793115,
           15.993523597717285
         ],
         "min": [
-          -10.121212005615234,
-          -1.099697232246399,
+          -10.121211497897969,
+          -1.099697285178787,
           -15.993523597717285
         ]
       },

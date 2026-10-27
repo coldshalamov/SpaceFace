@@ -1,3 +1,6 @@
+import { ownsWinnowRecoveryHull, reconcileWinnowRecovery, stepWinnowRecovery, winnowPickupReceipt, winnowSpillReceipt, winnowKilledReceipt, winnowDestroyedReceipt } from '../world/vestaWinnowRecovery.js';
+import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
+import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
@@ -122,7 +125,7 @@ import {
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
-import { stepPallasWorkLoop } from './pallasWorkLoop.js';
+import { stepPallasWorkLoop, pallasWorkTarget } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zoneAt } from '../data/sectorZones.js';
@@ -2090,6 +2093,9 @@ export const traffic = {
       this.helpers.traffic = {
         ...(this.helpers.traffic || {}),
         heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        pallasWorkTarget: (entry, entity) => pallasWorkTarget(this, entry, entity),
+        salvorWorkTarget: (entry, entity) => this._salvorWorkTarget(entry, entity),
+        salvorSourceTarget: (entry, entity) => this._salvorSourceTarget(entry, entity),
       };
     }
 
@@ -2147,6 +2153,18 @@ export const traffic = {
     this.bus.on('surrender:secured', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {}));
     this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {}));
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
+    this.bus.on('save:loaded', () => bindRestoredCharonSupply(this));
+    this.bus.on('npcjobs:cycle', p => charonSupplyRoundBoundary(this, p));
+    this.bus.on('npcjobs:complete', p => charonSupplyRoundBoundary(this, p));
+    this.bus.on('pickup:collected', p => winnowPickupReceipt(this, p || {}));
+    this.bus.on('freight:cargoSpilled', p => winnowSpillReceipt(this, p || {}));
+    this.bus.on('loot:manifestPayload', p => winnowSpillReceipt(this, p || {}));
+    this.bus.on('entity:killed', p => winnowKilledReceipt(this, p || {}));
+    this.bus.on('entity:destroyed', p => winnowDestroyedReceipt(this, p || {}));
+    this.bus.on('pickup:collected', p => charonSupplyPickupReceipt(this, p || {}));
+    this.bus.on('freight:cargoSpilled', p => charonSupplySpillReceipt(this, p || {}));
+    this.bus.on('loot:manifestPayload', p => charonSupplySpillReceipt(this, p || {}));
+    this.bus.on('entity:destroyed', p => charonSupplyDestroyed(this, p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresClampPodPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
@@ -2411,7 +2429,12 @@ export const traffic = {
     // it first so the neighbourhood reads as work before the ambient top-up fills around it.
     const authoredPockets = activityPocketsForSector(sectorId);
     if (authoredPockets.length) {
+      const charonPrior = sectorId === 'sector_charon_expanse' ? {
+        entities: new Set(this.state.entityList),
+        records: new Set(Object.keys(this.state.world?.records?.byId || {})),
+      } : null;
       this._materializeAuthoredActivityCast(sector, authoredPockets);
+      materializeCharonSupply(this, charonPrior);
     }
     // A sector with a registered causal chain arms it once its cast is in the world. A continuous
     // re-entry keeps the live ledger, so its remaining phase windows are rebased from now.
@@ -3093,8 +3116,10 @@ export const traffic = {
         if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
         if (!entity) continue;
         if (wasFresh) spawned += 1;
-        this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
-        this._assignActivityJob(entity, entry);
+        if (!ownsWinnowRecoveryHull(this.state, entity) && !ownsCharonSupplyHull(this.state, entity)) {
+          this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
+          this._assignActivityJob(entity, entry);
+        }
 
         let trafficRecord = prior.find((candidate) => candidate && candidate.id === entity.id);
         if (!trafficRecord) trafficRecord = {};
@@ -3156,6 +3181,7 @@ export const traffic = {
   },
 
   _assignActivityJob(entity, entry) {
+    if (ownsWinnowRecoveryHull(this.state, entity) || ownsCharonSupplyHull(this.state, entity)) return null;
     if (!entity || entity.alive === false || !entity.data || !entry || entry.service) return null;
     const spec = activityJobSpec(entry);
     const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
@@ -3734,8 +3760,10 @@ export const traffic = {
       ent.data.ai.spawnContext = 'convoy_civilian';
     }
     if (role === 'express') {
-      ent.data.hitchable = true;
-      ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+      if (massline2Flag('hitchhiking')) {
+        ent.data.hitchable = true;
+        ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+      }
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Express Liner';
     }
     if (role === 'tourist') {
@@ -3919,6 +3947,9 @@ export const traffic = {
 
   _stampExpressRoute(entity, rec, origin, destination, sectorId, seq, preserve = false) {
     if (!entity || !rec || rec.role !== 'express') return;
+    // Flag-off must not leak the hitch affordance onto any express hull (ambient or the named
+    // courier fixture): no hitch itinerary, no hitchable mark, no HITCHABLE label.
+    if (!massline2Flag('hitchhiking')) return;
     const data = entity.data || (entity.data = {});
     let itinerary = preserve && data.itinerary && data.itinerary.kind === 'express_hitch_route'
       ? data.itinerary
@@ -3965,9 +3996,9 @@ export const traffic = {
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
     if (!helper) {
-      for (const id of this._active) { const e = this.state.entities.get(id); if (e) e.alive = false; }
+      for (const id of this._active) { const e = this.state.entities.get(id); if (e && !ownsWinnowRecoveryHull(this.state, e) && !ownsCharonSupplyHull(this.state, e)) e.alive = false; }
     } else {
-      for (const id of this._active) { try { helper(id); } catch (_) {} }
+      for (const id of this._active) { if (ownsWinnowRecoveryHull(this.state, this.state.entities.get(id)) || ownsCharonSupplyHull(this.state, this.state.entities.get(id))) continue; try { helper(id); } catch (_) {} }
     }
     this._active = [];
     this.state.traffic.freighters = [];
@@ -4054,6 +4085,13 @@ export const traffic = {
       rec.virtualized = false;
       rec.id = p.id;
       rec.farActorId = null;
+      const entity = this.state.entities?.get(p.id);
+      if (rec.role === 'salvor' && entity?.data?.trafficRole === 'salvor'
+        && (!p.entity || p.entity === entity) && rec.manifest) {
+        // The lean far actor is a hull projection. Traffic's existing record retains the
+        // conserved hold; restoring residency must not turn that paid lot into an empty ship.
+        this._setTrafficManifest(entity, rec, rec.manifest);
+      }
       return;
     }
     this._readoptPromotedTraffic(p);
@@ -4188,21 +4226,24 @@ export const traffic = {
   },
 
   update(dt, state) {
-    if (state.mode !== 'flight') return;
-    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
-    if (raceLeaseActive(state)) return;
+    if (state.mode !== 'flight' || (state.run?.kind === 'survival' && state.run.phase !== 'inactive') || raceLeaseActive(state)) {
+      cancelAnvilSpillRendezvous(state);
+      return;
+    }
     this._coldburnRey?.update(dt);
     ensureActivityClassified(state);
     this._ensureState();
     this._releaseTrafficWatches(state);
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
-      stepPallasWorkLoop(state, dt);
+      stepPallasWorkLoop(state, dt, this);
     }
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;
       this._maintainClaimDepotTraffic();
       this._maintainClaimConvoys();
     }
+    reconcileWinnowRecovery(this);
+    reconcileCharonSupply(this);
     syncCeresWorkfleetHardware(this);
     this._stepAnvilWork(dt, state);
     this._stepPocketMeteorPass(dt, state);
@@ -4385,6 +4426,8 @@ export const traffic = {
         }
         continue;
       }
+      if (stepCharonSupply(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
+      if (stepWinnowRecovery(this, e, rec)) { this._syncTrafficRecordToData(e, rec); continue; }
       if (e.data?.itinerary?.kind === 'anvil_work') continue;
       if (e.data && e.data.jobId) continue;
       if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting

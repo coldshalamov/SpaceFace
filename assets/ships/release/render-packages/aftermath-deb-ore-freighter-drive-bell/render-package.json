@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e1f61da5f70cc52037f19a8feaf85bb1f7743277df1ff820d65cfb5256f47173",
+  "contentHash": "4fa90826494ca4c6fd4a8fd37f08431ea7d5c2eced28ea9b2836507f23576bd4",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1.4137687683105469,
-          -2.9899768829345703,
-          -3.28743314743042
+          -2.9899768385425984,
+          -3.2874331379641104
         ],
         "min": [
           0.33774566650390625,
-          -3.945679187774658,
-          -4.199525833129883
+          -3.94567923216663,
+          -4.199525842596192
         ]
       },
       "drawMode": 4,
-      "geometryHash": "845e603e0f7db4e8e63201aa26a71dd12ef2bb119093aee70472c604a76d17ea",
+      "geometryHash": "5ee65d1569d369cc1e79f5b64afb79cdd4aeabf05f2631bda59ec0c4dbc7c12b",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           1.6105575561523438,
-          -0.45101264119148254,
-          -5.477262496948242
+          -0.45101267653961813,
+          -5.477262465253204
         ],
         "min": [
           0.3271331787109375,
-          -1.3605766296386719,
-          -6.699897766113281
+          -1.3605765942905363,
+          -6.69989779780832
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72bbeb34984040b494fd7fcb8bf93a72dc255591f258a9a658175db4528ebee9",
+      "geometryHash": "6db2ee1e783f79206ca8f73bc9541ea60e3daf1c6ef34b2e7975c4028956d080",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1",
@@ -63,21 +63,21 @@
       "bounds": {
         "max": [
           1.3288002014160156,
-          2.3947718143463135,
-          -5.0309247970581055
+          2.394771851025535,
+          -5.030924753531998
         ],
         "min": [
           0.3582420349121094,
-          1.6435201168060303,
-          -5.934541702270508
+          1.6435200801268086,
+          -5.934541745796615
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25d1b442d73dec3cc57dcb5c37b365fc4984aea959e6e396b214d0f90e341582",
+      "geometryHash": "87d9ea4cd638f9f0d95615538b1d8e4cf596e01ecf5bef0ffd6565bd1bbe9f82",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2",
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           1.5217208862304688,
-          4.646756172180176,
-          -1.8967844247817993
+          4.646756242457157,
+          -1.896784436429144
         ],
         "min": [
           0.3396759033203125,
-          3.5756757259368896,
-          -2.827608346939087
+          3.575675655659908,
+          -2.8276083352917425
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71a2a3d1e243ea93be37ce05370b21df0343b21421ebd4c7869e4ba8b940f834",
+      "geometryHash": "7170f715f774b4754a540b1f73770715609590c4f5ba2ed41663b5b5f3f7dc52",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           1.6910858154296875,
-          4.937752723693848,
-          2.3440756797790527
+          4.9377527286816685,
+          2.344075634795891
         ],
         "min": [
           0.2913017272949219,
-          3.664076089859009,
-          1.2894636392593384
+          3.6640760848711875,
+          1.2894636842425
         ]
       },
       "drawMode": 4,
-      "geometryHash": "feef018ba979173031e34e4a713f4038ab2b0eb33f761ee1fe21ae5d2b688f5d",
+      "geometryHash": "ebd00d48f88f8b66d143d12fd84117b8340fdbfb2d723198b0d3cf80e1ca3603",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib4",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           1.4211235046386719,
-          2.83590030670166,
-          5.709048271179199
+          2.835900278682911,
+          5.709048486314003
         ],
         "min": [
           0.34056854248046875,
-          1.9735206365585327,
-          4.720565319061279
+          1.9735206645772816,
+          4.720565103926475
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb7a25d240de31e6f5361ceb81162eda0799b66145ab7db88015d8179e412567",
+      "geometryHash": "2c6224b3943e23e7b24279a80248a8e231e7800bcb7d44abed80fa402be95e74",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib5",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5",
@@ -163,21 +163,21 @@
       "bounds": {
         "max": [
           1.6077995300292969,
-          -0.04228820651769638,
-          6.832042217254639
+          -0.042288216013451896,
+          6.83204206808568
         ],
         "min": [
           0.3176727294921875,
-          -0.9184893369674683,
-          5.603021621704102
+          -0.9184893274717127,
+          5.6030217708730605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bda57464a55b106e20cffe5b8c2f4cece00096ad5e1e658de09278a108f6f630",
+      "geometryHash": "3aeb7305ee656f1d510527304699e2bbdea85c03126b6a7a7daf58c1e1a47462",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib6",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6",
@@ -188,21 +188,21 @@
       "bounds": {
         "max": [
           1.3353767395019531,
-          -2.7558600902557373,
-          4.646578788757324
+          -2.755860117064821,
+          4.646578746228054
         ],
         "min": [
           0.3608741760253906,
-          -3.6014084815979004,
-          3.803647518157959
+          -3.6014084547888165,
+          3.8036475606872293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62dceb943faa79a3dbdadad04a31fb51a6801bddd3238dce6d862297dd8632da",
+      "geometryHash": "3e780350d10ab2849db0df09115e6f44820aeabc18801b3e53d0085fd5ffe11c",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib7",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7",
@@ -213,21 +213,21 @@
       "bounds": {
         "max": [
           1.5241432189941406,
-          -3.831350326538086,
-          0.733157753944397
+          -3.831350315434636,
+          0.7331577725025206
         ],
         "min": [
           0.3526649475097656,
-          -4.937760353088379,
-          -0.11394466459751129
+          -4.9377603641918295,
+          -0.11394468315563488
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35c07aa32d585f4aee9dceb027c2d9c11238e19e0e981eccf6044372a7edf7de",
+      "geometryHash": "3bc7b262c514c0f7812fd831509dcd3ddc3baf353b0be147aec615b6116f8e1e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib8",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8",
@@ -238,21 +238,21 @@
       "bounds": {
         "max": [
           2.4995059967041016,
-          4.757661819458008,
-          0.6803462505340576
+          4.757661714993897,
+          0.6803462467998143
         ],
         "min": [
           0.3822746276855469,
-          3.216858386993408,
-          0.017075879499316216
+          3.21685849145752,
+          0.01707588323355963
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12bdf4b2c79b9b63680752642c25818ff01c3751e8acc35511cb20eb324ac799",
+      "geometryHash": "21f4bc232422cef27279cff71406c3ae259cb9da86b4a7443f9f48f6fb466970",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0",
@@ -263,21 +263,21 @@
       "bounds": {
         "max": [
           4.09398078918457,
-          2.6836228370666504,
-          5.638478755950928
+          2.683622874999194,
+          5.638478703413273
         ],
         "min": [
           0.3796234130859375,
-          1.6088885068893433,
-          3.4627110958099365
+          1.6088884689567995,
+          3.4627111483475916
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45b47d28a254170783487cb1818fd3929d675efcee848e82364b0afbc9a6045a",
+      "geometryHash": "3667d379169afb6a9aea129261c1c1e444031a4cbe6b7255d157460450b1d843",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1",
@@ -288,21 +288,21 @@
       "bounds": {
         "max": [
           2.9043636322021484,
-          -0.4712648093700409,
-          6.535721778869629
+          -0.4712648136461608,
+          6.535721619979693
         ],
         "min": [
           0.3753776550292969,
-          -1.7074710130691528,
-          4.56830358505249
+          -1.707471008793033,
+          4.568303743942426
         ]
       },
       "drawMode": 4,
-      "geometryHash": "803dfa0a90939417e192cb20d1ef96f97ca068d5594afca6251b0182dcf58d38",
+      "geometryHash": "365a1b6ac135847250556d4349972560bb82c771757b738d4d4067e6116ce23a",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2",
@@ -312,22 +312,22 @@
     {
       "bounds": {
         "max": [
-          1.7953808307647705,
-          -3.125258684158325,
+          1.7953808546970351,
+          -3.125258589498866,
           3.0822200775146484
         ],
         "min": [
-          0.2904917597770691,
-          -4.508485794067383,
+          0.2904917358448046,
+          -4.508485888726842,
           1.5002784729003906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64cfcb43a198ea88b7aa308dfbd84d56b23294b2a54a430ea98b08ca4154ea47",
+      "geometryHash": "e2dd223e685d095772f49533961f67656a9f264d19637267e5bf1d458038b5ed",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3",
@@ -338,21 +338,21 @@
       "bounds": {
         "max": [
           3.2677383422851562,
-          -2.782120704650879,
-          -2.027989387512207
+          -2.782120651996805,
+          -2.027989438947521
         ],
         "min": [
           0.4099540710449219,
-          -3.9515907764434814,
-          -3.4738450050354004
+          -3.9515908290975554,
+          -3.4738449536000866
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42f58c4b6e45ce1abeecc4e46b13338ca5af5758ed2f2ff848029f5abac11e0a",
+      "geometryHash": "f371e3500add1617de4eeedda408ab045b898f92ee2a912e2983df38871ade06",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear4",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4",
@@ -363,21 +363,21 @@
       "bounds": {
         "max": [
           2.085874557495117,
-          -0.04632003232836723,
-          -5.229123592376709
+          -0.04632003116707761,
+          -5.229123833727589
         ],
         "min": [
           0.3979530334472656,
-          -1.2979792356491089,
-          -6.394653797149658
+          -1.2979792368103986,
+          -6.3946535557987785
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dad219bf8bcc4971b9170611e5f43db8c0314892f128e136a7495acdafa0e939",
+      "geometryHash": "155c1e846041eebbb184b7cc3308508b495af1ef34cd1a3e15f0da731a8b5ef1",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear5",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5",
@@ -388,21 +388,21 @@
       "bounds": {
         "max": [
           3.7561607360839844,
-          3.0913748741149902,
-          -3.075690746307373
+          3.091374935675108,
+          -3.0756906205749885
         ],
         "min": [
           0.3194847106933594,
-          1.9627373218536377,
-          -5.280524730682373
+          1.9627372602935198,
+          -5.2805248564147576
         ]
       },
       "drawMode": 4,
-      "geometryHash": "377ef12f3f29c75b3b19c22f3b683138f4439ce83937f2a3ff3ea28c5cbbd553",
+      "geometryHash": "1d328754e31eb927de27752ec73d4c4ef7adb3872a4c32d561efedceef7b392b",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear6",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6",
@@ -412,22 +412,22 @@
     {
       "bounds": {
         "max": [
-          0.9046868085861206,
-          3.095698118209839,
+          0.9046867562831222,
+          3.095698174927659,
           5.916131019592285
         ],
         "min": [
-          -3.010552406311035,
-          -2.8586528301239014,
+          -3.010552354008037,
+          -2.8586528868417216,
           -7.2055463790893555
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c42e08fa61829de441bbdfca10ed71d5be8dd9edd460478780c061f3d5161e3",
+      "geometryHash": "8108a1064872a4e66d2c1bd78b5cf0f17ec304a1393bbe233cc1b455845f3389",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "Drive_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a",
@@ -437,22 +437,22 @@
     {
       "bounds": {
         "max": [
-          -0.9374955892562866,
-          3.309530258178711,
+          -0.9374955576049051,
+          3.309530303402555,
           6.621565818786621
         ],
         "min": [
-          -1.3574415445327759,
-          0.04959907382726669,
+          -1.3574415761841574,
+          0.04959902860342247,
           -0.6822405457496643
         ]
       },
       "drawMode": 4,
-      "geometryHash": "766f0ffe97a5b9086dfc5751bb4d09b1cddf90c7922a673598e4ddbb2a97d289",
+      "geometryHash": "c457ca3b5d88255d87884c18175b9b954b13c7e81f004539c7d3601b715dd19e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "Drive_xrib1b",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b",
@@ -462,18 +462,18 @@
     {
       "bounds": {
         "max": [
-          0.9440496563911438,
-          3.6955714225769043,
+          0.9440495623765359,
+          3.6955713225549003,
           7.7848358154296875
         ],
         "min": [
-          -2.795032501220703,
-          -2.91845965385437,
+          -2.795032314078272,
+          -2.918459528176557,
           -7.645705223083496
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdfbde7e94f6e355758d22a98ccf39f64ede6cf1aef3a9acea1fe035deadb614",
+      "geometryHash": "bcf9a428c2a38afbbd3084ce0c2f4b1d77fbe24da91508a7492ca613e3c9a175",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.0",
       "indexCount": 996,
       "indexed": true,
@@ -487,18 +487,18 @@
     {
       "bounds": {
         "max": [
-          0.9383985996246338,
-          -2.407043695449829,
-          7.2677693367004395
+          0.9383985570216924,
+          -2.407043543563217,
+          7.267768825461504
         ],
         "min": [
-          -2.795032501220703,
-          -3.848050117492676,
-          -7.273680686950684
+          -2.795032314078272,
+          -3.8480499090483185,
+          -7.27368070388963
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12f76654fda66a3aab76b60f2a7ef40b38d7c6444d37ad8eb8e0325c335f46f9",
+      "geometryHash": "9bc1bcfc49db1418a3e007fd6ff377d4782e3b687d8d8adca5386ffa9976f20e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.1",
       "indexCount": 621,
       "indexed": true,
@@ -512,18 +512,18 @@
     {
       "bounds": {
         "max": [
-          0.8376222848892212,
-          3.730419397354126,
-          6.879733562469482
+          0.837622294860316,
+          3.7304191889097686,
+          6.879733124428914
         ],
         "min": [
-          -2.804450750350952,
-          -3.1802895069122314,
-          -6.854564666748047
+          -2.8044506563363445,
+          -3.180289442950974,
+          -6.854564473405401
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e763bef137202d214b5f0500b000c3007287b74c0357b31fd2c752dd99806d3f",
+      "geometryHash": "9af44a8fefa701d1acc0fa87032853904858e49e68d1e5898f67250672f75ef5",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.2",
       "indexCount": 516,
       "indexed": true,
@@ -537,18 +537,18 @@
     {
       "bounds": {
         "max": [
-          -1.2127509117126465,
-          3.7200591564178467,
-          7.667106628417969
+          -1.2127508147220811,
+          3.720059012425889,
+          7.6671065372037805
         ],
         "min": [
-          -1.7251087427139282,
-          -3.716193199157715,
-          -7.641938209533691
+          -1.7251086335612285,
+          -3.716193117435303,
+          -7.641937886180267
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1abc450960b560d8db5e75b7812bb257eeb6037123d3ebf07e502365d8a892d",
+      "geometryHash": "beb8133829e40bb64bf621b4a26357cc7e8d8416813e75a03949c946c042147f",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive.primitive.3",
       "indexCount": 2034,
       "indexed": true,
@@ -562,18 +562,18 @@
     {
       "bounds": {
         "max": [
-          -2.2180416584014893,
-          3.6031453609466553,
+          -2.218041659572954,
+          3.6031453758478165,
           5.204819679260254
         ],
         "min": [
-          -4.094034671783447,
-          -0.24912402033805847,
+          -4.094034670611983,
+          -0.24912403523921967,
           1.3525502681732178
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a542da908851337be51f3f9d02fb89d9cf275eba4cb0f0880bbd01e7c4aa22c4",
+      "geometryHash": "00e3e56210a95b5ab64bbec6841d81fd201811a388ba04b826837910b903001e",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -587,18 +587,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          3.4876959323883057,
-          5.089370250701904
+          -3.2315152292703875,
+          3.487696034690937,
+          5.089370338103374
         ],
         "min": [
-          -4.094034671783447,
-          -0.13367465138435364,
-          1.4679996967315674
+          -4.094034670611983,
+          -0.13367469408234034,
+          1.467999609330097
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56ff6a4c67a900ec4e842c2caffaa9215b33902353c8e803cec5baef1bd6d87b",
+      "geometryHash": "431826693e5bd03f04cd353d7f85fbeb899abd8e8a2f74aa5da9e7034af59cbc",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -612,18 +612,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          2.6324069499969482,
-          4.234081268310547
+          -3.2315152292703875,
+          2.6324068728617127,
+          4.234081176274151
         ],
         "min": [
-          -3.231515407562256,
-          0.7216144800186157,
-          2.323288679122925
+          -3.2315152292703875,
+          0.721614467746884,
+          2.3232887711593215
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf5970a0e87c8bd4daee2cd454bf7b48b3c6b7953c5311712a81d905e2a5c7f3",
+      "geometryHash": "9e120b8cfa9000e6ea5034906b47e5a584609d0b4d3e0b6727f72fa3a367d9fa",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -637,18 +637,18 @@
     {
       "bounds": {
         "max": [
-          -2.2180416584014893,
-          0.25334593653678894,
+          -2.218041659572954,
+          0.25334595143795013,
           5.204819679260254
         ],
         "min": [
-          -4.094034671783447,
-          -3.598923444747925,
+          -4.094034670611983,
+          -3.598923459649086,
           1.3525502681732178
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d58d0a22527526023f68693a9a43e6dda799ad0c8f79ec5157eea3007bb29fa",
+      "geometryHash": "79d81a34acaf1b607e73fb9e1d6587f4d6ebc1c5f1ea8c7a1554af00395bc81b",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -662,18 +662,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          0.1378965675830841,
-          5.089370250701904
+          -3.2315152292703875,
+          0.1378966102810708,
+          5.089370338103374
         ],
         "min": [
-          -4.094034671783447,
-          -3.483474016189575,
-          1.4679996967315674
+          -4.094034670611983,
+          -3.4834741184922065,
+          1.467999609330097
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efcc2a56c6a0529849a78373e2c29d071eb3882ffeb604bdc341e855df4cd4f3",
+      "geometryHash": "725c428c5b1b09e416812af7bb8c630d9c461632fd809e5262e4e735987a49a7",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -687,18 +687,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          -0.7173925638198853,
-          4.234081268310547
+          -3.2315152292703875,
+          -0.7173925515481535,
+          4.234081176274151
         ],
         "min": [
-          -3.231515407562256,
-          -2.6281850337982178,
-          2.323288679122925
+          -3.2315152292703875,
+          -2.6281849566629822,
+          2.3232887711593215
         ]
       },
       "drawMode": 4,
-      "geometryHash": "337f1438d8e5318bd57f417802531ec213d2e1fbd78f1a3a58d747bb0493a176",
+      "geometryHash": "950622fd18caae66c53e7ac3d0934bf751caa5dda861c71a1bbf8d8ea826fb4d",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -712,18 +712,18 @@
     {
       "bounds": {
         "max": [
-          -2.2180416584014893,
-          3.6031453609466553,
+          -2.218041659572954,
+          3.6031453758478165,
           -1.3272888660430908
         ],
         "min": [
-          -4.094034671783447,
-          -0.24912402033805847,
+          -4.094034670611983,
+          -0.24912403523921967,
           -5.179558277130127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aec1fec1090842624448f4bb0b420e7cb764b18d4d0bb783a5ec720d36ead68",
+      "geometryHash": "2c919bfd28d418f4817a147601f5cdbffd463964430e5b83f2050fce5df792bf",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -737,18 +737,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          3.4876959323883057,
-          -1.4427382946014404
+          -3.2315152292703875,
+          3.487696034690937,
+          -1.4427382071999701
         ],
         "min": [
-          -4.094034671783447,
-          -0.13367465138435364,
-          -5.064108848571777
+          -4.094034670611983,
+          -0.13367469408234034,
+          -5.064108935973247
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdd1574540be96cab567838799551f471b4c107024312f55695ed2b65cca0b2b",
+      "geometryHash": "17056fbe00705b020f97ba43b26a7ba588cc3b38e84f17c8ffbf883bff10d383",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -762,18 +762,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          2.6324069499969482,
-          -2.298027276992798
+          -3.2315152292703875,
+          2.6324068728617127,
+          -2.2980273690291946
         ],
         "min": [
-          -3.231515407562256,
-          0.7216144800186157,
-          -4.20881986618042
+          -3.2315152292703875,
+          0.721614467746884,
+          -4.208819774144024
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f4904352cace8cd48e08a5f4772f74d567345b6d7884d3d446d83010a42fa52",
+      "geometryHash": "a63d266d0e653a642d862b639b2ea5e913f59b3a7a7c6d380f5273d244d97b65",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -787,18 +787,18 @@
     {
       "bounds": {
         "max": [
-          -2.2180416584014893,
-          0.25334593653678894,
+          -2.218041659572954,
+          0.25334595143795013,
           -1.3272888660430908
         ],
         "min": [
-          -4.094034671783447,
-          -3.598923444747925,
+          -4.094034670611983,
+          -3.598923459649086,
           -5.179558277130127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "110556f35d7b296bac83b993bdec0d822ed4ec4350efc465b0bfe5d88f31d205",
+      "geometryHash": "90ece507398712c43f12d863728c66996eab0b422346ec2bea6bd60632a103ee",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -812,18 +812,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          0.1378965675830841,
-          -1.4427382946014404
+          -3.2315152292703875,
+          0.1378966102810708,
+          -1.4427382071999701
         ],
         "min": [
-          -4.094034671783447,
-          -3.483474016189575,
-          -5.064108848571777
+          -4.094034670611983,
+          -3.4834741184922065,
+          -5.064108935973247
         ]
       },
       "drawMode": 4,
-      "geometryHash": "390e51a17e387954ff409de04edf089714f6f8618a3202a0ce1ab6487718d24a",
+      "geometryHash": "41f98a455d29268ab148cf20d9d8c6295de32cbe8b86dc235ec12d87c8cc7f12",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -837,18 +837,18 @@
     {
       "bounds": {
         "max": [
-          -3.231515407562256,
-          -0.7173925638198853,
-          -2.298027276992798
+          -3.2315152292703875,
+          -0.7173925515481535,
+          -2.2980273690291946
         ],
         "min": [
-          -3.231515407562256,
-          -2.6281850337982178,
-          -4.20881986618042
+          -3.2315152292703875,
+          -2.6281849566629822,
+          -4.208819774144024
         ]
       },
       "drawMode": 4,
-      "geometryHash": "791851ee968fcaeb77fb2a465de7e4e68fa4fdd76529c8f61dde72599cca0985",
+      "geometryHash": "f864829f237210ca7092986317f4fbab588c46e7910422b462a56a9413aeafbf",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -863,21 +863,21 @@
       "bounds": {
         "max": [
           0.8759574890136719,
-          0.5896218419075012,
-          7.860174179077148
+          0.5896218432865646,
+          7.860174145155598
         ],
         "min": [
           0.01515960693359375,
-          0.19575171172618866,
-          7.201657295227051
+          0.19575171034712524,
+          7.201657329148601
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c313f636c78e030e4087284e605441b979cdeebb2d0389a8f9bf0eea8310d8ad",
+      "geometryHash": "8381bbcc4352798a971e898da61a23552c5e949d9d5195d385c7d685618aabed",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "RCSAft_M_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a",
@@ -888,17 +888,17 @@
       "bounds": {
         "max": [
           0.7901382446289062,
-          0.3718877136707306,
-          7.990051746368408
+          0.37188770451183945,
+          7.990051523462644
         ],
         "min": [
           0.11901092529296875,
-          -0.16668137907981873,
-          7.364721298217773
+          -0.16668136992092758,
+          7.3647215211235375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07a8662fd7fa12a47b879691e5de8a85cecbb288595a78f191a71b73fc495f88",
+      "geometryHash": "53d20190e5a78fdc1ec01941b9fe4743ef38129fe4d865c3d8bd6fe10830878a",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -913,17 +913,17 @@
       "bounds": {
         "max": [
           0.4751434326171875,
-          -0.04005458205938339,
-          7.8829827308654785
+          -0.040054583203562644,
+          7.882982712995181
         ],
         "min": [
           0.3947486877441406,
-          -0.11651387065649033,
-          7.832739353179932
+          -0.11651386951231107,
+          7.832739371050229
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ece1a78308a191acb86cb7db7ae06b392a23fa6459e79c70a562c02f474acb81",
+      "geometryHash": "d3a5517e8f14f5207cff7b8c19ffcfc5828c9a22a3654f9c350f785cb82a5d57",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -938,17 +938,17 @@
       "bounds": {
         "max": [
           0.4751434326171875,
-          -0.04005458205938339,
-          -7.807477951049805
+          -0.040054583203562644,
+          -7.807477968920102
         ],
         "min": [
           0.3947486877441406,
-          -0.11651387065649033,
-          -7.857721328735352
+          -0.11651386951231107,
+          -7.857721310865054
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecd604ad23bd2fb7bab7cabe1d50dae531d19ea4e6a95071e56d2447f4df3cfe",
+      "geometryHash": "dca940e10135315e9ea30bc2374176fae4a95bf2bac6287a96641902341e4ed5",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -963,17 +963,17 @@
       "bounds": {
         "max": [
           0.4751434326171875,
-          0.1207357868552208,
-          7.8829827308654785
+          0.12073578571104154,
+          7.882982712995181
         ],
         "min": [
           0.3947486877441406,
-          0.04427649825811386,
-          7.832739353179932
+          0.04427649940229311,
+          7.832739371050229
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70c075c0a0077956f9aecd0c2673ab97f589c849f29c9a958030488e01b84a46",
+      "geometryHash": "35ccdd10698489b6398aa7f18662e5a0426f6a2b698a6cfa1a22d660ad3125c5",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -988,17 +988,17 @@
       "bounds": {
         "max": [
           0.4751434326171875,
-          0.1207357868552208,
-          -7.807477951049805
+          0.12073578571104154,
+          -7.807477968920102
         ],
         "min": [
           0.3947486877441406,
-          0.04427649825811386,
-          -7.857721328735352
+          0.04427649940229311,
+          -7.857721310865054
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09fbd28f8d27454c051f0070e8f6c1d3c719f877e0c8a5e79d043a9c20d76009",
+      "geometryHash": "628e42f32742204bbb085f62af70217c5d73a7fcb119256d5ff177022e09f021",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1013,21 +1013,21 @@
       "bounds": {
         "max": [
           0.9510383605957031,
-          0.5266062021255493,
-          -7.460387229919434
+          0.5266061925366814,
+          -7.4603872478188356
         ],
         "min": [
           0.11191558837890625,
-          -0.1565079241991043,
-          -7.8751726150512695
+          -0.1565079146102364,
+          -7.875172597151868
         ]
       },
       "drawMode": 4,
-      "geometryHash": "676d196405d249ce3d4fc55b7f3c95f66bfa12889a8f786ef35a90de5a33eb75",
+      "geometryHash": "273d286df965886afb14a51197ad232766606b21de5ac591572bb5c2519433bb",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "RCSAft_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a",
@@ -1037,18 +1037,18 @@
     {
       "bounds": {
         "max": [
-          0.8654565811157227,
-          0.3730919659137726,
+          0.865456786376751,
+          0.3730921428559097,
           -7.261425018310547
         ],
         "min": [
-          0.2250814437866211,
-          -0.16586467623710632,
+          0.22508123852559275,
+          -0.16586485317924343,
           -7.990033149719238
         ]
       },
       "drawMode": 4,
-      "geometryHash": "010e91ccdc18df1fcaab7ed984d7d5cf3ad1375221c8e5ba496b60ee77258533",
+      "geometryHash": "a70e6d4f25d66f3aa057950db78ede83a2731d7a3b231c033c22752640d184e3",
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -1097,10 +1097,10 @@
       ]
     },
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
+      "hash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "id": "material:203cc84c70ad17be35f60b4e",
+      "name": "Forge_ore_barge_wk_frame__dead",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1123,38 +1123,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
-      "id": "material:1924058446149e26f586ed31",
-      "name": "Forge_ore_barge_wk_torn__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1187,38 +1155,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
-      "id": "material:55cf3807fb7e4c7e740b0413",
-      "name": "Forge_ore_barge_wk_frame__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1289,11 +1225,75 @@
       ]
     },
     {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "d987f2406e3d723b9a5efb58ccb68bf4964c32f296c03e0d0c96bcfe4d7bb230",
       "id": "material:d987f2406e3d723b9a5efb58",
       "name": "Forge_ore_barge_glow_drive__dead",
       "pipelineKey": "opaque:double",
       "textures": []
+    },
+    {
+      "hash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
+      "id": "material:fa1be6065fe73501f8f36d50",
+      "name": "Forge_ore_barge_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "fdc53fab1f3a311e1b7f098a2fbad09178c773a1df9efac5dcd1c805d4eca17b",
@@ -1332,21 +1332,21 @@
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0",
       "localTransform": [
-        1,
+        0.5380115509033203,
         0,
         0,
         0,
         0,
-        1,
+        0.5380115509033203,
         0,
         0,
         0,
         0,
-        1,
+        0.5380115509033203,
         0,
-        0,
-        0,
-        0,
+        0.8757572174072266,
+        -3.4678280353546143,
+        -3.7434794902801514,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1360,42 +1360,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.5380115509033203,
         0,
         0,
         0,
         0,
-        1,
+        0.5380115509033203,
         0,
         0,
         0,
         0,
-        1,
+        0.5380115509033203,
         0,
-        0,
-        0,
-        0,
+        0.8757572174072266,
+        -3.4678280353546143,
+        -3.7434794902801514,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1",
       "localTransform": [
-        1,
+        0.6417121887207031,
         0,
         0,
         0,
         0,
-        1,
+        0.6417121887207031,
         0,
         0,
         0,
         0,
-        1,
+        0.6417121887207031,
         0,
-        0,
-        0,
-        0,
+        0.9688453674316406,
+        -0.9057946354150772,
+        -6.088580131530762,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1409,42 +1409,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.6417121887207031,
         0,
         0,
         0,
         0,
-        1,
+        0.6417121887207031,
         0,
         0,
         0,
         0,
-        1,
+        0.6417121887207031,
         0,
-        0,
-        0,
-        0,
+        0.9688453674316406,
+        -0.9057946354150772,
+        -6.088580131530762,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2",
       "localTransform": [
-        1,
+        0.4852790832519531,
         0,
         0,
         0,
         0,
-        1,
+        0.4852790832519531,
         0,
         0,
         0,
         0,
-        1,
+        0.4852790832519531,
         0,
-        0,
-        0,
-        0,
+        0.8435211181640625,
+        2.019145965576172,
+        -5.482733249664307,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1458,42 +1458,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.4852790832519531,
         0,
         0,
         0,
         0,
-        1,
+        0.4852790832519531,
         0,
         0,
         0,
         0,
-        1,
+        0.4852790832519531,
         0,
-        0,
-        0,
-        0,
+        0.8435211181640625,
+        2.019145965576172,
+        -5.482733249664307,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3",
       "localTransform": [
-        1,
+        0.5910224914550781,
         0,
         0,
         0,
         0,
-        1,
+        0.5910224914550781,
         0,
         0,
         0,
         0,
-        1,
+        0.5910224914550781,
         0,
-        0,
-        0,
-        0,
+        0.9306983947753906,
+        4.111215949058533,
+        -2.362196385860443,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1507,42 +1507,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.5910224914550781,
         0,
         0,
         0,
         0,
-        1,
+        0.5910224914550781,
         0,
         0,
         0,
         0,
-        1,
+        0.5910224914550781,
         0,
-        0,
-        0,
-        0,
+        0.9306983947753906,
+        4.111215949058533,
+        -2.362196385860443,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4",
       "localTransform": [
-        1,
+        0.6998920440673828,
         0,
         0,
         0,
         0,
-        1,
+        0.6998920440673828,
         0,
         0,
         0,
         0,
-        1,
+        0.6998920440673828,
         0,
-        0,
-        0,
-        0,
+        0.9911937713623047,
+        4.300914406776428,
+        1.8167696595191956,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1556,42 +1556,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.6998920440673828,
         0,
         0,
         0,
         0,
-        1,
+        0.6998920440673828,
         0,
         0,
         0,
         0,
-        1,
+        0.6998920440673828,
         0,
-        0,
-        0,
-        0,
+        0.9911937713623047,
+        4.300914406776428,
+        1.8167696595191956,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5",
       "localTransform": [
-        1,
+        0.5402774810791016,
         0,
         0,
         0,
         0,
-        1,
+        0.5402774810791016,
         0,
         0,
         0,
         0,
-        1,
+        0.5402774810791016,
         0,
-        0,
-        0,
-        0,
+        0.8808460235595703,
+        2.4047104716300964,
+        5.214806795120239,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1605,42 +1605,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.5402774810791016,
         0,
         0,
         0,
         0,
-        1,
+        0.5402774810791016,
         0,
         0,
         0,
         0,
-        1,
+        0.5402774810791016,
         0,
-        0,
-        0,
-        0,
+        0.8808460235595703,
+        2.4047104716300964,
+        5.214806795120239,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6",
       "localTransform": [
-        1,
+        0.6450634002685547,
         0,
         0,
         0,
         0,
-        1,
+        0.6450634002685547,
         0,
         0,
         0,
         0,
-        1,
+        0.6450634002685547,
         0,
-        0,
-        0,
-        0,
+        0.9627361297607422,
+        -0.4803887717425823,
+        6.21753191947937,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1654,42 +1654,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.6450634002685547,
         0,
         0,
         0,
         0,
-        1,
+        0.6450634002685547,
         0,
         0,
         0,
         0,
-        1,
+        0.6450634002685547,
         0,
-        0,
-        0,
-        0,
+        0.9627361297607422,
+        -0.4803887717425823,
+        6.21753191947937,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7",
       "localTransform": [
-        1,
+        0.48725128173828125,
         0,
         0,
         0,
         0,
-        1,
+        0.48725128173828125,
         0,
         0,
         0,
         0,
-        1,
+        0.48725128173828125,
         0,
-        0,
-        0,
-        0,
+        0.8481254577636719,
+        -3.178634285926819,
+        4.225113153457642,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1703,42 +1703,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.48725128173828125,
         0,
         0,
         0,
         0,
-        1,
+        0.48725128173828125,
         0,
         0,
         0,
         0,
-        1,
+        0.48725128173828125,
         0,
-        0,
-        0,
-        0,
+        0.8481254577636719,
+        -3.178634285926819,
+        4.225113153457642,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8",
       "localTransform": [
-        1,
+        0.5857391357421875,
         0,
         0,
         0,
         0,
-        1,
+        0.5857391357421875,
         0,
         0,
         0,
         0,
-        1,
+        0.5857391357421875,
         0,
-        0,
-        0,
-        0,
+        0.9384040832519531,
+        -4.384555339813232,
+        0.30960654467344284,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1752,42 +1752,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.5857391357421875,
         0,
         0,
         0,
         0,
-        1,
+        0.5857391357421875,
         0,
         0,
         0,
         0,
-        1,
+        0.5857391357421875,
         0,
-        0,
-        0,
-        0,
+        0.9384040832519531,
+        -4.384555339813232,
+        0.30960654467344284,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0",
       "localTransform": [
-        1,
+        1.0586156845092773,
         0,
         0,
         0,
         0,
-        1,
+        1.0586156845092773,
         0,
         0,
         0,
         0,
-        1,
+        1.0586156845092773,
         0,
-        0,
-        0,
-        0,
+        1.4408903121948242,
+        3.987260103225708,
+        0.3487110650166869,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1801,42 +1801,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.0586156845092773,
         0,
         0,
         0,
         0,
-        1,
+        1.0586156845092773,
         0,
         0,
         0,
         0,
-        1,
+        1.0586156845092773,
         0,
-        0,
-        0,
-        0,
+        1.4408903121948242,
+        3.987260103225708,
+        0.3487110650166869,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1",
       "localTransform": [
-        1,
+        1.8571786880493164,
         0,
         0,
         0,
         0,
-        1,
+        1.8571786880493164,
         0,
         0,
         0,
         0,
-        1,
+        1.8571786880493164,
         0,
-        0,
-        0,
-        0,
+        2.236802101135254,
+        2.146255671977997,
+        4.550594925880432,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1850,42 +1850,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.8571786880493164,
         0,
         0,
         0,
         0,
-        1,
+        1.8571786880493164,
         0,
         0,
         0,
         0,
-        1,
+        1.8571786880493164,
         0,
-        0,
-        0,
-        0,
+        2.236802101135254,
+        2.146255671977997,
+        4.550594925880432,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2",
       "localTransform": [
-        1,
+        1.2644929885864258,
         0,
         0,
         0,
         0,
-        1,
+        1.2644929885864258,
         0,
         0,
         0,
         0,
-        1,
+        1.2644929885864258,
         0,
-        0,
-        0,
-        0,
+        1.6398706436157227,
+        -1.0893679112195969,
+        5.55201268196106,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1899,42 +1899,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.2644929885864258,
         0,
         0,
         0,
         0,
-        1,
+        1.2644929885864258,
         0,
         0,
         0,
         0,
-        1,
+        1.2644929885864258,
         0,
-        0,
-        0,
-        0,
+        1.6398706436157227,
+        -1.0893679112195969,
+        5.55201268196106,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3",
       "localTransform": [
-        1,
+        0.7909708023071289,
         0,
         0,
         0,
         0,
-        1,
+        0.7909708023071289,
         0,
         0,
         0,
         0,
-        1,
+        0.7909708023071289,
         0,
-        0,
-        0,
-        0,
+        1.0429362952709198,
+        -3.816872239112854,
+        2.2912492752075195,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1948,42 +1948,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.7909708023071289,
         0,
         0,
         0,
         0,
-        1,
+        0.7909708023071289,
         0,
         0,
         0,
         0,
-        1,
+        0.7909708023071289,
         0,
-        0,
-        0,
-        0,
+        1.0429362952709198,
+        -3.816872239112854,
+        2.2912492752075195,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4",
       "localTransform": [
-        1,
+        1.4288921356201172,
         0,
         0,
         0,
         0,
-        1,
+        1.4288921356201172,
         0,
         0,
         0,
         0,
-        1,
+        1.4288921356201172,
         0,
-        0,
-        0,
-        0,
+        1.838846206665039,
+        -3.36685574054718,
+        -2.7509171962738037,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1997,42 +1997,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.4288921356201172,
         0,
         0,
         0,
         0,
-        1,
+        1.4288921356201172,
         0,
         0,
         0,
         0,
-        1,
+        1.4288921356201172,
         0,
-        0,
-        0,
-        0,
+        1.838846206665039,
+        -3.36685574054718,
+        -2.7509171962738037,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5",
       "localTransform": [
-        1,
+        0.8439607620239258,
         0,
         0,
         0,
         0,
-        1,
+        0.8439607620239258,
         0,
         0,
         0,
         0,
-        1,
+        0.8439607620239258,
         0,
-        0,
-        0,
-        0,
+        1.2419137954711914,
+        -0.6721496339887381,
+        -5.811888694763184,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2046,42 +2046,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.8439607620239258,
         0,
         0,
         0,
         0,
-        1,
+        0.8439607620239258,
         0,
         0,
         0,
         0,
-        1,
+        0.8439607620239258,
         0,
-        0,
-        0,
-        0,
+        1.2419137954711914,
+        -0.6721496339887381,
+        -5.811888694763184,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6",
       "localTransform": [
-        1,
+        1.7183380126953125,
         0,
         0,
         0,
         0,
-        1,
+        1.7183380126953125,
         0,
         0,
         0,
         0,
-        1,
+        1.7183380126953125,
         0,
-        0,
-        0,
-        0,
+        2.037822723388672,
+        2.527056097984314,
+        -4.178107738494873,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2095,42 +2095,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.7183380126953125,
         0,
         0,
         0,
         0,
-        1,
+        1.7183380126953125,
         0,
         0,
         0,
         0,
-        1,
+        1.7183380126953125,
         0,
-        0,
-        0,
-        0,
+        2.037822723388672,
+        2.527056097984314,
+        -4.178107738494873,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive",
       "localTransform": [
-        1,
+        7.715270519256592,
         0,
         0,
         0,
         0,
-        1,
+        7.715270519256592,
         0,
         0,
         0,
         0,
-        1,
+        7.715270519256592,
         0,
-        0,
-        0,
-        0,
+        -0.9302005469799042,
+        -0.0588153600692749,
+        0.0695652961730957,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2144,42 +2144,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        7.715270519256592,
         0,
         0,
         0,
         0,
-        1,
+        7.715270519256592,
         0,
         0,
         0,
         0,
-        1,
+        7.715270519256592,
         0,
-        0,
-        0,
-        0,
+        -0.9302005469799042,
+        -0.0588153600692749,
+        0.0695652961730957,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a",
       "localTransform": [
-        1,
+        6.56083869934082,
         0,
         0,
         0,
         0,
-        1,
+        6.56083869934082,
         0,
         0,
         0,
         0,
-        1,
+        6.56083869934082,
         0,
-        0,
-        0,
-        0,
+        -1.0529327988624573,
+        0.11852264404296875,
+        -0.6447076797485352,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2193,42 +2193,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        6.56083869934082,
         0,
         0,
         0,
         0,
-        1,
+        6.56083869934082,
         0,
         0,
         0,
         0,
-        1,
+        6.56083869934082,
         0,
-        0,
-        0,
-        0,
+        -1.0529327988624573,
+        0.11852264404296875,
+        -0.6447076797485352,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b",
       "localTransform": [
-        1,
+        3.6519031822681427,
         0,
         0,
         0,
         0,
-        1,
+        3.6519031822681427,
         0,
         0,
         0,
         0,
-        1,
+        3.6519031822681427,
         0,
-        0,
-        0,
-        0,
+        -1.1474685668945312,
+        1.6795646660029888,
+        2.9696626365184784,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2242,42 +2242,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        3.6519031822681427,
         0,
         0,
         0,
         0,
-        1,
+        3.6519031822681427,
         0,
         0,
         0,
         0,
-        1,
+        3.6519031822681427,
         0,
-        0,
-        0,
-        0,
+        -1.1474685668945312,
+        1.6795646660029888,
+        2.9696626365184784,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10",
       "localTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        -1.672788754105568,
+        3.278684973716736,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2291,42 +2291,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        -1.672788754105568,
+        3.278684973716736,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle-19-10-2",
       "localTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        1.6770106703042984,
+        3.278684973716736,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2340,42 +2340,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        1.6770106703042984,
+        3.278684973716736,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10",
       "localTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        -1.672788754105568,
+        -3.253423571586609,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2389,42 +2389,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        -1.672788754105568,
+        -3.253423571586609,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.nozzle19-10-2",
       "localTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        1.6770106703042984,
+        -3.253423571586609,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2438,42 +2438,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
         0,
         0,
         0,
-        1,
+        1.926134705543518,
         0,
-        0,
-        0,
-        0,
+        -3.1560381650924683,
+        1.6770106703042984,
+        -3.253423571586609,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft",
       "localTransform": [
-        1,
+        0.3643040657043457,
         0,
         0,
         0,
         0,
-        1,
+        0.3643040657043457,
         0,
         0,
         0,
         0,
-        1,
+        0.3643040657043457,
         0,
-        0,
-        0,
-        0,
+        0.5452690124511719,
+        0.10361364483833313,
+        -7.625729084014893,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2487,42 +2487,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.3643040657043457,
         0,
         0,
         0,
         0,
-        1,
+        0.3643040657043457,
         0,
         0,
         0,
         0,
-        1,
+        0.3643040657043457,
         0,
-        0,
-        0,
-        0,
+        0.5452690124511719,
+        0.10361364483833313,
+        -7.625729084014893,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m",
       "localTransform": [
-        1,
+        0.33556365966796875,
         0,
         0,
         0,
         0,
-        1,
+        0.33556365966796875,
         0,
         0,
         0,
         0,
-        1,
+        0.33556365966796875,
         0,
-        0,
-        0,
-        0,
+        0.4545745849609375,
+        0.10260316729545593,
+        7.677386522293091,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2536,42 +2536,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.33556365966796875,
         0,
         0,
         0,
         0,
-        1,
+        0.33556365966796875,
         0,
         0,
         0,
         0,
-        1,
+        0.33556365966796875,
         0,
-        0,
-        0,
-        0,
+        0.4545745849609375,
+        0.10260316729545593,
+        7.677386522293091,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a",
       "localTransform": [
-        1,
+        0.43039894104003906,
         0,
         0,
         0,
         0,
-        1,
+        0.43039894104003906,
         0,
         0,
         0,
         0,
-        1,
+        0.43039894104003906,
         0,
-        0,
-        0,
-        0,
+        0.4455585479736328,
+        0.39268677681684494,
+        7.5309157371521,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2585,42 +2585,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.43039894104003906,
         0,
         0,
         0,
         0,
-        1,
+        0.43039894104003906,
         0,
         0,
         0,
         0,
-        1,
+        0.43039894104003906,
         0,
-        0,
-        0,
-        0,
+        0.4455585479736328,
+        0.39268677681684494,
+        7.5309157371521,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05",
       "localTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        -0.07828422635793686,
+        -7.832599639892578,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2634,42 +2634,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        -0.07828422635793686,
+        -7.832599639892578,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-07-0-05-m",
       "localTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        -0.07828422635793686,
+        7.857861042022705,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2683,42 +2683,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        -0.07828422635793686,
+        7.857861042022705,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05",
       "localTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        0.08250614255666733,
+        -7.832599639892578,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2732,42 +2732,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        0.08250614255666733,
+        -7.832599639892578,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-n-0-070-05-m",
       "localTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        0.08250614255666733,
+        7.857861042022705,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2781,42 +2781,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
         0,
         0,
         0,
-        1,
+        0.04019737243652344,
         0,
-        0,
-        0,
-        0,
+        0.43494606018066406,
+        0.08250614255666733,
+        7.857861042022705,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a",
       "localTransform": [
-        1,
+        0.41956138610839844,
         0,
         0,
         0,
         0,
-        1,
+        0.41956138610839844,
         0,
         0,
         0,
         0,
-        1,
+        0.41956138610839844,
         0,
-        0,
-        0,
-        0,
+        0.5314769744873047,
+        0.1850491389632225,
+        -7.667779922485352,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2830,21 +2830,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-drive-bell.body",
       "worldTransform": [
-        1,
+        0.41956138610839844,
         0,
         0,
         0,
         0,
-        1,
+        0.41956138610839844,
         0,
         0,
         0,
         0,
-        1,
+        0.41956138610839844,
         0,
-        0,
-        0,
-        0,
+        0.5314769744873047,
+        0.1850491389632225,
+        -7.667779922485352,
         1
       ]
     },
@@ -2907,37 +2907,37 @@
       "uri": "place_aftermath_deb_ore_freighter_drive_bell.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 278752,
-    "sha256": "7584f49aacc99f0fbac2292f4d0156f63697a7218a995834d3f67e3ccad39a69",
+    "bytes": 225748,
+    "sha256": "50e40eb3b90cf9d59bc3aa7e5ea01fdfb8180b8b5d33d2d30d377c99a641aaa6",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.000026941299438476562,
-        -0.000003814697265625,
-        0.000009298324584960938
+        -0.000026940713706125052,
+        -0.000003817755080515184,
+        0.000009186871702926425
       ],
       "max": [
         4.09398078918457,
-        4.937752723693848,
-        7.990051746368408
+        4.9377527286816685,
+        7.990051523462644
       ],
       "min": [
-        -4.094034671783447,
-        -4.937760353088379,
+        -4.094034670611983,
+        -4.9377603641918295,
         -7.990033149719238
       ],
       "size": [
-        8.188015460968018,
-        9.875513076782227,
-        15.980084896087646
+        8.188015459796553,
+        9.875513092873497,
+        15.980084673181882
       ]
     },
     "hidden": [],
@@ -3166,21 +3166,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5380115509033203,
           0,
           0,
           0,
           0,
-          1,
+          0.5380115509033203,
           0,
           0,
           0,
           0,
-          1,
+          0.5380115509033203,
           0,
-          0,
-          0,
-          0,
+          0.8757572174072266,
+          -3.4678280353546143,
+          -3.7434794902801514,
           1
         ],
         "name": "bellWound_f_rib0",
@@ -3193,21 +3193,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6417121887207031,
           0,
           0,
           0,
           0,
-          1,
+          0.6417121887207031,
           0,
           0,
           0,
           0,
-          1,
+          0.6417121887207031,
           0,
-          0,
-          0,
-          0,
+          0.9688453674316406,
+          -0.9057946354150772,
+          -6.088580131530762,
           1
         ],
         "name": "bellWound_f_rib1",
@@ -3220,21 +3220,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4852790832519531,
           0,
           0,
           0,
           0,
-          1,
+          0.4852790832519531,
           0,
           0,
           0,
           0,
-          1,
+          0.4852790832519531,
           0,
-          0,
-          0,
-          0,
+          0.8435211181640625,
+          2.019145965576172,
+          -5.482733249664307,
           1
         ],
         "name": "bellWound_f_rib2",
@@ -3247,21 +3247,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5910224914550781,
           0,
           0,
           0,
           0,
-          1,
+          0.5910224914550781,
           0,
           0,
           0,
           0,
-          1,
+          0.5910224914550781,
           0,
-          0,
-          0,
-          0,
+          0.9306983947753906,
+          4.111215949058533,
+          -2.362196385860443,
           1
         ],
         "name": "bellWound_f_rib3",
@@ -3274,21 +3274,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6998920440673828,
           0,
           0,
           0,
           0,
-          1,
+          0.6998920440673828,
           0,
           0,
           0,
           0,
-          1,
+          0.6998920440673828,
           0,
-          0,
-          0,
-          0,
+          0.9911937713623047,
+          4.300914406776428,
+          1.8167696595191956,
           1
         ],
         "name": "bellWound_f_rib4",
@@ -3301,21 +3301,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5402774810791016,
           0,
           0,
           0,
           0,
-          1,
+          0.5402774810791016,
           0,
           0,
           0,
           0,
-          1,
+          0.5402774810791016,
           0,
-          0,
-          0,
-          0,
+          0.8808460235595703,
+          2.4047104716300964,
+          5.214806795120239,
           1
         ],
         "name": "bellWound_f_rib5",
@@ -3328,21 +3328,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6450634002685547,
           0,
           0,
           0,
           0,
-          1,
+          0.6450634002685547,
           0,
           0,
           0,
           0,
-          1,
+          0.6450634002685547,
           0,
-          0,
-          0,
-          0,
+          0.9627361297607422,
+          -0.4803887717425823,
+          6.21753191947937,
           1
         ],
         "name": "bellWound_f_rib6",
@@ -3355,21 +3355,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.48725128173828125,
           0,
           0,
           0,
           0,
-          1,
+          0.48725128173828125,
           0,
           0,
           0,
           0,
-          1,
+          0.48725128173828125,
           0,
-          0,
-          0,
-          0,
+          0.8481254577636719,
+          -3.178634285926819,
+          4.225113153457642,
           1
         ],
         "name": "bellWound_f_rib7",
@@ -3382,21 +3382,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5857391357421875,
           0,
           0,
           0,
           0,
-          1,
+          0.5857391357421875,
           0,
           0,
           0,
           0,
-          1,
+          0.5857391357421875,
           0,
-          0,
-          0,
-          0,
+          0.9384040832519531,
+          -4.384555339813232,
+          0.30960654467344284,
           1
         ],
         "name": "bellWound_f_rib8",
@@ -3409,21 +3409,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0586156845092773,
           0,
           0,
           0,
           0,
-          1,
+          1.0586156845092773,
           0,
           0,
           0,
           0,
-          1,
+          1.0586156845092773,
           0,
-          0,
-          0,
-          0,
+          1.4408903121948242,
+          3.987260103225708,
+          0.3487110650166869,
           1
         ],
         "name": "bellWound_t_tear0",
@@ -3436,21 +3436,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8571786880493164,
           0,
           0,
           0,
           0,
-          1,
+          1.8571786880493164,
           0,
           0,
           0,
           0,
-          1,
+          1.8571786880493164,
           0,
-          0,
-          0,
-          0,
+          2.236802101135254,
+          2.146255671977997,
+          4.550594925880432,
           1
         ],
         "name": "bellWound_t_tear1",
@@ -3463,21 +3463,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2644929885864258,
           0,
           0,
           0,
           0,
-          1,
+          1.2644929885864258,
           0,
           0,
           0,
           0,
-          1,
+          1.2644929885864258,
           0,
-          0,
-          0,
-          0,
+          1.6398706436157227,
+          -1.0893679112195969,
+          5.55201268196106,
           1
         ],
         "name": "bellWound_t_tear2",
@@ -3490,21 +3490,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7909708023071289,
           0,
           0,
           0,
           0,
-          1,
+          0.7909708023071289,
           0,
           0,
           0,
           0,
-          1,
+          0.7909708023071289,
           0,
-          0,
-          0,
-          0,
+          1.0429362952709198,
+          -3.816872239112854,
+          2.2912492752075195,
           1
         ],
         "name": "bellWound_t_tear3",
@@ -3517,21 +3517,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4288921356201172,
           0,
           0,
           0,
           0,
-          1,
+          1.4288921356201172,
           0,
           0,
           0,
           0,
-          1,
+          1.4288921356201172,
           0,
-          0,
-          0,
-          0,
+          1.838846206665039,
+          -3.36685574054718,
+          -2.7509171962738037,
           1
         ],
         "name": "bellWound_t_tear4",
@@ -3544,21 +3544,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8439607620239258,
           0,
           0,
           0,
           0,
-          1,
+          0.8439607620239258,
           0,
           0,
           0,
           0,
-          1,
+          0.8439607620239258,
           0,
-          0,
-          0,
-          0,
+          1.2419137954711914,
+          -0.6721496339887381,
+          -5.811888694763184,
           1
         ],
         "name": "bellWound_t_tear5",
@@ -3571,21 +3571,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7183380126953125,
           0,
           0,
           0,
           0,
-          1,
+          1.7183380126953125,
           0,
           0,
           0,
           0,
-          1,
+          1.7183380126953125,
           0,
-          0,
-          0,
-          0,
+          2.037822723388672,
+          2.527056097984314,
+          -4.178107738494873,
           1
         ],
         "name": "bellWound_t_tear6",
@@ -3598,21 +3598,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
-          0,
-          0,
-          0,
+          -0.9302005469799042,
+          -0.0588153600692749,
+          0.0695652961730957,
           1
         ],
         "name": "Drive_1",
@@ -3625,21 +3625,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
-          0,
-          0,
-          0,
+          -0.9302005469799042,
+          -0.0588153600692749,
+          0.0695652961730957,
           1
         ],
         "name": "Drive_2",
@@ -3652,21 +3652,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
-          0,
-          0,
-          0,
+          -0.9302005469799042,
+          -0.0588153600692749,
+          0.0695652961730957,
           1
         ],
         "name": "Drive_3",
@@ -3679,21 +3679,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
           0,
           0,
           0,
-          1,
+          7.715270519256592,
           0,
-          0,
-          0,
-          0,
+          -0.9302005469799042,
+          -0.0588153600692749,
+          0.0695652961730957,
           1
         ],
         "name": "Drive_4",
@@ -3706,21 +3706,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.56083869934082,
           0,
           0,
           0,
           0,
-          1,
+          6.56083869934082,
           0,
           0,
           0,
           0,
-          1,
+          6.56083869934082,
           0,
-          0,
-          0,
-          0,
+          -1.0529327988624573,
+          0.11852264404296875,
+          -0.6447076797485352,
           1
         ],
         "name": "Drive_xrib1a",
@@ -3733,21 +3733,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6519031822681427,
           0,
           0,
           0,
           0,
-          1,
+          3.6519031822681427,
           0,
           0,
           0,
           0,
-          1,
+          3.6519031822681427,
           0,
-          0,
-          0,
-          0,
+          -1.1474685668945312,
+          1.6795646660029888,
+          2.9696626365184784,
           1
         ],
         "name": "Drive_xrib1b",
@@ -3760,21 +3760,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_-10_1",
@@ -3787,21 +3787,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_-10_2",
@@ -3814,21 +3814,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_-10_3",
@@ -3841,21 +3841,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_10_1",
@@ -3868,21 +3868,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_10_2",
@@ -3895,21 +3895,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          3.278684973716736,
           1
         ],
         "name": "Nozzle-19_10_3",
@@ -3922,21 +3922,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_-10_1",
@@ -3949,21 +3949,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_-10_2",
@@ -3976,21 +3976,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          -1.672788754105568,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_-10_3",
@@ -4003,21 +4003,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_10_1",
@@ -4030,21 +4030,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_10_2",
@@ -4057,21 +4057,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
           0,
           0,
           0,
-          1,
+          1.926134705543518,
           0,
-          0,
-          0,
-          0,
+          -3.1560381650924683,
+          1.6770106703042984,
+          -3.253423571586609,
           1
         ],
         "name": "Nozzle19_10_3",
@@ -4084,21 +4084,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3643040657043457,
           0,
           0,
           0,
           0,
-          1,
+          0.3643040657043457,
           0,
           0,
           0,
           0,
-          1,
+          0.3643040657043457,
           0,
-          0,
-          0,
-          0,
+          0.5452690124511719,
+          0.10361364483833313,
+          -7.625729084014893,
           1
         ],
         "name": "RCSAft",
@@ -4111,21 +4111,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.33556365966796875,
           0,
           0,
           0,
           0,
-          1,
+          0.33556365966796875,
           0,
           0,
           0,
           0,
-          1,
+          0.33556365966796875,
           0,
-          0,
-          0,
-          0,
+          0.4545745849609375,
+          0.10260316729545593,
+          7.677386522293091,
           1
         ],
         "name": "RCSAft_M",
@@ -4138,21 +4138,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.43039894104003906,
           0,
           0,
           0,
           0,
-          1,
+          0.43039894104003906,
           0,
           0,
           0,
           0,
-          1,
+          0.43039894104003906,
           0,
-          0,
-          0,
-          0,
+          0.4455585479736328,
+          0.39268677681684494,
+          7.5309157371521,
           1
         ],
         "name": "RCSAft_M_xrib1a",
@@ -4165,21 +4165,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
-          0,
-          0,
-          0,
+          0.43494606018066406,
+          -0.07828422635793686,
+          -7.832599639892578,
           1
         ],
         "name": "RCSAft_N-007-005",
@@ -4192,21 +4192,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
-          0,
-          0,
-          0,
+          0.43494606018066406,
+          -0.07828422635793686,
+          7.857861042022705,
           1
         ],
         "name": "RCSAft_N-007-005_M",
@@ -4219,21 +4219,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
-          0,
-          0,
-          0,
+          0.43494606018066406,
+          0.08250614255666733,
+          -7.832599639892578,
           1
         ],
         "name": "RCSAft_N-007005",
@@ -4246,21 +4246,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
           0,
           0,
           0,
-          1,
+          0.04019737243652344,
           0,
-          0,
-          0,
-          0,
+          0.43494606018066406,
+          0.08250614255666733,
+          7.857861042022705,
           1
         ],
         "name": "RCSAft_N-007005_M",
@@ -4273,21 +4273,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.41956138610839844,
           0,
           0,
           0,
           0,
-          1,
+          0.41956138610839844,
           0,
           0,
           0,
           0,
-          1,
+          0.41956138610839844,
           0,
-          0,
-          0,
-          0,
+          0.5314769744873047,
+          0.1850491389632225,
+          -7.667779922485352,
           1
         ],
         "name": "RCSAft_xrib1a",
@@ -4302,19 +4302,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb"
   },
-  "runtimeHash": "a16f991b0daaad788137229178816691e557f02c4b94f3c70c94b86a90b14994",
+  "runtimeHash": "158097ee08e1311ec35d106cac3264971802bbc351a72d5558a855729b8d1800",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4.09398078918457,
-          4.937752723693848,
-          7.990051746368408
+          4.9377527286816685,
+          7.990051523462644
         ],
         "min": [
-          -4.094034671783447,
-          -4.937760353088379,
+          -4.094034670611983,
+          -4.9377603641918295,
           -7.990033149719238
         ]
       },

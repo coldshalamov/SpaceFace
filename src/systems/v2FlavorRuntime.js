@@ -5,6 +5,7 @@
 // through the one-voice helper. Packs whose physical actors do not yet exist therefore remain
 // deliberately silent until an entity carries their explicit flavor identity.
 
+import { SHARD_SPHERE_SONG, shardSphereSongProgress } from '../data/landmarkMissions.js';
 import { hash32 } from '../core/rng.js';
 import { FLAVOR_PACKS } from '../data/flavor/index.generated.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
@@ -319,12 +320,17 @@ export const v2FlavorRuntime = {
 
   _presentShardSphereFragment(entity, signal) {
     const entry = LANDMARK_BY_TARGET_REF.get(SHARD_SPHERE_TARGET_REF);
-    if (!entry || !entry.lines.length) return false;
-    const fragmentIndex = Math.min(entry.lines.length, Math.max(1, nonnegativeInt(signal.scanCount))) - 1;
-    const source = entry.lines[fragmentIndex];
+    const total = SHARD_SPHERE_SONG.requiredSignalScans;
+    const fragmentIds = SHARD_SPHERE_SONG.signalLineIds;
+    if (!entry || fragmentIds.length !== total) return false;
+    const fragmentIndex = Math.min(total, Math.max(1, nonnegativeInt(signal.scanCount))) - 1;
+    const source = entry.lines.find(line => line.id === fragmentIds[fragmentIndex]);
+    if (!source) return false;
+    const progress = fragmentIndex === total - 1
+      ? shardSphereSongProgress(this.state) : null;
     const line = {
       ...source,
-      text: `SCHISM FRAGMENT ${fragmentIndex + 1}/${entry.lines.length} — ${source.text}`,
+      text: `SCHISM FRAGMENT ${fragmentIndex + 1}/${total} — ${source.text}${progress ? ` ${progress.text}` : ''}`,
     };
     return this._say({
       packId: LANDMARK_PACK.id,
@@ -333,7 +339,7 @@ export const v2FlavorRuntime = {
       line,
       channel: 'info',
       receipt: `${LANDMARK_PACK.id}:${SHARD_SPHERE_TARGET_REF}:fragment:${source.id}`,
-      context: { entityId: entity.id, fragmentIndex: fragmentIndex + 1, fragmentTotal: entry.lines.length },
+      context: { entityId: entity.id, fragmentIndex: fragmentIndex + 1, fragmentTotal: total },
     });
   },
 

@@ -1,3 +1,5 @@
+import { ASTEROIDS } from '../data/mining.js';
+import { starterMiningFocus } from '../missions/starterWorkday.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -137,7 +139,7 @@ import {
 } from '../missions/capitalBossSpawn.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
-import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders } from './captainStandingOrders.js';
+import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders, captainStandingOfferPreflight } from './captainStandingOrders.js';
 import { syncColdburnBid, coldburnDeliveryBonus } from './coldburnRey.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -2257,6 +2259,15 @@ export const missions = {
       });
       return false;
     }
+    // A remembered captain can die or rotate their desk while this row is still displayed.
+    // Refuse before fees, sealed cargo or an active instance; accepted contracts keep their terms.
+    const captainPreflight = captainStandingOfferPreflight(state, offer);
+    if (!captainPreflight.ok) {
+      if (board && Array.isArray(board.slots)) board.slots = board.slots.filter(candidate => candidate?.id !== offer.id);
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      this.bus.emit('toast', { text: captainPreflight.reason, kind: 'warn', ttl: 4 });
+      return false;
+    }
     if (offer.storyDisposition) {
       const choice = offer.storyDisposition;
       // Stage irreversible confirmation (story resolves only on ui:endgameConfirm / confirm:true).
@@ -3563,6 +3574,8 @@ export const missions = {
     }
 
     if (m.type === 'mining_quota') {
+      const workFace = starterMiningFocus(m, this.state.entityList, sectorLocalToGlobalForSector, ASTEROIDS);
+      if (workFace) return { ...base, ...workFace, stationId: null, sectorId: m.destSectorId };
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
         return { ...base, stationId: null, sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId, pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
@@ -6447,3 +6460,4 @@ export function mulberryLocal(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+

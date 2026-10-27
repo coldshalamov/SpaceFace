@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7e0e0aec73fe56a54c1ce85c9e05b7227cb4cafdd39072fe55730688fe6e9969",
+  "contentHash": "993f1d617292d5e25b9cf30483b24bcf4b2aa60a82afd3815580edaae382aea8",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           0.14856041967868805,
-          1.9175059795379639,
-          -0.7255551815032959
+          1.9175060009169713,
+          -0.7255551987733083
         ],
         "min": [
           -3.5538113117218018,
-          0.47788938879966736,
-          -1.069047451019287
+          0.4778893674206598,
+          -1.0690474337492746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c1ab1f30484ab70765ec76f19e4f66d797c6e297d261aad851f4ed3cf6c5808",
+      "geometryHash": "66b7e689697233166f3224df6796bb3eecd7fdb7aa4736878f677011ca537e85",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab00",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           3.9731531143188477,
-          2.3305721282958984,
-          0.8154444694519043
+          2.3305721049229904,
+          0.8154445107426322
         ],
         "min": [
           0.04168526828289032,
-          1.6346733570098877,
-          -1.0559231042861938
+          1.6346733803827957,
+          -1.0559231455769218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f9a9249a7a04602dcd563e70e96f48e54be5beede25318c825eec23b61e2802",
+      "geometryHash": "6aae9a8af21b5141df47370cda3f9d9f329cb28ba6ce74759aaecb5e6da452d2",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab01",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
@@ -63,21 +63,21 @@
       "bounds": {
         "max": [
           0.18822278082370758,
-          2.4663612842559814,
-          1.8001337051391602
+          2.4663612577845577,
+          1.8001337306871914
         ],
         "min": [
           -3.608157157897949,
-          1.204299807548523,
-          -0.4037524461746216
+          1.2042998340199467,
+          -0.40375247172265283
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade9922d74b7b91533b52f3ebd533f366f04a59e77fb2ef30b01933fbd89e8ae",
+      "geometryHash": "3401707af15f0b27acfe3e01bdd79fc26d77d2af6f57a671b3e69d71053f27b4",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab10",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           3.9830284118652344,
-          2.5022644996643066,
-          1.865235447883606
+          2.5022645165428834,
+          1.8652354646638405
         ],
         "min": [
           0.04817213863134384,
-          0.8161377310752869,
-          1.3334949016571045
+          0.8161377141967102,
+          1.33349488487687
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19e38a5cc8a0481e6d48bd1bfd061f5d30ccb1492df85757fe8bc126ab3e93cf",
+      "geometryHash": "b9a3e979b5f5509247c619bf848bd74bed73a0af1c703d4f78a518e6906a25cf",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab11",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           0.16166940331459045,
-          1.2755881547927856,
-          2.2174766063690186
+          1.2755881731851488,
+          2.217476632462763
         ],
         "min": [
           -3.5524706840515137,
-          0.3959920406341553,
-          0.7488004565238953
+          0.3959920222417921,
+          0.7488004304301508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41515c5f61b3555bafe0dedc5bb9f6ffef690cc141681cb3f2e0817c318634ef",
+      "geometryHash": "624d34fc2080554475c97527de984caf91bba6e5fc93e173e2789b2c3a5939cc",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab20",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           4,
-          0.6687538027763367,
-          2.2307841777801514
+          0.668753693391936,
+          2.230784188636325
         ],
         "min": [
           0.004113249480724335,
-          -1.9431395530700684,
-          0.26729127764701843
+          -1.9431394436856677,
+          0.2672912667908446
         ]
       },
       "drawMode": 4,
-      "geometryHash": "355d7187d6d7a331ce803bb17d4ad07590706e3f4faafce0070c7f72e199b13c",
+      "geometryHash": "5656d91879ceb82ed039ec22a6ade93fececd583bb7a9b38a573e3ce2e6985ce",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab21",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
@@ -163,21 +163,21 @@
       "bounds": {
         "max": [
           0.17941084504127502,
-          0.36722052097320557,
-          1.1227967739105225
+          0.36722052686372775,
+          1.1227967980547056
         ],
         "min": [
           -3.5918896198272705,
-          -1.2621718645095825,
-          -0.3624972999095917
+          -1.2621718704001048,
+          -0.3624973240537749
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7c6934bd79a13f017cf4e561832a7fc74a830062d9b3498dd8de27684cf9e85",
+      "geometryHash": "aa6e77afdeae3968b65581fdfeb5596a02e48161f2ae71ee4a3c6537b11b70d5",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab30",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
@@ -188,21 +188,21 @@
       "bounds": {
         "max": [
           3.979297161102295,
-          -0.9165796637535095,
-          0.0025120764039456844
+          -0.9165796895584807,
+          0.002512060920825121
         ],
         "min": [
           0.030287086963653564,
-          -2.5022337436676025,
-          -1.2707595825195312
+          -2.5022337178626315,
+          -1.2707595670364107
         ]
       },
       "drawMode": 4,
-      "geometryHash": "297a1e15d16afff82d62c0bce548fd26b826f439533adaa8e2774d51202fa84f",
+      "geometryHash": "33bbfbbd3e8d8592a5d0be72ab3d0054b406ac0842b6b66b8b5a0d5191a1a2ef",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab31",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
@@ -213,21 +213,21 @@
       "bounds": {
         "max": [
           0.17844130098819733,
-          0.027734937146306038,
-          -0.028009630739688873
+          0.02773493083152001,
+          -0.02800952223741149
         ],
         "min": [
           -3.575201988220215,
-          -0.4941803812980652,
-          -2.1869242191314697
+          -0.49418037498327916,
+          -2.186924327633747
         ]
       },
       "drawMode": 4,
-      "geometryHash": "100182abd7f9cca044c36d91e4fb8d6f3960dccfe9a5b587ded46a6209208961",
+      "geometryHash": "8c5e0c2118b71e706e55e53831e910a8dc228203786e88d8bf8047ba4e0283cc",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab40",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
@@ -238,21 +238,21 @@
       "bounds": {
         "max": [
           3.961453437805176,
-          0.23844361305236816,
-          -0.8225991129875183
+          0.2384436069806236,
+          -0.8225990935905307
         ],
         "min": [
           0.058296333998441696,
-          -0.522485613822937,
-          -2.230699300765991
+          -0.5224856077511925,
+          -2.230699320162979
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a06271be9745a28e85787002621029772a0a0bc413521eb94c11395e10c1937c",
+      "geometryHash": "6cf5971e2d035f661b36c2d676c0417606369096f7e15919c5c71b169cbc4e9c",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
+      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
       "materialPipelineKey": "opaque",
       "meshName": "cab41",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
@@ -262,22 +262,22 @@
     {
       "bounds": {
         "max": [
-          -3.3981618881225586,
-          2.124256134033203,
+          -3.3981619363090583,
+          2.1242562285644198,
           1.6728599071502686
         ],
         "min": [
-          -3.9999825954437256,
-          -0.8904899954795837,
+          -3.999982547257226,
+          -0.8904900900108004,
           -1.4612557888031006
         ]
       },
       "drawMode": 4,
-      "geometryHash": "511b9d2e72e5572a1f455f57c42c5c28a91d6807975ddedc7281887de0b812be",
+      "geometryHash": "5e1b546ecbc26ad054210f15def38abd4a3dc8fb00181fd956624d9d3a75786d",
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cabCollar",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar",
@@ -290,42 +290,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "ee4e7dc63df018e0c222a18ccebb6714b8ecdb84005f0acf427dcd55b37ae690",
-      "id": "material:ee4e7dc63df018e0c222a18c",
+      "hash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "id": "material:c0150f1f713f896c624a3e15",
       "name": "Forge_ore_barge_wk_cut",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -352,27 +320,59 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
       "localTransform": [
-        1,
+        1.851185865700245,
         0,
         0,
         0,
         0,
-        1,
+        1.851185865700245,
         0,
         0,
         0,
         0,
-        1,
+        1.851185865700245,
         0,
-        0,
-        0,
-        0,
+        -1.7026254460215569,
+        1.1976976841688156,
+        -0.8973013162612915,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -386,42 +386,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.851185865700245,
         0,
         0,
         0,
         0,
-        1,
+        1.851185865700245,
         0,
         0,
         0,
         0,
-        1,
+        1.851185865700245,
         0,
-        0,
-        0,
-        0,
+        -1.7026254460215569,
+        1.1976976841688156,
+        -0.8973013162612915,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
       "localTransform": [
-        1,
+        1.9657339230179787,
         0,
         0,
         0,
         0,
-        1,
+        1.9657339230179787,
         0,
         0,
         0,
         0,
-        1,
+        1.9657339230179787,
         0,
-        0,
-        0,
-        0,
+        2.007419191300869,
+        1.982622742652893,
+        -0.12023931741714478,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -435,42 +435,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.9657339230179787,
         0,
         0,
         0,
         0,
-        1,
+        1.9657339230179787,
         0,
         0,
         0,
         0,
-        1,
+        1.9657339230179787,
         0,
-        0,
-        0,
-        0,
+        2.007419191300869,
+        1.982622742652893,
+        -0.12023931741714478,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
       "localTransform": [
-        1,
+        1.8981899693608284,
         0,
         0,
         0,
         0,
-        1,
+        1.8981899693608284,
         0,
         0,
         0,
         0,
-        1,
+        1.8981899693608284,
         0,
-        0,
-        0,
-        0,
+        -1.7099671885371208,
+        1.8353305459022522,
+        0.6981906294822693,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -484,42 +484,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.8981899693608284,
         0,
         0,
         0,
         0,
-        1,
+        1.8981899693608284,
         0,
         0,
         0,
         0,
-        1,
+        1.8981899693608284,
         0,
-        0,
-        0,
-        0,
+        -1.7099671885371208,
+        1.8353305459022522,
+        0.6981906294822693,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
       "localTransform": [
-        1,
+        1.9674281366169453,
         0,
         0,
         0,
         0,
-        1,
+        1.9674281366169453,
         0,
         0,
         0,
         0,
-        1,
+        1.9674281366169453,
         0,
-        0,
-        0,
-        0,
+        2.015600275248289,
+        1.6592011153697968,
+        1.5993651747703552,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -533,42 +533,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.9674281366169453,
         0,
         0,
         0,
         0,
-        1,
+        1.9674281366169453,
         0,
         0,
         0,
         0,
-        1,
+        1.9674281366169453,
         0,
-        0,
-        0,
-        0,
+        2.015600275248289,
+        1.6592011153697968,
+        1.5993651747703552,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
       "localTransform": [
-        1,
+        1.857070043683052,
         0,
         0,
         0,
         0,
-        1,
+        1.857070043683052,
         0,
         0,
         0,
         0,
-        1,
+        1.857070043683052,
         0,
-        0,
-        0,
-        0,
+        -1.6954006403684616,
+        0.8357900977134705,
+        1.483138531446457,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -582,42 +582,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.857070043683052,
         0,
         0,
         0,
         0,
-        1,
+        1.857070043683052,
         0,
         0,
         0,
         0,
-        1,
+        1.857070043683052,
         0,
-        0,
-        0,
-        0,
+        -1.6954006403684616,
+        0.8357900977134705,
+        1.483138531446457,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
       "localTransform": [
-        1,
+        1.9979433752596378,
         0,
         0,
         0,
         0,
-        1,
+        1.9979433752596378,
         0,
         0,
         0,
         0,
-        1,
+        1.9979433752596378,
         0,
-        0,
-        0,
-        0,
+        2.002056624740362,
+        -0.6371928751468658,
+        1.249037727713585,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -631,42 +631,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.9979433752596378,
         0,
         0,
         0,
         0,
-        1,
+        1.9979433752596378,
         0,
         0,
         0,
         0,
-        1,
+        1.9979433752596378,
         0,
-        0,
-        0,
-        0,
+        2.002056624740362,
+        -0.6371928751468658,
+        1.249037727713585,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
       "localTransform": [
-        1,
+        1.8856502324342728,
         0,
         0,
         0,
         0,
-        1,
+        1.8856502324342728,
         0,
         0,
         0,
         0,
-        1,
+        1.8856502324342728,
         0,
-        0,
-        0,
-        0,
+        -1.7062393873929977,
+        -0.4474756717681885,
+        0.3801497370004654,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -680,42 +680,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.8856502324342728,
         0,
         0,
         0,
         0,
-        1,
+        1.8856502324342728,
         0,
         0,
         0,
         0,
-        1,
+        1.8856502324342728,
         0,
-        0,
-        0,
-        0,
+        -1.7062393873929977,
+        -0.4474756717681885,
+        0.3801497370004654,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
       "localTransform": [
-        1,
+        1.9745050370693207,
         0,
         0,
         0,
         0,
-        1,
+        1.9745050370693207,
         0,
         0,
         0,
         0,
-        1,
+        1.9745050370693207,
         0,
-        0,
-        0,
-        0,
+        2.0047921240329742,
+        -1.709406703710556,
+        -0.6341237530577928,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -729,42 +729,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.9745050370693207,
         0,
         0,
         0,
         0,
-        1,
+        1.9745050370693207,
         0,
         0,
         0,
         0,
-        1,
+        1.9745050370693207,
         0,
-        0,
-        0,
-        0,
+        2.0047921240329742,
+        -1.709406703710556,
+        -0.6341237530577928,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
       "localTransform": [
-        1,
+        1.876821644604206,
         0,
         0,
         0,
         0,
-        1,
+        1.876821644604206,
         0,
         0,
         0,
         0,
-        1,
+        1.876821644604206,
         0,
-        0,
-        0,
-        0,
+        -1.6983803436160088,
+        -0.23322272207587957,
+        -1.1074669249355793,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -778,42 +778,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.876821644604206,
         0,
         0,
         0,
         0,
-        1,
+        1.876821644604206,
         0,
         0,
         0,
         0,
-        1,
+        1.876821644604206,
         0,
-        0,
-        0,
-        0,
+        -1.6983803436160088,
+        -0.23322272207587957,
+        -1.1074669249355793,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
       "localTransform": [
-        1,
+        1.951578551903367,
         0,
         0,
         0,
         0,
-        1,
+        1.951578551903367,
         0,
         0,
         0,
         0,
-        1,
+        1.951578551903367,
         0,
-        0,
-        0,
-        0,
+        2.0098748859018087,
+        -0.14202100038528442,
+        -1.5266492068767548,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -827,42 +827,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.951578551903367,
         0,
         0,
         0,
         0,
-        1,
+        1.951578551903367,
         0,
         0,
         0,
         0,
-        1,
+        1.951578551903367,
         0,
-        0,
-        0,
-        0,
+        2.0098748859018087,
+        -0.14202100038528442,
+        -1.5266492068767548,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cabcollar",
       "localTransform": [
-        1,
+        1.5670578479766846,
         0,
         0,
         0,
         0,
-        1,
+        1.5670578479766846,
         0,
         0,
         0,
         0,
-        1,
+        1.5670578479766846,
         0,
-        0,
-        0,
-        0,
+        -3.699072241783142,
+        0.6168830692768097,
+        0.10580205917358398,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -876,21 +876,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-cable-bundle.body",
       "worldTransform": [
-        1,
+        1.5670578479766846,
         0,
         0,
         0,
         0,
-        1,
+        1.5670578479766846,
         0,
         0,
         0,
         0,
-        1,
+        1.5670578479766846,
         0,
-        0,
-        0,
-        0,
+        -3.699072241783142,
+        0.6168830692768097,
+        0.10580205917358398,
         1
       ]
     },
@@ -953,37 +953,37 @@
       "uri": "place_aftermath_frag_cable_bundle.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 136476,
-    "sha256": "08007b5921694c5ab89f1fee4a622e6b78b72ab0564ab5332bdb59af3ead2880",
+    "bytes": 133528,
+    "sha256": "5e8f7e3f94a6c5cd36dbd37086ea43b72d1c0e023eee30d618618e8254d92810",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000008702278137207031,
-        0.00001537799835205078,
-        0.000042438507080078125
+        0.000008726371387046683,
+        0.000015399340125954453,
+        0.00004243423667316115
       ],
       "max": [
         4,
-        2.5022644996643066,
-        2.2307841777801514
+        2.5022645165428834,
+        2.230784188636325
       ],
       "min": [
-        -3.9999825954437256,
-        -2.5022337436676025,
-        -2.230699300765991
+        -3.999982547257226,
+        -2.5022337178626315,
+        -2.230699320162979
       ],
       "size": [
-        7.999982595443726,
-        5.004498243331909,
-        4.461483478546143
+        7.9999825472572255,
+        5.004498234405515,
+        4.461483508799304
       ]
     },
     "hidden": [],
@@ -1054,21 +1054,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.851185865700245,
           0,
           0,
           0,
           0,
-          1,
+          1.851185865700245,
           0,
           0,
           0,
           0,
-          1,
+          1.851185865700245,
           0,
-          0,
-          0,
-          0,
+          -1.7026254460215569,
+          1.1976976841688156,
+          -0.8973013162612915,
           1
         ],
         "name": "cab00",
@@ -1081,21 +1081,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9657339230179787,
           0,
           0,
           0,
           0,
-          1,
+          1.9657339230179787,
           0,
           0,
           0,
           0,
-          1,
+          1.9657339230179787,
           0,
-          0,
-          0,
-          0,
+          2.007419191300869,
+          1.982622742652893,
+          -0.12023931741714478,
           1
         ],
         "name": "cab01",
@@ -1108,21 +1108,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8981899693608284,
           0,
           0,
           0,
           0,
-          1,
+          1.8981899693608284,
           0,
           0,
           0,
           0,
-          1,
+          1.8981899693608284,
           0,
-          0,
-          0,
-          0,
+          -1.7099671885371208,
+          1.8353305459022522,
+          0.6981906294822693,
           1
         ],
         "name": "cab10",
@@ -1135,21 +1135,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9674281366169453,
           0,
           0,
           0,
           0,
-          1,
+          1.9674281366169453,
           0,
           0,
           0,
           0,
-          1,
+          1.9674281366169453,
           0,
-          0,
-          0,
-          0,
+          2.015600275248289,
+          1.6592011153697968,
+          1.5993651747703552,
           1
         ],
         "name": "cab11",
@@ -1162,21 +1162,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.857070043683052,
           0,
           0,
           0,
           0,
-          1,
+          1.857070043683052,
           0,
           0,
           0,
           0,
-          1,
+          1.857070043683052,
           0,
-          0,
-          0,
-          0,
+          -1.6954006403684616,
+          0.8357900977134705,
+          1.483138531446457,
           1
         ],
         "name": "cab20",
@@ -1189,21 +1189,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9979433752596378,
           0,
           0,
           0,
           0,
-          1,
+          1.9979433752596378,
           0,
           0,
           0,
           0,
-          1,
+          1.9979433752596378,
           0,
-          0,
-          0,
-          0,
+          2.002056624740362,
+          -0.6371928751468658,
+          1.249037727713585,
           1
         ],
         "name": "cab21",
@@ -1216,21 +1216,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8856502324342728,
           0,
           0,
           0,
           0,
-          1,
+          1.8856502324342728,
           0,
           0,
           0,
           0,
-          1,
+          1.8856502324342728,
           0,
-          0,
-          0,
-          0,
+          -1.7062393873929977,
+          -0.4474756717681885,
+          0.3801497370004654,
           1
         ],
         "name": "cab30",
@@ -1243,21 +1243,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9745050370693207,
           0,
           0,
           0,
           0,
-          1,
+          1.9745050370693207,
           0,
           0,
           0,
           0,
-          1,
+          1.9745050370693207,
           0,
-          0,
-          0,
-          0,
+          2.0047921240329742,
+          -1.709406703710556,
+          -0.6341237530577928,
           1
         ],
         "name": "cab31",
@@ -1270,21 +1270,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.876821644604206,
           0,
           0,
           0,
           0,
-          1,
+          1.876821644604206,
           0,
           0,
           0,
           0,
-          1,
+          1.876821644604206,
           0,
-          0,
-          0,
-          0,
+          -1.6983803436160088,
+          -0.23322272207587957,
+          -1.1074669249355793,
           1
         ],
         "name": "cab40",
@@ -1297,21 +1297,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.951578551903367,
           0,
           0,
           0,
           0,
-          1,
+          1.951578551903367,
           0,
           0,
           0,
           0,
-          1,
+          1.951578551903367,
           0,
-          0,
-          0,
-          0,
+          2.0098748859018087,
+          -0.14202100038528442,
+          -1.5266492068767548,
           1
         ],
         "name": "cab41",
@@ -1324,21 +1324,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5670578479766846,
           0,
           0,
           0,
           0,
-          1,
+          1.5670578479766846,
           0,
           0,
           0,
           0,
-          1,
+          1.5670578479766846,
           0,
-          0,
-          0,
-          0,
+          -3.699072241783142,
+          0.6168830692768097,
+          0.10580205917358398,
           1
         ],
         "name": "cabCollar",
@@ -1353,20 +1353,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
-  "runtimeHash": "325731bc75566f9c5cafd5c9ebdaf353ac4036cb7adda92d0fbfded9cc25c7ee",
+  "runtimeHash": "f0feac8009a1d7ffe39505516f83055d90a58bdc5485d2f8364430a51a8ebcb5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4,
-          2.5022644996643066,
-          2.2307841777801514
+          2.5022645165428834,
+          2.230784188636325
         ],
         "min": [
-          -3.9999825954437256,
-          -2.5022337436676025,
-          -2.230699300765991
+          -3.999982547257226,
+          -2.5022337178626315,
+          -2.230699320162979
         ]
       },
       "id": "sf.render.aftermath-frag-cable-bundle.body",

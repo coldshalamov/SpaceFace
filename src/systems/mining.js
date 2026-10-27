@@ -1,3 +1,5 @@
+import { inheritWinnowSplit } from '../world/vestaWinnowRecovery.js';
+import { inheritCharonSupplySplit } from '../world/charonSalvageSupply.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, and wreck salvage.
@@ -1521,6 +1523,7 @@ export const mining = {
         ...(lotSource ? { richLotSource: lotSource } : {}),
       },
     });
+    if (pickup && pickup.alive !== false) { inheritWinnowSplit(this.state, srcEnt, pickup); inheritCharonSupplySplit(this.state, srcEnt, pickup); }
     return pickup && pickup.alive !== false ? amount : 0;
   },
 

@@ -247,6 +247,7 @@ import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import {
   resolveForceNeonScale,
   resolveMasslineCableProfile,
+  resolveMasslineCableRadiance,
   resolveMasslineWhipGlow,
   resolveTumbleContinuousVfxPlan,
 } from './masslinePresentation.js';
@@ -771,6 +772,13 @@ const KINETIC_SPALL_VARIANTS = new Set(['autocannon', 'railgun', 'siege-lance', 
 // (audioSystem._onKilled already delays the capital boom by 400 ms; small kills now match).
 const OVERLOAD_FLARE_S = 0.4;
 const PENDING_DETONATION_POOL = 12;
+// Packet 08 - a decisive kill's successor wreck fails for a bounded, mass-shaped window
+// (src/systems/dyingHull.js) before it ruptures; the held detonation waits for that rupture and
+// only falls back to its own timer this long after the scheduled rupture if the event never lands.
+const DYING_HOLD_SLACK_S = 0.35;
+const DYING_TRAIL_CADENCE_S = 0.034;
+const DYING_TRAIL_CADENCE_REDUCED_S = 0.07;
+const DYING_TRAIL_CAP = 12;
 
 // Feature 19 gate transit sweep: seven cyan streaks marching bow→stern over ~0.55 s while the
 // ship crosses the throat — the "light sweeps the hull" read without a full-screen flash.
@@ -952,6 +960,9 @@ function writeArcadeSpawnSpec(
 }
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
+// A swarm repair cell pulls the repair verb's mint thread (actionVfx 'beam:repaired', 0x84ffd2):
+// the one drop that buys hull back never wakes as cargo amber, credit gold or pod green.
+const LOOT_TRAIL_SWARM_REPAIR = '#84ffd2';
 const VFX_RIBBON_TRAILS_HZ = 30;
 // Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
 // retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
@@ -1389,13 +1400,20 @@ export const vfx = {
       this._pendingDetonations.push({
         active: false, at: 0, sputterAt: 0,
         p: null, classId: null, radius: 0, cause: null,
-        x: 0, z: 0,
+        x: 0, z: 0, wreckId: null,
       });
     }
     // Quiet settled flight: empty pending-detonation pool still walked all 12
     // slots every tick. Latch after first empty observe; wake on schedule
     // (_scheduleDetonation clears the latch). Soft-GPU fps not claimed.
     this._pendingDetonationsQuietEmpty = false;
+    // Packet 08: smoke/vent trail state for hulls in their failure window (cap = the detonation pool).
+    this._dyingHulls = [];
+    // victimId -> begin payload, for a `dyingHull:begin` that reaches presentation before the kill's
+    // own slice (the sim stamps inside the kill's emit, so queue order is not kill-first).
+    this._dyingBegins = new Map();
+    // victimIds whose held detonation already fired on the fallback timer: a late rupture is ignored.
+    this._dyingBlasted = new Set();
     // Transit sweep (feature 19): a fixed count of cyan streaks marching bow→stern over ~0.55 s
     // while the ship passes the gate throat. Scalar fields only — the render loop must not allocate.
     this._transitSweepT = -1;
@@ -2720,6 +2738,11 @@ export const vfx = {
     // spawn + spall compose is the single heaviest tail — so they ride the presentation
     // tier's per-frame drain instead of the sim tick.
     add('entity:killed', (p) => { clearTumbleCadenceFor(p); this._forgetMomentumSinkEntity(p); this._markEntityCacheDirty(); this._onKilled(p); this._onChainEntityKilled(p); }, { presentation: true });
+    // Packet 08: the kill's successor hull fails for a window, then ruptures once. The sim owns
+    // the schedule; presentation only holds the already-queued death explosion for it.
+    add('dyingHull:begin', (p) => this._onDyingHullBegin(p), { presentation: true });
+    add('dyingHull:ruptured', (p) => this._onDyingHullRuptured(p), { presentation: true });
+    add('dyingHull:lost', (p) => this._onDyingHullLost(p), { presentation: true });
     add('entity:destroyed', (p) => {
       clearTumbleCadenceFor(p);
       this._forgetMomentumSinkEntity(p);
@@ -5884,23 +5907,40 @@ export const vfx = {
     // Pool pressure: under a massacre the oldest queued tell detonates immediately rather than
     // dropping the explosion outright.
     let rec = null;
+    let held = null;
     for (let i = 0; i < this._pendingDetonations.length; i++) {
       const slot = this._pendingDetonations[i];
-      if (!slot.active) { rec = slot; break; }
+      if (!slot.active) { rec = slot; held = null; break; }
+      // Packet 08: a slot held for a dying hull is evicted only as a last resort (see below).
+      if (slot.wreckId != null) { if (!held || slot.at < held.at) held = slot; continue; }
       if (!rec || slot.at < rec.at) rec = slot;
     }
-    if (rec && rec.active) this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+    if (!rec && held) rec = held;
+    if (rec && rec.active) {
+      if (rec.wreckId != null) {
+        // Releasing a held slot must NOT detonate it at the stale kill site: that hull's own
+        // `dyingHull:ruptured` still owns its single explosion (the recycled-slot path).
+        rec.wreckId = null;
+      } else {
+        this._queueExplosion(rec.p, rec.classId, rec.radius, rec.cause);
+      }
+    }
     if (!rec) return;
     // Dirty-wake: a fresh queued kill must leave the quiet empty latch.
     this._pendingDetonationsQuietEmpty = false;
     rec.active = true;
     rec.at = now + OVERLOAD_FLARE_S;
     rec.sputterAt = now + OVERLOAD_FLARE_S * 0.5;
+    rec.wreckId = null;
     rec.p = p;
     rec.classId = classId;
     rec.radius = scaledRadius;
     rec.cause = cause;
     if (pos) { rec.x = pos.x; rec.z = pos.z; } else { rec.x = NaN; rec.z = NaN; }
+    // Packet 08: the sim's dying-hull begin may already have arrived (it is stamped inside the kill's
+    // own emit): hold this fresh slot for that hull's scheduled rupture.
+    const stashed = this._dyingBegins && p && p.id != null ? this._dyingBegins.get(p.id) : null;
+    if (stashed) { this._holdDetonation(rec, stashed); this._dyingBegins.delete(p.id); }
   },
 
   /**
@@ -5961,8 +6001,18 @@ export const vfx = {
       }
       if (now >= rec.at) {
         rec.active = false;
-        const payload = rec.p;
+        let payload = rec.p;
         rec.p = null;
+        // A held (dying-hull) detonation whose rupture event never landed still blows where the
+        // hull actually is now, not where it was killed - and a rupture arriving after that is
+        // ignored, so the hull explodes once.
+        if (rec.wreckId != null) {
+          const wreck = this._ent(rec.wreckId);
+          if (wreck && wreck.pos) payload = this._dyingBlastPayload(payload, wreck.pos, wreck.vel, null);
+          this._removeDyingTrail(rec.wreckId);
+          this._markDyingBlasted(payload && payload.id);
+          rec.wreckId = null;
+        }
         this._queueExplosion(payload, rec.classId, rec.radius, rec.cause);
       } else {
         anyActive = true;
@@ -5971,9 +6021,173 @@ export const vfx = {
     if (!anyActive) this._pendingDetonationsQuietEmpty = true;
   },
 
+  /**
+   * Packet 08 - the kill opened an ordinary 0.4 s overload window; the sim now says the successor
+   * hull will fail for `windowS` instead. Re-time the held detonation to the scheduled rupture and
+   * start the smoke/vent trail on the real wreck. No new explosion path: the same queued death
+   * explosion simply waits for the hull to arrive at its rupture.
+   */
+  _onDyingHullBegin(p) {
+    if (!p || p.wreckId == null) return;
+    const rec = this._pendingDetonationFor(p.victimId);
+    if (rec) this._holdDetonation(rec, p);
+    else if (p.victimId != null) {
+      // The kill's own presentation slice has not run yet: keep the begin for _scheduleDetonation.
+      const begins = this._dyingBegins || (this._dyingBegins = new Map());
+      if (begins.size >= DYING_TRAIL_CAP * 2) begins.delete(begins.keys().next().value);
+      begins.set(p.victimId, p);
+    }
+    const list = this._dyingHulls || (this._dyingHulls = []);
+    if (list.length >= DYING_TRAIL_CAP) list.shift();
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+    list.push({
+      wreckId: p.wreckId,
+      victimId: p.victimId,
+      startedAt: Number.isFinite(p.killedAt) ? p.killedAt : now,
+      ruptureAt: Number.isFinite(p.ruptureAt) ? p.ruptureAt : now + OVERLOAD_FLARE_S,
+      windowS: Math.max(0.1, Number(p.windowS) || OVERLOAD_FLARE_S),
+      tier: p.tier || 'light',
+      acc: 0,
+      sputters: 0,
+    });
+  },
+
+  _holdDetonation(rec, p) {
+    rec.at = (Number.isFinite(p.ruptureAt) ? p.ruptureAt : rec.at) + DYING_HOLD_SLACK_S;
+    rec.sputterAt = rec.at; // the static kill-site spit is replaced by a trail that follows the hull
+    rec.wreckId = p.wreckId;
+    this._pendingDetonationsQuietEmpty = false;
+  },
+
+  _markDyingBlasted(victimId) {
+    if (victimId == null) return;
+    const set = this._dyingBlasted || (this._dyingBlasted = new Set());
+    if (set.size >= 64) set.delete(set.values().next().value);
+    set.add(victimId);
+  },
+
+  _onDyingHullRuptured(p) {
+    if (!p) return;
+    this._removeDyingTrail(p.wreckId);
+    if (this._dyingBegins) this._dyingBegins.delete(p.victimId);
+    if (this._dyingBlasted && this._dyingBlasted.has(p.victimId)) {
+      this._dyingBlasted.delete(p.victimId); // already blasted on the fallback timer: exactly once
+      return;
+    }
+    const rec = this._pendingDetonationFor(p.victimId);
+    if (rec) {
+      const payload = this._dyingBlastPayload(rec.p, p.pos, p.vel, p.direction);
+      const classId = rec.classId, radius = rec.radius, cause = rec.cause;
+      rec.active = false;
+      rec.p = null;
+      rec.wreckId = null;
+      this._queueExplosion(payload, classId, radius, cause);
+      return;
+    }
+    // The pooled slot was recycled under a massacre: the rupture still gets its one explosion.
+    const victim = { mass: p.mass, radius: p.radius, victimClass: null, type: 'ship', presentation: { cause: p.cause } };
+    const death = resolveDeathPresentationClass(victim);
+    const payload = this._dyingBlastPayload({ id: p.victimId, type: 'ship', radius: p.radius, mass: p.mass }, p.pos, p.vel, p.direction);
+    this._queueExplosion(payload, death.classId, scaleDeathExplosionRadius(p.radius, death.tier), death.cause);
+  },
+
+  _onDyingHullLost(p) {
+    if (!p) return;
+    this._removeDyingTrail(p.wreckId);
+    if (this._dyingBegins) this._dyingBegins.delete(p.victimId);
+    const rec = this._pendingDetonationFor(p.victimId);
+    // The world the hold described is gone (teardown) or the body was destroyed by something that
+    // owns its own explosion: release the hold without a second blast.
+    if (rec) { rec.active = false; rec.p = null; rec.wreckId = null; }
+  },
+
+  _pendingDetonationFor(victimId) {
+    if (victimId == null || !this._pendingDetonations) return null;
+    for (let i = 0; i < this._pendingDetonations.length; i++) {
+      const slot = this._pendingDetonations[i];
+      if (slot.active && slot.p && slot.p.id === victimId) return slot;
+    }
+    return null;
+  },
+
+  _removeDyingTrail(wreckId) {
+    const list = this._dyingHulls;
+    if (!list || wreckId == null) return;
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].wreckId === wreckId) list.splice(i, 1);
+  },
+
+  /** The kill payload re-seated on the hull's CURRENT motion so the burst starts where it is. */
+  _dyingBlastPayload(base, pos, vel, direction) {
+    const src = base && typeof base === 'object' ? base : {};
+    const presentation = src.presentation && typeof src.presentation === 'object' ? src.presentation : {};
+    const at = pos && Number.isFinite(pos.x) ? { x: pos.x, z: pos.z } : (src.pos || null);
+    const tv = vel && Number.isFinite(vel.x) ? { x: vel.x, y: 0, z: vel.z } : (presentation.targetVelocity || null);
+    const dir = direction && Number.isFinite(direction.x) ? { x: direction.x, z: direction.z } : presentation.direction;
+    return {
+      ...src,
+      pos: at,
+      presentation: { ...presentation, position: at, targetVelocity: tv, direction: dir },
+    };
+  },
+
+  /**
+   * Smoke and venting from the failing hull itself, scaled to how far through the failure it is.
+   * Reuses the wounded-ship damage smoke (critical band) on the real wreck body, plus two hot
+   * nozzle sputters off the stern. Reduced motion keeps the location + state cue (sparser trail,
+   * no sputter streaks).
+   */
+  _updateDyingHulls(dt) {
+    const list = this._dyingHulls;
+    if (!list || !list.length || !this._scene) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+    const reduced = this._isReduced();
+    const cadence = reduced ? DYING_TRAIL_CADENCE_REDUCED_S : DYING_TRAIL_CADENCE_S;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i];
+      const wreck = this._ent(d.wreckId);
+      if (!wreck || wreck.alive === false || !wreck.pos || now > d.ruptureAt + DYING_HOLD_SLACK_S) {
+        list.splice(i, 1);
+        continue;
+      }
+      const progress = Math.max(0, Math.min(1, (now - d.startedAt) / d.windowS));
+      d.acc += dt;
+      if (d.acc >= cadence) {
+        d.acc = 0;
+        // wounded (<40%) at the start of the window, "death's door" by the end
+        this._emitDamageSmoke(wreck, 0.22 * (1 - progress), cadence);
+      }
+      const due = d.sputters === 0 ? progress >= 0.12 : d.sputters === 1 ? progress >= 0.55 : false;
+      if (due) {
+        d.sputters++;
+        if (!reduced) this._emitDyingSputter(wreck);
+      }
+    }
+  },
+
+  /** A damaged nozzle spitting hot streaks off the stern of a hull that has lost thrust authority. */
+  _emitDyingSputter(wreck) {
+    const r = Math.max(2, wreck.radius || 4);
+    const heading = Number.isFinite(wreck.rot) ? wreck.rot : 0;
+    const bx = -Math.cos(heading), bz = -Math.sin(heading);
+    this._c0.set('#ff9a3c'); this._c1.set('#3a1c08');
+    for (let k = 0; k < 3; k++) {
+      const a = Math.atan2(bz, bx) + (k - 1) * 0.55;
+      const sp = 14 + k * 5;
+      const dx = Math.cos(a), dz = Math.sin(a);
+      this._spawnProjectileTrailStreak(
+        wreck.pos.x + bx * r * 0.7, 0.4, wreck.pos.z + bz * r * 0.7,
+        0.16, 0.10, 0.75, 0.9, '#ffb35c',
+        dx * sp + (wreck.vel ? wreck.vel.x * 0.6 : 0), dz * sp + (wreck.vel ? wreck.vel.z * 0.6 : 0), dx, dz,
+      );
+    }
+  },
+
   _resetPendingDetonations() {
     if (!this._pendingDetonations) return;
-    for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; }
+    for (const rec of this._pendingDetonations) { rec.active = false; rec.p = null; rec.wreckId = null; }
+    if (this._dyingHulls) this._dyingHulls.length = 0;
+    if (this._dyingBegins) this._dyingBegins.clear();
+    if (this._dyingBlasted) this._dyingBlasted.clear();
     this._pendingDetonationsQuietEmpty = false;
     this._transitSweepT = -1;
     this._transitSweepSpawned = 0;
@@ -9482,6 +9696,7 @@ export const vfx = {
       scratch: { plan: createMasslineReleaseArcPlan() },
       input: {
         active: false,
+        held: false,
         releaseTarget: null,
         liveTarget: null,
         predictor: null,
@@ -9542,6 +9757,9 @@ export const vfx = {
     if (!arc) return false;
     if (arc.fade > 0.001 || arc.ratingAge < arc.ratingLife) return true;
     const tether = this.state.player && this.state.player.tether;
+    // Row 492: while the Line is held (latched, carried) the annulus is always drawn — the
+    // release arc does not wait for the aiming window to open.
+    if (tether && tether.active && tether.targetId != null) return true;
     const throwState = this.state.massline2 && this.state.massline2.throw;
     return !!(tether && tether.active
       && throwState && throwState.armed
@@ -9561,8 +9779,14 @@ export const vfx = {
       && throwState && throwState.armed
       && throwState.releaseTarget
       && throwState.solution && throwState.solution.valid === true);
+    // Row 492: a held line draws its quiet annulus too — latched, carried, aiming window or not.
+    // The planner falls back to the held profile only when no predictor and no rating exist, so
+    // the armed window and the post-release read stay the louder, more specific states.
+    const heldActive = !postActive && !preActive
+      && !!(tether && tether.active && tether.targetId != null);
     const input = arc.input;
-    input.active = postActive || preActive;
+    input.active = postActive || preActive || heldActive;
+    input.held = heldActive;
     input.timeS = this._t;
     input.reducedMotion = masslineReleaseMotionReduced(state && state.settings);
     input.reducedFlash = masslineReleaseFlashReduced(state && state.settings);
@@ -9582,6 +9806,11 @@ export const vfx = {
         : (throwState.releaseTarget && !throwState.releaseTarget.stable
           ? throwState.releaseTarget.targetId : null);
       input.liveTarget = liveId != null ? this._ent(liveId) : null;
+    } else if (heldActive) {
+      // The held annulus rides the latched body itself; a missing body fails the plan's center
+      // resolution and the arc fades, so nothing latched never draws.
+      input.releaseTarget = null;
+      input.liveTarget = this._ent(tether.targetId);
     } else {
       input.releaseTarget = null;
       input.liveTarget = null;
@@ -10472,6 +10701,12 @@ export const vfx = {
     // UVP force-neon: taut / loaded lines push energy above hull-neutral; slack stays quieter.
     const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
     const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
+    // Row 492: the strain → emissive law for core and sheath lives in one pure mapper
+    // (resolveMasslineCableRadiance; exercised at chase-camera pixel numbers in
+    // test/zc-a34-line-visuals.test.mjs). Its internal energy is this same neonMul read.
+    const cableRadiance = resolveMasslineCableRadiance(this._forceNeonMetrics({
+      load: l, whip: visualWhip, reel: cable.reelGlow, heat: lineVisual.heat, taut,
+    }), this._cableRadianceScratch ||= {});
     // PIC-13: the stored-swing-energy glow. The sim publishes tether.strainGlow per tick (0 when
     // the line is inactive); this is a straight transport into the ribbon frame, not a re-derivation.
     const whipGlow = resolveMasslineWhipGlow(tether);
@@ -10500,8 +10735,9 @@ export const vfx = {
         : 0,
       // Core: the filament cross-section (pow 9-18) concentrates almost all of this into the middle
       // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
-      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + visualWhip * 2.1)
-        * radiance * neonMul * masslineA11y.radianceScale,
+      // The strain term inside the mapper (2.6·load, up from the old 1.7·load) keeps a heavy
+      // swing's filament a multi-pixel read at the shipping chase camera (tape 2026-10-21).
+      intensity: cableRadiance.core * radiance * masslineA11y.radianceScale,
       opacity: (taut ? 0.74 : 0.62) * cable.fade * masslineA11y.opacityScale,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
@@ -10510,8 +10746,7 @@ export const vfx = {
       // Halo: wide and coloured. Its centre needs to clear the bright-pass threshold so the rope
       // gets a real bloom skirt, but only its centre — push this higher and the sheath saturates
       // across its whole width and the cable stops being a cable and becomes a plume.
-      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + visualWhip * 1.7)
-        * radiance * neonMul * masslineA11y.radianceScale,
+      intensity: cableRadiance.sheath * radiance * masslineA11y.radianceScale,
       opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16 + lineVisual.heat * .20)
         * cable.fade * masslineA11y.opacityScale,
     });
@@ -12933,6 +13168,12 @@ export const vfx = {
     publishMaterialFields(this._scene,this.state,this._materialFieldLocalizer);
     this._updateCauseMarks(dt);
     this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
+    // Owned exceptional-speed scalar: read once per update and shared by every
+    // projectile surface this frame (presenter ribbons, trail-plan wakes).
+    this._exceptionalSpeed = (this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce)
+      ? 0
+      : readOwnedExceptionalSpeed(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
       const activeGraph = activeWeaponRenderGraph(this.state);
@@ -12949,6 +13190,7 @@ export const vfx = {
       context.depthTexture = weaponPresenterDepthTexture(activeGraph);
       context.depthWidth = 0;
       context.depthHeight = 0;
+      context.exceptionalSpeed = this._exceptionalSpeed;
       this._weaponPresenter.update(dt, context);
     }
     this._updateDamageVenting(dt);
@@ -13141,6 +13383,7 @@ export const vfx = {
       sub.planetSkim = 0;
     }
     this._updatePendingDetonations();
+    this._updateDyingHulls(dt);
     this._updateTransitSweep(dt);
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
     this._explosionRupture?.update(Number.isFinite(this.state?.simTime) ? this.state.simTime : this._t, this.state?.settings);
@@ -13326,10 +13569,7 @@ export const vfx = {
       if (speed < LOOT_MAGNET_MIN_SPEED) continue;
       drawn++;
 
-      const data = e.data || {};
-      const col = e.type === 'payload'
-        ? '#4fbf8f'
-        : ((data.kind === 'credits' || data.kind === 'credit_chip') ? '#ffcc44' : oreColor(data.commodityId));
+      const col = lootTrailColorFor(e);
       // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
       const rush = Math.min(1, speed / 260);
       const roll = Math.atan2(vz, vx);
@@ -16613,9 +16853,8 @@ export const vfx = {
     const qualityMul = q === 'low' ? 0.45 : (q === 'med' || q === 'medium' ? 0.72 : 1.0);
     const motionMul = (video && video.motionReduce) ? 0.5 : 1.0;
     const burst = (this._burst || 1) * qualityMul * motionMul;
-    const exceptionalSpeed = (video && video.motionReduce)
-      ? 0
-      : readOwnedExceptionalSpeed(this.state);
+    const exceptionalSpeed = this._exceptionalSpeed
+      ?? ((video && video.motionReduce) ? 0 : readOwnedExceptionalSpeed(this.state));
     this._projectileTrailFrameIndex = ((this._projectileTrailFrameIndex || 0) + 1) >>> 0;
 
     let anySpawned = false;
@@ -18160,6 +18399,20 @@ export function oreColor(id) {
   if (id.indexOf('exotic') >= 0 || id.indexOf('xenium') >= 0) return '#ff60c0';
   if (id.indexOf('iron') >= 0 || id.indexOf('ore') >= 0 || id.indexOf('metal') >= 0) return '#c08040';
   return '#d8a050';
+}
+
+/**
+ * Loot-magnet wake tint for a trailed drop — the trail is the drop's identity at a glance,
+ * so the kind keys it: payloads share the pod green, chips pull gold, and a swarm repair
+ * cell pulls the repair verb's mint so the one drop that buys hull back reads before the
+ * toast does. Pure; the live call site is _updateLootMagnet.
+ */
+export function lootTrailColorFor(e) {
+  const data = (e && e.data) || {};
+  if (e && e.type === 'payload') return '#4fbf8f';
+  if (data.kind === 'swarm_repair' || data.swarmRepair === true) return LOOT_TRAIL_SWARM_REPAIR;
+  if (data.kind === 'credits' || data.kind === 'credit_chip') return '#ffcc44';
+  return oreColor(data.commodityId);
 }
 
 function clamp01Finite(value) {

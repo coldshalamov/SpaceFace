@@ -68,7 +68,7 @@ test('no-intake games omit salvage receipt state from newGame and serialize', ()
   }
 });
 
-test('Forge accepts one conserved NPC scrap lot and player sale moves the same listing', () => {
+test('Forge accepts the exact legal salvage consumed by its existing fab listings and player sale moves the same listing', () => {
   const { sim, state, econ } = boot();
   try {
     const market = state.economy.markets[FORGE_ID];
@@ -89,13 +89,14 @@ test('Forge accepts one conserved NPC scrap lot and player sale moves the same l
       yardId: FORGE_ID,
       manifestId: receipt.manifestId,
       lotId: receipt.lotId,
-      commodityId: SCRAP_ID,
-      qty: 7,
-      valueCr: 98,
-      ignoredCommodityIds: ['cmdty_salvage_electronics'],
+      commodityId: null,
+      qty: 9,
+      valueCr: 192,
+      acceptedLines: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }, { commodityId: SCRAP_ID, qty: 7 }],
+      ignoredCommodityIds: [],
     });
     assert.equal(scrap.stock, stockBefore + 7, 'NPC receipt adds only its conserved scrap quantity');
-    assert.equal(electronics.stock, electronicsBefore, 'the bounded intake does not create a generic salvage market');
+    assert.equal(electronics.stock, electronicsBefore + 2, 'Forge already consumes legal salvage electronics; no generic market is invented');
     assert.equal(state.player.credits, creditsBefore, 'NPC unload never pays the player');
     assert.deepEqual(state.economy.appliedSalvageIntakeReceipts, [{
       intakeId: receipt.intakeId,
@@ -103,6 +104,7 @@ test('Forge accepts one conserved NPC scrap lot and player sale moves the same l
       manifestId: receipt.manifestId,
       lotId: receipt.lotId,
       scrapQty: 7,
+      acceptedLines: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }, { commodityId: SCRAP_ID, qty: 7 }],
       lines: [
         { commodityId: 'cmdty_salvage_electronics', qty: 2 },
         { commodityId: SCRAP_ID, qty: 7 },
@@ -137,7 +139,7 @@ test('Forge accepts one conserved NPC scrap lot and player sale moves the same l
   }
 });
 
-test('unsupported yards or non-scrap receipts reject without creating receipt state', () => {
+test('unsupported yards or restricted salvage receipts reject without creating receipt state', () => {
   const { sim, state } = boot(0x4809);
   try {
     const scrap = state.economy.markets[FORGE_ID][SCRAP_ID];
@@ -148,10 +150,10 @@ test('unsupported yards or non-scrap receipts reject without creating receipt st
 
     const noScrap = unload({
       intakeId: 'salvage-intake:no-scrap',
-      lines: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }],
+      lines: [{ commodityId: 'cmdty_classified_salvage', qty: 2 }],
     });
     sim.bus.emit('salvage:npcUnload', noScrap);
-    assert.deepEqual(noScrap.intakeResult, { ok: false, reason: 'invalid_salvage_intake' });
+    assert.deepEqual(noScrap.intakeResult, { ok: false, reason: 'salvage_listing_unavailable' });
     assert.equal(scrap.stock, before);
     assert.equal(Object.hasOwn(state.economy, 'appliedSalvageIntakeReceipts'), false);
     assert.equal(Object.hasOwn(state.economy, 'blockedSalvageIntakeIds'), false);
@@ -176,6 +178,7 @@ test('saved intake receipt accepts only an exact replay after Continue', () => {
       manifestId: 'fm_save',
       lotId: 'lot_save',
       scrapQty: 7,
+      acceptedLines: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }, { commodityId: SCRAP_ID, qty: 7 }],
       lines: [
         { commodityId: 'cmdty_salvage_electronics', qty: 2 },
         { commodityId: SCRAP_ID, qty: 7 },

@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "635f7dda9e9fb5957ad462f22a1251d05933be780f68cc9d52eb2e8ce8f2303c",
+  "contentHash": "acb6b49c214feea8fc106fff904199e28111eae342e58a2badab938e0ca36b09",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1,
-          0.04500000178813934,
+          0.04504531998657186,
           1
         ],
         "min": [
           -1,
-          -0.04500000178813934,
+          -0.04504531998657186,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7299dc7f1c65af428fea56ddf4d37403a4b5e2e4c615c279b2c15927649635aa",
+      "geometryHash": "37b56f11d57e03817e01f1124959f287dfdda735c52639703e837a487a6cd8b8",
       "id": "sf.render.nyx-false-gate.mesh.falsegatering.primitive.0",
       "indexCount": 768,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           1.090000033378601,
-          0.09000000357627869,
-          0.03999999910593033
+          0.08994903684364566,
+          0.04005127232239252
         ],
         "min": [
           -1.090000033378601,
-          -0.09000000357627869,
-          -0.03999999910593033
+          -0.08994903684364566,
+          -0.04005127232239252
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c197c206fc340b5af386108c7cd4b62037bcfd2d00351403393e50d8b0b3f175",
+      "geometryHash": "57f127bdc1834a2d446618b3163c714040f332ba3832bfea7248dc98f2b1b15a",
       "id": "sf.render.nyx-false-gate.mesh.weldeddiameterbar.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -132,17 +132,17 @@
     {
       "id": "sf.render.nyx-false-gate.mesh.weldeddiameterbar",
       "localTransform": [
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
@@ -160,17 +160,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.nyx-false-gate.body",
       "worldTransform": [
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
         0,
-        1,
+        1.090000033378601,
         0,
         0,
         0,
@@ -237,14 +237,14 @@
       "uri": "place_nyx_false_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 17500,
-    "sha256": "90321d9f95113ca2e30a696ae3409245d539a80f4ef2ff53af7648c0e1b5d1cf",
+    "bytes": 7308,
+    "sha256": "a591f1877997786417829470b52e1d124849e73613408d08b7e5a96803a2a9a9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -256,17 +256,17 @@
       ],
       "max": [
         1.090000033378601,
-        0.09000000357627869,
+        0.08994903684364566,
         1
       ],
       "min": [
         -1.090000033378601,
-        -0.09000000357627869,
+        -0.08994903684364566,
         -1
       ],
       "size": [
         2.180000066757202,
-        0.18000000715255737,
+        0.17989807368729133,
         2
       ]
     },
@@ -319,17 +319,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.090000033378601,
           0,
           0,
           0,
           0,
-          1,
+          1.090000033378601,
           0,
           0,
           0,
           0,
-          1,
+          1.090000033378601,
           0,
           0,
           0,
@@ -347,19 +347,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nyx_false_gate.glb"
   },
-  "runtimeHash": "bde852f6600c868f89874e74335bfad427018d227377bea383c50076d995a552",
+  "runtimeHash": "7119f5af4d7e9edf3b0a331f6d3349642f17b64f7dfc1180ed2ab650238b183c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.090000033378601,
-          0.09000000357627869,
+          0.08994903684364566,
           1
         ],
         "min": [
           -1.090000033378601,
-          -0.09000000357627869,
+          -0.08994903684364566,
           -1
         ]
       },

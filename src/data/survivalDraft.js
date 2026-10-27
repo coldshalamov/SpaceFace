@@ -49,6 +49,8 @@ export function swarmPurchasePrice(defId) {
  * A fitting the shop never prices (no def) sells for null — nothing the owner will pay out.
  */
 export function swarmSellPrice(defId) {
+  // AL-LG-11: the scarred plate is an earned keepsake, not stock — the armory never buys it.
+  if (defId === 'mod_ram_plate_scarred') return null;
   const price = swarmPurchasePrice(defId);
   return price == null ? null : Math.floor(price / 2);
 }

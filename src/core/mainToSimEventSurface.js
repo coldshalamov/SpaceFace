@@ -50,6 +50,10 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'game:new',
   'game:save',
   'hud:layoutChanged',
+  'ilexArk:accept',
+  'ilexArk:course',
+  'ilexArk:deliver',
+  'ilexArk:finish',
   'industrialDisasters:command',
   'industrialDisasters:presentationReady',
   'industrialDisasters:requirePresentation',
@@ -59,6 +63,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'kinetic-league:next',
   'kinetic-league:retry',
   'lastShift:archive',
+  'lastShift:readRecovery',
   'lastShift:returnRecorder',
   'law:fineChoice',
   'law:impoundPay',
@@ -131,6 +136,11 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'swarm:eventVerdict',
   'toast',
   'touch:guide',
+  'towlineTable:assist',
+  'towlineTable:course',
+  'towlineTable:deliver',
+  'towlineTable:release',
+  'towlineTable:take',
   'ui:abandonMission',
   'ui:acceptMission',
   'ui:applyLoadoutPreset',
@@ -298,4 +308,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=154 dynamic=30 legacy=7 excluded=6 total=180 knownUnforwarded=85
+// provenance: census=155 dynamic=39 legacy=18 excluded=6 total=190 knownUnforwarded=84

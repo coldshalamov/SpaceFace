@@ -155,10 +155,16 @@ test('cross-section width is a pure function of the load state', () => {
   assert.equal(a.sheathHalfWidth, b.sheathHalfWidth);
 
   const slack = resolveMasslineCableProfile({ load: 0, taut: false });
-  const taut = resolveMasslineCableProfile({ load: 1, taut: true });
-  assert.ok(taut.coreHalfWidth < slack.coreHalfWidth + 0.08,
-    'the accepted relation holds: a worked line reads tighter than a lazy one');
-  assert.ok(taut.sheathHalfWidth > slack.sheathHalfWidth,
+  const tautQuiet = resolveMasslineCableProfile({ load: 0, taut: true });
+  const worked = resolveMasslineCableProfile({ load: 1, taut: true });
+  assert.ok(tautQuiet.coreHalfWidth < slack.coreHalfWidth,
+    'the accepted relation holds at equal load: taut reads tighter than slack');
+  // Row 492 "The Line you can see" (2026-10-21 tape): strain now swells the CORE too. The old
+  // 0.08·load term kept the worked filament a sub-pixel hairline at the shipping chase camera;
+  // the chase-distance pixel numbers are evidenced in test/zc-a34-line-visuals.test.mjs.
+  assert.ok(worked.coreHalfWidth > slack.coreHalfWidth,
+    'a worked line is fatter than a lazy one: strain reads in silhouette at play distance');
+  assert.ok(worked.sheathHalfWidth > slack.sheathHalfWidth,
     'load still swells the sheath so a heavy pull is legible in silhouette');
 });
 
@@ -258,8 +264,10 @@ test('the ferrule cut is the load read, with no colour in it', () => {
   const slack = resolveMasslineCableProfile({ chord: 120, load: 0, taut: false });
   const taut = resolveMasslineCableProfile({ chord: 120, load: 1, taut: true });
 
-  assert.ok(taut.collarLipHalfWidth < slack.collarLipHalfWidth,
-    'a worked ferrule undercuts its lips into a hard edge');
+  assert.ok(taut.collarLipHalfWidth / taut.coreHalfWidth
+    < slack.collarLipHalfWidth / slack.coreHalfWidth,
+    'a worked ferrule undercuts its lips into a hard edge (lip as a share of its own rope — '
+    + 'the rope itself swells with strain, row 492)');
   assert.ok(taut.collarCrownHalfWidth > slack.collarCrownHalfWidth,
     'and stands its crown proud of the rope');
   assert.ok(taut.collarCrownFraction > slack.collarCrownFraction,

@@ -138,12 +138,24 @@ html:has(> body[data-k-screen="range"]) {
 #sf-range .sf-range__canvas { display: block; width: 100%; height: 100%; background: transparent; box-shadow: none; border: 0; }
 html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: none !important; }
 #sf-range .sf-range__beam { position: absolute; inset: 0; pointer-events: none; }
+/* ORRERY glass, not the sunk plate sprite: borderless, its left edge dissolved into
+   the sky by the gradient; no backdrop-filter (the sky behind a screen is live). */
 #sf-range .sf-range__drawer { position: absolute; top: 0; right: 0; bottom: 0; width: var(--k-hang); box-sizing: border-box;
-  display: flex; flex-direction: column; gap: var(--k-gap);
+  display: flex; flex-direction: column; gap: var(--k-gap); padding: 18px 0 12px 22px;
+  background: linear-gradient(90deg, transparent, var(--dp-glass-deep) 26%, var(--dp-glass-deep));
+  border: 0; box-shadow: none;
   overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 #sf-range .sf-range__drawer[hidden] { display: none; }
-#sf-range .sf-range__pane { display: flex; flex-direction: column; gap: var(--k-pad); }
+#sf-range .sf-range__pane { display: flex; flex-direction: column; gap: var(--k-pad); padding-right: 22px; }
 #sf-range .sf-range__pane[hidden] { display: none; }
+/* The empty state is the same glass, no plate sprite. */
+#sf-range .sf-range__empty { box-sizing: border-box; max-width: 42ch; margin: auto; padding: 24px 28px;
+  background: var(--dp-glass-deep); border: 0; box-shadow: none; }
+@media (forced-colors: active) {
+  #sf-range .sf-range__drawer, #sf-range .sf-range__empty { border: 1px solid CanvasText; background: Canvas; }
+}
+/* The bestiary's long facts wrap instead of truncating mid-word. */
+#sf-range .sf-range__pane .k-row--static .k-row__name { white-space: normal; overflow: visible; text-overflow: clip; }
 #sf-range .k-word::after { display: none; }
 #sf-range .k-words--row { gap: calc(8px * var(--k-s)); align-items: center; }
 #sf-range .k-row { box-shadow: none; }
@@ -153,7 +165,21 @@ html body #screens #sf-range .sf-range__canvas[data-range-canvas] { outline: non
   font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgb(236 230 216 / .85);
   text-decoration: underline dotted rgb(236 230 216 / .5); text-underline-offset: 5px; text-shadow: none; }
 #sf-range .sf-range__word:hover { color: rgb(252 249 240); text-decoration-color: rgb(252 249 240 / .8); }
-#sf-range .sf-range__word:focus-visible { outline: 1px solid rgb(236 230 216 / .7); outline-offset: 3px; color: rgb(252 249 240); }
+/* Wave 2 R4: the focus indicator is the 2px-bone bracket (four corner arms), never a
+   rectangle — the kit screen's focus-visible outline is overridden inside #sf-range. */
+#sf-range .sf-range__word:focus-visible { outline: none !important; color: rgb(252 249 240);
+  background-image:
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85)),
+    linear-gradient(rgb(252 249 240 / .85), rgb(252 249 240 / .85));
+  background-repeat: no-repeat;
+  background-size: 7px 1.5px, 1.5px 7px, 7px 1.5px, 1.5px 7px, 7px 1.5px, 1.5px 7px, 7px 1.5px, 1.5px 7px;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 100% 100%, 100% 100%, 0 100%, 0 100%; }
 #sf-range .sf-range__word[aria-pressed="true"] { color: rgb(252 249 240); text-decoration-style: solid; text-decoration-color: rgb(252 249 240 / .85); }
 /* Wave 2 R5: the rule rail is a Ladder — one spine over the rail, a tick under every
    station, the light cursor (bead + arm, bone — the amber is the active gate's) on the
@@ -232,10 +258,9 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 13px; padding-top: 0; padding-bottom: 0; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 40px; height: 40px; }
   /* The drawer is glass here: narrower, so the stage's beasts (BRUISER) stay clear of it, and
-     tinted rather than filled, so the gates under it still read. Its words carry their own shadow. */
-  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer.fh-plate { width: 280px; border-width: 12px 14px;
-    background: linear-gradient(90deg, rgb(10 12 16 / .34), rgb(10 12 16 / .6) 28%, rgb(10 12 16 / .66));
-    -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); box-shadow: inset 1px 0 0 rgb(236 230 216 / .18);
+     lighter-tinted, so the gates under it still read. Its words carry their own shadow. */
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer { width: 280px;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--dp-glass-deep) 72%, transparent) 30%, var(--dp-glass-deep));
     -webkit-mask-image: linear-gradient(black calc(100% - 18px), transparent); mask-image: linear-gradient(black calc(100% - 18px), transparent); }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(280px + var(--k-gap)); }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__drawer :is(.fh-legend, .k-row__name, .k-row__sub) { text-shadow: 0 1px 2px rgb(4 6 9 / .9); }
@@ -264,7 +289,7 @@ html body #screens #sf-range { padding-bottom: 24px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__tabs { column-gap: 14px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run { font-size: 12px; gap: 6px; padding-left: 8px; letter-spacing: .06em; }
   html:root:not([data-sf-mobile="1"]) #sf-range .sf-range__run svg { width: 28px; height: 28px; }
-  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer.fh-plate { width: 240px; border-width: 8px 10px; }
+  html:root:not([data-sf-mobile="1"]) body #screens #sf-range .sf-range__drawer { width: 240px; }
   html:root:not([data-sf-mobile="1"]) #sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(240px + var(--k-gap)); }
 }
 /* Mid-height desktop frames (641–900px tall at any width, or ≤640px past 1100px wide; e.g.
@@ -2811,7 +2836,9 @@ export const rangeScreen = {
     drawer.setAttribute('role', 'region');
     drawer.setAttribute('aria-label', 'Range drawers');
     drawer.hidden = true;
-    paintPlate(drawer, 'sunk');
+    // The glass padding rides the pin: paintPlate's default plate padding would otherwise
+    // sit inline and outrank the sheet's glass geometry below.
+    paintPlate(drawer, 'sunk', { padding: '18px 0 12px 22px' });
     const rulesPane = el('section', 'sf-range__pane');
     rulesPane.setAttribute('data-range-pane', 'rules');
     const rulesHead = el('h2', 'k-caps', 'Rule rail');
@@ -2836,7 +2863,7 @@ export const rangeScreen = {
     const empty = el('section', 'fh-plate fh-plate--sunk');
     empty.setAttribute('data-range-empty', '');
     empty.hidden = true;
-    paintPlate(empty, 'sunk', { 'max-width': '42ch', margin: 'auto' });
+    paintPlate(empty, 'sunk', { 'max-width': '42ch', margin: 'auto', padding: '24px 28px' });
     empty.appendChild(el('p', 'k-empty fh-emphasis', 'No range subject is staged.'));
     empty.appendChild(el('p', 'k-sentence fh-body', 'The range loads your active ship. Open THE SHIP and use Take it to the range, or return to the ship now.'));
     const emptyReturn = el('button', 'k-word k-word--emph k-word--primary', 'Return to the ship');
@@ -3097,6 +3124,18 @@ export const rangeScreen = {
 
     this._onKeyDown = (event) => {
       if (!this._active || !this._controlMap) return;
+      // The Asteroid law (§6.6): while the drawer is up it owns one layer. Tab walks its
+      // roving rows natively, its keys belong to the sheet (not the rig), and Escape
+      // closes the sheet first and the screen only after.
+      const drawerOpen = !!(this._els.drawer && !this._els.drawer.hidden);
+      const inDrawer = drawerOpen && this._els.drawer.contains(event.target);
+      if (event.code === 'Escape' && drawerOpen) {
+        event.preventDefault();
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
+        this._closeDrawer();
+        return;
+      }
+      if (inDrawer) return;
       if (event.code === 'Escape') {
         event.preventDefault();
         if (typeof event.stopPropagation === 'function') event.stopPropagation();
@@ -3349,14 +3388,25 @@ export const rangeScreen = {
       section.hidden = section.getAttribute('data-range-pane') !== which;
     });
     this._refit();
+    // The keyboard way in: the chosen row takes the roving tab stop. (:focus-visible only
+    // paints after a keyboard interaction, so a pointer open stays ring-free.)
+    const target = this._els.rail.querySelector('[aria-selected="true"]')
+      || this._els.drawer.querySelector(which === 'bestiary' ? '[data-range-pane="bestiary"] .k-row' : '.k-row');
+    if (target && typeof target.focus === 'function') target.focus({ preventScroll: true });
   },
 
   _closeDrawer() {
+    const focusInside = !this._els.drawer.hidden
+      && this._els.drawer.contains(document.activeElement);
     this._els.drawer.hidden = true;
     this._els.drawer.classList.remove('is-open');
     this._els.drawerTabs.forEach((tab) => tab.setAttribute('aria-pressed', 'false'));
     syncKeys(this._els.foot);
     this._refit();
+    // The way out returns the rig: focus back on the course canvas, not dropped on body.
+    if (focusInside && this._els.canvas && typeof this._els.canvas.focus === 'function') {
+      this._els.canvas.focus({ preventScroll: true });
+    }
   },
 
   _refit() {

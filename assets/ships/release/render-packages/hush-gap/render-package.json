@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e850a47c02532972eda762f0405929410eca449c87cd46d9b7ca2a80043850b8",
+  "contentHash": "b1be28259e7f00c32f4e1306270d3a4801717706b0ac15630de4064b2c90bf08",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1,
-          0.05000000074505806,
+          0.050050355540635395,
           1
         ],
         "min": [
           -1,
-          -0.05000000074505806,
+          -0.050050355540635395,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3bba95e566fa18b34eb2da40da25449e771d0b482577c82251509ab6190be99",
+      "geometryHash": "c66b8619ea9a14f2712e9a67cc6745d23420143e9b770ea35f0942a7c1a9cc7f",
       "id": "sf.render.hush-gap.mesh.place-hush-gap.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialHash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
       "materialPipelineKey": "opaque",
       "meshName": "place_hush_gap",
       "nodeId": "sf.render.hush-gap.mesh.place-hush-gap",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           1,
-          0.05000000074505806,
+          0.050050355540635395,
           1
         ],
         "min": [
           -1,
-          -0.05000000074505806,
+          -0.050050355540635395,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3bba95e566fa18b34eb2da40da25449e771d0b482577c82251509ab6190be99",
+      "geometryHash": "c66b8619ea9a14f2712e9a67cc6745d23420143e9b770ea35f0942a7c1a9cc7f",
       "id": "sf.render.hush-gap.root.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialHash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
       "materialPipelineKey": "root",
       "meshName": "place_hush_gap",
       "nodeId": "sf.render.hush-gap.root",
@@ -65,10 +65,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
-      "id": "material:f16631848cf82ccc20dce27a",
+      "hash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
+      "id": "material:559a57b64b6898147b7f56c3",
       "name": "HushVoidDisc",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -180,14 +180,14 @@
       "uri": "place_hush_gap.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 13068,
-    "sha256": "e110c6002042aed0c010e976b0a4e7790d6d9b762e1731da4fe9df2508626f66",
+    "bytes": 4356,
+    "sha256": "b215391b0becd85af53e9ebcf03c6ebb73305465321459980fd787a2572a9b52",
     "uri": "render.glb"
   },
   "runtime": {
@@ -199,17 +199,17 @@
       ],
       "max": [
         1,
-        0.05000000074505806,
+        0.050050355540635395,
         1
       ],
       "min": [
         -1,
-        -0.05000000074505806,
+        -0.050050355540635395,
         -1
       ],
       "size": [
         2,
-        0.10000000149011612,
+        0.10010071108127079,
         2
       ]
     },
@@ -259,19 +259,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hush_gap.glb"
   },
-  "runtimeHash": "2f7899d1b12cad00f17e1f7f6ab4686353f8457f3a7fb74c55461bb54fea6c43",
+  "runtimeHash": "886a7080bd7dd038fd9112c36d71088b6d7066c9f13ff134925ae9060977f55b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1,
-          0.05000000074505806,
+          0.050050355540635395,
           1
         ],
         "min": [
           -1,
-          -0.05000000074505806,
+          -0.050050355540635395,
           -1
         ]
       },

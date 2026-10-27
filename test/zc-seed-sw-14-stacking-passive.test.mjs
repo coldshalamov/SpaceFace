@@ -7,6 +7,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import {
   SWARM_PASSIVE_STACK_MAX,
+  swarmPassiveById,
   swarmPassiveCount,
 } from '../src/data/swarmDraft.js';
 import { fields } from '../src/systems/fields.js';
@@ -21,7 +22,8 @@ import { swarmElites } from '../src/systems/swarmElites.js';
 
 const SEED = 4242;
 const ARENA = 'helios_core';
-const PER_COPY = 14;
+// The per-copy grant is the catalog row's authored number — the pin follows it, never a second copy.
+const PER_COPY = swarmPassiveById('plated_hull').perCopyHull;
 
 function makeHarness() {
   const state = createGameState(SEED);

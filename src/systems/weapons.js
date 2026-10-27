@@ -12,6 +12,7 @@ import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../data/combatDefs.js';
 import { swarmChainFireRateScale, swarmChainDamageScale, swarmRunOwnsLegendary } from './swarmChain.js';
 import { mothlightAllowsFire } from '../data/mothlight.js';
@@ -478,6 +479,10 @@ export const weapons = {
       }
       this._onAttackHit(payload);
     });
+    // Linked shield pylons (packet 06): physics stopped a hostile round at a wall. An explosive round
+    // detonates at the accepted intercept point, on the attacker's side; the blast is then occluded
+    // by the same wall for anything behind it.
+    on('shieldPylon:intercepted', (payload) => detonateInterceptedSplash(this, payload));
     on('physics:impact', (payload) => {
       const applied = applyInertialShuntFromImpact(
         this.state,
@@ -494,12 +499,13 @@ export const weapons = {
       }
     });
     on('sector:enter', (p) => {
+      if (!this._isCurrentSectorEnter(p)) return;
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the
       // entity-list walks below otherwise run atomic inside the presented
       // transition frame's emit tail. The deferred drain steps the legs under
       // its slice clock in listener order.
-      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps())) return;
-      this._onSectorEnter();
+      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps(p))) return;
+      this._onSectorEnter(p);
     });
     this._playerIncomingLock = false;
     this._opticSpent = new Set();
@@ -508,8 +514,15 @@ export const weapons = {
     on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
   },
 
-  _onSectorEnter() {
-    handlePayloadSectorTransition(this.state, this.helpers);
+  _isCurrentSectorEnter(payload) {
+    return Number.isSafeInteger(payload?.enterEpoch) && payload.enterEpoch > 0
+      && payload.enterEpoch === this.state.world?.enterSerial;
+  },
+
+  _onSectorEnter(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
+    if (!this._isCurrentSectorEnter(payload)) return;
     clearAllMomentumSinkPlants(this.state);
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
@@ -521,11 +534,14 @@ export const weapons = {
     this._weaponsQuiet = null;
   },
 
-  *_onSectorEnterSteps() {
-    handlePayloadSectorTransition(this.state, this.helpers);
+  *_onSectorEnterSteps(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
     yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
     clearAllMomentumSinkPlants(this.state);
     yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
     this._opticSpent = collectOpticSpentIds(this.state);
@@ -1388,7 +1404,7 @@ export const weapons = {
     }
     if (state.combat && Array.isArray(state.combat.beams)) {
       state.combat.beams.push({
-        ownerId: e.id, factionId: e.factionId, weaponId: w.defId,
+        ownerId: e.id, sourceLife: occupantGenerationOf(e), sourceTeam: e.team, factionId: e.factionId, weaponId: w.defId,
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
@@ -1876,7 +1892,7 @@ export const weapons = {
       ? projectile.data.maxDistance
       : 600;
     const hostiles = steer
-      ? collectAttackCandidates(state, projectile.pos, steerRange, scratch, projectile.ownerId, projectile.team)
+      ? collectAttackCandidates(state, projectile.pos, steerRange, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
       : null;
     const result = resolveLiveAttackHit({
       state,
@@ -1889,7 +1905,7 @@ export const weapons = {
       tetherAnchorId: tetherAnchorIdOf(state),
       hostiles,
       candidates: range > 0
-        ? (origin) => collectAttackCandidates(state, origin, range, scratch, projectile.ownerId, projectile.team)
+        ? (origin) => collectAttackCandidates(state, origin, range, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
         : [],
       applyHopDamage: (hop) => applyAttackHopDamage(this, projectile, live.spec, hop),
     });
@@ -1915,7 +1931,7 @@ export const weapons = {
         const point = payload.pos || projectile.pos;
         const reflected = reflectVelocity({ x: incoming.x, z: incoming.z }, normal);
         const hostiles = live.spec && live.spec.trajectory && live.spec.trajectory.afterBounceSteer
-          ? collectAttackCandidates(state, point, steerRange, scratch, projectile.ownerId, projectile.team)
+          ? collectAttackCandidates(state, point, steerRange, scratch, projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null)
           : null;
         // The bolt is a Rapier-owned dynamic body: a bare vel mirror dies in the post-step
         // readback. Queue the outgoing leg through the same continuation membrane a surface
@@ -2147,7 +2163,7 @@ export const weapons = {
     const hits = [];
     schedulePhysicalBlast(state, {
       center: pos, radius: blastR, helpers: this.helpers, excludeId: mine.id,
-      payload: { kind: 'vector_mine', sourceId: d.ownerId, weaponId: d.weaponId, baseImpulse: d.impulse },
+      payload: { kind: 'vector_mine', sourceId: d.ownerId, sourceLife: d.attackSource?.life ?? null, sourceTeam: d.attackSource?.team ?? mine.team, weaponId: d.weaponId, baseImpulse: d.impulse },
       onBody: body => {
         const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
         const dist = Math.hypot(dx, dz);
@@ -2195,7 +2211,7 @@ export const weapons = {
       if (!rec) {
         rec = {
           phase: 'fly', pos: { x: p.pos.x, z: p.pos.z }, pullUntil: 0,
-          ownerId: p.ownerId, weaponId: p.data.weaponId, cfg: p.data.mortar,
+          ownerId: p.ownerId, sourceLife: p.data.attackSource?.life ?? null, sourceTeam: p.data.attackSource?.team ?? p.team, weaponId: p.data.weaponId, cfg: p.data.mortar,
         };
         shots.set(p.id, rec);
       }
@@ -2264,7 +2280,7 @@ export const weapons = {
       center: pos, radius: blastR, helpers: this.helpers,
       excludeId: rec.ownerId,
       payload: {
-        kind: 'mortar_shell', sourceId: rec.ownerId, weaponId: rec.weaponId,
+        kind: 'mortar_shell', sourceId: rec.ownerId, sourceLife: rec.sourceLife, sourceTeam: rec.sourceTeam, weaponId: rec.weaponId,
         baseImpulse, damage: dmg, damageType: 'explosive',
       },
       onBody: (body) => {
@@ -2898,7 +2914,7 @@ export function applyProjectilePhysicalContact(host, payload) {
   const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
   const baseImpulse = Number(impulse?.magnitude) || Math.hypot(ix || 0, iz || 0);
   schedulePhysicalBlast(state, { center, radius, helpers: host.helpers, excludeId: target.id,
-    payload: { kind: 'weapon_splash', sourceId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    payload: { kind: 'weapon_splash', sourceId: payload.ownerId ?? projectile.ownerId, sourceLife: data.attackSource?.life ?? null, sourceTeam: data.attackSource?.team ?? projectile.team, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
     onBody: body => {
       const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
       const dist = Math.hypot(dx, dz);
@@ -2907,6 +2923,39 @@ export function applyProjectilePhysicalContact(host, payload) {
       deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
         { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
       host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
+        packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
+        origin: { kind: 'weapon', id: data.weaponId } });
+    },
+  });
+}
+
+/**
+ * A projectile with splash that a shield pylon wall stopped (packet 06). Mirrors the splash half of
+ * applyProjectilePhysicalContact, centred just off the wall on the attacker's side; there is no
+ * struck target to exclude. Stopped plain slugs have no splash and do nothing here.
+ */
+function detonateInterceptedSplash(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload) return;
+  const projectile = state.entities?.get(payload.projectileId);
+  const data = projectile && projectile.data;
+  const radius = Number(data && data.splashRadius) || 0;
+  if (!(radius > 0)) return;
+  const center = { x: payload.x + (payload.nx || 0) * 0.75, z: payload.z + (payload.nz || 0) * 0.75 };
+  const packet = data.damagePacket || data.packet;
+  const baseImpulse = Number(packet?.impulse?.magnitude) || 0;
+  const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
+  const ownerId = payload.ownerId ?? projectile.ownerId;
+  schedulePhysicalBlast(state, { center, radius, helpers: host.helpers,
+    payload: { kind: 'weapon_splash', sourceId: ownerId, sourceLife: data.attackSource?.life ?? null, sourceTeam: data.attackSource?.team ?? projectile.team, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    onBody: body => {
+      const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
+      const dist = Math.hypot(dx, dz);
+      const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+      deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+        { actorId: ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+      host.helpers?.routeCombatDamage?.({ attackerId: ownerId, targetId: body.id,
         packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
         origin: { kind: 'weapon', id: data.weaponId } });
     },
@@ -2939,7 +2988,7 @@ function handleOpticProjectileHit(host, payload) {
   if (plan.kind === 'reflect') {
     const live = host._attackLive?.get(projectile.id);
     if (live?.spec?.trajectory?.afterBounceSteer) {
-      const nearby = collectAttackCandidates(state, projectile.pos, projectile.data?.maxDistance || 600, host._attackQueryScratch || [], projectile.ownerId, projectile.team);
+      const nearby = collectAttackCandidates(state, projectile.pos, projectile.data?.maxDistance || 600, host._attackQueryScratch || [], projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null);
       applyReflectedVelocity(projectile, steerAfterBounce(plan.velocity, payload.pos || projectile.pos, live.spec, nearby, live.runtime?.visited));
     }
   }
@@ -2995,6 +3044,9 @@ function handleOpticBeamContact(host, req) {
   if (!target || target.alive === false) return;
   const owner = beam.ownerId != null ? entities.get(beam.ownerId) : null;
   const pseudo = opticBeamBolt(beam, { pos: req.pos }, owner);
+  pseudo.data.attackSource = { id: beam.ownerId,
+    life: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife,
+    team: beam.sourceTeam ?? owner?.team ?? null };
   if (!host._opticFamilies) host._opticFamilies = new Map();
   const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(pseudo));
   const bus = host.bus;

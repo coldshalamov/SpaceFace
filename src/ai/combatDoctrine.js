@@ -53,6 +53,38 @@ const STRIKE_CLOSE_CAP_TICKS = 240;
 // had not crossed yet pointed straight back into the target (wasp extend closed 118 -> 66 WU).
 const EGRESS_AWAY_MIN_COS = 0.8;
 const EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape']);
+// Row 491 intent cycle. Every everyday doctrine already flies approach → telegraphed wind-up →
+// committed attack → egress; these three sets name those beats so the rest of the AI reads ONE
+// vocabulary instead of re-deriving phase lists. They are doctrine STATE, not new behaviors:
+//   windup           — the telegraph cue beat. The hull settles onto its attack line (reduced
+//                      turn, no weave): the readable pre-attack tell.
+//   committed attack — wind-up + the fire/commit phases. The doctrine owns the hull; lateral
+//                      reflexes stand down so the pass holds its announced line.
+//   exposed recovery — the post-attack egress legs. Guns are already dark (no fireWindow); the
+//   hull flies its escape line without maneuver-flavored jinking, so the beat reads as the
+//   player's punish window before the next approach begins.
+export const WINDUP_PHASES = Object.freeze(new Set([
+  'engine_flare', 'charge_cue', 'lance_cue', 'fuse_cue', 'wake_cue', 'spool_cue',
+  'field_spool', 'screen_deploy', 'broadside_charge',
+]));
+export const ATTACK_PHASES = Object.freeze(new Set([
+  'strike', 'commit', 'fire_window', 'press', 'anchor_hold', 'broadside_fire',
+  'screen_hold', 'shield_dart', 'lance', 'mine_drop', 'attach_window', 'control',
+]));
+export const EXPOSED_RECOVERY_PHASES = Object.freeze(new Set([
+  'extend', 'breakaway', 'escape', 'recover', 'retreat', 'disengage', 'peel',
+  'regroup', 'broadside_shift', 'relocate', 'reset',
+]));
+
+/** Row 491: the doctrine is mid committed-attack cycle (wind-up or the attack itself). */
+export function committedAttackPhase(phase) {
+  return WINDUP_PHASES.has(phase) || ATTACK_PHASES.has(phase);
+}
+
+/** Row 491: the doctrine is in its exposed post-attack recovery beat. */
+export function exposedRecoveryPhase(phase) {
+  return EXPOSED_RECOVERY_PHASES.has(phase);
+}
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
@@ -510,6 +542,11 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
           (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'))
         || (doctrine.phase === 'commit' && (doctrine.doctrineId === CombatDoctrineId.BRAWLER_COMMIT
           || doctrine.flightProfile === 'brawler_commit')),
+      // Row 491 intent cycle, stamped so the maneuver planner and reflex stack read the same
+      // beat the telegraph announces (see WINDUP_PHASES above).
+      windup: doctrine.windup === true,
+      committedRun: doctrine.committedRun === true,
+      exposedRecovery: doctrine.exposedRecovery === true,
       reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}`,
     },
   };
@@ -1319,6 +1356,11 @@ function beginReform(record, tick) {
 function snapshot(record, target, directive, factionBehavior = null, self = null) {
   const phase = record.phase;
   const doctrineId = record.doctrineId;
+  // Row 491 intent-cycle classification (see WINDUP_PHASES above) — derived, never authored,
+  // so a phase can never drift out of its cycle class.
+  const windup = WINDUP_PHASES.has(phase);
+  const committedRun = committedAttackPhase(phase);
+  const exposedRecovery = exposedRecoveryPhase(phase);
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
     || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
@@ -1598,6 +1640,10 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       : null,
     telegraph: record.telegraph,
     telegraphStarted: record.telegraphStartedTick === record.lastTick,
+    // Row 491 intent cycle: the beat the hull is flying (see WINDUP_PHASES above).
+    windup,
+    committedRun,
+    exposedRecovery,
     // FB-020: the boss stage + turret-loss edge ride the doctrinePhase emission so a transition
     // telegraphed by the stage cue is also identifiable as the physical loss that caused it.
     bossStage: record.bossStage || 0,

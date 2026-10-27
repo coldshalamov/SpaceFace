@@ -42,8 +42,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { Masks } from '../src/core/entity.js';
 import { createSimulation } from '../src/core/sim.js';
+import { addCargo } from '../src/systems/cargo.js';
 import {
   AUTHORED_SET_PIECE_HEADLINE,
   PQ032_BEAT_SET_PIECES,
@@ -97,6 +97,8 @@ function boot() {
   if (state.settings && state.settings.gameplay) state.settings.gameplay.tutorialHints = false;
   const completed = [];
   sim.bus.on('mission:completed', (p) => completed.push(p));
+  // The B0 mine→dock order records through the campaign sidecar — newGame installs it.
+  sim.registry.get('missions').newGame();
   return {
     sim,
     state,
@@ -200,56 +202,6 @@ function setLiveTether(h, targetId, restLength) {
   };
 }
 
-// B1: the swing. No `tether:whipImpact` inject — drive a real latch, prove the throw RELEASE does
-// not settle anything, then fly the freed rock ballistically until the live masslineImpacts observer
-// detects contact. That emitter is the only live source of the event the demolition law listens to.
-function knockTheTower(h, mission) {
-  const tower = targetsByRole(h.state, mission, 'demolition_tower')[0];
-  assert.ok(tower, 'wrecking-ball contract needs a tower');
-  assert.ok((tower.collisionMask & Masks.ASTEROID) && (tower.collisionMask & Masks.PROJECTILE),
-    'mission tower must be solid to thrown mass and shots');
-
-  const rock = h.sim.spawn({
-    type: 'asteroid', team: 2, radius: 6, mass: 40, hull: 60, hullMax: 60,
-    pos: { x: tower.pos.x - 60, z: tower.pos.z },
-    vel: { x: 0, z: 0 },
-  });
-  setLiveTether(h, rock.id, 60);
-  h.sim.bus.emit('tether:latched', { targetId: rock.id, type: 'tether_standard' });
-  h.impactsSys.update(DT, h.state);
-
-  const beatBeforeThrow = h.state.story.beatIndex;
-  h.sim.bus.emit('massline:throw', {
-    releaseId: `massline:throw:${h.state.tick}:${rock.id}`,
-    payloadId: rock.id, aimTargetId: tower.id, aimSynthetic: false, mode: 'aimed',
-  });
-  assert.equal(h.state.story.beatIndex, beatBeforeThrow,
-    'throw release must not settle wrecking_ball — naming an aim target is not hitting it');
-
-  // Cut the line with the mass genuinely moving; then it is ballistic and nothing but travel closes
-  // the gap. `masslineImpacts` runs every step, exactly as it does in UPDATE_ORDER.
-  rock.vel.x = 80;
-  rock.vel.z = 0;
-  setLiveTether(h, null, 0);
-  let ticks = 0;
-  while (h.state.story.beatIndex === beatBeforeThrow && ticks < 600) {
-    rock.pos.x += rock.vel.x * DT;
-    rock.pos.z += rock.vel.z * DT;
-    h.impactsSys.update(DT, h.state);
-    ticks++;
-  }
-  const gap = wuBetween(rock, tower);
-  const solid = tower.radius + rock.radius;
-  const settled = h.state.story.beatIndex > beatBeforeThrow;
-  console.log(`PQ-032.00 whip contact settled B1: ${settled ? 'yes' : 'no'}`);
-  console.log(`PQ-032.00 wrecking_ball rock flew ${ticks} ticks to contact at `
-    + `${Math.round(gap)} WU (hulls touch at ${solid} WU)`);
-  assert.equal(settled, true, 'a real rock at speed hitting the tower must settle wrecking_ball');
-  assert.ok(ticks > 1, 'the rock must REACH the tower, not start on top of it');
-  assert.ok(gap >= solid - 1,
-    `contact pose ${gap.toFixed(1)} WU must not be inside the tower (hulls touch at ${solid})`);
-}
-
 // B3 leftover throw door: one massline:throw in the dest sector used to pay sling_in with no
 // dest-dock test. Story B3 must refuse that sector-scale throw; leftover authored sling_in may
 // still use PHYSICAL_BERTH_WU 700.
@@ -265,7 +217,8 @@ function throwFromTheField(h, mission, role) {
   const berth = liveStation(h, mission.destStationId);
   assert.ok(berth, `${mission.type} needs the live ${mission.destStationId}`);
   const far = wuBetween(cargo, berth);
-  const beatBefore = h.state.story.beatIndex;
+  // The probe is mission-level: a book leg can settle its contract without moving the beat.
+  const settled = () => mission.status === 'completed';
 
   // Latch first: no attachment, no throw. This is the arm state masslineThrow requires.
   setLiveTether(h, cargo.id, wuBetween(cargo, h.player));
@@ -274,14 +227,14 @@ function throwFromTheField(h, mission, role) {
     releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
     payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
   });
-  const paidThrow = h.state.story.beatIndex > beatBefore;
+  const paidThrow = settled();
 
   // The cut drops the line, then the canonical rated release lands on the next tick.
   setLiveTether(h, null, 0);
   h.sim.bus.emit('tether:releaseRated', {
     targetId: cargo.id, sourceId: h.player.id, classification: 'clean',
   });
-  const paidRelease = h.state.story.beatIndex > beatBefore;
+  const paidRelease = settled();
 
   console.log(`PQ-032.00 ${mission.type} ${role} one leftover latch+throw+clean release at `
     + `${Math.round(far)} WU — throw paid: ${paidThrow ? 'yes' : 'no'}, `
@@ -312,14 +265,15 @@ function towToTheDock(h, mission, role, settle) {
     + `radius ${berth.radius} dockRadius ${berth.data.dockRadius} — story latch-dock gate `
     + `${Math.round(gate)} WU`);
 
-  const beatBefore = h.state.story.beatIndex;
+  // The probe is mission-level: a book leg can settle its contract without moving the beat.
+  const settled = () => mission.status === 'completed';
   setLiveTether(h, cargo.id, wuBetween(cargo, h.player));
   h.sim.bus.emit('tether:latched', { targetId: cargo.id, type: 'tether_standard' });
 
   // Turn-in attempt one: on the line, but still out where it was found.
   const far = wuBetween(cargo, berth);
   h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
-  const paidFar = h.state.story.beatIndex > beatBefore;
+  const paidFar = settled();
   console.log(`PQ-032.00 ${mission.type} ${role} sits ${Math.round(far)} WU from the berth `
     + `at turn-in — paid: ${paidFar ? 'yes' : 'no'}`);
   assert.ok(far > gate, `the ${role} must start OUTSIDE the gate for this to prove anything`);
@@ -373,7 +327,7 @@ function towToTheDock(h, mission, role, settle) {
     `waypoint ${Math.round(cargoAtWaypoint)} WU must sit between the story gate `
     + `${Math.round(gate)} and the leftover berth radius ${PHYSICAL_BERTH_WU}`);
   h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
-  const paidMid = h.state.story.beatIndex > beatBefore;
+  const paidMid = settled();
   console.log(`PQ-032.00 ${mission.type} ${role} inside the leftover ${PHYSICAL_BERTH_WU} WU berth `
     + `at ${Math.round(cargoAtWaypoint)} WU — paid: ${paidMid ? 'yes' : 'no'}`);
   assert.equal(paidMid, false,
@@ -408,7 +362,7 @@ function towToTheDock(h, mission, role, settle) {
       releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
       payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
     });
-    const paidThrow = h.state.story.beatIndex > beatBefore;
+    const paidThrow = settled();
     console.log(`PQ-032.00 ${mission.type} ${role} leftover throw at dest dock `
       + `${Math.round(cargoToBerth)} WU — paid: ${paidThrow ? 'yes' : 'no'}`);
     assert.equal(paidThrow, true, `${role} leftover throw at the dest dock must settle`);
@@ -420,7 +374,7 @@ function towToTheDock(h, mission, role, settle) {
   }
 
   h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
-  const paidNear = h.state.story.beatIndex > beatBefore;
+  const paidNear = settled();
   console.log(`PQ-032.00 ${mission.type} ${role} towed to ${Math.round(cargoToBerth)} WU `
     + `(gate ${Math.round(gate)} WU) — paid: ${paidNear ? 'yes' : 'no'} (${settle})`);
   assert.equal(paidNear, true, `${role} towed to the dest dock must settle ${mission.type}`);
@@ -430,30 +384,34 @@ function towToTheDock(h, mission, role, settle) {
   setLiveTether(h, null, 0);
 }
 
-test('PQ-032.00 leftover beats 1–3 name physical headline verbs', () => {
+test('PQ-032.00 leftover set pieces name physical headline verbs', () => {
   printSpine();
   // PQ032_BEAT_SET_PIECES is DERIVED from STORY_BEATS (src/data/missions.js), so the deepEqual rows
   // and the `beat.headlineVerb === row.headlineVerb` check below are self-referential — they pin the
   // spelling of the table, not any behaviour. The load-bearing assertions in this test are the
   // buildMissionBoardContract ones: what the station board actually posts.
-  assert.equal(PQ032_BEAT_SET_PIECES.length, 3);
+  //
+  // W-BOOKS-0-2 / W-BOOKS-3-4 (§34.7): B1–B3 play the authored book lists, so only B3's
+  // long tow keeps the leftover single set-piece row — the wrecking-ball contract and the
+  // pod rescue moved into the book-contract flow.
+  assert.equal(PQ032_BEAT_SET_PIECES.length, 1);
   assert.deepEqual(PQ032_BEAT_SET_PIECES.map((row) => row.id), [
-    'honest_work', 'first_blood', 'bigger_boat',
+    'bigger_boat',
   ]);
   assert.deepEqual(PQ032_BEAT_SET_PIECES.map((row) => row.headlineVerb), [
-    'knock', 'pull', 'tow',
+    'tow',
   ]);
   assert.deepEqual(PQ032_BEAT_SET_PIECES.map((row) => row.setPiece), [
-    'wrecking-ball contract', 'pod rescue under fire', 'long tow',
+    'variance adjustment + feed the maw + foreman',
   ]);
   assert.deepEqual(PQ032_BEAT_SET_PIECES.map((row) => row.physicalType), [
-    'demolition', 'rescue_under_fire', 'tow_recovery',
+    'tow_recovery',
   ]);
   for (const row of PQ032_BEAT_SET_PIECES) {
     const beat = STORY_BEATS[row.beat];
     assert.equal(beat.id, row.id);
     assert.equal(beat.headlineVerb, row.headlineVerb);
-    assert.match(beat.objective, new RegExp(`^${row.headlineVerb}\\b`, 'i'));
+    assert.equal(beat.authoredSetPieceId, row.authoredSetPieceId);
     const offer = buildMissionBoardContract(row.beat, { seed: SEED, epoch: 1 });
     assert.ok(offer, `${row.id} must post a board contract`);
     assert.equal(offer.type, row.physicalType);
@@ -525,53 +483,112 @@ test('PQ-032.00 a live jump lands the leftover cargo outside the old 700 WU bert
   sim.dispose();
 });
 
-// Both posted B3 methods, one spine per run: a mission settles ONCE, so the first pay ends it.
+// The book route B0→B4, one spine per run for the berth's two posted methods: a mission settles
+// ONCE, so the first pay ends it. The long tow's honest-geometry proofs live on the berth leg —
+// it is the same set piece (authoredSetPieceId 'long_tow') the pre-book contract carried.
 function playTheSpine(b3Settle) {
   const h = boot();
   h.sim.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
   h.sim.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.equal(h.state.story.beatIndex, 1);
 
-  const b1 = acceptStory(h, 'station_helios', 'campaign47a:b1:honest_work');
-  assert.equal(b1.type, 'demolition');
-  assert.equal(b1.params.physicalVerb, 'knock_down');
-  flyToDestSector(h, b1);
-  knockTheTower(h, b1);
-  assert.equal(h.state.story.beatIndex, 2, 'knocking the tower advances Honest Work');
+  // B1 book: the sealed alloy run to Tycho, the Scale 4 weigh, then the infested lane —
+  // clear the mites and feed three pods to the intake.
+  const alloy = acceptStory(h, 'station_helios', 'campaign47a:b1:alloy_run');
+  assert.equal(alloy.type, 'cargo_delivery');
+  assert.equal(alloy.params.physicalVerb, 'weigh');
+  addCargo(h.state, 'cmdty_alloys', Math.max(1, alloy.params.qty || 6));
+  h.sim.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  h.sim.bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  const infested = acceptStory(h, 'station_tethys', 'campaign47a:b1:infested');
+  assert.equal(infested.type, 'patrol_clear');
+  flyToDestSector(h, infested);
+  for (const id of [...infested.targetEntityIds]) {
+    h.sim.bus.emit('entity:killed', { id, killerId: h.player.id });
+  }
+  for (let i = 0; i < 3; i++) h.sim.bus.emit('furnace:fed', { entityId: 9100 + i });
+  assert.equal(h.state.story.beatIndex, 2, 'the alloy run and the furnace detail advance Honest Work');
 
-  const b2 = acceptStory(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(b2.type, 'rescue_under_fire');
-  assert.equal(b2.params.physicalVerb, 'pull');
-  flyToDestSector(h, b2);
-  towToTheDock(h, b2, 'life_pod', 'stage_tow');
-  assert.equal(h.state.story.beatIndex, 3, 'pulling pods advances First Blood');
-  assert.equal(h.state.story.flags.elroy_outcome, undefined, 'pod rescue adds no branch choice');
+  // B2 book: the cinder marks (+ the wreck tow receipt), the garden feed, the Nest, then the
+  // register contract on Elroy — scan first, then the kill resolves the writ.
+  const cinder = acceptStory(h, 'station_tethys', 'campaign47a:b2:cinder');
+  assert.equal(cinder.type, 'patrol_clear');
+  flyToDestSector(h, cinder);
+  for (const id of [...cinder.targetEntityIds]) {
+    h.sim.bus.emit('entity:killed', { id, killerId: h.player.id });
+  }
+  h.sim.bus.emit('rookWreck:delivered', { entityId: 9301 });
+  h.sim.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g1', fedMass: 20 });
+  h.sim.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  const elroy = acceptStory(h, 'station_tethys', 'campaign47a:b2:elroy');
+  assert.equal(elroy.type, 'bounty_hunt');
+  flyToDestSector(h, elroy);
+  const elroyId = elroy.targetEntityIds[0];
+  h.state.entities.get(elroyId).pos = { x: h.player.pos.x + 5, z: h.player.pos.z };
+  h.sim.bus.emit('scan:completed', { targetId: elroyId });
+  h.sim.bus.emit('entity:killed', { id: elroyId, killerId: h.player.id });
+  assert.equal(h.state.story.beatIndex, 3, 'the register writ advances First Blood');
+  assert.equal(h.state.story.flags.elroy_outcome, 'force', 'the kill stamps the force outcome');
 
   h.sim.bus.emit('ship:purchased', { defId: 'ship_drifter', stationId: 'station_tethys', price: 9000 });
   assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle the long tow');
 
-  const b3 = acceptStory(h, 'station_tethys', 'campaign47a:b3:bigger_boat');
-  assert.equal(b3.type, 'tow_recovery');
-  assert.equal(b3.params.physicalVerb, 'tow');
-  flyToDestSector(h, b3);
-  throwFromTheField(h, b3, 'slag_core');
-  towToTheDock(h, b3, 'slag_core', b3Settle);
-  assert.equal(h.state.story.beatIndex, 4, 'the long tow advances Bigger Boat');
+  // B3 book leg one — the berth delivery is the leftover long tow. A field throw and a
+  // field release must still refuse; the dest-dock pose pays the asserted method.
+  const berth = acceptStory(h, 'station_tethys', 'campaign47a:b3:berth');
+  assert.equal(berth.type, 'tow_recovery');
+  assert.equal(berth.params.physicalVerb, 'tow');
+  assert.equal(berth.params.bookScene, 'variance_delivery');
+  flyToDestSector(h, berth);
+  throwFromTheField(h, berth, 'slag_core');
+  towToTheDock(h, berth, 'slag_core', b3Settle);
+  assert.equal(berth.status, 'completed');
+  assert.equal(h.state.story.beatIndex, 3, 'the delivery is one leg of the yard list, not the book');
+
+  // B3 book leg two — the maw stuns on three solid hits before the same tow settles it.
+  const maw = acceptStory(h, 'station_tethys', 'campaign47a:b3:maw');
+  assert.equal(maw.type, 'tow_recovery');
+  assert.equal(maw.params.mawStunsNeeded, 3);
+  flyToDestSector(h, maw);
+  const mawBody = targetsByRole(h.state, maw, 'slag_core')[0];
+  assert.ok(mawBody, 'the maw materializes as a slag core');
+  for (let i = 0; i < 3; i++) {
+    h.sim.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  }
+  towToTheDock(h, maw, 'slag_core', 'tow_in');
+  assert.equal(maw.status, 'completed');
+
+  // B3 book leg three — the Foreman's yard feud closes the book.
+  const foreman = acceptStory(h, 'station_tethys', 'campaign47a:b3:foreman');
+  assert.equal(foreman.type, 'capital_boss');
+  flyToDestSector(h, foreman);
+  const capital = foreman.targetEntityIds
+    .map((id) => h.state.entities.get(id))
+    .find((e) => e && roleOf(e) === 'capital_hull');
+  assert.ok(capital, 'the Foreman materializes as a capital hull');
+  h.sim.bus.emit('entity:killed', { id: capital.id, killerId: h.player.id });
+  assert.equal(foreman.status, 'completed');
+  assert.equal(h.state.story.beatIndex, 4, 'the yard list closes Bigger Boat');
 
   // Name the methods the spine actually settled on, with no `||` fallback to the mission TYPE —
   // a type is what was posted, a completionMethod is what the player did.
   const methods = h.completed.map((row) => row.completionMethod);
+  const berthMethod = h.completed
+    .filter((row) => row.missionId === berth.id)
+    .map((row) => row.completionMethod)[0];
   h.sim.dispose();
-  return methods;
+  return { methods, berthMethod };
 }
 
-test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () => {
+test('PQ-032.00 seed 3200 plays the book spine with the long-tow set piece live', () => {
   printSpine();
-  // B3 posts ['tow_in','sling_in'] (src/systems/missions.js:2008). Prove BOTH from the same
-  // dest-dock arrival pose: cutting the line for the last stretch pays sling_in, keeping the mass
-  // on the line and docking pays tow_in — the beat's own headline verb.
-  console.log('PQ-032.00 --- spine run 1: B3 settles by cutting the line at the dock ---');
-  assert.deepEqual(playTheSpine('sling_in'), ['wrecking_ball', 'stage_tow', 'sling_in']);
-  console.log('PQ-032.00 --- spine run 2: B3 settles by docking with the mass on the line ---');
-  assert.deepEqual(playTheSpine('tow_in'), ['wrecking_ball', 'stage_tow', 'tow_in']);
+  // The berth posts ['tow_in','sling_in'] like the pre-book long tow did. Prove BOTH from the
+  // same dest-dock arrival pose: cutting the line for the last stretch pays sling_in, keeping
+  // the mass on the line and docking pays tow_in — the beat's own headline verb.
+  console.log('PQ-032.00 --- spine run 1: B3 berth settles by cutting the line at the dock ---');
+  const run1 = playTheSpine('sling_in');
+  assert.equal(run1.berthMethod, 'sling_in');
+  console.log('PQ-032.00 --- spine run 2: B3 berth settles by docking with the mass on the line ---');
+  const run2 = playTheSpine('tow_in');
+  assert.equal(run2.berthMethod, 'tow_in');
 });

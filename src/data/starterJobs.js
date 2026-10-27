@@ -9,9 +9,9 @@ export const STARTER_JOBS = Object.freeze([
     shipId: 'ship_kestrel',
     requiredModule: 'mod_drill_amp',
     steps: Object.freeze([
-      Object.freeze({ step: 1, type: 'mining_quota', title: 'Hold the rich core and cut the beacon rock', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 420 }),
-      Object.freeze({ step: 2, type: 'mining_quota', title: 'Hold the rich core and cut the second seam', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 640 }),
-      Object.freeze({ step: 3, type: 'mining_quota', title: 'Cut the marker seam — the yard lead asked for your transponder', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 840 }),
+      Object.freeze({ step: 1, type: 'mining_quota', title: 'Cut iron for the berth repairs', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 420 }),
+      Object.freeze({ step: 2, type: 'mining_quota', title: 'Cut replacement stock at the claim rim', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 640 }),
+      Object.freeze({ step: 3, type: 'mining_quota', title: 'Work the outer seam — the yard lead knows your transponder', cmdtyId: 'cmdty_ore_iron', qty: 2, rewardCr: 840 }),
     ]),
   }),
   Object.freeze({
@@ -19,9 +19,9 @@ export const STARTER_JOBS = Object.freeze([
     shipId: 'ship_pelican',
     requiredModule: 'mod_winch_hd',
     steps: Object.freeze([
-      Object.freeze({ step: 1, type: 'tow_recovery', title: 'Tow the yard buoy home', rewardCr: 520 }),
-      Object.freeze({ step: 2, type: 'tow_recovery', title: 'Tow the second buoy home', rewardCr: 760 }),
-      Object.freeze({ step: 3, type: 'tow_recovery', title: "Tow the harbor-master's own buoy — thanks on the ticket", rewardCr: 960 }),
+      Object.freeze({ step: 1, type: 'tow_recovery', title: 'Recover the loose 44-C lane buoy', rewardCr: 520 }),
+      Object.freeze({ step: 2, type: 'tow_recovery', title: 'Catch the drifting claim-rim buoy', rewardCr: 760 }),
+      Object.freeze({ step: 3, type: 'tow_recovery', title: "Recover the heavy outer-yard buoy — thanks on the ticket", rewardCr: 960 }),
     ]),
   }),
   Object.freeze({
@@ -110,3 +110,4 @@ export function starterRamKill(payload) {
   }
   return false;
 }
+

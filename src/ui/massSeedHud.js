@@ -37,8 +37,7 @@ export const MASS_SEED_HUD_CSS = `
   font-variation-settings: "wght" 720, "wdth" 68; letter-spacing: .14em; text-transform: uppercase;
   color: var(--hud-paper, var(--dp-ink, #e8e2d4));
   background: var(--dp-glass-flight, rgb(18 23 29 / .82));
-  border: 1px solid var(--hud-line, var(--dp-metal-4, #2f3542));
-  border-left: 2px solid var(--dp-lamp, #f2b950);
+  border: 0; border-left: 2px solid var(--dp-lamp, #f2b950);
   border-radius: var(--dp-r-instrument, 3px);
   box-shadow: none;
   text-shadow: var(--dp-emit, none);

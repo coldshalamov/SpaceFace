@@ -1161,6 +1161,8 @@ export const survivalResults = {
       if (threats.length) result.threats = threats.slice();
       const perks = run.telemetry && Array.isArray(run.telemetry.perks) ? run.telemetry.perks : [];
       if (perks.length) result.perks = perks.slice();
+      const pacts = run.telemetry && Array.isArray(run.telemetry.pacts) ? run.telemetry.pacts : [];
+      if (pacts.length) result.pacts = pacts.slice();
     }
     if (this._deadHull) result.wreck = structuredClone(this._deadHull);
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
@@ -1205,7 +1207,11 @@ export const survivalResults = {
         }
         const banked = Number.isFinite(row.bankedBounty) ? row.bankedBounty : 0;
         const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
-        result.bankLine = `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+        // A drill pays nothing — the receipt repeats the door's promise rather than reading a
+        // zeroed bank as a payout.
+        result.bankLine = row.recordRules && row.recordRules.mode === 'practice'
+          ? 'A drill — nothing carries back to the hangar.'
+          : `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
       }
     } catch {
       // A local-record failure must not swallow the results the player is owed.

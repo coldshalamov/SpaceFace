@@ -207,7 +207,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f40327707e9299e968bd9012f3e3b3b9d8d57469aa041e794951bb603e4c177f",
+  "contentHash": "4b38a1bfa7a0faeb894cfe8a87a64da21aae34e997cf62e992bbfd92e3880271",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-mara.node.lod0-motion-towline-jaw-port-livery.dynamic",
@@ -235,17 +235,17 @@
       "bounds": {
         "max": [
           4.9992194175720215,
-          2.6000256538391113,
-          4.391354560852051
+          2.600025667507415,
+          4.391354296275606
         ],
         "min": [
           -11.999186515808105,
-          -1.7000257968902588,
-          -4.391354560852051
+          -1.7000258105585626,
+          -4.391354296275606
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68d0c17cd6688a1a094a846f138c952eb1ec1b41aae6ad88259d1f33d2adbc9a",
+      "geometryHash": "6ecfff82002b3ed0c52b9bc71634a1fb7cd6927be926af730759a41f46fb6cce",
       "id": "sf.render.towline-mara.node.collision-towline-mara-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -260,17 +260,17 @@
       "bounds": {
         "max": [
           12.490686416625977,
-          1.3501510620117188,
-          -2.7967135906219482
+          1.3501510331580282,
+          -2.796713720157956
         ],
         "min": [
           0.9775615930557251,
-          -1.150151014328003,
-          -7.9986491203308105
+          -1.1501509854743124,
+          -7.998648990794803
         ]
       },
       "drawMode": 4,
-      "geometryHash": "281ff20251c7fb3802001b1cc5dfbdbffefa3fc62aaeee1a669b522187fed70c",
+      "geometryHash": "5eebb91ab722cccab0704ca3aec1eaf8d1f48a5016ecd5dddd002fb27ac16d60",
       "id": "sf.render.towline-mara.node.collision-towline-mara-jaw-port.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -285,17 +285,17 @@
       "bounds": {
         "max": [
           12.490686416625977,
-          1.3501510620117188,
-          7.998648643493652
+          1.3501510202137046,
+          7.9986486062359745
         ],
         "min": [
           0.9775617122650146,
-          -1.150151014328003,
-          2.796713352203369
+          -1.1501509725299888,
+          2.7967133894610474
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb03275ef6c64ea29a125fa13a453768f3e81ee3353574e904c4f8d6a8b5a898",
+      "geometryHash": "5877bc5edf561e873487a96bcf6ac156ebcbb80d9c9b5dc4cef31bfb15b989e8",
       "id": "sf.render.towline-mara.node.collision-towline-mara-jaw-starboard.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -309,18 +309,18 @@
     {
       "bounds": {
         "max": [
-          12.490347862243652,
-          1.3498648405075073,
+          12.490348293766584,
+          1.3498648661851453,
           7.9988908767700195
         ],
         "min": [
-          1.0081919431686401,
-          -1.1498647928237915,
+          1.0081915116457099,
+          -1.1498648185014295,
           -7.9988908767700195
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb6cced01abc0e0dbb906c103ac12fe025fca635220f1c7420c9a33495b44eef",
+      "geometryHash": "c7e4a7118d83e80f6802db3f1611d99bb64853407fe4a88d7b9a825b2f36b88f",
       "id": "sf.render.towline-mara.node.lod0-armor.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -334,18 +334,18 @@
     {
       "bounds": {
         "max": [
-          -11.916417121887207,
-          0.763450026512146,
+          -11.916416813944732,
+          0.7634500303266832,
           3.063499927520752
         ],
         "min": [
-          -12.220083236694336,
-          -1.163450002670288,
+          -12.220083544636811,
+          -1.1634500064848252,
           -3.063499927520752
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75cf1b19b81ae5e7d31e70912b94b8920052c9394395d33302e55b02c8487f8a",
+      "geometryHash": "d592fdc2b8c4c0b4a113f224e85780419185fe8eeb26a552a9ef2dd75bd76a75",
       "id": "sf.render.towline-mara.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -360,17 +360,17 @@
       "bounds": {
         "max": [
           5,
-          2.5996742248535156,
-          4.396954536437988
+          2.5996742640120956,
+          4.396954252754295
         ],
         "min": [
           -12,
-          -1.492735743522644,
-          -4.396954536437988
+          -1.492735782681224,
+          -4.396954252754295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e33a7210e0a7e575a2c07111376fabf03a021f11d4e8076133d4929c2757d51d",
+      "geometryHash": "12b165818b1d168f6cfdc4e613b539ff0bd03a9b5d05cde7e19a5895644da270",
       "id": "sf.render.towline-mara.node.lod0-hull.primitive.0",
       "indexCount": 1752,
       "indexed": true,
@@ -384,18 +384,18 @@
     {
       "bounds": {
         "max": [
-          3.974964141845703,
-          2.499974012374878,
+          3.9749641884350817,
+          2.499974126028804,
           0.75
         ],
         "min": [
-          3.4250359535217285,
-          2.430025815963745,
+          3.42503590693235,
+          2.430025702309819,
           -0.75
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebe91d5f70e703581d61975c93d91c630411b6811746eb6075697f0a7ba54dec",
+      "geometryHash": "9f9dc0168a894fa4aa5781a00da79a45c77979e8682adc259719212785d70e0f",
       "id": "sf.render.towline-mara.node.lod0-lights-warm.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -410,17 +410,17 @@
       "bounds": {
         "max": [
           3.5999999046325684,
-          2.639808416366577,
-          2.633009195327759
+          2.639808382917979,
+          2.633009132927242
         ],
         "min": [
           -3.1610941886901855,
-          2.600191354751587,
-          -2.8430087566375732
+          2.600191388200185,
+          -2.8430086942370565
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abfab5904b7966475a7319713ac23712838bd2b63ccd4786c0e9f3c14c5a1b6e",
+      "geometryHash": "c578c5bee33637feef42e2510240c3db39f3fc2cba24a8fbe9f8c716b6da7750",
       "id": "sf.render.towline-mara.node.lod0-livery.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -435,17 +435,17 @@
       "bounds": {
         "max": [
           10.800000190734863,
-          2.6050705909729004,
-          6.4303131103515625
+          2.6050706025529404,
+          6.430312942591964
         ],
         "min": [
           -12.220000267028809,
-          -1.7000706195831299,
-          -6.4303131103515625
+          -1.70007063116317,
+          -6.430312942591964
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aafda354e73e21aeda22292eddaf3efae744fb279b810fe1045d0ae91312a33f",
+      "geometryHash": "e2e5173ee2816338a82f7ca5e04c93951a2ca01cc6492df650ad7109d984d6eb",
       "id": "sf.render.towline-mara.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 4140,
       "indexed": true,
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c92b21c329a3440c10c0cee017dd8acc019e57d272cf5cac96a15f921f65b908",
+      "geometryHash": "f10ffa247983c4a50521df39faf60c506e46d36bc78fe7a19a841d1eb31dda4e",
       "id": "sf.render.towline-mara.node.lod0-motion-towline-jaw-port-livery.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b59392e881d56ce4ff43fb6e09b4b768ba832894a556132c47d88d9ddc366795",
+      "geometryHash": "b3077ec1daa0a70d54920c124a2436a24fa2583f4dcf90da59dac2be8e599cd6",
       "id": "sf.render.towline-mara.node.lod0-motion-towline-jaw-starboard-livery.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -658,20 +658,20 @@
     {
       "id": "sf.render.towline-mara.node.collision-towline-mara-core",
       "localTransform": [
-        1,
+        8.499202966690063,
         0,
         0,
         0,
         0,
-        1,
+        8.499202966690063,
         0,
         0,
         0,
         0,
-        1,
+        8.499202966690063,
         0,
-        0,
-        0,
+        -3.499983549118042,
+        0.44999992847442627,
         0,
         1
       ],
@@ -686,20 +686,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        8.499202966690063,
         0,
         0,
         0,
         0,
-        1,
+        8.499202966690063,
         0,
         0,
         0,
         0,
-        1,
+        8.499202966690063,
         0,
-        0,
-        0,
+        -3.499983549118042,
+        0.44999992847442627,
         0,
         1
       ]
@@ -707,21 +707,21 @@
     {
       "id": "sf.render.towline-mara.node.collision-towline-mara-jaw-port",
       "localTransform": [
-        1,
+        5.756562411785126,
         0,
         0,
         0,
         0,
-        1,
+        5.756562411785126,
         0,
         0,
         0,
         0,
-        1,
+        5.756562411785126,
         0,
-        0,
-        0,
-        0,
+        6.734124004840851,
+        0.10000002384185791,
+        -5.397681355476379,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -735,42 +735,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        5.756562411785126,
         0,
         0,
         0,
         0,
-        1,
+        5.756562411785126,
         0,
         0,
         0,
         0,
-        1,
+        5.756562411785126,
         0,
-        0,
-        0,
-        0,
+        6.734124004840851,
+        0.10000002384185791,
+        -5.397681355476379,
         1
       ]
     },
     {
       "id": "sf.render.towline-mara.node.collision-towline-mara-jaw-starboard",
       "localTransform": [
-        1,
+        5.756562352180481,
         0,
         0,
         0,
         0,
-        1,
+        5.756562352180481,
         0,
         0,
         0,
         0,
-        1,
+        5.756562352180481,
         0,
-        0,
-        0,
-        0,
+        6.734124064445496,
+        0.10000002384185791,
+        5.397680997848511,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -784,41 +784,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        5.756562352180481,
         0,
         0,
         0,
         0,
-        1,
+        5.756562352180481,
         0,
         0,
         0,
         0,
-        1,
+        5.756562352180481,
         0,
-        0,
-        0,
-        0,
+        6.734124064445496,
+        0.10000002384185791,
+        5.397680997848511,
         1
       ]
     },
     {
       "id": "sf.render.towline-mara.node.lod0-armor",
       "localTransform": [
-        1,
+        7.9988908767700195,
         0,
         0,
         0,
         0,
-        1,
+        7.9988908767700195,
         0,
         0,
         0,
         0,
-        1,
+        7.9988908767700195,
         0,
-        0,
-        0,
+        6.749269902706146,
+        0.10000002384185791,
         0,
         1
       ],
@@ -833,20 +833,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        7.9988908767700195,
         0,
         0,
         0,
         0,
-        1,
+        7.9988908767700195,
         0,
         0,
         0,
         0,
-        1,
+        7.9988908767700195,
         0,
-        0,
-        0,
+        6.749269902706146,
+        0.10000002384185791,
         0,
         1
       ]
@@ -854,20 +854,20 @@
     {
       "id": "sf.render.towline-mara.node.lod0-hook-drive-core",
       "localTransform": [
-        1,
+        3.063499927520752,
         0,
         0,
         0,
         0,
-        1,
+        3.063499927520752,
         0,
         0,
         0,
         0,
-        1,
+        3.063499927520752,
         0,
-        0,
-        0,
+        -12.068250179290771,
+        -0.19999998807907104,
         0,
         1
       ],
@@ -882,20 +882,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        3.063499927520752,
         0,
         0,
         0,
         0,
-        1,
+        3.063499927520752,
         0,
         0,
         0,
         0,
-        1,
+        3.063499927520752,
         0,
-        0,
-        0,
+        -12.068250179290771,
+        -0.19999998807907104,
         0,
         1
       ]
@@ -903,20 +903,20 @@
     {
       "id": "sf.render.towline-mara.node.lod0-hull",
       "localTransform": [
-        1,
+        8.5,
         0,
         0,
         0,
         0,
-        1,
+        8.5,
         0,
         0,
         0,
         0,
-        1,
+        8.5,
         0,
-        0,
-        0,
+        -3.5,
+        0.5534692406654358,
         0,
         1
       ],
@@ -931,20 +931,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        8.5,
         0,
         0,
         0,
         0,
-        1,
+        8.5,
         0,
         0,
         0,
         0,
-        1,
+        8.5,
         0,
-        0,
-        0,
+        -3.5,
+        0.5534692406654358,
         0,
         1
       ]
@@ -952,20 +952,20 @@
     {
       "id": "sf.render.towline-mara.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
-        0,
-        0,
+        3.700000047683716,
+        2.4649999141693115,
         0,
         1
       ],
@@ -980,20 +980,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
-        0,
-        0,
+        3.700000047683716,
+        2.4649999141693115,
         0,
         1
       ]
@@ -1001,21 +1001,21 @@
     {
       "id": "sf.render.towline-mara.node.lod0-livery",
       "localTransform": [
-        1,
+        3.380547046661377,
         0,
         0,
         0,
         0,
-        1,
+        3.380547046661377,
         0,
         0,
         0,
         0,
-        1,
+        3.380547046661377,
         0,
-        0,
-        0,
-        0,
+        0.2194528579711914,
+        2.619999885559082,
+        -0.10499978065490723,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1029,41 +1029,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        3.380547046661377,
         0,
         0,
         0,
         0,
-        1,
+        3.380547046661377,
         0,
         0,
         0,
         0,
-        1,
+        3.380547046661377,
         0,
-        0,
-        0,
-        0,
+        0.2194528579711914,
+        2.619999885559082,
+        -0.10499978065490723,
         1
       ]
     },
     {
       "id": "sf.render.towline-mara.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        11.510000228881836,
         0,
         0,
         0,
         0,
-        1,
+        11.510000228881836,
         0,
         0,
         0,
         0,
-        1,
+        11.510000228881836,
         0,
-        0,
-        0,
+        -0.7100000381469727,
+        0.45249998569488525,
         0,
         1
       ],
@@ -1078,20 +1078,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-mara.body",
       "worldTransform": [
-        1,
+        11.510000228881836,
         0,
         0,
         0,
         0,
-        1,
+        11.510000228881836,
         0,
         0,
         0,
         0,
-        1,
+        11.510000228881836,
         0,
-        0,
-        0,
+        -0.7100000381469727,
+        0.45249998569488525,
         0,
         1
       ]
@@ -1549,36 +1549,36 @@
       "uri": "towline_mara.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 496100,
-    "sha256": "f5e89f39c936ef2e621d344892c589efe07b6eda42ef1286494f1e494ef94046",
+    "bytes": 399212,
+    "sha256": "18b267f2ca4fe9c8c6bc176304ca39d92014ce2e9a5158eaf261c5d2bb06dc32",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.1353015899658203,
-        0.46986889839172363,
+        0.13530143599458277,
+        0.46986887587740456,
         0
       ],
       "max": [
         12.490686416625977,
-        2.639808416366577,
+        2.639808382917979,
         7.9988908767700195
       ],
       "min": [
-        -12.220083236694336,
-        -1.7000706195831299,
+        -12.220083544636811,
+        -1.70007063116317,
         -7.9988908767700195
       ],
       "size": [
-        24.710769653320312,
-        4.339879035949707,
+        24.710769961262788,
+        4.3398790140811485,
         15.997781753540039
       ]
     },
@@ -2011,20 +2011,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.9988908767700195,
           0,
           0,
           0,
           0,
-          1,
+          7.9988908767700195,
           0,
           0,
           0,
           0,
-          1,
+          7.9988908767700195,
           0,
-          0,
-          0,
+          6.749269902706146,
+          0.10000002384185791,
           0,
           1
         ],
@@ -2038,20 +2038,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.063499927520752,
           0,
           0,
           0,
           0,
-          1,
+          3.063499927520752,
           0,
           0,
           0,
           0,
-          1,
+          3.063499927520752,
           0,
-          0,
-          0,
+          -12.068250179290771,
+          -0.19999998807907104,
           0,
           1
         ],
@@ -2061,20 +2061,20 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            3.063499927520752,
             0,
             0,
             0,
             0,
-            1,
+            3.063499927520752,
             0,
             0,
             0,
             0,
-            1,
+            3.063499927520752,
             0,
-            0,
-            0,
+            -12.068250179290771,
+            -0.19999998807907104,
             0,
             1
           ],
@@ -2084,20 +2084,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.5,
           0,
           0,
           0,
           0,
-          1,
+          8.5,
           0,
           0,
           0,
           0,
-          1,
+          8.5,
           0,
-          0,
-          0,
+          -3.5,
+          0.5534692406654358,
           0,
           1
         ],
@@ -2111,20 +2111,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.75,
           0,
           0,
           0,
           0,
-          1,
+          0.75,
           0,
           0,
           0,
           0,
-          1,
+          0.75,
           0,
-          0,
-          0,
+          3.700000047683716,
+          2.4649999141693115,
           0,
           1
         ],
@@ -2138,21 +2138,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.380547046661377,
           0,
           0,
           0,
           0,
-          1,
+          3.380547046661377,
           0,
           0,
           0,
           0,
-          1,
+          3.380547046661377,
           0,
-          0,
-          0,
-          0,
+          0.2194528579711914,
+          2.619999885559082,
+          -0.10499978065490723,
           1
         ],
         "name": "LOD0_Livery",
@@ -2165,20 +2165,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.510000228881836,
           0,
           0,
           0,
           0,
-          1,
+          11.510000228881836,
           0,
           0,
           0,
           0,
-          1,
+          11.510000228881836,
           0,
-          0,
-          0,
+          -0.7100000381469727,
+          0.45249998569488525,
           0,
           1
         ],
@@ -2252,19 +2252,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_mara.glb"
   },
-  "runtimeHash": "26a361079f67b2194a8aa3aa228950e10d560bbda17f0663193c48c05a9b9da5",
+  "runtimeHash": "cbf2676689384014c58714c2dc6fbe13459a0b298cf8bd96b2a7a1cd1dc9e3b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           12.490686416625977,
-          2.639808416366577,
+          2.639808382917979,
           7.9988908767700195
         ],
         "min": [
-          -12.220083236694336,
-          -1.7000706195831299,
+          -12.220083544636811,
+          -1.70007063116317,
           -7.9988908767700195
         ]
       },

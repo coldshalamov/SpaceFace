@@ -1,3 +1,4 @@
+import { normalizeSurveyMemory } from '../data/surveyCartography.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
@@ -29,7 +30,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
-import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasPendingCeresWorkfleetAttachments,
+import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, resolveWorldJobCombatRef, hasPendingCeresWorkfleetAttachments,
   resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
@@ -54,6 +55,10 @@ import {
 import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
 import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
+import {
+  createCatalogStationRestore, restoredCatalogStation,
+  isRestoredCatalogStation, bindRestoredCatalogStation,
+} from './catalogStationRestore.js';
 import {
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
@@ -906,6 +911,31 @@ export const save = {
       ['economy', () => this._callSerialize('economy') || {}],
       ['economyContracts', () => this._callSerialize('economyContracts') || {}],
       ['factions', () => this._callSerialize('factions') || {}],
+      // The Verge border record (paid permits, incident ledger, receipt dedupe keys,
+      // court, live marks) rides the same boundary — additive slot, absent owner → {}.
+      ['vergeCourt', () => this._callSerialize('vergeCourt') || {}],
+      // The Frontier board (homestead recs, leads, debts, disputes, calls,
+      // vendettas, paid stamps, planted sites) rides the same boundary. The plan
+      // key IS the envelope key — 'frontier', matching _serializeDataSteps and
+      // the data.frontier the restore lane reads.
+      ['frontier', () => this._callSerialize('frontierHomesteads') || {}],
+      // The Helix docket (deeds, standing, desk ledger, notices, fines, warrants,
+      // precedents, paid stamps, manifest) rides the same boundary — without it a
+      // Continue launders every open instrument and re-pays every precedent.
+      // Same slot as _serializeDataSteps; absent key restores a fresh bag.
+      ['helix', () => this._callSerialize('faction_helix') || {}],
+      // The Vael ledger (lien book, invoices, writs, clauses, debtors, stains,
+      // paid stamps) rides the same boundary — without it a Continue launders
+      // every unsettled lien and re-pays every once-only dividend.
+      // Same slot as _serializeDataSteps; absent key restores a fresh ledger.
+      ['vael', () => this._callSerialize('vaelLiens') || {}],
+      // Meridian's open obligations, the Archive's marks and errands, and Tallyho's
+      // hunts and bets ride the same boundary — a Continue must not wipe a warrant,
+      // launder a black-file mark, or keep a bet's charge while dropping the bet.
+      // Same slots as _serializeDataSteps; an absent key restores a fresh bag.
+      ['meridian', () => this._callSerialize('faction_meridian') || {}],
+      ['archive', () => this._callSerialize('archiveRedaction') || {}],
+      ['tallyho', () => this._callSerialize('tallyho') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
@@ -996,7 +1026,7 @@ export const save = {
       ['lawSecurity', () => this._callSerialize('lawSecurity') || {}],
       ['fieldDepletion', () => this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {})],
       ['livingPoiBehaviors', () => this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {})],
-      ['signalInvestigation', () => this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {})],
+      ['signalInvestigation', () => this._serializeSignalInvestigation()],
       // GOLD-LEDGER (row 444): the player-authored evidence board — absent key keeps an
       // untouched run lazy; evidence re-validation happens on restore, not here.
       ['shipLedger', () => serializeShipLedgerBoard(state) || {}],
@@ -1084,6 +1114,24 @@ export const save = {
     yield 'serialize:economyContracts';
     data.factions = this._callSerialize('factions') || {};
     yield 'serialize:factions';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.vergeCourt = this._callSerialize('vergeCourt') || {};
+    yield 'serialize:vergeCourt';
+    data.frontier = this._callSerialize('frontierHomesteads') || {};
+    yield 'serialize:frontierHomesteads';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.helix = this._callSerialize('faction_helix') || {};
+    yield 'serialize:helix';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.vael = this._callSerialize('vaelLiens') || {};
+    yield 'serialize:vaelLiens';
+    // Same slots as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.meridian = this._callSerialize('faction_meridian') || {};
+    yield 'serialize:meridian';
+    data.archive = this._callSerialize('archiveRedaction') || {};
+    yield 'serialize:archive';
+    data.tallyho = this._callSerialize('tallyho') || {};
+    yield 'serialize:tallyho';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
     data.reactiveMatter = this._callSerialize('reactiveMatter');
@@ -1207,7 +1255,7 @@ export const save = {
     yield 'serialize:fieldDepletion';
     data.livingPoiBehaviors = this._callSerialize('livingPoiBehaviors') || clonePlain(state.livingPoiBehaviors || {});
     yield 'serialize:livingPoiBehaviors';
-    data.signalInvestigation = this._callSerialize('scanner') || clonePlain(state.signalInvestigation || {});
+    data.signalInvestigation = this._serializeSignalInvestigation();
     yield 'serialize:signalInvestigation';
     // GOLD-LEDGER: owner-serialized board (pins/links); absent-board writes the absent bag.
     data.shipLedger = serializeShipLedgerBoard(state) || {};
@@ -1506,6 +1554,22 @@ export const save = {
     if (Array.isArray(raw.dockLines)) bag.dockLines = raw.dockLines.slice(-12);
     if (Number.isFinite(raw.lastDigest)) bag.lastDigest = raw.lastDigest;
     if (Number.isFinite(raw.legendDay)) bag.legendDay = raw.legendDay;
+  },
+
+  _serializeSignalInvestigation() {
+    const snapshot = this._callSerialize('scanner');
+    if (snapshot) return snapshot;
+    // Scanner owns this saved namespace; headless/absent-owner captures use the same shelf.
+    return { ...clonePlain(this.state.signalInvestigation || {}),
+      wreckSurvey: this._callSerialize('scanReveal') || normalizeSurveyMemory(this.state.scanReveal) };
+  },
+
+  _restoreSignalInvestigation(data) {
+    if (this.registry?.get?.('scanner')) this._callDeserialize('scanner', data);
+    else {
+      this.state.signalInvestigation = clonePlain(data || {});
+      this._callDeserialize('scanReveal', data?.wreckSurvey);
+    }
   },
 
   _serializeNav() {
@@ -6644,6 +6708,7 @@ export const save = {
       }
     }
     state.restoreEnvelopeRecordIds = envelopeRecordIds.size ? envelopeRecordIds : null;
+    state.restoreEnvelopeStations = createCatalogStationRestore(savedPersistentList, data);
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
@@ -6670,6 +6735,7 @@ export const save = {
       // Record-id deferral is restore-scoped (cleared in _closeRestoreSession): a publish that
       // ran before the fault must not suppress record rematerialize for the rest of the run.
       delete state.restoreEnvelopeRecordIds;
+      delete state.restoreEnvelopeStations;
       let drainedRunTransition = null;
       if (pendingRunTransition) {
         try { drainedRunTransition = pendingRunTransition(); }
@@ -6721,6 +6787,10 @@ export const save = {
       this._reportRestoreProgress(0.08, 'Clearing the old sector');
       yield 'cleared';
 
+      // Spawn enrichment must read the incoming run, never the outgoing sector's losses.
+      yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
+      yield 'loss-ledger-restored';
+
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
       yield 'player-restored';
@@ -6763,6 +6833,18 @@ export const save = {
       this._callDeserialize('economyContracts', data.economyContracts);
       yield 'economy-contracts-restored';
       this._callDeserialize('factions', data.factions);
+      // Absent on older saves — the verge deserialize heals a missing bag to fresh state.
+      this._callDeserialize('vergeCourt', data.vergeCourt);
+      // Absent on older saves — the frontier deserialize heals a missing bag to fresh state.
+      this._callDeserialize('frontierHomesteads', data.frontier);
+      // Absent on older saves — the helix deserialize heals a missing bag to a fresh docket.
+      this._callDeserialize('faction_helix', data.helix);
+      // Absent on older saves — the vael deserialize heals a missing bag to a fresh ledger.
+      this._callDeserialize('vaelLiens', data.vael);
+      // Absent on older saves — each deserialize heals a missing bag to a fresh book.
+      this._callDeserialize('faction_meridian', data.meridian);
+      this._callDeserialize('archiveRedaction', data.archive);
+      this._callDeserialize('tallyho', data.tallyho);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
@@ -6781,7 +6863,7 @@ export const save = {
       yield 'deserialized-regional-ecology';
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);
       yield 'deserialized-living-poi';
-      this._callDeserialize('scanner', data.signalInvestigation);
+      this._restoreSignalInvestigation(data.signalInvestigation);
       yield 'deserialized-scanner';
       // The long incident/encounter tail is the restore's biggest contiguous un-sliced
       // block — each call below is its own slice point under the same driver cadence.
@@ -6952,7 +7034,7 @@ export const save = {
       this._clearStaleTargets();
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
-      yield* this._restoreCombatSteps(data.combat, entityIdRemap);
+      yield* this._restoreCombatSteps(data.combat, entityIdRemap, data.npcJobs);
       yield 'combat-ledger-restored';
       // Rig Workshop: after persistent entity ids and the combat ledger are remapped,
       // before deferred native reconciliation / save:loaded. Corrupt or conflicting
@@ -7054,7 +7136,6 @@ export const save = {
       yield 'deserialized-tail';
       yield* this._callDeserializeChunked('aceMemory', data.aceMemory);
       yield 'ace-memory-restored';
-      yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
       yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
       yield* this._callDeserializeChunked('aftermathWrecks', data.aftermathWrecks);
       // Pending kill cases + priced incidents must land before any post-load wreck resolution;
@@ -7357,6 +7438,7 @@ export const save = {
     // route republishes its own set in _openRestoreSession. Clearing must precede the error
     // paths or a failed restore would suppress record rematerialize for the rest of the run.
     delete state.restoreEnvelopeRecordIds;
+    delete state.restoreEnvelopeStations;
     this._lastAutosaveAt = nowMs(); // don't immediately autosave from the load's own sector:enter
     this._lastAutosavePlaytime = state.meta.playtimeS;
     // Release this failed session's physics barrier before a newer queued route can
@@ -7627,11 +7709,12 @@ export const save = {
     return r.value;
   },
 
-  *_restoreCombatSteps(d, entityIdRemap) {
+  *_restoreCombatSteps(d, entityIdRemap, incomingJobs = null) {
     const state = this.state;
     const resolveEntityRef = (ref) => {
       if (!ref || typeof ref !== 'object') return null;
       if (ref.kind === 'player') return state.playerId || null;
+      if (ref.kind === 'worldJob') return resolveWorldJobCombatRef(state, ref, incomingJobs);
       if (ref.kind === 'persistent') {
         const mapped = entityIdRemap && entityIdRemap.get(String(ref.saveId));
         return mapped != null && state.entities?.has(mapped) ? mapped : null;
@@ -8048,6 +8131,7 @@ export const save = {
         const staleIds = [];
         for (const e of state.entityList) {
           if (!e || e.id === state.playerId || e.isPlayer) continue;
+          if (isRestoredCatalogStation(state, e)) continue;
           const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
           if (persistent) staleIds.push(e.id);
         }
@@ -8065,6 +8149,11 @@ export const save = {
       if (spawnIndex > startIndex && nowMs() - sliceStart >= RESTORE_YIELD_SLICE_MS) break;
       const saved = savedList[spawnIndex];
       if (!saved || typeof saved !== 'object') continue;
+      const restoredStation = restoredCatalogStation(state, saved);
+      if (restoredStation) {
+        if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), restoredStation.id);
+        continue;
+      }
       const spec = clonePlain(saved);
       delete spec._isPlayer;
       // One live hull per worldRecordId: an envelope written by a leaking build can hold
@@ -8113,6 +8202,7 @@ export const save = {
       delete spec.activity;
       const e = this.helpers.spawnEntity(spec);
       attachSavedActivity(e, savedActivity);
+      bindRestoredCatalogStation(state, saved, e);
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
@@ -8621,6 +8711,10 @@ function hasRestorablePlayer(data) {
 function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  // Contradictory copies of one authored station cannot choose a body by array order.
+  // Validate on the detached candidate, before restore events, transitions or rollback capture.
+  try { createCatalogStationRestore(data.entities?.persistent, data); }
+  catch (_) { return { ok: false, reason: 'ambiguous_catalog_station' }; }
   // Validate the new custody section on the detached candidate, before restore side effects.
   try {
     const orchard = readOrchardSaveSection(data.sites);

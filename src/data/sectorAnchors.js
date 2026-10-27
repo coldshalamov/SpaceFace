@@ -241,7 +241,7 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'f_charon_3', center: { x: -980, z: -540 }, clusterRadius: 400 },
     ],
     pois: [
-      { id: 'poi_colony', pos: { x: -620, z: 1420 }, landmarkGlb: 'place_conveyor_barge', landmark: true },
+      { id: 'poi_colony', pos: { x: -620, z: 1420 }, landmarkGlb: 'place_charon_colony_service_barge', landmark: true },
       { id: 'poi_charon_lung_marker', pos: { x: 480, z: -1100 }, landmarkGlb: 'place_lane_beacon' },
       { id: 'poi_charon_tether_wreck', pos: { x: -1280, z: 360 }, landmarkGlb: 'place_dead_hulk' },
       // Alien Ecology program (AE-040): world-site-owned body — the anchors row only carries

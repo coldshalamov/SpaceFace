@@ -11,6 +11,7 @@ import { deepFreeze, defineEncounter } from './catalog.js';
 import { setEntityDoctrine } from '../../ai/doctrine.js';
 import { occupantGenerationOf } from '../../core/entity.js';
 import { ensurePhysicsBodySpec } from '../../core/physicsAuthority.js';
+import { attachmentBindsOccupant } from '../../combat/attachments.js';
 
 export const encounterOrder = 358;
 export const trigger = deepFreeze({
@@ -38,6 +39,8 @@ const BASE_RADIUS = 42;
 const BASE_BOUNTY_CR = 520;
 const GUARD_PATROL_RADIUS = 130;
 const RAID_DEADLINE_S = 130;
+const EXTRACTION_RANGE_WU = 360;
+const CAMP_BRIEF = `LANE WATCH: a press camp holds a captive Mule and the take on its hardstand. Break the garrison, burn the base, or tow the Mule ${EXTRACTION_RANGE_WU} WU off the camp and cut the Line so it can run.`;
 
 function releaseCast(live) {
   if (!live) return;
@@ -76,6 +79,44 @@ function foreignCaptive(state, record, captive) {
     || (vesselId != null && state.player?.ownedShips?.some(row => row?.vesselId === vesselId))
     || ai !== record.ai || ai?.activity !== record.activity
     || captive.physicsBody !== record.body || captive.data?.intent !== record.intent;
+}
+
+function campRange(live, entity) {
+  return Math.hypot(entity.pos?.x - live.data.camp.x, entity.pos?.z - live.data.camp.z);
+}
+
+function extractionTow(live, state, proof) {
+  const tow = proof.extraction;
+  const captive = original(state, proof.captive), player = original(state, tow?.player);
+  const line = tow?.attachment;
+  if (!captive || captive.alive === false || !player || player.alive === false
+    || player.id !== state.playerId || foreignCaptive(state, proof.captive, captive)
+    || state.combat?.attachments?.byId?.[line?.id] !== line
+    || line?.ownerId !== player.id || line?.targetId !== captive.id
+    || !attachmentBindsOccupant(line, player.id, occupantGenerationOf(player))
+    || !attachmentBindsOccupant(line, captive.id, proof.captive.generation)) return null;
+  return tow;
+}
+
+function beginExtractionTow(d, live, state, proof, payload) {
+  const captive = original(state, proof.captive), player = state.entities.get(state.playerId);
+  const line = state.combat?.attachments?.byId?.[payload?.attachmentId];
+  if (!captive || captive.alive === false || !player || player.alive === false
+    || foreignCaptive(state, proof.captive, captive)
+    || payload?.actorId !== player.id || payload?.targetId !== captive.id
+    || line?.state !== 'active' || line.ownerId !== player.id || line.targetId !== captive.id
+    || !attachmentBindsOccupant(line, player.id, occupantGenerationOf(player))
+    || !attachmentBindsOccupant(line, captive.id, proof.captive.generation)) return;
+  // A later relatch can finish the same original tow after a snap. First contact
+  // outside the camp cannot turn unrelated drift into a witnessed extraction.
+  if (!(campRange(live, captive) <= GUARD_PATROL_RADIUS + 50)
+    && original(state, proof.extraction?.player) !== player) return;
+  proof.extraction = { attachment: line, player: witness(player), cutClear: false };
+  if (!proof.towAnnounced) {
+    proof.towAnnounced = true;
+    d.emit('comms:log', { from: 'PRESSED MULE', kind: 'encounter',
+      text: `You have me. Tow me ${EXTRACTION_RANGE_WU} WU off the camp; I will call clear. Then cut the Line. My drive still works.` });
+  }
 }
 
 function freeCaptive(live, state, d, record) {
@@ -243,14 +284,33 @@ export const runtime = Object.freeze({
       guards: d.entsOf(live, 'raider').map(witness), settling: false });
     live.phase = 'conflict';
     d.say(live, 'alert',
-      'LANE WATCH: a press camp is standing off the lane — a real base, guarded, with the take on the hardstand.',
+      CAMP_BRIEF,
       null, { primary: true, literal: true });
   },
 
   event(d, live, state, name, payload) {
     const proof = campWitnesses.get(live);
-    if (!proof || proof.settling || live.phase === 'done' || name !== 'squadKill'
+    if (!proof || proof.settling || live.phase === 'done'
       || d._saveRestoring || state.encounterDirector?.live?.[live.id] !== live) return;
+    if (name === 'tetherAttached') return beginExtractionTow(d, live, state, proof, payload);
+    if (name === 'tetherBroken') {
+      const tow = extractionTow(live, state, proof);
+      const captive = original(state, proof.captive);
+      // Judge the actual canonical cut at its position, not a later coast across
+      // the boundary. A snap, missing line or recycled body is never a release.
+      if (tow && payload?.attachmentId === tow.attachment.id
+        && payload.actorId === state.playerId && payload.ownerId === state.playerId
+        && payload.targetId === captive.id && payload.reason === 'tether_cut'
+        && tow.attachment.state === 'broken' && tow.attachment.breakReason === 'tether_cut'
+        && d.now() < live.deadlineAt && campRange(live, captive) >= EXTRACTION_RANGE_WU) {
+        tow.cutClear = true;
+        // The deliberate release is the action's completion, not the next 1 Hz
+        // director poll. Tick's settlement guard still owns all public effects.
+        return runtime.tick(d, live, state, d.now());
+      }
+      return;
+    }
+    if (name !== 'squadKill') return;
     for (const record of [proof.base, ...proof.guards]) {
       const entity = original(state, record);
       if (entity && entity.id === payload?.id && entity.alive === false) record.dead = true;
@@ -304,6 +364,25 @@ export const runtime = Object.freeze({
       return d.resolve(live, 'garrison_broken', { speak: true });
     }
 
+    const tow = extractionTow(live, state, proof);
+    if (tow?.cutClear && now < live.deadlineAt) {
+      proof.settling = true;
+      if (freeCaptive(live, state, d, proof.captive)) {
+        d.rep('faction_free', 2, 'press_camp_captive_extracted');
+        d.emit('comms:log', { from: 'LANE WATCH', kind: 'encounter',
+          text: 'The Mule is clear. Camp and garrison still stand; you pulled a crew out, not a bounty.' });
+        releaseCast(live);
+        return d.resolve(live, 'captive_extracted', { speak: true });
+      }
+      proof.settling = false;
+    }
+    if (tow?.attachment.state === 'active' && !proof.clearAnnounced
+      && campRange(live, original(state, proof.captive)) >= EXTRACTION_RANGE_WU) {
+      proof.clearAnnounced = true;
+      d.emit('comms:log', { from: 'PRESSED MULE', kind: 'encounter',
+        text: 'Clear of the patrol ring. Cut the Line; I can take it from here.' });
+    }
+
     if (now >= live.deadlineAt) {
       proof.settling = true;
       releaseCast(live);
@@ -328,7 +407,7 @@ export default defineEncounter(trigger, {
   factionId: 'faction_reach',
   context: 'encounter',
   title: 'THE PRESS CAMP',
-  primaryLine: 'LANE WATCH: a press camp is standing off the lane — a real base, guarded, with the take on the hardstand.',
+  primaryLine: CAMP_BRIEF,
   squad: {
     archetypes: ['corsair_raider', 'wasp_swarmer'],
     size: [3, 4],
@@ -353,6 +432,7 @@ export default defineEncounter(trigger, {
   receipts: {
     base_destroyed: 'BASE DESTROYED — the first press camp to burn; the take is salvage now.',
     garrison_broken: 'GARRISON BROKEN — the camp still stands, unguarded and very flammable.',
+    captive_extracted: 'CREW EXTRACTED — the Mule runs free; the camp and its garrison still stand.',
     raid_over: 'The raid never came. The camp works its pocket another night.',
     contact_lost: 'CONTACT LOST — no camp destruction or captive release was confirmed.',
   },

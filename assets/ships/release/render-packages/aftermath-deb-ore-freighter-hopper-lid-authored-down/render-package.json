@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "259734b6a9e478c4c68d24dc551da67d2da58e4f0288949f7dbf93fa91543d73",
+  "contentHash": "12ea2c6976d6854a5c56970cc69a6f4e3743f3fe5fbaac19fc8960f5849c93cd",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          12.46945858001709,
-          15.287537574768066,
+          12.469457754112488,
+          15.287536524233246,
           16.10955810546875
         ],
         "min": [
-          -12.46945858001709,
-          -15.287537574768066,
+          -12.469457754112488,
+          -15.287536524233246,
           -16.10955810546875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a28df45dd6111ca24281a596c7c5bb8aa47b4428814ee5118efd7f1a4e1e9971",
+      "geometryHash": "255d998cd29e1a8a58dab9bab9cbc91da35ece1f55e4c9fa76738c4f6d8eb947",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 12750,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          12.46945858001709,
-          15.287537574768066,
+          12.469457754112488,
+          15.287536524233246,
           16.10955810546875
         ],
         "min": [
-          -12.46945858001709,
-          -15.287537574768066,
+          -12.469457754112488,
+          -15.287536524233246,
           -16.10955810546875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ae8783cd9b39deb0b37c4d6d5a0b0185d55daddc0877f82d72db54dc563a7e2",
+      "geometryHash": "21ac42e5b6e059dda980a3b881c4dd33d5782afd44e5b69ac4bc15a2a6d6e7ed",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 6120,
       "indexed": true,
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          12.46945858001709,
-          15.287537574768066,
+          12.469457754112488,
+          15.287536524233246,
           16.10955810546875
         ],
         "min": [
-          -12.46945858001709,
-          -15.287537574768066,
+          -12.469457754112488,
+          -15.287536524233246,
           -16.10955810546875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aeb5db7bfad6bd2fc29f021e67a1166bd432a73cf7a34c59999a69ba5e0a8eb3",
+      "geometryHash": "77d9abba51949fd5da10a4f39cd4b91ba213322541804a58f90bdb83834a891d",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 2550,
       "indexed": true,
@@ -271,17 +271,17 @@
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
       "localTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -300,17 +300,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
       "worldTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -370,17 +370,17 @@
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
       "localTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -399,17 +399,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
       "worldTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -469,17 +469,17 @@
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation",
       "localTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -498,17 +498,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.body",
       "worldTransform": [
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
         0,
-        1,
+        16.10955810546875,
         0,
         0,
         0,
@@ -527,14 +527,14 @@
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 458004,
-    "sha256": "8172192e69868413ad200f375c7c63977056cad63b0b2b5ff29ebe56b7bb11b0",
+    "bytes": 306704,
+    "sha256": "faed2284a55aa37976c7dabad6cb99fb1f9d08b3a7ad11224869447372581713",
     "uri": "render.glb"
   },
   "runtime": {
@@ -545,18 +545,18 @@
         0
       ],
       "max": [
-        12.46945858001709,
-        15.287537574768066,
+        12.469457754112488,
+        15.287536524233246,
         16.10955810546875
       ],
       "min": [
-        -12.46945858001709,
-        -15.287537574768066,
+        -12.469457754112488,
+        -15.287536524233246,
         -16.10955810546875
       ],
       "size": [
-        24.93891716003418,
-        30.575075149536133,
+        24.938915508224976,
+        30.575073048466493,
         32.2191162109375
       ]
     },
@@ -588,17 +588,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
@@ -615,17 +615,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
@@ -642,17 +642,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
           0,
-          1,
+          16.10955810546875,
           0,
           0,
           0,
@@ -671,19 +671,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
   },
-  "runtimeHash": "6057253ecca3f1fbe5ea56bcc635c6476fad83909fa1645789095563a55a9cf0",
+  "runtimeHash": "46a818dc720f839482f202f8bf564ef4ca801e10f8704bcad564e2a66ca4e676",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.46945858001709,
-          15.287537574768066,
+          12.469457754112488,
+          15.287536524233246,
           16.10955810546875
         ],
         "min": [
-          -12.46945858001709,
-          -15.287537574768066,
+          -12.469457754112488,
+          -15.287536524233246,
           -16.10955810546875
         ]
       },

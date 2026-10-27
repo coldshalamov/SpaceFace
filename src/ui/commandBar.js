@@ -34,30 +34,32 @@ const ROLE_LABEL = {
 };
 
 const STYLE_ID = 'sf-commandbar-style';
+// ORRERY lease (design/frontend/ORRERY.md §3) for the SPEC3-36 dormant skeleton: this strip is
+// flag-gated OFF in flight (uiRoot COMMAND_BAR_IN_FLIGHT=false — the three-anchor law retired it;
+// its vitals live as arcs in the Cluster) and stays token-true for the day the screen-layer
+// header lands. No bordered box and no cut-corner plate: the strip is anchored by the system's
+// head veil (--dp-veil-head — occlusion that reaches the frame edge with no inner boundary), and
+// cells are separated by the printed hairline rule, which is a sanctioned straight edge.
+// Labels are the etched Archivo role, values the tabular numeral face; colour grammar: bone and
+// phosphor carry readings, danger red carries threat states (hull/armor/energy/heat failure),
+// the one warm lamp accent is the full hold — the pilot's actionable decision point.
 const COMMAND_BAR_CSS = `
-/* Command Bar — persistent top resource strip (UI full-pass Slice 3). Strategy-console direction:
-   cut-corner panel, restricted desaturated palette, mono values, brightness-encodes-state.
-   This is a flight-mounted element next to the live canvas, so it is compositor-cheap by rule
-   (check-ui-frame-sleep): solid border + semi-transparent fill, NO box-shadow/transition/backdrop. */
 #sf-command-bar {
   position: absolute;
-  top: 10px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   z-index: 12;
   display: flex;
   align-items: stretch;
   gap: 0;
-  padding: 6px 10px;
-  background: var(--console-bg, rgba(8,13,24,.82));
-  border: 1px solid var(--console-edge, rgba(132,160,200,.22));
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
-  font-size: calc(12px * var(--ui-scale, 1));
-  letter-spacing: .02em;
+  padding: 10px 18px 9px;
+  background: var(--dp-veil-head);
+  font-size: var(--dp-fs-etch);
   pointer-events: none;
   /* visibility is gated by .sf-cb--active below */
   opacity: 0;
-  transition: opacity .2s ease;
+  transition: opacity var(--dp-d-settle, 220ms) var(--dp-ease-settle, cubic-bezier(.16, 1, .3, 1));
 }
 #sf-command-bar.sf-cb--active { opacity: 1; }
 /* Hidden whenever a modal/menu is open or the player is docked — same gate as #hud. Live
@@ -69,46 +71,61 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 3px;
-  padding: 0 12px;
+  gap: 4px;
+  padding: 0 14px;
   line-height: 1.1;
   min-width: 0;
 }
 #sf-command-bar .sf-cb-cell + .sf-cb-cell {
-  border-left: 1px solid var(--console-edge, rgba(132,160,200,.18));
+  border-left: 1px solid var(--dp-rule, rgb(232 226 212 / .10));
 }
 #sf-command-bar .sf-cb-k {
-  font-family: var(--mono, monospace);
-  font-size: calc(12px * var(--ui-scale, 1));
-  letter-spacing:.06em;
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--ink-mute, #5a7aa0);
+  line-height: 1;
+  color: var(--dp-ink-mute, #b0aea6);
 }
 #sf-command-bar .sf-cb-v {
-  font-family: var(--mono, monospace);
-  font-size: calc(14px * var(--ui-scale, 1));
-  color: var(--ink, #d3e6ff);
-  font-variant-numeric: tabular-nums;
+  font-family: var(--dp-face-numeral, var(--dp-face-read, "Archivo", sans-serif));
+  font-stretch: 100%;
+  font-weight: 520;
+  font-size: var(--dp-fs-data);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0;
+  color: var(--dp-ink, #e8e2d4);
   white-space: nowrap;
 }
 
-/* Identity cell (left) — brand + sector. Slightly wider, anchors the strip. */
+/* Identity cell (left) — etched name + sector. Anchors the strip, spends no accent. */
 #sf-command-bar .sf-cb-cell--id { min-width: 132px; }
 #sf-command-bar .sf-cb-brand {
-  font-family: var(--mono, monospace);
-  font-size: calc(14px * var(--ui-scale, 1));
-  letter-spacing:.06em;
-  color: var(--console-cyan, #4f8fdd);
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 650;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--dp-ink-dim, #b7b4a6);
 }
 #sf-command-bar .sf-cb-sector {
-  font-family: var(--mono, monospace);
-  font-size: calc(12px * var(--ui-scale, 1));
-  letter-spacing: .06em;
-  color: var(--ink-mute, #5a7aa0);
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--dp-ink-mute, #b0aea6);
 }
 
-/* Vitals — inline bars. Restrict to TWO hue families: steel (hull) + cyan (shield/energy).
-   Heat uses amber only when climbing (dim when idle). Bar fill via width (no transition — frame-sleep). */
+/* Vitals — thin linear gauges (scales: the sanctioned straight edge for a ruled reading; the
+   arc form of these quantities is the Cluster's job). Brightness encodes state: dim = nominal,
+   danger red = the layer failing. */
 #sf-command-bar .sf-cb-vitals {
   display: flex;
   flex-direction: column;
@@ -122,17 +139,19 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 }
 #sf-command-bar .sf-cb-vlabel {
   width: 38px;
-  font-family: var(--mono, monospace);
-  font-size: calc(12px * var(--ui-scale, 1));
-  letter-spacing:.06em;
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--ink-mute, #5a7aa0);
+  color: var(--dp-ink-mute, #b0aea6);
 }
 #sf-command-bar .sf-cb-track {
   position: relative;
   width: 92px;
-  height: 6px;
-  background: rgba(132,160,200,.12);
+  height: 5px;
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
   overflow: hidden;
 }
 #sf-command-bar .sf-cb-fill {
@@ -143,54 +162,87 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   transform: scaleX(1);
 }
 #sf-command-bar .sf-cb-num {
-  font-family: var(--mono, monospace);
-  font-size: calc(12px * var(--ui-scale, 1));
-  color: var(--ink-dim, #84a0c8);
+  font-family: var(--dp-face-numeral, var(--dp-face-read, "Archivo", sans-serif));
+  font-stretch: 100%;
+  font-weight: 520;
+  font-size: var(--dp-fs-etch);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--dp-ink-dim, #b7b4a6);
   width: 38px;
   text-align: right;
 }
-/* Brightness encodes state: dim = healthy/nominal, bright = active/problem.
-   Hull: steel when healthy, red when critical. Shield/energy: cyan (active systems). Heat: amber
-   (only earns visibility when actually hot). */
-#sf-command-bar .sf-cb-fill--hull { background: var(--console-steel-dim, #5a7aa0); }
-#sf-command-bar .sf-cb-fill--armor { background: var(--ink-dim, #84a0c8); }
-#sf-command-bar .sf-cb-fill--shield { background: var(--console-cyan, #4f8fdd); }
-#sf-command-bar .sf-cb-fill--energy { background: var(--console-cyan-dim, #235c78); }
-#sf-command-bar .sf-cb-fill--heat { background: var(--console-amber-dim, #5c4019); }
-/* Bright = problem state (overrides dim): hull critical, energy low, heat high. */
-#sf-command-bar.sf-cb--hull-crit .sf-cb-fill--hull { background: var(--console-red, #ff5470); }
-#sf-command-bar.sf-cb--armor-crit .sf-cb-fill--armor { background: var(--console-amber, #ffb347); }
-#sf-command-bar.sf-cb--energy-low .sf-cb-fill--energy { background: var(--console-amber, #ffb347); }
-#sf-command-bar.sf-cb--heat-high .sf-cb-fill--heat { background: var(--console-amber, #ffb347); }
+/* The fills: bone for the physical layers, phosphor for the energy readings, the idle lamp for
+   heat (the lamp you could wake). A failing layer is threat: danger red. */
+#sf-command-bar .sf-cb-fill--hull { background: color-mix(in srgb, var(--dp-ink, #e8e2d4) 62%, transparent); }
+#sf-command-bar .sf-cb-fill--armor { background: color-mix(in srgb, var(--dp-ink, #e8e2d4) 38%, transparent); }
+#sf-command-bar .sf-cb-fill--shield { background: color-mix(in srgb, var(--dp-phos, #dfeeff) 58%, transparent); }
+#sf-command-bar .sf-cb-fill--energy { background: color-mix(in srgb, var(--dp-phos, #dfeeff) 32%, transparent); }
+#sf-command-bar .sf-cb-fill--heat { background: color-mix(in srgb, var(--dp-lamp-dim, #8a6b3a) 85%, transparent); }
+/* Bright = problem state (overrides rest): hull critical, armor bitten through, energy starving,
+   heat failing. All four are threats to the hull, so all four speak danger red. */
+#sf-command-bar.sf-cb--hull-crit .sf-cb-fill--hull { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--armor-crit .sf-cb-fill--armor { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--energy-low .sf-cb-fill--energy { background: var(--dp-danger, #ff5038); }
+#sf-command-bar.sf-cb--heat-high .sf-cb-fill--heat { background: var(--dp-danger, #ff5038); }
 
 /* Economy cell — cargo + credits, always pinned (the core fix for "am I gaining anything?"). */
 #sf-command-bar .sf-cb-cell--cargo { min-width: 96px; }
 #sf-command-bar .sf-cb-cell--credits { min-width: 96px; }
-/* Credits delta arrow — surfaces gain/loss direction. Bright mint = gaining, dim red = losing. */
+/* Credits delta arrow — surfaces gain/loss direction with a shape, never colour alone.
+   Gain is money you earned (the lamp); loss is a debit (danger); flat stays quiet. */
 #sf-command-bar .sf-cb-delta {
-  font-family: var(--mono, monospace);
-  font-size: max(12px, calc(9px * var(--ui-scale, 1)));
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-size: var(--dp-fs-etch);
   margin-left: 4px;
 }
-#sf-command-bar .sf-cb-delta--up { color: var(--console-mint, #4fbf8f); }
-#sf-command-bar .sf-cb-delta--down { color: var(--console-red, #ff5470); }
-#sf-command-bar .sf-cb-delta--flat { color: var(--ink-mute, #5a7aa0); }
+#sf-command-bar .sf-cb-delta--up { color: var(--dp-lamp, #f2b950); }
+#sf-command-bar .sf-cb-delta--down { color: var(--dp-danger, #ff5038); }
+#sf-command-bar .sf-cb-delta--flat { color: var(--dp-ink-mute, #b0aea6); }
 
-/* Cargo full warning — bright amber when hold is full (a decision point: sell or jettison). */
-#sf-command-bar.sf-cb--cargo-full .sf-cb-v--cargo { color: var(--console-amber, #ffb347); }
+/* Cargo full warning — the one warm accent on the strip: a full hold is a decision point
+   (sell or jettison), which is exactly what the lamp means. */
+#sf-command-bar.sf-cb--cargo-full .sf-cb-v--cargo { color: var(--dp-lamp, #f2b950); }
 
 /* Role/class cell — your ship's function (Miner/Fighter/...). */
 #sf-command-bar .sf-cb-cell--role { min-width: 78px; }
 
-/* Recent impact is one anchored danger receipt, not floating text or a visor arc. It appears only
-   after player damage, then yields to the normal strip. Screen readers already receive the damage
-   alert channel, so this visual status is intentionally not an assertive live region. */
+/* Recent impact is one anchored receipt, not floating text or a visor arc. It appears only
+   after player damage, then yields to the normal strip. Screen readers already receive the
+   damage alert channel (alerts.js), so this visual status is intentionally not assertive.
+   Arrival is a 180 ms opacity settle on transforms/opacity only — nothing just appears. */
 #sf-command-bar .sf-cb-cell--impact { display:none; min-width:210px; max-width:290px; }
-#sf-command-bar.sf-cb--impact .sf-cb-cell--impact { display:flex; }
+#sf-command-bar.sf-cb--impact .sf-cb-cell--impact { display:flex;
+  animation: sf-cb-impact-in 180ms var(--dp-ease-out, cubic-bezier(.16, 1, .3, 1)) 1; }
+@keyframes sf-cb-impact-in { from { opacity: 0; } to { opacity: 1; } }
+html.sf-reduce-motion #sf-command-bar.sf-cb--impact .sf-cb-cell--impact { animation: none; }
 #sf-command-bar .sf-cb-impact {
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  color:var(--console-amber, #ffb347); font-size:max(12px, calc(11px * var(--ui-scale, 1)));
+  font-family: var(--dp-face-etch, "Archivo", sans-serif);
+  font-stretch: 112%;
+  font-weight: 600;
+  font-size: var(--dp-fs-etch);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dp-ink-dim, #b7b4a6);
+}
+
+@media (forced-colors: active) {
+  #sf-command-bar { background: Canvas; }
+  #sf-command-bar .sf-cb-cell + .sf-cb-cell { border-left-color: CanvasText; }
+}
+
+/* P10 condense: at a squeezed frame the strip tightens its gutters and gauges — the type floor
+   and the row structure hold, nothing is shrunk below the token scale. */
+@media (max-width: 1500px) {
+  #sf-command-bar { padding: 8px 12px 7px; }
+  #sf-command-bar .sf-cb-cell { padding: 0 9px; }
+  #sf-command-bar .sf-cb-cell--id { min-width: 0; }
+  #sf-command-bar .sf-cb-cell--cargo,
+  #sf-command-bar .sf-cb-cell--credits { min-width: 0; }
+  #sf-command-bar .sf-cb-cell--impact { min-width: 0; max-width: 200px; }
+  #sf-command-bar .sf-cb-track { width: 64px; }
+  #sf-command-bar .sf-cb-vlabel { width: 34px; }
 }
 `;
 

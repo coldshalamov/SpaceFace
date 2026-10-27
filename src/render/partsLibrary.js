@@ -1,3 +1,4 @@
+import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 import { salvageTenderWholeShipVisual, salvageTenderRequiresAuthoredHull } from '../features/salvageTender/readModel.js';
 import { isOrchardFrame, isOrchardPod, orchardPlaceTransform, orchardCatalogRows, ORCHARD_FRAME_FILE, ORCHARD_POD_FILE } from '../data/anvilOrchardIdentity.js';
 import { recordOrchardAuthoredSource } from './anvilOrchardVisuals.js';
@@ -176,6 +177,7 @@ import {
 } from './programCanon.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
+import { STORMSHIFT_RECEIVER_COLLISION, STORMSHIFT_RECEIVER_SOLIDS, STORMSHIFT_RECEIVER_SOURCE_SCALE } from '../data/stormshiftReceiverCollision.js';
 import {
   entityRequiresAuthoredPresentation,
   hasExplicitAuthoredGeologyPresentation,
@@ -411,6 +413,8 @@ const PLACE_FILES = Object.freeze([
   'places/place_ceres_bait_wreck.glb',
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
+  'places/place_charon_colony_service_barge.glb',
+  'places/place_last_shift_fairlead.glb',
   'places/place_mining_drone.glb',
   'places/place_lane_pin.glb',
   'places/place_cold_locker.glb',
@@ -1648,7 +1652,7 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       // Same resolution order as the decode runway: census dressing (drones, gate stations,
       // site props) claims its packaged file before the generic place mapping.
       const censusFile = resolve19305CensusAEntityPackagedFile(entity);
-      const placeFile = censusFile || placeFileForEntity(entity);
+      const placeFile = censusFile || resolvePlaceFileForEntity(entity);
       if (placeFile) {
         const overlay = censusFile ? null : stationOverlayFileForEntity(entity);
         plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
@@ -2002,6 +2006,8 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'wholeships/helios_lark.glb',
   miner: 'wholeships/helios_cradle.glb',
   hauler: 'wholeships/helios_span.glb',
+  stormshift_collector: 'wholeships/ship_stormshift_collector_v01.glb',
+  stormshift_receiver: 'wholeships/ship_stormshift_receiver_v01.glb',
   // PQ-193.07: rare Helios heavy. Additive key — do not remap hauler/Span or Atlas.
   arclight: 'wholeships/helios_arclight.glb',
   ore_carrier: 'wholeships/ore_barge.glb',
@@ -2033,6 +2039,8 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'SF_WHOLESHIP_HELIOS_LARK',
   miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
   hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
+  stormshift_collector: 'SF_STORMSHIFT_COLLECTOR_V01',
+  stormshift_receiver: 'SF_STORMSHIFT_RECEIVER_V01',
   arclight: 'SF_WHOLESHIP_HELIOS_ARCLIGHT',
   ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
   tender: 'SF_WHOLESHIP_REPAIR_TENDER',
@@ -2446,7 +2454,12 @@ export function wholeShipVisualForEntity(entity, options = {}) {
       assetRef,
     ));
   }
-  const trafficRole = String(data.trafficRole || '');
+  // The dedicated cradle belongs to the authored receiving worker. An ordinary
+  // hauler with a copied/stale role cannot change silhouette through that tag alone.
+  const requestedTrafficRole = String(data.trafficRole || '');
+  const trafficRole = requestedTrafficRole === 'stormshift_receiver'
+    && !(data.worldRecordId && data.itinerary?.kind === 'anvil_work' && data.itinerary.role === 'receiver')
+    ? 'hauler' : requestedTrafficRole;
   const trafficFile = WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE[trafficRole];
   if (trafficFile) {
     return applyFactionWholeShipKit(entity, liveWholeShipSelection(
@@ -2509,6 +2522,7 @@ const DRESSING_RADIUS_BY_PLACE = Object.freeze({
   place_mining_drone: 8,
   place_station_billboard: 28,
   place_conveyor_barge: 48,
+  place_charon_colony_service_barge: 48,
   place_dead_hulk: 42,
   place_debris_chunk: 26,
   place_ceres_bait_wreck: 48,
@@ -2620,8 +2634,23 @@ export function liveSolidGlbCatalog() {
   for (const [role, file] of Object.entries(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE)) {
     const selection = wholeShipVisualForEntity({
       type: 'ship', alive: true, id: `traffic:${role}`, radius: 14,
-      data: { trafficRole: role, defId: 'ship_kestrel' },
+      data: { trafficRole: role, defId: 'ship_kestrel',
+        ...(role === 'stormshift_receiver' ? { worldRecordId: 'catalog:anvil_receiver',
+          itinerary: { kind: 'anvil_work', role: 'receiver' } } : {}) },
     }, { requiredWholeShip: true });
+    if (role === 'stormshift_receiver') {
+      const entityRadius = 18, scale = STORMSHIFT_RECEIVER_SOURCE_SCALE * entityRadius;
+      add({ id: `traffic:${role}`, family: 'traffic-hull', file: selection.file,
+        assetId: selection.assetId, fit: 'authored-origin', placeScale: scale, entityRadius,
+        colliderKind: 'compound', colliderId: STORMSHIFT_RECEIVER_COLLISION.id,
+        referenceState: 'fixed-service',
+        compoundBoxesWU: STORMSHIFT_RECEIVER_SOLIDS.map(({ id, center, size, angle }) => ({
+          id, center: { x: center[0] * scale, y: center[2] * scale, z: -center[1] * scale },
+          size: { x: size[0] * scale, y: size[2] * scale, z: size[1] * scale }, angleDeg: -angle * 180 / Math.PI,
+        })),
+        solid: true, packagedLive: true });
+      continue;
+    }
     add({
       id: `traffic:${role}`,
       family: 'traffic-hull',
@@ -2758,16 +2787,18 @@ export function liveSolidGlbCatalog() {
     if (file===LATCH_PLACE_FILE || STATION_ARCHETYPE_FILES.includes(file)) continue;
     const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
     const family = placeFamily(placeId);
+    const lastShiftFairlead = placeId === 'place_last_shift_fairlead';
     const physicalPlace = ceresShipbreakTransform({ placeId });
     const dressingRadius = DRESSING_RADIUS_BY_PLACE[placeId] || 12;
     add({
       id: placeId,
       family,
       file,
-      fit: physicalPlace ? 'authored-place-origin' : family === 'drone' ? 'packaged-radius' : 'place-scale',
+      fit: physicalPlace ? 'authored-place-origin' : (lastShiftFairlead || family === 'drone') ? 'packaged-radius' : 'place-scale',
       placeScale: physicalPlace?.scale || 1,
-      entityRadius: family === 'drone' ? 2.4 : dressingRadius,
-      colliderKind: 'none',
+      entityRadius: lastShiftFairlead ? 26 : family === 'drone' ? 2.4 : dressingRadius,
+      colliderKind: lastShiftFairlead ? 'proxy' : 'none',
+      ...(lastShiftFairlead ? { runtimeColliderFixed: true, runtimeCollisionAuthority: 'lastShift.physicsBody', runtimePackagedConvex: 'last-shift:fairlead:deck:v1' } : {}),
       ...(ceresShipbreakCatalogCollision(placeId) || {}),
       solid: true,
       nonSolidReason: null,
@@ -4110,6 +4141,8 @@ export function buildAuthoredStationArchetype(entity, options = {}) {
 }
 
 export function resolvePlaceFileForEntity(entity) {
+  const evidence = lastShiftPackagedFile(entity);
+  if (evidence) return evidence;
   return placeFileForEntity(entity);
 }
 

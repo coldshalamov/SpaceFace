@@ -59,24 +59,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "51fde143ea1fe1ecc29b23cc6a996c22a4ca903777ebf632037eba95bd766f0b",
+  "contentHash": "5d684f9b715798683dccf6d0efd9ac23780063d59d4b9f351a7071bd56a811ac",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1.4499289989471436,
-          0.8496696949005127,
-          0.8498364090919495
+          0.849669744316687,
+          0.8498364247957643
         ],
         "min": [
           -1.4000176191329956,
-          -0.8496696949005127,
-          -0.8498509526252747
+          -0.849669744316687,
+          -0.8498509683290895
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23f63c6de73990209269ee2c1e68d7963a344bd7a4a6a3b167ff04ea17067af1",
+      "geometryHash": "70f5ef12f39b08d57745bbf5e3f592a0d985beb54aa30baa51a0d7e6e5259d27",
       "id": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -91,17 +91,17 @@
       "bounds": {
         "max": [
           1.399999976158142,
-          0.3399273455142975,
-          0.3399273455142975
+          0.3399273601585186,
+          0.3399273601585186
         ],
         "min": [
           -1.399999976158142,
-          -0.3399273455142975,
-          -0.3399273455142975
+          -0.3399273601585186,
+          -0.3399273601585186
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5754c965f609ed9992b9f46d7381efeeca4ea74bb8f497ab90dfc2ced8760410",
+      "geometryHash": "229de6e4e0951e714757dcce2339dc1ed89b78a5fd1f9c6ee26d5ecfde17f34e",
       "id": "sf.render.mothlight-lamp.node.lod0-armor.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -115,18 +115,18 @@
     {
       "bounds": {
         "max": [
-          1.4500097036361694,
+          1.450009759830105,
           0.22932180762290955,
           0.22932180762290955
         ],
         "min": [
-          1.4474903345108032,
+          1.4474902783168677,
           -0.22932180762290955,
           -0.22932180762290955
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6ebe94263ba1b0a653f152e4d284ddf48eb9ef7fe37b9588cad701d90321d2b",
+      "geometryHash": "7b9473701954e5fdb7429821473f8ea4b717504433fc850337ab5b918a27e0d3",
       "id": "sf.render.mothlight-lamp.node.lod0-beacon-amber.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -140,18 +140,18 @@
     {
       "bounds": {
         "max": [
-          0.6471701860427856,
+          0.6471702008452637,
           0.8500000238418579,
           0.8500000238418579
         ],
         "min": [
-          -0.6475318074226379,
+          -0.647531822225116,
           -0.8500000238418579,
           -0.8500000238418579
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4d172c000c9628d997588d97b07041e1b2686270951988b1739de66229131f5",
+      "geometryHash": "331f17ed5867d3d899c91674427b9cb0ae0b768a8530c30b5b95619f99e74e4e",
       "id": "sf.render.mothlight-lamp.node.lod0-ceramic.primitive.0",
       "indexCount": 3024,
       "indexed": true,
@@ -166,17 +166,17 @@
       "bounds": {
         "max": [
           1.4474999904632568,
-          0.22999678552150726,
-          0.22999678552150726
+          0.22999679248071836,
+          0.22999679248071836
         ],
         "min": [
           -1.4049999713897705,
-          -0.22999678552150726,
-          -0.22999678552150726
+          -0.22999679248071836,
+          -0.22999679248071836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c631e953a2d886c748f210a52c435e047fdc704f156c228852ae2cd54832f801",
+      "geometryHash": "1ad3535619bb23426a9924d0b9db3f1bdf32a41edfe76b43597c22b2cc975b30",
       "id": "sf.render.mothlight-lamp.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 1410,
       "indexed": true,
@@ -300,21 +300,21 @@
     {
       "id": "sf.render.mothlight-lamp.node.collision-mothlight-lamp-lamp",
       "localTransform": [
-        1,
+        1.4249733090400696,
         0,
         0,
         0,
         0,
-        1,
+        1.4249733090400696,
         0,
         0,
         0,
         0,
-        1,
+        1.4249733090400696,
         0,
+        0.024955689907073975,
         0,
-        0,
-        0,
+        -0.000007271766662597656,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -328,38 +328,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lamp.body",
       "worldTransform": [
-        1,
+        1.4249733090400696,
         0,
         0,
         0,
         0,
-        1,
+        1.4249733090400696,
         0,
         0,
         0,
         0,
-        1,
+        1.4249733090400696,
         0,
+        0.024955689907073975,
         0,
-        0,
-        0,
+        -0.000007271766662597656,
         1
       ]
     },
     {
       "id": "sf.render.mothlight-lamp.node.lod0-armor",
       "localTransform": [
-        1,
+        1.399999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.399999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.399999976158142,
         0,
         0,
         0,
@@ -377,17 +377,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lamp.body",
       "worldTransform": [
-        1,
+        1.399999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.399999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.399999976158142,
         0,
         0,
         0,
@@ -398,19 +398,19 @@
     {
       "id": "sf.render.mothlight-lamp.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        0.22932180762290955,
         0,
         0,
         0,
         0,
-        1,
+        0.22932180762290955,
         0,
         0,
         0,
         0,
-        1,
+        0.22932180762290955,
         0,
-        0,
+        1.4487500190734863,
         0,
         0,
         1
@@ -426,19 +426,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lamp.body",
       "worldTransform": [
-        1,
+        0.22932180762290955,
         0,
         0,
         0,
         0,
-        1,
+        0.22932180762290955,
         0,
         0,
         0,
         0,
-        1,
+        0.22932180762290955,
         0,
-        0,
+        1.4487500190734863,
         0,
         0,
         1
@@ -447,19 +447,19 @@
     {
       "id": "sf.render.mothlight-lamp.node.lod0-ceramic",
       "localTransform": [
-        1,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.8500000238418579,
         0,
-        0,
+        -0.00018081068992614746,
         0,
         0,
         1
@@ -475,19 +475,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lamp.body",
       "worldTransform": [
-        1,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.8500000238418579,
         0,
-        0,
+        -0.00018081068992614746,
         0,
         0,
         1
@@ -496,19 +496,19 @@
     {
       "id": "sf.render.mothlight-lamp.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        1.4262499809265137,
         0,
         0,
         0,
         0,
-        1,
+        1.4262499809265137,
         0,
         0,
         0,
         0,
-        1,
+        1.4262499809265137,
         0,
-        0,
+        0.021250009536743164,
         0,
         0,
         1
@@ -524,19 +524,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mothlight-lamp.body",
       "worldTransform": [
-        1,
+        1.4262499809265137,
         0,
         0,
         0,
         0,
-        1,
+        1.4262499809265137,
         0,
         0,
         0,
         0,
-        1,
+        1.4262499809265137,
         0,
-        0,
+        0.021250009536743164,
         0,
         0,
         1
@@ -650,25 +650,25 @@
       "uri": "mothlight_lamp.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 386160,
-    "sha256": "9c2f7c7ec879ec868c5562235d6a129a7bab4a93f922c5bb1ed4e7dd05874322",
+    "bytes": 341364,
+    "sha256": "f5ba242bb669ea557b88498422b448e773eca47ea0c43dc9a9607a8458383980",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.022504866123199463,
+        0.022504894220167215,
         0,
         0
       ],
       "max": [
-        1.4500097036361694,
+        1.450009759830105,
         0.8500000238418579,
         0.8500000238418579
       ],
@@ -678,7 +678,7 @@
         -0.8500000238418579
       ],
       "size": [
-        2.85500967502594,
+        2.8550097312198757,
         1.7000000476837158,
         1.7000000476837158
       ]
@@ -774,17 +774,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.399999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.399999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.399999976158142,
           0,
           0,
           0,
@@ -801,19 +801,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.22932180762290955,
           0,
           0,
           0,
           0,
-          1,
+          0.22932180762290955,
           0,
           0,
           0,
           0,
-          1,
+          0.22932180762290955,
           0,
-          0,
+          1.4487500190734863,
           0,
           0,
           1
@@ -828,19 +828,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.8500000238418579,
           0,
-          0,
+          -0.00018081068992614746,
           0,
           0,
           1
@@ -855,19 +855,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4262499809265137,
           0,
           0,
           0,
           0,
-          1,
+          1.4262499809265137,
           0,
           0,
           0,
           0,
-          1,
+          1.4262499809265137,
           0,
-          0,
+          0.021250009536743164,
           0,
           0,
           1
@@ -884,13 +884,13 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/mothlight_lamp.glb"
   },
-  "runtimeHash": "123d1bacbadcb9dd0e1e24a98978f67f18c23d3a501943d1629c4e289b9e48e9",
+  "runtimeHash": "116c2d058fca9be6da27bf1738ff3fb1aacd6dd8b4d340ed07a358925469d5ac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.4500097036361694,
+          1.450009759830105,
           0.8500000238418579,
           0.8500000238418579
         ],

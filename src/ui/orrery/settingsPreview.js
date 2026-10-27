@@ -979,8 +979,8 @@ export function createSettingsPreview(doc = globalThis.document) {
 
   // ---- the beam ----------------------------------------------------------------------------------
   const beam = svg('svg', { class: 'orr-svg orr-set-beam', 'aria-hidden': 'true' });
-  const beamGlow = svg('path', { d: '', class: 'orr-set-beam__glow', fill: 'none', 'stroke-width': 12, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
-  const beamCore = svg('path', { d: '', class: 'orr-set-beam__core', fill: 'none', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  const beamGlow = svg('path', { d: '', class: 'orr-set-beam__glow', fill: 'none', 'stroke-width': 8, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+  const beamCore = svg('path', { d: '', class: 'orr-set-beam__core', fill: 'none', 'stroke-width': 1.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
   const beamPulse = svg('path', { d: '', class: 'orr-set-beam__pulse', fill: 'none', 'stroke-width': 4, 'stroke-linecap': 'round', pathLength: 1 });
   const beamHaloA = svg('circle', { r: 7, class: 'orr-set-beam__halo' });
   const beamA = svg('circle', { r: 3.5, class: 'orr-set-beam__end' });

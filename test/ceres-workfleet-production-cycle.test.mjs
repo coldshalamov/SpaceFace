@@ -63,6 +63,9 @@ test('complete production factory secures the original plate through the full am
     const player=withFeatures(runtime,()=>runtime.spawn(makeShipEntitySpec('ship_kestrel',{isPlayer:true,player:state.player,pos:{x:0,z:0}})));state.playerId=player.id;
     const w=runtime.getSystem('world');withFeatures(runtime,()=>w.enterSector(C.sectorId));
     withFeatures(runtime,()=>w.relocatePlayerInSector(observer,{reason:'ceres-workfleet-full-cycle-proof'}));
+    // Site residency is a per-tick reconcile: distant-entered payloads reauthor on the first
+    // step after the player arrives inside the site's reservation.
+    runtime.step(DT);
     const sites=runtime.getSystem('asteroidSites');assert.ok(sites.getWorldSite(C.siteId));
     const original=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.payload);assert.ok(original);
     const originalId=original.id,originalLife=original.occupantGeneration;

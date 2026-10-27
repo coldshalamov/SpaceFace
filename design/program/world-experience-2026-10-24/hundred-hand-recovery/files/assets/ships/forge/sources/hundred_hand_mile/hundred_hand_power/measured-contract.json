@@ -1,0 +1,810 @@
+{
+  "schema": "spaceface.conceptSourceGeometry.v1",
+  "assetId": "SF_PROP_HUNDRED_HAND_POWER",
+  "family": "hundred_hand_power",
+  "geometryRevision": "hundred-hand-mile-source-v4-native-prisms",
+  "renderScale": 1,
+  "sourceAxes": "+X nose,+Y port,+Z up",
+  "gltfMapping": "x,z,-y",
+  "sourceBinding": {
+    "authoringSourcePath": "tools/blender/forge/ships/hundred_hand_mile.py",
+    "authoringSourceSha256": "6e466078dcb666d3ef58cca053c9276313920c9186945e27e7f339ef284ee422",
+    "collisionPartIdentity": "node-name"
+  },
+  "authoringSourceSha256": "6e466078dcb666d3ef58cca053c9276313920c9186945e27e7f339ef284ee422",
+  "sourceInputs": [
+    {
+      "path": "tools/blender/forge/ships/hundred_hand_mile.py",
+      "sha256": "6e466078dcb666d3ef58cca053c9276313920c9186945e27e7f339ef284ee422"
+    },
+    {
+      "path": "tools/blender/forge/forge.py",
+      "sha256": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d"
+    },
+    {
+      "path": "tools/blender/forge/forge_export.py",
+      "sha256": "54923ea4302a17ddcc0fe9c530b2b01a0026a470e9eec2af66eee3fbffc802fa"
+    }
+  ],
+  "sourceBlendSha256": "80e8f5bfcf13d4836f7a8b160193dc31bc0b83f63ea81ba1dc2a1be8f7681e7d",
+  "lods": {
+    "0": {
+      "file": "hundred_hand_power.glb",
+      "sha256": "5f7e0e9f31bd83132219864de591b443f496cde75c963e61bd373c1e185bf425",
+      "bytes": 429884,
+      "triangles": 3844,
+      "drawPrimitives": 3,
+      "bounds": {
+        "minGltf": [
+          -5.81,
+          0.0,
+          -2.9
+        ],
+        "maxGltf": [
+          5.0,
+          4.75,
+          2.9
+        ],
+        "sizeMetres": [
+          10.81,
+          4.75,
+          5.8
+        ]
+      }
+    },
+    "1": {
+      "file": "hundred_hand_power_lod1.glb",
+      "sha256": "1bbac1db53e40134d2b1fdb9b00da3caee919c4486920cce4a35f54b2bbb6501",
+      "bytes": 407856,
+      "triangles": 1536,
+      "drawPrimitives": 3,
+      "bounds": {
+        "minGltf": [
+          -5.798666,
+          0.007821,
+          -2.892179
+        ],
+        "maxGltf": [
+          4.992293,
+          4.75,
+          2.893008
+        ],
+        "sizeMetres": [
+          10.790959,
+          4.742179,
+          5.785187
+        ]
+      }
+    },
+    "2": {
+      "file": "hundred_hand_power_lod2.glb",
+      "sha256": "ea258b945d9fb5bd795f33fd27048f1a23c958cdfd535c51e10a5b74a01509a9",
+      "bytes": 334168,
+      "triangles": 690,
+      "drawPrimitives": 3,
+      "bounds": {
+        "minGltf": [
+          -5.798666,
+          0.022804,
+          -2.884636
+        ],
+        "maxGltf": [
+          4.984636,
+          4.75285,
+          2.884636
+        ],
+        "sizeMetres": [
+          10.783302,
+          4.730046,
+          5.769272
+        ]
+      }
+    }
+  },
+  "bounds": {
+    "minGltf": [
+      -5.81,
+      0.0,
+      -2.9
+    ],
+    "maxGltf": [
+      5.0,
+      4.75,
+      2.9
+    ],
+    "sizeMetres": [
+      10.81,
+      4.75,
+      5.8
+    ]
+  },
+  "collision": {
+    "kind": "compound",
+    "components": [
+      {
+        "id": "power_body",
+        "node": "COLLISION_POWER_BODY",
+        "kind": "convex",
+        "sourceObjects": [
+          "RecoveredGeneratorSkid",
+          "GeneratorBlock",
+          "GeneratorEndGuard-3.8",
+          "GeneratorEndGuard3.8",
+          "LongCapacitor-1.5",
+          "CapacitorClamp-2-1.5",
+          "CapacitorClamp2-1.5",
+          "LongCapacitor1.5",
+          "CapacitorClamp-21.5",
+          "CapacitorClamp21.5",
+          "CoolingFin-2.5",
+          "CoolingFin-1.5",
+          "CoolingFin-0.5",
+          "CoolingFin0.5",
+          "CoolingFin1.5",
+          "CoolingFin2.5",
+          "GeneratorTowEye"
+        ],
+        "verticesGltf": [
+          [
+            -5.81,
+            0.0,
+            -0.665
+          ],
+          [
+            -5.805325,
+            0.0,
+            -0.682477
+          ],
+          [
+            -4.979961,
+            0.0,
+            -2.824901
+          ],
+          [
+            -4.924902,
+            0.0,
+            -2.879961
+          ],
+          [
+            -4.85,
+            0.0,
+            -2.9
+          ],
+          [
+            4.85,
+            0.0,
+            -2.9
+          ],
+          [
+            4.924902,
+            0.0,
+            -2.879961
+          ],
+          [
+            4.979961,
+            0.0,
+            -2.824901
+          ],
+          [
+            5.0,
+            0.0,
+            -2.75
+          ],
+          [
+            5.0,
+            0.0,
+            2.75
+          ],
+          [
+            4.979961,
+            0.0,
+            2.824901
+          ],
+          [
+            4.924902,
+            0.0,
+            2.879961
+          ],
+          [
+            4.85,
+            0.0,
+            2.9
+          ],
+          [
+            -4.85,
+            0.0,
+            2.9
+          ],
+          [
+            -4.924901,
+            0.0,
+            2.879961
+          ],
+          [
+            -4.97996,
+            0.0,
+            2.824901
+          ],
+          [
+            -5.805325,
+            0.0,
+            0.682477
+          ],
+          [
+            -5.81,
+            0.0,
+            0.665
+          ],
+          [
+            -5.81,
+            4.75,
+            -0.665
+          ],
+          [
+            -5.805325,
+            4.75,
+            -0.682477
+          ],
+          [
+            -4.979961,
+            4.75,
+            -2.824901
+          ],
+          [
+            -4.924902,
+            4.75,
+            -2.879961
+          ],
+          [
+            -4.85,
+            4.75,
+            -2.9
+          ],
+          [
+            4.85,
+            4.75,
+            -2.9
+          ],
+          [
+            4.924902,
+            4.75,
+            -2.879961
+          ],
+          [
+            4.979961,
+            4.75,
+            -2.824901
+          ],
+          [
+            5.0,
+            4.75,
+            -2.75
+          ],
+          [
+            5.0,
+            4.75,
+            2.75
+          ],
+          [
+            4.979961,
+            4.75,
+            2.824901
+          ],
+          [
+            4.924902,
+            4.75,
+            2.879961
+          ],
+          [
+            4.85,
+            4.75,
+            2.9
+          ],
+          [
+            -4.85,
+            4.75,
+            2.9
+          ],
+          [
+            -4.924901,
+            4.75,
+            2.879961
+          ],
+          [
+            -4.97996,
+            4.75,
+            2.824901
+          ],
+          [
+            -5.805325,
+            4.75,
+            0.682477
+          ],
+          [
+            -5.81,
+            4.75,
+            0.665
+          ]
+        ],
+        "triangles": [
+          [
+            12,
+            5,
+            8
+          ],
+          [
+            23,
+            30,
+            27
+          ],
+          [
+            1,
+            0,
+            18
+          ],
+          [
+            2,
+            1,
+            19
+          ],
+          [
+            3,
+            2,
+            20
+          ],
+          [
+            4,
+            3,
+            21
+          ],
+          [
+            5,
+            4,
+            22
+          ],
+          [
+            6,
+            5,
+            23
+          ],
+          [
+            7,
+            6,
+            24
+          ],
+          [
+            8,
+            7,
+            25
+          ],
+          [
+            9,
+            8,
+            26
+          ],
+          [
+            10,
+            9,
+            27
+          ],
+          [
+            11,
+            10,
+            28
+          ],
+          [
+            12,
+            11,
+            29
+          ],
+          [
+            13,
+            12,
+            30
+          ],
+          [
+            14,
+            13,
+            31
+          ],
+          [
+            15,
+            14,
+            32
+          ],
+          [
+            16,
+            15,
+            33
+          ],
+          [
+            17,
+            16,
+            34
+          ],
+          [
+            0,
+            17,
+            35
+          ],
+          [
+            0,
+            16,
+            17
+          ],
+          [
+            16,
+            13,
+            15
+          ],
+          [
+            15,
+            13,
+            14
+          ],
+          [
+            13,
+            4,
+            12
+          ],
+          [
+            12,
+            10,
+            11
+          ],
+          [
+            10,
+            12,
+            9
+          ],
+          [
+            9,
+            12,
+            8
+          ],
+          [
+            8,
+            6,
+            7
+          ],
+          [
+            6,
+            8,
+            5
+          ],
+          [
+            5,
+            12,
+            4
+          ],
+          [
+            4,
+            2,
+            3
+          ],
+          [
+            2,
+            4,
+            1
+          ],
+          [
+            1,
+            16,
+            0
+          ],
+          [
+            4,
+            16,
+            1
+          ],
+          [
+            13,
+            16,
+            4
+          ],
+          [
+            35,
+            19,
+            18
+          ],
+          [
+            19,
+            22,
+            20
+          ],
+          [
+            20,
+            22,
+            21
+          ],
+          [
+            22,
+            31,
+            23
+          ],
+          [
+            23,
+            25,
+            24
+          ],
+          [
+            25,
+            23,
+            26
+          ],
+          [
+            26,
+            23,
+            27
+          ],
+          [
+            27,
+            29,
+            28
+          ],
+          [
+            29,
+            27,
+            30
+          ],
+          [
+            30,
+            23,
+            31
+          ],
+          [
+            31,
+            33,
+            32
+          ],
+          [
+            33,
+            31,
+            34
+          ],
+          [
+            34,
+            19,
+            35
+          ],
+          [
+            31,
+            19,
+            34
+          ],
+          [
+            22,
+            19,
+            31
+          ],
+          [
+            1,
+            18,
+            19
+          ],
+          [
+            2,
+            19,
+            20
+          ],
+          [
+            3,
+            20,
+            21
+          ],
+          [
+            4,
+            21,
+            22
+          ],
+          [
+            5,
+            22,
+            23
+          ],
+          [
+            6,
+            23,
+            24
+          ],
+          [
+            7,
+            24,
+            25
+          ],
+          [
+            8,
+            25,
+            26
+          ],
+          [
+            9,
+            26,
+            27
+          ],
+          [
+            10,
+            27,
+            28
+          ],
+          [
+            11,
+            28,
+            29
+          ],
+          [
+            12,
+            29,
+            30
+          ],
+          [
+            13,
+            30,
+            31
+          ],
+          [
+            14,
+            31,
+            32
+          ],
+          [
+            15,
+            32,
+            33
+          ],
+          [
+            16,
+            33,
+            34
+          ],
+          [
+            17,
+            34,
+            35
+          ],
+          [
+            0,
+            35,
+            18
+          ]
+        ],
+        "bounds": {
+          "minGltf": [
+            -5.81,
+            0.0,
+            -2.9
+          ],
+          "maxGltf": [
+            5.0,
+            4.75,
+            2.9
+          ],
+          "sizeMetres": [
+            10.81,
+            4.75,
+            5.8
+          ]
+        },
+        "nativeProjection": {
+          "schema": "spaceface.nativeConvexXZ.v1",
+          "points": [
+            [
+              -5.81,
+              -0.665
+            ],
+            [
+              -5.805325,
+              -0.682477
+            ],
+            [
+              -4.979961,
+              -2.824901
+            ],
+            [
+              -4.924902,
+              -2.879961
+            ],
+            [
+              -4.85,
+              -2.9
+            ],
+            [
+              4.85,
+              -2.9
+            ],
+            [
+              4.924902,
+              -2.879961
+            ],
+            [
+              4.979961,
+              -2.824901
+            ],
+            [
+              5.0,
+              -2.75
+            ],
+            [
+              5.0,
+              2.75
+            ],
+            [
+              4.979961,
+              2.824901
+            ],
+            [
+              4.924902,
+              2.879961
+            ],
+            [
+              4.85,
+              2.9
+            ],
+            [
+              -4.85,
+              2.9
+            ],
+            [
+              -4.924901,
+              2.879961
+            ],
+            [
+              -4.97996,
+              2.824901
+            ],
+            [
+              -5.805325,
+              0.682477
+            ],
+            [
+              -5.81,
+              0.665
+            ]
+          ],
+          "minY": 0.0,
+          "maxY": 4.75,
+          "scale": 1
+        }
+      }
+    ]
+  },
+  "sockets": {
+    "SOCKET_Tether_Massline": {
+      "positionGltf": [
+        -5.7,
+        0.5,
+        0.0
+      ],
+      "forwardGltf": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "SOCKET_Install_Pivot": {
+      "positionGltf": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "forwardGltf": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "preflight": {
+    "idea": "Reclaimed tools make ordinary traffic",
+    "authority": [
+      "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/20_hundred_hand_mile.md"
+    ],
+    "values": "dark trusses; blue-grey skin; mismatched ochre panels; small supported amber lights",
+    "supportedViews": [
+      "top",
+      "chase",
+      "detail"
+    ]
+  },
+  "provenance": "Original Forge geometry; carried and installed modules use identical source at scale 1"
+}

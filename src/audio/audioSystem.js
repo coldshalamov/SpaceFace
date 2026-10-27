@@ -129,6 +129,7 @@ import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPo
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { bindOutputDeviceFollow, planDeviceChange, planSinkRebind } from './outputDeviceFollow.js';
 import { heatLevelFor } from '../systems/heat.js';
+import { dyingFuseS } from '../combat/lifecycle.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
@@ -4973,7 +4974,9 @@ export const audio = {
     // Feature 13 — the reactor-overload tell. Every hull death opens a ~0.4 s runaway whine while
     // the blast waits behind it; capitals already held their boom for 400 ms, small hulls now
     // land on the same beat so the whine always resolves INTO the explosion.
-    const overloadDelayS = 0.40;
+    // Packet 08: a decisive kill's successor hull fails for a mass-shaped window before it ruptures;
+    // the boom lands on that rupture (lifecycle.dyingFuseS), never on the fixed fuse.
+    const overloadDelayS = dyingFuseS(this.state, p.id, 0.40);
     if (ctx) {
       this.play('sfx_reactor_overload', {
         position: p.pos,
@@ -5003,10 +5006,10 @@ export const audio = {
         this.play(CAPITAL_PREDET_RECIPE, { position: pos2, startTime: ctx.currentTime + 0.20, gain: 0.55, rate: 1.08, critical: killedByPlayer });
       }
       // Play the main capital explosion in 400ms
-      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + 0.40, gain: 1.0, critical: killedByPlayer });
+      this.play('sfx.killCapital', { position: p.pos, startTime: ctx.currentTime + overloadDelayS, gain: 1.0, critical: killedByPlayer });
       if (killedByPlayer) {
         this.play('sfx_kill_confirm', {
-          position: p.pos, startTime: ctx.currentTime + 0.42, gain: 0.72, critical: true,
+          position: p.pos, startTime: ctx.currentTime + overloadDelayS + 0.02, gain: 0.72, critical: true,
           // SWARM-06: the kill chain lifts the confirm's pitch a step at a time — the run's
           // climb is audible in the reward voice itself. Zero chain reads exactly 1.
           rate: swarmKillPitch(rt && rt._swarmChain),
@@ -6570,7 +6573,7 @@ export const audio = {
   },
 
   _onMineCapReached(payload) {
-    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65 });
+    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65, captionOwned: true });
     const cap = payload && Number.isFinite(payload.cap) ? payload.cap : 6;
     this._emitPresentationCaption(`Mine Cap Reached (${cap})`, {
       assertive: true,
@@ -7352,6 +7355,7 @@ export const audio = {
       startTime: onGrid ? this._stuntGridTime(nowS) : undefined,
       lockRate: onGrid,
       critical: isCritical,
+      captionOwned: opts.captionOwned === true,
     });
     if (clearCadence) this.play('sfx_stunt_link', {
       gain: 0.3, rate: this._noteFreq('E', 5) / 880, lockRate: true,
@@ -9545,13 +9549,13 @@ export const audio = {
       if (targetClass === 'core') {
         if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
           rt._lastBellTime = ctx.currentTime;
-          this.play('sfx_core_bell', { gain: 0.25 });
+          this.play('sfx_core_bell', { gain: 0.25, captionOwned: true });
         }
       } else if (targetClass === 'fringe') {
         const nextTickDelay = rt._nextRadioTickTime || 0;
         if (ctx.currentTime >= nextTickDelay) {
           rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
-          this.play('sfx_fringe_tick', { gain: 0.15 });
+          this.play('sfx_fringe_tick', { gain: 0.15, captionOwned: true });
         }
       }
       this._updateAnomalyEvidence();
@@ -9581,7 +9585,7 @@ export const audio = {
     if (rt._docked) {
       if (now - (rt._lastMachineryAt || 0) >= 6 + Math.random() * 8) {
         rt._lastMachineryAt = now;
-        this.play('sfx_station_machinery', { gain: 0.12 });
+        this.play('sfx_station_machinery', { gain: 0.12, captionOwned: true });
       }
       return;
     }
@@ -9593,7 +9597,7 @@ export const audio = {
 
     if (now - (rt._lastTrafficBlipAt || 0) >= 14 + Math.random() * 18) {
       rt._lastTrafficBlipAt = now;
-      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25 });
+      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25, captionOwned: true });
     }
   },
 

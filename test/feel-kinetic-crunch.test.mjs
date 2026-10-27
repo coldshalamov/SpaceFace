@@ -169,11 +169,11 @@ test('collision ramp: scrape is a tick, slam is an authoritative shock carried b
   assert.equal(resolveCollisionFeel({ dp: 150 * 20 }, collisionCtx(150, { motionReduce: true })), null);
 });
 
-test('live combat queue: a railgun crunch arms a 1–2 frame window and never touches the clock', () => {
+test('live combat queue: an incoming railgun crunch arms a 1–2 frame window and never touches the clock', () => {
   const { state, bus, host, traumas, frame } = feelHost();
   bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 2,
+    attackerId: 2,
+    targetId: 1,
     weaponId: 'wpn_railgun_m',
     amount: 60,
     armorHit: true,
@@ -192,7 +192,7 @@ test('live combat queue: a railgun crunch arms a 1–2 frame window and never to
   assert.equal(state.timeScale, 1, `${SMOOTH}: the window expires and the clock never moved`);
 });
 
-test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
+test('torpedo and pulse recoil and incoming-hit queues stay distinct on the live host', () => {
   const { state, bus, host, traumas, frame } = feelHost();
   bus.emit('combat:fire', { ownerId: 1, weaponId: 'wpn_pulse_laser_s' });
   const pulseFov = host._fovPunch;
@@ -204,8 +204,8 @@ test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
   host._fovPunch = 0;
   traumas.length = 0;
   bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 2,
+    attackerId: 2,
+    targetId: 1,
     weaponId: 'wpn_pulse_laser_s',
     amount: 8,
     armorHit: true,
@@ -215,8 +215,8 @@ test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
   assert.equal(state.timeScale, 1);
 
   bus.emit('combat:damage', {
-    attackerId: 1,
-    targetId: 2,
+    attackerId: 2,
+    targetId: 1,
     weaponId: 'wpn_torpedo_l',
     amount: 320,
     hullHit: true,
@@ -227,6 +227,18 @@ test('torpedo and pulse fire/hit queues stay distinct on the live host', () => {
   assert.ok(traumas.length >= 1);
   frame(1 / 60);
   assert.ok(beatWindow(host) < CRUNCH_HOLD_MAX_S);
+});
+
+test('player-caused heavy hits keep their directional answer without stacking target-side trauma or FOV', () => {
+  for (const weaponId of ['wpn_railgun_m', 'wpn_torpedo_l']) {
+    const { state, bus, host, traumas } = feelHost();
+    bus.emit('combat:damage', { attackerId: 1, targetId: 2, weaponId,
+      amount: 60, armorHit: true, brokeShield: true,
+      type: weaponId === 'wpn_torpedo_l' ? 'explosive' : 'kinetic' });
+    assert.deepEqual(traumas, [], `${weaponId}: outgoing contact never shakes the player's aim`);
+    assert.equal(host._fovPunch, 0, `${weaponId}: the target's hit does not punch the player's FOV`);
+    assert.equal(state.timeScale, 1);
+  }
 });
 
 test('motionReduce and modal gates suppress crunch on the live queue', () => {

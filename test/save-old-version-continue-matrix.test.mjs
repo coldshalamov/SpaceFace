@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { ships, makeShipEntitySpec } from '../src/systems/ships.js';
@@ -24,7 +24,13 @@ import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simRea
 // v18: current producer at capture; regeneration/provenance is beside the fixtures.
 // v19+: test/fixtures/saves/build-frozen.mjs migrates the v18 capture through the real ladder.
 // Every committed capture stays in the matrix after a schema bump; CURRENT_VERSION is added if new.
-const versions = [...new Set([15, 16, 17, 18, 19, CURRENT_VERSION])];
+const versions = [...new Set([
+  ...readdirSync(new URL('./fixtures/saves/', import.meta.url)).flatMap(name => {
+    const match = /^continue-v(\d+)-(?:free|tether)\.json$/.exec(name);
+    return match ? [Number(match[1])] : [];
+  }),
+  CURRENT_VERSION,
+])].sort((a, b) => a - b);
 const massPerUnit = new Map(COMMODITIES.map(item => [item.id, item.massPerU]));
 const fixtureText = (version, attached) => readFileSync(new URL(
   `./fixtures/saves/continue-v${version}-${attached ? 'tether' : 'free'}.json`, import.meta.url), 'utf8');

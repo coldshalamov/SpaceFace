@@ -217,14 +217,17 @@ assert.throws(
 assert.equal(stalePackageInstallerRan, false);
 
 const installedRuntime = inspectElectronRuntime({ root: ROOT });
-assert.equal(installedRuntime.packageVersion, '43.2.0');
-assert.equal(installedRuntime.declaredVersion, '43.2.0');
+const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+// The contract is installed === declared; the literal moved with the 43.2.0 → 43.8.0 bump,
+// so pin to the devDependency the launcher itself provisions against.
+const declaredElectron = packageJson.devDependencies.electron;
+assert.equal(installedRuntime.packageVersion, declaredElectron);
+assert.equal(installedRuntime.declaredVersion, declaredElectron);
 assert.equal(installedRuntime.packageJsonPath.endsWith(join('electron', 'package.json')), true);
 
 const batch = readFileSync(join(ROOT, 'SpaceFace-Desktop.bat'), 'utf8');
 const launcher = readFileSync(join(ROOT, 'scripts/launch-electron.mjs'), 'utf8');
 const main = readFileSync(join(ROOT, 'electron/main.cjs'), 'utf8');
-const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 assert.match(batch, /node scripts\\launch-electron\.mjs/);
 assert.match(batch, /node_modules\\electron\\package\.json/);
 assert.match(batch, /installed\.version===project\.devDependencies\.electron/,
@@ -237,7 +240,9 @@ assert.match(launcher, /SPACEFACE_PLAYER_STORE_DIR/,
 assert.doesNotMatch(launcher, /require\(['"]electron['"]\)/,
   'executable discovery must not execute Electron index.js and trigger a hidden download');
 assert.equal(packageJson.scripts.electron, 'node scripts/launch-electron.mjs');
-assert.equal(packageJson.engines.node, '>=22.12.0');
+// engines floor+cap (0da33a7e9da): Node 22.12+ required, 25 excluded — the deploy chain's
+// runtime window; the pin tracks the declared range rather than the bare floor.
+assert.equal(packageJson.engines.node, '>=22.12.0 <25');
 assert.match(main, /existing-instance/);
 assert.match(main, /port-conflict/);
 assert.match(main, /navigation-failed/);

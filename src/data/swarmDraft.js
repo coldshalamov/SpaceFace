@@ -428,10 +428,15 @@ export function swarmPassiveCount(run, passiveId) {
   return total;
 }
 
-/** The hull bonus the run's plated-hull stack grants, once per copy. */
+/**
+ * The hull bonus the run's plated-hull stack grants: once per copy up to the rack cap —
+ * `count × perCopyHull`, the same shape the fire-rate sibling keeps. The catalog row is the
+ * one authored source of the number; the effect host (swarmElites) reads it through here.
+ */
 export function swarmPassiveHullBonus(run) {
   const entry = PASSIVE_BY_ID.get('plated_hull');
-  return entry ? swarmPassiveCount(run, 'plated_hull') * entry.perCopyHull : 0;
+  const stacks = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'plated_hull'));
+  return entry ? stacks * entry.perCopyHull : 0;
 }
 
 /**
@@ -614,3 +619,28 @@ export function spendSwarmCallin(run, callinId) {
   }
   return swarmCallinCount(run, callinId);
 }
+
+// ── the mid-run pact ──
+//
+// A wager, not stock: the counter pays the purse NOW and the pilot signs a mutator onto the
+// run for the rest of it. The handicap rides `run.arenaMutators` — the same live contract a
+// launch challenge or a Threat wager writes — so every consumer that already reads the
+// compiled challenge (the cradle shelf, the re-roll bench, the draft gate) binds the signing
+// mid-run without a second code path. The price is a rule, not a number: `price` stays zero
+// on the shelf row because the wallet is never asked — the signature is what it costs.
+//
+// `mutatorId` names the catalog row the signature folds in (src/data/survivalMutators.js);
+// `purse` is flat by design — a Threat's bounty is a flat number too, and a wage that
+// floated with the wave would pay the most to the pilot who had the least left to sign away.
+
+export const SWARM_PACT_ONE_HULL = Object.freeze({
+  offerId: 'svc_pact_one_hull',
+  service: 'pact',
+  mutatorId: 'one_hull',
+  purse: 90,
+  verb: 'Sign',
+  name: 'Pact of the One Hull',
+  category: 'Service',
+  slotLabel: 'Wager — pays on signing, binds the rest of the run',
+  blurb: 'Ninety credits on the counter. The hull you flew is the hull you finish.',
+});

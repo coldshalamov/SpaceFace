@@ -194,11 +194,12 @@ export function createAlerts(ctx) {
     el.setAttribute('aria-live', 'off');
     el.setAttribute('aria-atomic', 'true');
     const lens = document.createElement('span');
-    lens.className = 'dp-annunc__lens dp-lamp';
+    lens.className = `dp-annunc__lens dp-lamp${rec.sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     lens.setAttribute('aria-hidden', 'true');
     const txt = document.createElement('span');
     txt.className = 'sf-alert__text';
     el.append(lens, txt);
+    rec._lens = lens;
     rec._txt = txt;
     rec.el = el;
     return el;
@@ -213,6 +214,9 @@ export function createAlerts(ctx) {
     rec.born = performance.now();
     rec.expiresAt = rec.ttl === Infinity ? Infinity : rec.born + rec.ttl;
     if (rec.el) rec.el.className = `sf-alert sf-alert--${sev} dp-annunc`;
+    // A danger word deserves a danger lens — the kit ships the variant but nothing wore it, so
+    // every severity lit the same amber dot. Steady red (no blink): pills are lit controls.
+    if (rec._lens) rec._lens.className = `dp-annunc__lens dp-lamp${sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     recomputeNextExpiry();
     render();
   }
@@ -409,9 +413,13 @@ export function createAlerts(ctx) {
       const txt = document.createElement('span');
       txt.className = 'sf-alert__text';
       floorEl.append(lens, txt);
+      floorEl._lens = lens;
       floorEl._txt = txt;
     }
     floorEl.className = `sf-alert sf-alert--floor sf-alert--${sev} dp-annunc dp-annunc--${sev}`;
+    // The floor reuses ONE element across voices, so the lens must re-tint per severity — a
+    // danger voice (TAKING FIRE) wears the kit's red lamp, never the amber warning dot.
+    floorEl._lens.className = `dp-annunc__lens dp-lamp${sev === 'danger' ? ' dp-lamp--danger' : ''}`;
     // Danger is announced assertively (mirrors the prior danger-pill a11y behavior); every other
     // voice is polite so it never interrupts a screen reader mid-sentence.
     // Identical line already on the floor (same-id coalesce / re-surface) — keep DOM, no re-speak.
@@ -510,7 +518,7 @@ export function createAlerts(ctx) {
     announce({
       key: `salvage-intake:${p.intakeId || p.lotId || 'x'}`,
       sev: 'info',
-      text: `SALVAGE INTAKE — ${qty}t scrap taken in at ${yard} · ~${value} CR`,
+      text: `SALVAGE INTAKE — ${qty}u salvage taken in at ${yard} · ~${value} CR`,
       ttl: 4,
     });
   });
@@ -580,7 +588,7 @@ export function createAlerts(ctx) {
   bus.on('combat:damage', (p) => {
     if (!p || !p.isPlayer) return;
     if (p.brokeShield) announce({ key: 'shield-down', sev: 'danger', text: 'SHIELDS DOWN', ttl: 3 });
-    else announce({ key: 'incoming', sev: 'warn', text: 'TAKING FIRE', ttl: 1.5 });
+    else announce({ key: 'incoming', sev: 'danger', text: 'TAKING FIRE', ttl: 1.5 });
   }, { presentation: true });
   // Missile lock is a condition-bound STATUS light (raised on lock, cleared on unlock) — it must
   // stay visible while the lock holds, so it stays a pill, not a one-shot voice. The emitter

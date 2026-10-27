@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d7b5fda8cdef5dcf7a231d81836026dbb60bab762e10b2e757113c7eab8ed97c",
+  "contentHash": "86f1cd1961a47db017c6932d2a175bc1222d12cf766536213bdb9f3eb5590405",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           8.99506664276123,
-          1.9895732402801514,
-          -0.7594388723373413
+          1.9895731473542417,
+          -0.7594388412653257
         ],
         "min": [
           -0.8461093902587891,
-          -1.0675674676895142,
-          -3.263356924057007
+          -1.067567599131881,
+          -3.2633569475090436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abfe7f065093313c11568b9fb550c43206ec5c4b98307c2dfd0f44f1d162f4b6",
+      "geometryHash": "a1082d63d2d3b24b0e354fc54f5e43327f4ac2433f0816de0b0a84752db8bd9b",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          4.533395290374756,
-          2.025012969970703,
-          -0.7354118227958679
+          4.533395126951761,
+          2.025013034188446,
+          -0.7354117993438312
         ],
         "min": [
-          3.617964744567871,
-          -1.0915945768356323,
-          -3.2363264560699463
+          3.61796482974283,
+          -1.091594641053375,
+          -3.2363265253473625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a81e0f2c2d9b8f81f22505ca5bfbf9d183b6affbab2f7c0c4ef2c5f66be7a1b",
+      "geometryHash": "d4fdc3ff26deb88ed52d3ebfce04565906d654a5b9f1601e1f91fb416688f3ae",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -62,22 +62,22 @@
     {
       "bounds": {
         "max": [
-          0.06651338189840317,
+          0.06651340951366513,
           -4.238947868347168,
-          5.444300174713135
+          5.4443001478531174
         ],
         "min": [
-          -0.8625815510749817,
+          -0.8625815786902437,
           -7.314996719360352,
-          2.664525270462036
+          2.6645252973220535
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7679fa518be49f4aebcf2642d6100f7a34c05e3fdf95ad5e2f2a8bb9cf924a61",
+      "geometryHash": "1a2e00aa5283f8cf8a55ced4051324593d1fe0cef6adf9ca338ad2d36858e7a6",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear0",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           7.873309135437012,
-          0.4930073618888855,
-          0.22794654965400696
+          0.49300732413733683,
+          0.22794657055892598
         ],
         "min": [
           5.889106750488281,
-          -0.7104607820510864,
-          -1.4425814151763916
+          -0.7104607442995378,
+          -1.4425814360813107
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64b21d08b8252bc7093c3644efabbc095a44490f44fd45f9ae3f3dac50c106f5",
+      "geometryHash": "2d185d9b39aa80d08ba7ffff62f93e18180fa11884e965c5b6f93c65c2299486",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear1",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
@@ -112,22 +112,22 @@
     {
       "bounds": {
         "max": [
-          0.2105482816696167,
-          7.314949989318848,
+          0.2105482774457944,
+          7.3149501712888245,
           -1.8302898406982422
         ],
         "min": [
-          -1.5533560514450073,
-          5.08903169631958,
+          -1.5533560472211851,
+          5.089031514349603,
           -5.444236755371094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96ba3e5146bb1d064ac015bce90cda62c16bbf4400b9ea93f8c494841a829fe1",
+      "geometryHash": "2e28839aff26f8768776656ddbd568b988346832fc578e2701cb43291b61906c",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear2",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
@@ -137,22 +137,22 @@
     {
       "bounds": {
         "max": [
-          -6.738148212432861,
-          0.9290142059326172,
+          -6.738148234792561,
+          0.9290141539297612,
           1.1646862030029297
         ],
         "min": [
-          -8.995059967041016,
-          -1.3461575508117676,
+          -8.995059944681316,
+          -1.3461574988089116,
           -1.6575946807861328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "370796b0892a227b4e14eec2bd796054ad50fe638ab48ab43833c57ef82e6258",
+      "geometryHash": "3f32eadf4c3296f6e89c9629bf6e6c707508b57a1032305ffd916942a4f2e07f",
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear3",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
@@ -165,10 +165,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
-      "id": "material:6109de97f71b842f4915fdd7",
+      "hash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "id": "material:0eb149d5928a914ec68a878d",
       "name": "Forge_bastion_wk_torn__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -265,21 +265,21 @@
     {
       "id": "sf.render.aftermath-aft-armor-slab.mesh.belt1",
       "localTransform": [
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
-        0,
-        0,
-        0,
+        4.074478626251221,
+        0.4667091965675354,
+        -1.9993843734264374,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -293,42 +293,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
       "worldTransform": [
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
-        0,
-        0,
-        0,
+        4.074478626251221,
+        0.4667091965675354,
+        -1.9993843734264374,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
       "localTransform": [
-        1,
+        1.5380244255065918,
         0,
         0,
         0,
         0,
-        1,
+        1.5380244255065918,
         0,
         0,
         0,
         0,
-        1,
+        1.5380244255065918,
         0,
-        0,
-        0,
-        0,
+        -0.39803408458828926,
+        -5.77697229385376,
+        4.0544127225875854,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -342,42 +342,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
       "worldTransform": [
-        1,
+        1.5380244255065918,
         0,
         0,
         0,
         0,
-        1,
+        1.5380244255065918,
         0,
         0,
         0,
         0,
-        1,
+        1.5380244255065918,
         0,
-        0,
-        0,
-        0,
+        -0.39803408458828926,
+        -5.77697229385376,
+        4.0544127225875854,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
       "localTransform": [
-        1,
+        0.9921011924743652,
         0,
         0,
         0,
         0,
-        1,
+        0.9921011924743652,
         0,
         0,
         0,
         0,
-        1,
+        0.9921011924743652,
         0,
-        0,
-        0,
-        0,
+        6.8812079429626465,
+        -0.10872671008110046,
+        -0.6073174327611923,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -391,42 +391,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
       "worldTransform": [
-        1,
+        0.9921011924743652,
         0,
         0,
         0,
         0,
-        1,
+        0.9921011924743652,
         0,
         0,
         0,
         0,
-        1,
+        0.9921011924743652,
         0,
-        0,
-        0,
-        0,
+        6.8812079429626465,
+        -0.10872671008110046,
+        -0.6073174327611923,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
       "localTransform": [
-        1,
+        1.8069734573364258,
         0,
         0,
         0,
         0,
-        1,
+        1.8069734573364258,
         0,
         0,
         0,
         0,
-        1,
+        1.8069734573364258,
         0,
-        0,
-        0,
-        0,
+        -0.6714038848876953,
+        6.201990842819214,
+        -3.637263298034668,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -440,42 +440,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
       "worldTransform": [
-        1,
+        1.8069734573364258,
         0,
         0,
         0,
         0,
-        1,
+        1.8069734573364258,
         0,
         0,
         0,
         0,
-        1,
+        1.8069734573364258,
         0,
-        0,
-        0,
-        0,
+        -0.6714038848876953,
+        6.201990842819214,
+        -3.637263298034668,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
       "localTransform": [
-        1,
+        1.4111404418945312,
         0,
         0,
         0,
         0,
-        1,
+        1.4111404418945312,
         0,
         0,
         0,
         0,
-        1,
+        1.4111404418945312,
         0,
-        0,
-        0,
-        0,
+        -7.8666040897369385,
+        -0.2085716724395752,
+        -0.24645423889160156,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -489,21 +489,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab.body",
       "worldTransform": [
-        1,
+        1.4111404418945312,
         0,
         0,
         0,
         0,
-        1,
+        1.4111404418945312,
         0,
         0,
         0,
         0,
-        1,
+        1.4111404418945312,
         0,
-        0,
-        0,
-        0,
+        -7.8666040897369385,
+        -0.2085716724395752,
+        -0.24645423889160156,
         1
       ]
     },
@@ -566,37 +566,37 @@
       "uri": "place_aftermath_aft_armor_slab.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 119236,
-    "sha256": "cb84445788bd596488fa8a9adcd8d52bd54a357c7a3a6f02bd2914cfea598a16",
+    "bytes": 105608,
+    "sha256": "2764590a425a36114f83a0e70367b82978b0330e620ca3c05f06c683450ef130",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000003337860107421875,
-        -0.000023365020751953125,
-        0.00003170967102050781
+        0.000003349039957356581,
+        -0.00002327403576352083,
+        0.00003169624101184709
       ],
       "max": [
         8.99506664276123,
-        7.314949989318848,
-        5.444300174713135
+        7.3149501712888245,
+        5.4443001478531174
       ],
       "min": [
-        -8.995059967041016,
+        -8.995059944681316,
         -7.314996719360352,
         -5.444236755371094
       ],
       "size": [
-        17.990126609802246,
-        14.6299467086792,
-        10.888536930084229
+        17.990126587442546,
+        14.629946890649176,
+        10.88853690322421
       ]
     },
     "hidden": [],
@@ -644,21 +644,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
-          0,
-          0,
-          0,
+          4.074478626251221,
+          0.4667091965675354,
+          -1.9993843734264374,
           1
         ],
         "name": "Belt1_1",
@@ -671,21 +671,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
-          0,
-          0,
-          0,
+          4.074478626251221,
+          0.4667091965675354,
+          -1.9993843734264374,
           1
         ],
         "name": "Belt1_2",
@@ -698,21 +698,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5380244255065918,
           0,
           0,
           0,
           0,
-          1,
+          1.5380244255065918,
           0,
           0,
           0,
           0,
-          1,
+          1.5380244255065918,
           0,
-          0,
-          0,
-          0,
+          -0.39803408458828926,
+          -5.77697229385376,
+          4.0544127225875854,
           1
         ],
         "name": "slabEdge_tear0",
@@ -725,21 +725,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9921011924743652,
           0,
           0,
           0,
           0,
-          1,
+          0.9921011924743652,
           0,
           0,
           0,
           0,
-          1,
+          0.9921011924743652,
           0,
-          0,
-          0,
-          0,
+          6.8812079429626465,
+          -0.10872671008110046,
+          -0.6073174327611923,
           1
         ],
         "name": "slabEdge_tear1",
@@ -752,21 +752,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8069734573364258,
           0,
           0,
           0,
           0,
-          1,
+          1.8069734573364258,
           0,
           0,
           0,
           0,
-          1,
+          1.8069734573364258,
           0,
-          0,
-          0,
-          0,
+          -0.6714038848876953,
+          6.201990842819214,
+          -3.637263298034668,
           1
         ],
         "name": "slabEdge_tear2",
@@ -779,21 +779,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4111404418945312,
           0,
           0,
           0,
           0,
-          1,
+          1.4111404418945312,
           0,
           0,
           0,
           0,
-          1,
+          1.4111404418945312,
           0,
-          0,
-          0,
-          0,
+          -7.8666040897369385,
+          -0.2085716724395752,
+          -0.24645423889160156,
           1
         ],
         "name": "slabEdge_tear3",
@@ -808,18 +808,18 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb"
   },
-  "runtimeHash": "a22a77b5060a7898b04525402e11e18e499af161eed5ae3a0522962209851595",
+  "runtimeHash": "d979e772b5127d00e5fdad15613c1fb179cade5747712dd05c88662411962625",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.99506664276123,
-          7.314949989318848,
-          5.444300174713135
+          7.3149501712888245,
+          5.4443001478531174
         ],
         "min": [
-          -8.995059967041016,
+          -8.995059944681316,
           -7.314996719360352,
           -5.444236755371094
         ]

@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "89f045b4a83af6799f6b973a3949202f2b958cf5250079e41e221dd297aa8870",
+  "contentHash": "43e121aa18c34ee5bda535abb7cd1a4c42936270cd52ee44aa880d69ff4024e3",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.639992598444223,
+          4.639992601647675,
           0.18000000715255737,
           0.18000000715255737
         ],
         "min": [
-          4.520007248967886,
+          4.520007245764434,
           -0.18000000715255737,
           -0.18000000715255737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65350b422468d0ed07b48ca5c71d445abfc20bc284fd247348589f6217fde3ed",
+      "geometryHash": "9b94afb4df714e39d0260ce5ce63857cef473832cd37098ed102a4bb2d9360d8",
       "id": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -85,21 +85,21 @@
       "bounds": {
         "max": [
           3.765825033187866,
-          0.4159579575061798,
-          0.4159579575061798
+          0.4159579456450974,
+          0.4159579456450974
         ],
         "min": [
           1.7779749631881714,
-          -0.4159579575061798,
-          -0.4159579575061798
+          -0.4159579456450974,
+          -0.4159579456450974
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7447660257de77f48836967e026662fac5c4c42be1f7407f950ff48356c3cc1",
+      "geometryHash": "e0d2770ba60e390c92e9072b61968d157ba6e385b9f793863586bc3b702c1a17",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 864,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_PulseCompressionCollar0",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
@@ -110,21 +110,21 @@
       "bounds": {
         "max": [
           4.017299652099609,
-          0.47077712416648865,
-          0.4201282858848572
+          0.4707771136405853,
+          0.4201282549456317
         ],
         "min": [
           1.2390999794006348,
-          -0.47077712416648865,
-          -0.395263671875
+          -0.4707771136405853,
+          -0.39526364093577454
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e083515910cb661abb6244319c02ca0cc74683fb020babac1093de28985fe52",
+      "geometryHash": "09c33a6b8e351e9d6e5439ec8cab3bc7db4679901f8720759e9f1a5bf1a84b04",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 396,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_PulseHeatShield_0",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
@@ -135,21 +135,21 @@
       "bounds": {
         "max": [
           4.628025054931641,
-          0.27049192786216736,
-          0.27049192786216736
+          0.2704919217310765,
+          0.2704919217310765
         ],
         "min": [
           0.3831932544708252,
-          -0.27049192786216736,
-          -0.27049192786216736
+          -0.2704919217310765,
+          -0.2704919217310765
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1c5cd12160e323f612d4756d2e37ea30e46672592d58a211429b2add5b347cc",
+      "geometryHash": "cdfade0d061b591c55ee2c15ef2c40219747536d90db963158fec0b784644220",
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 420,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_PulseAperture",
       "nodeId": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
@@ -160,17 +160,17 @@
       "bounds": {
         "max": [
           2.5976314544677734,
-          0.3649356961250305,
-          0.35943853855133057
+          0.36493566721494963,
+          0.3594385282487149
         ],
         "min": [
-          1.6023728847503662,
-          -0.3650100827217102,
-          -0.35943853855133057
+          1.6023728771240204,
+          -0.365010066695015,
+          -0.3594385282487149
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd9170cd2ca3cc7e691576f7639b8933684fe5f604e39d56c5f86ea8b53a9468",
+      "geometryHash": "25724e8b12a500a73149ee0136788618a48ffa0f70b63df5f711238aed3fd5ce",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.0",
       "indexCount": 1944,
       "indexed": true,
@@ -184,22 +184,22 @@
     {
       "bounds": {
         "max": [
-          1.4500527381896973,
-          0.44862157106399536,
-          0.4999772012233734
+          1.4500527822765246,
+          0.44862157674305353,
+          0.49997718994120205
         ],
         "min": [
           -0.15000000596046448,
-          -0.4500376284122467,
-          -0.4999772012233734
+          -0.4500376340913049,
+          -0.49997718994120205
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2babfc39fde3a9b77bcf46c0315c75a24b746feca88e250b7541cfe031068ad7",
+      "geometryHash": "f40498ab677c3422addebf4d25e83115b91ada6dfb937f2cb964695b3d559193",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged.primitive.1",
       "indexCount": 1116,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_pulse_cannon_Material_Hull_Merged.001",
       "nodeId": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
@@ -210,17 +210,17 @@
       "bounds": {
         "max": [
           4.599999904632568,
-          0.519976794719696,
-          0.4950425624847412
+          0.5199767951544477,
+          0.49504256305921834
         ],
         "min": [
           0.009999999776482582,
-          -0.519976794719696,
-          -0.4950425624847412
+          -0.5199767951544477,
+          -0.49504256305921834
         ]
       },
       "drawMode": 4,
-      "geometryHash": "770f91329144b9d07153d1197d8d03b3600ead8291ba53fab6d17ed1c0fce6ac",
+      "geometryHash": "d8d7d3dbfc7399ba90b585c1f958a0098bdd68ac715698fd6782623873ef110d",
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 3120,
       "indexed": true,
@@ -237,38 +237,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "id": "material:3e89ecd14466b59bdaf35c00",
       "name": "Material_Accent",
@@ -276,42 +244,10 @@
       "textures": []
     },
     {
-      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
-      "id": "material:9b606ffef39761a1e7cc390d",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -347,6 +283,38 @@
       "textures": []
     },
     {
+      "hash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
+      "id": "material:dc94a28d84c8ece3128cbf01",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
       "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
@@ -373,6 +341,38 @@
         {
           "colorSpace": "linear",
           "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -677,17 +677,17 @@
     {
       "id": "sf.render.weapon-pulse-cannon.node.pulse-muzzle-glow",
       "localTransform": [
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
@@ -706,17 +706,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         4.579999923706055,
         0,
@@ -825,19 +825,19 @@
     {
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-hull-vitreousceramic",
       "localTransform": [
-        1,
+        0.9939250349998474,
         0,
         0,
         0,
         0,
-        1,
+        0.9939250349998474,
         0,
         0,
         0,
         0,
-        1,
+        0.9939250349998474,
         0,
-        0,
+        2.771899998188019,
         0,
         0,
         1
@@ -852,19 +852,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        0.9939250349998474,
         0,
         0,
         0,
         0,
-        1,
+        0.9939250349998474,
         0,
         0,
         0,
         0,
-        1,
+        0.9939250349998474,
         0,
-        0,
+        2.771899998188019,
         0,
         0,
         1
@@ -873,21 +873,21 @@
     {
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
-        1,
+        1.3890998363494873,
         0,
         0,
         0,
         0,
-        1,
+        1.3890998363494873,
         0,
         0,
         0,
         0,
-        1,
+        1.3890998363494873,
         0,
+        2.628199815750122,
         0,
-        0,
-        0,
+        0.012432307004928589,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -900,40 +900,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        1.3890998363494873,
         0,
         0,
         0,
         0,
-        1,
+        1.3890998363494873,
         0,
         0,
         0,
         0,
-        1,
+        1.3890998363494873,
         0,
+        2.628199815750122,
         0,
-        0,
-        0,
+        0.012432307004928589,
         1
       ]
     },
     {
       "id": "sf.render.weapon-pulse-cannon.node.remaster-material-mechanical-shadowenamel",
       "localTransform": [
-        1,
+        2.1224159002304077,
         0,
         0,
         0,
         0,
-        1,
+        2.1224159002304077,
         0,
         0,
         0,
         0,
-        1,
+        2.1224159002304077,
         0,
-        0,
+        2.505609154701233,
         0,
         0,
         1
@@ -948,19 +948,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        2.1224159002304077,
         0,
         0,
         0,
         0,
-        1,
+        2.1224159002304077,
         0,
         0,
         0,
         0,
-        1,
+        2.1224159002304077,
         0,
-        0,
+        2.505609154701233,
         0,
         0,
         1
@@ -1556,20 +1556,20 @@
     {
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-hull-merged",
       "localTransform": [
-        1,
+        1.373815730214119,
         0,
         0,
         0,
         0,
-        1,
+        1.373815730214119,
         0,
         0,
         0,
         0,
-        1,
+        1.373815730214119,
         0,
-        0,
-        0,
+        1.2238157242536545,
+        -0.0007080286741256714,
         0,
         1
       ],
@@ -1584,20 +1584,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        1.373815730214119,
         0,
         0,
         0,
         0,
-        1,
+        1.373815730214119,
         0,
         0,
         0,
         0,
-        1,
+        1.373815730214119,
         0,
-        0,
-        0,
+        1.2238157242536545,
+        -0.0007080286741256714,
         0,
         1
       ]
@@ -1605,19 +1605,19 @@
     {
       "id": "sf.render.weapon-pulse-cannon.node.weapon-pulse-cannon-material-mechanical-merged",
       "localTransform": [
-        1,
+        2.294999952428043,
         0,
         0,
         0,
         0,
-        1,
+        2.294999952428043,
         0,
         0,
         0,
         0,
-        1,
+        2.294999952428043,
         0,
-        0,
+        2.3049999522045255,
         0,
         0,
         1
@@ -1633,19 +1633,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-pulse-cannon.body",
       "worldTransform": [
-        1,
+        2.294999952428043,
         0,
         0,
         0,
         0,
-        1,
+        2.294999952428043,
         0,
         0,
         0,
         0,
-        1,
+        2.294999952428043,
         0,
-        0,
+        2.3049999522045255,
         0,
         0,
         1
@@ -1662,37 +1662,37 @@
       "uri": "weapon_pulse_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 488364,
-    "sha256": "864f9fbd2e006c7d6815182f445f356f25ff6475a66e6adba303f6320b8510a2",
+    "bytes": 447148,
+    "sha256": "74fc146e7ad9f614f307bcba82bc24ce760b81d63ea384ec24d56a51e193796a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.2449962962418795,
+        2.2449962978436053,
         0,
         0
       ],
       "max": [
-        4.639992598444223,
-        0.519976794719696,
-        0.4999772012233734
+        4.639992601647675,
+        0.5199767951544477,
+        0.49997718994120205
       ],
       "min": [
         -0.15000000596046448,
-        -0.519976794719696,
-        -0.4999772012233734
+        -0.5199767951544477,
+        -0.49997718994120205
       ],
       "size": [
-        4.789992604404688,
-        1.039953589439392,
-        0.9999544024467468
+        4.78999260760814,
+        1.0399535903088954,
+        0.9999543798824041
       ]
     },
     "hidden": [],
@@ -1830,17 +1830,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.18000000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.18000000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.18000000715255737,
           0,
           4.579999923706055,
           0,
@@ -1856,20 +1856,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.373815730214119,
           0,
           0,
           0,
           0,
-          1,
+          1.373815730214119,
           0,
           0,
           0,
           0,
-          1,
+          1.373815730214119,
           0,
-          0,
-          0,
+          1.2238157242536545,
+          -0.0007080286741256714,
           0,
           1
         ],
@@ -1882,20 +1882,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.373815730214119,
           0,
           0,
           0,
           0,
-          1,
+          1.373815730214119,
           0,
           0,
           0,
           0,
-          1,
+          1.373815730214119,
           0,
-          0,
-          0,
+          1.2238157242536545,
+          -0.0007080286741256714,
           0,
           1
         ],
@@ -1908,19 +1908,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.294999952428043,
           0,
           0,
           0,
           0,
-          1,
+          2.294999952428043,
           0,
           0,
           0,
           0,
-          1,
+          2.294999952428043,
           0,
-          0,
+          2.3049999522045255,
           0,
           0,
           1
@@ -1934,21 +1934,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3890998363494873,
           0,
           0,
           0,
           0,
-          1,
+          1.3890998363494873,
           0,
           0,
           0,
           0,
-          1,
+          1.3890998363494873,
           0,
+          2.628199815750122,
           0,
-          0,
-          0,
+          0.012432307004928589,
           1
         ],
         "name": "Remaster_Material_Mechanical_BrushedNickel",
@@ -1962,19 +1962,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9939250349998474,
           0,
           0,
           0,
           0,
-          1,
+          0.9939250349998474,
           0,
           0,
           0,
           0,
-          1,
+          0.9939250349998474,
           0,
-          0,
+          2.771899998188019,
           0,
           0,
           1
@@ -1990,19 +1990,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1224159002304077,
           0,
           0,
           0,
           0,
-          1,
+          2.1224159002304077,
           0,
           0,
           0,
           0,
-          1,
+          2.1224159002304077,
           0,
-          0,
+          2.505609154701233,
           0,
           0,
           1
@@ -2020,20 +2020,20 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_pulse_cannon.glb"
   },
-  "runtimeHash": "1e2aecb130796f1c6a2a8afbda251d3acbfbbf0bdf74645fd15847b2dc496c3b",
+  "runtimeHash": "8aa9555c413d509b84f996bdf565648bb787eb80bfcbddd83155a5c4525ac5f4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.639992598444223,
-          0.519976794719696,
-          0.4999772012233734
+          4.639992601647675,
+          0.5199767951544477,
+          0.49997718994120205
         ],
         "min": [
           -0.15000000596046448,
-          -0.519976794719696,
-          -0.4999772012233734
+          -0.5199767951544477,
+          -0.49997718994120205
         ]
       },
       "id": "sf.render.weapon-pulse-cannon.body",

@@ -16,9 +16,13 @@
 //                             manifest at a weighing (the signature belongs to the decoy).
 //   data.coldCoast / data.driveOnline===false / data.enginesOff
 //                           — the hull is coasting with a cold drive: heat collapses.
+//   data.quietCoast         — the same cold read, written by the massSignature system's own
+//                             running-quiet verb (player drive idles cold after a spin-down).
 //   data.heatSignature      — explicit heat override (authored hot/cold props, reactors).
 //   data.massShadow         — force this body to cast a mass shadow regardless of size.
-//   data.heatSeeker         — this entity hunts heat (Lantern cysts, Furnace maws).
+//   data.heatSeeker         — this entity hunts heat (Lantern cysts, Furnace maws). Fauna
+//                             lantern cysts (data.ecology.speciesId) and 'furnace_maw'
+//                             archetype hulls hunt it without needing the stamp.
 
 const freeze = Object.freeze;
 
@@ -52,9 +56,11 @@ export const WEIGHING_TOLERANCE_T = 2;
 export const SWEEP_SCANNER_PROFILES = freeze({
   scale_barge: freeze({ id: 'scale_barge', ringRadius: 640, edgePeriodS: 9, dwellS: 1.5, readsMass: true, readsHeat: true }),
   customs_weir: freeze({ id: 'customs_weir', ringRadius: 460, edgePeriodS: 6, dwellS: 1.2, readsMass: true, readsHeat: true }),
-  quiet_relay: freeze({ id: 'quiet_relay', ringRadius: 560, edgePeriodS: 14, dwellS: 2.0, readsMass: true, readsHeat: false }),
+  // The two long-ears profiles also carry a deep band (see signatureRead): a signature
+  // strong enough reaches them past the drawn ring — the relay hears the heavy hull early.
+  quiet_relay: freeze({ id: 'quiet_relay', ringRadius: 560, edgePeriodS: 14, dwellS: 2.0, readsMass: true, readsHeat: false, deepStrengthMin: 6, deepRangeMult: 1.4 }),
   archive_page_drone: freeze({ id: 'archive_page_drone', ringRadius: 380, edgePeriodS: 8, dwellS: 1.0, readsMass: true, readsHeat: true }),
-  verge_prism: freeze({ id: 'verge_prism', ringRadius: 720, edgePeriodS: 18, dwellS: 2.5, readsMass: true, readsHeat: false }),
+  verge_prism: freeze({ id: 'verge_prism', ringRadius: 720, edgePeriodS: 18, dwellS: 2.5, readsMass: true, readsHeat: false, deepStrengthMin: 6, deepRangeMult: 1.5 }),
   // Heat hunters run the SAME model — a Lantern cyst or a Furnace maw is a sensor with a
   // jaw attached. It resolves nothing below HEAT_SEEKER_MIN and mass tells it nothing.
   lantern_cyst: freeze({ id: 'lantern_cyst', ringRadius: 900, edgePeriodS: 4, dwellS: 0.4, readsMass: false, readsHeat: true }),
@@ -75,13 +81,38 @@ export function scannerProfileFor(entity) {
   return null;
 }
 
+/** Entity kinds that hunt heat without needing the explicit data.heatSeeker stamp: fauna
+ *  lantern cysts and furnace-maw archetype hulls. Value = sweep profile id. */
+export const HEAT_SEEKER_KIND_PROFILES = freeze({
+  lantern_cyst: 'lantern_cyst',
+  furnace_maw: 'furnace_maw',
+});
+
+/** The profile a heat hunter reads with, or null when this entity is no seeker. Stamped
+ *  seekers (data.heatSeeker) come first; after that the body's own kind names it — a fauna
+ *  cyst or a maw archetype hunts heat whether or not a producer remembered the stamp. */
+export function heatSeekerProfileFor(entity) {
+  const data = entity && entity.data;
+  if (!data) return null;
+  if (data.heatSeeker === true) {
+    return SWEEP_SCANNER_PROFILES[data.heatSeekerProfile] || SWEEP_SCANNER_PROFILES.lantern_cyst;
+  }
+  const kind = data.archetype
+    || (data.ai && data.ai.archetype)
+    || (data.ecology && data.ecology.speciesId)
+    || data.speciesId
+    || null;
+  const profileId = kind && HEAT_SEEKER_KIND_PROFILES[kind];
+  return profileId ? SWEEP_SCANNER_PROFILES[profileId] : null;
+}
+
 // ── signatures ───────────────────────────────────────────────────────────────────────────
 
 /** The entity's own heat on the shared model. Deterministic; reads only entity fields. */
 export function heatOf(entity) {
   const data = (entity && entity.data) || {};
   if (Number.isFinite(data.heatSignature)) return Math.max(0, Math.min(1.5, data.heatSignature));
-  if (data.coldCoast === true || data.enginesOff === true || data.driveOnline === false) {
+  if (data.coldCoast === true || data.quietCoast === true || data.enginesOff === true || data.driveOnline === false) {
     return HEAT_COLD_COAST;
   }
   if (data.reactorHot === true) return HEAT_REACTOR_HOT;
@@ -114,6 +145,22 @@ export function signatureOf(entity) {
     hushed: entity && entity.data && entity.data.signatureHidden === true,
     cold: heatOf(entity) <= HEAT_COLD_COAST + 1e-9,
   });
+}
+
+// ── signature tiers ────────────────────────────────────────────────────────────────────
+
+/** How a signature presents on a sensor board, loudest label first:
+ *  'massive' — shadow-caster scale (a hull this big IS terrain);
+ *  'hot'     — drive burning / reactor lit, whatever the tonnage;
+ *  'contact' — resolvable: over the detect threshold, nothing dramatic;
+ *  'clutter'— under threshold: a sensor reads it as rock. */
+export const SIGNATURE_TIERS = freeze(['clutter', 'contact', 'hot', 'massive']);
+
+export function signatureTier(sig) {
+  if (!sig) return 'clutter';
+  if ((Number(sig.massT) || 0) >= MASS_SHADOW_MIN_T) return 'massive';
+  if ((Number(sig.heat) || 0) >= HEAT_THRUSTING - 1e-9) return 'hot';
+  return (Number(sig.strength) || 0) >= SIGNATURE_DETECT_MIN ? 'contact' : 'clutter';
 }
 
 // ── mass shadows ─────────────────────────────────────────────────────────────────────────
@@ -205,10 +252,26 @@ export function signatureRead(profile, scannerPos, target, casters) {
   if (!profile || !scannerPos || !target || !target.pos) return empty;
   const dx = target.pos.x - scannerPos.x;
   const dz = target.pos.z - scannerPos.z;
-  if (dx * dx + dz * dz > profile.ringRadius * profile.ringRadius) return empty;
+  const dist2 = dx * dx + dz * dz;
+  const ringR = Number(profile.ringRadius) || 400;
+  let sig = null;
+  if (dist2 > ringR * ringR) {
+    // Deep band: a signature strong enough carries past the drawn ring — heavy hulls and
+    // lit reactors get named before the edge ever reaches them. Profiles that declare no
+    // deepStrengthMin read only inside the ring (the scale's math is exactly unchanged).
+    const deepMin = Number(profile.deepStrengthMin);
+    const deepMult = Math.max(0, Number(profile.deepRangeMult) || 0);
+    if (!Number.isFinite(deepMin) || !(deepMult > 1)) return empty;
+    const deepR = ringR * deepMult;
+    if (dist2 > deepR * deepR) return empty;
+    sig = signatureOf(target);
+    const deepStrength = (profile.readsMass === false ? 0 : sig.massT * MASS_SIGNATURE_WEIGHT)
+      + (profile.readsHeat === false ? 0 : sig.heat);
+    if (deepStrength < deepMin) return empty;
+  }
   const occluder = massShadowBetween(scannerPos, target.pos, casters, target.id);
   if (occluder) return { ...empty, reason: 'mass_shadow', occludedBy: occluder.id };
-  const sig = signatureOf(target);
+  if (!sig) sig = signatureOf(target);
   const massTerm = profile.readsMass === false ? 0 : sig.massT * MASS_SIGNATURE_WEIGHT;
   const heatTerm = profile.readsHeat === false ? 0 : sig.heat;
   const strength = massTerm + heatTerm;
@@ -223,6 +286,7 @@ export function signatureRead(profile, scannerPos, target, casters) {
     strength,
     occludedBy: null,
     reason: 'resolved',
+    deep: dist2 > ringR * ringR,
     spoofed: sig.spoofed,
     cold: sig.cold,
   };
@@ -234,7 +298,7 @@ export function signatureRead(profile, scannerPos, target, casters) {
  * HEAT_SEEKER_MIN, or null — a field of cold coasters leaves the cyst drifting.
  */
 export function pickHeatSeekerTarget(seeker, candidates, casters) {
-  const profile = scannerProfileFor(seeker) || SWEEP_SCANNER_PROFILES.lantern_cyst;
+  const profile = heatSeekerProfileFor(seeker) || scannerProfileFor(seeker) || SWEEP_SCANNER_PROFILES.lantern_cyst;
   const pos = seeker && seeker.pos;
   if (!pos) return null;
   let best = null;

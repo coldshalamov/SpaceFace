@@ -29,6 +29,7 @@ import {
   survivalRun,
 } from '../src/systems/survivalRun.js';
 import { SWARM_STALL_RELEASE_TICKS, survivalWave } from '../src/systems/survivalWave.js';
+import { survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { SWARM_SPAWN_RETRY_TICKS } from '../src/systems/swarmSafety.js';
 import {
@@ -312,6 +313,37 @@ test('a clamp-refused batch is owed on a short retry — the quota is met withou
   assert.equal(cleared.killed, 20, 'the five stand-ins resolved too');
   assert.equal(releases.length, 0, 'no starvation ever reached the watchdog');
   teardown(h);
+});
+
+test('the release is not silent — the combat net says the room resumes, once', () => {
+  const h = boot(4242);
+  survivalAnnounce.init(h.ctx);
+  const releases = [];
+  const says = [];
+  h.bus.on('swarm:stallReleased', (p) => releases.push(p));
+  h.bus.on('voice:say', (p) => says.push(p));
+  freezeHoldOnPlan(h);
+
+  beginSwarm(h, 4242);
+  let waited = 0;
+  while (releases.length === 0 && waited < SWARM_STALL_RELEASE_TICKS + 600) {
+    tick(h, 1);
+    waited += 1;
+  }
+  assert.equal(releases.length, 1, 'the watchdog released the frozen hold');
+
+  const stalls = says.filter((p) => p && p.id === 'survival:w1:stall');
+  assert.equal(stalls.length, 1, 'one spoken line for the one release');
+  assert.equal(stalls[0].channel, 'objective', 'a state of the round, same channel as the surge');
+  assert.equal(stalls[0].text, 'The room breathes again — the pack is inbound.');
+  assert.ok(Number.isFinite(stalls[0].ttl) && stalls[0].ttl > 0, 'a finite reading window');
+
+  // The stream's law resumes — and the beat does not repeat: nothing may stack the line.
+  for (let i = 0; i < 300; i++) tick(h, 1);
+  assert.equal(says.filter((p) => p && p.id === 'survival:w1:stall').length, 1,
+    'the resumed stream does not re-speak the release');
+  teardown(h);
+  survivalAnnounce.destroy();
 });
 
 test('a hold carried across the wave boundary expires — the next opening is not starved', () => {

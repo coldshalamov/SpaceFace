@@ -68,7 +68,7 @@ const PRESETS = {
   field: { color: '#b49aff', peak: 4.6, decay: 6, distance: 155, priority: 0.65 },
   // A running power holds its light for as long as it runs (vfx._syncFieldPowerLights). Colour
   // is the field family's; peak is the sustained level; distance scales with the field radius.
-  fieldSustain: { color: '#b49aff', peak: 3.6, decay: 0, distance: 2.0, priority: 0.6 },
+  fieldSustain: { color: '#b49aff', peak: 3.0, decay: 0, distance: 1.6, priority: 0.6 },
   pickup: { color: '#d7efff', peak: 2.8, decay: 9, distance: 86, priority: 0.35 },
 
   // Surface-contact identities.

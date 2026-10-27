@@ -99,28 +99,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "55c857097c77972f4be308737808d2f27e15334afb31130247cdb93d8ddc7d45",
+  "contentHash": "f66df415d487379877bdc2f92f0e2d794b239180f70cf22cd65f61a3d8595fda",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -0.7922094464302063,
+          -0.792217991656553,
           1.5419999361038208,
-          0.44499996304512024
+          0.4450117239454179
         ],
         "min": [
-          -1.2794885635375977,
+          -1.279480018311251,
           0.9371999502182007,
-          0.2669999897480011
+          0.26698822884770346
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24f9cd531e2a014f368e67eb6eacc334f453f0d1ad0368069f7744105ca213e9",
+      "geometryHash": "46f3b1deab8de3ba770b729b7a9e00038fef2147500945b7793831e0aa4c40d3",
       "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2581050c9bd83eaec19ff249969fad2655c3fef2ac8fa5717df1ed6b8418a843",
+      "materialHash": "26ef11e640670316230dd433b33579c8927696d5b5f00a0356e234fa353bec4c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
@@ -131,21 +131,21 @@
       "bounds": {
         "max": [
           1.1569068431854248,
-          -0.46140003204345703,
-          -1.0679999589920044
+          -0.46146359539928405,
+          -1.0680234349017343
         ],
         "min": [
           -1.5231280326843262,
-          -0.839400053024292,
-          -1.4239999055862427
+          -0.839336489668465,
+          -1.4239764296765127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19027d1fcfd9b03b3327a49d821caa04186cf6dbc83a640bb992e018c6f21342",
+      "geometryHash": "3d87483902bd0fdcd69100cd01a3cee7a115bbd8dc022e38b17075e20fd02243",
       "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2581050c9bd83eaec19ff249969fad2655c3fef2ac8fa5717df1ed6b8418a843",
+      "materialHash": "26ef11e640670316230dd433b33579c8927696d5b5f00a0356e234fa353bec4c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
@@ -156,17 +156,17 @@
       "bounds": {
         "max": [
           -2.741325616836548,
-          0.20009997487068176,
-          -0.37825000286102295
+          0.20009049365738818,
+          -0.3783003025034995
         ],
         "min": [
           -4.203162670135498,
-          0.01109997183084488,
-          -0.6897499561309814
+          0.011109453044138476,
+          -0.689699656488505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7fa4efe9369a483d3ac1ca71d1c017ebafaf8b1baf3388b0727cf4bd3d40a55b",
+      "geometryHash": "d151d2093ecf5f3f08b1b420b2b16739dfe215358fcb22864bed697fd255c0ca",
       "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -181,21 +181,21 @@
       "bounds": {
         "max": [
           3.5323922634124756,
-          0.10559996962547302,
-          1.3016248941421509
+          0.10547045398668733,
+          1.3016919435847794
         ],
         "min": [
           -0.731299638748169,
-          -0.04560002684593201,
-          1.1903749704360962
+          -0.04547051120714632,
+          1.1903079209934677
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f81ba9bb3d50039de4f9648eccaf3486448eef780c585303042001e21691970",
+      "geometryHash": "948cc5b87f75d8d621ef433d2e51a5a7e35ddf35dd76fd88823a2f66eb0d8930",
       "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2581050c9bd83eaec19ff249969fad2655c3fef2ac8fa5717df1ed6b8418a843",
+      "materialHash": "26ef11e640670316230dd433b33579c8927696d5b5f00a0356e234fa353bec4c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
@@ -206,17 +206,17 @@
       "bounds": {
         "max": [
           3.7151217460632324,
-          0.6914999485015869,
-          0.578499972820282
+          0.6915202166329306,
+          0.5785385041507625
         ],
         "min": [
           2.0096449851989746,
-          0.5024999380111694,
-          -0.13349997997283936
+          0.5024796698798257,
+          -0.13353851130331978
         ]
       },
       "drawMode": 4,
-      "geometryHash": "332223e047c7977198315dc956b78b4cae91fdf00a362d563e73ff69a0107de3",
+      "geometryHash": "9f4b977f62e40983b442634c50030ad1124bcdaa50c6379ef33432ff980edaa2",
       "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -231,17 +231,17 @@
       "bounds": {
         "max": [
           -1.1576688289642334,
-          0.370199978351593,
-          1.0679999589920044
+          0.37023835084784634,
+          1.0680092854190142
         ],
         "min": [
           -3.3504245281219482,
-          0.06779997050762177,
-          0.5339999198913574
+          0.06776159801136844,
+          0.5339905934643476
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f2f8f495c699fd84d31e03c34629aa9852a385efb09c589049ce1a453452075",
+      "geometryHash": "d7741309e4182410f73740bb7363a321081f4a826b1250dcd15b88420b4ec0b6",
       "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -256,21 +256,21 @@
       "bounds": {
         "max": [
           4.446040153503418,
-          -0.310200035572052,
-          0.08899998664855957
+          -0.31020843794425385,
+          0.08901083947526828
         ],
         "min": [
           3.2278428077697754,
-          -0.5370000004768372,
-          -0.5339999794960022
+          -0.5369915981046354,
+          -0.5340108323227108
         ]
       },
       "drawMode": 4,
-      "geometryHash": "411a1c448794c5b0ad92e8573f493fa4d06a733d7d4b37ceec6b408630753940",
+      "geometryHash": "85736d1863b7ad15200605b9cfc2779165c587d5cdd3cfa48bad49949226397d",
       "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2581050c9bd83eaec19ff249969fad2655c3fef2ac8fa5717df1ed6b8418a843",
+      "materialHash": "26ef11e640670316230dd433b33579c8927696d5b5f00a0356e234fa353bec4c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
@@ -281,21 +281,21 @@
       "bounds": {
         "max": [
           3.471482276916504,
-          0.32294997572898865,
-          1.7466249465942383
+          0.3229760513249419,
+          1.7467663486974445
         ],
         "min": [
           -2.6195058822631836,
-          0.19064995646476746,
-          1.6353750228881836
+          0.19062388086881418,
+          1.6352336207849774
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccff08dc37ab1a72c7f3643433c3f9bab3a5c25dff269f83009e490e85a1fdf3",
+      "geometryHash": "fc2f2f93cbe061520e6b0f95654448ce447ad21dd6972ee6614e3745a0f734ac",
       "id": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "fd6d7cbbf9a55d494e6dcc79f38d8b0d28f336aef4b0cc50ca22fceed0abaafc",
+      "materialHash": "bc70fcddfceb7ce929ebc66533f43eef64c720f3da25d4c56278fcdadb13e44c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe",
@@ -306,17 +306,17 @@
       "bounds": {
         "max": [
           6.516976356506348,
-          1.9202938079833984,
-          2.2248921394348145
+          1.9202938216262353,
+          2.2248920339738665
         ],
         "min": [
           -5.664999961853027,
-          -1.8602938652038574,
-          -2.2248921394348145
+          -1.8602938788466943,
+          -2.2248920339738665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9aff47b9ba676eb42370b30e3e0ee034f1e7f28d190948aec96c6c2f1fdaca48",
+      "geometryHash": "38f5b13b1b6271fe198ca10b2cbca9eb6adee7b27aaad01392a4cda88c5e37b6",
       "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main.primitive.0",
       "indexCount": 4929,
       "indexed": true,
@@ -331,17 +331,17 @@
       "bounds": {
         "max": [
           6.516976356506348,
-          1.9202938079833984,
-          2.2248921394348145
+          1.9202938216262353,
+          2.2248920339738665
         ],
         "min": [
           -5.664999961853027,
-          -1.8602938652038574,
-          -2.2248921394348145
+          -1.8602938788466943,
+          -2.2248920339738665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8073671a63aa1b562ce2ca97c0e9fcc104278549230e05f5ebc7926bb834ea9",
+      "geometryHash": "6c5c86ce1122aa5a74ce230d1684e80cc3109f3e289be8e5b97a3a700788dc9f",
       "id": "sf.render.hull-multirole.mesh.lod1-hull-multirole-silhouette.primitive.0",
       "indexCount": 2700,
       "indexed": true,
@@ -356,17 +356,17 @@
       "bounds": {
         "max": [
           6.61139440536499,
-          2.042663812637329,
-          2.3533289432525635
+          2.0426636844383195,
+          2.353328893541704
         ],
         "min": [
           -5.6264472007751465,
-          -1.9076416492462158,
-          -2.5381476879119873
+          -1.9076415210472062,
+          -2.538147638201128
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ec6366da4b966e18bea042f0d622436c514682b0f2b23e998ffe61d8c06bec2",
+      "geometryHash": "5131526184d5153b466c20b51b197ab250a7e7bf66cd65c06cb15ac3175fd594",
       "id": "sf.render.hull-multirole.mesh.lod2-hull-multirole-silhouette.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2581050c9bd83eaec19ff249969fad2655c3fef2ac8fa5717df1ed6b8418a843",
-      "id": "material:2581050c9bd83eaec19ff249",
+      "hash": "26ef11e640670316230dd433b33579c8927696d5b5f00a0356e234fa353bec4c",
+      "id": "material:26ef11e640670316230dd433",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -447,10 +447,10 @@
       ]
     },
     {
-      "hash": "fd6d7cbbf9a55d494e6dcc79f38d8b0d28f336aef4b0cc50ca22fceed0abaafc",
-      "id": "material:fd6d7cbbf9a55d494e6dcc79",
+      "hash": "bc70fcddfceb7ce929ebc66533f43eef64c720f3da25d4c56278fcdadb13e44c",
+      "id": "material:bc70fcddfceb7ce929ebc665",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -483,21 +483,21 @@
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-antenna-jury",
       "localTransform": [
-        1,
+        0.30239999294281006,
         0,
         0,
         0,
         0,
-        1,
+        0.30239999294281006,
         0,
         0,
         0,
         0,
-        1,
+        0.30239999294281006,
         0,
-        0,
-        0,
-        0,
+        -1.035849004983902,
+        1.2395999431610107,
+        0.35599997639656067,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -511,42 +511,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        0.30239999294281006,
         0,
         0,
         0,
         0,
-        1,
+        0.30239999294281006,
         0,
         0,
         0,
         0,
-        1,
+        0.30239999294281006,
         0,
-        0,
-        0,
-        0,
+        -1.035849004983902,
+        1.2395999431610107,
+        0.35599997639656067,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-cargo-rig",
       "localTransform": [
-        1,
+        1.3400174379348755,
         0,
         0,
         0,
         0,
-        1,
+        1.3400174379348755,
         0,
         0,
         0,
         0,
-        1,
+        1.3400174379348755,
         0,
-        0,
-        0,
-        0,
+        -0.18311059474945068,
+        -0.6504000425338745,
+        -1.2459999322891235,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -560,42 +560,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        1.3400174379348755,
         0,
         0,
         0,
         0,
-        1,
+        1.3400174379348755,
         0,
         0,
         0,
         0,
-        1,
+        1.3400174379348755,
         0,
-        0,
-        0,
-        0,
+        -0.18311059474945068,
+        -0.6504000425338745,
+        -1.2459999322891235,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-field-repair",
       "localTransform": [
-        1,
+        0.7309185266494751,
         0,
         0,
         0,
         0,
-        1,
+        0.7309185266494751,
         0,
         0,
         0,
         0,
-        1,
+        0.7309185266494751,
         0,
-        0,
-        0,
-        0,
+        -3.472244143486023,
+        0.10559997335076332,
+        -0.5339999794960022,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -609,42 +609,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        0.7309185266494751,
         0,
         0,
         0,
         0,
-        1,
+        0.7309185266494751,
         0,
         0,
         0,
         0,
-        1,
+        0.7309185266494751,
         0,
-        0,
-        0,
-        0,
+        -3.472244143486023,
+        0.10559997335076332,
+        -0.5339999794960022,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-jury-weld",
       "localTransform": [
-        1,
+        2.1318459510803223,
         0,
         0,
         0,
         0,
-        1,
+        2.1318459510803223,
         0,
         0,
         0,
         0,
-        1,
+        2.1318459510803223,
         0,
-        0,
-        0,
-        0,
+        1.4005463123321533,
+        0.029999971389770508,
+        1.2459999322891235,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -658,42 +658,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        2.1318459510803223,
         0,
         0,
         0,
         0,
-        1,
+        2.1318459510803223,
         0,
         0,
         0,
         0,
-        1,
+        2.1318459510803223,
         0,
-        0,
-        0,
-        0,
+        1.4005463123321533,
+        0.029999971389770508,
+        1.2459999322891235,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-mismatched-panel",
       "localTransform": [
-        1,
+        0.8527383804321289,
         0,
         0,
         0,
         0,
-        1,
+        0.8527383804321289,
         0,
         0,
         0,
         0,
-        1,
+        0.8527383804321289,
         0,
-        0,
-        0,
-        0,
+        2.8623833656311035,
+        0.5969999432563782,
+        0.2224999964237213,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -707,42 +707,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        0.8527383804321289,
         0,
         0,
         0,
         0,
-        1,
+        0.8527383804321289,
         0,
         0,
         0,
         0,
-        1,
+        0.8527383804321289,
         0,
-        0,
-        0,
-        0,
+        2.8623833656311035,
+        0.5969999432563782,
+        0.2224999964237213,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-salvage-patch",
       "localTransform": [
-        1,
+        1.0963778495788574,
         0,
         0,
         0,
         0,
-        1,
+        1.0963778495788574,
         0,
         0,
         0,
         0,
-        1,
+        1.0963778495788574,
         0,
-        0,
-        0,
-        0,
+        -2.254046678543091,
+        0.2189999744296074,
+        0.8009999394416809,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -756,42 +756,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        1.0963778495788574,
         0,
         0,
         0,
         0,
-        1,
+        1.0963778495788574,
         0,
         0,
         0,
         0,
-        1,
+        1.0963778495788574,
         0,
-        0,
-        0,
-        0,
+        -2.254046678543091,
+        0.2189999744296074,
+        0.8009999394416809,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-smuggler-hatch",
       "localTransform": [
-        1,
+        0.6090986728668213,
         0,
         0,
         0,
         0,
-        1,
+        0.6090986728668213,
         0,
         0,
         0,
         0,
-        1,
+        0.6090986728668213,
         0,
-        0,
-        0,
-        0,
+        3.8369414806365967,
+        -0.4236000180244446,
+        -0.2224999964237213,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -805,42 +805,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        0.6090986728668213,
         0,
         0,
         0,
         0,
-        1,
+        0.6090986728668213,
         0,
         0,
         0,
         0,
-        1,
+        0.6090986728668213,
         0,
-        0,
-        0,
-        0,
+        3.8369414806365967,
+        -0.4236000180244446,
+        -0.2224999964237213,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-det-violet-stripe",
       "localTransform": [
-        1,
+        3.0454940795898438,
         0,
         0,
         0,
         0,
-        1,
+        3.0454940795898438,
         0,
         0,
         0,
         0,
-        1,
+        3.0454940795898438,
         0,
-        0,
-        0,
-        0,
+        0.42598819732666016,
+        0.25679996609687805,
+        1.690999984741211,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -854,41 +854,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        3.0454940795898438,
         0,
         0,
         0,
         0,
-        1,
+        3.0454940795898438,
         0,
         0,
         0,
         0,
-        1,
+        3.0454940795898438,
         0,
-        0,
-        0,
-        0,
+        0.42598819732666016,
+        0.25679996609687805,
+        1.690999984741211,
         1
       ]
     },
     {
       "id": "sf.render.hull-multirole.mesh.lod0-hull-multirole-main",
       "localTransform": [
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
-        0,
-        0,
+        0.42598819732666016,
+        0.029999971389770508,
         0,
         1
       ],
@@ -903,20 +903,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
-        0,
-        0,
+        0.42598819732666016,
+        0.029999971389770508,
         0,
         1
       ]
@@ -924,20 +924,20 @@
     {
       "id": "sf.render.hull-multirole.mesh.lod1-hull-multirole-silhouette",
       "localTransform": [
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
-        0,
-        0,
+        0.42598819732666016,
+        0.029999971389770508,
         0,
         1
       ],
@@ -952,20 +952,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
         0,
         0,
         0,
-        1,
+        6.0909881591796875,
         0,
-        0,
-        0,
+        0.42598819732666016,
+        0.029999971389770508,
         0,
         1
       ]
@@ -973,21 +973,21 @@
     {
       "id": "sf.render.hull-multirole.mesh.lod2-hull-multirole-silhouette",
       "localTransform": [
-        1,
+        6.118920803070068,
         0,
         0,
         0,
         0,
-        1,
+        6.118920803070068,
         0,
         0,
         0,
         0,
-        1,
+        6.118920803070068,
         0,
-        0,
-        0,
-        0,
+        0.4924736022949219,
+        0.06751108169555664,
+        -0.09240937232971191,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1001,21 +1001,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-multirole.body",
       "worldTransform": [
-        1,
+        6.118920803070068,
         0,
         0,
         0,
         0,
-        1,
+        6.118920803070068,
         0,
         0,
         0,
         0,
-        1,
+        6.118920803070068,
         0,
-        0,
-        0,
-        0,
+        0.4924736022949219,
+        0.06751108169555664,
+        -0.09240937232971191,
         1
       ]
     },
@@ -1078,14 +1078,14 @@
       "uri": "hull_multirole.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3349632,
-    "sha256": "780ce6b21dad57d5924bfb8190147375ec6e46485d967c1402c4947af9a55d03",
+    "bytes": 3263056,
+    "sha256": "023586d1bd891d551c0cb8818e3950d441f10eb6c3702836d783ec316747b9f9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1097,18 +1097,18 @@
       ],
       "max": [
         6.61139440536499,
-        2.042663812637329,
-        2.3533289432525635
+        2.0426636844383195,
+        2.353328893541704
       ],
       "min": [
         -5.664999961853027,
-        -1.9076416492462158,
-        -2.5381476879119873
+        -1.9076415210472062,
+        -2.538147638201128
       ],
       "size": [
         12.276394367218018,
-        3.950305461883545,
-        4.891476631164551
+        3.9503052054855257,
+        4.891476531742832
       ]
     },
     "hidden": [],
@@ -1413,21 +1413,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.30239999294281006,
           0,
           0,
           0,
           0,
-          1,
+          0.30239999294281006,
           0,
           0,
           0,
           0,
-          1,
+          0.30239999294281006,
           0,
-          0,
-          0,
-          0,
+          -1.035849004983902,
+          1.2395999431610107,
+          0.35599997639656067,
           1
         ],
         "name": "LOD0_DET_antenna_jury",
@@ -1442,21 +1442,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3400174379348755,
           0,
           0,
           0,
           0,
-          1,
+          1.3400174379348755,
           0,
           0,
           0,
           0,
-          1,
+          1.3400174379348755,
           0,
-          0,
-          0,
-          0,
+          -0.18311059474945068,
+          -0.6504000425338745,
+          -1.2459999322891235,
           1
         ],
         "name": "LOD0_DET_cargo_rig",
@@ -1471,21 +1471,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7309185266494751,
           0,
           0,
           0,
           0,
-          1,
+          0.7309185266494751,
           0,
           0,
           0,
           0,
-          1,
+          0.7309185266494751,
           0,
-          0,
-          0,
-          0,
+          -3.472244143486023,
+          0.10559997335076332,
+          -0.5339999794960022,
           1
         ],
         "name": "LOD0_DET_field_repair",
@@ -1500,21 +1500,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1318459510803223,
           0,
           0,
           0,
           0,
-          1,
+          2.1318459510803223,
           0,
           0,
           0,
           0,
-          1,
+          2.1318459510803223,
           0,
-          0,
-          0,
-          0,
+          1.4005463123321533,
+          0.029999971389770508,
+          1.2459999322891235,
           1
         ],
         "name": "LOD0_DET_jury_weld",
@@ -1529,21 +1529,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8527383804321289,
           0,
           0,
           0,
           0,
-          1,
+          0.8527383804321289,
           0,
           0,
           0,
           0,
-          1,
+          0.8527383804321289,
           0,
-          0,
-          0,
-          0,
+          2.8623833656311035,
+          0.5969999432563782,
+          0.2224999964237213,
           1
         ],
         "name": "LOD0_DET_mismatched_panel",
@@ -1558,21 +1558,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0963778495788574,
           0,
           0,
           0,
           0,
-          1,
+          1.0963778495788574,
           0,
           0,
           0,
           0,
-          1,
+          1.0963778495788574,
           0,
-          0,
-          0,
-          0,
+          -2.254046678543091,
+          0.2189999744296074,
+          0.8009999394416809,
           1
         ],
         "name": "LOD0_DET_salvage_patch",
@@ -1587,21 +1587,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6090986728668213,
           0,
           0,
           0,
           0,
-          1,
+          0.6090986728668213,
           0,
           0,
           0,
           0,
-          1,
+          0.6090986728668213,
           0,
-          0,
-          0,
-          0,
+          3.8369414806365967,
+          -0.4236000180244446,
+          -0.2224999964237213,
           1
         ],
         "name": "LOD0_DET_smuggler_hatch",
@@ -1616,21 +1616,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.0454940795898438,
           0,
           0,
           0,
           0,
-          1,
+          3.0454940795898438,
           0,
           0,
           0,
           0,
-          1,
+          3.0454940795898438,
           0,
-          0,
-          0,
-          0,
+          0.42598819732666016,
+          0.25679996609687805,
+          1.690999984741211,
           1
         ],
         "name": "LOD0_DET_violet_stripe",
@@ -1645,20 +1645,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1,
+          6.0909881591796875,
           0,
-          0,
-          0,
+          0.42598819732666016,
+          0.029999971389770508,
           0,
           1
         ],
@@ -1674,20 +1674,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1,
+          6.0909881591796875,
           0,
           0,
           0,
           0,
-          1,
+          6.0909881591796875,
           0,
-          0,
-          0,
+          0.42598819732666016,
+          0.029999971389770508,
           0,
           1
         ],
@@ -1703,21 +1703,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.118920803070068,
           0,
           0,
           0,
           0,
-          1,
+          6.118920803070068,
           0,
           0,
           0,
           0,
-          1,
+          6.118920803070068,
           0,
-          0,
-          0,
-          0,
+          0.4924736022949219,
+          0.06751108169555664,
+          -0.09240937232971191,
           1
         ],
         "name": "LOD2_HULL_MULTIROLE_SILHOUETTE",
@@ -1734,20 +1734,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_multirole.glb"
   },
-  "runtimeHash": "dc6079842f5b0599321e6355c1509ba72c64504893230550e7538be4e3543e54",
+  "runtimeHash": "878f18bd0d404935f8013f621a217228d1c92f3e4df9684b0d80da1927ce69df",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           6.61139440536499,
-          2.042663812637329,
-          2.3533289432525635
+          2.0426636844383195,
+          2.353328893541704
         ],
         "min": [
           -5.664999961853027,
-          -1.9076416492462158,
-          -2.5381476879119873
+          -1.9076415210472062,
+          -2.538147638201128
         ]
       },
       "id": "sf.render.hull-multirole.body",

@@ -18,6 +18,8 @@ import assert from 'node:assert/strict';
 
 import { createSimulation } from '../src/core/sim.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { admitCapturedVessel, captureAndTransfer } from '../src/systems/shipControlTransfer.js';
+import { runtime } from '../src/data/encounters/362-the-salvage-watch.js';
 
 const OBSERVED = Object.freeze([
   'encounter:telegraph',
@@ -91,7 +93,8 @@ test('salvage watch: fire fields casualty, yard tug, raiders, and the volatile s
   const tug = t.director.entsOf(live, 'escort')[0];
   assert.equal(tug.data.defId, 'ship_hawser', 'the rescue is yard stock, not an enemy hull');
   assert.equal(tug.data.jobKind, 'tender');
-  assert.equal(tug.data.ai.targetId, freighter.id, 'the tug wants the work site');
+  assert.equal(tug.data.watchTugFor, freighter.id, 'the tug owns the work site');
+  assert.equal(tug.data.ai.passive, true, 'a rescue helm does not authorize combat');
 
   assert.equal(countOf(rows, 'encounter:spawned'), 1);
   const news = rows.filter((r) => r.name === 'news:publish');
@@ -143,6 +146,13 @@ test('salvage watch: a cleared lane closes the repair — paid, repped, and in t
   for (let i = 0; i < 60 * 14; i++) t.sim.step(); // 14 s: arrive + pressure
   assert.ok(live.data.watch.t < 55 * 0.5, 'work cannot complete while raiders press the tug');
 
+  // Stationary unit fixture only: explicitly place both real hull envelopes beside each
+  // other. This fixture proves attended time/rewards, NOT native propulsion or arrival.
+  const tug = t.director.entsOf(live, 'escort')[0];
+  const mule = t.director.entsOf(live, 'hauler')[0];
+  tug.pos = { x: mule.pos.x + mule.radius + tug.radius + 35, z: mule.pos.z };
+  tug.vel = { x: 0, z: 0 }; mule.vel = { x: 0, z: 0 };
+
   // The player answers: every raider goes down.
   for (const r of t.director.entsOf(live, 'raider')) r.alive = false;
   for (let i = 0; i < 60 * 70 && liveOf(t, id); i++) t.sim.step();
@@ -183,4 +193,383 @@ test('salvage watch: the casualty breaking up resolves the disputed field', () =
     && r.payload.text.includes('BROKE UP UNDER WATCH'));
   assert.equal(news.length, 1, 'the field makes the wire once');
   assert.equal(liveOf(t, id), undefined, 'no live record leaks');
+});
+
+// These deliberate owner fixtures use genuine director actors but do not integrate motion.
+// Native Hawser/flightV3/physics qualification is separate.
+function serviceFixture(suffix) {
+  const t = boot(), rows = record(t), id = fire(t, suffix), live = liveOf(t, id);
+  const tug = t.director.entsOf(live, 'escort')[0];
+  const mule = t.director.entsOf(live, 'hauler')[0];
+  const raiders = t.director.entsOf(live, 'raider');
+  for (const r of raiders) r.alive = false;
+  function berth() {
+    tug.pos = { x: mule.pos.x + tug.radius + mule.radius + 35, z: mule.pos.z };
+    tug.vel = { x: 0, z: 0 }; mule.vel = { x: 0, z: 0 };
+  }
+  function tick(seconds = 1) {
+    t.state.simTime += seconds;
+    runtime.tick(t.director, live, t.state, t.state.simTime);
+  }
+  berth();
+  return { ...t, rows, id, live, tug, mule, raiders, berth, tick };
+}
+const paid = q => countOf(q.rows, 'economy:grantCredits', 'salvage_watch:repaired');
+
+test('salvage watch: remote, rushing, overlapping and pressure cannot buy repair time', () => {
+  const q = serviceFixture('physical-gates');
+  const broken = q.mule.hull;
+  q.tug.pos.x += 100000;
+  for (let i = 0; i < 70; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 0, 'no timer-only remote repair');
+  assert.equal(q.mule.hull, broken); assert.equal(paid(q), 0);
+  assert.ok(Math.abs(q.tug.data.intent.moveX) + Math.abs(q.tug.data.intent.moveZ) > 0,
+    'remote rescue actually requests propulsion');
+  q.berth(); q.tug.vel.x = 20;
+  for (let i = 0; i < 10; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 0, 'flybys are not attended work');
+  q.berth(); q.tug.pos = { ...q.mule.pos };
+  q.tick(); assert.equal(q.live.data.watch.t, 0, 'overlapping hulls are not a service berth');
+  q.berth(); q.raiders[0].alive = true; q.raiders[0].pos = { ...q.tug.pos };
+  for (let i = 0; i < 10; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 0, 'the original threat still interrupts repairs');
+});
+
+test('salvage watch: separation pauses, return resumes, and missed time earns nothing', () => {
+  const q = serviceFixture('resume');
+  for (let i = 0; i < 21; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 20);
+  q.tug.pos.x += 1000;
+  for (let i = 0; i < 10; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 20);
+  q.berth(); q.tick(); assert.equal(q.live.data.watch.t, 20, 'return first establishes attendance');
+  q.tick(10); assert.equal(q.live.data.watch.t, 20, 'no catch-up repair');
+  for (let i = 0; i < 34; i++) q.tick();
+  assert.equal(paid(q), 0, '54 eligible seconds do not finish 55 seconds');
+  q.tick();
+  assert.equal(paid(q), 1); assert.equal(q.mule.hull, q.mule.hullMax);
+  assert.equal(liveOf(q, q.id), undefined);
+});
+
+test('salvage watch: reentrant reward listeners and duplicate ticks cannot pay twice', () => {
+  const q = serviceFixture('reentrant');
+  q.bus.on('economy:grantCredits', () => runtime.tick(q.director, q.live, q.state, q.state.simTime));
+  for (let i = 0; i < 56; i++) q.tick();
+  q.tick(); runtime.tick(q.director, q.live, q.state, q.state.simTime);
+  assert.equal(paid(q), 1);
+  assert.equal(countOf(q.rows, 'faction:repDelta', 'salvage_watch_repaired'), 1);
+  assert.equal(countOf(q.rows, 'news:publish', 'SALVAGE WATCH CLOSED CLEAN'), 1);
+});
+
+test('salvage watch: foreign ownership, actor identity and body replacement cannot qualify', () => {
+  for (const actorKind of ['tug', 'mule']) for (const kind of ['intent', 'actor', 'generation', 'body', 'role', 'sector', 'owner', 'missing', 'departure']) {
+    const q = serviceFixture('foreign-' + actorKind + '-' + kind);
+    const owned = q.tug.data.intent, actor = q[actorKind];
+    if (kind === 'intent') q.tug.data.intent = { moveX: 0.75, moveZ: 0.25, owner: 'new-owner' };
+    if (kind === 'actor') q.state.entities.set(actor.id, { ...actor });
+    if (kind === 'generation') actor.occupantGeneration = (actor.occupantGeneration || 0) + 1;
+    if (kind === 'body') {
+      actor.physicsBody = {}; q.tick(); actor.physicsBody = {};
+    }
+    if (kind === 'role') q.live.roles[actor.id] = actorKind === 'tug' ? 'hauler' : 'escort';
+    if (kind === 'sector') q.state.world.currentSectorId = 'sector_elsewhere';
+    if (kind === 'owner') actor.data.ai.encounterId = 'another-scene';
+    if (kind === 'missing') q.state.entities.delete(actor.id);
+    if (kind === 'departure') actor.data.despawnAt = q.state.simTime + 20;
+    q.tick();
+    assert.equal(paid(q), 0, kind);
+    assert.equal(countOf(q.rows, 'news:publish'), 0, 'no invented obituary: ' + kind);
+    assert.equal(countOf(q.rows, 'faction:repDelta'), 0, 'no invented loss penalty: ' + kind);
+    assert.equal(q.live.outcome, 'watch_over', kind);
+    assert.notEqual(q.tug.data.intent, owned, 'release scene control: ' + kind);
+    if (kind === 'intent') assert.equal(q.tug.data.despawnAt, undefined, 'successor is not retired');
+    if (kind === 'intent') assert.deepEqual(q.tug.data.intent,
+      { moveX: 0.75, moveZ: 0.25, owner: 'new-owner' }, 'do not overwrite successor helm');
+  }
+});
+
+test('salvage watch: missing/dead actors, timeout, abort and restore clear only the watch helm', () => {
+  for (const kind of ['missing', 'dead', 'timeout', 'abort', 'restore', 'new-game']) {
+    const q = serviceFixture('cleanup-' + kind), owned = q.tug.data.intent;
+    if (kind === 'missing') q.state.entities.delete(q.mule.id);
+    if (kind === 'dead') q.tug.alive = false;
+    if (kind === 'timeout') q.state.simTime = q.live.deadlineAt;
+    if (kind === 'abort') q.director.abort(q.live, 'interrupted');
+    if (kind === 'restore') q.bus.emit('save:restoring', {});
+    if (kind === 'new-game') q.bus.emit('game:new', {});
+    q.tick();
+    assert.notEqual(q.tug.data.intent, owned, kind);
+    assert.equal(owned.moveX, 0); assert.equal(owned.moveZ, 0);
+    assert.equal(paid(q), 0, kind);
+  }
+});
+
+test('salvage watch: a lost tender cannot restart the watch by reviving its old actor', () => {
+  const q = serviceFixture('revived');
+  q.raiders[0].alive = true;
+  q.raiders[0].pos = { x: q.tug.pos.x + 10000, z: q.tug.pos.z };
+  q.tug.alive = false; q.tick();
+  assert.equal(q.live.data.watch.tenderLost, true);
+  q.tug.alive = true;
+  for (let i = 0; i < 70; i++) q.tick();
+  assert.equal(q.live.data.watch.t, 0);
+  assert.equal(paid(q), 0);
+});
+
+test('salvage watch: malformed geometry pauses work and neutralizes the owned helm', () => {
+  const q = serviceFixture('malformed');
+  q.tug.pos.x += 10000; q.tick();
+  const helm = q.tug.data.intent;
+  assert.ok(Math.abs(helm.moveX) + Math.abs(helm.moveZ) > 0);
+  q.tug.vel.x = NaN; q.tick();
+  assert.equal(helm.moveX, 0); assert.equal(helm.moveZ, 0);
+  assert.equal(q.live.data.watch.t, 0);
+  q.berth(); q.tick();
+  assert.equal(q.live.data.watch.t, 0);
+});
+
+function departed(suffix) {
+  const q = serviceFixture('departure-' + suffix);
+  for (let n = 0; n < 56; n++) q.tick();
+  assert.equal(paid(q), 1);
+  assert.equal(countOf(q.rows, 'encounter:receipt'), 1, 'receipt commits at repair, not tail expiry');
+  assert.equal(liveOf(q, q.id), undefined);
+  return q;
+}
+function captureOwner(q, actor) {
+  actor.data.vesselId = 'watch:' + actor.id;
+  actor.data.shipjackGeneration = 1;
+  q.state.run = { kind: 'adventure' };
+  q.state.player.ownedShips ||= [];
+  q.state.player.activeShipIndex = 0;
+  if (!q.state.player.ownedShips.length) q.state.player.ownedShips.push({ defId: 'ship_hawser', fittings: [] });
+  const owner = { state: q.state, bus: q.bus, validateTransferFittings: () => true,
+    nextInstanceId: () => 'watch:instance', getTransferCargoCapacity: () => 100,
+    recomputeEntity() {}, publishActiveRoleContext() {} };
+  const request = { targetId: actor.id, targetGeneration: 1, vesselId: actor.data.vesselId,
+    operationId: 'watch:transfer' };
+  return { owner, request };
+}
+test('salvage watch: repair immediately pays and receipts once while originals request diverging assisted burns', () => {
+  const q = departed('packets');
+  for (const actor of [q.tug, q.mule]) {
+    const intent = actor.data.intent;
+    assert.equal(intent.assistMode, 'assisted'); assert.equal(intent.turnIntent, 0);
+    assert.equal(intent.aimAngle, undefined); assert.equal(actor.data.despawnAt, q.state.simTime + 20);
+    const sign = actor === q.tug ? 1 : -1;
+    assert.ok(sign * (intent.moveZ * Math.cos(actor.rot) - intent.moveX * Math.sin(actor.rot)) > 0.6);
+    assert.equal(actor.data.ai.passive, true);
+  }
+  assert.ok(q.raiders.every(actor => !actor.data.intent?.assistMode));
+  q.tick(); assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+  const receipt = q.rows.find(row => row.name === 'encounter:receipt');
+  assert.ok(!JSON.stringify(receipt).includes('burned home'));
+});
+test('salvage watch: actual secure capture clears its burn and expiry before persistent serialization', () => {
+  for (const actorKind of ['tug', 'mule']) {
+    const q = departed('secure-' + actorKind), actor = q[actorKind];
+    const { owner, request } = captureOwner(q, actor), intent = actor.data.intent;
+    const result = admitCapturedVessel(owner, request);
+    assert.equal(result.ok, true); assert.equal(actor.flags.persistent, true);
+    assert.equal(actor.data.intent, undefined); assert.equal(actor.data.despawnAt, undefined);
+    const saved = JSON.parse(JSON.stringify(actor.data));
+    assert.equal(saved.intent, undefined); assert.equal(saved.despawnAt, undefined);
+    assert.equal(intent.moveX, 0); assert.equal(intent.moveZ, 0);
+    const other = actor === q.tug ? q.mule : q.tug;
+    assert.equal(other.data.intent.assistMode, 'assisted');
+    assert.equal(countOf(q.rows, 'encounter:receipt'), 1); assert.equal(paid(q), 1);
+  }
+});
+test('salvage watch: failed physical handoff preserves burn; actual committed transfer cancels retirement', () => {
+  const q = departed('handoff'), actor = q.tug, { owner, request } = captureOwner(q, actor);
+  const packet = actor.data.intent, expiry = actor.data.despawnAt;
+  const player = q.state.entities.get(q.state.playerId);
+  player.pos = { x: actor.pos.x + 10000, z: actor.pos.z };
+  assert.equal(captureAndTransfer(owner, request).ok, false);
+  assert.equal(actor.data.intent, packet); assert.equal(actor.data.despawnAt, expiry);
+  player.pos = { ...actor.pos }; player.vel = { ...actor.vel };
+  q.bus.on('ship:parkedHoldSwap', event => q.bus.emit('cargo:parkedHoldSwapped', event));
+  const result = captureAndTransfer(owner, request);
+  assert.equal(result.ok, true, result.reason);
+  assert.equal(q.state.playerId, actor.id); assert.equal(actor.data.intent, null);
+  assert.equal(actor.data.despawnAt, undefined); assert.equal(packet.moveZ, 0);
+});
+test('salvage watch: lifecycle release never erases successor packets or successor expiry', () => {
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new', 'entity:destroyed']) {
+    const q = departed(event), own = q.tug.data.intent, expiry = q.tug.data.despawnAt;
+    const successor = { moveZ: 0.2, owner: 'successor' };
+    q.tug.data.intent = successor; q.tug.data.despawnAt = expiry + 30;
+    q.bus.emit(event, { entity: q.tug, id: q.tug.id });
+    assert.equal(q.tug.data.intent, successor); assert.equal(q.tug.data.despawnAt, expiry + 30);
+    assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+  }
+  const q = departed('successor-custody'), { owner, request } = captureOwner(q, q.tug);
+  const successor = { moveZ: 0.2 }; q.tug.data.intent = successor;
+  q.tug.data.despawnAt += 10; const expiry = q.tug.data.despawnAt;
+  assert.equal(admitCapturedVessel(owner, request).ok, true);
+  assert.equal(q.tug.data.intent, successor); assert.equal(q.tug.data.despawnAt, expiry);
+});
+test('salvage watch: retirement is identity guarded and still occurs after the normal twenty seconds', () => {
+  const q = departed('retirement'), packet = q.tug.data.intent;
+  q.bus.emit('entity:destroyed', { id: q.tug.id, entity: { ...q.tug } });
+  assert.equal(q.tug.data.intent, packet);
+  for (let i = 0; i < 19 * 60; i++) q.sim.step();
+  assert.equal(q.tug.alive, true); assert.equal(q.mule.alive, true);
+  for (let i = 0; i < 2 * 60; i++) q.sim.step();
+  assert.equal(q.state.entities.has(q.tug.id), false); assert.equal(q.state.entities.has(q.mule.id), false);
+  assert.equal(packet.moveX, 0); assert.equal(packet.moveZ, 0);
+  assert.equal(paid(q), 1); assert.equal(countOf(q.rows, 'encounter:receipt'), 1);
+});
+
+test('salvage watch: departure listeners are bounded to the original pair and release on final retirement', () => {
+  const q = serviceFixture('departure-listeners');
+  const registrations = [], on = q.bus.on.bind(q.bus);
+  q.bus.on = (name, callback, ...options) => {
+    const row = { name, active: true }; registrations.push(row);
+    const off = on(name, callback, ...options);
+    return () => { row.active = false; off(); };
+  };
+  for (let i = 0; i < 56; i++) q.tick();
+  assert.equal(registrations.length, 7, 'two custody, one retirement, four scene lifecycle hooks only');
+  assert.ok(registrations.every(row => row.active));
+  q.bus.emit('entity:destroyed', { entity: { ...q.tug }, id: q.tug.id });
+  assert.ok(registrations.every(row => row.active), 'foreign same-id event does not terminate original');
+  q.bus.emit('entity:destroyed', { entity: q.tug, id: q.tug.id });
+  assert.ok(registrations.every(row => row.active), 'other original still has a live departure');
+  q.bus.emit('entity:destroyed', { entity: q.mule, id: q.mule.id });
+  assert.ok(registrations.every(row => !row.active), 'no permanent event subscription remains');
+});
+test('salvage watch: scene cleanup neutralizes owned packets without changing ordinary expiry', () => {
+  for (const event of ['save:restoring', 'sector:exit', 'game:exitToMenu', 'game:new']) {
+    const q = departed('owned-' + event), packets = [q.tug.data.intent, q.mule.data.intent];
+    const expiry = q.tug.data.despawnAt;
+    q.bus.emit(event, {});
+    for (const [index, actor] of [q.tug, q.mule].entries()) {
+      assert.notEqual(actor.data.intent, packets[index]);
+      assert.equal(packets[index].moveX, 0); assert.equal(packets[index].moveZ, 0);
+      assert.equal(actor.data.despawnAt, expiry, 'only actual custody cancels retirement');
+    }
+  }
+});
+test('salvage watch: stale actor generation and replacement ids cannot cancel retirement by capture event', () => {
+  for (const kind of ['generation', 'replacement']) {
+    const q = departed('stale-' + kind), actor = q.tug, packet = actor.data.intent, expiry = actor.data.despawnAt;
+    actor.flags ||= {}; actor.flags.persistent = true; actor.data.vesselId = 'stale:watch';
+    if (kind === 'generation') actor.occupantGeneration = (actor.occupantGeneration || 0) + 1;
+    else q.state.entities.set(actor.id, { ...actor, data: { ...actor.data } });
+    q.bus.emit('ship:captured', { targetId: actor.id, vesselId: 'stale:watch' });
+    q.bus.emit('ship:controlChanging', { toId: actor.id });
+    assert.equal(actor.data.intent, packet); assert.equal(actor.data.despawnAt, expiry);
+    q.bus.emit('save:restoring', {});
+  }
+});
+
+test('salvage watch: rotated local helm axes burn outward along the observed service bearing', () => {
+  for (const bearing of [0.7, -2.2]) {
+    const q = serviceFixture('departure-bearing-' + bearing);
+    const gap = q.tug.radius + q.mule.radius + 35;
+    q.tug.pos = { x: q.mule.pos.x + Math.cos(bearing) * gap, z: q.mule.pos.z + Math.sin(bearing) * gap };
+    q.tug.rot = 1.3; q.mule.rot = -0.9;
+    for (let i = 0; i < 56; i++) q.tick();
+    assert.equal(paid(q), 1);
+    for (const actor of [q.tug, q.mule]) {
+      const intent = actor.data.intent, sign = actor === q.tug ? 1 : -1;
+      const worldX = intent.moveZ * Math.cos(actor.rot) - intent.moveX * Math.sin(actor.rot);
+      const worldZ = intent.moveZ * Math.sin(actor.rot) + intent.moveX * Math.cos(actor.rot);
+      assert.ok(Math.abs(worldX - sign * Math.cos(bearing) * 0.65) < 1e-12);
+      assert.ok(Math.abs(worldZ - sign * Math.sin(bearing) * 0.65) < 1e-12);
+      assert.equal(intent.turnIntent, 0); assert.equal(intent.assistMode, 'assisted');
+    }
+  }
+});
+
+
+test('salvage watch: repair cues follow positive qualified work, not approach, pressure or missing time', () => {
+  const q = serviceFixture('work-cues'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => pulses.push(p));
+  q.tug.pos.x += 1000; q.tick(); assert.equal(pulses.length, 0);
+  q.berth(); q.tick(); assert.equal(pulses.length, 0, 'arrival alone earns no work');
+  q.tick(); assert.equal(pulses.length, 1);
+  assert.deepEqual(pulses[0], { encounterId: q.id, sectorId: SECTOR, simTime: q.state.simTime,
+    sourceId: q.tug.id, sourceGeneration: q.tug.occupantGeneration,
+    targetId: q.mule.id, targetGeneration: q.mule.occupantGeneration });
+  q.tick(0); assert.equal(pulses.length, 1);
+  q.raiders[0].alive = true; q.raiders[0].pos = { ...q.tug.pos };
+  q.tick(); assert.equal(pulses.length, 1, 'pressure pauses presentation');
+  q.raiders[0].alive = false; q.tick(); assert.equal(pulses.length, 1);
+  q.tick(); assert.equal(pulses.length, 2);
+  q.tick(2); assert.equal(pulses.length, 2, 'unobserved time is not work');
+  q.tug.pos.x += 1000; q.tick(); assert.equal(pulses.length, 2);
+});
+
+test('salvage watch: work cue is latched before reentrant listeners and stops at completion or abandon', () => {
+  const q = serviceFixture('work-cue-reentry'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => {
+    pulses.push(p); runtime.tick(q.director, q.live, q.state, q.state.simTime);
+  });
+  q.tick(); q.tick();
+  assert.equal(pulses.length, 1);
+  assert.equal(q.live.data.watch.t, 1, 'same-time callback does not buy work');
+  q.live.data.watch.t = 54.5;
+  q.tick();
+  assert.equal(paid(q), 1); assert.equal(pulses.length, 1, 'completion emits no continuing work');
+  const other = serviceFixture('work-cue-abandon'), stopped = [];
+  other.bus.on('salvageWatch:repairWork', p => stopped.push(p));
+  other.tick(); other.bus.emit('save:restoring', {}); other.tick();
+  assert.equal(stopped.length, 0);
+});
+
+test('salvage watch: qualifying work pulses remain cadence-bounded over a long interval', () => {
+  const q = serviceFixture('work-cue-cadence'), pulses = [];
+  q.bus.on('salvageWatch:repairWork', p => pulses.push(p));
+  q.tick();
+  for (let i = 0; i < 100; i++) q.tick(0.1);
+  assert.ok(pulses.length > 10 && pulses.length <= 34);
+  for (let i = 1; i < pulses.length; i++) assert.ok(pulses[i].simTime - pulses[i-1].simTime >= 0.3);
+  q.tug.pos.x += 1000;
+  for (let i = 0; i < 20; i++) q.tick(0.1);
+  const count = pulses.length;
+  q.bus.emit('sector:exit', { sectorId: SECTOR });
+  q.tick();
+  assert.equal(pulses.length, count);
+});
+
+
+test('salvage watch: secure capture during repair releases the watch before it can retire owned rescue hulls', () => {
+ for(const kind of ['tug','mule']) {
+  const q=serviceFixture('early-secure-'+kind),actor=q[kind],{owner,request}=captureOwner(q,actor);
+  owner.helpers=q.director.helpers;
+  const beforeHull=q.mule.hull,packet=q.tug.data.intent;
+  assert.equal(admitCapturedVessel(owner,request).ok,true);
+  assert.equal(actor.flags.persistent,true);
+  for(let n=0;n<56;n++)q.tick();
+  assert.equal(paid(q),0,'owning a rescue actor is not completed repair');
+  assert.notEqual(actor.data.intent,packet,'rescue helm never keeps a captured body');
+  assert.equal(actor.data.despawnAt,undefined,'watch never installs retirement on a captured actor');
+  assert.equal(q.mule.hull,beforeHull,'interrupted ownership does not invent a full repair');
+  assert.equal(q.live.outcome,'watch_over');
+  for(let n=0;n<22*60;n++)q.sim.step();
+  assert.equal(q.state.entities.get(actor.id),actor,'owned original remains physically present');
+ }
+});
+
+
+test('salvage watch: failed early transfer leaves work active; committed transfer stands the watch down', () => {
+ const q=serviceFixture('early-transfer'),actor=q.tug,{owner,request}=captureOwner(q,actor),packet=actor.data.intent;
+ owner.helpers=q.director.helpers;const player=q.state.entities.get(q.state.playerId);
+ player.pos={x:actor.pos.x+10000,z:actor.pos.z};assert.equal(captureAndTransfer(owner,request).ok,false);
+ assert.equal(q.live.phase,'conflict');assert.equal(actor.data.intent,packet);
+ player.pos={...actor.pos};player.vel={...actor.vel};q.bus.on('ship:parkedHoldSwap',event=>q.bus.emit('cargo:parkedHoldSwapped',event));
+ assert.equal(captureAndTransfer(owner,request).ok,true);assert.equal(q.state.playerId,actor.id);
+ assert.equal(q.live.outcome,'watch_over');assert.equal(paid(q),0);assert.equal(actor.data.despawnAt,undefined);assert.equal(actor.data.intent,null);
+});
+
+test('salvage watch: stale or uncommitted early capture cannot interrupt the original work', () => {
+ const q=serviceFixture('early-stale'),actor=q.tug,packet=actor.data.intent;
+ actor.data.vesselId='early:original';
+ q.bus.emit('ship:captured',{targetId:actor.id,vesselId:actor.data.vesselId});assert.equal(actor.data.intent,packet);
+ actor.flags.persistent=true;actor.occupantGeneration++;
+ q.bus.emit('ship:captured',{targetId:actor.id,vesselId:actor.data.vesselId});assert.equal(actor.data.intent,packet);
+ actor.occupantGeneration--;q.bus.emit('ship:captured',{targetId:actor.id,vesselId:'early:foreign'});
+ assert.equal(q.live.phase,'conflict');assert.equal(actor.data.intent,packet);assert.equal(paid(q),0);
 });

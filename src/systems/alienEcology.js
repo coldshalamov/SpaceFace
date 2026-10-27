@@ -1545,19 +1545,27 @@ export function tickAlienEcology(world, dt) {
               });
             }
           }
-          // N03 — a pylon pulse inside the dead triangle flinches every organism in sector.
-          if (s.siteId === 'charon_pylon_field'
-            && !ae.setpieces.N03_pylon_pulse
-            && dist2(player.pos.x, player.pos.z, sg.x, sg.z) < 360 * 360) {
-            ae.setpieces.N03_pylon_pulse = true;
-            for (const f of fauna) {
-              const eco = f.data && f.data.ecology;
-              if (eco) { eco.driveState = 'flee'; eco.fleeFrom = { x: sg.x, z: sg.z }; eco.driveT = 0; }
+        }
+        // 'pulseInside' setpieces (N03): this relay block is their named home — runSetpieces
+        // skips them, and their anchor can be a machine site that never appears in `pulsing`.
+        if (player && player.pos) {
+          for (const def of SETPIECE_DEFS) {
+            if (def.trigger !== 'pulseInside' || ae.setpieces[def.id]) continue;
+            const site = ALIEN_SITES[def.siteId] || MACHINE_SITES[def.siteId];
+            if (!site || site.sectorId !== sectorId) continue;
+            const g = world._toGlobal({ x: site.center.x, z: site.center.z }, sectorId);
+            if (dist2(player.pos.x, player.pos.z, g.x, g.z) >= def.radius * def.radius) continue;
+            ae.setpieces[def.id] = true;
+            world.bus.emit('toast', { text: def.text, kind: 'discovery', ttl: 5 });
+            if (def.evidence) recordEvidence(state, def.evidence, sectorId);
+            world.bus.emit('ecology:setpiece', { id: def.id, sectorId, t: now });
+            // N03 — a pulse crossing the dead triangle flinches every organism in sector.
+            if (def.id === 'N03_pylon_pulse') {
+              for (const f of fauna) {
+                const eco = f.data && f.data.ecology;
+                if (eco) { eco.driveState = 'flee'; eco.fleeFrom = { x: g.x, z: g.z }; eco.driveT = 0; }
+              }
             }
-            world.bus.emit('toast', {
-              text: 'A pulse crosses the dead triangle — every organism in the sector flinches at once.',
-              kind: 'discovery', ttl: 5,
-            });
           }
         }
         if (fittedFlag(state, 'echoRecorder')) {

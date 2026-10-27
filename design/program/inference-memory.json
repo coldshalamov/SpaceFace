@@ -132,45 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-st-13-progress-saved",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The first autosave says Progress saved. Later saves do not.",
-      "fingerprint": "verb=save,subject=progress-saved,sector=any,layer=toast,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "1bf8d93e92",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-st-01",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Title mode verbs (Crucible, Archive, Circuits, Sandbox, Physics challenges) show a visible one-line gloss instead of aria-only labels",
-      "fingerprint": "verb=teach,subject=title-verbs,sector=title,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "3a21675c52",
-      "verification": "focused_green"
-    },
-    {
-      "id": "seed-st-02",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Starter pick's Line stat shows a visible measure gloss ('massline winch speed') on both the arc cells and the hull ring",
-      "fingerprint": "verb=teach,subject=starter-stats,sector=newgame,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "0f8fbabd57",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-wl-11-standing-progress",
       "date": "2026-10-23",
       "wf": "WF-14",
@@ -1689,6 +1650,45 @@
       "references": [],
       "integration": "live",
       "commit": "f1e9927cde5432b980d564c9654fe4feaf9c6d50",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-berth-rumor",
+      "date": "2026-10-27",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A berth arrival does not repeat a pirate rumor from another sector.",
+      "fingerprint": "verb=hear,subject=rumor,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "8ccbb59fcef3e12b6bc00894925c64257aa3b3bf",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-relay-shelved",
+      "date": "2026-10-27",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A launched relay hauler that is off the map is not paid as if it docked.",
+      "fingerprint": "verb=hold,subject=hauler,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "158c8604baeb3b3ca7bc1853ca1e26e9b6432d4e",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-drone-recall",
+      "date": "2026-10-27",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Recalling a mining drone names the credits that recall paid.",
+      "fingerprint": "verb=recall,subject=drone,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "0c7a49433fc31a9c2e0e45445ce4300f0d2ac2e2",
       "verification": "focused_green"
     }
   ],

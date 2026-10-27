@@ -6,6 +6,7 @@ import { makeShipEntitySpec } from './ships.js';
 import { forEachJobInteractable } from '../world/livingWorldViews.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { NPC_JOB_PHASE } from './npcJobs.js';
+import { CHARON_SUPPLY } from '../world/charonSupplyReadout.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE, MAX_GENERAL_SALVORS_PER_SECTOR, MAX_YARD_TUGS_PER_SECTOR, PINNED_BODY_MASS, TOWABLE_BODY_MIN_RADIUS_WU, TRAFFIC_ROLES, YARD_TUG_LOT, factionHullFor, stationIdentity } from './traffic.js';
 
 export const trafficTugOps = {
@@ -56,7 +57,7 @@ export const trafficTugOps = {
     let bestD2 = Infinity;
     let bestId = '';
     for (const target of this._listSalvageTargets()) {
-      if (!this._isTowableBody(target)) continue;
+      if (!this._isTowableBody(target) || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
@@ -348,7 +349,7 @@ export const trafficTugOps = {
     const targets = this._listSalvageTargets();
     for (const target of targets) {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
-      if (this._salvorClaimantOf(target)) continue;
+      if (this._salvorClaimantOf(target) || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
       // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
@@ -400,7 +401,6 @@ export const trafficTugOps = {
 
   _maintainGeneralSalvorJobs() {
     const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
-    const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
     if (typeof getJob !== 'function') return;
     const sectorId = this.state.world && this.state.world.currentSectorId;
     if (!sectorId || sectorId === CERES_ACTIVITY_SECTOR_ID) return;
@@ -408,7 +408,12 @@ export const trafficTugOps = {
     for (const rec of this.state.traffic.freighters || []) {
       if (!rec || rec.role !== 'salvor') continue;
       const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
-      if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true) continue;
+      // Authored activity casts own their choreography — the generic retarget must not
+      // hijack their work legs. The Charon supply salvor is the one sanctioned exception:
+      // its job is real salvage work whose work leg the finite-supply feature retargets
+      // (charonSupplyReadout/originalJob's allowSalvageRetarget blesses that exact mutation).
+      if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true
+        || (ent.data.activityActorSlotId && ent.data.activityActorSlotId !== CHARON_SUPPLY.salvor)) continue;
       const entry = getJob(ent.data.jobId);
       const job = entry && entry.job;
       if (!job || job.corrupt) {
@@ -441,6 +446,17 @@ export const trafficTugOps = {
       }
       if (job.kind !== 'salvor') continue;
 
+      const held = ent.data.cargoManifest;
+      if (held?.salvageIntakeHeld && held.totalQty > 0) {
+        const yardId = job.route?.[0]?.id?.slice(5);
+        const intakeOwner = this._registry?.get('economy');
+        // A refused remainder stays on its actual cutter at the yard. It is not another cut,
+        // delivered freight, or a second custody store. Retry when the existing receiver can
+        // genuinely take something (including a legacy scrap-only receipt's electronics).
+        job.phase = NPC_JOB_PHASE.UNLOAD; job.routeIndex = 0; job.progress = 0;
+        if (intakeOwner?.quoteNpcSalvageIntake(yardId, held.lines)?.ok) delete held.salvageIntakeHeld;
+        continue;
+      }
       const site = job.route && job.route[1];
       const source = this._salvageSourceBindingFromPayload(job.payload);
       rec.generalSalvor = true;
@@ -454,17 +470,20 @@ export const trafficTugOps = {
       const hasCargo = !!(ent.data.cargoManifest
         && Array.isArray(ent.data.cargoManifest.lines)
         && ent.data.cargoManifest.totalQty > 0);
-      // Player beat the cutter to the body: retarget if another takeable remains, else leave empty.
+      // Retarget only before source work. An empty home APPROACH must finish unloading/release,
+      // not restart RETURN every time the hull reaches its yard.
       const beforeClaim = !hasCargo
         && (job.phase === NPC_JOB_PHASE.COMMISSION
           || job.phase === NPC_JOB_PHASE.TRANSIT
-          || job.phase === NPC_JOB_PHASE.APPROACH
+          || (job.phase === NPC_JOB_PHASE.APPROACH && job.routeIndex === 1)
           || job.phase === NPC_JOB_PHASE.WORK);
       if (!beforeClaim) continue;
-      if (target && this._isSalvageableBody(target)) {
+      if (target && this._isSalvageableBody(target)
+        && (!this._salvorClaimantOf(target) || this._salvorClaimantOf(target) === ent.data.worldRecordId)) {
         // Continue rematerializes the durable source with a new numeric entity id. Keep the job's
         // save-stable key, then refresh only the volatile waypoint/id/position from the live wreck.
-        if (source && site) site.id = `hulk:${target.id}`;
+        if (site) site.id = `${target.type === 'payload' ? 'payload' : 'hulk'}:${target.id}`;
+        job.payload.targetId = target.id;
         if (site.pos && target.pos) {
           site.pos.x = target.pos.x;
           site.pos.z = target.pos.z;
@@ -472,17 +491,17 @@ export const trafficTugOps = {
         continue;
       }
 
+      // A shelved workpiece is unavailable, not lost. Never spend its pool virtually or
+      // assign another source while the same finite body waits for native residency.
+      if (!target && this._salvorSourceShelved(job.payload)) continue;
       // Release claim on the missing body and try another.
       if (target) this._clearSalvorClaim(target, ent.data.worldRecordId);
       if (source) this._releaseSalvageSourceClaim(source, ent.data.worldRecordId);
-      if (job.payload && job.payload.targetId != null) {
-        const prior = this.state.entities && this.state.entities.get
-          ? this.state.entities.get(job.payload.targetId)
-          : null;
-        if (prior) this._clearSalvorClaim(prior, ent.data.worldRecordId);
-      }
       const next = this._pickUnclaimedSalvageTarget(ent);
       if (next && site) {
+        // A competing reservation is a refusal, not proof that the current work was lost.
+        // Keep its job/custody intact and retry; only an admitted source resets the cut below.
+        if (!this._stampSalvorClaim(next, ent.data.worldRecordId)) continue;
         const kind = next.type === 'payload' ? 'payload' : 'hulk';
         const nextSource = this._salvageSourceBinding(next);
         site.id = `${kind}:${next.id}`;
@@ -491,6 +510,7 @@ export const trafficTugOps = {
         job.payload = {
           targetId: next.id,
           targetType: next.type,
+          ...(!nextSource ? { targetKey: this._salvorTargetKey(next) } : {}),
           ...(nextSource ? {
             salvageSource: nextSource.sourceKey,
             salvagePointId: nextSource.salvagePointId,
@@ -504,12 +524,13 @@ export const trafficTugOps = {
           delete ent.data.salvageSource;
           delete ent.data.salvagePointId;
         }
-        this._stampSalvorClaim(next, ent.data.worldRecordId);
+        // New target, new cut. A retarget never inherits work already spent on another hull.
+        job.phase = NPC_JOB_PHASE.TRANSIT; job.routeIndex = 0; job.progress = 0;
         continue;
       }
       // Nothing left — keep flying the empty cycle home rather than inventing a second mover.
-      if (job.payload) job.payload.extracted = false;
-      void release; // release is available for one-shot kinds; salvor cycles empty honestly.
+      job.payload = { ...job.payload, extracted: false, sourceUnavailable: true };
+      job.phase = NPC_JOB_PHASE.RETURN; job.routeIndex = 1; job.progress = 0;
     }
   },
 };

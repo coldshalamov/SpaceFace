@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "94bfe6c10eeeb4e781a907e40b202d77bb25e09c8327c1056400c90d2f1297b6",
+  "contentHash": "76002081a181b7ac536d56ea5439ff91292bd73d7ebd0e6e3288915fdc5f4914",
   "dynamicGroups": [
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -618,17 +618,17 @@
       "bounds": {
         "max": [
           16.39978790283203,
-          6.930635452270508,
-          5.9721879959106445
+          6.930635249905398,
+          5.9721880295338705
         ],
         "min": [
           -15.720137596130371,
-          -1.9984827041625977,
-          -5.9721856117248535
+          -1.998482501797488,
+          -5.9721856453480795
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16937dd28b2cf05e775109913cca90659ae0f183918e8875fe4c8df7ee135e54",
+      "geometryHash": "868194ba263afb934aa52c474d6ee399bab83b4963ecc421b9cb158396469b12",
       "id": "sf.render.helios-arclight.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -643,17 +643,17 @@
       "bounds": {
         "max": [
           16.398662567138672,
-          5.381643772125244,
-          5.870807647705078
+          5.381643589758715,
+          5.87080790868709
         ],
         "min": [
           -14.898622512817383,
-          -1.9615228176116943,
-          -5.870807647705078
+          -1.9615226352451653,
+          -5.87080790868709
         ]
       },
       "drawMode": 4,
-      "geometryHash": "feb39b47363b170ec2b5b843aa8dd48c83e72a11240beac47538a862d419bf32",
+      "geometryHash": "4d3a4821751e29e5c76ac7dcdd254cd8e38c89fb5db93f0c23694ce111ba774c",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 47082,
       "indexed": true,
@@ -668,17 +668,17 @@
       "bounds": {
         "max": [
           -0.45000001788139343,
-          5.825068473815918,
-          0.1498470902442932
+          5.825068391024363,
+          0.1498470952939619
         ],
         "min": [
           -12.309999465942383,
-          1.1729313135147095,
-          -0.1498470902442932
+          1.1729313963062649,
+          -0.1498470952939619
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45206e8bd1a5531a22eb3afd13ddd5940de68d023720d60b45c5a34d91ae9923",
+      "geometryHash": "c7345f076591ac96e8f28a7e0a14e93617dc01fba7fdbedfc9458ba991763c69",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -693,17 +693,17 @@
       "bounds": {
         "max": [
           15.800000190734863,
-          2.761955976486206,
-          5.853831768035889
+          2.7619559442376094,
+          5.853831598864712
         ],
         "min": [
           -9.199999809265137,
-          0.01529005914926529,
-          -5.853831768035889
+          0.015290091397861971,
+          -5.853831598864712
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3043823a051fa23e24ad96f8d8aa287bdd30c1b32e902c6cbde9c5573186592a",
+      "geometryHash": "ba04b611b386be7b4547fd060ff30b2d9f67b5d5e6187a76ca007ffb08119b78",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 2262,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b352f4737e8d84ca7764eb3432b9dbd747743dd1164aa692715adb789f9bdd51",
+      "geometryHash": "15a2d948813bbb6c13c6044682991824bd3872a1882939d129036cd3f2c1be4b",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -793,17 +793,17 @@
       "bounds": {
         "max": [
           9.100000381469727,
-          1.5597388744354248,
-          1.5076632499694824
+          1.5597389179124175,
+          1.50766323237568
         ],
         "min": [
           -7.5,
-          -1.2043102979660034,
-          -1.5076632499694824
+          -1.204310341442996,
+          -1.50766323237568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8afedc00aaeefa2146d916ff47eac0e37d5704a983339f8f827f640fa2efa99c",
+      "geometryHash": "7e9df44b5563d2df8c4a541e5f9bd9fc1c0852db26d482c9e020417fcf385740",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hull-graphite.primitive.0",
       "indexCount": 4662,
       "indexed": true,
@@ -818,17 +818,17 @@
       "bounds": {
         "max": [
           16.399999618530273,
-          5.673262119293213,
-          5.8519606590271
+          5.673262193077313,
+          5.8519606754858176
         ],
         "min": [
           -14.898653030395508,
-          -1.998809576034546,
-          -5.8519606590271
+          -1.9988096498186456,
+          -5.8519606754858176
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4a8a8f0237c21eaf0ba780a48c040b18a70d610073602e5e2b90b3ca789cb0ff",
+      "geometryHash": "3ae55eba97c29d6d97d6188ca4829820ac82ba90df8f609e1da9e0a028455ea3",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 34770,
       "indexed": true,
@@ -843,17 +843,17 @@
       "bounds": {
         "max": [
           13.129701614379883,
-          5.672965049743652,
-          5.722204208374023
+          5.672965025584917,
+          5.722204286534745
         ],
         "min": [
           -11.352829933166504,
-          -1.1569193601608276,
-          -5.722204208374023
+          -1.1569193360020922,
+          -5.722204286534745
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5eaa7a285d1da1cee5089d90c5c3b4bd0efc00377c2413bd8cdd095d87952dda",
+      "geometryHash": "68f0c58387ae2ffe3ece3d66dcf636c61615041409f3f77eda59ccca96562ff9",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 10776,
       "indexed": true,
@@ -867,18 +867,18 @@
     {
       "bounds": {
         "max": [
-          11.861000061035156,
-          2.9861021041870117,
+          11.861000336706638,
+          2.986102027903999,
           0.06300000101327896
         ],
         "min": [
-          11.735000610351562,
-          2.897897720336914,
+          11.73500033468008,
+          2.897897796619927,
           -0.06300000101327896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e052d4cb192fd114c75087315641b40d7b3fa59ea27adbf08774d11b5eed6752",
+      "geometryHash": "8c31cbe8fec1ec69411eb90c6097ea22a2d11331315984356358e057bd1d4e0c",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -893,17 +893,17 @@
       "bounds": {
         "max": [
           12.119999885559082,
-          1.9004846811294556,
-          5.890176773071289
+          1.900484645551893,
+          5.890176855932423
         ],
         "min": [
           -8.765556335449219,
-          0.1795152872800827,
-          -5.890176773071289
+          0.17951532285764527,
+          -5.890176855932423
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa4fc0ae16e2f8055a6b8fb94086ca0f72d41b835ff97e17c3400daa53233860",
+      "geometryHash": "2d5b8c399a82c06fa97c2b2d35ba5f2b726b01abbf39eca934a4fdc1371c61eb",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 2304,
       "indexed": true,
@@ -918,17 +918,17 @@
       "bounds": {
         "max": [
           16.398696899414062,
-          5.673516273498535,
-          4.6501383781433105
+          5.67351628082238,
+          4.65013862781814
         ],
         "min": [
           -14.898641586303711,
-          0.007577633485198021,
-          -4.6501383781433105
+          0.007577626161353823,
+          -4.65013862781814
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3003ed1ca7dbf5c055c5a837e2f846c2ccd629c7f7458e0ca6f07a5cf298c4d2",
+      "geometryHash": "556bd162e9228e4a2310722f84e24f05f7155d7d7db63302d14f7f0d0efd6ca3",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 2922,
       "indexed": true,
@@ -943,17 +943,17 @@
       "bounds": {
         "max": [
           12.59999942779541,
-          6.927638053894043,
-          5.939793109893799
+          6.9276381448572035,
+          5.939793020498656
         ],
         "min": [
           -15.720000267028809,
-          -1.1871259212493896,
-          -5.939793109893799
+          -1.1871260122125502,
+          -5.939793020498656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b262b1ff1e31eeddf6c1ebc75cae14fa656dd44652f38fbee2b5b2b52b71a50",
+      "geometryHash": "929155ece3f546a9c87e27f14c564c18dde647c45d2abc279bb370974329efee",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 8532,
       "indexed": true,
@@ -968,17 +968,17 @@
       "bounds": {
         "max": [
           12.519999504089355,
-          1.366239309310913,
-          5.971277236938477
+          1.3662393106097113,
+          5.97127715122508
         ],
         "min": [
           -15.720000267028809,
-          -1.5536837577819824,
-          -5.971277236938477
+          -1.5536837590807806,
+          -5.97127715122508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2137bb7d7cc22fc3863f58b9916b46638b9d6745537c3d2c71783605c227071c",
+      "geometryHash": "6d977508038832241c27443f9fe26f0474a11e1ca998f0e94cf132969e5f46cd",
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 8214,
       "indexed": true,
@@ -993,17 +993,17 @@
       "bounds": {
         "max": [
           16.39967918395996,
-          5.381496906280518,
-          5.8692626953125
+          5.3814969625363,
+          5.869262913867108
         ],
         "min": [
           -14.899555206298828,
-          -1.9659473896026611,
-          -5.869263172149658
+          -1.9659474458584438,
+          -5.869263390704266
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e55b4ffb3281f07e7627cb971479d09dccd2e5ee0f7deb4ca7e239985a2a80ad",
+      "geometryHash": "49114e756a1ff07f8e91860c8bad1e09f84875409907f13d99d3282c743f29c8",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 17766,
       "indexed": true,
@@ -1018,17 +1018,17 @@
       "bounds": {
         "max": [
           -0.45000001788139343,
-          5.825068473815918,
-          0.1498470902442932
+          5.825068391024363,
+          0.1498470952939619
         ],
         "min": [
           -12.309999465942383,
-          1.1729313135147095,
-          -0.1498470902442932
+          1.1729313963062649,
+          -0.1498470952939619
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6cae474f5e63d846e89c04d2db934e88abec3d680100d6e33736b6e6c8e2da5",
+      "geometryHash": "f9646560bfd48e9245d03a45b8307bddb6a316fde1be7676e75bee4e0f5d9b8e",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1043,17 +1043,17 @@
       "bounds": {
         "max": [
           16.399707794189453,
-          2.7991979122161865,
-          5.853158950805664
+          2.79919785985748,
+          5.853158998057174
         ],
         "min": [
           -9.197951316833496,
-          -0.12562398612499237,
-          -5.853158950805664
+          -0.12562393376628567,
+          -5.853158998057174
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9b7263d8d50c3a385745327b6fc7f21d0ad4a71f274536279866eebcb85516b",
+      "geometryHash": "adcf4938c21c9780d51a2c002c4047565fe44dce803628b880f4adb7780e5719",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-canopy.primitive.0",
       "indexCount": 822,
       "indexed": true,
@@ -1078,7 +1078,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b352f4737e8d84ca7764eb3432b9dbd747743dd1164aa692715adb789f9bdd51",
+      "geometryHash": "15a2d948813bbb6c13c6044682991824bd3872a1882939d129036cd3f2c1be4b",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1143,17 +1143,17 @@
       "bounds": {
         "max": [
           9.099666595458984,
-          1.5580897331237793,
-          1.5115665197372437
+          1.5580897260949897,
+          1.5115665674671632
         ],
         "min": [
           -7.498435974121094,
-          -1.207669734954834,
-          -1.5115199089050293
+          -1.2076697279260444,
+          -1.5115199566349489
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c813b83eab1806d730c4b8c789c623c36ff6020ccbc2836011910598d8ca97f0",
+      "geometryHash": "a5bcf9d1ace3d8ff285bdb25900ed5262daac36aba0a119cf5a6c2ef172c7ec1",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-hull-graphite.primitive.0",
       "indexCount": 2082,
       "indexed": true,
@@ -1168,17 +1168,17 @@
       "bounds": {
         "max": [
           16.399707794189453,
-          5.6739068031311035,
-          5.850168228149414
+          5.673906773098672,
+          5.850167945251548
         ],
         "min": [
           -14.899574279785156,
-          -1.998319387435913,
-          -5.850168228149414
+          -1.9983193574034814,
+          -5.850167945251548
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5970383822cf9c6cd3ba8e89aa7797bd4bcd14ea7739cfe39fdbec7dce25adfb",
+      "geometryHash": "54eb5f17513b1b45a10f69bb491be4dc86648de6205df3a56e4d494bb37a1021",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 13002,
       "indexed": true,
@@ -1193,17 +1193,17 @@
       "bounds": {
         "max": [
           13.130416870117188,
-          5.673509120941162,
-          5.720871448516846
+          5.673509001284388,
+          5.7208714609518365
         ],
         "min": [
           -11.352721214294434,
-          -1.1565446853637695,
-          -5.720831871032715
+          -1.1565445657069953,
+          -5.720831883467706
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d1857fb6afef6ff691f60c3ea11d34d0c287dbf2091318b8f11ab87d954b165",
+      "geometryHash": "58fb1b5c63fccd64457e1cea678feca7a2f6fa4d1ef86c572cb7cf0f9c06259e",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 2688,
       "indexed": true,
@@ -1217,18 +1217,18 @@
     {
       "bounds": {
         "max": [
-          11.861000061035156,
-          2.9861021041870117,
+          11.861000336706638,
+          2.986102027903999,
           0.06300000101327896
         ],
         "min": [
-          11.735000610351562,
-          2.897897720336914,
+          11.73500033468008,
+          2.897897796619927,
           -0.06300000101327896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "961eb2d81d14869eda31f87f132252e806c9d771cf251236f978d6edf6f089b1",
+      "geometryHash": "45cddf834fc48a8b74665bd6f157aaa978e3e9f636ea5c57d8717578b370b965",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1243,17 +1243,17 @@
       "bounds": {
         "max": [
           12.119999885559082,
-          1.9004846811294556,
-          5.890176773071289
+          1.900484645551893,
+          5.890176855932423
         ],
         "min": [
           -8.765556335449219,
-          0.1795152872800827,
-          -5.890176773071289
+          0.17951532285764527,
+          -5.890176855932423
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd00815590a94a9c1fc42bb8283c7fdb55034aa21b6f67e3e7b8c0daaea43921",
+      "geometryHash": "4e2333a1d1c4383840822af5ca49e6de4a936b30ba237bd3eed701c81cad5a05",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 2304,
       "indexed": true,
@@ -1268,17 +1268,17 @@
       "bounds": {
         "max": [
           16.399707794189453,
-          5.674712181091309,
-          4.8133320808410645
+          5.674712336671378,
+          4.813331944805609
         ],
         "min": [
           -14.899574279785156,
-          0.016063638031482697,
-          -4.812293529510498
+          0.016063482451413424,
+          -4.812293393475042
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ac89445e94273d5c5082ef81e3370006db717e72efbdc5f6a379ed705438e81",
+      "geometryHash": "a87d80d9dc812078602a64743d87dc246dc33c008d7d0359f84c9c8a2cd9aada",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -1293,17 +1293,17 @@
       "bounds": {
         "max": [
           12.598775863647461,
-          6.927464008331299,
-          5.9395365715026855
+          6.9274642763821195,
+          5.93953639204299
         ],
         "min": [
           -15.720000267028809,
-          -1.1869490146636963,
-          -5.9395365715026855
+          -1.186949282714517,
+          -5.93953639204299
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63f00080c5d8e48547be049ad6c59c3409c6e2a54b3acfb66798ba7f0f99f7dc",
+      "geometryHash": "ace43e8976597535155ac12ae3a955081343fdab322516c84a5fb557064789f6",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 4854,
       "indexed": true,
@@ -1318,17 +1318,17 @@
       "bounds": {
         "max": [
           12.519999504089355,
-          1.366339921951294,
-          5.971277236938477
+          1.3663399019290665,
+          5.97127715122508
         ],
         "min": [
           -15.720000267028809,
-          -1.5570305585861206,
-          -5.971277236938477
+          -1.5570305385638932,
+          -5.97127715122508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc8febf55fdada8290161b904646681dd025623995cd787467aca25a621b1e5b",
+      "geometryHash": "61ddafe5b33e98092716f2eb4c810e0dc3dfe695201eeb3d55b629ef8d10c6fe",
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 4266,
       "indexed": true,
@@ -1343,17 +1343,17 @@
       "bounds": {
         "max": [
           16.399877548217773,
-          5.374057769775391,
-          5.869314670562744
+          5.374057930779056,
+          5.869314537212199
         ],
         "min": [
           -14.899629592895508,
-          -1.965808629989624,
-          -5.869314193725586
+          -1.9658087909932895,
+          -5.869314060375041
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6531eb88b4e55964ea14847153e0c3be795e3924259c72d6f2c356649914d7b",
+      "geometryHash": "8fd639116e2302865ec2991b2389d29e6dfd7023d4a8fa15375ee61acecd3af9",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 7479,
       "indexed": true,
@@ -1368,17 +1368,17 @@
       "bounds": {
         "max": [
           -0.45000001788139343,
-          5.825068473815918,
-          0.1498470902442932
+          5.825068391024363,
+          0.1498470952939619
         ],
         "min": [
           -12.309999465942383,
-          1.1729313135147095,
-          -0.1498470902442932
+          1.1729313963062649,
+          -0.1498470952939619
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6cae474f5e63d846e89c04d2db934e88abec3d680100d6e33736b6e6c8e2da5",
+      "geometryHash": "f9646560bfd48e9245d03a45b8307bddb6a316fde1be7676e75bee4e0f5d9b8e",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1393,17 +1393,17 @@
       "bounds": {
         "max": [
           16.399810791015625,
-          2.8004207611083984,
-          5.84751558303833
+          2.800420765779933,
+          5.847515453565989
         ],
         "min": [
           -9.193662643432617,
-          -0.1520414501428604,
-          -5.84751558303833
+          -0.15204145481439513,
+          -5.847515453565989
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d68b0b7166aad7271f6b513e53ebe319e6572ecfb3a154d937457521032575e",
+      "geometryHash": "455d6fcf8ce6ac0b1612e6f2c1e452aa963af157c3e93ae760c39188a887f0ba",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-canopy.primitive.0",
       "indexCount": 345,
       "indexed": true,
@@ -1428,7 +1428,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2556d75a812313008f8f3ca40f5aa89dc505ee51a8b3b0db622741d201569f39",
+      "geometryHash": "fa5ea18e7c5c87d584c7145223c339726e0a08b6120353e48ea48fe363aeee8a",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1493,17 +1493,17 @@
       "bounds": {
         "max": [
           9.098206520080566,
-          1.550598382949829,
-          1.494442105293274
+          1.5505984360859502,
+          1.494442123400047
         ],
         "min": [
           -7.490494251251221,
-          -1.1953688859939575,
-          -1.4925061464309692
+          -1.1953689391300786,
+          -1.4925061645377422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51b01b3bee64b6c1771bbdc04449b325da79e7aa2f944d01559954b899cbf3c0",
+      "geometryHash": "3e07a91f2bc68b8e707eb777ad6fc3b45ab723d066735bbcdc290be5b04fbd85",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-hull-graphite.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1518,17 +1518,17 @@
       "bounds": {
         "max": [
           16.399877548217773,
-          5.671570777893066,
-          5.850182056427002
+          5.671570633535481,
+          5.850181819128954
         ],
         "min": [
           -14.899630546569824,
-          -1.9968901872634888,
-          -5.850238800048828
+          -1.9968900429059033,
+          -5.85023856275078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5480b4f315c0da6e7a87e16fc0224460445c6b6c6182edb20b15cce2e67e8bdd",
+      "geometryHash": "b92c3fabf502085da5a19da0e0f79a9bb4582007f3f8c83032fc8d869914f1b6",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 6321,
       "indexed": true,
@@ -1543,17 +1543,17 @@
       "bounds": {
         "max": [
           13.130487442016602,
-          5.667489051818848,
-          5.720896244049072
+          5.667489135886008,
+          5.720896169810211
         ],
         "min": [
           -11.35277271270752,
-          -1.1566208600997925,
-          -5.720864295959473
+          -1.1566209441669533,
+          -5.720864221720611
         ]
       },
       "drawMode": 4,
-      "geometryHash": "354c6066ff05a91edddb18ef3f981686b38fa4bfc6fdfcc9c56c44c9c505fb5d",
+      "geometryHash": "4d47c81101964600792e0177f12597cf46762e00afd1208f990f7c9408c30282",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 1314,
       "indexed": true,
@@ -1568,17 +1568,17 @@
       "bounds": {
         "max": [
           12.119999885559082,
-          1.9004846811294556,
-          5.873604774475098
+          1.900484645551893,
+          5.873604558750923
         ],
         "min": [
           -8.765556335449219,
-          0.1795152872800827,
-          -5.873604774475098
+          0.17951532285764527,
+          -5.873604558750923
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b13f8d254bdbc9fb3df00efe8965b51448e6392063adc622512ce17dfb281608",
+      "geometryHash": "314a80658b431e3b65a2376788ea91275c5d3e2b1d0fdb9ffc1592a1aa3874e3",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 1212,
       "indexed": true,
@@ -1593,17 +1593,17 @@
       "bounds": {
         "max": [
           16.399858474731445,
-          3.3556466102600098,
-          4.792541980743408
+          3.3556465649379303,
+          4.792541747920211
         ],
         "min": [
           -14.899620056152344,
-          0.004757799673825502,
-          -4.794935703277588
+          0.004757844995905147,
+          -4.794935470454391
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ee1e65b5e471bd4666a6ffe1c9b671b0884012eb9dd2cc872f0b39ce98ae2d4",
+      "geometryHash": "f0ff273c7f0effe892358e60f96b3d7e9494eb65ca12159a0c4f5d7d76547532",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 213,
       "indexed": true,
@@ -1618,17 +1618,17 @@
       "bounds": {
         "max": [
           5.499839782714844,
-          4.959994792938232,
-          5.589580059051514
+          4.959994653919543,
+          5.5895796624851695
         ],
         "min": [
           -15.720616340637207,
-          -1.1852402687072754,
-          -5.589580059051514
+          -1.1852401296885864,
+          -5.5895796624851695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51f91848c409d36dd9151358c5887b32292095e31de344dd25a4f2716d898e41",
+      "geometryHash": "5b53a7fda496f14e865f4bf8bf72878cac9d2213a7c3b51134c696f84940f014",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 1866,
       "indexed": true,
@@ -1642,18 +1642,18 @@
     {
       "bounds": {
         "max": [
-          -9.986786842346191,
-          1.3667869567871094,
+          -9.986786729536302,
+          1.366786980381941,
           5.517505168914795
         ],
         "min": [
-          -15.720667839050293,
-          -1.5446075201034546,
+          -15.720667951860182,
+          -1.5446075436982862,
           -5.517505168914795
         ]
       },
       "drawMode": 4,
-      "geometryHash": "449fb90d2571dde0079dfa1e76ddab844ff28cf0ecacf3a69c5aac1d1e56b9f9",
+      "geometryHash": "366ba4c462c6a347aa702d9626f6cf2e7ebdfe92f63ccfdf914e0708be9b51c8",
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -1922,21 +1922,21 @@
     {
       "id": "sf.render.helios-arclight.node.collision-hull",
       "localTransform": [
-        1,
+        16.0599627494812,
         0,
         0,
         0,
         0,
-        1,
+        16.0599627494812,
         0,
         0,
         0,
         0,
-        1,
+        16.0599627494812,
         0,
-        0,
-        0,
-        0,
+        0.3398251533508301,
+        2.466076374053955,
+        0.0000011920928955078125,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1950,41 +1950,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        16.0599627494812,
         0,
         0,
         0,
         0,
-        1,
+        16.0599627494812,
         0,
         0,
         0,
         0,
-        1,
+        16.0599627494812,
         0,
-        0,
-        0,
-        0,
+        0.3398251533508301,
+        2.466076374053955,
+        0.0000011920928955078125,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        15.648642539978027,
         0,
         0,
         0,
         0,
-        1,
+        15.648642539978027,
         0,
         0,
         0,
         0,
-        1,
+        15.648642539978027,
         0,
-        0,
-        0,
+        0.7500200271606445,
+        1.710060477256775,
         0,
         1
       ],
@@ -2000,20 +2000,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.648642539978027,
         0,
         0,
         0,
         0,
-        1,
+        15.648642539978027,
         0,
         0,
         0,
         0,
-        1,
+        15.648642539978027,
         0,
-        0,
-        0,
+        0.7500200271606445,
+        1.710060477256775,
         0,
         1
       ]
@@ -2021,20 +2021,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ],
@@ -2050,20 +2050,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ]
@@ -2071,20 +2071,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
-        0,
-        0,
+        3.3000001907348633,
+        1.3886230178177357,
         0,
         1
       ],
@@ -2100,20 +2100,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
-        0,
-        0,
+        3.3000001907348633,
+        1.3886230178177357,
         0,
         1
       ]
@@ -2271,20 +2271,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        15.64932632446289,
         0,
         0,
         0,
         0,
-        1,
+        15.64932632446289,
         0,
         0,
         0,
         0,
-        1,
+        15.64932632446289,
         0,
-        0,
-        0,
+        0.7506732940673828,
+        1.8372262716293335,
         0,
         1
       ],
@@ -2300,20 +2300,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.64932632446289,
         0,
         0,
         0,
         0,
-        1,
+        15.64932632446289,
         0,
         0,
         0,
         0,
-        1,
+        15.64932632446289,
         0,
-        0,
-        0,
+        0.7506732940673828,
+        1.8372262716293335,
         0,
         1
       ]
@@ -2321,20 +2321,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-hull-graphite",
       "localTransform": [
-        1,
+        8.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.300000190734863,
         0,
-        0,
-        0,
+        0.8000001907348633,
+        0.1777142882347107,
         0,
         1
       ],
@@ -2350,20 +2350,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        8.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.300000190734863,
         0,
-        0,
-        0,
+        0.8000001907348633,
+        0.1777142882347107,
         0,
         1
       ]
@@ -2371,20 +2371,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-cyan",
       "localTransform": [
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
-        0,
-        0,
+        11.79800033569336,
+        2.941999912261963,
         0,
         1
       ],
@@ -2400,20 +2400,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
-        0,
-        0,
+        11.79800033569336,
+        2.941999912261963,
         0,
         1
       ]
@@ -2421,20 +2421,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-cyan-helios",
       "localTransform": [
-        1,
+        12.241265773773193,
         0,
         0,
         0,
         0,
-        1,
+        12.241265773773193,
         0,
         0,
         0,
         0,
-        1,
+        12.241265773773193,
         0,
-        0,
-        0,
+        0.8884358406066895,
+        2.2580228447914124,
         0,
         1
       ],
@@ -2450,20 +2450,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.241265773773193,
         0,
         0,
         0,
         0,
-        1,
+        12.241265773773193,
         0,
         0,
         0,
         0,
-        1,
+        12.241265773773193,
         0,
-        0,
-        0,
+        0.8884358406066895,
+        2.2580228447914124,
         0,
         1
       ]
@@ -2471,20 +2471,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ],
@@ -2500,20 +2500,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ]
@@ -2521,20 +2521,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-livery",
       "localTransform": [
-        1,
+        15.648669242858887,
         0,
         0,
         0,
         0,
-        1,
+        15.648669242858887,
         0,
         0,
         0,
         0,
-        1,
+        15.648669242858887,
         0,
-        0,
-        0,
+        0.7500276565551758,
+        2.8405469534918666,
         0,
         1
       ],
@@ -2550,20 +2550,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.648669242858887,
         0,
         0,
         0,
         0,
-        1,
+        15.648669242858887,
         0,
         0,
         0,
         0,
-        1,
+        15.648669242858887,
         0,
-        0,
-        0,
+        0.7500276565551758,
+        2.8405469534918666,
         0,
         1
       ]
@@ -2571,20 +2571,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        14.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        14.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        14.15999984741211,
         0,
-        0,
-        0,
+        -1.5600004196166992,
+        2.8702560663223267,
         0,
         1
       ],
@@ -2600,20 +2600,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        14.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        14.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        14.15999984741211,
         0,
-        0,
-        0,
+        -1.5600004196166992,
+        2.8702560663223267,
         0,
         1
       ]
@@ -2621,20 +2621,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
-        0,
-        0,
+        -1.6000003814697266,
+        -0.09372222423553467,
         0,
         1
       ],
@@ -2650,20 +2650,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
-        0,
-        0,
+        -1.6000003814697266,
+        -0.09372222423553467,
         0,
         1
       ]
@@ -2671,21 +2671,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-armor",
       "localTransform": [
-        1,
+        15.649617195129395,
         0,
         0,
         0,
         0,
-        1,
+        15.649617195129395,
         0,
         0,
         0,
         0,
-        1,
+        15.649617195129395,
         0,
-        0,
-        0,
-        0,
+        0.7500619888305664,
+        1.7077747583389282,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2700,41 +2700,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.649617195129395,
         0,
         0,
         0,
         0,
-        1,
+        15.649617195129395,
         0,
         0,
         0,
         0,
-        1,
+        15.649617195129395,
         0,
-        0,
-        0,
-        0,
+        0.7500619888305664,
+        1.7077747583389282,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ],
@@ -2750,20 +2750,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ]
@@ -2771,20 +2771,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        12.798829555511475,
         0,
         0,
         0,
         0,
-        1,
+        12.798829555511475,
         0,
         0,
         0,
         0,
-        1,
+        12.798829555511475,
         0,
-        0,
-        0,
+        3.6008782386779785,
+        1.336786963045597,
         0,
         1
       ],
@@ -2800,20 +2800,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.798829555511475,
         0,
         0,
         0,
         0,
-        1,
+        12.798829555511475,
         0,
         0,
         0,
         0,
-        1,
+        12.798829555511475,
         0,
-        0,
-        0,
+        3.6008782386779785,
+        1.336786963045597,
         0,
         1
       ]
@@ -2971,20 +2971,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-hull",
       "localTransform": [
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
-        0,
-        0,
+        0.7500667572021484,
+        1.8377937078475952,
         0,
         1
       ],
@@ -3000,20 +3000,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
-        0,
-        0,
+        0.7500667572021484,
+        1.8377937078475952,
         0,
         1
       ]
@@ -3021,21 +3021,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-hull-graphite",
       "localTransform": [
-        1,
+        8.299051284790039,
         0,
         0,
         0,
         0,
-        1,
+        8.299051284790039,
         0,
         0,
         0,
         0,
-        1,
+        8.299051284790039,
         0,
-        0,
-        0,
-        0,
+        0.8006153106689453,
+        0.17520999908447266,
+        0.000023305416107177734,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3050,41 +3050,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        8.299051284790039,
         0,
         0,
         0,
         0,
-        1,
+        8.299051284790039,
         0,
         0,
         0,
         0,
-        1,
+        8.299051284790039,
         0,
-        0,
-        0,
-        0,
+        0.8006153106689453,
+        0.17520999908447266,
+        0.000023305416107177734,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-cyan",
       "localTransform": [
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
-        0,
-        0,
+        11.79800033569336,
+        2.941999912261963,
         0,
         1
       ],
@@ -3100,20 +3100,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
         0,
         0,
         0,
-        1,
+        0.06300000101327896,
         0,
-        0,
-        0,
+        11.79800033569336,
+        2.941999912261963,
         0,
         1
       ]
@@ -3121,21 +3121,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-cyan-helios",
       "localTransform": [
-        1,
+        12.24156904220581,
         0,
         0,
         0,
         0,
-        1,
+        12.24156904220581,
         0,
         0,
         0,
         0,
-        1,
+        12.24156904220581,
         0,
-        0,
-        0,
-        0,
+        0.888847827911377,
+        2.2584822177886963,
+        0.000019788742065429688,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3150,41 +3150,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.24156904220581,
         0,
         0,
         0,
         0,
-        1,
+        12.24156904220581,
         0,
         0,
         0,
         0,
-        1,
+        12.24156904220581,
         0,
-        0,
-        0,
-        0,
+        0.888847827911377,
+        2.2584822177886963,
+        0.000019788742065429688,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ],
@@ -3200,20 +3200,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ]
@@ -3221,21 +3221,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-livery",
       "localTransform": [
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
-        0,
-        0,
-        0,
+        0.7500667572021484,
+        2.8453879095613956,
+        0.0005192756652832031,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3250,41 +3250,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
         0,
         0,
         0,
-        1,
+        15.649641036987305,
         0,
-        0,
-        0,
-        0,
+        0.7500667572021484,
+        2.8453879095613956,
+        0.0005192756652832031,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        14.159388065338135,
         0,
         0,
         0,
         0,
-        1,
+        14.159388065338135,
         0,
         0,
         0,
         0,
-        1,
+        14.159388065338135,
         0,
-        0,
-        0,
+        -1.5606122016906738,
+        2.8702574968338013,
         0,
         1
       ],
@@ -3300,20 +3300,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        14.159388065338135,
         0,
         0,
         0,
         0,
-        1,
+        14.159388065338135,
         0,
         0,
         0,
         0,
-        1,
+        14.159388065338135,
         0,
-        0,
-        0,
+        -1.5606122016906738,
+        2.8702574968338013,
         0,
         1
       ]
@@ -3321,20 +3321,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod1-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
-        0,
-        0,
+        -1.6000003814697266,
+        -0.09534531831741333,
         0,
         1
       ],
@@ -3350,20 +3350,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
         0,
         0,
         0,
-        1,
+        14.119999885559082,
         0,
-        0,
-        0,
+        -1.6000003814697266,
+        -0.09534531831741333,
         0,
         1
       ]
@@ -3371,21 +3371,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-armor",
       "localTransform": [
-        1,
+        15.64975357055664,
         0,
         0,
         0,
         0,
-        1,
+        15.64975357055664,
         0,
         0,
         0,
         0,
-        1,
+        15.64975357055664,
         0,
-        0,
-        0,
-        0,
+        0.7501239776611328,
+        1.7041245698928833,
+        2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3400,41 +3400,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.64975357055664,
         0,
         0,
         0,
         0,
-        1,
+        15.64975357055664,
         0,
         0,
         0,
         0,
-        1,
+        15.64975357055664,
         0,
-        0,
-        0,
-        0,
+        0.7501239776611328,
+        1.7041245698928833,
+        2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ],
@@ -3450,20 +3450,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
         0,
         0,
         0,
-        1,
+        5.929999724030495,
         0,
-        0,
-        0,
+        -6.379999741911888,
+        3.4989998936653137,
         0,
         1
       ]
@@ -3471,20 +3471,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        12.796736717224121,
         0,
         0,
         0,
         0,
-        1,
+        12.796736717224121,
         0,
         0,
         0,
         0,
-        1,
+        12.796736717224121,
         0,
-        0,
-        0,
+        3.603074073791504,
+        1.324189655482769,
         0,
         1
       ],
@@ -3500,20 +3500,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.796736717224121,
         0,
         0,
         0,
         0,
-        1,
+        12.796736717224121,
         0,
         0,
         0,
         0,
-        1,
+        12.796736717224121,
         0,
-        0,
-        0,
+        3.603074073791504,
+        1.324189655482769,
         0,
         1
       ]
@@ -3671,21 +3671,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-hull",
       "localTransform": [
-        1,
+        15.649754047393799,
         0,
         0,
         0,
         0,
-        1,
+        15.649754047393799,
         0,
         0,
         0,
         0,
-        1,
+        15.649754047393799,
         0,
-        0,
-        0,
-        0,
+        0.7501235008239746,
+        1.8373402953147888,
+        -0.000028371810913085938,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3700,42 +3700,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.649754047393799,
         0,
         0,
         0,
         0,
-        1,
+        15.649754047393799,
         0,
         0,
         0,
         0,
-        1,
+        15.649754047393799,
         0,
-        0,
-        0,
-        0,
+        0.7501235008239746,
+        1.8373402953147888,
+        -0.000028371810913085938,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-hull-graphite",
       "localTransform": [
-        1,
+        8.294350385665894,
         0,
         0,
         0,
         0,
-        1,
+        8.294350385665894,
         0,
         0,
         0,
         0,
-        1,
+        8.294350385665894,
         0,
-        0,
-        0,
-        0,
+        0.8038561344146729,
+        0.1776147484779358,
+        0.0009679794311523438,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3750,42 +3750,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        8.294350385665894,
         0,
         0,
         0,
         0,
-        1,
+        8.294350385665894,
         0,
         0,
         0,
         0,
-        1,
+        8.294350385665894,
         0,
-        0,
-        0,
-        0,
+        0.8038561344146729,
+        0.1776147484779358,
+        0.0009679794311523438,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-lights-cyan-helios",
       "localTransform": [
-        1,
+        12.24163007736206,
         0,
         0,
         0,
         0,
-        1,
+        12.24163007736206,
         0,
         0,
         0,
         0,
-        1,
+        12.24163007736206,
         0,
-        0,
-        0,
-        0,
+        0.888857364654541,
+        2.2554340958595276,
+        0.000015974044799804688,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3800,41 +3800,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        12.24163007736206,
         0,
         0,
         0,
         0,
-        1,
+        12.24163007736206,
         0,
         0,
         0,
         0,
-        1,
+        12.24163007736206,
         0,
-        0,
-        0,
-        0,
+        0.888857364654541,
+        2.2554340958595276,
+        0.000015974044799804688,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ],
@@ -3850,20 +3850,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
         0,
         0,
         0,
-        1,
+        10.44277811050415,
         0,
-        0,
-        0,
+        1.6772217750549316,
+        1.0399999842047691,
         0,
         1
       ]
@@ -3871,21 +3871,21 @@
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-livery",
       "localTransform": [
-        1,
+        15.649739265441895,
         0,
         0,
         0,
         0,
-        1,
+        15.649739265441895,
         0,
         0,
         0,
         0,
-        1,
+        15.649739265441895,
         0,
-        0,
-        0,
-        0,
+        0.7501192092895508,
+        1.6802022049669176,
+        -0.0011968612670898438,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3900,41 +3900,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        15.649739265441895,
         0,
         0,
         0,
         0,
-        1,
+        15.649739265441895,
         0,
         0,
         0,
         0,
-        1,
+        15.649739265441895,
         0,
-        0,
-        0,
-        0,
+        0.7501192092895508,
+        1.6802022049669176,
+        -0.0011968612670898438,
         1
       ]
     },
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        10.610228061676025,
         0,
         0,
         0,
         0,
-        1,
+        10.610228061676025,
         0,
         0,
         0,
         0,
-        1,
+        10.610228061676025,
         0,
-        0,
-        0,
+        -5.110388278961182,
+        1.8873772621154785,
         0,
         1
       ],
@@ -3950,20 +3950,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        10.610228061676025,
         0,
         0,
         0,
         0,
-        1,
+        10.610228061676025,
         0,
         0,
         0,
         0,
-        1,
+        10.610228061676025,
         0,
-        0,
-        0,
+        -5.110388278961182,
+        1.8873772621154785,
         0,
         1
       ]
@@ -3971,20 +3971,20 @@
     {
       "id": "sf.render.helios-arclight.node.lod2-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        5.517505168914795,
         0,
         0,
         0,
         0,
-        1,
+        5.517505168914795,
         0,
         0,
         0,
         0,
-        1,
+        5.517505168914795,
         0,
-        0,
-        0,
+        -12.853727340698242,
+        -0.08891028165817261,
         0,
         1
       ],
@@ -4000,20 +4000,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.helios-arclight.body",
       "worldTransform": [
-        1,
+        5.517505168914795,
         0,
         0,
         0,
         0,
-        1,
+        5.517505168914795,
         0,
         0,
         0,
         0,
-        1,
+        5.517505168914795,
         0,
-        0,
-        0,
+        -12.853727340698242,
+        -0.08891028165817261,
         0,
         1
       ]
@@ -4714,37 +4714,37 @@
       "uri": "helios_arclight.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2478980,
-    "sha256": "ee5e20ed2ab3d1d26a2439532c14aafb182265a08f09c82036ae9d40fb740928",
+    "bytes": 1286576,
+    "sha256": "5ddb354ecd42f8f124fd8c983ef1b7cf72f460fdb2cbb14852522e9d57171b8e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.33966588973999023,
-        2.465912938117981,
+        0.3396658333350455,
+        2.4659128000433763,
         0.0000011920928955078125
       ],
       "max": [
         16.399999618530273,
-        6.930635452270508,
-        5.9721879959106445
+        6.930635249905398,
+        5.9721880295338705
       ],
       "min": [
-        -15.720667839050293,
-        -1.998809576034546,
-        -5.9721856117248535
+        -15.720667951860182,
+        -1.9988096498186456,
+        -5.9721856453480795
       ],
       "size": [
-        32.120667457580566,
-        8.929445028305054,
-        11.944373607635498
+        32.12066757039045,
+        8.929444899724043,
+        11.94437367488195
       ]
     },
     "hidden": [
@@ -5673,20 +5673,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.648642539978027,
           0,
           0,
           0,
           0,
-          1,
+          15.648642539978027,
           0,
           0,
           0,
           0,
-          1,
+          15.648642539978027,
           0,
-          0,
-          0,
+          0.7500200271606445,
+          1.710060477256775,
           0,
           1
         ],
@@ -5701,20 +5701,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
-          0,
-          0,
+          -6.379999741911888,
+          3.4989998936653137,
           0,
           1
         ],
@@ -5729,20 +5729,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          12.5,
           0,
           0,
           0,
           0,
-          1,
+          12.5,
           0,
           0,
           0,
           0,
-          1,
+          12.5,
           0,
-          0,
-          0,
+          3.3000001907348633,
+          1.3886230178177357,
           0,
           1
         ],
@@ -5862,20 +5862,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.64932632446289,
           0,
           0,
           0,
           0,
-          1,
+          15.64932632446289,
           0,
           0,
           0,
           0,
-          1,
+          15.64932632446289,
           0,
-          0,
-          0,
+          0.7506732940673828,
+          1.8372262716293335,
           0,
           1
         ],
@@ -5890,20 +5890,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.300000190734863,
           0,
-          0,
-          0,
+          0.8000001907348633,
+          0.1777142882347107,
           0,
           1
         ],
@@ -5918,20 +5918,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.06300000101327896,
           0,
           0,
           0,
           0,
-          1,
+          0.06300000101327896,
           0,
           0,
           0,
           0,
-          1,
+          0.06300000101327896,
           0,
-          0,
-          0,
+          11.79800033569336,
+          2.941999912261963,
           0,
           1
         ],
@@ -5946,20 +5946,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.241265773773193,
           0,
           0,
           0,
           0,
-          1,
+          12.241265773773193,
           0,
           0,
           0,
           0,
-          1,
+          12.241265773773193,
           0,
-          0,
-          0,
+          0.8884358406066895,
+          2.2580228447914124,
           0,
           1
         ],
@@ -5974,20 +5974,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
-          0,
-          0,
+          1.6772217750549316,
+          1.0399999842047691,
           0,
           1
         ],
@@ -6002,20 +6002,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.648669242858887,
           0,
           0,
           0,
           0,
-          1,
+          15.648669242858887,
           0,
           0,
           0,
           0,
-          1,
+          15.648669242858887,
           0,
-          0,
-          0,
+          0.7500276565551758,
+          2.8405469534918666,
           0,
           1
         ],
@@ -6030,20 +6030,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.15999984741211,
           0,
           0,
           0,
           0,
-          1,
+          14.15999984741211,
           0,
           0,
           0,
           0,
-          1,
+          14.15999984741211,
           0,
-          0,
-          0,
+          -1.5600004196166992,
+          2.8702560663223267,
           0,
           1
         ],
@@ -6058,20 +6058,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.119999885559082,
           0,
           0,
           0,
           0,
-          1,
+          14.119999885559082,
           0,
           0,
           0,
           0,
-          1,
+          14.119999885559082,
           0,
-          0,
-          0,
+          -1.6000003814697266,
+          -0.09372222423553467,
           0,
           1
         ],
@@ -6086,21 +6086,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.649617195129395,
           0,
           0,
           0,
           0,
-          1,
+          15.649617195129395,
           0,
           0,
           0,
           0,
-          1,
+          15.649617195129395,
           0,
-          0,
-          0,
-          0,
+          0.7500619888305664,
+          1.7077747583389282,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Armor",
@@ -6114,20 +6114,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
-          0,
-          0,
+          -6.379999741911888,
+          3.4989998936653137,
           0,
           1
         ],
@@ -6142,20 +6142,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          12.798829555511475,
           0,
           0,
           0,
           0,
-          1,
+          12.798829555511475,
           0,
           0,
           0,
           0,
-          1,
+          12.798829555511475,
           0,
-          0,
-          0,
+          3.6008782386779785,
+          1.336786963045597,
           0,
           1
         ],
@@ -6275,20 +6275,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.649641036987305,
           0,
           0,
           0,
           0,
-          1,
+          15.649641036987305,
           0,
           0,
           0,
           0,
-          1,
+          15.649641036987305,
           0,
-          0,
-          0,
+          0.7500667572021484,
+          1.8377937078475952,
           0,
           1
         ],
@@ -6303,21 +6303,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.299051284790039,
           0,
           0,
           0,
           0,
-          1,
+          8.299051284790039,
           0,
           0,
           0,
           0,
-          1,
+          8.299051284790039,
           0,
-          0,
-          0,
-          0,
+          0.8006153106689453,
+          0.17520999908447266,
+          0.000023305416107177734,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Hull_graphite",
@@ -6331,20 +6331,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.06300000101327896,
           0,
           0,
           0,
           0,
-          1,
+          0.06300000101327896,
           0,
           0,
           0,
           0,
-          1,
+          0.06300000101327896,
           0,
-          0,
-          0,
+          11.79800033569336,
+          2.941999912261963,
           0,
           1
         ],
@@ -6359,21 +6359,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.24156904220581,
           0,
           0,
           0,
           0,
-          1,
+          12.24156904220581,
           0,
           0,
           0,
           0,
-          1,
+          12.24156904220581,
           0,
-          0,
-          0,
-          0,
+          0.888847827911377,
+          2.2584822177886963,
+          0.000019788742065429688,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_helios",
@@ -6387,20 +6387,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
-          0,
-          0,
+          1.6772217750549316,
+          1.0399999842047691,
           0,
           1
         ],
@@ -6415,21 +6415,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.649641036987305,
           0,
           0,
           0,
           0,
-          1,
+          15.649641036987305,
           0,
           0,
           0,
           0,
-          1,
+          15.649641036987305,
           0,
-          0,
-          0,
-          0,
+          0.7500667572021484,
+          2.8453879095613956,
+          0.0005192756652832031,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Livery",
@@ -6443,20 +6443,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.159388065338135,
           0,
           0,
           0,
           0,
-          1,
+          14.159388065338135,
           0,
           0,
           0,
           0,
-          1,
+          14.159388065338135,
           0,
-          0,
-          0,
+          -1.5606122016906738,
+          2.8702574968338013,
           0,
           1
         ],
@@ -6471,20 +6471,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.119999885559082,
           0,
           0,
           0,
           0,
-          1,
+          14.119999885559082,
           0,
           0,
           0,
           0,
-          1,
+          14.119999885559082,
           0,
-          0,
-          0,
+          -1.6000003814697266,
+          -0.09534531831741333,
           0,
           1
         ],
@@ -6499,21 +6499,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.64975357055664,
           0,
           0,
           0,
           0,
-          1,
+          15.64975357055664,
           0,
           0,
           0,
           0,
-          1,
+          15.64975357055664,
           0,
-          0,
-          0,
-          0,
+          0.7501239776611328,
+          1.7041245698928833,
+          2.384185791015625e-7,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Armor",
@@ -6527,20 +6527,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
           0,
           0,
           0,
-          1,
+          5.929999724030495,
           0,
-          0,
-          0,
+          -6.379999741911888,
+          3.4989998936653137,
           0,
           1
         ],
@@ -6555,20 +6555,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          12.796736717224121,
           0,
           0,
           0,
           0,
-          1,
+          12.796736717224121,
           0,
           0,
           0,
           0,
-          1,
+          12.796736717224121,
           0,
-          0,
-          0,
+          3.603074073791504,
+          1.324189655482769,
           0,
           1
         ],
@@ -6688,21 +6688,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.649754047393799,
           0,
           0,
           0,
           0,
-          1,
+          15.649754047393799,
           0,
           0,
           0,
           0,
-          1,
+          15.649754047393799,
           0,
-          0,
-          0,
-          0,
+          0.7501235008239746,
+          1.8373402953147888,
+          -0.000028371810913085938,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull",
@@ -6716,21 +6716,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.294350385665894,
           0,
           0,
           0,
           0,
-          1,
+          8.294350385665894,
           0,
           0,
           0,
           0,
-          1,
+          8.294350385665894,
           0,
-          0,
-          0,
-          0,
+          0.8038561344146729,
+          0.1776147484779358,
+          0.0009679794311523438,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Hull_graphite",
@@ -6744,21 +6744,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.24163007736206,
           0,
           0,
           0,
           0,
-          1,
+          12.24163007736206,
           0,
           0,
           0,
           0,
-          1,
+          12.24163007736206,
           0,
-          0,
-          0,
-          0,
+          0.888857364654541,
+          2.2554340958595276,
+          0.000015974044799804688,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_helios",
@@ -6772,20 +6772,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
           0,
           0,
           0,
-          1,
+          10.44277811050415,
           0,
-          0,
-          0,
+          1.6772217750549316,
+          1.0399999842047691,
           0,
           1
         ],
@@ -6800,21 +6800,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.649739265441895,
           0,
           0,
           0,
           0,
-          1,
+          15.649739265441895,
           0,
           0,
           0,
           0,
-          1,
+          15.649739265441895,
           0,
-          0,
-          0,
-          0,
+          0.7501192092895508,
+          1.6802022049669176,
+          -0.0011968612670898438,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Livery",
@@ -6828,20 +6828,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.610228061676025,
           0,
           0,
           0,
           0,
-          1,
+          10.610228061676025,
           0,
           0,
           0,
           0,
-          1,
+          10.610228061676025,
           0,
-          0,
-          0,
+          -5.110388278961182,
+          1.8873772621154785,
           0,
           1
         ],
@@ -6856,20 +6856,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.517505168914795,
           0,
           0,
           0,
           0,
-          1,
+          5.517505168914795,
           0,
           0,
           0,
           0,
-          1,
+          5.517505168914795,
           0,
-          0,
-          0,
+          -12.853727340698242,
+          -0.08891028165817261,
           0,
           1
         ],
@@ -6886,20 +6886,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/helios_arclight.glb"
   },
-  "runtimeHash": "780559302a8e24a42682a2a4dc57d2317198bd7ac069471a5a7d8dfbe8071eb4",
+  "runtimeHash": "036ec96935b5da9ccab7ad226888c4522162bb26592f9d34b5b419477f7f56a4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           16.399999618530273,
-          6.930635452270508,
-          5.9721879959106445
+          6.930635249905398,
+          5.9721880295338705
         ],
         "min": [
-          -15.720667839050293,
-          -1.998809576034546,
-          -5.9721856117248535
+          -15.720667951860182,
+          -1.9988096498186456,
+          -5.9721856453480795
         ]
       },
       "id": "sf.render.helios-arclight.body",

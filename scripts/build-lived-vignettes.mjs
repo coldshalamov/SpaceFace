@@ -1445,6 +1445,43 @@ function emitAmbient(row) {
     + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
     + `export const runtime = compileVignette(spec);\n`
     + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n`;
+  // Struck Bell alone uses real practice bodies and observed release/contact settlement.
+  if (row.id === 'struck_bell') {
+    const offsets = [[-20, 150], [130, 160], [-140, -160]];
+    spec.cast.forEach((member, i) => { [member.dx, member.dz] = offsets[i]; });
+    spec.choices = [{"id": "a", "label": "Strike the practice bell", "playerLine": "I will release the marked stone toward your practice bell."}, {"id": "b", "label": "Hold Vael bearing · Choir disapproves", "playerLine": "I will hold a quiet bearing for eight measured readings."}, {"id": "c", "label": "Leave the lesson", "playerLine": "I will leave your practice set alone."}];
+    spec.phases = [];
+    body.choices = spec.choices;
+    body.primaryLine = "CANTOR: Our practice bell is not the Shrine’s song. Throw your stone, or log a bearing for Vael; the keepers will resent that record.";
+    body.receipts = {"a": "Your released stone struck the practice bell. The keepers heard the real impact; the Shrine’s song remains its own work.", "b": "You held the observer’s quiet bearing for eight measured readings. No song fragment was claimed.", "c": "You left Cantor’s practice lesson untouched."};
+    const bellText = `// ${title} — lived vignette. External-only: ambient world scene.\n`
+      + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
+      + `import { createStruckBellRuntime } from '../../systems/struckBellRuntime.js';\n\n`
+      + `export const spec = ${JSON.stringify(spec, null, 2)};\n\n`
+      + `export const encounterOrder = ${row.order};\n`
+      + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
+      + `export const runtime = createStruckBellRuntime(spec);\n`
+      + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n`;
+    writeFileSync(join(DIR, row.file), bellText);
+    return;
+  }
+  // Sweep Window alone uses the canonical machinery clock and arrival-earned settlement.
+  // Keep this separate from other scenes' emitter/runtime specializations.
+  if (row.id === 'sweep_window') {
+    const receipt = 'The runner reached the far marker on your count. Crossing filed.';
+    phases.find((phase) => phase.id === 'say_a').line = receipt;
+    body.receipts.a = receipt;
+    const sweepText = `// ${title} — lived vignette. External-only: ambient world scene.\n`
+      + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
+      + `import { createSweepWindowRuntime } from '../../systems/sweepWindowRuntime.js';\n\n`
+      + `export const spec = ${JSON.stringify(spec, null, 2)};\n\n`
+      + `export const encounterOrder = ${row.order};\n`
+      + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
+      + `export const runtime = createSweepWindowRuntime(spec);\n`
+      + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n\n`;
+    writeFileSync(join(DIR, row.file), sweepText);
+    return;
+  }
   writeFileSync(join(DIR, row.file), text);
 }
 

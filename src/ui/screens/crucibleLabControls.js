@@ -6,8 +6,10 @@
 // The physics toy (spawn, latch, throw, reset) uses the same owners as flight: spawnEntity,
 // the combat attachment service, tetherGameplay, and masslineThrow.
 //
-// The DOM layer is kit rows (styles/kit.css, src/ui/kit/) — Frontend Task D §1.4. This file owns no
-// CSS. The controls are instruments, not a debug dump: one row per concept, the choice as words.
+// The DOM layer is kit rows (styles/kit.css, src/ui/kit/) — Frontend Task D §1.4. The rack's own
+// presentation (the live speed reading, the flight glass) lives in the layout home
+// src/ui/orrery/crucible-labLayouts.js. The controls are instruments, not a debug dump: one row
+// per concept, the choice as words, and every verb says what it did on the status line.
 
 import { createTimeEffects, LAB_SPEED_MAX } from '../../core/timeEffects.js';
 import { getCombatKernel } from '../../combat/kernel.js';
@@ -16,6 +18,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { releaseAssistMode } from '../../systems/masslineThrow.js';
 import { hasPendingPhysicsToyLaunch, installSandboxGameStartedHook, spawnTargetsNow } from '../sandbox/sandboxSetup.js';
 import { el } from '../kit/index.js';
+import { injectCrucibleLabLayouts } from '../orrery/crucible-labLayouts.js';
 import { laneCommandSink, laneRemoveEntity, laneRpc, onLaneSpawnAck } from '../../core/simLaneCommands.js';
 
 export const CRUCIBLE_LAB_SPEED_SOURCE = 'crucible-lab:speed';
@@ -513,7 +516,7 @@ function showFlightToy(ctx) {
   const parent = flightParent();
   if (!parent || typeof document.createElement !== 'function') return;
   const host = document.createElement('div');
-  host.className = 'k-span sf-lab-flight';
+  host.className = 'sf-lab-flight';
   host.setAttribute('role', 'region');
   host.setAttribute('aria-label', 'Physics lab');
   if (host.style) {
@@ -523,7 +526,8 @@ function showFlightToy(ctx) {
     host.style.left = '50%';
     host.style.transform = 'translateX(-50%)';
     host.style.bottom = '16px';
-    host.style.zIndex = '20';
+    // Below the prompt deck (z 20): a timed decision always outranks the practice rack.
+    host.style.zIndex = '15';
     host.style.maxWidth = '440px';
     host.style.pointerEvents = 'auto';
   }
@@ -618,6 +622,9 @@ export function mountCrucibleLabControls(ctx, hostEl, options = {}) {
   if (!hostEl || typeof document === 'undefined' || typeof document.createElement !== 'function') {
     return null;
   }
+  // The rack's own presentation (speed reading, flight glass) — idempotent, and a no-op under
+  // the tests' fake documents.
+  injectCrucibleLabLayouts();
   const flightPanel = !!(options && options.flight);
   const countedScreen = !flightPanel && ensurePhysicsLabRoute(ctx);
   if (countedScreen) screenMounts += 1;
@@ -712,10 +719,12 @@ export function mountCrucibleLabControls(ctx, hostEl, options = {}) {
     const stepFn = getSimStep(ctx);
     const shown = LEGAL_TIME_SCALES.includes(chosenScale) ? chosenScale : 1;
     speedText.textContent = formatScale(shown);
+    // The role rides in words (readers, and the figure's own label), never in hue: the rack
+    // keeps one warm bone light and spends no colour channel on it.
     const speedRole = labSpeedRole(shown);
-    speedText.className = 'sf-lab-speed-now sf-fig k-t-emph'
-      + (speedRole === 'you' ? ' is-you k-good' : '')
-      + (speedRole === 'goal' ? ' is-goal k-62' : '');
+    speedText.className = 'sf-lab-speed-now sf-fig k-t-emph';
+    speedText.setAttribute('aria-label', 'Live simulation speed ' + formatScale(shown)
+      + (speedRole === 'you' ? ', faster than real time' : speedRole === 'goal' ? ', slower than real time' : ', real time'));
     for (const { scale, button } of speedButtons) {
       button.setAttribute('aria-pressed', scale === shown ? 'true' : 'false');
     }
@@ -733,15 +742,13 @@ export function mountCrucibleLabControls(ctx, hostEl, options = {}) {
       ? launchReason
       : (!held || !stepFn ? 'Step advances one 60 Hz tick while this screen holds the sim.' : '');
     const toy = physicsToySession(ctx);
+    // One quiet line: the outcome if there is one, else the one fact worth holding onto. The
+    // per-word detail lives on the words themselves (data-why), not in a standing paragraph.
     const guide = !on
       ? 'Launch a Combat Lab fight first. These controls do nothing in Adventure.'
       : toy
-        ? ('Speed ' + formatScale(shown) + '. Spawn bodies, latch the rope, then throw. '
-          + 'Reset puts time back to 1× and clears bodies you spawned. '
-          + 'Slow time is extra fixed steps, not a bigger step.')
-        : ('Speed ' + formatScale(shown) + ' — extra fixed 60 Hz steps, not a bigger step. '
-          + 'This screen already freezes the world. Step advances one 60 Hz tick while the screen holds the sim. '
-          + 'Clear enemies removes Lab-spawned ships without a kill.');
+        ? 'Spawn bodies, latch the rope, then throw. Reset restores 1\u00d7 and clears your bodies.'
+        : 'Time scale runs extra fixed 60 Hz steps, not a bigger step.';
     hint.textContent = outcome ? (outcome + ' ' + guide) : guide;
 
     setWhy(spawnBtn, on && toy, toy ? launchReason : toyReason);
@@ -809,28 +816,36 @@ export function mountCrucibleLabControls(ctx, hostEl, options = {}) {
   });
   clearBtn.addEventListener('click', () => {
     if (clearBtn.disabled) return;
-    applyCrucibleLabControl(ctx, requestClearEnemies());
-    refresh();
+    const result = applyCrucibleLabControl(ctx, requestClearEnemies());
+    if (result && typeof result.removed === 'number') {
+      say(result.removed > 0
+        ? ('Cleared ' + result.removed + (result.removed === 1 ? ' Lab-spawned ship.' : ' Lab-spawned ships.'))
+        : 'No Lab-spawned ships to clear.');
+    } else {
+      say('Clear did not run.');
+    }
   });
   refillBtn.addEventListener('click', () => {
     if (refillBtn.disabled) return;
-    applyCrucibleLabControl(ctx, requestRefill());
-    refresh();
+    const result = applyCrucibleLabControl(ctx, requestRefill());
+    say(result
+      ? 'Refilled. Hull, armor, shields, capacitor, and heat are back.'
+      : 'Refill did not run.');
   });
   invulnBtn.addEventListener('click', () => {
     if (invulnBtn.disabled) return;
-    applyCrucibleLabControl(ctx, requestInvulnerable(true));
-    refresh();
+    const result = applyCrucibleLabControl(ctx, requestInvulnerable(true));
+    say(result ? 'Invulnerable is on. Damage does not apply.' : 'Invulnerable did not turn on.');
   });
   vulnBtn.addEventListener('click', () => {
     if (vulnBtn.disabled) return;
-    applyCrucibleLabControl(ctx, requestInvulnerable(false));
-    refresh();
+    const result = applyCrucibleLabControl(ctx, requestInvulnerable(false));
+    say(result ? 'Invulnerable is off. Damage applies again.' : 'Invulnerable did not turn off.');
   });
   stepBtn.addEventListener('click', () => {
     if (stepBtn.disabled) return;
-    applyCrucibleLabControl(ctx, requestStep());
-    refresh();
+    const result = applyCrucibleLabControl(ctx, requestStep());
+    if (result) say('Advanced one tick.');
   });
 
   const unsubs = [];

@@ -1,8 +1,17 @@
 // On-demand, read-only provisioning. Uses the existing ORRERY token root; no simulation owner.
+//
+// PRESENTATION (ORRERY audit, drill screen): the planner used to hand-roll its own chrome —
+// bordered rectangles (`border: … solid var(--dp-line)`) and `.orr-label`'s tracked uppercase,
+// both banned on this screen (no bordered rectangles anywhere; sentence case is law §3.3). The
+// paint now lives in src/ui/orrery/drillLayouts.js — the screen's sanctioned composition home,
+// because the dialog and its Plan key mount on doc.body, outside .ast-screen and its sheet —
+// and speaks the screen's own voice: glass slips with a bone crown line, bone hairline row
+// rules, a ghost dismiss, and ONE amber verb. Structure, state and the owner APIs are untouched.
 import { COMMODITIES } from '../../data/commodities.js';
 import { SITE_MACHINES, SITE_RECIPES, SITE_BALANCE } from '../../data/sites.js';
 import { INDUSTRY_KITS, planSiteVisit, planSiteProduction, summarizeIndustryCargo } from '../../systems/siteIndustryPlanner.js';
 import { injectOrrery } from '../orrery/tokens.js';
+import { injectDrillLayouts } from '../orrery/drillLayouts.js';
 
 const goods = new Map(COMMODITIES.map((c) => [c.id, c]));
 const machines = new Map(SITE_MACHINES.map((m) => [m.id, m]));
@@ -14,43 +23,32 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   injectOrrery(doc);
+  injectDrillLayouts(doc);
   const element = (tag, text, cls) => {
     const el = doc.createElement(tag);
     if (text != null) el.textContent = text;
     if (cls) el.className = cls;
     return el;
   };
-  const button = element('button', 'Plan', 'dp-glass orr-label');
+  const button = element('button', 'Plan', 'aw-plan-key');
+  button.id = 'aw-plan-key';
   button.type = 'button';
   button.setAttribute('aria-label', 'Plan asteroid industry');
   button.setAttribute('aria-haspopup', 'dialog');
-  Object.assign(button.style, { position: 'absolute', left: '12px', bottom: '12px',
-    minWidth: '64px', minHeight: '44px', pointerEvents: 'auto', cursor: 'pointer',
-    background: 'var(--dp-glass-deep)', color: 'var(--dp-ink, #e8e2d4)',
-    border: 'var(--dp-stroke) solid var(--dp-line)' });
 
-  const dialog = element('dialog', null, 'dp-glass');
+  const dialog = element('dialog', null, 'aw-planner');
+  dialog.id = 'aw-industry-planner';
   dialog.setAttribute('aria-label', 'Asteroid industry planner');
   dialog.dataset.industryPlanner = 'true';
-  Object.assign(dialog.style, { boxSizing: 'border-box', width: 'min(580px, calc(100vw - 24px))',
-    maxHeight: 'calc(100dvh - 32px)', padding: '20px', overflow: 'auto', colorScheme: 'dark',
-    pointerEvents: 'auto', background: 'var(--dp-void)', color: 'var(--dp-ink, #e8e2d4)',
-    border: 'var(--dp-stroke) solid var(--dp-line)', fontFamily: 'var(--dp-face-label)' });
-  const heading = element('h2', 'Build the next link', 'orr-display');
-  Object.assign(heading.style, { fontSize: '1.6rem', margin: '0 0 12px' });
-  const header = element('div');
-  Object.assign(header.style, { display: 'flex', alignItems: 'start', justifyContent: 'space-between', gap: '12px' });
-  const dismiss = element('button', '×', 'dp-glass orr-value'); dismiss.type = 'button';
+  const heading = element('h2', 'Build the next link', 'aw-plan-title');
+  const header = element('div', null, 'aw-plan-head');
+  const dismiss = element('button', '×', 'aw-plan-dismiss'); dismiss.type = 'button';
   dismiss.setAttribute('aria-label', 'Close industry plan');
-  Object.assign(dismiss.style, { minWidth: '44px', minHeight: '44px', flexShrink: '0', cursor: 'pointer',
-    background: 'var(--dp-glass-deep)', color: 'inherit', border: 'var(--dp-stroke) solid var(--dp-line)' });
   header.append(heading, dismiss);
-  const intro = element('p', 'Bore a route. Keep valuable faces intact. Build beside them for a lasting supply.');
-  intro.style.lineHeight = '1.45';
-  const controls = element('div');
-  Object.assign(controls.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 88px', gap: '12px' });
-  const goalLabel = element('label', 'Goal ');
-  const select = element('select');
+  const intro = element('p', 'Bore a route. Keep valuable faces intact. Build beside them for a lasting supply.', 'aw-plan-intro');
+  const controls = element('div', null, 'aw-plan-controls');
+  const goalLabel = element('label', 'Goal ', 'aw-plan-field');
+  const select = element('select', null, 'aw-plan-input');
   select.setAttribute('aria-label', 'Industry goal');
   const kitGroup = element('optgroup'); kitGroup.label = 'Bring a construction kit';
   for (const kit of INDUSTRY_KITS) {
@@ -62,36 +60,28 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
     const option = element('option', name(id)); option.value = `product:${id}`; productGroup.appendChild(option);
   }
   select.append(kitGroup, productGroup);
-  const quantityLabel = element('label', 'Quantity ');
-  const amount = element('input');
+  const quantityLabel = element('label', 'Quantity ', 'aw-plan-field');
+  const amount = element('input', null, 'aw-plan-input');
   amount.type = 'number'; amount.min = '1'; amount.max = '999'; amount.step = '1'; amount.value = '1';
   amount.setAttribute('aria-label', 'Production quantity');
-  for (const control of [select, amount]) Object.assign(control.style, { display: 'block',
-    width: '100%', boxSizing: 'border-box', minHeight: '44px', marginTop: '6px',
-    font: 'inherit', background: 'var(--dp-glass-deep)', color: 'inherit',
-    border: 'var(--dp-stroke) solid var(--dp-line)' });
   goalLabel.appendChild(select); quantityLabel.appendChild(amount); controls.append(goalLabel, quantityLabel);
-  const result = element('section'); result.setAttribute('aria-live', 'polite');
-  const done = element('button', 'Return to asteroid', 'dp-glass orr-label'); done.type = 'button';
-  Object.assign(done.style, { minHeight: '44px', width: '100%', marginTop: '12px', cursor: 'pointer',
-    background: 'var(--dp-glass-deep)', color: 'var(--dp-hand)', border: 'var(--dp-stroke) solid var(--dp-line)' });
+  const result = element('section', null, 'aw-plan-result'); result.setAttribute('aria-live', 'polite');
+  const done = element('button', 'Return to asteroid', 'aw-plan-done'); done.type = 'button';
   dialog.append(header, intro, controls, result, done);
   let visible = false;
   let destroyed = false;
   let returnFocus = null;
 
   function paragraph(text, target = result) {
-    const p = element('p', text); p.style.lineHeight = '1.45'; target.appendChild(p);
+    target.appendChild(element('p', text, 'aw-plan-note'));
   }
   function list(title, amounts, label = name, target = result) {
-    target.appendChild(element('h3', title, 'orr-label'));
-    const dl = element('dl'); dl.style.margin = '12px 0';
+    target.appendChild(element('h3', title, 'aw-plan-subtitle'));
+    const dl = element('dl', null, 'aw-plan-list');
     for (const [id, n] of Object.entries(amounts)) {
-      const row = element('div');
-      Object.assign(row.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '12px',
-        padding: '7px 0', borderBottom: 'var(--dp-stroke) solid var(--dp-line-faint)' });
-      const dt = element('dt', label(id)); const dd = element('dd', fmt(n), 'orr-value');
-      dt.style.overflowWrap = 'anywhere'; dd.style.margin = '0'; row.append(dt, dd); dl.appendChild(row);
+      const row = element('div', null, 'aw-plan-row');
+      const dt = element('dt', label(id)); const dd = element('dd', fmt(n));
+      row.append(dt, dd); dl.appendChild(row);
     }
     target.appendChild(dl);
   }
@@ -100,17 +90,15 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
     if (summary.complete) paragraph(`${fmt(summary.volume)} cargo volume · about ${fmt(summary.nominalValue)} cr at catalog prices. Check the station’s live price.`, target);
   }
   function details(title) {
-    const body = element('details');
-    const summary = element('summary', title, 'orr-label');
-    Object.assign(summary.style, { cursor: 'pointer', minHeight: '44px', alignContent: 'center' });
+    const body = element('details', null, 'aw-plan-details');
+    const summary = element('summary', title, 'aw-plan-summary');
     body.appendChild(summary); result.appendChild(body);
     return body;
   }
   function nextSteps(plan) {
-    const order = element('ol');
-    Object.assign(order.style, { paddingLeft: '24px', lineHeight: '1.5' });
+    const order = element('ol', null, 'aw-plan-steps');
     const step = (title, text) => {
-      const item = element('li'); item.style.margin = '12px 0';
+      const item = element('li');
       item.append(element('strong', `${title}. `), doc.createTextNode(text));
       order.appendChild(item);
       return item;
@@ -174,8 +162,8 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
         cargoSummary(plan.procurement);
         list('Requested output', plan.targets);
         cargoSummary(plan.targets);
-        result.appendChild(element('h3', 'Manufacturing order', 'orr-label'));
-        const order = element('ol'); Object.assign(order.style, { paddingLeft: '20px', lineHeight: '1.6' });
+        result.appendChild(element('h3', 'Manufacturing order', 'aw-plan-subtitle'));
+        const order = element('ol', null, 'aw-plan-steps');
         for (const step of plan.steps) {
           const recipe = recipes.get(step.recipeId);
           const contacts = [...(recipe?.contactOres || []).map(name), ...(recipe?.contactKinds || []).map((kind) => ({ matrix: 'silicate matrix', basalt: 'basalt', gas: 'sealed gas' }[kind] || kind))];

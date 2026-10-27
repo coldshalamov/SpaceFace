@@ -102,10 +102,33 @@ export function noteStandingOrderCompletion(state, mission) {
   row.template = Object.fromEntries(fields.filter(key => mission[key] !== undefined).map(key => [key, clone(mission[key])]));
 }
 
+/** Re-read only positively obsolete unaccepted work; bounded forgetting is not a death. */
+export function captainStandingOfferPreflight(state, offer) {
+  if (offer?.source !== 'captainStandingOrder' || offer.cause?.tag !== 'remembered_captain') return { ok: true };
+  const captainId = offer.cause.captainId;
+  if (!captainId) return { ok: true };
+  const captain = state.traffic?.captainRoster?.find(row => row.id === captainId);
+  if (captain?.alive === false) return { ok: false, reason: 'That captain can no longer receive relief work. Choose current work from the board.' };
+  const cycle = state.missions?.captainOrderCycles?.[captainId]?.cycle;
+  const prefix = `captain-order:${hash32(captainId).toString(36)}:`;
+  const suffix = typeof offer.id === 'string' && offer.id.startsWith(prefix) ? offer.id.slice(prefix.length) : '';
+  // Malformed, unknown and future cycles retain their saved terms; only an older native cycle is stale.
+  if (Number.isSafeInteger(cycle) && /^(0|[1-9]\d*)$/.test(suffix)
+    && Number.isSafeInteger(Number(suffix)) && Number(suffix) < cycle) {
+    return { ok: false, reason: 'That captain has a newer relief run. Choose current work from the board.' };
+  }
+  return { ok: true };
+}
+
 export function syncCaptainStandingOrders(host, info, board) {
   const state = host.state;
   if (!board?.slots || !info?.id) return false;
   let changed = false;
+  // Reconcile only unaccepted relief offers whose remembered cause is positively obsolete.
+  // Roster eviction is bounded forgetting, not evidence of death; unknown rows stay intact.
+  // Accepted contracts live in missions.active and retain their recorded terms.
+  const currentSlots = board.slots.filter(offer => captainStandingOfferPreflight(state, offer).ok);
+  if (currentSlots.length !== board.slots.length) { board.slots = currentSlots; changed = true; }
   const candidates = [];
   for (const captain of state.traffic?.captainRoster || []) {
     const orderState = state.missions.captainOrderCycles?.[captain.id];
@@ -140,11 +163,15 @@ export function syncCaptainStandingOrders(host, info, board) {
       cause: { tag: 'standing_client', standingOrderId: row.id },
     });
   }
-  for (const offer of candidates.slice(0, 3)) {
+  // Existing valid rows consume capacity, including saved legacy extras. Never trim earned
+  // rows just to meet the admission limit, and never let an ineligible early client starve later ones.
+  let standingCount = board.slots.filter(offer => offer?.source === 'captainStandingOrder').length;
+  for (const offer of candidates) {
+    if (standingCount >= 3) break;
     if (board.slots.some(row => row?.id === offer.id)
       || state.missions.active?.some(mission => mission?.giverId === offer.giverId)
       || state.missions.receipts?.some(receipt => receipt?.sourceOfferId === offer.id)) continue;
-    board.slots.push(offer); changed = true;
+    board.slots.push(offer); standingCount++; changed = true;
   }
   return changed;
 }

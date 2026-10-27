@@ -27,6 +27,15 @@ import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
 
 /**
+ * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
+ * its hull through the ordinary damage route. Deployed field emitters (wells, repulsors) keep their
+ * existing damage rules; only an endpoint the shieldPylons system spawned opts in.
+ */
+function isShieldPylonEndpoint(target) {
+  return !!(target && target.type === 'fieldEmitter' && target.data && target.data.shieldPylonEndpoint === true);
+}
+
+/**
  * AL-FIGHT-1 / AL-HF-02: a reckless NPC's weapon round (direct bolt or splash) on a same-team
  * non-lawful NPC ship is real damage. Everything else keeps the friendly-fire law.
  */
@@ -87,6 +96,28 @@ export function npcGrudgeAdmits(state, attacker, target, origin) {
   return true;
 }
 
+/**
+ * The damage authority's friendly-fire admission, as a pure read: true when a hit from `attacker`
+ * on `target` is REFUSED as friendly fire. routeDamage rejects with 'friendly_fire' on it, and the
+ * continuous-beam sweep (systems/combat.js) asks it before a same-team hull may block the ray —
+ * so a beam admits exactly what a bolt admits: a player attack on a neutral team-0 civilian or
+ * station goes through (law handles the consequence) while the player's own deployables and
+ * player-faction devices stay protected. Player malice is adjudicated by law (player_assault /
+ * player_piracy incidents) and NPC retaliation, not by the NPC IFF team gate: neutral stations,
+ * civilians and ambient ships share the player's default team 0.
+ */
+export function friendlyFireRefuses(state, attacker, target, origin, flags) {
+  if (flags && flags.ignoreFriendlyFire) return false;
+  if (!attacker || !target || attacker.id === target.id) return false;
+  if (attacker.team == null || target.team == null || attacker.team !== target.team) return false;
+  const attackerIsPlayer = state != null && attacker.id === state.playerId;
+  const targetIsOwnDevice = (target.ownerId != null && target.ownerId === attacker.id)
+    || target.factionId === 'faction_player';
+  if (attackerIsPlayer && !targetIsOwnDevice) return false;
+  if (npcCrossfireAdmits(state, attacker, target, origin) || npcGrudgeAdmits(state, attacker, target, origin)) return false;
+  return true;
+}
+
 /** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
 export function playerIsDamageTarget(state, target) {
   return !!(state && state.playerId != null && target && target.id === state.playerId);
@@ -102,8 +133,9 @@ export function createDamageRouter(context, statusService, options = {}) {
   // hostility. Non-AI/local-only targets have no durable record and use this object-lifetime fallback.
   const playerDamageTruthByTarget = new WeakMap();
 
-  // Reusable scratch channel objects for routeDamage. routeDamage is non-reentrant within a router
-  // (damage routing never synchronously triggers another route), so six stable slots cover the full
+  // Reusable scratch channel objects for routeDamage. The buffers are dead before the combat:damage
+  // emit (a listener may route a nested hit, e.g. a volatile rupture — the emit payload is pooled
+  // per dispatch depth for that), so six stable slots cover the full
   // coexisting lifetime of the transient channel buffers: penetratingRaw, postShieldRaw, postFlatRaw,
   // terminalRaw, subsystemInput, hullInput. (hullByChannel is intentionally still allocated — it is
   // returned in the result object.) This removes ~6 small-object allocations per projectile hit,
@@ -156,7 +188,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
     }
     if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) {
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) {
       const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
       if (marks.length) {
         const runtime = ensureCombatant(state, target, catalog);
@@ -172,7 +204,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-015: damageable type-membership from the shared catalog (identical to the former
     // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
     // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC
@@ -181,10 +213,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // silently blocks the designed assault-to-dispatch loop (the sector-law panel advertises that
     // station attacks trigger dispatch). The gate still protects the player's own deployables
     // (owner-marked mines/anchors) and player-faction devices (drones).
-    const attackerIsPlayer = state != null && attacker != null && attacker.id === state.playerId;
-    const targetIsOwnDevice = (target.ownerId != null && attacker != null && target.ownerId === attacker.id)
-      || target.factionId === 'faction_player';
-    if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice) && !npcCrossfireAdmits(state, attacker, target, origin) && !npcGrudgeAdmits(state, attacker, target, origin)) {
+    if (friendlyFireRefuses(state, attacker, target, origin, packet.flags)) {
       return rejected('friendly_fire', input, packet);
     }
     // X-02 v4: the onboarding wing's rounds touch only the player while its raid beat is live —
@@ -405,7 +434,10 @@ export function createDamageRouter(context, statusService, options = {}) {
       }
       const empHit = isEmpDamagePacket(packet, origin);
       const weaponId = origin && origin.kind === 'weapon' ? (origin.weaponId || origin.id || null) : null;
-      const dp = _damageEmitPayload;
+      // One pooled record per DISPATCH DEPTH (see acquireDamageEmitPayload): a listener that
+      // routes another hit (a thermal hit rupturing a volatile pod) gets its own record, so the
+      // outer hit's remaining listeners still read the outer attacker, amounts and result.
+      const dp = acquireDamageEmitPayload();
       dp.targetId = target.id;
       dp.attackerId = result.attackerId;
       dp.amount = rawTotal;
@@ -437,7 +469,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       dp.subsystemId = subsystemId;
       dp.origin = origin;
       dp.weaponId = weaponId;
-      bus.emit('combat:damage', dp);
+      try {
+        bus.emit('combat:damage', dp);
+      } finally {
+        _damageEmitDepth -= 1;
+      }
       if (empHit) {
         bus.emit('combat:emp', {
           targetId: target.id,
@@ -615,17 +651,32 @@ const DIRECTIONAL_NEUTRAL = Object.freeze({ factor: 1, arc: null });
 function snapshotDamagePayload(p) {
   return { ...p };
 }
-const _damageEmitPayload = {
-  targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
-  damageType: null, emp: false, channels: null,
-  shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
-  before: null, after: null,
-  shieldHit: false, armorHit: false, hullHit: false, dominantLayer: null,
-  brokeShield: false, shieldAbsorbed: false, isPlayer: false,
-  pos: null, approach: null, normal: null,
-  factionId: null, factionLawful: false, targetHostileToPlayer: false,
-  subsystemId: null, origin: null, weaponId: null,
-};
+function createDamageEmitPayload() {
+  return {
+    targetId: null, attackerId: null, amount: 0, rawTotal: 0, applied: 0, type: null,
+    damageType: null, emp: false, channels: null,
+    shieldDamage: 0, armorDamage: 0, hullDamage: 0, subsystemDamage: 0,
+    before: null, after: null,
+    shieldHit: false, armorHit: false, hullHit: false, dominantLayer: null,
+    brokeShield: false, shieldAbsorbed: false, isPlayer: false,
+    pos: null, approach: null, normal: null,
+    factionId: null, factionLawful: false, targetHostileToPlayer: false,
+    subsystemId: null, origin: null, weaponId: null,
+  };
+}
+// A combat:damage listener can synchronously route another hit (volatileExposure ruptures a pod a
+// thermal hit just pushed past its threshold). One shared record let that nested emit rewrite the
+// outer hit's attacker/amounts under the listeners still waiting on the outer emit, so the record
+// is pooled per dispatch depth: depth 0 (every ordinary hit) reuses one stable object — no
+// allocation — and a nested route takes the next slot until its own emit returns.
+const _damageEmitPool = [createDamageEmitPayload()];
+let _damageEmitDepth = 0;
+function acquireDamageEmitPayload() {
+  if (_damageEmitDepth >= _damageEmitPool.length) _damageEmitPool.push(createDamageEmitPayload());
+  const dp = _damageEmitPool[_damageEmitDepth];
+  _damageEmitDepth += 1;
+  return dp;
+}
 
 function resolveDirectionalArmor(target, attacker, packet) {
   const config = target && target.data && target.data.directionalArmor;

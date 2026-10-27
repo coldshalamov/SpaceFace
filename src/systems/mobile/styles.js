@@ -10,6 +10,7 @@ const FLIGHT_CSS = `
 :root[data-sf-mobile="1"] { --sf-safe-top:env(safe-area-inset-top,0px); --sf-safe-bottom:env(safe-area-inset-bottom,0px); --sf-safe-right:env(safe-area-inset-right,0px); --sf-safe-left:env(safe-area-inset-left,0px); }
 :root[data-sf-mobile-flight="1"], :root[data-sf-mobile-flight="1"] body { touch-action:none; overscroll-behavior:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 #sf-touch-overlay { position:fixed; inset:0; z-index:65; pointer-events:none; --mf-scale:1; --mf-bone:232 226 212; --mf-ice:143 203 255;
+  --mf-void:var(--dp-void,#05070a);
   --mf-hand:var(--dp-hand,#f2b950); --mf-hand-hot:var(--dp-hand-hot,#ffd98c); --mf-danger:var(--dp-danger,#ff5038); --mf-phos:var(--dp-phos,#dfeeff);
   --mf-face:var(--dp-face-label,"Archivo","Instrument Sans",system-ui,sans-serif); --mf-numeral:var(--dp-face-numeral,"Archivo","Instrument Sans",system-ui,sans-serif);
   --mf-body:var(--dp-face-body,"Instrument Sans","Archivo",system-ui,sans-serif); --mf-out:cubic-bezier(.16,1,.3,1); --mf-over:cubic-bezier(.34,1.36,.64,1);
@@ -20,50 +21,51 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-flight { position:absolute; inset:0; pointer-events:none; }
 /* shared ring art: a luminous band with a crisp edge (ORRERY weight rule), glass behind for legibility */
 #sf-touch-overlay :is(.mf-r-band,.mf-r-edge,.mf-r-plate,.mf-r-glyph,.mf-r-pulse) { fill:none; }
-#sf-touch-overlay .mf-r-plate { fill:rgb(6 8 12 / .5); }
+#sf-touch-overlay .mf-r-plate { fill:color-mix(in srgb, var(--mf-void) 50%, transparent); }
 #sf-touch-overlay .mf-r-band { stroke:rgb(var(--mf-bone) / .10); stroke-width:7; }
 #sf-touch-overlay .mf-r-edge { stroke:rgb(var(--mf-bone) / .58); stroke-width:1.5; }
 #sf-touch-overlay .mf-r-glyph { stroke:currentColor; stroke-width:2.6; stroke-linecap:round; }
 /* ---- top: status scales + pause ---- */
 #sf-touch-overlay .mf-top { z-index:5; position:absolute; top:calc(10px + var(--sf-safe-top,0px)); left:calc(14px + var(--sf-safe-left,0px)); right:calc(12px + var(--sf-safe-right,0px)); display:flex; align-items:flex-start; gap:10px; }
 #sf-touch-overlay .mf-status { position:relative; display:grid; gap:6px; width:176px; padding-top:1px; text-shadow:0 1px 5px rgb(0 0 0 / .9); }
-#sf-touch-overlay .mf-status::before { content:''; position:absolute; inset:-12px -30px -12px -16px; z-index:-1; background:radial-gradient(ellipse at 24% 34%, rgb(6 8 12 / .58), transparent 72%); }
+#sf-touch-overlay .mf-status::before { content:''; position:absolute; inset:-12px -30px -12px -16px; z-index:-1; background:radial-gradient(ellipse at 24% 34%, color-mix(in srgb, var(--mf-void) 58%, transparent), transparent 72%); }
 #sf-touch-overlay .mf-speed { display:flex; align-items:baseline; gap:8px; }
 #sf-touch-overlay .mf-speed b { font:250 40px/.86 var(--mf-numeral); font-stretch:100%; letter-spacing:-.02em; font-variant-numeric:tabular-nums lining-nums; color:var(--mf-phos); }
 #sf-touch-overlay .mf-speed i { font-style:normal; font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.12em; text-transform:uppercase; color:rgb(var(--mf-bone) / .62); }
+/* rest light is warm bone (ORRERY §3.3); the label carries the name, so the fills need no per-row hue.
+   Low hull/shield alone warm to threat red. */
 #sf-touch-overlay .mf-row { display:grid; grid-template-columns:62px 1fr; align-items:center; gap:8px; --k:236 230 216; }
-#sf-touch-overlay .mf-row[data-k="shield"] { --k:143 203 255; }
-#sf-touch-overlay .mf-row[data-k="energy"] { --k:223 238 255; }
-#sf-touch-overlay .mf-row[data-k="boost"] { --k:92 160 255; }
 #sf-touch-overlay .mf-row[data-low="1"][data-k="hull"], #sf-touch-overlay .mf-row[data-low="1"][data-k="shield"] { --k:255 80 56; }
-#sf-touch-overlay .mf-lab { font:600 12px/1 var(--mf-face); font-stretch:104%; letter-spacing:.06em; text-transform:uppercase; color:rgb(var(--mf-bone) / .62); }
+#sf-touch-overlay .mf-lab { font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.1em; text-transform:uppercase; color:rgb(var(--mf-bone) / .62); }
 #sf-touch-overlay .mf-row[data-low="1"] .mf-lab { color:rgb(var(--k)); }
 #sf-touch-overlay .mf-scale { position:relative; height:4px; background:rgb(var(--mf-bone) / .13); overflow:hidden; }
 #sf-touch-overlay .mf-fill { position:absolute; inset:0; transform-origin:0 50%; transform:scaleX(0); background:rgb(var(--k)); }
-#sf-touch-overlay .mf-scale::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 9px, rgb(6 8 12 / .85) 9px 10px); }
+#sf-touch-overlay .mf-scale::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 9px, color-mix(in srgb, var(--mf-void) 85%, transparent) 9px 10px); }
 #sf-touch-overlay .mf-pause { pointer-events:auto; touch-action:manipulation; position:relative; margin-left:auto; flex:none; width:calc(52px * var(--mf-scale)); height:calc(52px * var(--mf-scale)); min-width:44px; min-height:44px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); }
+#sf-touch-overlay .mf-pause:hover .mf-r-edge { stroke:rgb(var(--mf-bone) / .82); }
 #sf-touch-overlay .mf-pause svg { width:100%; height:100%; overflow:visible; }
 #sf-touch-overlay .mf-pause:active .mf-r-edge { stroke:var(--mf-phos); }
 /* ---- powers handle (the wheel opens from here) ---- */
 #sf-touch-overlay .mf-edge { position:absolute; right:var(--sf-safe-right,0px); bottom:calc(18px + 156px * var(--mf-scale) + 78px + var(--sf-safe-bottom,0px)); width:calc(48px * var(--mf-scale)); height:calc(110px * var(--mf-scale)); min-width:44px; padding:0; border:0; background:none; pointer-events:auto; touch-action:none; color:rgb(var(--mf-bone)); z-index:6; }
 #sf-touch-overlay .mf-edge::before { content:''; position:absolute; inset:-8px -2px -8px -18px; }
 #sf-touch-overlay .mf-edge-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-#sf-touch-overlay .mf-e-plate { fill:rgb(6 8 12 / .56); }
+#sf-touch-overlay .mf-e-plate { fill:color-mix(in srgb, var(--mf-void) 56%, transparent); }
 #sf-touch-overlay .mf-e-edge { fill:none; stroke:rgb(var(--mf-bone) / .58); stroke-width:1.5; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-e-tick { fill:none; stroke:rgb(var(--mf-bone) / .5); stroke-width:1.6; stroke-linecap:round; }
-#sf-touch-overlay .mf-edge-word { position:absolute; left:calc(17px * var(--mf-scale)); top:50%; writing-mode:vertical-rl; transform:translateY(-50%) rotate(180deg); font:600 12px/1 var(--mf-face); font-stretch:108%; letter-spacing:.2em; text-transform:uppercase; color:rgb(var(--mf-bone) / .82); }
+#sf-touch-overlay .mf-edge-word { position:absolute; left:calc(17px * var(--mf-scale)); top:50%; writing-mode:vertical-rl; transform:translateY(-50%) rotate(180deg); font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.18em; text-transform:uppercase; color:rgb(var(--mf-bone) / .82); }
 #sf-touch-overlay .mf-edge[aria-expanded="true"] .mf-e-edge { stroke:var(--mf-hand); }
+#sf-touch-overlay .mf-edge:hover .mf-e-edge { stroke:rgb(var(--mf-bone) / .82); }
 /* ---- the two keys: a gameboy diagonal, gun high, tether low ---- */
 /* z-index 6 ties the handle (.mf-edge), and the keys and DOCK come later in the tree, so they win the tie: the handle's invisible
    hit pad reaches 24px past it, and in landscape (844x390) that pad lies over the top of the gun key and half of DOCK */
 #sf-touch-overlay .mf-buttons { z-index:6; position:absolute; right:calc(16px + var(--sf-safe-right,0px)); bottom:calc(18px + var(--sf-safe-bottom,0px)); width:calc(196px * var(--mf-scale)); height:calc(156px * var(--mf-scale)); pointer-events:none; }
 #sf-touch-overlay .mf-key { pointer-events:auto; touch-action:none; position:absolute; isolation:isolate; display:grid; place-content:center; justify-items:center; gap:3px; padding:0; border:0; background:none; color:rgb(var(--mf-bone)); transition:transform 90ms ease; }
 #sf-touch-overlay .mf-key > svg:not([class]) { position:relative; z-index:2; width:calc(28px * var(--mf-scale)); height:calc(28px * var(--mf-scale)); fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-#sf-touch-overlay .mf-key-word { position:relative; z-index:2; font:700 12px/1 var(--mf-face); font-stretch:104%; letter-spacing:.08em; text-transform:uppercase; }
+#sf-touch-overlay .mf-key-word { position:relative; z-index:2; font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.1em; text-transform:uppercase; }
 /* GUN is the one primary verb: the Lamp Key, an amber field with one 45-degree cut */
 #sf-touch-overlay .mf-gun { right:0; top:0; width:calc(96px * var(--mf-scale)); height:calc(96px * var(--mf-scale)); color:#1c1406; }
 #sf-touch-overlay .mf-gun-field { position:absolute; inset:0; z-index:1; background:var(--mf-hand); clip-path:polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%); transition:background 80ms linear; }
-#sf-touch-overlay .mf-gun::before { content:''; position:absolute; inset:-30px; z-index:-1; opacity:0; background:radial-gradient(circle, rgb(242 185 80 / .38), transparent 66%); transition:opacity 80ms linear; }
+#sf-touch-overlay .mf-gun::before { content:''; position:absolute; inset:-30px; z-index:-1; opacity:0; background:radial-gradient(circle, color-mix(in srgb, var(--mf-hand) 38%, transparent), transparent 66%); transition:opacity 80ms linear; }
 #sf-touch-overlay .mf-ping { position:absolute; inset:0; z-index:1; border:2px solid var(--mf-hand-hot); clip-path:polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%); opacity:0; pointer-events:none; }
 #sf-touch-overlay .mf-gun[data-held="1"] { transform:scale(.95); }
 #sf-touch-overlay .mf-gun[data-held="1"] .mf-gun-field { background:var(--mf-hand-hot); }
@@ -85,7 +87,7 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-tether[data-held="1"] .mf-r-band { stroke:rgb(var(--mf-ice) / .22); }
 /* the reel ladder, left of the cluster while the tether thumb is down: slide up to reel in, down to pay out */
 #sf-touch-overlay .mf-reel { position:absolute; z-index:4; right:calc(16px + 196px * var(--mf-scale) + 12px + var(--sf-safe-right,0px)); bottom:calc(18px + 39px * var(--mf-scale) - 38px + var(--sf-safe-bottom,0px)); width:84px; height:152px; pointer-events:none; }
-#sf-touch-overlay .mf-reel > i { position:absolute; right:14px; font:600 12px/1 var(--mf-face); font-stretch:104%; font-style:normal; letter-spacing:.08em; text-transform:uppercase; color:rgb(var(--mf-bone) / .78); text-shadow:0 1px 4px #000; white-space:nowrap; }
+#sf-touch-overlay .mf-reel > i { position:absolute; right:14px; font:600 12px/1 var(--mf-face); font-stretch:112%; font-style:normal; letter-spacing:.1em; text-transform:uppercase; color:rgb(var(--mf-bone) / .78); text-shadow:0 1px 4px #000; white-space:nowrap; }
 #sf-touch-overlay .mf-reel-up { top:0; }
 #sf-touch-overlay .mf-reel-down { bottom:0; }
 #sf-touch-overlay .mf-reel .mf-reel-rail { position:absolute; right:4px; top:18px; bottom:18px; width:2px; background:rgb(var(--mf-bone) / .3); }
@@ -93,28 +95,33 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-reel-bead { position:absolute; right:-5px; top:calc(100% - 38px + 18px - 6px); width:12px; height:12px; border-radius:50%; background:rgb(var(--mf-ice)); }
 /* the aim beam: where the gun thumb's shots will go, drawn from the hull */
 #sf-touch-overlay .mf-beam { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:3; }
-#sf-touch-overlay .mf-beam-bloom { stroke:rgb(242 185 80 / .24); stroke-width:9; stroke-linecap:round; }
+#sf-touch-overlay .mf-beam-bloom { stroke:color-mix(in srgb, var(--mf-hand) 24%, transparent); stroke-width:9; stroke-linecap:round; }
 #sf-touch-overlay .mf-beam-core { stroke:var(--mf-hand-hot); stroke-width:1.6; stroke-linecap:round; stroke-dasharray:3 8; }
 #sf-touch-overlay .mf-beam-tip { fill:var(--mf-hand-hot); }
-/* the contextual DOCK key: the same Lamp Key, only while a station is in range */
-#sf-touch-overlay .mf-dock { position:absolute; z-index:6; right:calc(18px + var(--sf-safe-right,0px)); bottom:calc(18px + 156px * var(--mf-scale) + 14px + var(--sf-safe-bottom,0px)); isolation:isolate; display:inline-flex; align-items:center; min-height:50px; padding:0 26px 0 22px; border:0; background:none; color:#1c1406; pointer-events:auto; touch-action:manipulation; font:800 15px/1 var(--mf-face); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; animation:mf-key-in 260ms var(--mf-over) both; }
-#sf-touch-overlay .mf-dock::before { content:''; position:absolute; inset:0; z-index:-1; background:var(--mf-hand); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
-#sf-touch-overlay .mf-dock:active::before { background:var(--mf-hand-hot); }
+/* the contextual DOCK key: the deck's verb shape (45-degree cut) in glass with amber ink — GUN keeps
+   the one amber field, so the screen never leads with two Lamp Keys at once */
+#sf-touch-overlay .mf-dock { position:absolute; z-index:6; right:calc(18px + var(--sf-safe-right,0px)); bottom:calc(18px + 156px * var(--mf-scale) + 14px + var(--sf-safe-bottom,0px)); isolation:isolate; display:inline-flex; align-items:center; min-height:50px; padding:0 26px 0 22px; border:0; background:none; color:var(--mf-hand-hot); pointer-events:auto; touch-action:manipulation; font:800 15px/1 var(--mf-face); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; animation:mf-key-in 260ms var(--mf-over) both; }
+#sf-touch-overlay .mf-dock::before { content:''; position:absolute; inset:0; z-index:-1; background:color-mix(in srgb, var(--mf-void) 78%, transparent); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
+#sf-touch-overlay .mf-dock:hover::before { background:color-mix(in srgb, var(--mf-void) 90%, transparent); }
+#sf-touch-overlay .mf-dock:active::before { background:var(--mf-hand); }
+#sf-touch-overlay .mf-dock:active { color:#1c1406; }
 /* ---- the stick: an orrery that powers up under the thumb ---- */
 #sf-touch-overlay .mf-stick { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; --mf-r:74px; --mf-tint:226 220 206; --mf-approach:0; --mf-shift:0px; z-index:4; }
 #sf-touch-overlay .mf-stick-svg { position:absolute; width:calc(var(--mf-r) * 3.4); height:calc(var(--mf-r) * 3.4); left:calc(var(--mf-r) * -1.7); top:calc(var(--mf-r) * -1.7); overflow:visible; }
 #sf-touch-overlay .mf-stick:not([hidden]) .mf-stick-svg { animation:mf-arrive 300ms var(--mf-over) both; }
 #sf-touch-overlay .mf-stick:not([hidden]) .mf-ticks { transform-box:fill-box; transform-origin:center; animation:mf-spin-in 560ms var(--mf-out) both; }
 #sf-touch-overlay .mf-stick.is-leaving .mf-stick-svg { animation:mf-leave 190ms ease-in both; }
-#sf-touch-overlay .mf-plate { fill:rgb(6 8 12 / .44); }
+#sf-touch-overlay .mf-plate { fill:color-mix(in srgb, var(--mf-void) 44%, transparent); }
 #sf-touch-overlay .mf-band { fill:none; stroke:rgb(var(--mf-bone) / .1); stroke-width:9; }
 #sf-touch-overlay .mf-edge-ring { fill:none; stroke:rgb(var(--mf-bone) / .62); stroke-width:1.8; }
 #sf-touch-overlay .mf-tick { fill:none; stroke:rgb(var(--mf-bone) / .4); }
 #sf-touch-overlay .mf-tick--major { stroke:rgb(var(--mf-bone) / .74); }
-#sf-touch-overlay .mf-boost-dash { fill:none; stroke:rgb(var(--mf-ice)); stroke-width:2.6; opacity:calc(.3 + .6 * var(--mf-approach)); }
+#sf-touch-overlay .mf-boost-dash { fill:none; stroke:rgb(var(--mf-tint)); stroke-width:2.6; opacity:calc(.3 + .6 * var(--mf-approach)); }
 #sf-touch-overlay .mf-boost-bloom { fill:none; stroke:rgb(var(--mf-tint) / .3); stroke-width:11; opacity:0; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-boost-lit { fill:none; stroke:rgb(var(--mf-tint)); stroke-width:3.4; opacity:0; vector-effect:non-scaling-stroke; }
-#sf-touch-overlay .mf-micro text { font:600 15px var(--mf-face); letter-spacing:.2em; fill:rgb(var(--mf-bone) / .5); }
+/* the circular label renders through the stick svg's 340-unit viewBox at 0.74 px/unit, so 16.5 units
+   is the smallest authoring that still renders >= 12px on screen (the 12px type floor) */
+#sf-touch-overlay .mf-micro text { font:600 16.5px var(--mf-face); letter-spacing:.18em; fill:rgb(var(--mf-bone) / .5); }
 #sf-touch-overlay .mf-dead { fill:none; stroke:rgb(var(--mf-bone) / .22); stroke-width:1.2; }
 #sf-touch-overlay .mf-brake { opacity:0; }
 #sf-touch-overlay .mf-brake path { fill:none; stroke:rgb(var(--mf-bone) / .9); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
@@ -124,12 +131,12 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-lit-bloom { fill:none; stroke:rgb(var(--mf-tint) / .3); stroke-width:13; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-lit { fill:none; stroke:rgb(var(--mf-tint)); stroke-width:3.6; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay :is(.mf-arm,.mf-arm-bloom,.mf-arm-hot) { stroke-linecap:round; vector-effect:non-scaling-stroke; }
-#sf-touch-overlay .mf-arm { stroke:rgb(242 185 80 / .42); stroke-width:1.6; stroke-dasharray:1 6; }
-#sf-touch-overlay .mf-arm-bloom { stroke:rgb(242 185 80 / .26); stroke-width:9; }
+#sf-touch-overlay .mf-arm { stroke:color-mix(in srgb, var(--mf-hand) 42%, transparent); stroke-width:1.6; stroke-dasharray:1 6; }
+#sf-touch-overlay .mf-arm-bloom { stroke:color-mix(in srgb, var(--mf-hand) 26%, transparent); stroke-width:9; }
 #sf-touch-overlay .mf-arm-hot { stroke:var(--mf-hand); stroke-width:2.6; }
-#sf-touch-overlay .mf-bead-bloom { fill:rgb(242 185 80 / .26); }
+#sf-touch-overlay .mf-bead-bloom { fill:color-mix(in srgb, var(--mf-hand) 26%, transparent); }
 #sf-touch-overlay .mf-bead { fill:var(--mf-hand-hot); }
-#sf-touch-overlay .mf-pivot { fill:rgb(8 11 16 / .88); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
+#sf-touch-overlay .mf-pivot { fill:color-mix(in srgb, var(--mf-void) 88%, transparent); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-pivot-dot { fill:var(--mf-hand); }
 #sf-touch-overlay .mf-stick[data-reach="1"] .mf-edge-ring { stroke:rgb(var(--mf-tint)); stroke-width:2.4; }
 #sf-touch-overlay .mf-stick[data-boost="1"] .mf-boost-dash { opacity:0; }
@@ -139,9 +146,12 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-stick[data-brake="1"] :is(.mf-lit,.mf-lit-bloom,.mf-arm,.mf-arm-bloom) { opacity:0; }
 #sf-touch-overlay .mf-stick[data-flick="1"] :is(.mf-lit,.mf-lit-bloom) { animation:mf-flick 190ms ease-out both; }
 #sf-touch-overlay .mf-readout { position:absolute; left:calc(-90px + var(--mf-shift)); width:180px; top:calc(var(--mf-r) * 1.62 + 6px); display:grid; justify-items:center; gap:3px; text-align:center; text-shadow:0 1px 6px rgb(0 0 0 / .9); }
+/* glass behind the reading, the same treatment the status strip gets, so the number stays legible
+   over whatever the world or the HUD is doing behind it (borderless, no filter — flight floor §7) */
+#sf-touch-overlay .mf-readout::before { content:''; position:absolute; inset:-10px -18px; z-index:-1; background:radial-gradient(ellipse at 50% 44%, color-mix(in srgb, var(--mf-void) 62%, transparent), transparent 74%); }
 #sf-touch-overlay .mf-stick[data-side="above"] .mf-readout { top:auto; bottom:calc(var(--mf-r) * 1.62 + 24px); }
 #sf-touch-overlay .mf-num { font:250 40px/.86 var(--mf-numeral); font-stretch:100%; font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.02em; color:rgb(var(--mf-tint)); }
-#sf-touch-overlay .mf-unit { font:600 12px/1 var(--mf-face); font-stretch:108%; font-style:normal; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--mf-bone) / .7); }
+#sf-touch-overlay .mf-unit { font:600 12px/1 var(--mf-face); font-stretch:112%; font-style:normal; letter-spacing:.14em; text-transform:uppercase; color:rgb(var(--mf-bone) / .7); }
 #sf-touch-overlay .mf-stick[data-boost="1"] .mf-num, #sf-touch-overlay .mf-stick[data-brake="1"] .mf-num { font:800 25px/1 var(--mf-face); font-stretch:125%; letter-spacing:.08em; }
 /* the first-run ghost: where a thumb will make the stick */
 #sf-touch-overlay .mf-ghost { position:absolute; left:23%; bottom:calc(124px + var(--sf-safe-bottom,0px)); width:0; height:0; pointer-events:none; animation:mf-breathe 3s ease-in-out infinite; }
@@ -155,33 +165,42 @@ const FLIGHT_CSS = `
 /* ---- the wheel: an ORRERY radial menu opening inward from the handle ---- */
 #sf-touch-overlay .mf-wheel { position:absolute; inset:0; z-index:7; pointer-events:none; }
 #sf-touch-overlay .mf-wheel-art { position:absolute; pointer-events:none; animation:mf-wheel-open 280ms var(--mf-out) both; }
-#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="right"] .mf-wheel-art { clip-path:inset(0 44% 0 0); }
-#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="left"] .mf-wheel-art { clip-path:inset(0 0 0 44%); }
+/* the half-orbit's glass dissolves toward the handle instead of ending on a hard clipped edge
+   (ORRERY glass law: edges are dissolved by a gradient mask, never a border or a raw cut) */
+#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="right"] .mf-wheel-art { -webkit-mask-image:linear-gradient(90deg,#000 0%,#000 58%,transparent 82%); mask-image:linear-gradient(90deg,#000 0%,#000 58%,transparent 82%); }
+#sf-touch-overlay .mf-wheel[data-orbit="0"][data-side="left"] .mf-wheel-art { -webkit-mask-image:linear-gradient(90deg,transparent 18%,#000 42%,#000 100%); mask-image:linear-gradient(90deg,transparent 18%,#000 42%,#000 100%); }
 #sf-touch-overlay .mf-wheel-svg { width:100%; height:100%; overflow:visible; }
-#sf-touch-overlay .mf-w-plate { fill:rgb(6 8 12 / .66); }
+#sf-touch-overlay .mf-w-plate { fill:color-mix(in srgb, var(--mf-void) 66%, transparent); }
 #sf-touch-overlay .mf-w-band { fill:none; stroke:rgb(var(--mf-bone) / .09); stroke-width:10; }
 #sf-touch-overlay .mf-w-edge { fill:none; stroke:rgb(var(--mf-bone) / .6); stroke-width:1.6; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-w-ticks { fill:none; stroke:rgb(var(--mf-bone) / .42); }
 #sf-touch-overlay .mf-w-track { fill:none; stroke:rgb(var(--mf-bone) / .17); stroke-width:1.2; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-w-rule { fill:none; stroke:rgb(var(--mf-bone) / .17); stroke-width:1; vector-effect:non-scaling-stroke; }
-#sf-touch-overlay .mf-w-wedge { fill:rgb(242 185 80 / .13); stroke:rgb(242 185 80 / .62); stroke-width:1.3; vector-effect:non-scaling-stroke; }
+#sf-touch-overlay .mf-w-wedge { fill:color-mix(in srgb, var(--mf-hand) 13%, transparent); stroke:color-mix(in srgb, var(--mf-hand) 62%, transparent); stroke-width:1.3; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-w-wedge[data-off] { display:none; }
-#sf-touch-overlay .mf-w-hand-bloom { stroke:rgb(242 185 80 / .28); stroke-width:9; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+#sf-touch-overlay .mf-w-hand-bloom { stroke:color-mix(in srgb, var(--mf-hand) 28%, transparent); stroke-width:9; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-w-hand-core { stroke:var(--mf-hand); stroke-width:2.6; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-w-hand-bead { fill:var(--mf-hand-hot); }
 #sf-touch-overlay .mf-w-hand[data-idle] { opacity:.32; }
-#sf-touch-overlay .mf-w-hub { fill:rgb(8 11 16 / .92); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
+#sf-touch-overlay .mf-w-hub { fill:color-mix(in srgb, var(--mf-void) 92%, transparent); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-nodes { position:absolute; inset:0; pointer-events:none; }
 #sf-touch-overlay .mf-node { position:absolute; pointer-events:auto; touch-action:none; transform:translate(-50%,-50%); width:var(--mf-node-size,56px); min-width:44px; aspect-ratio:1; display:grid; place-content:center; justify-items:center; gap:2px; padding:0; border:0; border-radius:50%; background:rgb(var(--mf-bone) / .075); color:rgb(var(--mf-bone) / .92); animation:mf-node-in 300ms var(--mf-over) both; animation-delay:calc(var(--i, 0) * 32ms + 70ms); transition:background 90ms linear, color 90ms linear; }
 #sf-touch-overlay .mf-node svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-#sf-touch-overlay .mf-node span { max-width:74px; font:600 11px/1.05 var(--mf-face); font-stretch:100%; letter-spacing:.01em; text-transform:uppercase; text-align:center; }
+#sf-touch-overlay .mf-node span { max-width:78px; font:600 12px/1.05 var(--mf-face); font-stretch:96%; letter-spacing:.01em; text-transform:uppercase; text-align:center; }
+/* hybrid devices still hover: the pointer's inspection light lifts what it is over, the pressed and
+   selected states stay the stronger registers (snap feedback, never an easing) */
+#sf-touch-overlay .mf-node:hover { background:rgb(var(--mf-bone) / .16); }
+#sf-touch-overlay .mf-tab { transition:color 90ms linear; }
+#sf-touch-overlay .mf-tab:hover { color:rgb(var(--mf-bone) / .92); }
 #sf-touch-overlay .mf-node[data-selected="1"] { background:var(--mf-phos); color:#0b141c; transform:translate(-50%,-50%) scale(1.14); box-shadow:0 0 0 2px var(--mf-hand); animation:none; }
 #sf-touch-overlay .mf-wheel-top { position:absolute; left:50%; top:calc(132px + var(--sf-safe-top,0px)); transform:translateX(-50%); width:min(96vw,440px); display:grid; gap:4px; justify-items:center; pointer-events:none; }
 #sf-touch-overlay .mf-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; pointer-events:auto; }
-#sf-touch-overlay .mf-tab { position:relative; min-width:0; min-height:44px; padding:0 4px; border:0; background:none; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:100%; letter-spacing:.02em; text-transform:uppercase; color:rgb(var(--mf-bone) / .64); text-shadow:0 1px 5px #000; }
+/* the phone viewport is the condense case (ORRERY §3.4): tabs hold the width axis at 100 and a
+   light track — NAVIGATION must fit its quarter of a 360px row without clipping */
+#sf-touch-overlay .mf-tab { position:relative; min-width:0; min-height:44px; padding:0 4px; border:0; background:none; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:100%; letter-spacing:.04em; text-transform:uppercase; color:rgb(var(--mf-bone) / .64); text-shadow:0 1px 5px #000; }
 #sf-touch-overlay .mf-tab[aria-pressed="true"] { color:var(--mf-hand-hot); }
 #sf-touch-overlay .mf-tab[aria-pressed="true"]::after { content:''; position:absolute; left:7px; right:7px; bottom:7px; height:2px; background:var(--mf-hand); }
-#sf-touch-overlay .mf-pick { display:grid; justify-items:center; gap:3px; max-width:100%; padding:8px 18px 9px; text-align:center; background:rgb(8 11 16 / .74); }
+#sf-touch-overlay .mf-pick { display:grid; justify-items:center; gap:3px; max-width:100%; padding:8px 18px 9px; text-align:center; background:color-mix(in srgb, var(--mf-void) 74%, transparent); }
 #sf-touch-overlay .mf-pick-name { font:800 18px/1 var(--mf-face); font-stretch:125%; letter-spacing:.05em; text-transform:uppercase; color:rgb(var(--mf-bone)); }
 #sf-touch-overlay .mf-wheel[data-choice="0"] .mf-pick-name { font-size:13px; letter-spacing:.16em; color:rgb(var(--mf-bone) / .72); }
 #sf-touch-overlay .mf-pick-text { font:500 13px/1.3 var(--mf-body); font-stretch:100%; color:rgb(var(--mf-bone) / .8); }
@@ -190,32 +209,35 @@ const FLIGHT_CSS = `
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.25; }
 @media (max-height:599px) and (min-aspect-ratio:1/1) {
  #sf-touch-overlay .mf-wheel-top { top:calc(10px + var(--sf-safe-top,0px)); left:calc(212px + var(--sf-safe-left,0px)); right:calc(270px + var(--sf-safe-right,0px)); width:auto; transform:none; }
- #sf-touch-overlay .mf-tab { font-size:11px; font-stretch:90%; letter-spacing:0; }
+ #sf-touch-overlay .mf-tab { font-size:12px; font-stretch:90%; letter-spacing:0; }
  #sf-touch-overlay .mf-pick { box-sizing:border-box; width:176px; max-width:100%; padding:6px 10px; justify-self:start; }
  #sf-touch-overlay .mf-pick-name { font-size:14px; }
  #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
 }
 /* ---- toast, guide pill, guide dialog ---- */
-#sf-touch-overlay .mf-toast { position:absolute; z-index:8; left:50%; top:calc(78px + var(--sf-safe-top,0px)); transform:translateX(-50%); max-width:min(76vw,360px); padding:9px 16px 9px 20px; background:rgb(8 11 16 / .84); color:rgb(var(--mf-bone)); font:600 13px/1.3 var(--mf-face); font-stretch:106%; letter-spacing:.04em; text-align:left; animation:mf-key-in 220ms var(--mf-out) both; }
+/* the deck's own feedback sits in the clear lane above the key cluster and below the wheel's orbit:
+   the top corners belong to the status strip, the alerts and the receipts (#toasts) */
+#sf-touch-overlay .mf-toast { position:absolute; z-index:8; left:50%; bottom:calc(18px + 240px * var(--mf-scale) + var(--sf-safe-bottom,0px)); transform:translateX(-50%); max-width:min(76vw,360px); padding:9px 16px 9px 20px; background:color-mix(in srgb, var(--mf-void) 84%, transparent); color:rgb(var(--mf-bone)); font:600 13px/1.3 var(--mf-face); font-stretch:106%; letter-spacing:.04em; text-align:left; animation:mf-key-in 220ms var(--mf-out) both; }
 #sf-touch-overlay .mf-toast::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--mf-hand); }
-#sf-touch-overlay .mf-guide-open { position:absolute; z-index:70; bottom:calc(58px + var(--sf-safe-bottom,0px)); right:calc(14px + var(--sf-safe-right,0px)); display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 18px 0 12px; border:0; border-radius:999px; background:rgb(8 11 16 / .8); color:rgb(var(--mf-bone) / .92); pointer-events:auto; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:104%; letter-spacing:.1em; text-transform:uppercase; }
+#sf-touch-overlay .mf-guide-open { position:absolute; z-index:70; bottom:calc(58px + var(--sf-safe-bottom,0px)); right:calc(14px + var(--sf-safe-right,0px)); isolation:isolate; display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:0 18px 0 12px; border:0; border-radius:0; background:none; color:rgb(var(--mf-bone) / .92); pointer-events:auto; touch-action:manipulation; font:600 12px/1 var(--mf-face); font-stretch:112%; letter-spacing:.1em; text-transform:uppercase; }
+#sf-touch-overlay .mf-guide-open::before { content:''; position:absolute; inset:0; z-index:-1; background:color-mix(in srgb, var(--mf-void) 80%, transparent); clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 #sf-touch-overlay .mf-guide-open svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.sf-mobile-guide { background:rgb(8 11 16 / .96); color:#e8e2d4; border:0; border-radius:0; max-width:min(520px,calc(100vw - 24px)); max-height:calc(100dvh - 36px); padding:22px 22px 20px; font:400 15px/1.5 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); overflow:auto; overscroll-behavior:contain; box-shadow:0 0 0 1px rgb(232 226 212 / .16); }
-.sf-mobile-guide::backdrop { background:rgb(2 4 8 / .86); }
+.sf-mobile-guide { background:color-mix(in srgb, var(--dp-void,#05070a) 96%, transparent); color:var(--dp-ink,#e8e2d4); border:0; border-radius:0; max-width:min(520px,calc(100vw - 24px)); max-height:calc(100dvh - 36px); padding:22px 22px 20px; font:400 15px/1.5 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); overflow:auto; overscroll-behavior:contain; background-image:linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0),linear-gradient(var(--dp-ink,#e8e2d4) 0 0); background-repeat:no-repeat; background-size:20px 1px,1px 20px,20px 1px,1px 20px,20px 1px,1px 20px,20px 1px,1px 20px; background-position:0 0,0 0,100% 0,100% 0,0 100%,0 100%,100% 100%,100% 100%; }
+.sf-mobile-guide::backdrop { background:rgb(var(--dp-veil-ink,8 9 12) / .86); }
 .sf-mobile-guide h2 { margin:0 0 14px; font:800 26px/.95 var(--dp-face-display,"Archivo",system-ui,sans-serif); font-stretch:125%; letter-spacing:-.01em; text-transform:uppercase; }
 .sf-mobile-guide .mg-list { list-style:none; margin:0 0 12px; padding:0; display:grid; gap:12px; }
 .sf-mobile-guide .mg-list li { display:grid; grid-template-columns:28px 1fr; gap:12px; align-items:start; }
-.sf-mobile-guide .mg-list svg { width:26px; height:26px; margin-top:2px; fill:none; stroke:#f2b950; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
-.sf-mobile-guide .mg-list b { display:block; margin-bottom:1px; font:700 12px/1.2 var(--dp-face-label,"Archivo",system-ui,sans-serif); font-stretch:112%; letter-spacing:.16em; text-transform:uppercase; color:#dfeeff; }
-.sf-mobile-guide .mg-note { margin:0 0 12px; color:rgb(232 226 212 / .66); font-size:13px; }
-.sf-mobile-guide label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; min-height:44px; font:600 12px/1.2 var(--dp-face-label,"Archivo",system-ui,sans-serif); font-stretch:112%; letter-spacing:.12em; text-transform:uppercase; color:rgb(232 226 212 / .82); }
+.sf-mobile-guide .mg-list svg { width:26px; height:26px; margin-top:2px; fill:none; stroke:color-mix(in srgb, var(--dp-ink,#e8e2d4) 78%, transparent); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.sf-mobile-guide .mg-list b { display:block; margin-bottom:1px; font:700 12px/1.2 var(--dp-face-label,"Archivo",system-ui,sans-serif); font-stretch:112%; letter-spacing:.16em; text-transform:uppercase; color:var(--dp-ink,#e8e2d4); }
+.sf-mobile-guide .mg-note { margin:0 0 12px; color:color-mix(in srgb, var(--dp-ink,#e8e2d4) 66%, transparent); font-size:13px; }
+.sf-mobile-guide label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; min-height:44px; font:600 12px/1.2 var(--dp-face-label,"Archivo",system-ui,sans-serif); font-stretch:112%; letter-spacing:.12em; text-transform:uppercase; color:color-mix(in srgb, var(--dp-ink,#e8e2d4) 82%, transparent); }
 .sf-mobile-guide select, .sf-mobile-guide input[type="range"] { min-height:44px; font:500 15px var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); max-width:58%; }
 /* 16px: iPhone Safari zooms the whole page when a select under 16px takes focus, and the deck keeps browser zoom on */
-.sf-mobile-guide select { background:rgb(232 226 212 / .08); color:#e8e2d4; border:0; padding:0 10px; font-size:16px; }
+.sf-mobile-guide select { background:color-mix(in srgb, var(--dp-ink,#e8e2d4) 8%, transparent); color:var(--dp-ink,#e8e2d4); border:0; padding:0 10px; font-size:16px; }
 .sf-mobile-guide .mg-check { justify-content:flex-start; text-transform:none; letter-spacing:.02em; font-weight:500; font-size:14px; }
 .sf-mobile-guide .mg-check input { width:22px; height:22px; }
 .sf-mobile-guide .mg-ready { position:relative; isolation:isolate; display:flex; align-items:center; min-height:50px; margin:12px 0 0 auto; padding:0 28px 0 24px; border:0; background:none; color:#1c1406; font:800 15px/1 var(--dp-face-display,"Archivo",system-ui,sans-serif); font-stretch:125%; letter-spacing:.16em; text-transform:uppercase; }
-.sf-mobile-guide .mg-ready::before { content:''; position:absolute; inset:0; z-index:-1; background:#f2b950; clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
+.sf-mobile-guide .mg-ready::before { content:''; position:absolute; inset:0; z-index:-1; background:var(--dp-hand,#f2b950); clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
 /* with the wheel open the key cluster steps back (still live under the other thumb) so the two do not fight for the eye */
 :root[data-sf-mobile-wheel="1"] #sf-touch-overlay :is(.mf-buttons,.mf-dock) { opacity:.22; transition:opacity 120ms linear; }
 /* ---- motion: arrivals are springs and spins; reduced motion keeps every state and drops the movement ---- */
@@ -238,10 +260,10 @@ html.sf-reduce-motion #sf-touch-overlay *, html.sf-reduce-motion #sf-touch-overl
  #sf-touch-overlay .mf-buttons { right:calc(12px + var(--sf-safe-right,0px)); }
 }
 @media (max-width:360px) {
- #sf-touch-overlay .mf-tab { font-size:11px; letter-spacing:0; }
+ #sf-touch-overlay .mf-tab { font-size:12px; letter-spacing:0; }
  #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick { padding:4px 10px; }
  #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:14px; }
- #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:11px; line-height:1.2; }
+ #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.2; }
 }
 @media (max-height:500px) {
  #sf-touch-overlay .mf-buttons { bottom:calc(10px + var(--sf-safe-bottom,0px)); width:calc(170px * var(--mf-scale)); height:calc(132px * var(--mf-scale)); }
@@ -341,16 +363,32 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-alert--dock { display:none!important; }
  /* the objective and comms stack stands under the status strip and the alerts, left-aligned; the radar band readout sits
     under the pause key and the deck has no band to switch, so it goes; hail and comms are real buttons and get thumb size */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-leftcontext { top:calc(176px + var(--sf-safe-top,0px))!important; left:calc(14px + var(--sf-safe-left,0px))!important; max-width:min(250px,64vw); }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-leftcontext { left:calc(14px + var(--sf-safe-left,0px))!important; max-width:min(250px,64vw); }
+ /* The shared HUD sheet parks .sf-leftcontext at 186px and the radar in the rightdock at 0.75 scale
+    (hudStyles D202b); both lose here by two ids, because this sheet mounts before the HUD's own and
+    equal-specificity !important falls to the later sheet. Portrait seats the radar as the right
+    column's second instrument (under Pause, above the context cards) and the contextual stack below
+    the travel tape's lane, so neither prints through the other. */
+ html:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud#hud > .sf-leftcontext { top:calc(240px + var(--sf-safe-top,0px))!important; }
+ /* the objective tracker lives inside .sf-leftcontext: seat the stack, not the child (a relative
+    offset from its flow slot printed it mid-screen) */
+ html:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud#hud .sf-leftcontext > .sf-mission-tracker { position:relative; inset:auto!important; }
+ @media (orientation:portrait) {
+  /* The dock carries contain:layout (hudStyles), so a fixed child would resolve against the dock,
+     not the viewport: the radar stays IN the dock's flow and the dock takes the seat instead.
+     Scale .5 about the top-right corner keeps the compass and objective key crisp under Pause;
+     the negative margin cancels the wrap's unscaled layout height so the dock's flow continues
+     right under the drawn instrument (229px unscaled at 0.75 -> drawn 115px at 0.5, less 114px). */
+  html:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud#hud .sf-radar-wrap { position:relative!important; top:auto!important; right:auto!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; margin-bottom:-114px!important; }
+  html:root[data-sf-mobile="1"][data-sf-mobile-flight="1"] body #hud#hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; left:auto!important; width:auto!important; min-width:200px; max-height:none!important; overflow:visible!important; align-items:flex-end!important; }
+ }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #sf-band-hud { display:none!important; }
- /* the right dock stacks law/intercept and contact cards up from the bottom-right corner, which is the key cluster's:
-    on a phone it hangs from under the pause key instead; the radar's accessibility canvas must not eat a thumb */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(168px + var(--sf-safe-top,0px))!important; bottom:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important; width:min(236px,58vw)!important; max-height:150px; overflow:hidden; }
+ /* the radar's accessibility canvas must not eat a thumb; the wheel stands the dock down */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-radar-semantic-canvas { pointer-events:none!important; }
  :root[data-sf-mobile-wheel="1"] #hud .sf-rightdock { opacity:0!important; }
  /* the Massline cadence card is a 330px instrument in the mid-left column, where a thumb lives: on a phone it keeps its
     status line and window bar, drops the stat row and hint, and sits under the pause key */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { position:fixed!important; right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:calc(176px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,56vw)!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { position:fixed!important; right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:calc(272px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,56vw)!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(.ml-cadence:not([hidden])) .sf-leftcontext { opacity:0!important; pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
@@ -368,10 +406,11 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:translateY(calc(124px + var(--sf-safe-top,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-vtape { left:14px!important; bottom:auto!important; top:calc(128px + var(--sf-safe-top,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { position:fixed!important; top:64px!important; right:12px!important; bottom:auto!important; left:auto!important; transform:scale(.5)!important; transform-origin:top right!important; pointer-events:auto!important; }
+ /* landscape keeps the shared HUD sheet's in-dock radar (it fits between the tape and the pause key
+    there); portrait seats it under Pause instead — see the orientation block above */
  /* Ordinary flight's camera/Circuits keys are a narrow rail under Pause, clear of the ship scales.
     Authored races keep their map and readings in a compact central instrument. */
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 11px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:rgb(8 11 16 / .76); padding:6px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape { font:500 12px/1.3 var(--dp-face-body,"Instrument Sans",system-ui,sans-serif); background:color-mix(in srgb, var(--dp-void,#05070a) 76%, transparent); padding:6px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(70px + var(--sf-safe-top,0px)); right:calc(12px + var(--sf-safe-right,0px)); width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px))); }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions { gap:4px; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape .race-tape-actions .k-word { min-height:44px; border:0; border-bottom:1px solid rgb(232 226 212 / .25); padding:4px 6px; font:inherit; }
@@ -382,17 +421,24 @@ const SCREEN_CSS = `
  :root[data-sf-mobile-wheel="1"] #race-tape * { pointer-events:none; }
 }
  :root[data-sf-mobile-wheel="1"] #hud .sf-radar-wrap { display:none!important; }
- :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts) { opacity:0!important; }
+ /* with the wheel up, every HUD readout that would print through its glass stands down: the tape and
+    alarms already do; the objective tracker and the doctrine tells (FLYBY) printed through the pick panel */
+ :root[data-sf-mobile-wheel="1"] :is(#hud .sf-vtape,#alerts,#hud .sf-mission-tracker,#hud .sf-tells) { opacity:0!important; }
 @media (max-width:600px) {
  :root[data-sf-mobile="1"] :is(.of-title,.of-pause) { grid-template-columns:1fr!important; grid-template-rows:auto 1fr!important; gap:18px; }
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }
 }
 @media (max-height:500px) {
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px))!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:56px!important; transform:scale(.4)!important; }
- /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
+ /* landscape has the width: alerts return to the top centre, and the radar keeps the shared sheet's
+    in-dock seat left of the pause key. The dock's layout box is the radar's UNSCALED height (229px,
+    drawn 172px at 0.75), whose sliver used to lie over the gun key: the negative margin trims the
+    layout box to the drawn instrument. The dock shows the radar only — the cards have no lane clear
+    of the key cluster in landscape. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; right:calc(104px + var(--sf-safe-right,0px))!important; width:min(236px,32vw)!important; max-height:150px; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock { top:calc(64px + var(--sf-safe-top,0px))!important; bottom:auto!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-rightdock > :not(.sf-radar-wrap) { display:none!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { margin-bottom:-57px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] { top:calc(68px + var(--sf-safe-top,0px)); right:calc(84px + var(--sf-safe-right,0px)); width:auto; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #race-tape[data-compact="true"] .race-tape-actions { display:flex; }
 }

@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5b02f99a99483ff2d2e951e9d46d7b842dd626e15371bf83a33c7bfcf9e01a51",
+  "contentHash": "bb408b3950c6a9ed79c232b1d03d01aba6f30071c507c9c5704e5d0cf93fcc0a",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           3.174999952316284,
-          0.22007690370082855,
-          1.2749115228652954
+          0.22007690573975053,
+          1.274911504730782
         ],
         "min": [
           -0.17499999701976776,
-          0.139923095703125,
-          -0.1749114841222763
+          0.13992309366420302,
+          -0.17491146598776286
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c95488bc8941c8e144c83e38e462365168e4b668b7ada3d12189567f9af1419",
+      "geometryHash": "f5783ea6173362ea9a6ea1aa5d071765b5dcf858d2c452119a8843defec17852",
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           2.836444854736328,
-          0.2724205255508423,
-          -0.7057169675827026
+          0.27242053118510656,
+          -0.7057169820586621
         ],
         "min": [
           -0.27562475204467773,
-          0.12007947266101837,
-          -1.0347129106521606
+          0.12007946702675412,
+          -1.034712896176201
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd7accb64d9c2a6e52ec97d6b47e8c65fce0d52078a34ee4e6f59467e4db0ec0",
+      "geometryHash": "af40c9feba03a2f74cc5a7f08b8aee613edd5e9c5379844d46e9ea89d64f0dcc",
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged.primitive.0",
       "indexCount": 4800,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           3.299999952316284,
-          0.13009491562843323,
-          1.2000731229782104
+          0.1300949126261138,
+          1.2000732126316582
         ],
         "min": [
           -0.2999999523162842,
-          -0.01009491179138422,
-          -1.2000731229782104
+          -0.0100949087890648,
+          -1.2000732126316582
         ]
       },
       "drawMode": 4,
-      "geometryHash": "097d6cb9e52a291e69b890665afe1c4ecb272d0d2f9bd43853c3a70726ed60f4",
+      "geometryHash": "bb96032bdefc7a14da23a41593568714d6fc66fe93eb5aeb0da2203c45a11c69",
       "id": "sf.render.greeble-nav-lights.mesh.nav-base.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -140,21 +140,21 @@
     {
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged",
       "localTransform": [
-        1,
+        1.674999974668026,
         0,
         0,
         0,
         0,
-        1,
+        1.674999974668026,
         0,
         0,
         0,
         0,
-        1,
+        1.674999974668026,
         0,
-        0,
-        0,
-        0,
+        1.4999999776482582,
+        0.17999999970197678,
+        0.5500000193715096,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -168,42 +168,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-nav-lights.body",
       "worldTransform": [
-        1,
+        1.674999974668026,
         0,
         0,
         0,
         0,
-        1,
+        1.674999974668026,
         0,
         0,
         0,
         0,
-        1,
+        1.674999974668026,
         0,
-        0,
-        0,
-        0,
+        1.4999999776482582,
+        0.17999999970197678,
+        0.5500000193715096,
         1
       ]
     },
     {
       "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
       "localTransform": [
-        1,
+        1.556034803390503,
         0,
         0,
         0,
         0,
-        1,
+        1.556034803390503,
         0,
         0,
         0,
         0,
-        1,
+        1.556034803390503,
         0,
-        0,
-        0,
-        0,
+        1.2804100513458252,
+        0.19624999910593033,
+        -0.8702149391174316,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -217,41 +217,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-nav-lights.body",
       "worldTransform": [
-        1,
+        1.556034803390503,
         0,
         0,
         0,
         0,
-        1,
+        1.556034803390503,
         0,
         0,
         0,
         0,
-        1,
+        1.556034803390503,
         0,
-        0,
-        0,
-        0,
+        1.2804100513458252,
+        0.19624999910593033,
+        -0.8702149391174316,
         1
       ]
     },
     {
       "id": "sf.render.greeble-nav-lights.mesh.nav-base",
       "localTransform": [
-        1,
+        1.7999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.7999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.7999999523162842,
         0,
-        0,
-        0,
+        1.5,
+        0.060000001918524504,
         0,
         1
       ],
@@ -266,20 +266,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-nav-lights.body",
       "worldTransform": [
-        1,
+        1.7999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.7999999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.7999999523162842,
         0,
-        0,
-        0,
+        1.5,
+        0.060000001918524504,
         0,
         1
       ]
@@ -343,37 +343,37 @@
       "uri": "greeble_nav_lights.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 271368,
-    "sha256": "990f04fc611ee7cccdc65d38f3ef2914e7baba3592a80debc10c5949e2d4ae44",
+    "bytes": 249776,
+    "sha256": "9c0141f70d65b7ef309dec8ca4c9c50904f76931527ac2ca8c1a28959cdcf1fe",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.5,
-        0.13116280687972903,
-        0.03741919994354248
+        0.13116281119802087,
+        0.03741914604956187
       ],
       "max": [
         3.299999952316284,
-        0.2724205255508423,
-        1.2749115228652954
+        0.27242053118510656,
+        1.274911504730782
       ],
       "min": [
         -0.2999999523162842,
-        -0.01009491179138422,
-        -1.2000731229782104
+        -0.0100949087890648,
+        -1.2000732126316582
       ],
       "size": [
         3.5999999046325684,
-        0.2825154373422265,
-        2.474984645843506
+        0.2825154399741714,
+        2.47498471736244
       ]
     },
     "hidden": [],
@@ -434,21 +434,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.674999974668026,
           0,
           0,
           0,
           0,
-          1,
+          1.674999974668026,
           0,
           0,
           0,
           0,
-          1,
+          1.674999974668026,
           0,
-          0,
-          0,
-          0,
+          1.4999999776482582,
+          0.17999999970197678,
+          0.5500000193715096,
           1
         ],
         "name": "greeble_nav_lights_Material_Accent_Merged",
@@ -460,21 +460,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.556034803390503,
           0,
           0,
           0,
           0,
-          1,
+          1.556034803390503,
           0,
           0,
           0,
           0,
-          1,
+          1.556034803390503,
           0,
-          0,
-          0,
-          0,
+          1.2804100513458252,
+          0.19624999910593033,
+          -0.8702149391174316,
           1
         ],
         "name": "greeble_nav_lights_Material_Mechanical_Merged",
@@ -486,20 +486,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7999999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.7999999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.7999999523162842,
           0,
-          0,
-          0,
+          1.5,
+          0.060000001918524504,
           0,
           1
         ],
@@ -514,20 +514,20 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
   },
-  "runtimeHash": "1adb10cc7edfaa44a0fb6e0bb4b8299b79aa331a60863cb32a9677a9dd9bbe5c",
+  "runtimeHash": "df0726770c4586375fbb913a1751a94858e07e59c95411031939b7960809cda2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           3.299999952316284,
-          0.2724205255508423,
-          1.2749115228652954
+          0.27242053118510656,
+          1.274911504730782
         ],
         "min": [
           -0.2999999523162842,
-          -0.01009491179138422,
-          -1.2000731229782104
+          -0.0100949087890648,
+          -1.2000732126316582
         ]
       },
       "id": "sf.render.greeble-nav-lights.body",

@@ -1,6 +1,8 @@
 import { admitCapturedVessel } from '../src/systems/shipControlTransfer.js';
 import { AI_CONTRACT_VERSION } from '../src/ai/contracts.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { flightV3 } from '../src/systems/flightV3.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
@@ -14,19 +16,21 @@ import { flight } from '../src/systems/flight.js';
 import { physics } from '../src/core/physics.js';
 import { economy } from '../src/systems/economy.js';
 import { save } from '../src/save/saveSystem.js';
-function setup() {
+function setup({ playerHull = false } = {}) {
   const sim = createSimulation({
     seed: 47,
     systems: [spawnBudget, encounterDirector, combat, economy, createTacticalAISystem({
       config: {
         enemyMind: PRODUCTION_ENEMY_MIND_CONFIG
       }
-    }), flight, aiPorts, physics, save]
+    }), playerHull ? flightV3 : flight, aiPorts, physics, save]
   });
   const s = sim.state;
   s.mode = 'flight';
   s.world.currentSectorId = 'sector_ceres_belt';
-  s.playerId = sim.spawn({
+  s.playerId = sim.spawn(playerHull ? makeShipEntitySpec('ship_kestrel', {
+    team: 0, isPlayer: true, pos: { x: 9380, z: 9380 }, rot: Math.PI / 4, player: s.player,
+  }) : {
     type: 'ship',
     team: 0,
     pos: {
@@ -251,5 +255,79 @@ test('capture subscriber cannot flush or save released captive helm, pending and
       phys._sg02?.dispose();
       h.sim.dispose();
     }
+  }
+});
+
+test('native Line extraction carries the original living captive out, cuts once and survives Continue without a destruction payout', async () => {
+  const h = setup({ playerHull: true }), phys = h.sim.registry.get('physics');
+  try {
+    assert.equal(await phys.prepareBackend(h.s), true);
+    h.sim.runTicks(1);
+    const player = h.s.entities.get(h.s.playerId);
+    const attachments = h.sim.registry.get('combat').kernel.attachments;
+    const created = attachments.create({ defId: 'tether_standard', ownerId: player.id, targetId: h.captive.id });
+    assert.equal(created.ok, true, JSON.stringify(created));
+    const line = created.attachment;
+    const start = { ...h.captive.pos };
+    const camp = h.live.data.camp;
+    h.s.input.moveZ = 1;
+    h.s.input.turnIntent = 0;
+    let ticks = 0;
+    while (Math.hypot(h.captive.pos.x - camp.x, h.captive.pos.z - camp.z) < 365 && ticks < 1800) {
+      // Raw forward input drives the stock Kestrel through the default FlightV3
+      // owner. No pose/velocity writes, collider edits, damage immunity or stronger Line.
+      h.sim.runTicks(1);
+      ticks++;
+      if (!h.captive.alive || !player.alive || line.state !== 'active') break;
+    }
+    const range = Math.hypot(h.captive.pos.x - camp.x, h.captive.pos.z - camp.z);
+    const moved = Math.hypot(h.captive.pos.x - start.x, h.captive.pos.z - start.z);
+    console.log('NATIVE_CAMP_EXTRACTION_TOW', JSON.stringify({ ticks, range, moved,
+      playerAlive: player.alive, captiveAlive: h.captive.alive, line: line.state,
+      lineReason: line.breakReason, captive: h.captive.pos, player: player.pos }));
+    assert.ok(range >= 360, 'the actual standard Line must carry its original captive out of the patrol perimeter');
+    assert.ok(moved >= 300);
+    assert.equal(line.state, 'active');
+    assert.equal(h.captive.alive, true);
+    assert.equal(h.base.alive, true);
+    assert.ok(h.guards.every(g => g.alive));
+    assert.equal(h.outcomes.length, 0, 'being clear while held is not a completed liberation');
+    const cut = attachments.cut(line.id, player.id, 'tether_cut');
+    assert.equal(cut.ok, true, JSON.stringify(cut));
+    h.s.input.moveZ = 0;
+    h.sim.runTicks(1);
+    assert.deepEqual(h.outcomes, ['captive_extracted']);
+    assert.equal(h.captive.data.ai.activity.reason, 'press_camp:released');
+    assert.equal(h.grants.length, 0);
+    assert.deepEqual(h.reps, [['faction_free', 2, 'press_camp_captive_extracted']]);
+    const cutRange = Math.hypot(h.captive.pos.x - camp.x, h.captive.pos.z - camp.z);
+    let poweredSteps = 0;
+    const owner = phys._sg02, applyCommand = owner._applyCommand;
+    owner._applyCommand = function (record, command, ...args) {
+      const result = applyCommand.call(this, record, command, ...args);
+      if (record.entity === h.captive && command?.control?.force
+        && Math.hypot(command.control.force.x, command.control.force.z) > 0) poweredSteps++;
+      return result;
+    };
+    try { h.sim.runTicks(120); } finally { owner._applyCommand = applyCommand; }
+    const escapedRange = Math.hypot(h.captive.pos.x - camp.x, h.captive.pos.z - camp.z);
+    assert.ok(escapedRange > cutRange + 30, 'the freed Mule continues out under the shipping helm');
+    assert.ok(poweredSteps > 0, 'the actual native owner consumed its released-crew engine commands');
+    assert.equal(h.captive.alive, true);
+    assert.equal(h.base.alive, true);
+    assert.ok(h.guards.every(g => g.alive));
+    console.log('NATIVE_CAMP_POWERED_ESCAPE', JSON.stringify({ cutRange, escapedRange, poweredSteps }));
+    const credits = h.s.player.credits;
+    const saver = h.sim.registry.get('save');
+    const envelope = JSON.parse(JSON.stringify(saver.serialize('camp-extracted')));
+    assert.equal(saver.loadEnvelope(envelope), true);
+    assert.equal(await phys.prepareBackend(h.s), true);
+    h.sim.runTicks(2);
+    assert.equal(h.s.player.credits, credits);
+    assert.equal(h.s.encounterDirector.live.camp_test, undefined);
+    assert.equal(h.grants.length, 0);
+  } finally {
+    phys._sg02?.dispose();
+    h.sim.dispose();
   }
 });

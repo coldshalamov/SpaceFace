@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "dd0ae34710fc109ecbd3bd1d07b5462721beb8ac6f60fa9bc01f3a07f055da27",
+  "contentHash": "81a24ced9e7a47b6b1bedae04958ad1a22ad623af8bc3611e8c4b831599c300f",
   "dynamicGroups": [
     {
       "id": "sf.render.drill-platform.mesh.lod0-hook-nav-port.dynamic",
@@ -127,18 +127,18 @@
     {
       "bounds": {
         "max": [
-          8.000673294067383,
+          8.000672801455467,
           12.460000038146973,
-          8.000673294067383
+          8.000672801455467
         ],
         "min": [
-          -8.000673294067383,
+          -8.000672801455467,
           -8.399999618530273,
-          -8.000673294067383
+          -8.000672801455467
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35293838207c783e9f6c576fe35811f08d6493cf9adec239760a5177d72d5926",
+      "geometryHash": "8dd1b143d58ff3efde4164670509b69985ac42d832b7d7952c108464e35ce74f",
       "id": "sf.render.drill-platform.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -153,17 +153,17 @@
       "bounds": {
         "max": [
           8,
-          11.224309921264648,
+          11.224309635942223,
           8
         ],
         "min": [
           -8,
-          -0.050448790192604065,
+          -0.05044850487017882,
           -8
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da868d841f1b24ab7898d9739c9a4384099f89e3f1dc4edfeb7215b4263c006f",
+      "geometryHash": "6643597b6ffebd21df583b80abd7e8b770b88e2324ea3e7f966c4f56122e3817",
       "id": "sf.render.drill-platform.mesh.lod0-armor.primitive.0",
       "indexCount": 6996,
       "indexed": true,
@@ -177,18 +177,18 @@
     {
       "bounds": {
         "max": [
-          6.999167442321777,
-          5.905257225036621,
+          6.999167641776414,
+          5.905257200817857,
           7.104982376098633
         ],
         "min": [
-          -6.999167442321777,
-          1.0772430896759033,
+          -6.999167641776414,
+          1.0772431138946672,
           -7.104982376098633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ada5483cae0025b56f439b0484e0539c7f40f4fa242a53f380615f21cef1921",
+      "geometryHash": "d1056883e4f7ff691c4c3e36fe68de55d42503d12e492bfeb9401398d2242016",
       "id": "sf.render.drill-platform.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 1116,
       "indexed": true,
@@ -213,7 +213,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d2ce362b58d30cfae8e8f5cf16ab148f6f031f06ff4114bfc4c5ba1b8bf6456",
+      "geometryHash": "696babe2b8f0c95f4f6e68cb871d61549ae47de7f98a7f8dc46e7c2f27fccf3e",
       "id": "sf.render.drill-platform.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -228,17 +228,17 @@
       "bounds": {
         "max": [
           7,
-          5.572420597076416,
-          6.300149440765381
+          5.572420542195831,
+          6.300149540696432
         ],
         "min": [
           -7,
-          3.427579641342163,
-          -6.300149440765381
+          3.4275796962227485,
+          -6.300149540696432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be10509040a0de1c5a4289c9507069299cabf22f42740babce3ece3750314561",
+      "geometryHash": "42cf9991e63fd9514b2093df0952324bb45f2f44337fabdfc28071e04a3fbb61",
       "id": "sf.render.drill-platform.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 2448,
       "indexed": true,
@@ -253,17 +253,17 @@
       "bounds": {
         "max": [
           -2.4109702110290527,
-          7.500060081481934,
-          6.690540790557861
+          7.500060205089674,
+          6.690540899165757
         ],
         "min": [
           -6.789029598236084,
-          4.499939918518066,
-          2.909459352493286
+          4.499939794910326,
+          2.90945924388539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5960ae0436cc6be6a804cc04ff12617b4c2dfb874988856418643b18f098f512",
+      "geometryHash": "b277082b96633985e26e7f9b312bd8d3afcd97689e28e842a9e32c40c97442c4",
       "id": "sf.render.drill-platform.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -278,17 +278,17 @@
       "bounds": {
         "max": [
           -3.0999999046325684,
-          6.749925136566162,
-          6.819948196411133
+          6.749925325019215,
+          6.819948423718985
         ],
         "min": [
           -6.099999904632568,
-          6.050075054168701,
-          6.680051803588867
+          6.050074865715648,
+          6.680051576281015
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd49d5d866bab95994cc1263595ea1dc3122d00307c4f52d93dd774e0ab97424",
+      "geometryHash": "12595610a1ade58c344ead2ad8cc656af51e29cc61f1b800d6026e41d4f8a866",
       "id": "sf.render.drill-platform.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -303,17 +303,17 @@
       "bounds": {
         "max": [
           6.5,
-          12.240360260009766,
-          0.3156733512878418
+          12.240360163920537,
+          0.31567346450519773
         ],
         "min": [
           -6.5,
-          4.590407371520996,
-          -5.816746234893799
+          4.590407467610225,
+          -5.816746348111154
         ]
       },
       "drawMode": 4,
-      "geometryHash": "721ba68b55401c084ec2e5616f53346637c6279746a1cc31bfd5df11786a67e8",
+      "geometryHash": "074ca847480ad649f758a292f9f823dac0adfc12975aaad3053f81b0b127932a",
       "id": "sf.render.drill-platform.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4944,
       "indexed": true,
@@ -327,18 +327,18 @@
     {
       "bounds": {
         "max": [
-          5.500213623046875,
-          9.600442886352539,
+          5.500213629566332,
+          9.60044266143855,
           6.5
         ],
         "min": [
-          -5.500213623046875,
-          2.599557399749756,
+          -5.500213629566332,
+          2.5995576246637455,
           -6.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "058888788347e5e43c238615e3c0ea5e3268e6aea4c2324ffad85b5d72d58b49",
+      "geometryHash": "1d2b59a968b6b865b376e99ef4043e5f8e575ad4de84037c8dd89397f97ba2ff",
       "id": "sf.render.drill-platform.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 2064,
       "indexed": true,
@@ -353,17 +353,17 @@
       "bounds": {
         "max": [
           0.796837568283081,
-          4.70001620054245,
+          4.700016206361347,
           0.796837568283081
         ],
         "min": [
           -0.796837568283081,
-          4.199983432888985,
+          4.199983427070087,
           -0.796837568283081
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd643c30f55ab8f5780aae431de3e28a7f0b978fc79bcd57c337df0b29a361aa",
+      "geometryHash": "ca21d803cf7ab276c436bc3fa770e0664073781ae91adee43812821c63ae9895",
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-collar-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -388,7 +388,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f6ed1f2eacf53d061f8f77d58f35b491a12e46a67627ec5204a3a4280b86de0",
+      "geometryHash": "cc9e704fa5afc613a1a3058629cb915e669be9f92ec907edce8a479487679129",
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-crown-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -402,18 +402,18 @@
     {
       "bounds": {
         "max": [
-          0.8956097364425659,
+          0.895609732597105,
           -6.5,
-          0.8956097364425659
+          0.895609732597105
         ],
         "min": [
-          -0.8956097364425659,
+          -0.895609732597105,
           -8.399999618530273,
-          -0.8956097364425659
+          -0.895609732597105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52ff5257f0dd52280c7d79aa872702fb140ab9037d97a995070ceb3812d816d4",
+      "geometryHash": "b23a83c6746e706ab6714a9a77ab33797ea311e8ac346f57f4cefd93f5845f4c",
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-string-brushedmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -427,18 +427,18 @@
     {
       "bounds": {
         "max": [
-          0.4498492479324341,
+          0.4498492414366247,
           10.600000381469727,
-          0.4498489499092102
+          0.4498489434134008
         ],
         "min": [
-          -0.44984865188598633,
+          -0.44984864539017694,
           -6.5,
-          -0.4498489499092102
+          -0.4498489434134008
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0382c105490a7ffd3fcd19e8773ac3ce8c86fc1053466a827704d8a9f8b44bbf",
+      "geometryHash": "a26cd22074591187b362ce611d8c0a514c7f9e7d18273b51179dd2fdb02af220",
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-string-mechanical.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -453,17 +453,17 @@
       "bounds": {
         "max": [
           7.599999904632568,
-          4.799709320068359,
+          4.799709159993316,
           7.599999904632568
         ],
         "min": [
           -7.599999904632568,
-          0.6502904295921326,
+          0.6502905896671756,
           -7.599999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70c84155121aa6c17fa6786e3ad5e2a87da5218bd0431ae4abd2255fc6d511ba",
+      "geometryHash": "aea81c6a374099b4cfabb9e08dd8d2f31ce1cbeb2f3e6b4281d97ca7951ba4be",
       "id": "sf.render.drill-platform.mesh.lod0-warning.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -478,17 +478,17 @@
       "bounds": {
         "max": [
           7.996270656585693,
-          11.223546028137207,
+          11.22354608342793,
           7.996270656585693
         ],
         "min": [
           -7.996270656585693,
-          -0.045956071466207504,
+          -0.04595612675692973,
           -7.996270656585693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb681510c7a6610a0af3c3db58cb8f1c1621e51c6f846d37653d22ddd0d1c6eb",
+      "geometryHash": "0286e05ad28a3f43fd3464ee813136805840e86dc2360021b73330dc1c9a27fd",
       "id": "sf.render.drill-platform.mesh.lod1-armor.primitive.0",
       "indexCount": 4452,
       "indexed": true,
@@ -502,18 +502,18 @@
     {
       "bounds": {
         "max": [
-          6.998025894165039,
-          5.904803276062012,
+          6.998025734489276,
+          5.904803283485534,
           7.09850549697876
         ],
         "min": [
-          -6.998025894165039,
-          1.0776971578598022,
+          -6.998025734489276,
+          1.07769715043628,
           -7.09858512878418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1acc524581f8ebdf0930b9870a6b6dbffec5ef2f5fd10cacc60a90d737e814e1",
+      "geometryHash": "8cf2865a6f5c662f564304f2bac0fcc83a0bec02a3b1f89784009f48797ab8c0",
       "id": "sf.render.drill-platform.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -538,7 +538,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6e4d7aa54ad0b747ee20938b34e884774db24d19f8c4385e3646dcff64c82ba",
+      "geometryHash": "b9c6f312b218e7f57c352bfd2197164d91b68d5eaaa4937e7d3cddb6aec1a26a",
       "id": "sf.render.drill-platform.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -553,17 +553,17 @@
       "bounds": {
         "max": [
           6.997203350067139,
-          5.569221019744873,
-          6.29771089553833
+          5.569220940409048,
+          6.297710697306091
         ],
         "min": [
           -6.997203350067139,
-          3.4303619861602783,
-          -6.2975544929504395
+          3.4303620654961033,
+          -6.2975542947182
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff6446c3cb57cb0a323d48fd734ec400843863e7997bb992fbef2dd3caad4b39",
+      "geometryHash": "2c6cff21633bca150d7b99b2782ed44bde2bdd8f69f1f2c902e9fd00b7ad4652",
       "id": "sf.render.drill-platform.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -578,17 +578,17 @@
       "bounds": {
         "max": [
           -2.4109702110290527,
-          7.500060081481934,
-          6.690540790557861
+          7.500060205089674,
+          6.690540899165757
         ],
         "min": [
           -6.789029598236084,
-          4.499939918518066,
-          2.909459352493286
+          4.499939794910326,
+          2.90945924388539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c064863b6593f4585225c23b6f3a252a80c950766dea06badecafedbb5d844c",
+      "geometryHash": "a36f32a07acc8fb9b03d0decfcfafa05ee174934f8e890f8de69813467c62dc9",
       "id": "sf.render.drill-platform.mesh.lod1-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -603,17 +603,17 @@
       "bounds": {
         "max": [
           -3.0999999046325684,
-          6.749925136566162,
-          6.819948196411133
+          6.749925325019215,
+          6.819948423718985
         ],
         "min": [
           -6.099999904632568,
-          6.050075054168701,
-          6.680051803588867
+          6.050074865715648,
+          6.680051576281015
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f800e5892e10e2ae51b3e0c9dda6878b2d13d81219e8d783cb83d3a49259b4c4",
+      "geometryHash": "6f6ac045795485b4aaceff9d5376021fe343f4f5a82b5c34b2646c10e731c77a",
       "id": "sf.render.drill-platform.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -628,17 +628,17 @@
       "bounds": {
         "max": [
           6.4959211349487305,
-          12.23793888092041,
-          0.31568455696105957
+          12.23793903774391,
+          0.315684620063728
         ],
         "min": [
           -6.495920658111572,
-          4.5943732261657715,
-          -5.81605863571167
+          4.5943730693422715,
+          -5.816058698814338
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d3bc4547312f223f49434593c704e21c0069149d9c9b1633ea4af6a0b9d8562",
+      "geometryHash": "00ba4dafd1dfe4159427848ab0a403166219aaaceaf21c22af77c212f6d52048",
       "id": "sf.render.drill-platform.mesh.lod1-mechanical.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -652,18 +652,18 @@
     {
       "bounds": {
         "max": [
-          5.500213623046875,
-          9.596202850341797,
+          5.500213629566332,
+          9.59620295697421,
           6.5
         ],
         "min": [
-          -5.500213623046875,
-          2.60483980178833,
+          -5.500213629566332,
+          2.604839695155917,
           -6.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84b62e90f4339389bcb1459c8473c0d70ced1b35f32ada0d875fd9a92eef0107",
+      "geometryHash": "48e4c35c769be3d08f9ef4958d20f44903fab70e31e06e3bad8b5c5b1d7031f9",
       "id": "sf.render.drill-platform.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -678,17 +678,17 @@
       "bounds": {
         "max": [
           0.7969322800636292,
-          4.699294567108154,
-          0.7945579886436462
+          4.699294579122946,
+          0.7945579783587663
         ],
         "min": [
           -0.7969322800636292,
-          4.200758934020996,
-          -0.7967771887779236
+          4.200758922006204,
+          -0.7967771784930436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e872c1d0cb991412595e6eb1d28005bd87a8d59d202ef9136cdb47bb0553ffd",
+      "geometryHash": "d50dff8b95e1d457a8dda6903a4cff4d1f36c1afb6ca617fd62d539ecdc3909f",
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-collar-warning.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -703,17 +703,17 @@
       "bounds": {
         "max": [
           0.9972028732299805,
-          11.897233307361603,
+          11.897233319390947,
           0.9972028732299805
         ],
         "min": [
           -0.9972028732299805,
-          10.903347671031952,
+          10.903347659002607,
           -0.9972028732299805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae2acf2a25330c0f260c4a90f6c3c050116c9577c33d7741ec142e39e1391952",
+      "geometryHash": "11fe20a1a700cb28cbcef5344ca57cb403e1f698cb35cff52ca8831ff34f9e95",
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-crown-warning.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -727,18 +727,18 @@
     {
       "bounds": {
         "max": [
-          0.8962321877479553,
+          0.8962319936067485,
           -6.500663757324219,
-          0.8960669636726379
+          0.8960667401502177
         ],
         "min": [
-          -0.8962321877479553,
+          -0.8962319936067485,
           -8.399524688720703,
-          -0.896165668964386
+          -0.8961654454419657
         ]
       },
       "drawMode": 4,
-      "geometryHash": "968a9b0baacbc949265b785fb2399c7feb0273e98585680fb586f3bcb23c6c89",
+      "geometryHash": "669dc4df42fbcaeec087251797ed81fb147295ec3e5837b01f2b3db8e6146ad9",
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-string-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -752,18 +752,18 @@
     {
       "bounds": {
         "max": [
-          0.44879740476608276,
+          0.4487973861813556,
           10.599440574645996,
-          0.4488532841205597
+          0.44885328043699374
         ],
         "min": [
-          -0.44875022768974304,
+          -0.4487502091050159,
           -6.499362945556641,
-          -0.4486943185329437
+          -0.4486943148493778
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4395761a2471d28924be4aba43d88c8bb566fa49cdec048f635d15f075cf0374",
+      "geometryHash": "90b9f09721cf65394a578f29512ec31e9a562cfa5296d5fd9b6ec7d2ea82265e",
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-string-mechanical.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -778,17 +778,17 @@
       "bounds": {
         "max": [
           7.599999904632568,
-          4.799709320068359,
+          4.799709159993316,
           7.599999904632568
         ],
         "min": [
           -7.599999904632568,
-          0.6502904295921326,
+          0.6502905896671756,
           -7.599999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53f098fb9677f9b3d251774e19c3b0de1e2056de84df099b9d23d8751278780e",
+      "geometryHash": "6bc9a313b6db3a30a15800af7ff554b94e0a945ba82c140f7470a09eeb635e02",
       "id": "sf.render.drill-platform.mesh.lod1-warning.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -803,17 +803,17 @@
       "bounds": {
         "max": [
           7.974652290344238,
-          11.224268913269043,
-          7.9736785888671875
+          11.224269052293444,
+          7.9736787923382755
         ],
         "min": [
           -7.974652290344238,
-          -0.024500267580151558,
-          -7.9736785888671875
+          -0.024500406604553326,
+          -7.9736787923382755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a3c4adaa6eef5f9a7abf44a9562cb2aa5526429d3f253a3ad29a8b005ff209b",
+      "geometryHash": "5504a8ed25964607861caaa91236abe4a1d9cbc4defce2382d4be0b99e392abb",
       "id": "sf.render.drill-platform.mesh.lod2-armor.primitive.0",
       "indexCount": 1926,
       "indexed": true,
@@ -827,18 +827,18 @@
     {
       "bounds": {
         "max": [
-          6.998025894165039,
-          5.835141181945801,
+          6.998025734489276,
+          5.835141333675976,
           7.09850549697876
         ],
         "min": [
-          -6.998025894165039,
-          1.0773591995239258,
+          -6.998025734489276,
+          1.0773590477937511,
           -7.09858512878418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fccce4139133e07c73d5f092d4e055755685e5fa67aef2e1f1ea1157764934bc",
+      "geometryHash": "b6af3d4075623d8cbae1d1e83b790251a3186e9553dac315f3e20ca053aed363",
       "id": "sf.render.drill-platform.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -863,7 +863,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af68c818134c5c705687cf786853189ec49b2e432653b21e0a9946c0d6541278",
+      "geometryHash": "99d71248f02584b0746022e0759595c7c69b010234053e27d0bc2af71461121d",
       "id": "sf.render.drill-platform.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -878,17 +878,17 @@
       "bounds": {
         "max": [
           6.980990409851074,
-          5.569299697875977,
-          6.298458099365234
+          5.569299601266501,
+          6.298458263137486
         ],
         "min": [
           -6.980990409851074,
-          3.430283308029175,
-          -6.298301696777344
+          3.4302834046386503,
+          -6.2983018605495955
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b718458eedc6b6ff115905274d0337841d0b14a422f7ae03875878d3d2057b97",
+      "geometryHash": "c48b25285937f62896bcab8cfbba52338e36a73e8870341236513e064e441a2b",
       "id": "sf.render.drill-platform.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -903,17 +903,17 @@
       "bounds": {
         "max": [
           -2.451787233352661,
-          7.451929092407227,
-          6.647947311401367
+          7.451929239924493,
+          6.647947349521273
         ],
         "min": [
           -6.748213291168213,
-          4.548658847808838,
-          2.9520533084869385
+          4.548658700291571,
+          2.952053270367033
         ]
       },
       "drawMode": 4,
-      "geometryHash": "32af913ab311f3cd6ad57f6936ddd58311a8ad5bfc057a21cde05edf4a61816a",
+      "geometryHash": "1bdb3fd30bed7b1ffbf57b70466d1e4a95c110c5b0bb22581dc09602fe9c0bf2",
       "id": "sf.render.drill-platform.mesh.lod2-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -928,17 +928,17 @@
       "bounds": {
         "max": [
           6.496684551239014,
-          12.239870071411133,
-          0.3135215938091278
+          12.23987011185214,
+          0.3135216633362079
         ],
         "min": [
           -6.496683597564697,
-          4.574786186218262,
-          -5.815769672393799
+          4.574786145777255,
+          -5.815769741920879
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e302fee397e84c7a7a166f7ce81fb974b5a2bed43031d2862bbc611ca5bf060",
+      "geometryHash": "f0c554a314fee7bfc531cafa91325050ceddb5bd91c0394d498246e63c6e0af4",
       "id": "sf.render.drill-platform.mesh.lod2-mechanical.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -952,18 +952,18 @@
     {
       "bounds": {
         "max": [
-          2.1841888427734375,
+          2.1841890248561953,
           9.595921516418457,
-          4.69624662399292
+          4.696246571247894
         ],
         "min": [
-          -3.6819186210632324,
+          -3.68191880314599,
           2.616192579269409,
-          -2.183793306350708
+          -2.1837932536056814
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7fe7a103ad90065126648740445a53ce8438f6b71d5edb3ae68de0103cbc3d80",
+      "geometryHash": "563dd389400aacf8049d59e2cc72dfc1b2261f7023008896ca10b67e1ae8fb93",
       "id": "sf.render.drill-platform.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -978,17 +978,17 @@
       "bounds": {
         "max": [
           0.7956152558326721,
-          4.700399875640869,
-          0.786920964717865
+          4.700399860413417,
+          0.7869209635973333
         ],
         "min": [
           -0.7956152558326721,
-          4.200745597481728,
-          -0.7947914004325867
+          4.20074561270918,
+          -0.794791399312055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16dac75cfeae5dffcf3435b510be520d775ea5d9f74f9ac54d1f0c6e06de41a7",
+      "geometryHash": "6d106386b2c76679f13c7ebae4cd21ba987b1d77101e03ecb8a2bb1743227cd2",
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-collar-warning.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1003,17 +1003,17 @@
       "bounds": {
         "max": [
           0.9938544034957886,
-          11.884329944849014,
+          11.88432996245828,
           0.9938544034957886
         ],
         "min": [
           -0.9938544034957886,
-          10.905428737401962,
+          10.905428719792697,
           -0.9938544034957886
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a7034d7f43f84fd94796710e0be26ee8cb0b2a38e8b2f68c92caf51a2a4c088",
+      "geometryHash": "2a358cffbfbfa1073d00c8cb3116cd5336fb8171fe1eec18233a1a6c61169ffb",
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-crown-warning.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1027,18 +1027,18 @@
     {
       "bounds": {
         "max": [
-          0.8957284688949585,
+          0.895728222098768,
           -6.502658843994141,
-          0.8951875567436218
+          0.8951873353995079
         ],
         "min": [
-          -0.8957285284996033,
+          -0.8957282817034128,
           -8.398981094360352,
-          -0.8953434228897095
+          -0.8953432015455955
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2463f511fe24bd56016485c4f10f9f81a1c4b7b709386c2eac380b04b1311ab4",
+      "geometryHash": "93cac85d98d97053b38cd67a506c18bcff693974a04c372e4d63c36b45c47ddc",
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-string-brushedmetal.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1052,18 +1052,18 @@
     {
       "bounds": {
         "max": [
-          0.44794559478759766,
+          0.44794562814888145,
           10.599332809448242,
-          0.44694364070892334
+          0.4469436722557098
         ],
         "min": [
-          -0.44750547409057617,
+          -0.44750550745185996,
           -6.499296188354492,
-          -0.4464201331138611
+          -0.44642016466064754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "279edc7da75e67eb1f0568960849b5c4a1738c79f41d91741060485f33d0cc70",
+      "geometryHash": "de3ce1e2aee553d8164648a540a16453cb4ee3c789568c4dd602e01507f192f6",
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-string-mechanical.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -1078,17 +1078,17 @@
       "bounds": {
         "max": [
           7.599999904632568,
-          4.799643039703369,
+          4.799643034988405,
           7.599999904632568
         ],
         "min": [
           -7.599999904632568,
-          0.7170233726501465,
+          0.7170233773651109,
           -7.599999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f91b9a644e20ef8482631ba5b40656b810259619622c29d29ad45064144ab1d6",
+      "geometryHash": "71f2db3f122212cb42507a45618c3d28f755b86d849e60f5fa1753f0103fac87",
       "id": "sf.render.drill-platform.mesh.lod2-warning.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1354,20 +1354,20 @@
     {
       "id": "sf.render.drill-platform.mesh.collision-hull",
       "localTransform": [
-        1,
+        10.429999828338623,
         0,
         0,
         0,
         0,
-        1,
+        10.429999828338623,
         0,
         0,
         0,
         0,
-        1,
+        10.429999828338623,
         0,
         0,
-        0,
+        2.0300002098083496,
         0,
         1
       ],
@@ -1382,20 +1382,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        10.429999828338623,
         0,
         0,
         0,
         0,
-        1,
+        10.429999828338623,
         0,
         0,
         0,
         0,
-        1,
+        10.429999828338623,
         0,
         0,
-        0,
+        2.0300002098083496,
         0,
         1
       ]
@@ -1403,20 +1403,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-armor",
       "localTransform": [
-        1,
+        8,
         0,
         0,
         0,
         0,
-        1,
+        8,
         0,
         0,
         0,
         0,
-        1,
+        8,
         0,
         0,
-        0,
+        5.586930565536022,
         0,
         1
       ],
@@ -1431,20 +1431,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        8,
         0,
         0,
         0,
         0,
-        1,
+        8,
         0,
         0,
         0,
         0,
-        1,
+        8,
         0,
         0,
-        0,
+        5.586930565536022,
         0,
         1
       ]
@@ -1452,20 +1452,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        7.104982376098633,
         0,
         0,
         0,
         0,
-        1,
+        7.104982376098633,
         0,
         0,
         0,
         0,
-        1,
+        7.104982376098633,
         0,
         0,
-        0,
+        3.491250157356262,
         0,
         1
       ],
@@ -1480,20 +1480,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.104982376098633,
         0,
         0,
         0,
         0,
-        1,
+        7.104982376098633,
         0,
         0,
         0,
         0,
-        1,
+        7.104982376098633,
         0,
         0,
-        0,
+        3.491250157356262,
         0,
         1
       ]
@@ -1550,21 +1550,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-hull",
       "localTransform": [
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6,
+        4.800000071525574,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1578,41 +1578,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6,
+        4.800000071525574,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod0-hull-aged",
       "localTransform": [
-        1,
+        7,
         0,
         0,
         0,
         0,
-        1,
+        7,
         0,
         0,
         0,
         0,
-        1,
+        7,
         0,
         0,
-        0,
+        4.5000001192092896,
         0,
         1
       ],
@@ -1627,20 +1627,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7,
         0,
         0,
         0,
         0,
-        1,
+        7,
         0,
         0,
         0,
         0,
-        1,
+        7,
         0,
         0,
-        0,
+        4.5000001192092896,
         0,
         1
       ]
@@ -1648,21 +1648,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-lights-warm",
       "localTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6.400000095367432,
+        6.75,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1676,42 +1676,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6.400000095367432,
+        6.75,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
-        0,
+        8.41538381576538,
+        -2.7505364418029785,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1725,41 +1725,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
-        0,
+        8.41538381576538,
+        -2.7505364418029785,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
+        6.1000001430511475,
         0,
         1
       ],
@@ -1774,20 +1774,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
+        6.1000001430511475,
         0,
         1
       ]
@@ -1795,20 +1795,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-collar-warning",
       "localTransform": [
-        1,
+        0.796837568283081,
         0,
         0,
         0,
         0,
-        1,
+        0.796837568283081,
         0,
         0,
         0,
         0,
-        1,
+        0.796837568283081,
         0,
         0,
-        0,
+        0.049999721348285675,
         0,
         1
       ],
@@ -1824,20 +1824,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.796837568283081,
         0,
         0,
         0,
         0,
-        1,
+        0.796837568283081,
         0,
         0,
         0,
         0,
-        1,
+        0.796837568283081,
         0,
         0,
-        4.400000095367432,
+        4.449999816715717,
         0,
         1
       ]
@@ -1895,20 +1895,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-string-brushedmetal",
       "localTransform": [
-        1,
+        0.9499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.9499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.9499998092651367,
         0,
         0,
-        0,
+        -18.050000190734863,
         0,
         1
       ],
@@ -1924,20 +1924,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.9499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.9499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.9499998092651367,
         0,
         0,
-        10.600000381469727,
+        -7.449999809265137,
         0,
         1
       ]
@@ -1945,20 +1945,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-motion-drill-string-mechanical",
       "localTransform": [
-        1,
+        8.550000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.550000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.550000190734863,
         0,
-        0,
-        0,
+        2.980232238769531e-7,
+        -8.550000190734863,
         0,
         1
       ],
@@ -1974,20 +1974,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        8.550000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.550000190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.550000190734863,
         0,
-        0,
-        10.600000381469727,
+        2.980232238769531e-7,
+        2.0500001907348633,
         0,
         1
       ]
@@ -1995,20 +1995,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod0-warning",
       "localTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.724999874830246,
         0,
         1
       ],
@@ -2023,20 +2023,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.724999874830246,
         0,
         1
       ]
@@ -2044,20 +2044,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod1-armor",
       "localTransform": [
-        1,
+        7.996270656585693,
         0,
         0,
         0,
         0,
-        1,
+        7.996270656585693,
         0,
         0,
         0,
         0,
-        1,
+        7.996270656585693,
         0,
         0,
-        0,
+        5.5887949783355,
         0,
         1
       ],
@@ -2072,20 +2072,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.996270656585693,
         0,
         0,
         0,
         0,
-        1,
+        7.996270656585693,
         0,
         0,
         0,
         0,
-        1,
+        7.996270656585693,
         0,
         0,
-        0,
+        5.5887949783355,
         0,
         1
       ]
@@ -2093,21 +2093,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
-        0,
-        0,
+        3.491250216960907,
+        -0.00003981590270996094,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2121,21 +2121,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
-        0,
-        0,
+        3.491250216960907,
+        -0.00003981590270996094,
         1
       ]
     },
@@ -2191,21 +2191,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod1-hull",
       "localTransform": [
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6,
+        4.800000071525574,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2219,42 +2219,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
         0,
         0,
         0,
-        1,
+        2.1890296936035156,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6,
+        4.800000071525574,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-hull-aged",
       "localTransform": [
-        1,
+        6.997203350067139,
         0,
         0,
         0,
         0,
-        1,
+        6.997203350067139,
         0,
         0,
         0,
         0,
-        1,
+        6.997203350067139,
         0,
         0,
-        0,
-        0,
+        4.499791502952576,
+        0.0000782012939453125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2268,42 +2268,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.997203350067139,
         0,
         0,
         0,
         0,
-        1,
+        6.997203350067139,
         0,
         0,
         0,
         0,
-        1,
+        6.997203350067139,
         0,
         0,
-        0,
-        0,
+        4.499791502952576,
+        0.0000782012939453125,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-lights-warm",
       "localTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6.400000095367432,
+        6.75,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2317,42 +2317,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
-        0,
-        0,
-        0,
+        -4.599999904632568,
+        6.400000095367432,
+        6.75,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        6.495920896530151,
         0,
         0,
         0,
         0,
-        1,
+        6.495920896530151,
         0,
         0,
         0,
         0,
-        1,
+        6.495920896530151,
         0,
-        0,
-        0,
-        0,
+        2.384185791015625e-7,
+        8.41615605354309,
+        -2.750187039375305,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2366,41 +2366,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.495920896530151,
         0,
         0,
         0,
         0,
-        1,
+        6.495920896530151,
         0,
         0,
         0,
         0,
-        1,
+        6.495920896530151,
         0,
-        0,
-        0,
-        0,
+        2.384185791015625e-7,
+        8.41615605354309,
+        -2.750187039375305,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
+        6.1005213260650635,
         0,
         1
       ],
@@ -2415,20 +2415,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
         0,
         0,
-        1,
+        6.5,
         0,
         0,
-        0,
+        6.1005213260650635,
         0,
         1
       ]
@@ -2436,21 +2436,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-collar-warning",
       "localTransform": [
-        1,
+        0.7969322800636292,
         0,
         0,
         0,
         0,
-        1,
+        0.7969322800636292,
         0,
         0,
         0,
         0,
-        1,
+        0.7969322800636292,
         0,
         0,
-        0,
-        0,
+        0.050026655197143555,
+        -0.0011096000671386719,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2465,41 +2465,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.7969322800636292,
         0,
         0,
         0,
         0,
-        1,
+        0.7969322800636292,
         0,
         0,
         0,
         0,
-        1,
+        0.7969322800636292,
         0,
         0,
-        4.400000095367432,
-        0,
+        4.450026750564575,
+        -0.0011096000671386719,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-crown-warning",
       "localTransform": [
-        1,
+        0.9972028732299805,
         0,
         0,
         0,
         0,
-        1,
+        0.9972028732299805,
         0,
         0,
         0,
         0,
-        1,
+        0.9972028732299805,
         0,
         0,
-        0,
+        0.00029087066650390625,
         0,
         1
       ],
@@ -2515,20 +2515,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.9972028732299805,
         0,
         0,
         0,
         0,
-        1,
+        0.9972028732299805,
         0,
         0,
         0,
         0,
-        1,
+        0.9972028732299805,
         0,
         0,
-        11.399999618530273,
+        11.400290489196777,
         0,
         1
       ]
@@ -2536,21 +2536,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-string-brushedmetal",
       "localTransform": [
-        1,
+        0.9494304656982422,
         0,
         0,
         0,
         0,
-        1,
+        0.9494304656982422,
         0,
         0,
         0,
         0,
-        1,
+        0.9494304656982422,
         0,
         0,
-        0,
-        0,
+        -18.050094604492188,
+        -0.00004935264587402344,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2565,42 +2565,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.9494304656982422,
         0,
         0,
         0,
         0,
-        1,
+        0.9494304656982422,
         0,
         0,
         0,
         0,
-        1,
+        0.9494304656982422,
         0,
         0,
-        10.600000381469727,
-        0,
+        -7.450094223022461,
+        -0.00004935264587402344,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-motion-drill-string-mechanical",
       "localTransform": [
-        1,
+        8.549401760101318,
         0,
         0,
         0,
         0,
-        1,
+        8.549401760101318,
         0,
         0,
         0,
         0,
-        1,
+        8.549401760101318,
         0,
-        0,
-        0,
-        0,
+        0.00002358853816986084,
+        -8.549961566925049,
+        0.0000794827938079834,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2615,41 +2615,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        8.549401760101318,
         0,
         0,
         0,
         0,
-        1,
+        8.549401760101318,
         0,
         0,
         0,
         0,
-        1,
+        8.549401760101318,
         0,
-        0,
-        10.600000381469727,
-        0,
+        0.00002358853816986084,
+        2.0500388145446777,
+        0.0000794827938079834,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod1-warning",
       "localTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.724999874830246,
         0,
         1
       ],
@@ -2664,20 +2664,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.724999874830246,
         0,
         1
       ]
@@ -2685,20 +2685,20 @@
     {
       "id": "sf.render.drill-platform.mesh.lod2-armor",
       "localTransform": [
-        1,
+        7.974652290344238,
         0,
         0,
         0,
         0,
-        1,
+        7.974652290344238,
         0,
         0,
         0,
         0,
-        1,
+        7.974652290344238,
         0,
         0,
-        0,
+        5.599884322844446,
         0,
         1
       ],
@@ -2713,20 +2713,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.974652290344238,
         0,
         0,
         0,
         0,
-        1,
+        7.974652290344238,
         0,
         0,
         0,
         0,
-        1,
+        7.974652290344238,
         0,
         0,
-        0,
+        5.599884322844446,
         0,
         1
       ]
@@ -2734,21 +2734,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
-        0,
-        0,
+        3.4562501907348633,
+        -0.00003981590270996094,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2762,21 +2762,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
         0,
         0,
-        1,
+        7.09854531288147,
         0,
         0,
-        0,
-        0,
+        3.4562501907348633,
+        -0.00003981590270996094,
         1
       ]
     },
@@ -2832,21 +2832,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod2-hull",
       "localTransform": [
-        1,
+        2.148213028907776,
         0,
         0,
         0,
         0,
-        1,
+        2.148213028907776,
         0,
         0,
         0,
         0,
-        1,
+        2.148213028907776,
         0,
-        0,
-        0,
-        0,
+        -4.600000262260437,
+        6.000293970108032,
+        4.800000309944153,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2860,42 +2860,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        2.148213028907776,
         0,
         0,
         0,
         0,
-        1,
+        2.148213028907776,
         0,
         0,
         0,
         0,
-        1,
+        2.148213028907776,
         0,
-        0,
-        0,
-        0,
+        -4.600000262260437,
+        6.000293970108032,
+        4.800000309944153,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-hull-aged",
       "localTransform": [
-        1,
+        6.980990409851074,
         0,
         0,
         0,
         0,
-        1,
+        6.980990409851074,
         0,
         0,
         0,
         0,
-        1,
+        6.980990409851074,
         0,
         0,
-        0,
-        0,
+        4.499791502952576,
+        0.0000782012939453125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2909,42 +2909,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.980990409851074,
         0,
         0,
         0,
         0,
-        1,
+        6.980990409851074,
         0,
         0,
         0,
         0,
-        1,
+        6.980990409851074,
         0,
         0,
-        0,
-        0,
+        4.499791502952576,
+        0.0000782012939453125,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        6.4966840744018555,
         0,
         0,
         0,
         0,
-        1,
+        6.4966840744018555,
         0,
         0,
         0,
         0,
-        1,
+        6.4966840744018555,
         0,
-        0,
-        0,
-        0,
+        4.76837158203125e-7,
+        8.407328128814697,
+        -2.7511240392923355,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2958,42 +2958,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        6.4966840744018555,
         0,
         0,
         0,
         0,
-        1,
+        6.4966840744018555,
         0,
         0,
         0,
         0,
-        1,
+        6.4966840744018555,
         0,
-        0,
-        0,
-        0,
+        4.76837158203125e-7,
+        8.407328128814697,
+        -2.7511240392923355,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        3.489864468574524,
         0,
         0,
         0,
         0,
-        1,
+        3.489864468574524,
         0,
         0,
         0,
         0,
-        1,
+        3.489864468574524,
         0,
-        0,
-        0,
-        0,
+        -0.7488648891448975,
+        6.106057047843933,
+        1.256226658821106,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3007,42 +3007,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        3.489864468574524,
         0,
         0,
         0,
         0,
-        1,
+        3.489864468574524,
         0,
         0,
         0,
         0,
-        1,
+        3.489864468574524,
         0,
-        0,
-        0,
-        0,
+        -0.7488648891448975,
+        6.106057047843933,
+        1.256226658821106,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-collar-warning",
       "localTransform": [
-        1,
+        0.7956152558326721,
         0,
         0,
         0,
         0,
-        1,
+        0.7956152558326721,
         0,
         0,
         0,
         0,
-        1,
+        0.7956152558326721,
         0,
         0,
-        0,
-        0,
+        0.05057264119386673,
+        -0.00393521785736084,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3057,41 +3057,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.7956152558326721,
         0,
         0,
         0,
         0,
-        1,
+        0.7956152558326721,
         0,
         0,
         0,
         0,
-        1,
+        0.7956152558326721,
         0,
         0,
-        4.400000095367432,
-        0,
+        4.450572736561298,
+        -0.00393521785736084,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-crown-warning",
       "localTransform": [
-        1,
+        0.9938544034957886,
         0,
         0,
         0,
         0,
-        1,
+        0.9938544034957886,
         0,
         0,
         0,
         0,
-        1,
+        0.9938544034957886,
         0,
         0,
-        0,
+        -0.005120277404785156,
         0,
         1
       ],
@@ -3107,20 +3107,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.9938544034957886,
         0,
         0,
         0,
         0,
-        1,
+        0.9938544034957886,
         0,
         0,
         0,
         0,
-        1,
+        0.9938544034957886,
         0,
         0,
-        11.399999618530273,
+        11.394879341125488,
         0,
         1
       ]
@@ -3128,21 +3128,21 @@
     {
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-string-brushedmetal",
       "localTransform": [
-        1,
+        0.9481611251831055,
         0,
         0,
         0,
         0,
-        1,
+        0.9481611251831055,
         0,
         0,
         0,
         0,
-        1,
+        0.9481611251831055,
         0,
-        0,
-        0,
-        0,
+        -2.9802322387695312e-8,
+        -18.050820350646973,
+        -0.00007793307304382324,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3157,42 +3157,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        0.9481611251831055,
         0,
         0,
         0,
         0,
-        1,
+        0.9481611251831055,
         0,
         0,
         0,
         0,
-        1,
+        0.9481611251831055,
         0,
-        0,
-        10.600000381469727,
-        0,
+        -2.9802322387695312e-8,
+        -7.450819969177246,
+        -0.00007793307304382324,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-motion-drill-string-mechanical",
       "localTransform": [
-        1,
+        8.549314498901367,
         0,
         0,
         0,
         0,
-        1,
+        8.549314498901367,
         0,
         0,
         0,
         0,
-        1,
+        8.549314498901367,
         0,
-        0,
-        0,
-        0,
+        0.0002200603485107422,
+        -8.549982070922852,
+        0.00026175379753112793,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3207,41 +3207,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        8.549314498901367,
         0,
         0,
         0,
         0,
-        1,
+        8.549314498901367,
         0,
         0,
         0,
         0,
-        1,
+        8.549314498901367,
         0,
-        0,
-        10.600000381469727,
-        0,
+        0.0002200603485107422,
+        2.050018310546875,
+        0.00026175379753112793,
         1
       ]
     },
     {
       "id": "sf.render.drill-platform.mesh.lod2-warning",
       "localTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.758333206176758,
         0,
         1
       ],
@@ -3256,20 +3256,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.drill-platform.body",
       "worldTransform": [
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        7.599999904632568,
         0,
         0,
-        0,
+        2.758333206176758,
         0,
         1
       ]
@@ -3480,14 +3480,14 @@
       "uri": "place_drill_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 665152,
-    "sha256": "c8bd267edb5aea8f03f01e14873b7332ac847fbeddbb21acaf5d131a0d0fbbf9",
+    "bytes": 434860,
+    "sha256": "fa066c1f88679db4b540f6279381a993a3b13653896270e748f42b271ce450ce",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3498,19 +3498,19 @@
         0
       ],
       "max": [
-        8.000673294067383,
+        8.000672801455467,
         12.46824550033789,
-        8.000673294067383
+        8.000672801455467
       ],
       "min": [
-        -8.000673294067383,
+        -8.000672801455467,
         -8.399999618530273,
-        -8.000673294067383
+        -8.000672801455467
       ],
       "size": [
-        16.001346588134766,
+        16.001345602910934,
         20.868245118868163,
-        16.001346588134766
+        16.001345602910934
       ]
     },
     "hidden": [
@@ -4010,20 +4010,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8,
           0,
           0,
           0,
           0,
-          1,
+          8,
           0,
           0,
           0,
           0,
-          1,
+          8,
           0,
           0,
-          0,
+          5.586930565536022,
           0,
           1
         ],
@@ -4037,20 +4037,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.104982376098633,
           0,
           0,
           0,
           0,
-          1,
+          7.104982376098633,
           0,
           0,
           0,
           0,
-          1,
+          7.104982376098633,
           0,
           0,
-          0,
+          3.491250157356262,
           0,
           1
         ],
@@ -4092,21 +4092,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1890296936035156,
           0,
           0,
           0,
           0,
-          1,
+          2.1890296936035156,
           0,
           0,
           0,
           0,
-          1,
+          2.1890296936035156,
           0,
-          0,
-          0,
-          0,
+          -4.599999904632568,
+          6,
+          4.800000071525574,
           1
         ],
         "name": "LOD0_Hull",
@@ -4119,20 +4119,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7,
           0,
           0,
           0,
           0,
-          1,
+          7,
           0,
           0,
           0,
           0,
-          1,
+          7,
           0,
           0,
-          0,
+          4.5000001192092896,
           0,
           1
         ],
@@ -4146,21 +4146,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5,
           0,
           0,
           0,
           0,
-          1,
+          1.5,
           0,
           0,
           0,
           0,
-          1,
+          1.5,
           0,
-          0,
-          0,
-          0,
+          -4.599999904632568,
+          6.400000095367432,
+          6.75,
           1
         ],
         "name": "LOD0_Lights_Warm",
@@ -4173,21 +4173,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
-          0,
-          0,
+          8.41538381576538,
+          -2.7505364418029785,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -4200,20 +4200,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
-          0,
+          6.1000001430511475,
           0,
           1
         ],
@@ -4227,20 +4227,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
-          0,
+          2.724999874830246,
           0,
           1
         ],
@@ -4254,20 +4254,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.996270656585693,
           0,
           0,
           0,
           0,
-          1,
+          7.996270656585693,
           0,
           0,
           0,
           0,
-          1,
+          7.996270656585693,
           0,
           0,
-          0,
+          5.5887949783355,
           0,
           1
         ],
@@ -4281,21 +4281,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.09854531288147,
           0,
           0,
           0,
           0,
-          1,
+          7.09854531288147,
           0,
           0,
           0,
           0,
-          1,
+          7.09854531288147,
           0,
           0,
-          0,
-          0,
+          3.491250216960907,
+          -0.00003981590270996094,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -4336,21 +4336,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1890296936035156,
           0,
           0,
           0,
           0,
-          1,
+          2.1890296936035156,
           0,
           0,
           0,
           0,
-          1,
+          2.1890296936035156,
           0,
-          0,
-          0,
-          0,
+          -4.599999904632568,
+          6,
+          4.800000071525574,
           1
         ],
         "name": "LOD1_Hull",
@@ -4363,21 +4363,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.997203350067139,
           0,
           0,
           0,
           0,
-          1,
+          6.997203350067139,
           0,
           0,
           0,
           0,
-          1,
+          6.997203350067139,
           0,
           0,
-          0,
-          0,
+          4.499791502952576,
+          0.0000782012939453125,
           1
         ],
         "name": "LOD1_Hull_aged",
@@ -4390,21 +4390,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5,
           0,
           0,
           0,
           0,
-          1,
+          1.5,
           0,
           0,
           0,
           0,
-          1,
+          1.5,
           0,
-          0,
-          0,
-          0,
+          -4.599999904632568,
+          6.400000095367432,
+          6.75,
           1
         ],
         "name": "LOD1_Lights_Warm",
@@ -4417,21 +4417,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.495920896530151,
           0,
           0,
           0,
           0,
-          1,
+          6.495920896530151,
           0,
           0,
           0,
           0,
-          1,
+          6.495920896530151,
           0,
-          0,
-          0,
-          0,
+          2.384185791015625e-7,
+          8.41615605354309,
+          -2.750187039375305,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -4444,20 +4444,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
           0,
           0,
-          1,
+          6.5,
           0,
           0,
-          0,
+          6.1005213260650635,
           0,
           1
         ],
@@ -4471,20 +4471,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
-          0,
+          2.724999874830246,
           0,
           1
         ],
@@ -4498,20 +4498,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.974652290344238,
           0,
           0,
           0,
           0,
-          1,
+          7.974652290344238,
           0,
           0,
           0,
           0,
-          1,
+          7.974652290344238,
           0,
           0,
-          0,
+          5.599884322844446,
           0,
           1
         ],
@@ -4525,21 +4525,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.09854531288147,
           0,
           0,
           0,
           0,
-          1,
+          7.09854531288147,
           0,
           0,
           0,
           0,
-          1,
+          7.09854531288147,
           0,
           0,
-          0,
-          0,
+          3.4562501907348633,
+          -0.00003981590270996094,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -4580,21 +4580,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.148213028907776,
           0,
           0,
           0,
           0,
-          1,
+          2.148213028907776,
           0,
           0,
           0,
           0,
-          1,
+          2.148213028907776,
           0,
-          0,
-          0,
-          0,
+          -4.600000262260437,
+          6.000293970108032,
+          4.800000309944153,
           1
         ],
         "name": "LOD2_Hull",
@@ -4607,21 +4607,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.980990409851074,
           0,
           0,
           0,
           0,
-          1,
+          6.980990409851074,
           0,
           0,
           0,
           0,
-          1,
+          6.980990409851074,
           0,
           0,
-          0,
-          0,
+          4.499791502952576,
+          0.0000782012939453125,
           1
         ],
         "name": "LOD2_Hull_aged",
@@ -4634,21 +4634,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.4966840744018555,
           0,
           0,
           0,
           0,
-          1,
+          6.4966840744018555,
           0,
           0,
           0,
           0,
-          1,
+          6.4966840744018555,
           0,
-          0,
-          0,
-          0,
+          4.76837158203125e-7,
+          8.407328128814697,
+          -2.7511240392923355,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -4661,21 +4661,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.489864468574524,
           0,
           0,
           0,
           0,
-          1,
+          3.489864468574524,
           0,
           0,
           0,
           0,
-          1,
+          3.489864468574524,
           0,
-          0,
-          0,
-          0,
+          -0.7488648891448975,
+          6.106057047843933,
+          1.256226658821106,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -4688,20 +4688,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          7.599999904632568,
           0,
           0,
-          0,
+          2.758333206176758,
           0,
           1
         ],
@@ -4715,20 +4715,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.796837568283081,
           0,
           0,
           0,
           0,
-          1,
+          0.796837568283081,
           0,
           0,
           0,
           0,
-          1,
+          0.796837568283081,
           0,
           0,
-          4.400000095367432,
+          4.449999816715717,
           0,
           1
         ],
@@ -4743,21 +4743,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7969322800636292,
           0,
           0,
           0,
           0,
-          1,
+          0.7969322800636292,
           0,
           0,
           0,
           0,
-          1,
+          0.7969322800636292,
           0,
           0,
-          4.400000095367432,
-          0,
+          4.450026750564575,
+          -0.0011096000671386719,
           1
         ],
         "name": "LOD1_MOTION_DRILL_COLLAR_Warning",
@@ -4771,21 +4771,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7956152558326721,
           0,
           0,
           0,
           0,
-          1,
+          0.7956152558326721,
           0,
           0,
           0,
           0,
-          1,
+          0.7956152558326721,
           0,
           0,
-          4.400000095367432,
-          0,
+          4.450572736561298,
+          -0.00393521785736084,
           1
         ],
         "name": "LOD2_MOTION_DRILL_COLLAR_Warning",
@@ -4827,20 +4827,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9972028732299805,
           0,
           0,
           0,
           0,
-          1,
+          0.9972028732299805,
           0,
           0,
           0,
           0,
-          1,
+          0.9972028732299805,
           0,
           0,
-          11.399999618530273,
+          11.400290489196777,
           0,
           1
         ],
@@ -4855,20 +4855,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9938544034957886,
           0,
           0,
           0,
           0,
-          1,
+          0.9938544034957886,
           0,
           0,
           0,
           0,
-          1,
+          0.9938544034957886,
           0,
           0,
-          11.399999618530273,
+          11.394879341125488,
           0,
           1
         ],
@@ -4883,20 +4883,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9499998092651367,
           0,
           0,
           0,
           0,
-          1,
+          0.9499998092651367,
           0,
           0,
           0,
           0,
-          1,
+          0.9499998092651367,
           0,
           0,
-          10.600000381469727,
+          -7.449999809265137,
           0,
           1
         ],
@@ -4911,20 +4911,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.550000190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.550000190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.550000190734863,
           0,
-          0,
-          10.600000381469727,
+          2.980232238769531e-7,
+          2.0500001907348633,
           0,
           1
         ],
@@ -4939,21 +4939,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9494304656982422,
           0,
           0,
           0,
           0,
-          1,
+          0.9494304656982422,
           0,
           0,
           0,
           0,
-          1,
+          0.9494304656982422,
           0,
           0,
-          10.600000381469727,
-          0,
+          -7.450094223022461,
+          -0.00004935264587402344,
           1
         ],
         "name": "LOD1_MOTION_DRILL_STRING_BrushedMetal",
@@ -4967,21 +4967,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.549401760101318,
           0,
           0,
           0,
           0,
-          1,
+          8.549401760101318,
           0,
           0,
           0,
           0,
-          1,
+          8.549401760101318,
           0,
-          0,
-          10.600000381469727,
-          0,
+          0.00002358853816986084,
+          2.0500388145446777,
+          0.0000794827938079834,
           1
         ],
         "name": "LOD1_MOTION_DRILL_STRING_Mechanical",
@@ -4995,21 +4995,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9481611251831055,
           0,
           0,
           0,
           0,
-          1,
+          0.9481611251831055,
           0,
           0,
           0,
           0,
-          1,
+          0.9481611251831055,
           0,
-          0,
-          10.600000381469727,
-          0,
+          -2.9802322387695312e-8,
+          -7.450819969177246,
+          -0.00007793307304382324,
           1
         ],
         "name": "LOD2_MOTION_DRILL_STRING_BrushedMetal",
@@ -5023,21 +5023,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.549314498901367,
           0,
           0,
           0,
           0,
-          1,
+          8.549314498901367,
           0,
           0,
           0,
           0,
-          1,
+          8.549314498901367,
           0,
-          0,
-          10.600000381469727,
-          0,
+          0.0002200603485107422,
+          2.050018310546875,
+          0.00026175379753112793,
           1
         ],
         "name": "LOD2_MOTION_DRILL_STRING_Mechanical",
@@ -5053,20 +5053,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform.glb"
   },
-  "runtimeHash": "5bf61ea1ed2d9119d709627b3d562502ffaf1f5749269e7c50241bd86548ba9a",
+  "runtimeHash": "c8f24d2e31d149dadf7d1380cc3eb29f293a883a89a8450a702c293f997c81c6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.000673294067383,
+          8.000672801455467,
           12.46824550033789,
-          8.000673294067383
+          8.000672801455467
         ],
         "min": [
-          -8.000673294067383,
+          -8.000672801455467,
           -8.399999618530273,
-          -8.000673294067383
+          -8.000672801455467
         ]
       },
       "id": "sf.render.drill-platform.body",

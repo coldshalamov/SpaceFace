@@ -489,7 +489,7 @@ function gapTo(rect, c) {
 }
 
 /** How many places round its star a label could take before any other label is placed. */
-function freePlaces(it, { discs = [], rects = [], points = [], bounds }) {
+function freePlaces(it, { discs = [], rects = [], points = [], bounds, pointSlack = 2 }) {
   let n = 0;
   const inBounds = (r) => !bounds || (r.x >= bounds.x && r.y >= bounds.y && r.x + r.w <= bounds.x + bounds.w && r.y + r.h <= bounds.y + bounds.h);
   for (const box of it.boxes) {
@@ -498,7 +498,7 @@ function freePlaces(it, { discs = [], rects = [], points = [], bounds }) {
       if (!inBounds(rect)) continue;
       if (discs.some((d) => d.id !== it.id && discHits(rect, d))) continue;
       if (rects.some((q) => hit(rect, q, 1))) continue;
-      if (points.some((p) => p.x > rect.x - 2 && p.x < rect.x + rect.w + 2 && p.y > rect.y - 2 && p.y < rect.y + rect.h + 2)) continue;
+      if (points.some((p) => p.x > rect.x - pointSlack && p.x < rect.x + rect.w + pointSlack && p.y > rect.y - pointSlack && p.y < rect.y + rect.h + pointSlack)) continue;
       n += 1;
     }
   }
@@ -509,11 +509,14 @@ function freePlaces(it, { discs = [], rects = [], points = [], bounds }) {
  * Place every label it can. items: [{ id, star, boxes:[{w,h,nameH,lines}], gap }] in priority order.
  * Returns id -> { rect, dir, box, dropped } (a dropped label still carries a peek place).
  */
-export function solveLabels(items, { discs = [], segs = [], rects = [], points = [], bounds }) {
+export function solveLabels(items, { discs = [], segs = [], rects = [], points = [], bounds, pointSlack = 2 }) {
   const placed = [];
   const out = {};
   const inBounds = (r) => !bounds || (r.x >= bounds.x && r.y >= bounds.y && r.x + r.w <= bounds.x + bounds.w && r.y + r.h <= bounds.y + bounds.h);
-  const pointHit = (r) => points.some((p) => p.x > r.x - 2 && p.x < r.x + r.w + 2 && p.y > r.y - 2 && p.y < r.y + r.h + 2);
+  // rim words are SVG text the DOM overlap probe cannot see: at the tight dial a 4px breathing
+  // slack makes a label that would crowd an arc word fail its place, so the constellation
+  // condenses instead; a roomy dial keeps the exact 2px slack it always had.
+  const pointHit = (r) => points.some((p) => p.x > r.x - pointSlack && p.x < r.x + r.w + pointSlack && p.y > r.y - pointSlack && p.y < r.y + r.h + pointSlack);
   for (const it of items) {
     const s = it.star;
     const ox = s.ox || 0;
@@ -1077,6 +1080,10 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
 
   function build({ px, costPx, nameLH, costLH, showCost }) {
     const { cx, cy, R, radii, sectors, stars } = geo;
+    // A tight dial (R under ~310 px: the bench's 1366x768 sky and any smaller column) cannot carry
+    // both the rim words and the top band's names; a roomy one can and keeps every place it had.
+    // The type floor does not separate the two — px bottoms out at 12 on both bench widths.
+    const tight = R < 310;
     const sr = Math.max(4, Math.min(8, R / 64));
     // every star is a body: a disc 24-36 px across
     const bodyR = Math.max(12, Math.min(18, R / 26));
@@ -1191,10 +1198,13 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       text.appendChild(tp);
       rimWords.appendChild(text);
       sectorFills.get(s.id).count = c;
-      // the words' footprint, for the label solver
+      // the words' footprint, for the label solver. At the type floor the band grows to three
+      // radii covering the glyphs' real ascent and descent (a 12px face stands ~rimPx*1.5 off its
+      // baseline) plus air either side; a roomy dial keeps the original two tight radii.
+      const rimRadii = tight ? [nameR - rimPx * 1.6, nameR - rimPx * 0.4, nameR + rimPx * 1.9] : [nameR - rimPx * 0.2, nameR + rimPx * 0.9];
       for (let k = 0; k <= Math.ceil(textLen / 5); k += 1) {
         const deg = lower ? start - (k * 5 / nameR) * (180 / Math.PI) : start + (k * 5 / nameR) * (180 / Math.PI);
-        for (const rr of [nameR - rimPx * 0.2, nameR + rimPx * 0.9]) {
+        for (const rr of rimRadii) {
           const [px0, py0] = polar(cx, cy, rr, deg);
           rimPoints.push({ x: px0, y: py0 });
         }
@@ -1295,7 +1305,9 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     );
 
     // ---- labels: solve, then build the star buttons ----------------------------------------------------------
-    const tierRects = radii.map((r) => ({ x: cx - 12, y: cy - r - 9, w: 24, h: 18 }));
+    // the tier numerals stand on every orbit at 12 o'clock; the guard covers the glyph plus the
+    // air a name needs under it (a label ending 4px above a numeral reads as riding it)
+    const tierRects = radii.map((r) => ({ x: cx - 14, y: cy - r - 11, w: 28, h: 22 }));
     const discs = [];
     // every star keeps its reticle's room (bodyR + 11.5), so a name never runs into a chosen star's ring
     for (const [id, s] of Object.entries(stars)) discs.push({ id, x: s.x, y: s.y, r: bodyR + 12 });
@@ -1340,8 +1352,16 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       boxes.push(mk([n.name]));
       const two = wrapText(n.name, Math.max(56, one * 0.62), px);
       if (two.length === 2) boxes.push(mk(two));
-      // a locked star's name leaves the sky: it reads through the Lens, and when the star is hovered, focused or chosen
-      const rest = stateOf(n.id) !== 'locked';
+      // a locked star's name leaves the sky: it reads through the Lens, and when the star is hovered, focused or chosen.
+      // On a tight dial the band around 12 o'clock inside the rim words' reach cannot carry both an
+      // arc word and a two-line name: the title keep-out and the numerals fill it, and the name
+      // wedges onto the ring or grazes the arc text. Such a star condenses to a dropped label too —
+      // its star light, hover, focus and the Lens still name it — so the constellation condenses
+      // instead of colliding (P10, the 1366x768 bar).
+      const sRad = Math.hypot(s.x - cx, s.y - cy);
+      const fromTop = Math.abs(Math.atan2(s.x - cx, cy - s.y));
+      const rest = stateOf(n.id) !== 'locked'
+        && !(tight && n.id !== chosenId && fromTop < Math.PI / 4 && sRad < nameR + rimPx * 2.5);
       const body = (id, t) => (stateOf(id) === 'researched' ? { x: t.x, y: t.y, r: bodyR + 1, spike: bodyR * 1.6 } : { x: t.x, y: t.y, r: bodyR + 1 });
       const others = [];
       for (const [oid, t] of Object.entries(stars)) if (oid !== n.id) others.push(body(oid, t));
@@ -1353,10 +1373,10 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
     // a name beside the screen's title would read as part of its line: it keeps a wide berth to the right
     // (the berth is the heading's: the line under it only keeps its own margin)
     const titleRects = (geo.avoid || []).map((r, i) => ({ x: r.x, y: r.y, w: r.w + (i === 0 ? 120 : 12), h: r.h + 6 }));
-    const statics = { discs, rects: [...tierRects, ...titleRects], points: rimPoints, bounds };
+    const statics = { discs, rects: [...tierRects, ...titleRects], points: rimPoints, bounds, pointSlack: tight ? 4 : 2 };
     for (const it of items) it.room = freePlaces(it, statics);
     items.sort((a, b) => (a.rank - b.rank) || (a.room - b.room) || (a.depth - b.depth));
-    const solved = solveLabels(items, { discs, segs, rects: statics.rects, points: rimPoints, bounds });
+    const solved = solveLabels(items, { discs, segs, rects: statics.rects, points: rimPoints, bounds, pointSlack: tight ? 4 : 2 });
     labelRects = new Map();
     for (const [id, sol] of Object.entries(solved)) if (sol && !sol.dropped) labelRects.set(id, sol.rect);
     allLabelRects = new Map();

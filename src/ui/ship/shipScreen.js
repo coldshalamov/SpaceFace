@@ -14,13 +14,18 @@
 // restructure, engineering-stage adoption, handling deck, scars, capability deck) land on top.
 
 import { ensureStylesheet as ensureStationStylesheet } from '../station/stationStyles.js';
+import { injectShipOrrery } from '../orrery/shipLayouts.js';
 import { getSharedShipStage } from '../station/screens/shipworks.js';
 
 // The shared stage's .sx-* vocabulary is styled by the station sheets, which the station shell
 // injects on first dock. THE SHIP must not depend on a dock having happened: inject the same
 // idempotent links on mount (vision-review blocker: F2 before first dock rendered unstyled).
+// The ORRERY sheet (orrery/shipLayouts.js) rides after them: it is this screen's composition of
+// the shared stage — light pools, the rendered power dial, the etched/numeral type voices — and
+// is scoped to #sf-ship so the dock's shipworks tab never sees a byte of it.
 function ensureStageStyles() {
   try { ensureStationStylesheet(); } catch (_) { /* styles best-effort; the screen still renders */ }
+  try { injectShipOrrery(); } catch (_) { /* composition best-effort; the stage still renders */ }
 }
 
 export const shipScreen = {

@@ -25,6 +25,18 @@ import { mining } from '../src/systems/mining.js';
 const DT = 1 / 60;
 const SETTLE_S = 90;
 
+// This legacy intent-only fixture has no combat owner. Explicitly model its response truth;
+// the separate native continuity fixture exercises real damage/repair transitions.
+function driveEvent(sim, event, payload) {
+  sim.state.combat ||= { entities: {} };
+  sim.state.combat.entities ||= {};
+  const down = event === 'combat:subsystemDisabled';
+  sim.state.combat.entities[payload.targetId] = { subsystems: {
+    subsystem_drive: { destroyed: down, effectiveDisabled: down }
+  } };
+  sim.bus.emit(event, payload);
+}
+
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.z - b.z);
 }
@@ -59,7 +71,7 @@ function findCast(sim) {
   const casualties = [];
   for (const [jobId, entry] of Object.entries(bag)) {
     if (entry.job.kind === 'tender' || entry.entityId == null) continue;
-    if (entry.job.corrupt || entry.job.phase === 'complete') continue;
+    if (entry.job.corrupt || entry.job.phase === 'complete' || entry.control) continue;
     const hull = sim.state.entities.get(entry.entityId);
     if (!hull || hull.alive === false || !hull.pos) continue;
     if (rt._hotAt(hull.pos)) continue; // the seeded raider's ring is the hot-site scenario
@@ -83,7 +95,12 @@ test('a crippled worker gets the yard truck: dispatch, steering, weld, repair, r
   // alongside casualty → brake, weld, repair. Physical application of data.intent is the
   // movement layer's own contract, exercised by the live game on this same shape.
   const alongside = casualties.reduce((a, b) => (a && a.d <= b.d ? a : b), null);
-  assert.ok(alongside, 'an alongside casualty must exist');
+  assert.ok(alongside, 'an unleased working casualty must exist');
+  // Owner-boundary setup only: this fixture has no flight applier. Native travel is separate.
+  tender.hull.pos.x = alongside.hull.pos.x + 100;
+  tender.hull.pos.z = alongside.hull.pos.z;
+  tender.hull.vel.x = alongside.hull.vel.x = 0;
+  tender.hull.vel.z = alongside.hull.vel.z = 0;
   const stages = [];
   sim.bus.on('npcjobs:crewResponse', (p) => stages.push({ t: sim.state.simTime, ...p }));
   let repair = null;
@@ -97,7 +114,7 @@ test('a crippled worker gets the yard truck: dispatch, steering, weld, repair, r
   player.pos.x = alongside.hull.pos.x + 400;
   player.pos.z = alongside.hull.pos.z;
 
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: alongside.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -123,7 +140,7 @@ test('a crippled worker gets the yard truck: dispatch, steering, weld, repair, r
   assert.equal(repair.subsystemId, 'subsystem_drive');
 
   // The combat owner answers; the truck is released back to its route.
-  sim.bus.emit('combat:subsystemEnabled', {
+  driveEvent(sim, 'combat:subsystemEnabled', {
     targetId: alongside.hull.id,
     subsystemId: 'subsystem_drive',
   });
@@ -142,14 +159,14 @@ test('a crippled worker gets the yard truck: dispatch, steering, weld, repair, r
   let farD = 0;
   for (const [jobId, entry] of Object.entries(bag)) {
     if (entry.job.kind === 'tender' || entry.entityId == null) continue;
-    if (entry.job.corrupt || entry.job.phase === 'complete') continue;
+    if (entry.job.corrupt || entry.job.phase === 'complete' || entry.control) continue;
     const hull = sim.state.entities.get(entry.entityId);
     if (!hull || hull.alive === false || !hull.pos) continue;
     const d = dist(hull.pos, tender.hull.pos);
     if (d > farD && d <= 3400) { farD = d; far = { jobId, entry, hull, d }; }
   }
   assert.ok(far && far.d >= 250, 'a clear working casualty beyond the ring must exist');
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: far.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -166,7 +183,10 @@ test('a crippled worker gets the yard truck: dispatch, steering, weld, repair, r
     const dx = far.hull.pos.x - tender.hull.pos.x;
     const dz = far.hull.pos.z - tender.hull.pos.z;
     const len = Math.hypot(dx, dz) || 1;
-    const dot = (intent.moveX * dx + intent.moveZ * dz) / len;
+    const c = Math.cos(tender.hull.rot || 0), s = Math.sin(tender.hull.rot || 0);
+    const worldX = intent.moveZ * c - intent.moveX * s;
+    const worldZ = intent.moveZ * s + intent.moveX * c;
+    const dot = (worldX * dx + worldZ * dz) / (len * Math.max(1e-9, Math.hypot(worldX, worldZ)));
     assert.ok(dot > 0.9, `the truck steers at the casualty (dot=${dot.toFixed(3)})`);
     assert.equal(intent.brake, false, 'a far casualty is not a brake condition');
   }
@@ -182,7 +202,7 @@ test('the authored Ceres service incidents keep their casualty — no second res
 
   const stages = [];
   sim.bus.on('npcjobs:crewResponse', (p) => stages.push(p.stage));
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -216,7 +236,7 @@ test('the durable incident records yield the responder — and a terminal record
   const wrId = vic.hull.data.worldRecordId || vic.entry.worldRecordId || 'wr-crew-test-casualty';
   vic.hull.data.worldRecordId = wrId;
   const phaseBefore = vic.entry.job.phase;
-  const driveDown = () => sim.bus.emit('combat:subsystemDisabled', {
+  const driveDown = () => driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -284,7 +304,7 @@ test('a hot wreck holds the truck, and a sky that never clears ends the run hone
 
   const stages = [];
   sim.bus.on('npcjobs:crewResponse', (p) => stages.push({ t: sim.state.simTime, ...p }));
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -366,7 +386,7 @@ test('SF-287: a rescued worker resumes the exact shift the casualty interrupted'
   // leaves the wreck alone (far away, never wanted).
   player.pos.x = vic.hull.pos.x - 9000;
   player.pos.z = vic.hull.pos.z - 9000;
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -386,7 +406,7 @@ test('SF-287: a rescued worker resumes the exact shift the casualty interrupted'
     welded = stages.find((x) => x.stage === 'welded');
   }
   assert.ok(welded, 'the weld completes against the real combat repair owner');
-  sim.bus.emit('combat:subsystemEnabled', {
+  driveEvent(sim, 'combat:subsystemEnabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
   });
@@ -421,7 +441,7 @@ test('SF-287: a rescued worker resumes the exact shift the casualty interrupted'
   );
 });
 
-test('SF-287: left unaided, the casualty still resumes — a coherent continuation, not a stall', async () => {
+test('SF-287: left unaided, a truly disabled casualty retains its interrupted shift', async () => {
   const { sim, player } = await bootCeres();
   const { rt, tender, casualties } = findCast(sim);
   const vic = casualties[0];
@@ -437,7 +457,7 @@ test('SF-287: left unaided, the casualty still resumes — a coherent continuati
 
   const stages = [];
   sim.bus.on('npcjobs:crewResponse', (p) => stages.push({ ...p }));
-  sim.bus.emit('combat:subsystemDisabled', {
+  driveEvent(sim, 'combat:subsystemDisabled', {
     targetId: vic.hull.id,
     subsystemId: 'subsystem_drive',
     attackerId: player.id,
@@ -453,8 +473,6 @@ test('SF-287: left unaided, the casualty still resumes — a coherent continuati
   // help would have shortened the wait, never conjured the resume.
   sim.state.simTime += 10;
   for (let k = 0; k < 120 && job.phase === 'flee'; k++) sim.step(DT);
-  assert.notEqual(job.phase, 'flee',
-    'an unaided casualty resumes on the threat-clear path — nothing freezes');
-  assert.equal(job.routeIndex != null && job.interrupted, false,
-    'the workday continues coherently without help');
+  assert.equal(job.phase, 'flee', 'a dead drive cannot resume merely because the threat left');
+  assert.equal(job.interrupted, true, 'the same shift remains available after a real repair');
 });

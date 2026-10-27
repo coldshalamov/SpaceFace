@@ -347,25 +347,38 @@ function snapshotLiveSprites(system) {
   return result;
 }
 
+// 4ec2bc37938 moved the energy/bolt families onto the weapon presenter's connected ribbon
+// wakes; the bounded amplification now lands on the ribbon's linger (wake length) and
+// cross-section width. Ribbon fields are Float32, so they compare at float precision.
+const nearF = (actual, expected, label) => {
+  assert.ok(Math.abs(actual - expected) <= 1e-5, `${label}: expected ${expected}, got ${actual}`);
+};
+
+function snapshotRibbon(system, id) {
+  const ribbons = system._weaponPresenter.ribbons;
+  const slot = ribbons.byEntity.get(id);
+  assert.ok(slot != null && ribbons.alive[slot], 'expected a live connected ribbon wake');
+  return {
+    width: ribbons.width[slot],
+    linger: ribbons.linger[slot],
+    live: ribbons.live,
+    capacity: ribbons.capacity,
+  };
+}
+
 test('only an owner-bound player projectile receives bounded connected-wake amplification', () => {
   const baseHarness = makeVfxHarness(makeProjectile(10, 1), 0);
-  const scratch = baseHarness.system._projectileTrailPlanScratch;
-  const nestedStreak = scratch._streak;
   baseHarness.system.update(1 / 60);
-  const base = snapshotStreak(baseHarness.system);
+  const base = snapshotRibbon(baseHarness.system, 10);
   assert.equal(baseHarness.reads(), 1, 'shared scalar must be read once per update');
-  assert.equal(baseHarness.system._projectileTrailPlanScratch, scratch, 'plan scratch identity changed');
-  assert.equal(baseHarness.system._projectileTrailPlanScratch._streak, nestedStreak, 'nested streak scratch changed');
 
   const heroHarness = makeVfxHarness(makeProjectile(11, 1), 1);
   heroHarness.system.update(1 / 60);
-  const hero = snapshotStreak(heroHarness.system);
-  near(hero.length, base.length * 1.4, 'hero wake length');
-  near(hero.opacity, Math.min(1, base.opacity * 1.15), 'hero wake opacity');
-  near(hero.width, base.width, 'width unchanged');
-  near(hero.life, base.life, 'life unchanged');
-  assert.equal(hero.count, base.count, 'pool count changed');
-  assert.equal(hero.poolCapacity, base.poolCapacity, 'pool capacity changed');
+  const hero = snapshotRibbon(heroHarness.system, 11);
+  nearF(hero.linger, base.linger * 1.4, 'hero wake length');
+  nearF(hero.width, base.width * 1.15, 'hero wake brightness');
+  assert.equal(hero.live, base.live, 'pool count changed');
+  assert.equal(hero.capacity, base.capacity, 'pool capacity changed');
 
   for (const [label, projectile, options] of [
     ['npc', makeProjectile(12, 2), {}],
@@ -375,19 +388,16 @@ test('only an owner-bound player projectile receives bounded connected-wake ampl
   ]) {
     const harness = makeVfxHarness(projectile, 1, options);
     harness.system.update(1 / 60);
-    const actual = snapshotStreak(harness.system);
-    near(actual.length, base.length, `${label} length`);
-    near(actual.opacity, base.opacity, `${label} opacity`);
-    near(actual.width, base.width, `${label} width`);
-    near(actual.life, base.life, `${label} life`);
-    assert.equal(actual.count, base.count, `${label} count`);
+    const actual = snapshotRibbon(harness.system, projectile.id);
+    nearF(actual.linger, base.linger, `${label} linger`);
+    nearF(actual.width, base.width, `${label} width`);
+    assert.equal(actual.live, base.live, `${label} count`);
   }
 
   heroHarness.projectile.alive = false;
   heroHarness.system._markProjectileCacheDirty();
   for (let i = 0; i < 90; i++) heroHarness.system.update(1 / 60);
-  assert.equal(heroHarness.system._liveTrailStreakCount, 0, 'pooled wake did not drain');
-  assert.equal(heroHarness.system._ts.length, hero.poolCapacity, 'drain resized the pool');
+  assert.equal(heroHarness.system._weaponPresenter.ribbons.live, 0, 'pooled wake did not drain');
 });
 
 test('the shared exceptional scalar is read once for a multi-projectile update', () => {
@@ -399,59 +409,46 @@ test('the shared exceptional scalar is read once for a multi-projectile update',
   harness.system._markProjectileCacheDirty();
   harness.system.update(1 / 60);
   assert.equal(harness.reads(), 1, 'shared scalar must be read once, not once per projectile');
-  assert.equal(harness.system._liveTrailStreakCount, 2, 'exceptional presentation changed projectile count');
+  assert.equal(harness.system._weaponPresenter.ribbons.live, 2,
+    'exceptional presentation changed projectile count');
 });
 
 test('missile exhaust and plasma wake amplify only their connected streak layers', () => {
+  // Both families ride one connected ribbon each (a motor's vapour sheet vs a plasma
+  // braid — the authored profile distinguishes them). Amplification lands on that wake
+  // alone; every other pooled layer must stay identical between base and hero.
   const cases = [
     {
       label: 'missile',
       data: { weaponId: 'wpn_missile_rack_m', kind: 'missile', damageType: 'explosive' },
-      expectedStreaks: 1,
-      primeFrameIndex: 2,
-      expectedSprites: 1,
     },
     {
       label: 'plasma',
       data: { weaponId: 'wpn_plasma_cannon_m', kind: 'bolt', damageType: 'thermal' },
-      expectedStreaks: 2,
-      primeFrameIndex: 0,
-      expectedSprites: 0,
     },
   ];
 
   for (const entry of cases) {
     const base = makeVfxHarness(makeProjectile(30, 1, entry.data), 0);
     const hero = makeVfxHarness(makeProjectile(31, 1, entry.data), 1);
-    base.system._projectileTrailFrameIndex = entry.primeFrameIndex;
-    hero.system._projectileTrailFrameIndex = entry.primeFrameIndex;
     base.system.update(1 / 60);
     hero.system.update(1 / 60);
+    assert.equal(base.reads(), 1, `${entry.label} base scalar reads`);
+    assert.equal(hero.reads(), 1, `${entry.label} hero scalar reads`);
 
-    const baseStreaks = snapshotLiveStreaks(base.system);
-    const heroStreaks = snapshotLiveStreaks(hero.system);
-    assert.equal(baseStreaks.length, entry.expectedStreaks, `${entry.label} base streak count`);
-    assert.equal(heroStreaks.length, entry.expectedStreaks, `${entry.label} hero streak count`);
-    for (let i = 0; i < baseStreaks.length; i++) {
-      near(heroStreaks[i].length, baseStreaks[i].length * 1.4, `${entry.label} layer ${i} length`);
-      near(heroStreaks[i].opacity, Math.min(1, baseStreaks[i].opacity * 1.15),
-        `${entry.label} layer ${i} opacity`);
-      near(heroStreaks[i].width, baseStreaks[i].width, `${entry.label} layer ${i} width`);
-      near(heroStreaks[i].life, baseStreaks[i].life, `${entry.label} layer ${i} life`);
-    }
+    const baseRibbon = snapshotRibbon(base.system, 30);
+    const heroRibbon = snapshotRibbon(hero.system, 31);
+    assert.equal(baseRibbon.live, 1, `${entry.label} base layer count`);
+    assert.equal(heroRibbon.live, 1, `${entry.label} hero layer count`);
+    nearF(heroRibbon.linger, baseRibbon.linger * 1.4, `${entry.label} layer length`);
+    nearF(heroRibbon.width, baseRibbon.width * 1.15, `${entry.label} layer brightness`);
+    assert.equal(heroRibbon.capacity, baseRibbon.capacity, `${entry.label} ribbon pool capacity`);
 
-    const baseSprites = snapshotLiveSprites(base.system);
-    const heroSprites = snapshotLiveSprites(hero.system);
-    assert.equal(baseSprites.length, entry.expectedSprites, `${entry.label} base sprite count`);
-    assert.deepEqual(heroSprites, baseSprites, `${entry.label} smoke/sprite layer changed`);
-    assert.equal(hero.system._ts.length, base.system._ts.length, `${entry.label} streak pool capacity changed`);
+    assert.equal(hero.system._liveTrailStreakCount, base.system._liveTrailStreakCount,
+      `${entry.label} trail-pool layer changed`);
+    assert.equal(hero.system._liveSpriteCount, base.system._liveSpriteCount,
+      `${entry.label} smoke/sprite layer changed`);
     assert.equal(hero.system._spr.length, base.system._spr.length, `${entry.label} sprite pool capacity changed`);
-    assert.equal(hero.system._projectileTrailFrameIndex, base.system._projectileTrailFrameIndex,
-      `${entry.label} cadence frame changed`);
-    assert.equal(hero.system._cadenceProjectileTrail, base.system._cadenceProjectileTrail,
-      `${entry.label} cadence accumulator changed`);
-    assert.deepEqual(hero.system.inspect().projectileTrails, base.system.inspect().projectileTrails,
-      `${entry.label} diagnostics changed`);
   }
 });
 

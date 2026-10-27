@@ -439,7 +439,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c8e790f3d0044209bfac820d11faf0c5d4a4d0c6d7a7ce41097e4df2b4eb4cd8",
+  "contentHash": "27dbb055e6efc3666a5f33db0e7242143239fe87e621d3e0079487ece1327315",
   "dynamicGroups": [
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-port-warning.dynamic",
@@ -567,17 +567,17 @@
       "bounds": {
         "max": [
           -4.848790168762207,
-          25.04495620727539,
-          -24.678850173950195
+          25.04495660160067,
+          -24.67884907990382
         ],
         "min": [
           -25.224870681762695,
-          17.684146881103516,
-          -35.32114791870117
+          17.684146486778236,
+          -35.32114901274755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa3af602dbdd1484a4e3ae695a4696f6818ea9f1595c41f1016bf372dd64916d",
+      "geometryHash": "ab2cd6b204f34bbd53c8c709838643b92aa81a2e24434ade4b3e331162ec5eca",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-0.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -592,17 +592,17 @@
       "bounds": {
         "max": [
           -12.850000381469727,
-          25.201868057250977,
-          -34.99983596801758
+          25.20186811796342,
+          -34.99983466566873
         ],
         "min": [
           -25.325000762939453,
-          22.6754207611084,
-          -45.00016403198242
+          22.675420700395954,
+          -45.00016533433127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3706d1825db5641e36f63ea932d9e5fa816c175d714c4e8982cb11423535df1c",
+      "geometryHash": "e9bfe4d74f1ab8ff8f2b04c38c83363d8852be524d8bc819f2b035964f0ccb1c",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -617,17 +617,17 @@
       "bounds": {
         "max": [
           -4.848790168762207,
-          25.04495620727539,
-          -44.67885208129883
+          25.04495660160067,
+          -44.678850033578136
         ],
         "min": [
           -25.224870681762695,
-          17.684146881103516,
-          -55.32114791870117
+          17.684146486778236,
+          -55.321149966421864
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f90eaf39a1e62034c5d6b9f00fa9a58d5297a25cfc126f988c209918d1004b9",
+      "geometryHash": "8eee614575faa0089adee81f2b055ff6aa947f46fc2c5038649bc2db8e830ca5",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -642,17 +642,17 @@
       "bounds": {
         "max": [
           12.62856388092041,
-          0.7251560091972351,
-          -40.36967086791992
+          0.7251559743352393,
+          -40.36967064304231
         ],
         "min": [
           4.53000020980835,
-          -0.7251560091972351,
-          -44.97023391723633
+          -0.7251559743352393,
+          -44.97023414211394
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3339ad75ff9873094bf4f613acae5fab87dbec30f264da6ea6a5c0ee78073f8",
+      "geometryHash": "5478a052c76cefe2892339ad78c64a5afb634289461c4b61addda3279215f50f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-jaw-port.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -667,17 +667,17 @@
       "bounds": {
         "max": [
           12.62856388092041,
-          0.7251560091972351,
-          -35.02976608276367
+          0.7251559743352393,
+          -35.02976585788606
         ],
         "min": [
           4.53000020980835,
-          -0.7251560091972351,
-          -39.63032913208008
+          -0.7251559743352393,
+          -39.63032935695769
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9601b778b3bdf1efe805e70b0b3c065863ceb98b577bf8ce87bd32642eb0cfeb",
+      "geometryHash": "dc4d9c860f1368259febc41e7e24568d348328e010d5987f40a66d732901aa0f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-jaw-starboard.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -691,18 +691,18 @@
     {
       "bounds": {
         "max": [
-          -12.901856422424316,
+          -12.901856298685605,
           24.399999618530273,
-          -37.2000846862793
+          -37.20008549387703
         ],
         "min": [
-          -21.395395278930664,
+          -21.395395402669376,
           -1,
-          -42.7999153137207
+          -42.79991450612297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "415623e6f0ff7674b96ab47fb73e63ddff31364258352799668bdeaf5ae77762",
+      "geometryHash": "4a318438b618055531c51cf3cf2edb47ef4d292fea9711697e925bc27f0a02bf",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-mast.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -717,17 +717,17 @@
       "bounds": {
         "max": [
           5.179999828338623,
-          0.4796118140220642,
-          -39.520389556884766
+          0.47961180504143947,
+          -39.520388194958564
         ],
         "min": [
           -13.800000190734863,
-          -0.4796118140220642,
-          -40.479610443115234
+          -0.47961180504143947,
+          -40.479611805041436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "177fd5e850c7ce87dd407e6f7126c7dce5b69ab1defa160b3844b56d36196623",
+      "geometryHash": "cc5be5f881e4d8190cd00c126c7270f69af5516da93e388105552feba5321b1d",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-receiver-stem.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -742,17 +742,17 @@
       "bounds": {
         "max": [
           5.360000133514404,
-          1.3998864889144897,
-          -41.51015853881836
+          1.3998864551930352,
+          -41.510157563082664
         ],
         "min": [
           -16.399999618530273,
-          -1.3998864889144897,
-          -45.04042053222656
+          -1.3998864551930352,
+          -45.04042150796226
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ac231baa939925846bc7fd16084454f94209a55f5c8e0400e600df7f429e98f",
+      "geometryHash": "37dfe2e2cd19b4c54b684a2b3ff25440518eef10443faa922524cf04f50b4a3f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-shoulder-port.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -767,17 +767,17 @@
       "bounds": {
         "max": [
           5.360000133514404,
-          1.3998864889144897,
-          -34.95957946777344
+          1.3998864551930352,
+          -34.95957849203774
         ],
         "min": [
           -16.399999618530273,
-          -1.3998864889144897,
-          -38.48984146118164
+          -1.3998864551930352,
+          -38.489842436917336
         ]
       },
       "drawMode": 4,
-      "geometryHash": "301b20d95c7725d29e61274d0840772dca55ec836a4e6eda03c47d511f8f87bd",
+      "geometryHash": "bee84de163f09f6aab789ed54ac4d5ce2261bfb4627b00e950f50274dd8eb7fe",
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-shoulder-starboard.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -792,17 +792,17 @@
       "bounds": {
         "max": [
           1.1512099504470825,
-          25.04495620727539,
-          15.321149826049805
+          25.044956623132705,
+          15.321150235971576
         ],
         "min": [
           -19.224870681762695,
-          17.684146881103516,
-          4.6788506507873535
+          17.6841464652462,
+          4.678850240865581
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e88c3fab167260d5fd48da4fbea8d2ad97948ece74df8ef45076a72178bc44c",
+      "geometryHash": "bc2b062b16743fdb7c86f21507ca703e4e1affe6744210a15661caa31ff01085",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -817,17 +817,17 @@
       "bounds": {
         "max": [
           -6.849999904632568,
-          25.201868057250977,
-          5.0001654624938965
+          25.201868166248147,
+          5.000165525454679
         ],
         "min": [
           -19.325000762939453,
-          22.6754207611084,
-          -5.0001654624938965
+          22.675420652111228,
+          -5.000165525454679
         ]
       },
       "drawMode": 4,
-      "geometryHash": "604915d6aa429b7928184335f3e2938b1f9a943395823af8711f35a6a6b7f0cd",
+      "geometryHash": "e9bfe4d74f1ab8ff8f2b04c38c83363d8852be524d8bc819f2b035964f0ccb1c",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -842,17 +842,17 @@
       "bounds": {
         "max": [
           1.1512099504470825,
-          25.04495620727539,
-          -4.6788506507873535
+          25.044956623132705,
+          -4.678850240865581
         ],
         "min": [
           -19.224870681762695,
-          17.684146881103516,
-          -15.321149826049805
+          17.6841464652462,
+          -15.321150235971576
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccda6d0b17b2df73c3a65c091f7dcc0fc0a2c47ced0c027c840336492e73cf1b",
+      "geometryHash": "8eee614575faa0089adee81f2b055ff6aa947f46fc2c5038649bc2db8e830ca5",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-2.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -867,17 +867,17 @@
       "bounds": {
         "max": [
           18.628562927246094,
-          0.7251559495925903,
-          -0.36966973543167114
+          0.7251559316386169,
+          -0.36966973539983794
         ],
         "min": [
           10.529999732971191,
-          -0.7251559495925903,
-          -4.970232963562012
+          -0.7251559316386169,
+          -4.970232963593845
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f8d634bd239544dd416de5a6dbe41e18fe8a4031930b35fbd35b7df1f7ac238",
+      "geometryHash": "5478a052c76cefe2892339ad78c64a5afb634289461c4b61addda3279215f50f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-jaw-port.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -892,17 +892,17 @@
       "bounds": {
         "max": [
           18.628562927246094,
-          0.7251559495925903,
-          4.970232963562012
+          0.7251559316386169,
+          4.970232963593845
         ],
         "min": [
           10.529999732971191,
-          -0.7251559495925903,
-          0.36966973543167114
+          -0.7251559316386169,
+          0.36966973539983794
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91bc92cd3c87f8105afdcc1f76f05fd23e806e7ecc029fa244bf0ef2ef3988d8",
+      "geometryHash": "dc4d9c860f1368259febc41e7e24568d348328e010d5987f40a66d732901aa0f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-jaw-starboard.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -916,18 +916,18 @@
     {
       "bounds": {
         "max": [
-          -6.901856422424316,
+          -6.901856298685606,
           24.399999618530273,
-          2.799914598464966
+          2.7999145061229695
         ],
         "min": [
-          -15.395395278930664,
+          -15.395395402669376,
           -1,
-          -2.799914598464966
+          -2.7999145061229695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ae91b38d5e306d9b0b63228c12c70f0833104206a97bd923ce18c554b0519e3",
+      "geometryHash": "4a318438b618055531c51cf3cf2edb47ef4d292fea9711697e925bc27f0a02bf",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-mast.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -942,17 +942,17 @@
       "bounds": {
         "max": [
           11.180000305175781,
-          0.4796118140220642,
-          0.4796118140220642
+          0.479611817090793,
+          0.479611817090793
         ],
         "min": [
           -7.800000190734863,
-          -0.4796118140220642,
-          -0.4796118140220642
+          -0.479611817090793,
+          -0.479611817090793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0686693954a71e1da0708ca6aabd3052403a994fc0cabe5c7ffee15edd720c00",
+      "geometryHash": "cc5be5f881e4d8190cd00c126c7270f69af5516da93e388105552feba5321b1d",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-receiver-stem.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -967,17 +967,17 @@
       "bounds": {
         "max": [
           11.359999656677246,
-          1.3998864889144897,
-          -1.5101571083068848
+          1.3998864245166618,
+          -1.510157124925679
         ],
         "min": [
           -10.399999618530273,
-          -1.3998864889144897,
-          -5.040421009063721
+          -1.3998864245166618,
+          -5.040420992444926
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f40e56ff9a15c808e11f9be0008239607dd47a645182e7da9d1ccf421099d32",
+      "geometryHash": "37dfe2e2cd19b4c54b684a2b3ff25440518eef10443faa922524cf04f50b4a3f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-shoulder-port.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -992,17 +992,17 @@
       "bounds": {
         "max": [
           11.359999656677246,
-          1.3998864889144897,
-          5.040421009063721
+          1.3998864245166618,
+          5.040420992444926
         ],
         "min": [
           -10.399999618530273,
-          -1.3998864889144897,
-          1.5101571083068848
+          -1.3998864245166618,
+          1.510157124925679
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6ec955fa4e6fbdf9db4befa415670f2f3eec3da8a2a6bd2159a979e90b2e21c",
+      "geometryHash": "bee84de163f09f6aab789ed54ac4d5ce2261bfb4627b00e950f50274dd8eb7fe",
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-shoulder-starboard.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1017,17 +1017,17 @@
       "bounds": {
         "max": [
           -4.848790168762207,
-          25.04495620727539,
-          55.32114791870117
+          25.04495660160067,
+          55.321149966421864
         ],
         "min": [
           -25.224870681762695,
-          17.684146881103516,
-          44.67885208129883
+          17.684146486778236,
+          44.678850033578136
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce7f5fed6f43e0b23777f344e2be02c5cf5f00db0c726da98835468c35d93225",
+      "geometryHash": "bc2b062b16743fdb7c86f21507ca703e4e1affe6744210a15661caa31ff01085",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-0.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1042,17 +1042,17 @@
       "bounds": {
         "max": [
           -12.850000381469727,
-          25.201868057250977,
-          45.00016403198242
+          25.20186811796342,
+          45.00016533433127
         ],
         "min": [
           -25.325000762939453,
-          22.6754207611084,
-          34.99983596801758
+          22.675420700395954,
+          34.99983466566873
         ]
       },
       "drawMode": 4,
-      "geometryHash": "077f5f28a11b11f235434fd6876ed7ef58a80903274326096add1f0490488aed",
+      "geometryHash": "e9bfe4d74f1ab8ff8f2b04c38c83363d8852be524d8bc819f2b035964f0ccb1c",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1067,17 +1067,17 @@
       "bounds": {
         "max": [
           -4.848790168762207,
-          25.04495620727539,
-          35.32114791870117
+          25.04495660160067,
+          35.32114901274755
         ],
         "min": [
           -25.224870681762695,
-          17.684146881103516,
-          24.678850173950195
+          17.684146486778236,
+          24.67884907990382
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44bbd4ee06b5dd5e284487c703097bd26246e6543816f006227233423e0aa1e3",
+      "geometryHash": "414ff08a9768e80b193afb1d4733887fa579629cad30c40be23335e8fc7851f5",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-2.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1092,17 +1092,17 @@
       "bounds": {
         "max": [
           12.62856388092041,
-          0.7251560091972351,
-          39.63032913208008
+          0.7251559743352393,
+          39.63032935695769
         ],
         "min": [
           4.53000020980835,
-          -0.7251560091972351,
-          35.02976608276367
+          -0.7251559743352393,
+          35.02976585788606
         ]
       },
       "drawMode": 4,
-      "geometryHash": "431b42b72b7896255a21507c2dd858cc5492749e94da3c7bec2f673f41228266",
+      "geometryHash": "5478a052c76cefe2892339ad78c64a5afb634289461c4b61addda3279215f50f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-jaw-port.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1117,17 +1117,17 @@
       "bounds": {
         "max": [
           12.62856388092041,
-          0.7251560091972351,
-          44.97023391723633
+          0.7251559743352393,
+          44.97023414211394
         ],
         "min": [
           4.53000020980835,
-          -0.7251560091972351,
-          40.36967086791992
+          -0.7251559743352393,
+          40.36967064304231
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34994c5a14c19c4df9305297a75b94f0ec01e254031d416252bd2cfae66c8973",
+      "geometryHash": "dc4d9c860f1368259febc41e7e24568d348328e010d5987f40a66d732901aa0f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-jaw-starboard.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1141,18 +1141,18 @@
     {
       "bounds": {
         "max": [
-          -12.901856422424316,
+          -12.901856298685605,
           24.399999618530273,
-          42.7999153137207
+          42.79991450612297
         ],
         "min": [
-          -21.395395278930664,
+          -21.395395402669376,
           -1,
-          37.2000846862793
+          37.20008549387703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fb917e8ed29e58d5c2604f49044c0e486dcdfd08bfadaefbfca7f391318e345",
+      "geometryHash": "4a318438b618055531c51cf3cf2edb47ef4d292fea9711697e925bc27f0a02bf",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-mast.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -1167,17 +1167,17 @@
       "bounds": {
         "max": [
           5.179999828338623,
-          0.4796118140220642,
-          40.479610443115234
+          0.47961180504143947,
+          40.479611805041436
         ],
         "min": [
           -13.800000190734863,
-          -0.4796118140220642,
-          39.520389556884766
+          -0.47961180504143947,
+          39.520388194958564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d56b827dd5f28836ca8c7ae255ac28ba0cf6daa2d5aec4e60f6b2e87441db70f",
+      "geometryHash": "cc5be5f881e4d8190cd00c126c7270f69af5516da93e388105552feba5321b1d",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-receiver-stem.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1192,17 +1192,17 @@
       "bounds": {
         "max": [
           5.360000133514404,
-          1.3998864889144897,
-          38.48984146118164
+          1.3998864551930352,
+          38.489842436917336
         ],
         "min": [
           -16.399999618530273,
-          -1.3998864889144897,
-          34.95957946777344
+          -1.3998864551930352,
+          34.95957849203774
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f25aad24b7bd909431dce333202eb251d384bc38a63d710ab60228e1ea3bfc6",
+      "geometryHash": "37dfe2e2cd19b4c54b684a2b3ff25440518eef10443faa922524cf04f50b4a3f",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-shoulder-port.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1217,17 +1217,17 @@
       "bounds": {
         "max": [
           5.360000133514404,
-          1.3998864889144897,
-          45.04042053222656
+          1.3998864551930352,
+          45.04042150796226
         ],
         "min": [
           -16.399999618530273,
-          -1.3998864889144897,
-          41.51015853881836
+          -1.3998864551930352,
+          41.510157563082664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "990e5132f48002670c21a173c7a29f3218aaa8c9581599162b886de178e87aba",
+      "geometryHash": "bee84de163f09f6aab789ed54ac4d5ce2261bfb4627b00e950f50274dd8eb7fe",
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-shoulder-starboard.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1242,17 +1242,17 @@
       "bounds": {
         "max": [
           39,
-          1.5003403425216675,
-          27.000335693359375
+          1.5003402694597285,
+          27.000335703604236
         ],
         "min": [
           19,
-          -1.6003403663635254,
-          12.999664306640625
+          -1.6003402933015864,
+          12.999664296395764
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26215233e90b1dfb73aa6f472f94acc03d71d23f05030a6dfadad4f4f0267648",
+      "geometryHash": "4451964e44a6d4734e349c3631f3c4d0fe088b4ecc89ba0db1356b781d49479f",
       "id": "sf.render.anvil-storm-orchard.node.collision-safe-platform.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1267,17 +1267,17 @@
       "bounds": {
         "max": [
           19,
-          0.6993011236190796,
-          20.79949378967285
+          0.6993011261329997,
+          20.799493392742697
         ],
         "min": [
           -14.5,
-          -0.6993011236190796,
-          19.20050621032715
+          -0.6993011261329997,
+          19.200506607257303
         ]
       },
       "drawMode": 4,
-      "geometryHash": "076bbc061bd8f676a6f75f50095efae2f79b64c297b08869b532d0c76ae42380",
+      "geometryHash": "f68d139782a0cf75e04a4aea4ca6e24e12280c807f5da83c5074cd1be075a22c",
       "id": "sf.render.anvil-storm-orchard.node.collision-service-bridge.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1291,18 +1291,18 @@
     {
       "bounds": {
         "max": [
-          -10.066760063171387,
-          2.4489006996154785,
+          -10.066760009816981,
+          2.44890070669793,
           0.2543199956417084
         ],
         "min": [
-          -18.93324089050293,
-          -0.44890064001083374,
+          -18.933240943857335,
+          -0.44890064709328525,
           -40.25432205200195
         ]
       },
       "drawMode": 4,
-      "geometryHash": "949d49d0b39e43454b6c298df9843ebcd52be65564bc88dab686baa7f06a4a95",
+      "geometryHash": "0ac50eec4a469fa085e1dc853f1f748958a7a1b0dd65f9980ee7d2ebfbbbe8e0",
       "id": "sf.render.anvil-storm-orchard.node.collision-spine-0.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1316,18 +1316,18 @@
     {
       "bounds": {
         "max": [
-          -10.066760063171387,
-          2.4489006996154785,
+          -10.066760009816981,
+          2.44890070669793,
           40.25432205200195
         ],
         "min": [
-          -18.93324089050293,
-          -0.44890064001083374,
+          -18.933240943857335,
+          -0.44890064709328525,
           -0.2543199956417084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e6e04d09d1bd74185390708b31ab63e68f8e3fb783fa51bbd66a06589ea0608",
+      "geometryHash": "c64e0f41e005bdb9e548e332d9492b300be08cd2283fa85647bcdf9da6280390",
       "id": "sf.render.anvil-storm-orchard.node.collision-spine-1.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1341,18 +1341,18 @@
     {
       "bounds": {
         "max": [
-          39.000091552734375,
-          24.400100708007812,
+          39.00009019042981,
+          24.40010128015383,
           55.32134246826172
         ],
         "min": [
-          -25.325090408325195,
-          -1.6001018285751343,
+          -25.32508904602063,
+          -1.600102400721152,
           -55.32134246826172
         ]
       },
       "drawMode": 4,
-      "geometryHash": "299a4e8154a328c28fb9c440e966f849e36d8223402056bf77fa039255a88408",
+      "geometryHash": "969f3fbe0955604dffd4a8b00522c6043d209fd5bf9b84045a189034acf9735d",
       "id": "sf.render.anvil-storm-orchard.node.lod0-armor.primitive.0",
       "indexCount": 25944,
       "indexed": true,
@@ -1366,18 +1366,18 @@
     {
       "bounds": {
         "max": [
-          36.2979736328125,
-          7.612100124359131,
+          36.29797198135255,
+          7.612099895350926,
           40.70000076293945
         ],
         "min": [
-          -13.88797378540039,
-          0.4079001843929291,
+          -13.887972133940444,
+          0.40790041340113437,
           -40.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b546593fde8be396fc7f3e80afb716f1adb01b55e0209ffcbcda209d5a171be",
+      "geometryHash": "17e2b0316208c12eee6e28dd02778845f5f839a9c5d139fa32598f6f382554b4",
       "id": "sf.render.anvil-storm-orchard.node.lod0-beacon-amber.primitive.0",
       "indexCount": 3948,
       "indexed": true,
@@ -1391,18 +1391,18 @@
     {
       "bounds": {
         "max": [
-          0.9436020851135254,
-          25.085859298706055,
+          0.9436019332814851,
+          25.085859443531135,
           55
         ],
         "min": [
-          -24.99957275390625,
-          18.07636833190918,
+          -24.99957260207421,
+          18.0763681870841,
           -55
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd69cbaa9ffa9c4fb8c12effa532e5167c0d0a0656fe4a90d8fffa409d846d3d",
+      "geometryHash": "3a725644bcc253dfee01aa42327be151e63bd3cf5372a375a99b9c6c305d5334",
       "id": "sf.render.anvil-storm-orchard.node.lod0-hull.primitive.0",
       "indexCount": 4500,
       "indexed": true,
@@ -1416,18 +1416,18 @@
     {
       "bounds": {
         "max": [
-          1.1524547338485718,
-          24.346073150634766,
+          1.1524547844962392,
+          24.34607340566486,
           55.13630294799805
         ],
         "min": [
-          -16.05124282836914,
-          5.728926658630371,
+          -16.051242879016808,
+          5.7289264036002745,
           -55.13630294799805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1170311367b26c412a36d521fee73af4d5a8e8791f8a0970340ca4f12fe0b86d",
+      "geometryHash": "1284c2126cc6efff33de7783b0d45d4f01814159b51698366c606ae6bde266b3",
       "id": "sf.render.anvil-storm-orchard.node.lod0-livery.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -1441,18 +1441,18 @@
     {
       "bounds": {
         "max": [
-          21.44985580444336,
-          25.20553970336914,
+          21.449854517781954,
+          25.205540098294705,
           52.54249954223633
         ],
         "min": [
-          -25.004085540771484,
-          -1.403249979019165,
+          -25.00408425411008,
+          -1.403250373944731,
           -52.54249954223633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b05c737f8652b78045ba0c00ba18e3a7182febc47a5ef985d26f0fdd02669e2",
+      "geometryHash": "7e23b8ae5e1208c0a6e10fdeb0e8d1dfd04a04ea0b65f044d0751d2e7bbad231",
       "id": "sf.render.anvil-storm-orchard.node.lod0-mechanical.primitive.0",
       "indexCount": 22548,
       "indexed": true,
@@ -1477,7 +1477,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4bd3d7e9aee0a3b47448d7d3910ff36eee3dcf1cdb319b21517e7b513f8e805",
+      "geometryHash": "9d4068b459fa85c46032e31344bdef533a725da7121ad36e4cab997079ef1752",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-port-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1502,7 +1502,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5699f04687e28e37755daede1d2d8c766f054408923e8d4561ed0c57c0b489e9",
+      "geometryHash": "117215e54a8ed3077e719e3e295277a13c96b0b8dce76be4f6e3e0880fbd01b2",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s0-starboard-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1527,7 +1527,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f913078a0fe93496ef916106e5a7527d042380952dc0728548a59751d41731f",
+      "geometryHash": "8f2777efac53ca2af551b918a3a90680d0ead3c45cd508d0d644971d8025b553",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s1-port-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1552,7 +1552,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0805962123502a070fc9d228857839d46f4e92bf065a754c8a1e6d7ad85d7d24",
+      "geometryHash": "7481e6d345a519cc5b7a605e5d4f785c761df7c38c052af4710ecf102b84a48f",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s1-starboard-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1577,7 +1577,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f0c8d5072d25bd6a65749c467ab56794501f5003106bebb1270f6f48b803ac3",
+      "geometryHash": "2123b75f93659840ba7bfea128618b658937fb8c717558e79febb1dcc29847ec",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s2-port-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1602,7 +1602,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95807b20654a7769bf6358670bbe053167fb0f348b8911d2ff65efff9a01464f",
+      "geometryHash": "7cdc53f94be240bb503713796b0672d432ad283870eeef2f62e946c7dfcec324",
       "id": "sf.render.anvil-storm-orchard.node.lod0-motion-orchard-s2-starboard-warning.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -1617,17 +1617,17 @@
       "bounds": {
         "max": [
           38.5,
-          0.4249824583530426,
-          26.7999210357666
+          0.424982460425219,
+          26.79992112871252
         ],
         "min": [
           19.5,
-          -0.02498244121670723,
-          13.200079917907715
+          -0.024982443288883605,
+          13.200079824961797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "17fc9b2222c2189b83c18c5711d477ba6ce95aa0d747e2762a56e074ee5e0aea",
+      "geometryHash": "1862750d20c87429531d292b1fa535edb933e08a24af42ded5fd1f61f13a683a",
       "id": "sf.render.anvil-storm-orchard.node.lod0-warning.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1641,18 +1641,18 @@
     {
       "bounds": {
         "max": [
-          39.000091552734375,
-          24.39870262145996,
+          39.00009019042981,
+          24.39870319360598,
           55.32134246826172
         ],
         "min": [
-          -25.325090408325195,
-          -1.6014999151229858,
+          -25.32508904602063,
+          -1.6015004872690035,
           -55.32134246826172
         ]
       },
       "drawMode": 4,
-      "geometryHash": "761c424f650303305b3052afe3564bd26270aed1b4cd1ef71b562242f43580ba",
+      "geometryHash": "7fbc7c4179099ea08cddc7b95a5b4e361c976ecff7a1b48bbcfa215139ad8a39",
       "id": "sf.render.anvil-storm-orchard.node.lod1-armor.primitive.0",
       "indexCount": 8814,
       "indexed": true,
@@ -1666,18 +1666,18 @@
     {
       "bounds": {
         "max": [
-          36.29397964477539,
-          7.60159158706665,
+          36.293979386543775,
+          7.601591374047396,
           40.69352722167969
         ],
         "min": [
-          -13.88398265838623,
-          0.41840803623199463,
+          -13.883982400154615,
+          0.4184082492512493,
           -40.69352722167969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7ca15da1ade3a272f3699616447903f929910b09daa24f97c5b4be7c066b1e6",
+      "geometryHash": "92c7b1a36a72ef0123bf5ee569b290fd056ee54ebb7ecb449b9198734baeace3",
       "id": "sf.render.anvil-storm-orchard.node.lod1-beacon-amber.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -1691,18 +1691,18 @@
     {
       "bounds": {
         "max": [
-          0.9463928937911987,
-          25.084491729736328,
+          0.9463924445726004,
+          25.084492043921767,
           54.99658203125
         ],
         "min": [
-          -24.995054244995117,
-          18.075468063354492,
+          -24.99505379577652,
+          18.075467749169054,
           -54.996089935302734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0abf78405f54e629e752a29cb5a38097e1048f129585444275bbf04288ddbd5",
+      "geometryHash": "f7ab51ec289d885153d8f877298844901a703c6e976a29b23170cebfa68a5da5",
       "id": "sf.render.anvil-storm-orchard.node.lod1-hull.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1716,18 +1716,18 @@
     {
       "bounds": {
         "max": [
-          1.1480158567428589,
-          24.350305557250977,
+          1.1480156436217381,
+          24.35030577556547,
           55.13630294799805
         ],
         "min": [
-          -13.148015022277832,
-          19.059967041015625,
+          -13.148014809156711,
+          19.05996682270113,
           -55.13630294799805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "def5242c47baa17362663521532f2f392f4c4be8e000b8bc3a1bffda05e79d2b",
+      "geometryHash": "ba58c4ea145f4dd79855f00ea40851bb73ecfc5f937fef808e6871b943a421ee",
       "id": "sf.render.anvil-storm-orchard.node.lod1-livery.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -1741,18 +1741,18 @@
     {
       "bounds": {
         "max": [
-          21.44985580444336,
-          25.200138092041016,
+          21.449854517781954,
+          25.200138825338044,
           52.54249954223633
         ],
         "min": [
-          -25.004085540771484,
-          -1.3958227634429932,
+          -25.00408425411008,
+          -1.3958234967400198,
           -52.54249954223633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88a5e4f60b842487ad981942aa1bef2f4d72350b497c4b99ace07c0c820f1378",
+      "geometryHash": "8c8b7e6918c0f294ea83fab7fca7648000923bb17a88ef718474e859cf54d532",
       "id": "sf.render.anvil-storm-orchard.node.lod1-mechanical.primitive.0",
       "indexCount": 11970,
       "indexed": true,
@@ -1777,7 +1777,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e358b8beff462be1b5a2239287891f1ad24f4baf6086780eeab9320e59c77280",
+      "geometryHash": "919487e8064c2a7cdc150da543bcaa10952ce6e0736cc7929386be5b8e990d93",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s0-port-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1802,7 +1802,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c55817f6a15eb59658049c35d84c866e0c6fd960e78ca99aa048dcbfe0fc2ae",
+      "geometryHash": "472c58858aa26f18ea72d3c630346d672c4be5584bbbd56444ae42b752d69b57",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s0-starboard-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1827,7 +1827,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e1851b2b22d6bf321efef08837cc2f17e23d11a8de2f981beb669e4b6991cf7",
+      "geometryHash": "27bf954e109b0a33ae6ca6574c37527c4d5bf5001fd1d6b4ae7ccac7d94ba205",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s1-port-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1852,7 +1852,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c855e370a732502710f5ad6585de15412ba191531dd8ad1260f435458883ddf1",
+      "geometryHash": "6e20eff92818e5d6cec64f6030f8e59e09d9d3a40dbc0048581b0864515c8f2f",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s1-starboard-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1877,7 +1877,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7219953900fbf4dee6f42fb7bbe224a9dee37ca6e2aecb2a3302590b4034d30f",
+      "geometryHash": "7861966e1bd059341ab48923a3e59cd37e4c53c77104b8cd7ac4b1e8899de668",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s2-port-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1902,7 +1902,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5f0ce053e7add6cefb7a27385792850f4a136dd67a52700f0b01f791a6b6095",
+      "geometryHash": "71a2367c95161740c18c7d6a452f338c1dc1fb0a625bfd83e3ea841a583541a1",
       "id": "sf.render.anvil-storm-orchard.node.lod1-motion-orchard-s2-starboard-warning.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1917,17 +1917,17 @@
       "bounds": {
         "max": [
           38.494850158691406,
-          0.42027613520622253,
-          26.795059204101562
+          0.4202761317608946,
+          26.795059374422376
         ],
         "min": [
           19.504507064819336,
-          -0.020187165588140488,
-          13.204448699951172
+          -0.020187162142812576,
+          13.204448529630358
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cfc22bbb0f00a849b22df18b5b56a1c6f4e100235f1b40fbe5c0000fe5b7a46",
+      "geometryHash": "38b93b5c1c316c5216c248ff576217d3ae03b0189a27f83a033ec9f1e4207dc6",
       "id": "sf.render.anvil-storm-orchard.node.lod1-warning.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -1941,18 +1941,18 @@
     {
       "bounds": {
         "max": [
-          38.97114562988281,
-          24.39871597290039,
+          38.971143603932454,
+          24.398715941005257,
           55.32134246826172
         ],
         "min": [
-          -25.327024459838867,
-          -1.574474573135376,
+          -25.32702243388851,
+          -1.5744745412402423,
           -55.32134246826172
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe848abefae33763dca86d1945094c0563605d974cc7cf0dd5739ebd094cd249",
+      "geometryHash": "93dddf3dd45e18bbd3954c09e9b3f8cdfa65093500440a8fd381fcc7748e7543",
       "id": "sf.render.anvil-storm-orchard.node.lod2-armor.primitive.0",
       "indexCount": 3006,
       "indexed": true,
@@ -1967,17 +1967,17 @@
       "bounds": {
         "max": [
           36.293663024902344,
-          0.5836944580078125,
-          26.313371658325195
+          0.5836944584743975,
+          26.31337145597464
         ],
         "min": [
           21.706336975097656,
-          0.4163054823875427,
-          13.686633110046387
+          0.41630548192095773,
+          13.686633312396943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98b0fa03df2d29972075ec7e988d13bbd68cee070e0aa78e181520ef099171cd",
+      "geometryHash": "f94e1444a283514c5755041041cd678b70937650163b71d855e165f1dc64f7b1",
       "id": "sf.render.anvil-storm-orchard.node.lod2-beacon-amber.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1991,18 +1991,18 @@
     {
       "bounds": {
         "max": [
-          0.93655925989151,
-          25.055770874023438,
+          0.9365595785236032,
+          25.055771086109523,
           54.99109649658203
         ],
         "min": [
-          -24.961854934692383,
-          18.074342727661133,
+          -24.961855253324476,
+          18.074342515575047,
           -54.989898681640625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3879d3576a4d0994b8b207b82c22da568ae64e8b6cb245ddf562f4434d03a65",
+      "geometryHash": "7feebe5611f8527a51042bf8df0f596e7d5bbc62c17b409ec4f6b583cb8bbe54",
       "id": "sf.render.anvil-storm-orchard.node.lod2-hull.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -2016,18 +2016,18 @@
     {
       "bounds": {
         "max": [
-          1.1480158567428589,
-          24.350305557250977,
+          1.1480156436217381,
+          24.35030577556547,
           55.13630294799805
         ],
         "min": [
-          -13.148015022277832,
-          19.059967041015625,
+          -13.148014809156711,
+          19.05996682270113,
           -55.13630294799805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "def5242c47baa17362663521532f2f392f4c4be8e000b8bc3a1bffda05e79d2b",
+      "geometryHash": "ba58c4ea145f4dd79855f00ea40851bb73ecfc5f937fef808e6871b943a421ee",
       "id": "sf.render.anvil-storm-orchard.node.lod2-livery.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -2041,18 +2041,18 @@
     {
       "bounds": {
         "max": [
-          21.40166473388672,
-          23.79345703125,
+          21.401663858271256,
+          23.793457909104703,
           45.03660583496094
         ],
         "min": [
-          -21.395963668823242,
-          -1.400211215019226,
+          -21.39596279320778,
+          -1.4002120928739306,
           -45.03660583496094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c6defe2596c5dac2993ed66fb27759e5a6d98dbfedd05b7fd74b7aa60a5b40b",
+      "geometryHash": "c7438298a726e797f17b65e1b45dcd89193176499563996c7258e117e74b5eec",
       "id": "sf.render.anvil-storm-orchard.node.lod2-mechanical.primitive.0",
       "indexCount": 5844,
       "indexed": true,
@@ -2077,7 +2077,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8e78f421876f3ab7e510367137a7ebf3bb6105a14c1ea38e59d92f605a23ec1",
+      "geometryHash": "28a87fb845ae5407354ad2c252ca888ec695a9e8ed1d617ae8a86e969682d4f9",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s0-port-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2102,7 +2102,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cae919dfaeb42894c76f1de0bceb9f9fbcc40cc061c40874f443f9a87129550",
+      "geometryHash": "1614bb1c4125323fefa578b26aae399616d5bdb0632a4120de823ef6052feeb7",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s0-starboard-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2127,7 +2127,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4727bd4e8bc12221f401925c014e39a70a6bb390c4d5f6b3346f800d74b09e4",
+      "geometryHash": "a439d5c1ba1270612a3642f80793214c8cbcfb9c1238ce837770dfb250f6c050",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s1-port-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2152,7 +2152,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd1a2c2da54542a689c396de87baec4479c40a38cff20e372baa0c216a81c962",
+      "geometryHash": "8252012e205e6cff0b3f5963b56c8248359083bfe3d4611eb1570b78ff7cba4b",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s1-starboard-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2177,7 +2177,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "346e73b6f2d3b08278cba2aeca8021b2f2537d2f063c2801641d49e1ff1e18fc",
+      "geometryHash": "b6fb80dbc2dac09b10310ccc914c60f58c8fc23643efb4ef63ec943c0ba4e453",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s2-port-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2202,7 +2202,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b49172f0b5a08fd39484b2c08dcb509969afdb5abf607ef152ec33ca668a42c",
+      "geometryHash": "05c2ed0ef22e7e081e4b534a05f8f581146871cccc35f480333df9859ec1d619",
       "id": "sf.render.anvil-storm-orchard.node.lod2-motion-orchard-s2-starboard-warning.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -2217,17 +2217,17 @@
       "bounds": {
         "max": [
           38.484153747558594,
-          0.408888578414917,
-          26.78394889831543
+          0.408888571419055,
+          26.783948968908923
         ],
         "min": [
           19.51584243774414,
-          -0.010223877616226673,
-          13.216052055358887
+          -0.010223870620364672,
+          13.216051984765393
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a21c55d52708884832ceec03d5006a495099d26566eb6a67515a3fc935dc9d19",
+      "geometryHash": "4fe57195e5f6b2c73c4dfa7706f3c36308848924254d7885e6c6706f2c58933f",
       "id": "sf.render.anvil-storm-orchard.node.lod2-warning.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -2415,21 +2415,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-0",
       "localTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        -29.999999046325684,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2443,42 +2443,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        -29.999999046325684,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-1",
       "localTransform": [
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
-        0,
-        0,
-        0,
+        -19.08750057220459,
+        23.938644409179688,
+        -40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2492,42 +2492,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
-        0,
-        0,
-        0,
+        -19.08750057220459,
+        23.938644409179688,
+        -40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-fin-2",
       "localTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        -50,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2541,42 +2541,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        -50,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-jaw-port",
       "localTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        -42.669952392578125,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2590,42 +2590,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        -42.669952392578125,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-jaw-starboard",
       "localTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        -37.330047607421875,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2639,42 +2639,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        -37.330047607421875,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-mast",
       "localTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
-        0,
+        -17.14862585067749,
+        11.699999809265137,
+        -40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2688,42 +2688,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
-        0,
+        -17.14862585067749,
+        11.699999809265137,
+        -40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-receiver-stem",
       "localTransform": [
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
+        -4.31000018119812,
         0,
-        0,
-        0,
+        -40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2737,42 +2737,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
+        -4.31000018119812,
         0,
-        0,
-        0,
+        -40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-shoulder-port",
       "localTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        -43.27528953552246,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2786,42 +2786,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        -43.27528953552246,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s0-shoulder-starboard",
       "localTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        -36.72471046447754,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2835,42 +2835,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        -36.72471046447754,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-0",
       "localTransform": [
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
-        0,
-        0,
-        0,
+        -9.036830365657806,
+        21.364551544189453,
+        10.000000238418579,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2884,41 +2884,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
-        0,
-        0,
-        0,
+        -9.036830365657806,
+        21.364551544189453,
+        10.000000238418579,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-1",
       "localTransform": [
-        1,
+        6.237500429153442,
         0,
         0,
         0,
         0,
-        1,
+        6.237500429153442,
         0,
         0,
         0,
         0,
-        1,
+        6.237500429153442,
         0,
-        0,
-        0,
+        -13.08750033378601,
+        23.938644409179688,
         0,
         1
       ],
@@ -2933,20 +2933,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        6.237500429153442,
         0,
         0,
         0,
         0,
-        1,
+        6.237500429153442,
         0,
         0,
         0,
         0,
-        1,
+        6.237500429153442,
         0,
-        0,
-        0,
+        -13.08750033378601,
+        23.938644409179688,
         0,
         1
       ]
@@ -2954,21 +2954,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-fin-2",
       "localTransform": [
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
-        0,
-        0,
-        0,
+        -9.036830365657806,
+        21.364551544189453,
+        -10.000000238418579,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2982,42 +2982,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
         0,
         0,
         0,
-        1,
+        10.188040316104889,
         0,
-        0,
-        0,
-        0,
+        -9.036830365657806,
+        21.364551544189453,
+        -10.000000238418579,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-jaw-port",
       "localTransform": [
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
+        14.579281330108643,
         0,
-        0,
-        0,
+        -2.6699513494968414,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3031,42 +3031,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
+        14.579281330108643,
         0,
-        0,
-        0,
+        -2.6699513494968414,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-jaw-starboard",
       "localTransform": [
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
+        14.579281330108643,
         0,
-        0,
-        0,
+        2.6699513494968414,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3080,41 +3080,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
         0,
         0,
         0,
-        1,
+        4.049281597137451,
         0,
+        14.579281330108643,
         0,
-        0,
-        0,
+        2.6699513494968414,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-mast",
       "localTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
+        -11.14862585067749,
+        11.699999809265137,
         0,
         1
       ],
@@ -3129,20 +3129,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
+        -11.14862585067749,
+        11.699999809265137,
         0,
         1
       ]
@@ -3150,19 +3150,19 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-receiver-stem",
       "localTransform": [
-        1,
+        9.490000247955322,
         0,
         0,
         0,
         0,
-        1,
+        9.490000247955322,
         0,
         0,
         0,
         0,
-        1,
+        9.490000247955322,
         0,
-        0,
+        1.690000057220459,
         0,
         0,
         1
@@ -3178,19 +3178,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.490000247955322,
         0,
         0,
         0,
         0,
-        1,
+        9.490000247955322,
         0,
         0,
         0,
         0,
-        1,
+        9.490000247955322,
         0,
-        0,
+        1.690000057220459,
         0,
         0,
         1
@@ -3199,21 +3199,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-shoulder-port",
       "localTransform": [
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
+        0.48000001907348633,
         0,
-        0,
-        0,
+        -3.2752890586853027,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3227,42 +3227,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
+        0.48000001907348633,
         0,
-        0,
-        0,
+        -3.2752890586853027,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s1-shoulder-starboard",
       "localTransform": [
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
+        0.48000001907348633,
         0,
-        0,
-        0,
+        3.2752890586853027,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3276,42 +3276,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
         0,
         0,
         0,
-        1,
+        10.87999963760376,
         0,
+        0.48000001907348633,
         0,
-        0,
-        0,
+        3.2752890586853027,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-0",
       "localTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        50,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3325,42 +3325,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        50,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-1",
       "localTransform": [
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
-        0,
-        0,
-        0,
+        -19.08750057220459,
+        23.938644409179688,
+        40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3374,42 +3374,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
         0,
         0,
         0,
-        1,
+        6.237500190734863,
         0,
-        0,
-        0,
-        0,
+        -19.08750057220459,
+        23.938644409179688,
+        40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-fin-2",
       "localTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        29.999999046325684,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3423,42 +3423,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
         0,
         0,
         0,
-        1,
+        10.188040256500244,
         0,
-        0,
-        0,
-        0,
+        -15.036830425262451,
+        21.364551544189453,
+        29.999999046325684,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-jaw-port",
       "localTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        37.330047607421875,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3472,42 +3472,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        37.330047607421875,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-jaw-starboard",
       "localTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        42.669952392578125,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3521,42 +3521,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
         0,
         0,
         0,
-        1,
+        4.04928183555603,
         0,
+        8.57928204536438,
         0,
-        0,
-        0,
+        42.669952392578125,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-mast",
       "localTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
-        0,
+        -17.14862585067749,
+        11.699999809265137,
+        40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3570,42 +3570,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
         0,
         0,
         0,
-        1,
+        12.699999809265137,
         0,
-        0,
-        0,
-        0,
+        -17.14862585067749,
+        11.699999809265137,
+        40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-receiver-stem",
       "localTransform": [
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
+        -4.31000018119812,
         0,
-        0,
-        0,
+        40,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3619,42 +3619,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
         0,
         0,
         0,
-        1,
+        9.490000009536743,
         0,
+        -4.31000018119812,
         0,
-        0,
-        0,
+        40,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-shoulder-port",
       "localTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        36.72471046447754,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3668,42 +3668,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        36.72471046447754,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-s2-shoulder-starboard",
       "localTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        43.27528953552246,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3717,42 +3717,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
         0,
         0,
         0,
-        1,
+        10.879999876022339,
         0,
+        -5.519999742507935,
         0,
-        0,
-        0,
+        43.27528953552246,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-safe-platform",
       "localTransform": [
-        1,
+        10,
         0,
         0,
         0,
         0,
-        1,
+        10,
         0,
         0,
         0,
         0,
-        1,
+        10,
         0,
-        0,
-        0,
-        0,
+        29,
+        -0.050000011920928955,
+        20,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3766,42 +3766,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        10,
         0,
         0,
         0,
         0,
-        1,
+        10,
         0,
         0,
         0,
         0,
-        1,
+        10,
         0,
-        0,
-        0,
-        0,
+        29,
+        -0.050000011920928955,
+        20,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-service-bridge",
       "localTransform": [
-        1,
+        16.75,
         0,
         0,
         0,
         0,
-        1,
+        16.75,
         0,
         0,
         0,
         0,
-        1,
+        16.75,
         0,
+        2.25,
         0,
-        0,
-        0,
+        20,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3815,42 +3815,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        16.75,
         0,
         0,
         0,
         0,
-        1,
+        16.75,
         0,
         0,
         0,
         0,
-        1,
+        16.75,
         0,
+        2.25,
         0,
-        0,
-        0,
+        20,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-spine-0",
       "localTransform": [
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
-        0,
-        0,
-        0,
+        -14.500000476837158,
+        1.0000000298023224,
+        -20.000001028180122,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3864,42 +3864,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
-        0,
-        0,
-        0,
+        -14.500000476837158,
+        1.0000000298023224,
+        -20.000001028180122,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.collision-spine-1",
       "localTransform": [
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
-        0,
-        0,
-        0,
+        -14.500000476837158,
+        1.0000000298023224,
+        20.000001028180122,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3913,41 +3913,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
         0,
         0,
         0,
-        1,
+        20.25432102382183,
         0,
-        0,
-        0,
-        0,
+        -14.500000476837158,
+        1.0000000298023224,
+        20.000001028180122,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-armor",
       "localTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.83750057220459,
+        11.399999439716339,
         0,
         1
       ],
@@ -3962,20 +3962,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.83750057220459,
+        11.399999439716339,
         0,
         1
       ]
@@ -3983,20 +3983,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        40.70000076293945,
         0,
         0,
         0,
         0,
-        1,
+        40.70000076293945,
         0,
         0,
         0,
         0,
-        1,
+        40.70000076293945,
         0,
-        0,
-        0,
+        11.204999923706055,
+        4.01000015437603,
         0,
         1
       ],
@@ -4011,20 +4011,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        40.70000076293945,
         0,
         0,
         0,
         0,
-        1,
+        40.70000076293945,
         0,
         0,
         0,
         0,
-        1,
+        40.70000076293945,
         0,
-        0,
-        0,
+        11.204999923706055,
+        4.01000015437603,
         0,
         1
       ]
@@ -4032,20 +4032,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-hull",
       "localTransform": [
-        1,
+        55,
         0,
         0,
         0,
         0,
-        1,
+        55,
         0,
         0,
         0,
         0,
-        1,
+        55,
         0,
-        0,
-        0,
+        -12.027985334396362,
+        21.581113815307617,
         0,
         1
       ],
@@ -4060,20 +4060,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55,
         0,
         0,
         0,
         0,
-        1,
+        55,
         0,
         0,
         0,
         0,
-        1,
+        55,
         0,
-        0,
-        0,
+        -12.027985334396362,
+        21.581113815307617,
         0,
         1
       ]
@@ -4081,20 +4081,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-livery",
       "localTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -7.449394047260284,
+        15.037499904632568,
         0,
         1
       ],
@@ -4109,20 +4109,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -7.449394047260284,
+        15.037499904632568,
         0,
         1
       ]
@@ -4130,20 +4130,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-mechanical",
       "localTransform": [
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
-        0,
-        0,
+        -1.7771148681640625,
+        11.901144862174988,
         0,
         1
       ],
@@ -4158,20 +4158,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
-        0,
-        0,
+        -1.7771148681640625,
+        11.901144862174988,
         0,
         1
       ]
@@ -4479,21 +4479,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod0-warning",
       "localTransform": [
-        1,
+        9.5,
         0,
         0,
         0,
         0,
-        1,
+        9.5,
         0,
         0,
         0,
         0,
-        1,
+        9.5,
         0,
-        0,
-        0,
-        0,
+        29,
+        0.2000000085681677,
+        20.000000476837158,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4507,41 +4507,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.5,
         0,
         0,
         0,
         0,
-        1,
+        9.5,
         0,
         0,
         0,
         0,
-        1,
+        9.5,
         0,
-        0,
-        0,
-        0,
+        29,
+        0.2000000085681677,
+        20.000000476837158,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-armor",
       "localTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.83750057220459,
+        11.398601353168488,
         0,
         1
       ],
@@ -4556,20 +4556,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.83750057220459,
+        11.398601353168488,
         0,
         1
       ]
@@ -4577,20 +4577,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        40.69352722167969,
         0,
         0,
         0,
         0,
-        1,
+        40.69352722167969,
         0,
         0,
         0,
         0,
-        1,
+        40.69352722167969,
         0,
-        0,
-        0,
+        11.20499849319458,
+        4.0099998116493225,
         0,
         1
       ],
@@ -4605,20 +4605,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        40.69352722167969,
         0,
         0,
         0,
         0,
-        1,
+        40.69352722167969,
         0,
         0,
         0,
         0,
-        1,
+        40.69352722167969,
         0,
-        0,
-        0,
+        11.20499849319458,
+        4.0099998116493225,
         0,
         1
       ]
@@ -4626,21 +4626,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-hull",
       "localTransform": [
-        1,
+        54.99633598327637,
         0,
         0,
         0,
         0,
-        1,
+        54.99633598327637,
         0,
         0,
         0,
         0,
-        1,
+        54.99633598327637,
         0,
-        0,
-        0,
-        0,
+        -12.02433067560196,
+        21.57997989654541,
+        0.0002460479736328125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4654,41 +4654,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        54.99633598327637,
         0,
         0,
         0,
         0,
-        1,
+        54.99633598327637,
         0,
         0,
         0,
         0,
-        1,
+        54.99633598327637,
         0,
-        0,
-        0,
-        0,
+        -12.02433067560196,
+        21.57997989654541,
+        0.0002460479736328125,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-livery",
       "localTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -5.999999582767487,
+        21.7051362991333,
         0,
         1
       ],
@@ -4703,20 +4703,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -5.999999582767487,
+        21.7051362991333,
         0,
         1
       ]
@@ -4724,20 +4724,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-mechanical",
       "localTransform": [
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
-        0,
-        0,
+        -1.7771148681640625,
+        11.902157664299011,
         0,
         1
       ],
@@ -4752,20 +4752,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
         0,
         0,
         0,
-        1,
+        52.54249954223633,
         0,
-        0,
-        0,
+        -1.7771148681640625,
+        11.902157664299011,
         0,
         1
       ]
@@ -5073,21 +5073,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod1-warning",
       "localTransform": [
-        1,
+        9.495171546936035,
         0,
         0,
         0,
         0,
-        1,
+        9.495171546936035,
         0,
         0,
         0,
         0,
-        1,
+        9.495171546936035,
         0,
-        0,
-        0,
-        0,
+        28.99967861175537,
+        0.20004448480904102,
+        19.999753952026367,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5101,41 +5101,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.495171546936035,
         0,
         0,
         0,
         0,
-        1,
+        9.495171546936035,
         0,
         0,
         0,
         0,
-        1,
+        9.495171546936035,
         0,
-        0,
-        0,
-        0,
+        28.99967861175537,
+        0.20004448480904102,
+        19.999753952026367,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-armor",
       "localTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.822060585021973,
+        11.412120699882507,
         0,
         1
       ],
@@ -5150,20 +5150,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
         0,
         0,
         0,
-        1,
+        55.32134246826172,
         0,
-        0,
-        0,
+        6.822060585021973,
+        11.412120699882507,
         0,
         1
       ]
@@ -5171,21 +5171,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-beacon-amber",
       "localTransform": [
-        1,
+        7.293663024902344,
         0,
         0,
         0,
         0,
-        1,
+        7.293663024902344,
         0,
         0,
         0,
         0,
-        1,
+        7.293663024902344,
         0,
-        0,
-        0,
-        0,
+        29,
+        0.4999999701976776,
+        20.00000238418579,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5199,42 +5199,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        7.293663024902344,
         0,
         0,
         0,
         0,
-        1,
+        7.293663024902344,
         0,
         0,
         0,
         0,
-        1,
+        7.293663024902344,
         0,
-        0,
-        0,
-        0,
+        29,
+        0.4999999701976776,
+        20.00000238418579,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-hull",
       "localTransform": [
-        1,
+        54.99049758911133,
         0,
         0,
         0,
         0,
-        1,
+        54.99049758911133,
         0,
         0,
         0,
         0,
-        1,
+        54.99049758911133,
         0,
-        0,
-        0,
-        0,
+        -12.012647837400436,
+        21.565056800842285,
+        0.000598907470703125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5248,41 +5248,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        54.99049758911133,
         0,
         0,
         0,
         0,
-        1,
+        54.99049758911133,
         0,
         0,
         0,
         0,
-        1,
+        54.99049758911133,
         0,
-        0,
-        0,
-        0,
+        -12.012647837400436,
+        21.565056800842285,
+        0.000598907470703125,
         1
       ]
     },
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-livery",
       "localTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -5.999999582767487,
+        21.7051362991333,
         0,
         1
       ],
@@ -5297,20 +5297,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
         0,
         0,
         0,
-        1,
+        55.13630294799805,
         0,
-        0,
-        0,
+        -5.999999582767487,
+        21.7051362991333,
         0,
         1
       ]
@@ -5318,20 +5318,20 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-mechanical",
       "localTransform": [
-        1,
+        45.03660583496094,
         0,
         0,
         0,
         0,
-        1,
+        45.03660583496094,
         0,
         0,
         0,
         0,
-        1,
+        45.03660583496094,
         0,
-        0,
-        0,
+        0.0028505325317382812,
+        11.196622908115387,
         0,
         1
       ],
@@ -5346,20 +5346,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        45.03660583496094,
         0,
         0,
         0,
         0,
-        1,
+        45.03660583496094,
         0,
         0,
         0,
         0,
-        1,
+        45.03660583496094,
         0,
-        0,
-        0,
+        0.0028505325317382812,
+        11.196622908115387,
         0,
         1
       ]
@@ -5667,21 +5667,21 @@
     {
       "id": "sf.render.anvil-storm-orchard.node.lod2-warning",
       "localTransform": [
-        1,
+        9.484155654907227,
         0,
         0,
         0,
         0,
-        1,
+        9.484155654907227,
         0,
         0,
         0,
         0,
-        1,
+        9.484155654907227,
         0,
-        0,
-        0,
-        0,
+        28.999998092651367,
+        0.19933235039934516,
+        20.000000476837158,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5695,21 +5695,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.anvil-storm-orchard.body",
       "worldTransform": [
-        1,
+        9.484155654907227,
         0,
         0,
         0,
         0,
-        1,
+        9.484155654907227,
         0,
         0,
         0,
         0,
-        1,
+        9.484155654907227,
         0,
-        0,
-        0,
-        0,
+        28.999998092651367,
+        0.19933235039934516,
+        20.000000476837158,
         1
       ]
     },
@@ -6360,36 +6360,36 @@
       "uri": "place_anvil_storm_orchard.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1648472,
-    "sha256": "2b73bf98ab60dddbf7394fce01b4586854c13884c81f77d0c237dfdecafccce2",
+    "bytes": 906160,
+    "sha256": "793c65e345c515ade5dcc4a816a7bd5fe04008392943a12a12ca61230ddad4f8",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        6.836533546447754,
-        11.802019894123077,
+        6.83653387827065,
+        11.80201980551285,
         0
       ],
       "max": [
-        39.000091552734375,
-        25.20553970336914,
+        39.00009019042981,
+        25.205540098294705,
         55.32134246826172
       ],
       "min": [
-        -25.327024459838867,
-        -1.6014999151229858,
+        -25.32702243388851,
+        -1.6015004872690035,
         -55.32134246826172
       ],
       "size": [
-        64.32711601257324,
-        26.807039618492126,
+        64.32711262431832,
+        26.80704058556371,
         110.64268493652344
       ]
     },
@@ -7486,20 +7486,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
-          0,
-          0,
+          6.83750057220459,
+          11.399999439716339,
           0,
           1
         ],
@@ -7513,20 +7513,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          40.70000076293945,
           0,
           0,
           0,
           0,
-          1,
+          40.70000076293945,
           0,
           0,
           0,
           0,
-          1,
+          40.70000076293945,
           0,
-          0,
-          0,
+          11.204999923706055,
+          4.01000015437603,
           0,
           1
         ],
@@ -7540,20 +7540,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55,
           0,
           0,
           0,
           0,
-          1,
+          55,
           0,
           0,
           0,
           0,
-          1,
+          55,
           0,
-          0,
-          0,
+          -12.027985334396362,
+          21.581113815307617,
           0,
           1
         ],
@@ -7567,20 +7567,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
-          0,
-          0,
+          -7.449394047260284,
+          15.037499904632568,
           0,
           1
         ],
@@ -7594,20 +7594,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          52.54249954223633,
           0,
           0,
           0,
           0,
-          1,
+          52.54249954223633,
           0,
           0,
           0,
           0,
-          1,
+          52.54249954223633,
           0,
-          0,
-          0,
+          -1.7771148681640625,
+          11.901144862174988,
           0,
           1
         ],
@@ -7621,21 +7621,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.5,
           0,
           0,
           0,
           0,
-          1,
+          9.5,
           0,
           0,
           0,
           0,
-          1,
+          9.5,
           0,
-          0,
-          0,
-          0,
+          29,
+          0.2000000085681677,
+          20.000000476837158,
           1
         ],
         "name": "LOD0_Warning",
@@ -7648,20 +7648,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
-          0,
-          0,
+          6.83750057220459,
+          11.398601353168488,
           0,
           1
         ],
@@ -7675,20 +7675,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          40.69352722167969,
           0,
           0,
           0,
           0,
-          1,
+          40.69352722167969,
           0,
           0,
           0,
           0,
-          1,
+          40.69352722167969,
           0,
-          0,
-          0,
+          11.20499849319458,
+          4.0099998116493225,
           0,
           1
         ],
@@ -7702,21 +7702,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          54.99633598327637,
           0,
           0,
           0,
           0,
-          1,
+          54.99633598327637,
           0,
           0,
           0,
           0,
-          1,
+          54.99633598327637,
           0,
-          0,
-          0,
-          0,
+          -12.02433067560196,
+          21.57997989654541,
+          0.0002460479736328125,
           1
         ],
         "name": "LOD1_Hull",
@@ -7729,20 +7729,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
-          0,
-          0,
+          -5.999999582767487,
+          21.7051362991333,
           0,
           1
         ],
@@ -7756,20 +7756,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          52.54249954223633,
           0,
           0,
           0,
           0,
-          1,
+          52.54249954223633,
           0,
           0,
           0,
           0,
-          1,
+          52.54249954223633,
           0,
-          0,
-          0,
+          -1.7771148681640625,
+          11.902157664299011,
           0,
           1
         ],
@@ -7783,21 +7783,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.495171546936035,
           0,
           0,
           0,
           0,
-          1,
+          9.495171546936035,
           0,
           0,
           0,
           0,
-          1,
+          9.495171546936035,
           0,
-          0,
-          0,
-          0,
+          28.99967861175537,
+          0.20004448480904102,
+          19.999753952026367,
           1
         ],
         "name": "LOD1_Warning",
@@ -7810,20 +7810,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
           0,
           0,
           0,
-          1,
+          55.32134246826172,
           0,
-          0,
-          0,
+          6.822060585021973,
+          11.412120699882507,
           0,
           1
         ],
@@ -7837,21 +7837,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.293663024902344,
           0,
           0,
           0,
           0,
-          1,
+          7.293663024902344,
           0,
           0,
           0,
           0,
-          1,
+          7.293663024902344,
           0,
-          0,
-          0,
-          0,
+          29,
+          0.4999999701976776,
+          20.00000238418579,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -7864,21 +7864,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          54.99049758911133,
           0,
           0,
           0,
           0,
-          1,
+          54.99049758911133,
           0,
           0,
           0,
           0,
-          1,
+          54.99049758911133,
           0,
-          0,
-          0,
-          0,
+          -12.012647837400436,
+          21.565056800842285,
+          0.000598907470703125,
           1
         ],
         "name": "LOD2_Hull",
@@ -7891,20 +7891,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
           0,
           0,
           0,
-          1,
+          55.13630294799805,
           0,
-          0,
-          0,
+          -5.999999582767487,
+          21.7051362991333,
           0,
           1
         ],
@@ -7918,20 +7918,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          45.03660583496094,
           0,
           0,
           0,
           0,
-          1,
+          45.03660583496094,
           0,
           0,
           0,
           0,
-          1,
+          45.03660583496094,
           0,
-          0,
-          0,
+          0.0028505325317382812,
+          11.196622908115387,
           0,
           1
         ],
@@ -7945,21 +7945,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.484155654907227,
           0,
           0,
           0,
           0,
-          1,
+          9.484155654907227,
           0,
           0,
           0,
           0,
-          1,
+          9.484155654907227,
           0,
-          0,
-          0,
-          0,
+          28.999998092651367,
+          0.19933235039934516,
+          20.000000476837158,
           1
         ],
         "name": "LOD2_Warning",
@@ -8478,19 +8478,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb"
   },
-  "runtimeHash": "73db37fc639e024b3123b29b8af9a8ebb66ed8edcbfe972ea20cf335ae2a6923",
+  "runtimeHash": "1e7d869b49927e4e958804ca57c1cc3b6da5c78079d9b227088db923f5092005",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          39.000091552734375,
-          25.20553970336914,
+          39.00009019042981,
+          25.205540098294705,
           55.32134246826172
         ],
         "min": [
-          -25.327024459838867,
-          -1.6014999151229858,
+          -25.32702243388851,
+          -1.6015004872690035,
           -55.32134246826172
         ]
       },

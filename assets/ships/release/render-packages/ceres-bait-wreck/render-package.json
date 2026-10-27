@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2904edf74f2a917c73962012066a2c22929be1225e65494c9a7f3a4c9536b68f",
+  "contentHash": "9ba1e3da2b1238b9f6129f3ba3f09a78717365230101ac969b4078f26af4cba9",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-hook-nav-port.dynamic",
@@ -174,17 +174,17 @@
       "bounds": {
         "max": [
           34.308284759521484,
-          13.095953941345215,
-          13.301033973693848
+          13.095953683506513,
+          13.301033804391698
         ],
         "min": [
           -33.999053955078125,
-          -13.25595760345459,
-          -13.301033973693848
+          -13.255957345615888,
+          -13.301033804391698
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6a8e10f90622a063b2a2ada49203a09679cd0b35800a31fcec90feb369de7b5",
+      "geometryHash": "2c52c5d1461aa8eb2e64468faa2c44d047b2ce143aeb6e8307e22fb6da4d862f",
       "id": "sf.render.ceres-bait-wreck.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -209,7 +209,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4503ce5940644f86a8bfbfc93ff3c4da1683e5d481f36177b2c441a1abd6be5",
+      "geometryHash": "8dd5dceb9ea81f7df5f15bf23e61d4a6bba4d6dc0b081621c7bd6d5f1443591c",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -224,17 +224,17 @@
       "bounds": {
         "max": [
           22.149999618530273,
-          -2.4716379642486572,
-          -0.43684545159339905
+          -2.471637726350325,
+          -0.43684543212279703
         ],
         "min": [
           10.949999809265137,
-          -8.645360946655273,
-          -1.3501545190811157
+          -8.645361184553606,
+          -1.3501545385517177
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81e7a808e18236d1cef3c1458c8024d10782fde46db9c7030cb5fb27e61c25bc",
+      "geometryHash": "83e4e0a4783117bcf0e44a0dc05eec2fc62d71bf3ec86d3d1f4df01238f6f0ee",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -249,17 +249,17 @@
       "bounds": {
         "max": [
           33.75,
-          10.999882698059082,
-          11.999882698059082
+          10.999882731904231,
+          11.999882731904231
         ],
         "min": [
           3.847710371017456,
-          -12.999882698059082,
-          -11.999882698059082
+          -12.999882731904231,
+          -11.999882731904231
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99355d6963986be0665891a2ca83a4f422a6cf6db094ad5c90dd8b554f8a5f97",
+      "geometryHash": "4f5307dfffc578bf9823eb070f4f2325dc23c78c43a52ca93ed30ab2e774b29e",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 4644,
       "indexed": true,
@@ -274,17 +274,17 @@
       "bounds": {
         "max": [
           34.308284759521484,
-          12.260049819946289,
-          12.44979190826416
+          12.260049720844721,
+          12.449791456966393
         ],
         "min": [
           -18.380422592163086,
-          -12.260049819946289,
-          -12.44979190826416
+          -12.260049720844721,
+          -12.449791456966393
         ]
       },
       "drawMode": 4,
-      "geometryHash": "179b4abf845464a417b3b57b34a9fefa3457ac8bc2755fe3ac70d14708d30e84",
+      "geometryHash": "2f706657ddf7f6785bdd21586c3aabcc70d785cdf53b88e9c95d017cf644e45a",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-deep.primitive.0",
       "indexCount": 2184,
       "indexed": true,
@@ -299,17 +299,17 @@
       "bounds": {
         "max": [
           21.324705123901367,
-          0.39320942759513855,
-          -4.223367214202881
+          0.39320972069375326,
+          -4.223367080706812
         ],
         "min": [
           -11.243583679199219,
-          -13.260483741760254,
-          -11.650053977966309
+          -13.26048403485887,
+          -11.650054111462378
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56f6854d53b38331eaa0511408889a6479b9b9623f9d2d6cace849583ab6325e",
+      "geometryHash": "3aff45be4d790b85006ef0d1ee88b15e74db2bb97ac8f8afc433c2ca01819329",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-faded.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -324,17 +324,17 @@
       "bounds": {
         "max": [
           28.267078399658203,
-          3.817833423614502,
-          11.876046180725098
+          3.8178332901520857,
+          11.876046267064245
         ],
         "min": [
           -16.232913970947266,
-          -0.598621666431427,
-          5.427913665771484
+          -0.5986215329690108,
+          5.427913579432337
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fe70f5ac84ecbf3051170973af676a89940221e88b93e435575b90e3b0ab41f",
+      "geometryHash": "7df1a71afe905f2f3d81e7f370373495dfaba782b10ae061751cfe6a71a03eda",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -349,17 +349,17 @@
       "bounds": {
         "max": [
           20.326086044311523,
-          11.816214561462402,
-          12.001079559326172
+          11.816214675727528,
+          12.001079556619432
         ],
         "min": [
           -34,
-          -12.968497276306152,
-          -12.001079559326172
+          -12.968497390571278,
+          -12.001079556619432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "529f4347980cc540b591e8a8d293e9e2699b25f95d2adfb8ebcd88edf0dc0527",
+      "geometryHash": "07da9d01df859769466d3f2c52e31426a6f9e051720b70e6a0a11119e4a51110",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -384,7 +384,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e87bcda6a2dc5feeddbf2087c3da9167906b7ee2bd336cc98aa18aad96b4670",
+      "geometryHash": "82895bca290741b13c5e34ebbc5a8b71a50e5d6af4f1150df6919445d39a179b",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -398,18 +398,18 @@
     {
       "bounds": {
         "max": [
-          -19.460905075073242,
-          13.098675727844238,
+          -19.460905774459633,
+          13.098675684536417,
           13.300000190734863
         ],
         "min": [
-          -21.539094924926758,
-          -13.098675727844238,
+          -21.539094225540367,
+          -13.098675684536417,
           -13.300000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dc606384c1296ebbb91c8d29252773d3c9a46bab86b5fd09619c7ae377346b9",
+      "geometryHash": "4a6d59c6b02c523267d689a51bc5e4866b76d0d4a414f919c8a52cc94d50128c",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-livery.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -424,17 +424,17 @@
       "bounds": {
         "max": [
           13,
-          10.340435028076172,
-          10.098567008972168
+          10.340434932758217,
+          10.09856705774622
         ],
         "min": [
           -30.39561653137207,
-          -11.200435638427734,
-          -1.5995889902114868
+          -11.20043554310978,
+          -1.5995890389855383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd3a4436eb366280d5e404ed4401d03ed3cda2366050ed1231be9fd6da2aaf09",
+      "geometryHash": "a9ccdb99bd962b525ad21cab1f5755b4ef1fe3cd155d0945b2c7bae8c4c5051f",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2436,
       "indexed": true,
@@ -449,17 +449,17 @@
       "bounds": {
         "max": [
           20,
-          3.7509779930114746,
-          11.801252365112305
+          3.7509783231826788,
+          11.801253018978914
         ],
         "min": [
           -18.450000762939453,
-          -12.100977897644043,
-          -11.801252365112305
+          -12.100978227815247,
+          -11.801253018978914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce7f032a4f176cf059200c0e1eb4909420894c6be47c2721ec3395e5d41e4958",
+      "geometryHash": "76cdd741eaba797a114b1d8b1117f0cd099ec72c83361551b43eef2cc5bbc01a",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1572,
       "indexed": true,
@@ -473,18 +473,18 @@
     {
       "bounds": {
         "max": [
-          12.259841918945312,
+          12.25984191917815,
           -7.640000343322754,
           1.9600000381469727
         ],
         "min": [
-          11.740158081054688,
+          11.74015808082185,
           -11.5600004196167,
           -1.9600000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3969eeeda39ccd7b02e2b3603f8fee95371110ede29d09f2a604594bdad37a80",
+      "geometryHash": "0f6ae75f24ddc3a5790b92ff35bccc79da82cd3a0be8a806dc950518c42ce0e1",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-warning.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -499,17 +499,17 @@
       "bounds": {
         "max": [
           -29.525348663330078,
-          9.87407112121582,
-          0.4740718901157379
+          9.874071529147557,
+          0.47407191061728365
         ],
         "min": [
           -30.474651336669922,
-          8.925928115844727,
-          -0.4740718901157379
+          8.92592770791299,
+          -0.47407191061728365
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d09d4a86f910c147d730d34b22009566adcb210c742a5fc470c95e32b13856a0",
+      "geometryHash": "33c293504083cf66e9611bb177ee0eb6657aacd82f2fe4af59db92e6e1be3d85",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -524,17 +524,17 @@
       "bounds": {
         "max": [
           22.149999618530273,
-          -2.5418694019317627,
-          -0.4368455111980438
+          -2.541869677731715,
+          -0.4368455215297642
         ],
         "min": [
           10.949999809265137,
-          -8.481797218322754,
-          -1.3501546382904053
+          -8.481796942522802,
+          -1.350154627958685
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b0541edb8fcde06125d4871e604078c546b949b26c11fd541968838ea1c3f07",
+      "geometryHash": "04f3827dd442c79a82589b05c0141b8eb2073595ef61745b502873626bcb07b7",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 24,
       "indexed": true,
@@ -549,17 +549,17 @@
       "bounds": {
         "max": [
           33.75,
-          10.999947547912598,
-          11.999947547912598
+          10.999947699846505,
+          11.999947699846505
         ],
         "min": [
           3.8793511390686035,
-          -12.999947547912598,
-          -11.999947547912598
+          -12.999947699846505,
+          -11.999947699846505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f47114012a20eae3a1131076d41ded1f5672d524d601899efb8ed7482281ac07",
+      "geometryHash": "826fd3f9b5d8785a168df4bee6ef4b53b00b060a087ab0a2af4f56194fbb2637",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 3204,
       "indexed": true,
@@ -574,17 +574,17 @@
       "bounds": {
         "max": [
           34.26060104370117,
-          12.26180648803711,
-          12.448163032531738
+          12.261806479101962,
+          12.448163446226209
         ],
         "min": [
           -18.380422592163086,
-          -12.26180648803711,
-          -12.448163032531738
+          -12.261806479101962,
+          -12.448163446226209
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c65247f4dbfc1cdd95d5ee61aad786e587f1eaf988ed34ca7ef1f8ab23361080",
+      "geometryHash": "0d1c76f72a4d89035ab30f39aa7a50f28f8bb2f93d882ca8e4423e56c5564c9e",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-deep.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -599,17 +599,17 @@
       "bounds": {
         "max": [
           21.316146850585938,
-          0.38283348083496094,
-          -4.226256370544434
+          0.3828335637106477,
+          -4.226256423078451
         ],
         "min": [
           -11.2346773147583,
-          -13.263538360595703,
-          -11.637040138244629
+          -13.26353844347139,
+          -11.637040085710613
         ]
       },
       "drawMode": 4,
-      "geometryHash": "745c15d32b679380ac24f804fc30aafd2c19a011d99ad4dd864c947863fbcb76",
+      "geometryHash": "d9def70fdafc666617b4c2c191e972db9787810463e92341fd53fc8911e36799",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-faded.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -624,17 +624,17 @@
       "bounds": {
         "max": [
           28.26005744934082,
-          3.809591293334961,
-          11.865296363830566
+          3.809591319801155,
+          11.865296474064689
         ],
         "min": [
           -16.227758407592773,
-          -0.6002241969108582,
-          5.435220718383789
+          -0.6002242233770523,
+          5.435220608149667
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65c857fcaa865c87414fe2fed93c626953cadc5d08139879f804ba9ce86193d1",
+      "geometryHash": "ec38487fc5f83aa58355699e556de43c6c7263195f1024c9f1555580388b12f4",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-rust.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -649,17 +649,17 @@
       "bounds": {
         "max": [
           20.318010330200195,
-          11.816546440124512,
-          12.00072193145752
+          11.816547019453937,
+          12.000721966266763
         ],
         "min": [
           -33.991451263427734,
-          -12.967209815979004,
-          -12.00072193145752
+          -12.96721039530843,
+          -12.000721966266763
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7b91f0c17d234307bde03ae8dd187bc44def93277d063eb587b7879ff71e680",
+      "geometryHash": "edaf77fb2b35eeab10535d14154475da444d511695e8dbb08c850ff21741daf8",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -698,18 +698,18 @@
     {
       "bounds": {
         "max": [
-          -19.460905075073242,
-          13.098675727844238,
+          -19.460905774459633,
+          13.098675684536417,
           13.300000190734863
         ],
         "min": [
-          -21.539094924926758,
-          -13.098675727844238,
+          -21.539094225540367,
+          -13.098675684536417,
           -13.300000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7abb132f59253ed9b925f2fed68feea51a6de523db7acb9d543c391c91b22406",
+      "geometryHash": "92d28096fddbd548bc5d8c48bf4d629e7d9a4c22d9f18c62a28179dcf1d6f340",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-livery.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -724,17 +724,17 @@
       "bounds": {
         "max": [
           12.997421264648438,
-          10.344565391540527,
-          10.098917007446289
+          10.344565256421872,
+          10.09891704761262
         ],
         "min": [
           -30.39025115966797,
-          -11.19765853881836,
-          -1.5970975160598755
+          -11.197658403699704,
+          -1.5970975562262062
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df64252f58a4b20ce29724d155f6470ab90a578f30b29810dfccc5fdd979be4f",
+      "geometryHash": "200c33720979cb2b41cca43fc2bd980f863ae849cc0070630e4c63e668125900",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-mechanical.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -749,17 +749,17 @@
       "bounds": {
         "max": [
           19.93663215637207,
-          3.749213933944702,
-          11.666996002197266
+          3.7492137896253173,
+          11.666996589355861
         ],
         "min": [
           -18.450000762939453,
-          -12.034443855285645,
-          -11.666996002197266
+          -12.03444371096626,
+          -11.666996589355861
         ]
       },
       "drawMode": 4,
-      "geometryHash": "32de0e651271701444c29e2a7f7b472cf2d07be58fc25b9256d68a3f2956ff62",
+      "geometryHash": "32f2ab38712ac637919083e5b82eb26dbed754d9827e0f169843236f35b8c5c5",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -773,18 +773,18 @@
     {
       "bounds": {
         "max": [
-          12.300277709960938,
-          -7.640087127685547,
+          12.300277724280459,
+          -7.640087085541914,
           1.9600000381469727
         ],
         "min": [
-          11.699722290039062,
-          -11.54286003112793,
+          11.699722275719541,
+          -11.542860073271562,
           -1.9600000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3aacb48e1598f469334b1ce6234b5a59104c63f6f7084cdc19d9bb47ef189898",
+      "geometryHash": "832827e2e24216f2820b4e25b61be840222af69d20addb9d9d61c83a8d44815f",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-warning.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -799,17 +799,17 @@
       "bounds": {
         "max": [
           -29.525348663330078,
-          9.87407112121582,
-          0.4740718901157379
+          9.874071529147557,
+          0.47407191061728365
         ],
         "min": [
           -30.474651336669922,
-          8.925928115844727,
-          -0.4740718901157379
+          8.92592770791299,
+          -0.47407191061728365
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d09d4a86f910c147d730d34b22009566adcb210c742a5fc470c95e32b13856a0",
+      "geometryHash": "33c293504083cf66e9611bb177ee0eb6657aacd82f2fe4af59db92e6e1be3d85",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -824,17 +824,17 @@
       "bounds": {
         "max": [
           22.149999618530273,
-          -2.5418694019317627,
-          -0.4368455111980438
+          -2.541869677731715,
+          -0.4368455215297642
         ],
         "min": [
           10.949999809265137,
-          -8.481797218322754,
-          -1.3501546382904053
+          -8.481796942522802,
+          -1.350154627958685
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d14b2db38fa0d025885b0fbbe70120a3144e257200c5c89299c24fafd4945da",
+      "geometryHash": "f1aef8f0e4c819d3a436bd8d3e342ba116cc3838f88d18921184d616d78aa6ff",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -849,17 +849,17 @@
       "bounds": {
         "max": [
           30.10175132751465,
-          10.999775886535645,
-          11.972585678100586
+          10.999775420456317,
+          11.972585898994486
         ],
         "min": [
           3.898249864578247,
-          -12.999775886535645,
-          -11.972585678100586
+          -12.999775420456317,
+          -11.972585898994486
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b42eb50bdcd56efabc9d7ccda0210fc513c306ba829936117aa0e1e2cc18d91",
+      "geometryHash": "f29657d0dbaa3f4cd2ec5024b143033e4dce9727b06d1d74ab7a474a31637692",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 1242,
       "indexed": true,
@@ -874,17 +874,17 @@
       "bounds": {
         "max": [
           34.26060104370117,
-          12.533839225769043,
-          12.328063011169434
+          12.533839536141762,
+          12.328063680228707
         ],
         "min": [
           -18.416410446166992,
-          -12.533839225769043,
-          -12.328063011169434
+          -12.533839536141762,
+          -12.328063680228707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f822ae87907d0fea96d51a914311354cb91f3e37307dda7b2e36a4d3c58669b",
+      "geometryHash": "f18fc569e426311dd2f69cca16f228e3b8bd346071b819b994ef5b222030e3a6",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-deep.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -899,17 +899,17 @@
       "bounds": {
         "max": [
           21.35386085510254,
-          0.3821403682231903,
-          -4.22582483291626
+          0.3821404745604635,
+          -4.225824737561926
         ],
         "min": [
           -11.324201583862305,
-          -13.185932159423828,
-          -11.637652397155762
+          -13.185932265761101,
+          -11.637652492510096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d158b3e2ec803084f01c7f304e53637b2076ba555e4b74fcc4ab67fd26989408",
+      "geometryHash": "fe1bc5728db6af5626e487093b897ec442e0da97ed93e146d342f05163fe0770",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-faded.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -924,17 +924,17 @@
       "bounds": {
         "max": [
           28.28023338317871,
-          3.8100674152374268,
-          11.64047622680664
+          3.810067281568549,
+          11.640476298193239
         ],
         "min": [
           -16.294435501098633,
-          -0.4832051992416382,
-          5.42638635635376
+          -0.48320506557276044,
+          5.426386284967161
         ]
       },
       "drawMode": 4,
-      "geometryHash": "932333f2fabd52ef734137d4d025a2b146eccbe7f1c0efd703a68f377260b6a9",
+      "geometryHash": "72c7aa55ee64998efcbf9ba4643dbd5d2009d7686ec81f65e7971067e9ac92cf",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-rust.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -949,17 +949,17 @@
       "bounds": {
         "max": [
           20.378419876098633,
-          12.150729179382324,
-          12.032891273498535
+          12.150728557603667,
+          12.032891060510204
         ],
         "min": [
           -34.00151824951172,
-          -12.89089584350586,
-          -12.032891273498535
+          -12.890895221727202,
+          -12.032891060510204
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2154a87391553e76bea0249df227aca9bf5b6caf0912631584a3c6d368150347",
+      "geometryHash": "a1d9048f35d8a32cf191ec2b940e275afea46705bc38d307f620fc8a8cb38dac",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -998,18 +998,18 @@
     {
       "bounds": {
         "max": [
-          -19.454448699951172,
+          -19.45444876261363,
           13.517023086547852,
-          13.281062126159668
+          13.281061991375717
         ],
         "min": [
-          -21.5467472076416,
+          -21.546747144979143,
           -13.517023086547852,
-          -13.281062126159668
+          -13.281061991375717
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a06b19a3fca0a879245ebc7e72e4c0d8083f4102194693aa95e2508a0c95057f",
+      "geometryHash": "11c1fb1e2771a608d54ca885f4b3b298ff9bb18f9954a8e883330364811bd9e2",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-livery.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -1024,17 +1024,17 @@
       "bounds": {
         "max": [
           13.00265884399414,
-          10.282036781311035,
-          1.5890625715255737
+          10.282037315295309,
+          1.589062551241404
         ],
         "min": [
           -30.320329666137695,
-          -11.180472373962402,
-          -1.594681978225708
+          -11.180472907946676,
+          -1.5946819579415383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2fe13146289024d74978f983dd628edb6f5e8b5cae3ac8c4f4fa9e954bf4a26",
+      "geometryHash": "65bbc05afc16b086a93c11394b4a9403e7b27f22c96bb1f9bf24204ab4c5c24c",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1049,17 +1049,17 @@
       "bounds": {
         "max": [
           19.93663215637207,
-          -9.16512393951416,
-          6.935802459716797
+          -9.165123643606485,
+          6.9358027327336105
         ],
         "min": [
           4.063368797302246,
-          -12.034876823425293,
-          -6.935802459716797
+          -12.034877119332968,
+          -6.9358027327336105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "287e03985b5f9c858ea505e9441f9a5338d564430236597ffbca8980b7c30c21",
+      "geometryHash": "08f0e830d83c5389536d326f55313c99a0bd7fb8e6126fd59fb75293a157db24",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1073,18 +1073,18 @@
     {
       "bounds": {
         "max": [
-          12.299882888793945,
-          -7.682986259460449,
+          12.299883195273908,
+          -7.682986218766596,
           1.9538894891738892
         ],
         "min": [
-          11.701804161071777,
-          -11.532496452331543,
+          11.701803854591814,
+          -11.532496493025397,
           -1.9499483108520508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca992b19ca7bc3dfea644c3d2932208426ac2c9cbdc0961a0bf605df8e010250",
+      "geometryHash": "f4d344eed0804079d9c8023082c79a406ab20e46a52c9a4df2b7719e56604d4e",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-warning.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1439,20 +1439,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.collision-hull",
       "localTransform": [
-        1,
+        34.153669357299805,
         0,
         0,
         0,
         0,
-        1,
+        34.153669357299805,
         0,
         0,
         0,
         0,
-        1,
+        34.153669357299805,
         0,
-        0,
-        0,
+        0.1546154022216797,
+        -0.0800018310546875,
         0,
         1
       ],
@@ -1467,20 +1467,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        34.153669357299805,
         0,
         0,
         0,
         0,
-        1,
+        34.153669357299805,
         0,
         0,
         0,
         0,
-        1,
+        34.153669357299805,
         0,
-        0,
-        0,
+        0.1546154022216797,
+        -0.0800018310546875,
         0,
         1
       ]
@@ -1488,20 +1488,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-armor",
       "localTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ],
@@ -1516,20 +1516,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ]
@@ -1537,21 +1537,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.558499455451965,
+        -0.8934999853372574,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1565,41 +1565,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.558499455451965,
+        -0.8934999853372574,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-brushedmetal",
       "localTransform": [
-        1,
+        14.951144814491272,
         0,
         0,
         0,
         0,
-        1,
+        14.951144814491272,
         0,
         0,
         0,
         0,
-        1,
+        14.951144814491272,
         0,
-        0,
-        0,
+        18.798855185508728,
+        -1,
         0,
         1
       ],
@@ -1614,20 +1614,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        14.951144814491272,
         0,
         0,
         0,
         0,
-        1,
+        14.951144814491272,
         0,
         0,
         0,
         0,
-        1,
+        14.951144814491272,
         0,
-        0,
-        0,
+        18.798855185508728,
+        -1,
         0,
         1
       ]
@@ -1635,20 +1635,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal",
       "localTransform": [
-        1,
+        27.16304302215576,
         0,
         0,
         0,
         0,
-        1,
+        27.16304302215576,
         0,
         0,
         0,
         0,
-        1,
+        27.16304302215576,
         0,
-        0,
-        0,
+        -6.836956977844238,
+        -0.576141357421875,
         0,
         1
       ],
@@ -1663,20 +1663,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        27.16304302215576,
         0,
         0,
         0,
         0,
-        1,
+        27.16304302215576,
         0,
         0,
         0,
         0,
-        1,
+        27.16304302215576,
         0,
-        0,
-        0,
+        -6.836956977844238,
+        -0.576141357421875,
         0,
         1
       ]
@@ -1684,19 +1684,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-deep",
       "localTransform": [
-        1,
+        26.344353675842285,
         0,
         0,
         0,
         0,
-        1,
+        26.344353675842285,
         0,
         0,
         0,
         0,
-        1,
+        26.344353675842285,
         0,
-        0,
+        7.963931083679199,
         0,
         0,
         1
@@ -1712,19 +1712,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        26.344353675842285,
         0,
         0,
         0,
         0,
-        1,
+        26.344353675842285,
         0,
         0,
         0,
         0,
-        1,
+        26.344353675842285,
         0,
-        0,
+        7.963931083679199,
         0,
         0,
         1
@@ -1733,21 +1733,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-faded",
       "localTransform": [
-        1,
+        16.284144401550293,
         0,
         0,
         0,
         0,
-        1,
+        16.284144401550293,
         0,
         0,
         0,
         0,
-        1,
+        16.284144401550293,
         0,
-        0,
-        0,
-        0,
+        5.040560722351074,
+        -6.433637157082558,
+        -7.936710596084595,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1761,42 +1761,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        16.284144401550293,
         0,
         0,
         0,
         0,
-        1,
+        16.284144401550293,
         0,
         0,
         0,
         0,
-        1,
+        16.284144401550293,
         0,
-        0,
-        0,
-        0,
+        5.040560722351074,
+        -6.433637157082558,
+        -7.936710596084595,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-rust",
       "localTransform": [
-        1,
+        22.249996185302734,
         0,
         0,
         0,
         0,
-        1,
+        22.249996185302734,
         0,
         0,
         0,
         0,
-        1,
+        22.249996185302734,
         0,
-        0,
-        0,
-        0,
+        6.017082214355469,
+        1.6096058785915375,
+        8.651979923248291,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1810,21 +1810,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        22.249996185302734,
         0,
         0,
         0,
         0,
-        1,
+        22.249996185302734,
         0,
         0,
         0,
         0,
-        1,
+        22.249996185302734,
         0,
-        0,
-        0,
-        0,
+        6.017082214355469,
+        1.6096058785915375,
+        8.651979923248291,
         1
       ]
     },
@@ -1880,19 +1880,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-livery",
       "localTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
+        -20.5,
         0,
         0,
         1
@@ -1908,19 +1908,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
+        -20.5,
         0,
         0,
         1
@@ -1929,21 +1929,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        21.697808265686035,
         0,
         0,
         0,
         0,
-        1,
+        21.697808265686035,
         0,
         0,
         0,
         0,
-        1,
+        21.697808265686035,
         0,
-        0,
-        0,
-        0,
+        -8.697808265686035,
+        -0.43000030517578125,
+        4.249489009380341,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1957,41 +1957,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        21.697808265686035,
         0,
         0,
         0,
         0,
-        1,
+        21.697808265686035,
         0,
         0,
         0,
         0,
-        1,
+        21.697808265686035,
         0,
-        0,
-        0,
-        0,
+        -8.697808265686035,
+        -0.43000030517578125,
+        4.249489009380341,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        19.225000381469727,
         0,
         0,
         0,
         0,
-        1,
+        19.225000381469727,
         0,
         0,
         0,
         0,
-        1,
+        19.225000381469727,
         0,
-        0,
-        0,
+        0.7749996185302734,
+        -4.174999952316284,
         0,
         1
       ],
@@ -2006,20 +2006,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        19.225000381469727,
         0,
         0,
         0,
         0,
-        1,
+        19.225000381469727,
         0,
         0,
         0,
         0,
-        1,
+        19.225000381469727,
         0,
-        0,
-        0,
+        0.7749996185302734,
+        -4.174999952316284,
         0,
         1
       ]
@@ -2027,20 +2027,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-warning",
       "localTransform": [
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
-        0,
-        0,
+        12,
+        -9.600000381469727,
         0,
         1
       ],
@@ -2055,20 +2055,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
-        0,
-        0,
+        12,
+        -9.600000381469727,
         0,
         1
       ]
@@ -2076,20 +2076,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-armor",
       "localTransform": [
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ],
@@ -2104,20 +2104,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ]
@@ -2125,21 +2125,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.511833310127258,
+        -0.8935000747442245,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2153,41 +2153,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.511833310127258,
+        -0.8935000747442245,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-brushedmetal",
       "localTransform": [
-        1,
+        14.935324430465698,
         0,
         0,
         0,
         0,
-        1,
+        14.935324430465698,
         0,
         0,
         0,
         0,
-        1,
+        14.935324430465698,
         0,
-        0,
-        0,
+        18.8146755695343,
+        -1,
         0,
         1
       ],
@@ -2202,20 +2202,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        14.935324430465698,
         0,
         0,
         0,
         0,
-        1,
+        14.935324430465698,
         0,
         0,
         0,
         0,
-        1,
+        14.935324430465698,
         0,
-        0,
-        0,
+        18.8146755695343,
+        -1,
         0,
         1
       ]
@@ -2223,20 +2223,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal",
       "localTransform": [
-        1,
+        27.154730796813965,
         0,
         0,
         0,
         0,
-        1,
+        27.154730796813965,
         0,
         0,
         0,
         0,
-        1,
+        27.154730796813965,
         0,
-        0,
-        0,
+        -6.8367204666137695,
+        -0.5753316879272461,
         0,
         1
       ],
@@ -2251,20 +2251,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        27.154730796813965,
         0,
         0,
         0,
         0,
-        1,
+        27.154730796813965,
         0,
         0,
         0,
         0,
-        1,
+        27.154730796813965,
         0,
-        0,
-        0,
+        -6.8367204666137695,
+        -0.5753316879272461,
         0,
         1
       ]
@@ -2272,19 +2272,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-deep",
       "localTransform": [
-        1,
+        26.32051181793213,
         0,
         0,
         0,
         0,
-        1,
+        26.32051181793213,
         0,
         0,
         0,
         0,
-        1,
+        26.32051181793213,
         0,
-        0,
+        7.940089225769043,
         0,
         0,
         1
@@ -2300,19 +2300,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        26.32051181793213,
         0,
         0,
         0,
         0,
-        1,
+        26.32051181793213,
         0,
         0,
         0,
         0,
-        1,
+        26.32051181793213,
         0,
-        0,
+        7.940089225769043,
         0,
         0,
         1
@@ -2321,21 +2321,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-faded",
       "localTransform": [
-        1,
+        16.27541208267212,
         0,
         0,
         0,
         0,
-        1,
+        16.27541208267212,
         0,
         0,
         0,
         0,
-        1,
+        16.27541208267212,
         0,
-        0,
-        0,
-        0,
+        5.040734767913818,
+        -6.440352439880371,
+        -7.931648254394531,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2349,42 +2349,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        16.27541208267212,
         0,
         0,
         0,
         0,
-        1,
+        16.27541208267212,
         0,
         0,
         0,
         0,
-        1,
+        16.27541208267212,
         0,
-        0,
-        0,
-        0,
+        5.040734767913818,
+        -6.440352439880371,
+        -7.931648254394531,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-rust",
       "localTransform": [
-        1,
+        22.243907928466797,
         0,
         0,
         0,
         0,
-        1,
+        22.243907928466797,
         0,
         0,
         0,
         0,
-        1,
+        22.243907928466797,
         0,
-        0,
-        0,
-        0,
+        6.016149520874023,
+        1.6046835482120514,
+        8.650258541107178,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2398,21 +2398,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        22.243907928466797,
         0,
         0,
         0,
         0,
-        1,
+        22.243907928466797,
         0,
         0,
         0,
         0,
-        1,
+        22.243907928466797,
         0,
-        0,
-        0,
-        0,
+        6.016149520874023,
+        1.6046835482120514,
+        8.650258541107178,
         1
       ]
     },
@@ -2468,19 +2468,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-livery",
       "localTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
+        -20.5,
         0,
         0,
         1
@@ -2496,19 +2496,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
+        -20.5,
         0,
         0,
         1
@@ -2517,21 +2517,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        21.693836212158203,
         0,
         0,
         0,
         0,
-        1,
+        21.693836212158203,
         0,
         0,
         0,
         0,
-        1,
+        21.693836212158203,
         0,
-        0,
-        0,
-        0,
+        -8.696414947509766,
+        -0.426546573638916,
+        4.250909745693207,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2545,41 +2545,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        21.693836212158203,
         0,
         0,
         0,
         0,
-        1,
+        21.693836212158203,
         0,
         0,
         0,
         0,
-        1,
+        21.693836212158203,
         0,
-        0,
-        0,
-        0,
+        -8.696414947509766,
+        -0.426546573638916,
+        4.250909745693207,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        19.19331645965576,
         0,
         0,
         0,
         0,
-        1,
+        19.19331645965576,
         0,
         0,
         0,
         0,
-        1,
+        19.19331645965576,
         0,
-        0,
-        0,
+        0.7433156967163086,
+        -4.142614960670471,
         0,
         1
       ],
@@ -2594,20 +2594,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        19.19331645965576,
         0,
         0,
         0,
         0,
-        1,
+        19.19331645965576,
         0,
         0,
         0,
         0,
-        1,
+        19.19331645965576,
         0,
-        0,
-        0,
+        0.7433156967163086,
+        -4.142614960670471,
         0,
         1
       ]
@@ -2615,20 +2615,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-warning",
       "localTransform": [
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
-        0,
-        0,
+        12,
+        -9.591473579406738,
         0,
         1
       ],
@@ -2643,20 +2643,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.9600000381469727,
         0,
-        0,
-        0,
+        12,
+        -9.591473579406738,
         0,
         1
       ]
@@ -2664,20 +2664,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-armor",
       "localTransform": [
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ],
@@ -2692,20 +2692,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
         0,
         0,
         0,
-        1,
+        0.4746513366699219,
         0,
-        0,
-        0,
+        -30,
+        9.399999618530273,
         0,
         1
       ]
@@ -2713,21 +2713,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.511833310127258,
+        -0.8935000747442245,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2741,41 +2741,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        5.599999904632568,
         0,
-        0,
-        0,
-        0,
+        16.549999713897705,
+        -5.511833310127258,
+        -0.8935000747442245,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-brushedmetal",
       "localTransform": [
-        1,
+        13.1017507314682,
         0,
         0,
         0,
         0,
-        1,
+        13.1017507314682,
         0,
         0,
         0,
         0,
-        1,
+        13.1017507314682,
         0,
-        0,
-        0,
+        17.000000596046448,
+        -1,
         0,
         1
       ],
@@ -2790,20 +2790,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        13.1017507314682,
         0,
         0,
         0,
         0,
-        1,
+        13.1017507314682,
         0,
         0,
         0,
         0,
-        1,
+        13.1017507314682,
         0,
-        0,
-        0,
+        17.000000596046448,
+        -1,
         0,
         1
       ]
@@ -2811,20 +2811,20 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal",
       "localTransform": [
-        1,
+        27.189969062805176,
         0,
         0,
         0,
         0,
-        1,
+        27.189969062805176,
         0,
         0,
         0,
         0,
-        1,
+        27.189969062805176,
         0,
-        0,
-        0,
+        -6.811549186706543,
+        -0.3700833320617676,
         0,
         1
       ],
@@ -2839,20 +2839,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        27.189969062805176,
         0,
         0,
         0,
         0,
-        1,
+        27.189969062805176,
         0,
         0,
         0,
         0,
-        1,
+        27.189969062805176,
         0,
-        0,
-        0,
+        -6.811549186706543,
+        -0.3700833320617676,
         0,
         1
       ]
@@ -2860,19 +2860,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-deep",
       "localTransform": [
-        1,
+        26.338505744934082,
         0,
         0,
         0,
         0,
-        1,
+        26.338505744934082,
         0,
         0,
         0,
         0,
-        1,
+        26.338505744934082,
         0,
-        0,
+        7.92209529876709,
         0,
         0,
         1
@@ -2888,19 +2888,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        26.338505744934082,
         0,
         0,
         0,
         0,
-        1,
+        26.338505744934082,
         0,
         0,
         0,
         0,
-        1,
+        26.338505744934082,
         0,
-        0,
+        7.92209529876709,
         0,
         0,
         1
@@ -2909,21 +2909,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-faded",
       "localTransform": [
-        1,
+        16.339031219482422,
         0,
         0,
         0,
         0,
-        1,
+        16.339031219482422,
         0,
         0,
         0,
         0,
-        1,
+        16.339031219482422,
         0,
-        0,
-        0,
-        0,
+        5.014829635620117,
+        -6.401895895600319,
+        -7.931738615036011,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2937,42 +2937,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        16.339031219482422,
         0,
         0,
         0,
         0,
-        1,
+        16.339031219482422,
         0,
         0,
         0,
         0,
-        1,
+        16.339031219482422,
         0,
-        0,
-        0,
-        0,
+        5.014829635620117,
+        -6.401895895600319,
+        -7.931738615036011,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-rust",
       "localTransform": [
-        1,
+        22.287334442138672,
         0,
         0,
         0,
         0,
-        1,
+        22.287334442138672,
         0,
         0,
         0,
         0,
-        1,
+        22.287334442138672,
         0,
-        0,
-        0,
-        0,
+        5.992898941040039,
+        1.6634311079978943,
+        8.5334312915802,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2986,21 +2986,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        22.287334442138672,
         0,
         0,
         0,
         0,
-        1,
+        22.287334442138672,
         0,
         0,
         0,
         0,
-        1,
+        22.287334442138672,
         0,
-        0,
-        0,
-        0,
+        5.992898941040039,
+        1.6634311079978943,
+        8.5334312915802,
         1
       ]
     },
@@ -3056,19 +3056,19 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-livery",
       "localTransform": [
-        1,
+        13.517023086547852,
         0,
         0,
         0,
         0,
-        1,
+        13.517023086547852,
         0,
         0,
         0,
         0,
-        1,
+        13.517023086547852,
         0,
-        0,
+        -20.500597953796387,
         0,
         0,
         1
@@ -3084,19 +3084,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        13.517023086547852,
         0,
         0,
         0,
         0,
-        1,
+        13.517023086547852,
         0,
         0,
         0,
         0,
-        1,
+        13.517023086547852,
         0,
-        0,
+        -20.500597953796387,
         0,
         0,
         1
@@ -3105,21 +3105,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        21.661494255065918,
         0,
         0,
         0,
         0,
-        1,
+        21.661494255065918,
         0,
         0,
         0,
         0,
-        1,
+        21.661494255065918,
         0,
-        0,
-        0,
-        0,
+        -8.658835411071777,
+        -0.4492177963256836,
+        -0.0028097033500671387,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3133,41 +3133,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        21.661494255065918,
         0,
         0,
         0,
         0,
-        1,
+        21.661494255065918,
         0,
         0,
         0,
         0,
-        1,
+        21.661494255065918,
         0,
-        0,
-        0,
-        0,
+        -8.658835411071777,
+        -0.4492177963256836,
+        -0.0028097033500671387,
         1
       ]
     },
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        7.936631679534912,
         0,
         0,
         0,
         0,
-        1,
+        7.936631679534912,
         0,
         0,
         0,
         0,
-        1,
+        7.936631679534912,
         0,
-        0,
-        0,
+        12.000000476837158,
+        -10.600000381469727,
         0,
         1
       ],
@@ -3182,20 +3182,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        7.936631679534912,
         0,
         0,
         0,
         0,
-        1,
+        7.936631679534912,
         0,
         0,
         0,
         0,
-        1,
+        7.936631679534912,
         0,
-        0,
-        0,
+        12.000000476837158,
+        -10.600000381469727,
         0,
         1
       ]
@@ -3203,21 +3203,21 @@
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-warning",
       "localTransform": [
-        1,
+        1.95191890001297,
         0,
         0,
         0,
         0,
-        1,
+        1.95191890001297,
         0,
         0,
         0,
         0,
-        1,
+        1.95191890001297,
         0,
-        0,
-        0,
-        0,
+        12.000843524932861,
+        -9.607741355895996,
+        0.0019705891609191895,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3231,21 +3231,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-bait-wreck.body",
       "worldTransform": [
-        1,
+        1.95191890001297,
         0,
         0,
         0,
         0,
-        1,
+        1.95191890001297,
         0,
         0,
         0,
         0,
-        1,
+        1.95191890001297,
         0,
-        0,
-        0,
-        0,
+        12.000843524932861,
+        -9.607741355895996,
+        0.0019705891609191895,
         1
       ]
     },
@@ -3308,14 +3308,14 @@
       "uri": "place_ceres_bait_wreck.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 595112,
-    "sha256": "12b28e1d4de56581995f7f84c48b9f4c99d0074ec8a3b60a21713372a13dfca1",
+    "bytes": 388632,
+    "sha256": "08eae27fb1da567cc80be60d304b50f5b53620cd26c85a1fe481a35eb7d5f753",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3328,17 +3328,17 @@
       "max": [
         34.308284759521484,
         13.517023086547852,
-        13.301033973693848
+        13.301033804391698
       ],
       "min": [
         -34.00151824951172,
         -13.517023086547852,
-        -13.301033973693848
+        -13.301033804391698
       ],
       "size": [
         68.3098030090332,
         27.034046173095703,
-        26.602067947387695
+        26.602067608783397
       ]
     },
     "hidden": [
@@ -3654,20 +3654,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
-          0,
-          0,
+          -30,
+          9.399999618530273,
           0,
           1
         ],
@@ -3681,21 +3681,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
-          0,
-          0,
-          0,
+          16.549999713897705,
+          -5.558499455451965,
+          -0.8934999853372574,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -3708,20 +3708,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.951144814491272,
           0,
           0,
           0,
           0,
-          1,
+          14.951144814491272,
           0,
           0,
           0,
           0,
-          1,
+          14.951144814491272,
           0,
-          0,
-          0,
+          18.798855185508728,
+          -1,
           0,
           1
         ],
@@ -3735,20 +3735,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.16304302215576,
           0,
           0,
           0,
           0,
-          1,
+          27.16304302215576,
           0,
           0,
           0,
           0,
-          1,
+          27.16304302215576,
           0,
-          0,
-          0,
+          -6.836956977844238,
+          -0.576141357421875,
           0,
           1
         ],
@@ -3762,19 +3762,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          26.344353675842285,
           0,
           0,
           0,
           0,
-          1,
+          26.344353675842285,
           0,
           0,
           0,
           0,
-          1,
+          26.344353675842285,
           0,
-          0,
+          7.963931083679199,
           0,
           0,
           1
@@ -3789,21 +3789,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.284144401550293,
           0,
           0,
           0,
           0,
-          1,
+          16.284144401550293,
           0,
           0,
           0,
           0,
-          1,
+          16.284144401550293,
           0,
-          0,
-          0,
-          0,
+          5.040560722351074,
+          -6.433637157082558,
+          -7.936710596084595,
           1
         ],
         "name": "LOD0_deadmetal_faded",
@@ -3816,21 +3816,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          22.249996185302734,
           0,
           0,
           0,
           0,
-          1,
+          22.249996185302734,
           0,
           0,
           0,
           0,
-          1,
+          22.249996185302734,
           0,
-          0,
-          0,
-          0,
+          6.017082214355469,
+          1.6096058785915375,
+          8.651979923248291,
           1
         ],
         "name": "LOD0_deadmetal_rust",
@@ -3871,19 +3871,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
-          0,
+          -20.5,
           0,
           0,
           1
@@ -3898,21 +3898,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.697808265686035,
           0,
           0,
           0,
           0,
-          1,
+          21.697808265686035,
           0,
           0,
           0,
           0,
-          1,
+          21.697808265686035,
           0,
-          0,
-          0,
-          0,
+          -8.697808265686035,
+          -0.43000030517578125,
+          4.249489009380341,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -3925,20 +3925,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.225000381469727,
           0,
           0,
           0,
           0,
-          1,
+          19.225000381469727,
           0,
           0,
           0,
           0,
-          1,
+          19.225000381469727,
           0,
-          0,
-          0,
+          0.7749996185302734,
+          -4.174999952316284,
           0,
           1
         ],
@@ -3952,20 +3952,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.9600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.9600000381469727,
           0,
-          0,
-          0,
+          12,
+          -9.600000381469727,
           0,
           1
         ],
@@ -3979,20 +3979,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4746513366699219,
           0,
           0,
           0,
           0,
-          1,
+          0.4746513366699219,
           0,
           0,
           0,
           0,
-          1,
+          0.4746513366699219,
           0,
-          0,
-          0,
+          -30,
+          9.399999618530273,
           0,
           1
         ],
@@ -4006,21 +4006,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
-          0,
-          0,
-          0,
+          16.549999713897705,
+          -5.511833310127258,
+          -0.8935000747442245,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -4033,20 +4033,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.935324430465698,
           0,
           0,
           0,
           0,
-          1,
+          14.935324430465698,
           0,
           0,
           0,
           0,
-          1,
+          14.935324430465698,
           0,
-          0,
-          0,
+          18.8146755695343,
+          -1,
           0,
           1
         ],
@@ -4060,20 +4060,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.154730796813965,
           0,
           0,
           0,
           0,
-          1,
+          27.154730796813965,
           0,
           0,
           0,
           0,
-          1,
+          27.154730796813965,
           0,
-          0,
-          0,
+          -6.8367204666137695,
+          -0.5753316879272461,
           0,
           1
         ],
@@ -4087,19 +4087,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          26.32051181793213,
           0,
           0,
           0,
           0,
-          1,
+          26.32051181793213,
           0,
           0,
           0,
           0,
-          1,
+          26.32051181793213,
           0,
-          0,
+          7.940089225769043,
           0,
           0,
           1
@@ -4114,21 +4114,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.27541208267212,
           0,
           0,
           0,
           0,
-          1,
+          16.27541208267212,
           0,
           0,
           0,
           0,
-          1,
+          16.27541208267212,
           0,
-          0,
-          0,
-          0,
+          5.040734767913818,
+          -6.440352439880371,
+          -7.931648254394531,
           1
         ],
         "name": "LOD1_deadmetal_faded",
@@ -4141,21 +4141,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          22.243907928466797,
           0,
           0,
           0,
           0,
-          1,
+          22.243907928466797,
           0,
           0,
           0,
           0,
-          1,
+          22.243907928466797,
           0,
-          0,
-          0,
-          0,
+          6.016149520874023,
+          1.6046835482120514,
+          8.650258541107178,
           1
         ],
         "name": "LOD1_deadmetal_rust",
@@ -4196,19 +4196,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
-          0,
+          -20.5,
           0,
           0,
           1
@@ -4223,21 +4223,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.693836212158203,
           0,
           0,
           0,
           0,
-          1,
+          21.693836212158203,
           0,
           0,
           0,
           0,
-          1,
+          21.693836212158203,
           0,
-          0,
-          0,
-          0,
+          -8.696414947509766,
+          -0.426546573638916,
+          4.250909745693207,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -4250,20 +4250,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.19331645965576,
           0,
           0,
           0,
           0,
-          1,
+          19.19331645965576,
           0,
           0,
           0,
           0,
-          1,
+          19.19331645965576,
           0,
-          0,
-          0,
+          0.7433156967163086,
+          -4.142614960670471,
           0,
           1
         ],
@@ -4277,20 +4277,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.9600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.9600000381469727,
           0,
-          0,
-          0,
+          12,
+          -9.591473579406738,
           0,
           1
         ],
@@ -4304,20 +4304,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4746513366699219,
           0,
           0,
           0,
           0,
-          1,
+          0.4746513366699219,
           0,
           0,
           0,
           0,
-          1,
+          0.4746513366699219,
           0,
-          0,
-          0,
+          -30,
+          9.399999618530273,
           0,
           1
         ],
@@ -4331,21 +4331,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          5.599999904632568,
           0,
-          0,
-          0,
-          0,
+          16.549999713897705,
+          -5.511833310127258,
+          -0.8935000747442245,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -4358,20 +4358,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.1017507314682,
           0,
           0,
           0,
           0,
-          1,
+          13.1017507314682,
           0,
           0,
           0,
           0,
-          1,
+          13.1017507314682,
           0,
-          0,
-          0,
+          17.000000596046448,
+          -1,
           0,
           1
         ],
@@ -4385,20 +4385,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.189969062805176,
           0,
           0,
           0,
           0,
-          1,
+          27.189969062805176,
           0,
           0,
           0,
           0,
-          1,
+          27.189969062805176,
           0,
-          0,
-          0,
+          -6.811549186706543,
+          -0.3700833320617676,
           0,
           1
         ],
@@ -4412,19 +4412,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          26.338505744934082,
           0,
           0,
           0,
           0,
-          1,
+          26.338505744934082,
           0,
           0,
           0,
           0,
-          1,
+          26.338505744934082,
           0,
-          0,
+          7.92209529876709,
           0,
           0,
           1
@@ -4439,21 +4439,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.339031219482422,
           0,
           0,
           0,
           0,
-          1,
+          16.339031219482422,
           0,
           0,
           0,
           0,
-          1,
+          16.339031219482422,
           0,
-          0,
-          0,
-          0,
+          5.014829635620117,
+          -6.401895895600319,
+          -7.931738615036011,
           1
         ],
         "name": "LOD2_deadmetal_faded",
@@ -4466,21 +4466,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          22.287334442138672,
           0,
           0,
           0,
           0,
-          1,
+          22.287334442138672,
           0,
           0,
           0,
           0,
-          1,
+          22.287334442138672,
           0,
-          0,
-          0,
-          0,
+          5.992898941040039,
+          1.6634311079978943,
+          8.5334312915802,
           1
         ],
         "name": "LOD2_deadmetal_rust",
@@ -4521,19 +4521,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.517023086547852,
           0,
           0,
           0,
           0,
-          1,
+          13.517023086547852,
           0,
           0,
           0,
           0,
-          1,
+          13.517023086547852,
           0,
-          0,
+          -20.500597953796387,
           0,
           0,
           1
@@ -4548,21 +4548,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.661494255065918,
           0,
           0,
           0,
           0,
-          1,
+          21.661494255065918,
           0,
           0,
           0,
           0,
-          1,
+          21.661494255065918,
           0,
-          0,
-          0,
-          0,
+          -8.658835411071777,
+          -0.4492177963256836,
+          -0.0028097033500671387,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -4575,20 +4575,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.936631679534912,
           0,
           0,
           0,
           0,
-          1,
+          7.936631679534912,
           0,
           0,
           0,
           0,
-          1,
+          7.936631679534912,
           0,
-          0,
-          0,
+          12.000000476837158,
+          -10.600000381469727,
           0,
           1
         ],
@@ -4602,21 +4602,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.95191890001297,
           0,
           0,
           0,
           0,
-          1,
+          1.95191890001297,
           0,
           0,
           0,
           0,
-          1,
+          1.95191890001297,
           0,
-          0,
-          0,
-          0,
+          12.000843524932861,
+          -9.607741355895996,
+          0.0019705891609191895,
           1
         ],
         "name": "LOD2_Warning",
@@ -4631,7 +4631,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb"
   },
-  "runtimeHash": "67cf205ceb4d6de6811d2ccd57d436634ecbbf0f9454071e02ac04ccc3be934d",
+  "runtimeHash": "097133e1d8b41bff84629bfc76dedb9a81c22e8b5aefbb49aa3dc7c0c3cad1c4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4639,12 +4639,12 @@
         "max": [
           34.308284759521484,
           13.517023086547852,
-          13.301033973693848
+          13.301033804391698
         ],
         "min": [
           -34.00151824951172,
           -13.517023086547852,
-          -13.301033973693848
+          -13.301033804391698
         ]
       },
       "id": "sf.render.ceres-bait-wreck.body",

@@ -279,3 +279,118 @@ test('continuous sector crossing retains authentic camp outcome', () => {
     h.sim.dispose();
   }
 });
+
+function extractionLine(h, { ownerId = h.s.playerId, generation = h.captive.occupantGeneration } = {}) {
+  const owner = h.s.entities.get(ownerId);
+  const id = 'camp_line_' + Object.keys(h.s.combat.attachments.byId).length;
+  const attachment = { id, defId: 'tether_standard', ownerId, targetId: h.captive.id,
+    ownerGeneration: owner.occupantGeneration, targetGeneration: generation, state: 'active' };
+  h.s.combat.attachments.byId[id] = attachment;
+  h.sim.bus.emit('tether:attached', { actorId: ownerId, targetId: h.captive.id, attachmentId: id });
+  return attachment;
+}
+function cutExtractionLine(h, attachment, reason = 'tether_cut') {
+  attachment.state = 'broken';
+  attachment.breakReason = reason;
+  h.sim.bus.emit('tether:broken', { actorId: attachment.ownerId, ownerId: attachment.ownerId,
+    targetId: attachment.targetId, attachmentId: attachment.id, reason });
+}
+function outsideCamp(h, range = 361) {
+  h.captive.pos.x = h.live.data.camp.x + range;
+  h.captive.pos.z = h.live.data.camp.z;
+}
+test('a player can pull the original captive clear and deliberately cut it free without burning the camp', () => {
+  const h = setup();
+  try {
+    const line = extractionLine(h);
+    outsideCamp(h);
+    h.tick();
+    assert.equal(freed(h), false, 'crossing the perimeter is a cue, not liberation while still on the line');
+    cutExtractionLine(h, line);
+    h.tick(); h.tick();
+    assert.equal(freed(h), true);
+    assert.equal(h.captive.data.ai.activity.reason, 'press_camp:released');
+    assert.equal(h.base.alive, true);
+    assert.ok(h.guards.every(g => g.alive));
+    assert.equal(h.grants.length, 0, 'no destroyed-base award for a living camp');
+    assert.deepEqual(h.reps, [['faction_free', 2, 'press_camp_captive_extracted']]);
+    assert.deepEqual(h.outcomes, ['captive_extracted']);
+  } finally { h.sim.dispose(); }
+});
+test('a cut inside the perimeter cannot become a rescue by later drifting outside it', () => {
+  const h = setup();
+  try {
+    const line = extractionLine(h);
+    outsideCamp(h, 359);
+    cutExtractionLine(h, line);
+    outsideCamp(h);
+    h.tick();
+    assert.equal(freed(h), false);
+    assert.equal(h.reps.length, 0);
+    assert.equal(h.outcomes.length, 0);
+  } finally { h.sim.dispose(); }
+});
+test('a snapped Line can be reattached outside the ring, but only a deliberate cut completes that original tow', () => {
+  const h = setup();
+  try {
+    const first = extractionLine(h);
+    outsideCamp(h);
+    cutExtractionLine(h, first, 'physics_break');
+    h.tick();
+    assert.equal(freed(h), false);
+    const second = extractionLine(h);
+    cutExtractionLine(h, second);
+    h.tick();
+    assert.deepEqual(h.outcomes, ['captive_extracted']);
+    assert.equal(h.base.alive, true);
+    assert.equal(h.grants.length, 0);
+  } finally { h.sim.dispose(); }
+});
+for (const kind of ['wrong_owner', 'wrong_life', 'unseen_outside', 'captured']) {
+  test('a nonlethal extraction refuses unearned or foreign captive control: ' + kind, () => {
+    const h = setup();
+    try {
+      if (kind === 'unseen_outside') outsideCamp(h);
+      const line = extractionLine(h, {
+        ownerId: kind === 'wrong_owner' ? h.guards[0].id : h.s.playerId,
+        generation: kind === 'wrong_life' ? h.captive.occupantGeneration + 1 : h.captive.occupantGeneration,
+      });
+      outsideCamp(h);
+      if (kind === 'captured') {
+        h.captive.data.vesselId = 'owned_camp_mule';
+        h.s.player.ownedShips.push({ vesselId: 'owned_camp_mule' });
+      }
+      cutExtractionLine(h, line);
+      h.tick();
+      assert.equal(freed(h), false);
+      assert.equal(h.grants.length, 0);
+      assert.equal(h.reps.length, 0);
+      assert.equal(h.outcomes.length, 0);
+    } finally { h.sim.dispose(); }
+  });
+}
+test('a rescue settles before synchronous freed-captive radio subscribers can reenter it', () => {
+  const h = setup();
+  try {
+    const line = extractionLine(h);
+    outsideCamp(h);
+    h.sim.bus.on('comms:log', () => h.tick());
+    cutExtractionLine(h, line);
+    h.tick();
+    assert.deepEqual(h.outcomes, ['captive_extracted']);
+    assert.equal(h.reps.length, 1);
+  } finally { h.sim.dispose(); }
+});
+test('the release must happen before the raid deadline and does not replay after cleanup', () => {
+  const h = setup();
+  try {
+    const line = extractionLine(h);
+    outsideCamp(h);
+    h.s.simTime = h.live.deadlineAt;
+    cutExtractionLine(h, line);
+    h.tick();
+    assert.deepEqual(h.outcomes, ['raid_over']);
+    assert.equal(freed(h), false);
+    assert.equal(h.reps.length, 0);
+  } finally { h.sim.dispose(); }
+});

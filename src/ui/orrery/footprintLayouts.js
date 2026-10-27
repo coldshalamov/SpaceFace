@@ -81,7 +81,7 @@ ${S} .fp-chain { display:flex !important; flex-direction:column; gap:clamp(8px, 
 ${S} .fp-cell { display:flex !important; flex-direction:column; align-items:stretch; gap:clamp(6px, 1.1vh, 10px); min-width:0; }
 ${S} .fp-row { position:relative; display:flex; flex-direction:column; gap:1px; min-width:0; }
 ${S} .fp-node { ${PLAIN} ${BODY} position:relative !important; display:flex !important; align-items:baseline; justify-content:space-between; gap:16px; width:100% !important; max-width:100% !important;
-  min-height:0 !important; height:auto !important; padding:2px 0 !important; margin:0 !important; font-size:calc(15px * var(--fp-s, 1)) !important; line-height:1.3 !important; text-align:left !important;
+  min-height:var(--dp-row, 34px) !important; height:auto !important; padding:4px 0 !important; margin:0 !important; font-size:calc(15px * var(--fp-s, 1)) !important; line-height:1.3 !important; text-align:left !important;
   white-space:normal !important; color:rgb(${BONE} / .92) !important; cursor:pointer; outline:none !important; text-shadow:none !important; }
 ${S} .fp-node::after { display:none !important; content:none !important; }
 ${S} .fp-node__w { flex:1 1 auto; min-width:0; }
@@ -184,7 +184,7 @@ ${S} :focus-visible { outline:none !important; }
   ${S} .fp-answer .k-word.orr-lampkey { min-height:38px !important; font-size:calc(13.5px * var(--fp-s, 1)) !important; margin:2px 0 !important; }
   ${S} .fp-trace__read .k-sentence { font-size:calc(13.5px * var(--fp-s, 1)) !important; }
   ${S} .fp-node { font-size:calc(14px * var(--fp-s, 1)) !important; padding:1px 0 !important; }
-  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:28px !important; }
+  ${S} .fp-answer .k-word:not(.orr-lampkey) { min-height:var(--dp-row, 34px) !important; }
   ${S} .fp-answer .k-word-sub { font-size:calc(12.5px * var(--fp-s, 1)) !important; }
 }
 /* compact desktop (960×540): the reading column tightens so its verbs and their costs read on one or two lines instead

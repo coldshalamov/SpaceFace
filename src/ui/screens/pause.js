@@ -5,7 +5,8 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
 // the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
 // the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
-// Built on Deckplate (src/ui/deckplate/); this file owns no CSS. styles/pause.css is gone with the
+// Built on Deckplate (src/ui/deckplate/); this file owns no CSS beyond the photo deck's inline
+// seating (enterPhoto: the sheet had placed the bar mid-air, see the comment there). styles/pause.css is gone with the
 // 2026-09-22 migration: it existed to claw back the seam spacing that kept the EXIT keys 22px under
 // the pane's lower edge, and dp-frame's scrolling column is why that cannot happen any more.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
@@ -613,6 +614,10 @@ function renderFlightBrief(ctx) {
 let photo = null;
 // FB-085: the pause route owns P (BINDINGS.photo) — the handler lives while this screen is top.
 let pausePhotoKeyHandler = null;
+// The Capture button's acknowledgement label reverts after this long (the result is a saved
+// file the page cannot show — photo mode hides the receipt rails, kit.css body.k-photo).
+const PHOTO_ACK_MS = 1400;
+let photoCaptureAckTimer = 0;
 let pauseRootEl = null;
 // The narrow-window switch (≤760 wide, or a narrow window too tall for the dial, takes the column).
 // mount reads it once, so a resize across it while pause is up must remount, or the sheet keeps the
@@ -896,14 +901,28 @@ function enterPhoto(rootEl, ctx) {
   const bar = el('div', 'sf-photo-bar');
   bar.setAttribute('role', 'region');
   bar.setAttribute('aria-label', 'Photo mode');
-  const exposure = document.createElement('input');
+  // The scales ride the kit's .k-range instrument (bone hairline + tick thumb), the same slider
+  // the settings Scales use, with the same explicit slider ARIA (views/settingsControls.js).
+  const exposure = el('input', 'k-range');
   exposure.type = 'range';
   exposure.min = String(PHOTO_EXPOSURE_MIN);
   exposure.max = String(PHOTO_EXPOSURE_MAX);
   exposure.step = '0.05';
   exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
   exposure.setAttribute('aria-label', 'Exposure');
-  exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
+  exposure.setAttribute('role', 'slider');
+  exposure.setAttribute('aria-valuemin', String(PHOTO_EXPOSURE_MIN));
+  exposure.setAttribute('aria-valuemax', String(PHOTO_EXPOSURE_MAX));
+  const paintExposureAria = () => {
+    const v = Number(exposure.value);
+    exposure.setAttribute('aria-valuenow', String(v));
+    exposure.setAttribute('aria-valuetext', (Number.isFinite(v) ? v : PHOTO_EXPOSURE_DEFAULT).toFixed(2) + '×');
+  };
+  paintExposureAria();
+  exposure.addEventListener('input', () => {
+    paintExposureAria();
+    syncPhotoExposure(ctx, exposure.value);
+  });
   // FB-085: the filter flag finally does something — the Look control cycles the three authored
   // grades (the grade stage itself lives on the render graph; selection lives here). The graph
   // route is opt-in: on the default bloom route no grade stage exists, so the control that can
@@ -921,7 +940,7 @@ function enterPhoto(rootEl, ctx) {
   }
   // Photo FOV rides the one video.fov setting the chase camera already reads (settings slider
   // bounds 35–90); nothing new to persist — the settings route owns it.
-  const fov = document.createElement('input');
+  const fov = el('input', 'k-range');
   fov.type = 'range';
   fov.min = '35';
   fov.max = '90';
@@ -929,10 +948,31 @@ function enterPhoto(rootEl, ctx) {
   const currentFov = state && state.settings && state.settings.video && Number(state.settings.video.fov);
   fov.value = String(Number.isFinite(currentFov) ? Math.round(currentFov) : 50);
   fov.setAttribute('aria-label', 'Photo field of view');
-  fov.addEventListener('input', () => syncPhotoFov(ctx, fov.value));
+  fov.setAttribute('role', 'slider');
+  fov.setAttribute('aria-valuemin', '35');
+  fov.setAttribute('aria-valuemax', '90');
+  const paintFovAria = () => {
+    fov.setAttribute('aria-valuenow', fov.value);
+    fov.setAttribute('aria-valuetext', fov.value + ' degrees');
+  };
+  paintFovAria();
+  fov.addEventListener('input', () => {
+    paintFovAria();
+    syncPhotoFov(ctx, fov.value);
+  });
   const captureBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', PHOTO_CAPTURE_LABEL);
   captureBtn.type = 'button';
-  captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
+  // The capture's result is a saved file off-page (a download or the desktop photo folder), and
+  // photo mode hides the receipt rails — so the key itself names the outcome, then reverts.
+  captureBtn.addEventListener('click', () => {
+    const result = runPhotoCapture(ctx);
+    if (photoCaptureAckTimer) clearTimeout(photoCaptureAckTimer);
+    captureBtn.textContent = result && result.ok ? 'Captured' : 'No frame';
+    photoCaptureAckTimer = setTimeout(() => {
+      photoCaptureAckTimer = 0;
+      captureBtn.textContent = PHOTO_CAPTURE_LABEL;
+    }, PHOTO_ACK_MS);
+  });
   const exposureControl = el('label', 'sf-photo-control');
   exposureControl.appendChild(el('span', 'k-t-fine', 'Exposure'));
   exposureControl.appendChild(exposure);
@@ -943,9 +983,20 @@ function enterPhoto(rootEl, ctx) {
   fovControl.appendChild(fov);
   bar.appendChild(fovControl);
   bar.appendChild(captureBtn);
+  // Seat the deck on the bottom frame. #screens flex-centres unpositioned children, which parked
+  // this bar mid-air over the subject the player is framing; the hint (k-fine) owns the bottom
+  // left, so the deck takes the bottom centre, one k-margin step above it. Seated without a
+  // transform — kit settle animates transform to none, so translateX centring would fight it.
+  bar.style.position = 'absolute';
+  bar.style.left = '0';
+  bar.style.right = '0';
+  bar.style.width = 'fit-content';
+  bar.style.marginInline = 'auto';
+  bar.style.bottom = 'var(--k-margin, 24px)';
   host.appendChild(hint);
   host.appendChild(bar);
   settle(hint, { from: 'bottom', state: 'photo-hint' });
+  settle(bar, { from: 'bottom', delay: 60, state: 'photo-bar' });
   const onKey = (ev) => {
     if (ev.key !== 'Escape') return;
     ev.preventDefault();
@@ -974,6 +1025,7 @@ function enterPhoto(rootEl, ctx) {
 function exitPhoto(rootEl, ctx) {
   if (!photo) return;
   clearTimeout(photo.fade);
+  if (photoCaptureAckTimer) { clearTimeout(photoCaptureAckTimer); photoCaptureAckTimer = 0; }
   window.removeEventListener('keydown', photo.onKey, true);
   if (photo.onMove) {
     window.removeEventListener('keydown', photo.onMove, true);

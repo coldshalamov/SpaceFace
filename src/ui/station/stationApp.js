@@ -817,6 +817,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     receiptEl.querySelector('.sx-receipt__delta').textContent = delta;
     void receiptEl.offsetWidth;
     receiptEl.classList.add('is-live');
+    keepReceiptOffControls();
     effects.receipt();
     // One line of text on the world; it fades by the kit's k-out, no plate, no pulse.
     receiptTimer = setTimeout(() => {
@@ -915,6 +916,33 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }[reason.slice(8)] || `${titleCaseWords(reason.slice(8))} COMPLETE`;
     showReceipt('BERTH SERVICE', serviceResult, `${p.delta < 0 ? '−' : '+'}${fmtCr(Math.abs(p.delta))} cr`);
   });
+
+  // A live receipt must never stand on a control. The ORRERY sheet anchors it right of the comms
+  // word (left: calc(100% + 40px)), which on wide windows is ON the Undock key — the bench walk
+  // measured UNDOCK unreachable for the receipt's 3.6 s life ("centre hit reaches
+  // span.sx-receipt__delta"). The sheet already owns the resolution of this exact collision at
+  // narrower widths — under 1500 px it moves the receipt below the comms line, and the 651–800
+  // rules say it outright: "on its old anchor the receipt landed over UNDOCK". Same resolution
+  // here, applied only when the wide anchor would cover a control: the line moves above the rail,
+  // right-aligned, touching no control's centre. The sheet keeps the resting look; this only
+  // steps the live line out of the click path. (Inline !important is required to out-rank the
+  // sheet's own !important anchor.)
+  function keepReceiptOffControls() {
+    if (!receiptEl || receiptEl.hidden) return;
+    const r = receiptEl.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const guards = [launchEl, commsToggle, helpEl, dock.el];
+    const hits = guards.some((el) => {
+      if (!el || !el.getBoundingClientRect) return false;
+      const c = el.getBoundingClientRect();
+      return r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
+    });
+    if (!hits) return;
+    receiptEl.style.setProperty('left', 'auto', 'important');
+    receiptEl.style.setProperty('right', '0', 'important');
+    receiptEl.style.setProperty('top', 'auto', 'important');
+    receiptEl.style.setProperty('bottom', 'calc(100% + 10px)', 'important');
+  }
 
   // ---------- dock actions ----------
   function actionCosts() {

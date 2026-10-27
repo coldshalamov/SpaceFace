@@ -40,7 +40,8 @@ function freshBody(i = -1) {
     x: VESPER.anchor.x + offset.x, z: VESPER.anchor.z + offset.z, vx: 0, vz: 0, rot: 0, angVel: 0 };
 }
 export function freshVesperMemory() {
-  return { version: 1, met: false, visits: 0, performances: 0, reverseHeard: false,
+  return { version: 1, met: false, visits: 0, performances: 0,
+    visitPresence: 'unknown', returnPending: false, returnHeard: false, reverseHeard: false,
     unisonHeard: false, quietHeard: false, mutedUntil: 0, hub: freshBody(),
     bells: [freshBody(0), freshBody(1), freshBody(2)] };
 }
@@ -49,6 +50,11 @@ export function normalizeVesperMemory(raw, now = 0) {
   if (!raw || raw.version !== 1 || typeof raw !== 'object') return out;
   for (const key of ['met', 'reverseHeard', 'unisonHeard', 'quietHeard']) out[key] = raw[key] === true;
   for (const key of ['visits', 'performances']) out[key] = Math.floor(finite(raw[key], 0, 0, 1e6));
+  // Additive v1 migration: old saves have no trustworthy departure receipt.
+  out.visitPresence = ['inside', 'away'].includes(raw.visitPresence) ? raw.visitPresence : 'unknown';
+  out.returnHeard = raw.returnHeard === true && out.performances > 0 && out.met;
+  out.returnPending = raw.returnPending === true && out.performances > 0 && out.met
+    && !out.returnHeard && out.visitPresence !== 'unknown';
   out.mutedUntil = finite(raw.mutedUntil, 0, 0, Math.max(0, Number.isFinite(now) ? now : 0) + VESPER.mutedSeconds);
   function body(value, i) {
     const b = freshBody(i); if (!value || typeof value !== 'object') return b;

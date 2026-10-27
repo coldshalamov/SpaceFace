@@ -1,15 +1,17 @@
 // Credits — ORRERY reel (design/frontend/ORRERY.md §6 Meta: "Credits: Scroll Reveal over the Drift Field").
 // Every section on one continuous reel that scrolls over a field of drifting light; each line rises out of
 // the dark as the reel brings it up. The signature: scrolling turns the orrery. The emblem stands beside
-// the reel with the five sections as bodies on its orbit; the reel's scroll turns it, and the amber Hand
+// the reel with the sections as bodies on its orbit; the reel's scroll turns it, and the amber Hand
 // catches the section being read. Picking a section on the ladder rolls the reel, which swings the
 // orrery to it. A progress arc reads how far through the reel you are. Third-party notices PQ-033.00.
-// Unique chrome: styles/credits.css, composed over by src/ui/orrery/settingsLayouts.js.
+// The emblem is credits' own (src/ui/orrery/creditsLayouts.js — its body spacing follows the section
+// count). Unique chrome: styles/credits.css, composed over by src/ui/orrery/settingsLayouts.js.
 // Data from scripts/write-credits.mjs.
 import { CREDITS } from '../../data/credits.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
-import { injectOrrerySettings, createDriftField, createCreditsOrrery, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
+import { injectOrrerySettings, createDriftField, createReelProgress, revealReel, attachSpotlight } from '../orrery/settingsLayouts.js';
+import { createCreditsOrrery } from '../orrery/creditsLayouts.js';
 import { reducedMotion } from '../orrery/motion.js';
 
 const CREDITS_SHEET_ID = 'of-credits-css';
@@ -27,13 +29,15 @@ function ensureCreditsStyles() {
   head.appendChild(link);
 }
 
+// The reel's heads and the emblem's bodies carry `label` in full; the ladder's rungs carry `tab`, a
+// one-line word — the ladder condenses to fit its column, it never wraps a rung (ORRERY.md §3.4).
 const SECTIONS = [
-  { id: 'made', label: 'Made by' },
-  { id: 'type', label: 'Type' },
-  { id: 'libraries', label: 'Libraries' },
-  { id: 'assets', label: 'Assets' },
-  { id: 'fonts', label: 'Fonts and licences' },
-  { id: 'notices', label: 'Third-party notices' },
+  { id: 'made', label: 'Made by', tab: 'Made by' },
+  { id: 'type', label: 'Type', tab: 'Type' },
+  { id: 'libraries', label: 'Libraries', tab: 'Libraries' },
+  { id: 'assets', label: 'Assets', tab: 'Assets' },
+  { id: 'fonts', label: 'Fonts and licences', tab: 'Fonts' },
+  { id: 'notices', label: 'Third-party notices', tab: 'Notices' },
 ];
 
 /** How far below the reel's top edge a section's head sits when it is the one being read. */
@@ -146,7 +150,7 @@ export const creditsScreen = {
     rootEl.appendChild(title);
 
     const hang = el('nav', 'k-hang');
-    const sectionWords = words(SECTIONS.map((s) => ({ label: s.label, action: s.id, current: s.id === this._section })), {
+    const sectionWords = words(SECTIONS.map((s) => ({ label: s.tab, action: s.id, current: s.id === this._section })), {
       size: 'emph',
       ariaLabel: 'Credits sections',
       onPick: (action) => this._select(action),
@@ -273,7 +277,6 @@ export const creditsScreen = {
       switch (s.id) {
         case 'made': {
           const made = el('div', 'of-credits-made orr-cr-line');
-          made.appendChild(el('p', 'of-credits-kicker fh-legend', 'Made by'));
           made.appendChild(el('h2', 'of-credits-name fh-hero', c.madeBy));
           if (c.version) made.appendChild(el('p', 'of-credits-ver fh-data', 'v' + c.version));
           made.appendChild(el('p', 'k-row__sub fh-fine', 'design, code and art'));

@@ -28,8 +28,8 @@ import { localizeText } from '../../localization/gameLocalization.js';
  */
 export const TITLE_PLATE_SRC = new URL('../../../assets/ui/backdrops/backdrop-title.jpg', import.meta.url).href;
 
-// The eyebrow's standing contract line, resolved through the localization phrase layer.
-export const TITLE_STATUS_LINE = 'Contract 47-A remains open';
+// The eyebrow's standing status line, resolved through the localization phrase layer.
+export const TITLE_STATUS_LINE = 'Flight Systems Online';
 
 export function createTitleFrame(root) {
   root.classList.add('of-title', 'dp-frame', 'dp-frame--screen', 'dp-frame--split');
@@ -48,9 +48,9 @@ export function createTitleFrame(root) {
 
   const head = el('header', 'dp-frame__head');
   const title = el('div', 'dp-title');
-  // The eyebrow does a job instead of decorating one: it is where the live contract line lives, so
+  // The eyebrow does a job instead of decorating one: it is where the live status line lives, so
   // the status strip that used to float loose near the bottom of the frame now sits in the one
-  // place a reader is already looking. Its lamp bead is lit whenever there is something open.
+  // place a reader is already looking. Its lamp bead is lit whenever systems are active.
   const status = el('p', 'dp-title__eyebrow');
   status.dataset.role = 'title-status';
   status.dataset.live = '1';

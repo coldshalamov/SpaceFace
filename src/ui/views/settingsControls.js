@@ -134,6 +134,23 @@ export function paneBuilder(pane) {
       li.appendChild(el('div', 'k-caps', text));
       return li;
     },
+    /**
+     * One accessibility-checklist row: the item's label left, its beaded ready/off state right —
+     * the .orr-set-check instrument the ORRERY settings layout dresses (settingsLayouts.js), not a
+     * flat sentence. `ok` lights the bead (data-state="ready"); the hidden separator keeps the
+     * spoken reading "Label: ready" for a screen reader.
+     */
+    checklistRow(labelText, ok) {
+      list = null;
+      const p = el('p', 'k-sentence orr-set-check');
+      p.appendChild(el('span', 'orr-set-check__label', labelText));
+      p.appendChild(el('span', 'orr-set-check__sep', ': '));
+      const state = el('span', 'orr-set-check__state', ok ? 'ready' : 'off');
+      state.dataset.state = ok ? 'ready' : 'off';
+      p.appendChild(state);
+      pane.appendChild(p);
+      return p;
+    },
     /** A quiet sentence between lists. */
     note(text) {
       list = null;

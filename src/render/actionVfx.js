@@ -9,6 +9,7 @@ import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
+import { chooseActionSlotVictim } from '../presentation/telegraphPriority.js';
 
 const recipe=(verb,color,life=.65,extra={})=>Object.freeze({verb,life,
   primitive:actionPrimitiveForVerb(verb),continuous:verb==='repair'||verb==='transfer',...extra,
@@ -31,6 +32,7 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'chain:primeEnded':recipe('cool',0x759cbb,.5),
   'charge:combo':recipe('combo',0xffdc93,.65),
   'beam:repaired':recipe('repair',0x84ffd2,.45),
+  'salvageWatch:repairWork':recipe('repair',0x84ffd2,.45,{surfaceWork:true}),
   'beam:transferred':recipe('transfer',0x9bdfff,.45),
   'bombs:commanded':recipe('command',0xffca86,.55),
   'ship:boostPreKick':recipe('ignition',0xa9eaff,.24),
@@ -88,6 +90,24 @@ function field(state,id){const list=state.fields?.active;if(list)for(const f of 
 // These two receipts are published exclusively by the player-owned mining/repair tool.
 // No other action may silently borrow the player's identity or position.
 const PLAYER_TOOL_EVENTS=new Set(['beam:repaired','beam:transferred']);
+
+// This scene-owned receipt can cross a batched worker reply after an actor was recycled.
+// Never borrow the player or a new occupant; old pulses expire from authoritative sim time.
+function validWatchRepair(p, state) {
+  if (state.mode !== 'flight' || !p || typeof p.encounterId !== 'string' || !p.encounterId
+    || typeof p.sectorId !== 'string' || p.sectorId !== state.world?.currentSectorId
+    || !Number.isFinite(p.simTime) || !Number.isFinite(state.simTime)
+    || state.simTime < p.simTime || state.simTime - p.simTime >= 0.45
+    || !Number.isSafeInteger(p.sourceId) || !Number.isSafeInteger(p.targetId)
+    || p.sourceId === p.targetId
+    || !Number.isSafeInteger(p.sourceGeneration) || !Number.isSafeInteger(p.targetGeneration)) return false;
+  const source = entity(state, p.sourceId), target = entity(state, p.targetId);
+  return !!source && !!target && source.alive !== false && target.alive !== false
+    && source.type === 'ship' && target.type === 'ship' && valid(source.pos) && valid(target.pos)
+    && source.occupantGeneration === p.sourceGeneration
+    && target.occupantGeneration === p.targetGeneration;
+}
+
 function localOffset(pos,body,out,prefix){
   const a=finite(body.rot),c=Math.cos(a),s=Math.sin(a),dx=pos.x-body.pos.x,dz=pos.z-body.pos.z;
   out[prefix+'x']=c*dx+s*dz;out[prefix+'z']=-s*dx+c*dz;
@@ -110,6 +130,7 @@ export class ActionVfx {
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
+    if(name==='salvageWatch:repairWork'&&!validWatchRepair(p,state))return false;
     p=resolveAdditionalActionVfxReceipt(name,p,state);if(!p)return false;
     const entry=ACTION_VFX_RECIPES[name];if(!entry)return false;
     const selectedRecipe=entry.variants?.[p.kind]??entry;
@@ -127,7 +148,14 @@ export class ActionVfx {
     for(const s of this.slots)if(s.event===name&&s.kind===(p.kind??null)&&s.id===id&&s.alive){slot=s;break;}
     if(slot&&now-slot.last<.14)return false;
     if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
-    if(!slot)return false;
+    if(!slot){
+      // Pool full. Only a telegraph may displace anything, and only a lower-ranked answer (never a
+      // telegraph at or above its own consequence/time-to-contact): a tell already being read must
+      // not be deleted because a receipt asked for the last slot (presentation/telegraphPriority.js).
+      const victim=chooseActionSlotVictim(this.slots,{event:name,kind:p.kind??null},now);
+      if(victim<0)return false;
+      slot=this.slots[victim];slot.alive=false;this.live=Math.max(0,this.live-1);
+    }
     const sustained=slot.alive&&recipe.continuous;
     if(!slot.alive)this.live++;
     slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
@@ -137,7 +165,8 @@ export class ActionVfx {
     slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
     if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
-    slot.last=now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
+    slot.watchReceipt=name==='salvageWatch:repairWork'?{...p}:null;
+    slot.last=name==='salvageWatch:repairWork'?p.simTime:now;slot.radius=Math.max(2.5,Math.min(24,finite(target?.radius,finite(p.radius,5))));
     if(recipe.verb==='arm')slot.radius=Math.max(6,slot.radius*1.5);
     if(recipe.verb==='shove')slot.radius=Math.max(8,Math.min(24,finite(p.blastRadius,100)*.14));
     const heading=valid(p.direction)?p.direction:valid(p.dir)?p.dir:valid(p.normal)?p.normal:null;
@@ -302,6 +331,8 @@ export class ActionVfx {
     readFrameOrigin(state,this.origin);this.batch.begin(now,reduced,flash);this.live=0;
     for(const s of this.slots){
       if(!s.alive)continue;
+      if(s.event==='salvageWatch:repairWork'&&(!validWatchRepair(s.watchReceipt,state)
+        ||entity(state,s.id)!==s.target||entity(state,s.sourceId)!==s.source)){s.alive=false;continue;}
       const since=now-(s.recipe.continuous?s.last:s.born);
       if(s.cmEffect){
         const source=entity(state,s.sourceId),cm=source?.data?.cm;

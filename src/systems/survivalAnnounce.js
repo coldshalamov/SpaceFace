@@ -6,6 +6,8 @@
 // teaches an archetype's counter the first time the player meets it, names an elite's affix trick
 // the first time a marked hull carries it, and marks a wave cleared —
 // or says plainly when the spawn cap starved a wave so the player never mistakes it for a clear.
+// It also names the watchdog's stall release, so a room that resumes spawning after a starved
+// hold never reads as the sim quietly glitching back to life.
 //
 // It is READ-ONLY over the run. It never writes state.run (runSession owns that), never spawns,
 // and uses no RNG at all — every line is a pure function of the plan and the receipts. FB-025
@@ -371,6 +373,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
+    this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -416,6 +419,7 @@ export const survivalAnnounce = {
     this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
     this._broodTeleLines = 0;      // telegraph lines spent this wave
     this._affixLines = 0;          // affix first-sight lines spent this wave
+    this._stallSpokeWave = 0;      // the wave the stall release last spoke on
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -614,6 +618,25 @@ export const survivalAnnounce = {
       ? `${capitalize(countWord(stored))} ${stored === 1 ? 'hostile' : 'hostiles'}`
       : 'Hostile reinforcement';
     this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
+  },
+
+  /**
+   * D195 — the stall watchdog's release, heard. A pressure hold that froze an owed quota is
+   * lifted after nine suppressed seconds and the stream's own law resumes the round — the room
+   * visibly refills after a dead lull with no other word for it, so the net says why, once per
+   * wave and counted in the same budget. 'objective' like the surge telegraph: a state of the
+   * round, not a danger beat. Marked on a successful speak, so a line crowded out of this wave's
+   * budget can still be said by a later release instead of being lost silently.
+   */
+  _onStallReleased(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    if (this._stallSpokeWave === wave) return;
+    const spoke = this._say('objective', `survival:w${wave}:stall`,
+      'The room breathes again — the pack is inbound.', 5);
+    if (spoke) this._stallSpokeWave = wave;
   },
 
   /**

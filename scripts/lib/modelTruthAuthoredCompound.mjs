@@ -33,10 +33,14 @@ export function authoredCompoundMeasurement(row) {
 
 // The optional angleDeg has the native planar proxy convention: +X turns toward
 // +Z. Rapier's quatFromYaw uses -sin(yaw/2) for quaternion Y; this is not glTF's
-// positive rotation about +Y. Omitted yaw alone means the legacy axis-aligned box.
+// positive rotation about +Y. Forge's source certificate also spells this same
+// native planar yaw `angleY` in radians. Explicit degrees retain precedence.
+// Omitted yaw alone means the legacy axis-aligned box.
 function boxAngleDeg(box) {
   if (['rot', 'yaw', 'rotation', 'rotationY'].some(key => box[key] !== undefined)) return NaN;
-  return box.angleDeg === undefined ? 0 : box.angleDeg;
+  if (box.angleDeg !== undefined) return box.angleDeg;
+  if (box.angleY !== undefined) return Number.isFinite(box.angleY) ? box.angleY * 180 / Math.PI : NaN;
+  return 0;
 }
 
 function sameBoxAngle(a, b) {

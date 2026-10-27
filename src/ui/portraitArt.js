@@ -37,7 +37,9 @@ export function drawProceduralAvatar(canvas, contact) {
   ctx2.quadraticCurveTo(w * 0.5, h * 0.55, w * 0.88, h);
   ctx2.closePath();
   ctx2.fill();
-  ctx2.strokeStyle = 'rgba(79,143,221,.7)';
+  // warm bone, not the old cold blue: the fallback face obeys the same rest-light law as the
+  // instrument around it (design/frontend/ORRERY.md §3.3 — rest light is warm bone, never blue)
+  ctx2.strokeStyle = 'rgba(236,230,216,.65)';
   ctx2.lineWidth = 2;
   ctx2.beginPath();
   ctx2.moveTo(w * 0.34, h * 0.4);

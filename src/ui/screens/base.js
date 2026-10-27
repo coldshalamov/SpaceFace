@@ -11,6 +11,7 @@ import {
   CLAIMABLE_BODY_SITES,
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { escapeHtml } from '../comms.js';
 import { icon } from '../station/icons.js';
 import { BINDINGS } from '../bindings.js';
@@ -45,7 +46,7 @@ function injectStyle() {
   backdrop-filter:blur(18px) saturate(1.15);
   border:0; border-radius:0; box-shadow:none;
   padding:0; min-width:0; max-width:min(94vw, 1120px);
-  overflow:hidden; isolation:isolate; z-index:101;
+  gap:0; overflow:hidden; isolation:isolate; z-index:101;
   -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   -webkit-mask-composite:source-in;
   mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
@@ -84,8 +85,9 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
 #screens .orr-base #sf-base {
   --k-signal: var(--dp-lamp);
   position:relative; z-index:1;
+  flex:1 1 auto; min-height:0;
   display:flex; flex-direction:column; gap:14px;
-  padding:52px 56px 48px; min-width:0; min-height:0;
+  padding:52px 56px 30px; min-width:0;
   overflow-y:auto; overscroll-behavior:contain; pointer-events:auto;
   scrollbar-width:thin; scrollbar-color:rgb(var(--orr-bone) / .22) transparent;
   color:var(--orr-ink);
@@ -106,38 +108,44 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
   font-size:14px; line-height:1.45; color:var(--orr-ink); margin:0; padding:0;
 }
 #screens .orr-base #sf-base .base-sub + .base-sub { color:var(--orr-dim); }
-/* The foot (chart key, Close, Dispatch) stands at the plate's bottom edge whenever the plate scrolls, on a
-   fade in the glass tone: the way out is never scrolled away, and the fade says there is more above it.
-   The offsets mirror #sf-base's own padding (52px 56px 48px; 28px 40px 24px on short screens). */
-#screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
-  margin:38px -56px -48px; padding:14px 56px 48px; position:sticky; bottom:-48px; z-index:3;
+/* The foot (chart key, Close, Dispatch) is a band of glass at the plate's bottom edge, OUTSIDE the
+   #sf-base scroller (the plate is a flex column: scroller flex:1 above, band flex:none below). It
+   never overlays the column's text — at any scroll position the fold cuts the content at the
+   scroller's own edge and the way out stands clear below it, so nothing is ever buried. */
+#screens .orr-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
+  flex:none; position:relative; z-index:3;
+  margin:0; padding:14px 56px;
   background:rgb(26 35 48 / .995); }
-/* The foot is one solid band of glass, so the identity copy scrolling under it is hidden, not smeared
-   under Esc / Close / Dispatch. The fade that says "more above" stands just above the band, where the
-   top 14px of the old gradient used to be (padding and margin give those 14px back, so the foot sits
-   exactly where it did). */
-#screens .orr-base #sf-base .base-foot::before { content:""; position:absolute; left:0; right:0; bottom:100%; height:14px;
-  pointer-events:none; background:linear-gradient(to top, rgb(26 35 48 / .995), rgb(26 35 48 / 0)); }
-#screens .orr-base #sf-base .base-foot .orr-base__chartkey { margin-right:auto; }
-#screens .orr-base #sf-base .orr-base__esc, #screens .orr-base #sf-base .orr-base__key {
+#screens .orr-base .base-foot .orr-base__chartkey { margin-right:auto; }
+#screens .orr-base .orr-base__esc, #screens .orr-base .orr-base__key {
   display:inline-flex; align-items:center; justify-content:center;
-  min-width:30px; padding:4px 10px;
-  border:1px solid rgb(var(--orr-bone) / .55);
-  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  min-width:24px; padding:4px 2px; border:0;
   font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
   font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .95); white-space:nowrap;
+  color:rgb(var(--orr-bone) / .6); white-space:nowrap;
 }
-#screens .orr-base #sf-base .orr-base__esc::before, #screens .orr-base #sf-base .orr-base__key::before { display:none; }
+#screens .orr-base .orr-base__esc::before, #screens .orr-base .orr-base__key::before { display:none; }
+/* A blocked verb is a dotted word, not a bordered chip: disabled reads as dim + dotted
+   underline (the ORRERY family's disabled verb), never as another box on the glass. */
 #screens .orr-base #sf-base .k-word.orr-base__chip:disabled {
-  color:rgb(var(--orr-bone) / .78);
-  border:1px solid rgb(var(--orr-bone) / .5);
-  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
-  padding:5px 12px; opacity:1;
+  color:rgb(var(--orr-bone) / .55);
+  border:0; clip-path:none; padding:4px 2px; opacity:1;
+  text-decoration:underline dotted rgb(var(--orr-bone) / .4);
+  text-decoration-thickness:1px; text-underline-offset:5px;
 }
 #screens .orr-base #sf-base .k-word.orr-base__chip:disabled::after { display:none; }
-#screens .orr-base #sf-base .orr-base__chartkey .orr-base__key { margin-left:10px; }
-#screens .orr-base #sf-base .orr-lampkey.orr-base__lamp {
+/* The legacy deckplate sheet (src/ui/deckplate/screens.js, "THE LAST OLD PANELS") paints
+   .base-spec.active and the :hover states of slots/identities/modules with field fills —
+   filled boxes on the glass. This instrument keeps its boxes off: the active identity is the
+   amber tick and the ACTIVE word, and hover is the brightening tick, never a fill. Doubled
+   .orr-base outranks the legacy selectors (which win on element count at equal id+class). */
+#screens .orr-base.orr-base #sf-base .base-spec.active,
+#screens .orr-base.orr-base #sf-base .base-plan--ok,
+#screens .orr-base.orr-base #sf-base .base-plan--warn,
+#screens .orr-base.orr-base #sf-base .base-plan--bad { background:none; }
+#screens .orr-base.orr-base #sf-base :is(.base-slot, .base-spec, .base-mod):is(:hover, :focus-within) { background:none; }
+#screens .orr-base .orr-base__chartkey .orr-base__key { margin-left:10px; }
+#screens .orr-base .orr-lampkey.orr-base__lamp {
   min-width:180px; min-height:52px !important; justify-content:center;
 }
 #screens .orr-base #sf-base .k-word {
@@ -452,7 +460,7 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   font-variant-numeric:tabular-nums; color:var(--orr-dim); margin:2px 0 0;
 }
 @media (max-width:1366px) {
-  #screens .orr-base #sf-base { padding:44px 44px 40px; }
+  #screens .orr-base #sf-base { padding:44px 44px 26px; }
   #screens .orr-base #sf-base .base-ledger-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
   #screens .orr-base #sf-base .base-plan .base-plan-title { font-size:15px; }
@@ -469,7 +477,7 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
 }
 @media (max-height:800px) {
   #screens .screen.sf-menu.orr-base.orr-base.is-claimed { max-height:94vh; }
-  #screens .orr-base #sf-base { padding:28px 40px 24px; gap:8px; }
+  #screens .orr-base #sf-base { padding:28px 40px 20px; gap:8px; }
   #screens .orr-base #sf-base .base-sub + .base-sub { display:none; }
   #screens .orr-base #sf-base .base-plan { padding:10px 0 10px 22px; gap:4px 20px; }
   #screens .orr-base #sf-base .base-plan .base-plan-title { font-size:15px; }
@@ -483,13 +491,12 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
   #screens .orr-base #sf-base .base-ledger-grid { gap:8px 16px; }
   #screens .orr-base #sf-base .base-ledger-v { font-size:14px; margin:2px 0 0; }
-  #screens .orr-base #sf-base .base-foot { margin:22px -40px -24px; padding:12px 40px 24px; bottom:-24px; }
-  #screens .orr-base #sf-base .base-foot::before { height:10px; }
+  #screens .orr-base .base-foot { padding:12px 40px; }
   #screens .orr-base #sf-base .orr-base__moon { width:min(240px, 34%); top:10px; right:12px; }
 }
-/* Short desktop glass (≤640 tall: 960×540, 800×600): the plate scrolls and the foot band covers the
-   bottom of the first screen. Tighten the stack above Operating Identity and slim the foot so each
-   card's verb and consequence clear the band at scroll 0; TRADEOFF stays in the card, one scroll down. */
+/* Short desktop glass (≤640 tall: 960×540, 800×600): the plate scrolls, so the fold cuts the
+   first screen's tail. Tighten the stack above Operating Identity and slim the foot so each
+   card's verb and consequence clear the fold at scroll 0; TRADEOFF stays in the card, one scroll down. */
 @media (max-height:640px) and (min-width:761px) {
   #screens .orr-base #sf-base { gap:5px; }
   #screens .orr-base #sf-base .base-plan { padding:4px 0 4px 22px; }
@@ -498,16 +505,16 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-spec { padding-top:2px; gap:3px; }
   #screens .orr-base #sf-base .base-spec .verb { line-height:1.3; }
   #screens .orr-base #sf-base .base-spec .effect, #screens .orr-base #sf-base .base-spec .risk { line-height:1.3; }
-  #screens .orr-base #sf-base .base-foot { padding:8px 40px 12px; }
+  #screens .orr-base .base-foot { padding:8px 40px 12px; }
 }
 /* Short desktop glass (761+ wide, ≤580 tall: 960×540, 1280×540; capped below 600 so 1366×600 keeps the stored-output panel clear): the three identity cards sit side by side, so the
-   card verbs (CLEAR SITE STORAGE · ACTIVE) land under the foot band at scroll 0 (half-hidden at 960, where
-   the card lines wrap). Close the stack a little more and slim the band so every verb clears it; Build
-   module stays one scroll down. */
+   card verbs (CLEAR SITE STORAGE · ACTIVE) landed under the band when it floated over the column.
+   The band now stands outside the scroller; close the stack a little more and slim the foot so every
+   verb clears the fold at scroll 0; Build module stays one scroll down. */
 @media (max-height:580px) and (min-width:761px) {
   #screens .orr-base #sf-base { gap:2px; }
   #screens .orr-base #sf-base .base-plan { padding:2px 0 2px 22px; }
-  #screens .orr-base #sf-base .base-foot { margin-top:14px; padding-inline:40px; padding-block:6px 10px; }
+  #screens .orr-base .base-foot { padding-inline:40px; padding-block:6px 10px; }
 }
 /* Desktop: every module slot stands on the one rail. auto-fit wrapped a five-slot body to 4 + 1 at
    960 wide, and the orphan's tick climbed out of the second row into nothing. */
@@ -569,10 +576,9 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
     grid-column:1; grid-row:auto; justify-self:start; margin-top:6px;
     white-space:normal; text-align:left; font-size:12px; letter-spacing:.1em; max-width:100%;
   }
-  #screens .orr-base #sf-base .base-foot { gap:14px; margin:26px -24px -28px; padding:12px 24px 28px; bottom:-28px; }
-  #screens .orr-base #sf-base .base-foot::before { height:10px; }
-  #screens .orr-base #sf-base .base-foot .orr-base__esc { display:none; }
-  #screens .orr-base #sf-base .base-foot .orr-lampkey.orr-base__lamp { flex:1 1 auto; min-width:0; white-space:nowrap; justify-content:center; font-size:13px !important; letter-spacing:.08em !important; padding:0 18px 0 14px !important; }
+  #screens .orr-base .base-foot { gap:14px; margin:0; padding:12px 24px; }
+  #screens .orr-base .base-foot .orr-base__esc { display:none; }
+  #screens .orr-base .base-foot .orr-lampkey.orr-base__lamp { flex:1 1 auto; min-width:0; white-space:nowrap; justify-content:center; font-size:13px !important; letter-spacing:.08em !important; padding:0 18px 0 14px !important; }
 }
   `;
   document.head.appendChild(s);
@@ -600,7 +606,7 @@ export function describeBaseInvestmentConfirm(item, player = {}, body = {}, opti
   );
   const materialLine = materials.length
     ? ' Uses ' + materials.map(([id, qty]) => (
-      Math.max(0, Number(qty) || 0) + ' ' + pretty(id.replace(/^cmdty_/, ''))
+      Math.max(0, Number(qty) || 0) + ' ' + commodityDisplayName(id)
     )).join(', ') + ' from your hold.'
     : '';
   const targetName = body.name || 'this claim';
@@ -690,8 +696,8 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
     return {
       state: 'materials',
       disabled: true,
-      label: 'Need ' + (need - have) + ' ' + pretty(id.replace(/^cmdty_/, '')),
-      title: mod.name + ' requires ' + need + ' ' + pretty(id.replace(/^cmdty_/, '')) + '; the hold carries ' + have + '.',
+      label: 'Need ' + (need - have) + ' ' + commodityDisplayName(id),
+      title: mod.name + ' requires ' + need + ' ' + commodityDisplayName(id) + '; the hold carries ' + have + '.',
     };
   }
   if (!afford) {
@@ -1394,8 +1400,10 @@ export const baseScreen = {
       foot.appendChild(close);
       close.classList.add('orr-base__lamp');
       safeDressLamp(close);
-      wrap.appendChild(foot);
       rootEl.appendChild(wrap);
+      // The foot is a plate child outside the #sf-base scroller: Esc/Return stay visible at
+      // every scroll position and the band never overlays the column's text.
+      rootEl.appendChild(foot);
       this._lastEmpty = true;
       ensureBaseField(this);
       return;
@@ -1630,8 +1638,8 @@ export const baseScreen = {
           const deliver = document.createElement('button');
           const amount = Math.min(10, available);
           deliver.className = 'k-word k-word--emph';
-          deliver.textContent = 'Deliver ' + amount + 'u · ' + pretty(goodId.replace(/^cmdty_/, ''));
-          deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + pretty(goodId.replace(/^cmdty_/, '')) + ' to ' + body.name);
+          deliver.textContent = 'Deliver ' + amount + 'u · ' + commodityDisplayName(goodId);
+          deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + commodityDisplayName(goodId) + ' to ' + body.name);
           deliver.addEventListener('click', () => {
             claims.deliverToClaim(body.id, goodId, amount);
             this._render();
@@ -1703,7 +1711,7 @@ export const baseScreen = {
       const buildAction = describeBaseBuildAction(mod, player, body);
       const techLabel = mod.techReq ? ' · ' + techName(mod.techReq) : '';
       const materialLabel = Object.entries(mod.materials || {})
-        .map(([id, qty]) => qty + ' ' + pretty(id.replace(/^cmdty_/, '')))
+        .map(([id, qty]) => qty + ' ' + commodityDisplayName(id))
         .join(' · ');
       card.innerHTML =
         '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span class="orr-base__built">✓ Built</span>' : '') + '</div>' +
@@ -1790,9 +1798,10 @@ export const baseScreen = {
     foot.appendChild(fire);
     fire.classList.add('orr-base__lamp');
     safeDressLamp(fire);
-    wrap.appendChild(foot);
-
     rootEl.appendChild(wrap);
+    // The foot is a plate child outside the #sf-base scroller (see the empty path): the band
+    // never overlays the ledger, so nothing reads buried under Esc / Close / Dispatch.
+    rootEl.appendChild(foot);
   },
 
   // Read the requested body FRESH on each open — input.js (the 'C' keybind) sets

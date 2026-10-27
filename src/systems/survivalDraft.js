@@ -58,7 +58,7 @@ import {
   weaponLevelOf,
 } from '../data/swarmWeaponLevels.js';
 import { CIRCUIT_EVENT, CIRCUIT_MYSTERY, CIRCUIT_SERVICES, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitMysteryOffer, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
-import { compileChallenge, filterDraftOffers } from './survivalMutators.js';
+import { compileChallenge, filterDraftOffers, normalizeMutators } from './survivalMutators.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -71,6 +71,7 @@ import { swarmHullPrice } from '../data/swarmCatalog.js';
 import {
   SWARM_CALLIN_CATALOG,
   SWARM_HULL_PATCH,
+  SWARM_PACT_ONE_HULL,
   SWARM_PASSIVE_CATALOG,
   SWARM_PASSIVE_RECORD_KIND,
   SWARM_PASSIVE_STACK_MAX,
@@ -305,7 +306,9 @@ export const survivalDraft = {
             ? 'Rack already full'
             : entry.service === 'mystery' && entry._mysteryEmpty
               ? 'Nothing this hull can mount'
-              : null;
+              : entry.service === 'pact' && entry._pactBound
+                ? 'The cradle is already closed'
+                : null;
       // A legendary the run already owns stays visible but is never buyable again — not "Done"
       // like a consumed weld: the row is the room upgrade's receipt, so it says what it is.
       const legendaryOwned = entry.service === 'legendary' && entry._legendaryOwned === true;
@@ -1139,6 +1142,12 @@ export const survivalDraft = {
       this._notice = offer?.unavailableReason || 'That offer is no longer available.';
       return false;
     }
+    // A pact is a signature, not a sale: the wallet is never asked — the purse flows the
+    // other way — so it must not ride the spend receipt path a 0-credit ask cannot answer,
+    // and it needs no fitting authority to sign.
+    if (offer.service === 'pact') {
+      return this._acceptPact(offer);
+    }
     const ships = this._ships();
     if (!ships || typeof ships.fitModule !== 'function') {
       this._notice = 'Fitting is unavailable. Your money is safe.';
@@ -1382,6 +1391,19 @@ export const survivalDraft = {
         _mysteryEmpty: !circuitMysteryOffer(this.state, run.seed, mystery.stage),
       });
     }
+    // The mid-run pact — the counter's one row that is a wager, not stock. Signing costs no
+    // credits (the wallet is never asked; the purse flows the other way), so the row's live
+    // question is whether the run is already bound: a launch challenge, a trial, or this same
+    // signature. The compiled contract answers it — the same read the cradle shelf makes below.
+    const challenge = compileChallenge(run.seed, run.arenaMutators, run.ruleset);
+    extras.push({
+      id: SWARM_PACT_ONE_HULL.offerId, kind: SWARM_SERVICE_OFFER_KIND, service: SWARM_PACT_ONE_HULL.service,
+      mutatorId: SWARM_PACT_ONE_HULL.mutatorId, purse: SWARM_PACT_ONE_HULL.purse,
+      verb: SWARM_PACT_ONE_HULL.verb, name: SWARM_PACT_ONE_HULL.name,
+      blurb: SWARM_PACT_ONE_HULL.blurb,
+      price: 0, category: SWARM_PACT_ONE_HULL.category, slotLabel: SWARM_PACT_ONE_HULL.slotLabel,
+      _pactBound: challenge.hullLocked === true,
+    });
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
       ? player.cargo.usedVolume : 0;
     const ownedList = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
@@ -1392,7 +1414,7 @@ export const survivalDraft = {
     const flyingId = loadout && loadout.hullId;
     // One Hull: the cradle is not on this run's shelf — the launch hull is the hull you fly
     // out, so the armory never lists another one. This shelf is the only mid-run swap path.
-    const shelfShips = compileChallenge(run.seed, run.arenaMutators, run.ruleset).hullLocked === true
+    const shelfShips = challenge.hullLocked === true
       ? []
       : SHIPS;
     for (const ship of shelfShips) {
@@ -1580,6 +1602,71 @@ export const survivalDraft = {
       wave: this._wave,
     });
     this._emit('run:shopPurchased', { wave: this._wave, offerId: offer.id, price: 0 });
+    return true;
+  },
+
+  /**
+   * Sign the mid-run pact. The signature is the price — the wallet is never charged — so the
+   * whole transaction is: re-judge the live contract, fold the mutator into `run.arenaMutators`
+   * (the same write a launch challenge or a Threat wager makes), then pay the authored purse
+   * through the wallet's own award receipt. Every consumer — this shelf's cradle rows, the
+   * re-roll bench, the next draft gate — reads the bound list live through compileChallenge,
+   * so the handicap binds on this refresh and stays bound for the run.
+   */
+  _acceptPact(offer) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'draft' || this._resolved) {
+      this._notice = 'The counter is closed.';
+      return false;
+    }
+    const mutatorId = typeof offer.mutatorId === 'string' ? offer.mutatorId : null;
+    const purse = Number.isInteger(offer.purse) && offer.purse > 0 ? offer.purse : 0;
+    if (!mutatorId || purse <= 0) {
+      this._notice = 'That pact is not on the counter.';
+      return false;
+    }
+    // The signature is judged against the live contract, not the dealt card — a run already
+    // bound (a launch challenge, a trial, or this same signature) cannot sign twice.
+    if (compileChallenge(run.seed, run.arenaMutators, run.ruleset).hullLocked === true) {
+      this._notice = 'The cradle is already closed — the pact is signed.';
+      return false;
+    }
+    if (!this._preparationCurrent(this._preparationPending)) return false;
+    run.arenaMutators = normalizeMutators([
+      ...(Array.isArray(run.arenaMutators) ? run.arenaMutators : []),
+      mutatorId,
+    ]);
+    // The signature's provenance rides the wager seam the Threat picks use — a pact bound
+    // mid-run is the run's own handicap, not its launch contract. The records row reads this
+    // stamp so a signed flight can never fingerprint as a launch `one_hull` challenge.
+    if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+    if (!Array.isArray(run.telemetry.pacts)) run.telemetry.pacts = [];
+    run.telemetry.pacts.push({ mutatorId, wave: Math.max(1, this._wave) });
+    // The award's own clone commits the bound list and the purse on the same receipt — the
+    // contract and the payment can never land on different runs.
+    this._emit('run:awardRequested', { credits: purse, reason: 'crucible:pact' });
+    this._purchased.add(offer.id);
+    this._notice = `${offer.name} signed — ${purse} cr on the counter. The cradle stays closed.`;
+    // Re-deal nothing: the dealt shelf keeps its rows minus what the bound contract strikes —
+    // the cradle dies on this refresh, not on next visit's stock.
+    const live = liveSurvivalRun(this.state) || run;
+    const bound = compileChallenge(live.seed, live.arenaMutators, live.ruleset);
+    this._offers = filterDraftOffers(
+      (this._offers || []).filter((row) => row.kind !== SWARM_HULL_OFFER_KIND || !bound.hullLocked),
+      bound,
+    );
+    this._emit('run:modifierRecordRequested', {
+      record: {
+        kind: 'pact', offerId: offer.id, mutatorId, purse,
+        wave: Math.max(1, this._wave),
+      },
+      draft: {
+        wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: offer.id,
+      },
+      wave: this._wave,
+    });
+    this._emit('run:shopPurchased', { wave: this._wave, offerId: offer.id, price: 0 });
+    this._refreshOffers(liveSurvivalRun(this.state) || live);
     return true;
   },
 

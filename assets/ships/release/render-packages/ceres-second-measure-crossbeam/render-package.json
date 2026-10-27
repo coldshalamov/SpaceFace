@@ -191,24 +191,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ae56e08a2c9ba966e29c2d71e64af7ed4670237a2aeab12ad675d744bf2b01c2",
+  "contentHash": "12284746153a0dfe95bb791e434b8cda5292c250ee11823264255cad2a495e46",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          17.000167846679688,
-          2.249622344970703,
+          17.000167851802118,
+          2.2496223334452345,
           27.25
         ],
         "min": [
-          -17.000167846679688,
-          -2.999622344970703,
+          -17.000167851802118,
+          -2.9996223334452345,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5925b648e691482f9d64d3e653a831234da38e581b31df396fcb027efc37660",
+      "geometryHash": "ebc174dec5074d4274db78843cb3380c03e5a93f106a6e36289992608c8b7c65",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor.primitive.0",
       "indexCount": 6288,
       "indexed": true,
@@ -222,18 +222,18 @@
     {
       "bounds": {
         "max": [
-          17.001708984375,
-          3.001190185546875,
+          17.001709036530656,
+          3.001190221869564,
           27.5
         ],
         "min": [
-          -17.001708984375,
-          -3.001190185546875,
+          -17.001709036530656,
+          -3.001190221869564,
           -27.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d66606bd5ec8bd09e017cf8c216124ed8dd3233a1077685308e5a0542bb5e229",
+      "geometryHash": "9c343fa5c8c29fc65ce607fe3e16cb158cc4028cf551c6661455cb73774018cf",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 12408,
       "indexed": true,
@@ -247,18 +247,18 @@
     {
       "bounds": {
         "max": [
-          4.5007781982421875,
-          2.875692129135132,
+          4.500778221991638,
+          2.8756921025697997,
           27.25
         ],
         "min": [
-          -4.5007781982421875,
-          1.9243080615997314,
+          -4.500778221991638,
+          1.9243080881650634,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c7eaeda6a3dcd07e72c3c2a8c4ee804f813c734af600ad4dc57e4a1670ac3cf",
+      "geometryHash": "57864d8a916698f42ee09cecb32d1bac38c889f033136007f485cb3159b7fad2",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -272,18 +272,18 @@
     {
       "bounds": {
         "max": [
-          14.500252723693848,
-          2.999032735824585,
+          14.500252483201558,
+          2.999032704440603,
           25.983253479003906
         ],
         "min": [
-          -14.500252723693848,
-          1.4384673833847046,
+          -14.500252483201558,
+          1.4384674147686867,
           -25.983253479003906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed63605c8d72ae4eebafedbb4615c9be5f75e98718f870c3e11dbe7c42078833",
+      "geometryHash": "fd62d3bd8b05907ac77afdfb6cc5c73970cae8f1bfbef62588657c155557dd98",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -297,18 +297,18 @@
     {
       "bounds": {
         "max": [
-          3.7988831996917725,
-          2.049032688140869,
+          3.798883022553179,
+          2.0490324917240375,
           27.25
         ],
         "min": [
-          -3.7988831996917725,
-          -2.1490328311920166,
+          -3.798883022553179,
+          -2.149032634775185,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "024f1ddc29495cb32a5709d8e546151a10bfa0b4d3f9d0c458fdb5ac65558c4e",
+      "geometryHash": "f1192a5926097aef8895d1a50fcfce9ea7fc75fb30cf63f26ee8f4dc69af31bc",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -322,18 +322,18 @@
     {
       "bounds": {
         "max": [
-          17.000167846679688,
-          2.2482237815856934,
+          17.000167851802118,
+          2.248223770060225,
           27.25
         ],
         "min": [
-          -17.000167846679688,
-          -3.001020908355713,
+          -17.000167851802118,
+          -3.0010208968302443,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "302e29c7190b72191a17c1bd40a1ce18ce094ad47d9e9e8c1da400f77bc62c23",
+      "geometryHash": "52965ec04dd721d1ef0b04db728d22b4ef7ea9264f0475e1dd181432287c659f",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor.primitive.0",
       "indexCount": 3168,
       "indexed": true,
@@ -347,18 +347,18 @@
     {
       "bounds": {
         "max": [
-          16.9964656829834,
-          2.996697425842285,
+          16.996466821152527,
+          2.9966972445635447,
           27.496950149536133
         ],
         "min": [
-          -16.9964656829834,
-          -2.9983043670654297,
+          -16.996466821152527,
+          -2.9983041857866892,
           -27.496950149536133
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67aecfc45b6bb438b68eab9be52c296ccfc1818a5a967f4891176f29a4f59cb1",
+      "geometryHash": "6c6312b002e92fc996a72e1f600618610c508fbb289278e99d1ddb934a84c530",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 3762,
       "indexed": true,
@@ -372,18 +372,18 @@
     {
       "bounds": {
         "max": [
-          4.5007781982421875,
-          2.875692129135132,
+          4.500778221991638,
+          2.8756921025697997,
           27.25
         ],
         "min": [
-          -4.5007781982421875,
-          1.9243080615997314,
+          -4.500778221991638,
+          1.9243080881650634,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "762d936db72c3b1b866b1cd03d3cb78241f231b085d758f211620a3ff5e42e55",
+      "geometryHash": "607bd7e4488bb1ccd9a283e515ba68e668bbfd3035f747b680546751d37e1389",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull.primitive.0",
       "indexCount": 966,
       "indexed": true,
@@ -398,17 +398,17 @@
       "bounds": {
         "max": [
           4.245265007019043,
-          2.994920253753662,
-          0.745267391204834
+          2.994920272948224,
+          0.7452673626558336
         ],
         "min": [
           -4.245338439941406,
-          2.005079746246338,
-          -0.745194137096405
+          2.005079727051776,
+          -0.7451941085474046
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52d41f4553d5168008385b77d1bffa0324bde8e564bbba5210165fb596e751d1",
+      "geometryHash": "79846dd8106fd1b27f8a7fd89ea572a860836616d0e6cf40deb1e68f7528b427",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -422,18 +422,18 @@
     {
       "bounds": {
         "max": [
-          3.79512357711792,
-          2.045748233795166,
+          3.79512373205689,
+          2.045748353717521,
           27.24689292907715
         ],
         "min": [
-          -3.79512357711792,
-          -2.145185708999634,
+          -3.79512373205689,
+          -2.145185828921989,
           -27.24689292907715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9455899892899ab284f2bba588d066cf03e2bc435b4e765ce4549ca02aa215f4",
+      "geometryHash": "fd82a4f0d1fcc20137b7af0626bcfa96b27b78ab237660cdfde858551f1aabd1",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -447,18 +447,18 @@
     {
       "bounds": {
         "max": [
-          16.992626190185547,
-          2.2429986000061035,
+          16.99262747184094,
+          2.2429985514376045,
           27.243244171142578
         ],
         "min": [
-          -16.992626190185547,
-          -2.9916419982910156,
+          -16.99262747184094,
+          -2.9916419497225166,
           -27.243244171142578
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72cc53a80dbd7166443f0340987342ee9c81bc3f49242ed2980fa924ab2b9392",
+      "geometryHash": "6f936d4ce83be054ba5e418fe36d472090ab9dc245bbbfadbf94847e7d91492b",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor.primitive.0",
       "indexCount": 1584,
       "indexed": true,
@@ -472,18 +472,18 @@
     {
       "bounds": {
         "max": [
-          16.994346618652344,
-          2.992706775665283,
+          16.99434820497593,
+          2.992706887314622,
           27.49352264404297
         ],
         "min": [
-          -16.994346618652344,
-          -2.9948346614837646,
+          -16.99434820497593,
+          -2.9948347731331033,
           -27.49352264404297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4640c336f1dba587e17e281ab26ca2be15e3adc5c2a26694fb26a673c34f2a07",
+      "geometryHash": "c71858f230ec5258be4cbe5da1202ec7b1af147a77fe00812e216239a9584fbf",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 1566,
       "indexed": true,
@@ -497,18 +497,18 @@
     {
       "bounds": {
         "max": [
-          4.486362934112549,
-          2.867917776107788,
+          4.486363071384955,
+          2.867917798174622,
           27.24326515197754
         ],
         "min": [
-          -4.486362934112549,
-          1.9367231130599976,
+          -4.486363071384955,
+          1.9367230909931636,
           -27.24326515197754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e582accf237925c5c4881a4d979a105f24a764cd9d4bf08f66619714e4d4d22e",
+      "geometryHash": "76a476f29c3da256521d2489cc57833b50f7320a39e2e0f3ddbba1a110e0f2ad",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -523,17 +523,17 @@
       "bounds": {
         "max": [
           4.239705562591553,
-          2.9911553859710693,
-          0.7396206259727478
+          2.991155314409842,
+          0.7396206623072605
         ],
         "min": [
           -4.239757537841797,
-          2.0150349140167236,
-          -0.7395690679550171
+          2.015034985577951,
+          -0.7395691042895298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e7ec404038613dd078f190135fea5f4c700022f2895e89e0987116e8b587376",
+      "geometryHash": "9019aeeb178e99021242e4ef911f62f056d42a6c14334889fb6734eaa7b1d89b",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -547,18 +547,18 @@
     {
       "bounds": {
         "max": [
-          3.793818235397339,
-          2.045746088027954,
+          3.7938184464902256,
+          2.045745988835435,
           27.24460220336914
         ],
         "min": [
-          -3.795790672302246,
-          -2.144835948944092,
+          -3.795790883395133,
+          -2.1448358497515727,
           -27.24460220336914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18658cd2c26c47e58f80ba52c75eb97e1a498beecdc4cb06461018ef72a9328d",
+      "geometryHash": "7b420a65d1ac83b0d8f0ccca471217ec045cd0ec1af1f333b2eece6fd520bb8e",
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -739,20 +739,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-armor",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.375,
         0,
         1
       ],
@@ -767,20 +767,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.375,
         0,
         1
       ]
@@ -788,17 +788,17 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-brushedmetal",
       "localTransform": [
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
@@ -816,17 +816,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
@@ -837,20 +837,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-hull",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        2.4000000953674316,
         0,
         1
       ],
@@ -865,20 +865,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        2.4000000953674316,
         0,
         1
       ]
@@ -886,20 +886,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-livery",
       "localTransform": [
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
-        0,
+        2.2187500596046448,
         0,
         1
       ],
@@ -914,20 +914,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
-        0,
+        2.2187500596046448,
         0,
         1
       ]
@@ -935,20 +935,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.05000007152557373,
         0,
         1
       ],
@@ -963,20 +963,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.05000007152557373,
         0,
         1
       ]
@@ -984,20 +984,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-armor",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.37639856338500977,
         0,
         1
       ],
@@ -1012,20 +1012,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.37639856338500977,
         0,
         1
       ]
@@ -1033,20 +1033,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-brushedmetal",
       "localTransform": [
-        1,
+        27.496950149536133,
         0,
         0,
         0,
         0,
-        1,
+        27.496950149536133,
         0,
         0,
         0,
         0,
-        1,
+        27.496950149536133,
         0,
         0,
-        0,
+        -0.0008034706115722656,
         0,
         1
       ],
@@ -1061,20 +1061,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.496950149536133,
         0,
         0,
         0,
         0,
-        1,
+        27.496950149536133,
         0,
         0,
         0,
         0,
-        1,
+        27.496950149536133,
         0,
         0,
-        0,
+        -0.0008034706115722656,
         0,
         1
       ]
@@ -1082,20 +1082,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-hull",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        2.4000000953674316,
         0,
         1
       ],
@@ -1110,20 +1110,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        2.4000000953674316,
         0,
         1
       ]
@@ -1131,21 +1131,21 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-livery",
       "localTransform": [
-        1,
+        4.245301723480225,
         0,
         0,
         0,
         0,
-        1,
+        4.245301723480225,
         0,
         0,
         0,
         0,
-        1,
+        4.245301723480225,
         0,
-        0,
-        0,
-        0,
+        -0.000036716461181640625,
+        2.5,
+        0.00003662705421447754,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1159,41 +1159,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        4.245301723480225,
         0,
         0,
         0,
         0,
-        1,
+        4.245301723480225,
         0,
         0,
         0,
         0,
-        1,
+        4.245301723480225,
         0,
-        0,
-        0,
-        0,
+        -0.000036716461181640625,
+        2.5,
+        0.00003662705421447754,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        27.24689292907715,
         0,
         0,
         0,
         0,
-        1,
+        27.24689292907715,
         0,
         0,
         0,
         0,
-        1,
+        27.24689292907715,
         0,
         0,
-        0,
+        -0.04971873760223389,
         0,
         1
       ],
@@ -1208,20 +1208,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.24689292907715,
         0,
         0,
         0,
         0,
-        1,
+        27.24689292907715,
         0,
         0,
         0,
         0,
-        1,
+        27.24689292907715,
         0,
         0,
-        0,
+        -0.04971873760223389,
         0,
         1
       ]
@@ -1229,20 +1229,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-armor",
       "localTransform": [
-        1,
+        27.243244171142578,
         0,
         0,
         0,
         0,
-        1,
+        27.243244171142578,
         0,
         0,
         0,
         0,
-        1,
+        27.243244171142578,
         0,
         0,
-        0,
+        -0.37432169914245605,
         0,
         1
       ],
@@ -1257,20 +1257,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.243244171142578,
         0,
         0,
         0,
         0,
-        1,
+        27.243244171142578,
         0,
         0,
         0,
         0,
-        1,
+        27.243244171142578,
         0,
         0,
-        0,
+        -0.37432169914245605,
         0,
         1
       ]
@@ -1278,20 +1278,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-brushedmetal",
       "localTransform": [
-        1,
+        27.49352264404297,
         0,
         0,
         0,
         0,
-        1,
+        27.49352264404297,
         0,
         0,
         0,
         0,
-        1,
+        27.49352264404297,
         0,
         0,
-        0,
+        -0.0010639429092407227,
         0,
         1
       ],
@@ -1306,20 +1306,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.49352264404297,
         0,
         0,
         0,
         0,
-        1,
+        27.49352264404297,
         0,
         0,
         0,
         0,
-        1,
+        27.49352264404297,
         0,
         0,
-        0,
+        -0.0010639429092407227,
         0,
         1
       ]
@@ -1327,20 +1327,20 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-hull",
       "localTransform": [
-        1,
+        27.24326515197754,
         0,
         0,
         0,
         0,
-        1,
+        27.24326515197754,
         0,
         0,
         0,
         0,
-        1,
+        27.24326515197754,
         0,
         0,
-        0,
+        2.402320444583893,
         0,
         1
       ],
@@ -1355,20 +1355,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.24326515197754,
         0,
         0,
         0,
         0,
-        1,
+        27.24326515197754,
         0,
         0,
         0,
         0,
-        1,
+        27.24326515197754,
         0,
         0,
-        0,
+        2.402320444583893,
         0,
         1
       ]
@@ -1376,21 +1376,21 @@
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-livery",
       "localTransform": [
-        1,
+        4.239731550216675,
         0,
         0,
         0,
         0,
-        1,
+        4.239731550216675,
         0,
         0,
         0,
         0,
-        1,
+        4.239731550216675,
         0,
-        0,
-        0,
-        0,
+        -0.000025987625122070312,
+        2.5030951499938965,
+        0.000025779008865356445,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1404,41 +1404,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        4.239731550216675,
         0,
         0,
         0,
         0,
-        1,
+        4.239731550216675,
         0,
         0,
         0,
         0,
-        1,
+        4.239731550216675,
         0,
-        0,
-        0,
-        0,
+        -0.000025987625122070312,
+        2.5030951499938965,
+        0.000025779008865356445,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure-crossbeam.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        27.24460220336914,
         0,
         0,
         0,
         0,
-        1,
+        27.24460220336914,
         0,
         0,
         0,
         0,
-        1,
+        27.24460220336914,
         0,
-        0,
-        0,
+        -0.0009862184524536133,
+        -0.04954493045806885,
         0,
         1
       ],
@@ -1453,20 +1453,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-crossbeam.body",
       "worldTransform": [
-        1,
+        27.24460220336914,
         0,
         0,
         0,
         0,
-        1,
+        27.24460220336914,
         0,
         0,
         0,
         0,
-        1,
+        27.24460220336914,
         0,
-        0,
-        0,
+        -0.0009862184524536133,
+        -0.04954493045806885,
         0,
         1
       ]
@@ -1530,14 +1530,14 @@
       "uri": "place_ceres_second_measure_crossbeam.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 579144,
-    "sha256": "2f1aecbeced74b1d02e681c2999ae65a162aa9c12069bc1ff413bd9723df638c",
+    "bytes": 341328,
+    "sha256": "ef419eaf52c20cfea14dafc2ae3e39330597c1982010a98e984098155dd3b840",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1548,18 +1548,18 @@
         0
       ],
       "max": [
-        17.001708984375,
-        3.001190185546875,
+        17.001709036530656,
+        3.001190221869564,
         27.5
       ],
       "min": [
-        -17.001708984375,
-        -3.001190185546875,
+        -17.001709036530656,
+        -3.001190221869564,
         -27.5
       ],
       "size": [
-        34.00341796875,
-        6.00238037109375,
+        34.00341807306131,
+        6.002380443739128,
         55
       ]
     },
@@ -1858,20 +1858,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          -0.375,
           0,
           1
         ],
@@ -1885,17 +1885,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.5,
           0,
           0,
           0,
           0,
-          1,
+          27.5,
           0,
           0,
           0,
           0,
-          1,
+          27.5,
           0,
           0,
           0,
@@ -1912,20 +1912,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          2.4000000953674316,
           0,
           1
         ],
@@ -1939,20 +1939,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.983253479003906,
           0,
           0,
           0,
           0,
-          1,
+          25.983253479003906,
           0,
           0,
           0,
           0,
-          1,
+          25.983253479003906,
           0,
           0,
-          0,
+          2.2187500596046448,
           0,
           1
         ],
@@ -1966,20 +1966,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          -0.05000007152557373,
           0,
           1
         ],
@@ -1993,20 +1993,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          -0.37639856338500977,
           0,
           1
         ],
@@ -2020,20 +2020,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.496950149536133,
           0,
           0,
           0,
           0,
-          1,
+          27.496950149536133,
           0,
           0,
           0,
           0,
-          1,
+          27.496950149536133,
           0,
           0,
-          0,
+          -0.0008034706115722656,
           0,
           1
         ],
@@ -2047,20 +2047,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          2.4000000953674316,
           0,
           1
         ],
@@ -2074,21 +2074,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.245301723480225,
           0,
           0,
           0,
           0,
-          1,
+          4.245301723480225,
           0,
           0,
           0,
           0,
-          1,
+          4.245301723480225,
           0,
-          0,
-          0,
-          0,
+          -0.000036716461181640625,
+          2.5,
+          0.00003662705421447754,
           1
         ],
         "name": "LOD1_Livery",
@@ -2101,20 +2101,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24689292907715,
           0,
           0,
           0,
           0,
-          1,
+          27.24689292907715,
           0,
           0,
           0,
           0,
-          1,
+          27.24689292907715,
           0,
           0,
-          0,
+          -0.04971873760223389,
           0,
           1
         ],
@@ -2128,20 +2128,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.243244171142578,
           0,
           0,
           0,
           0,
-          1,
+          27.243244171142578,
           0,
           0,
           0,
           0,
-          1,
+          27.243244171142578,
           0,
           0,
-          0,
+          -0.37432169914245605,
           0,
           1
         ],
@@ -2155,20 +2155,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.49352264404297,
           0,
           0,
           0,
           0,
-          1,
+          27.49352264404297,
           0,
           0,
           0,
           0,
-          1,
+          27.49352264404297,
           0,
           0,
-          0,
+          -0.0010639429092407227,
           0,
           1
         ],
@@ -2182,20 +2182,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24326515197754,
           0,
           0,
           0,
           0,
-          1,
+          27.24326515197754,
           0,
           0,
           0,
           0,
-          1,
+          27.24326515197754,
           0,
           0,
-          0,
+          2.402320444583893,
           0,
           1
         ],
@@ -2209,21 +2209,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.239731550216675,
           0,
           0,
           0,
           0,
-          1,
+          4.239731550216675,
           0,
           0,
           0,
           0,
-          1,
+          4.239731550216675,
           0,
-          0,
-          0,
-          0,
+          -0.000025987625122070312,
+          2.5030951499938965,
+          0.000025779008865356445,
           1
         ],
         "name": "LOD2_Livery",
@@ -2236,20 +2236,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24460220336914,
           0,
           0,
           0,
           0,
-          1,
+          27.24460220336914,
           0,
           0,
           0,
           0,
-          1,
+          27.24460220336914,
           0,
-          0,
-          0,
+          -0.0009862184524536133,
+          -0.04954493045806885,
           0,
           1
         ],
@@ -2265,19 +2265,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_second_measure_crossbeam.glb"
   },
-  "runtimeHash": "677aab10692bbbde73f4d476127d67f3748145d3861f8e56cbb710a5d9209d78",
+  "runtimeHash": "dfc6e3f9ad79707c46629502f3d6d043157e83e01c23934a5ae330369e331697",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          17.001708984375,
-          3.001190185546875,
+          17.001709036530656,
+          3.001190221869564,
           27.5
         ],
         "min": [
-          -17.001708984375,
-          -3.001190185546875,
+          -17.001709036530656,
+          -3.001190221869564,
           -27.5
         ]
       },

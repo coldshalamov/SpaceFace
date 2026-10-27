@@ -1,16 +1,12 @@
-/* Credits — Field Hardware POSTER. Unique to [data-screen=credits] / .of-credits.
-   Hangar world, one reading plate, legend keys, quiet type. Not a word list. */
+/* Credits — ORRERY. Unique to [data-screen=credits] / .of-credits.
+   The composition (frame grid, ladder, reel, emblem, drift field, back) is styled by the shared
+   sheet injected from src/ui/orrery/settingsLayouts.js; the emblem is src/ui/orrery/creditsLayouts.js.
+   This sheet keeps only what it owns: the screen frame's padding, the display title, and the states
+   the shared sheet does not author — press feedback, the focused reel's spine, the quiet ESC key
+   hint, and the licence text unfolding. Colours are --dp-* tokens (design/frontend/ORRERY.md §3). */
 
 #screens .of-credits.k-screen {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  grid-template-areas: 'title' 'hang' 'stage' 'foot';
-  row-gap: clamp(12px, 2vh, 28px);
   padding: clamp(28px, 6vh, 96px) clamp(28px, 6vw, 120px) clamp(20px, 3vh, 48px);
-}
-
-#screens .of-credits.k-screen::before {
-  background: color-mix(in srgb, var(--fh-glass) 28%, transparent);
 }
 
 #screens .of-credits .k-title {
@@ -18,308 +14,97 @@
   flex-direction: column;
   gap: 10px;
   align-items: flex-start;
-  max-width: 22ch;
 }
 
+/* the display title: Archivo wdth 125 w800, tight tracking, ink on void (ORRERY.md §3.4) */
 #screens .of-credits .k-t-title {
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 900, 'wdth' 125;
+  font-family: var(--dp-face-etch);
+  font-variation-settings: 'wght' 800, 'wdth' 125;
   text-transform: uppercase;
-  letter-spacing: var(--fh-track-display);
-  line-height: var(--fh-lh-display);
+  letter-spacing: -0.01em;
+  line-height: 0.92;
   font-size: clamp(64px, min(8vw, 14vh), 140px);
-  color: var(--fh-text);
+  color: var(--dp-ink);
 }
 
-#screens .of-credits .k-title > p {
-  margin: 0;
-  max-width: 46ch;
-  font-family: var(--fh-face-text);
-  font-size: var(--fh-size-emphasis);
-  color: var(--fh-text-resting);
+/* ── Press states ──────────────────────────────────────────────────────────────
+   The shared sheet authors hover and focus for every control; a press dips the
+   light for a beat (snap, not a new colour channel). Selectors sit one class
+   above the shared sheet's so the press wins while it is down. */
+
+/* a rung goes bright while the pick is down */
+html body #screens > .k-screen.of-credits.orr-credits > .k-hang > .k-words .k-word:active {
+  color: rgb(255 253 248) !important;
+  text-shadow: 0 0 14px rgb(255 250 236 / .3) !important;
 }
 
-#screens .of-credits > .k-hang {
-  overflow: visible;
-  max-height: none;
+/* ‹ BACK: the word flares and its underline pulls taut */
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back:active {
+  color: rgb(255 253 248) !important;
+  background: linear-gradient(0deg, rgb(236 230 216 / .55) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important;
 }
 
-#screens .of-credits > .k-hang .k-words {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
+/* Read the licence: the bead flares while held */
+html body #screens > .k-screen.of-credits.orr-credits .of-credits-notice .orr-cr-unfold:active {
+  color: rgb(255 253 248) !important;
+}
+html body #screens > .k-screen.of-credits.orr-credits .of-credits-notice .orr-cr-unfold:active::before {
+  background: rgb(255 253 248) !important;
+  box-shadow: 0 0 9px rgb(255 250 236 / .65) !important;
 }
 
-#screens .of-credits > .k-hang .k-word {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  min-width: 96px;
-  border-color: transparent;
-  padding: 0 14px;
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend);
-  text-transform: uppercase;
-  font-size: var(--fh-size-fine);
-  color: var(--fh-text-resting);
-  border: 14px solid transparent;
-  background: none;
-  box-shadow: none;
+/* the licence text unfolds from its head (ORRERY.md §4 #24): it never just appears */
+@keyframes orr-cr-unfold-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
 }
-
-#screens .of-credits > .k-hang .k-word::after { display: none; }
-
-#screens .of-credits > .k-hang .k-word:hover,
-#screens .of-credits > .k-hang .k-word:focus-visible {
-  color: var(--fh-text);
-  background: none;
-  box-shadow: none;
+html body #screens .of-credits .orr-cr-full:not([hidden]) {
+  animation: orr-cr-unfold-in 260ms var(--dp-ease-out, ease-out) both;
 }
-
-#screens .of-credits > .k-hang .k-word[aria-current='true'] {
-  color: var(--fh-text);
-  background: none;
-  box-shadow: none;
-}
-
-#screens .of-credits > .k-stage {
-  max-width: min(920px, 100%);
-  overflow: hidden auto;
-  overscroll-behavior: contain;
-  padding: var(--fh-space-xl) clamp(16px, 2vw, 32px);
-}
-
-#screens .of-credits .of-credits-made { margin: 0 0 18px; }
-
-#screens .of-credits .of-credits-kicker {
-  margin: 0 0 8px;
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend);
-  text-transform: uppercase;
-  font-size: var(--fh-size-fine);
-  color: var(--fh-legend-rest);
-}
-
-#screens .of-credits .of-credits-name {
-  margin: 0;
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 900, 'wdth' 125;
-  text-transform: uppercase;
-  letter-spacing: var(--fh-track-display);
-  line-height: var(--fh-lh-display);
-  font-size: clamp(48px, min(6vw, 10vh), 140px);
-  color: var(--fh-text);
-}
-
-#screens .of-credits .of-credits-ver {
-  margin: 8px 0 0;
-  font-family: var(--fh-face-text);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--fh-size-data);
-  color: var(--fh-text-tertiary);
-}
-
-#screens .of-credits .k-rows { list-style: none; margin: 0; padding: 0; }
-
-#screens .of-credits .k-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  column-gap: 24px;
-  min-height: 44px;
-  padding: 10px 0;
-  border: 0;
-  box-shadow: none;
-  cursor: default;
-  color: var(--fh-text-resting);
-  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
-  background-repeat: repeat-x;
-  background-position: top left;
-}
-
-#screens .of-credits .k-row--static:hover { box-shadow: none; color: var(--fh-text-resting); }
-
-#screens .of-credits .k-row__name {
-  font-family: var(--fh-face-text);
-  font-weight: 500;
-  font-size: var(--fh-size-emphasis);
-  color: var(--fh-text);
-  white-space: normal;
-}
-
-#screens .of-credits .k-row__sub {
-  font-family: var(--fh-face-text);
-  font-size: var(--fh-size-data);
-  color: var(--fh-text-resting);
-  white-space: normal;
-}
-
-#screens .of-credits .k-row__num {
-  font-family: var(--fh-face-text);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--fh-size-data);
-  color: var(--fh-text-tertiary);
-  text-align: right;
-}
-
-#screens .of-credits .k-sentence {
-  font-family: var(--fh-face-text);
-  font-size: var(--fh-size-body);
-  line-height: var(--fh-lh-body);
-  color: var(--fh-text-resting);
-  max-width: var(--fh-measure);
-  margin: 16px 0 0;
-}
-
-#screens .of-credits .of-credits-notice {
-  margin: 0 0 28px;
-  padding: var(--fh-space-l);
-}
-
-#screens .of-credits .of-credits-notice > h2 {
-  margin: 0 0 6px;
-  font-family: var(--fh-face-text);
-  font-weight: 500;
-  font-size: var(--fh-size-emphasis);
-  color: inherit;
-}
-
-#screens .of-credits .of-credits-notice > .k-caps {
-  margin: 0 0 12px;
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend);
-  text-transform: uppercase;
-  font-size: var(--fh-size-fine);
-  color: inherit;
-  opacity: 0.62;
-}
-
-#screens .of-credits .of-credits-notice .k-sentence {
-  color: inherit;
-  margin: 0 0 12px;
-}
-
-#screens .of-credits .k-foot .k-words { flex-direction: row; }
-
-#screens .of-credits .k-foot .k-word {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  min-height: 56px;
-  min-width: 120px;
-  border-color: transparent;
-  padding: 0 24px;
-  font-family: var(--fh-face-display);
-  font-variation-settings: 'wght' 600, 'wdth' 62;
-  letter-spacing: var(--fh-track-legend);
-  text-transform: uppercase;
-  font-size: var(--fh-size-emphasis);
-  color: var(--fh-text);
-  border: 18px solid transparent;
-  background: var(--dp-cap-live) border-box;
-  box-shadow: var(--dp-cap-live-lift);
-}
-
-#screens .of-credits .k-foot .k-word::after { display: none; }
-
-#screens .of-credits .k-foot .k-word:hover,
-#screens .of-credits .k-foot .k-word:focus-visible {
-  background: var(--dp-cap-live-hover) border-box;
-}
-
-#screens .of-credits .k-foot .k-word:active {
-  background: var(--dp-cap-press) border-box;
-  box-shadow: var(--dp-cap-sink);
-}
-
+html.sf-reduce-motion #screens .of-credits .orr-cr-full:not([hidden]) { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
-  #screens .of-credits { --fh-poster-settle: 0ms; --k-d-settle: 0ms; }
+  #screens .of-credits .orr-cr-full:not([hidden]) { animation: none; }
 }
 
-html.sf-reduce-motion #screens .of-credits {
-  --fh-poster-settle: 0ms;
-  --k-d-settle: 0ms;
+/* ── The focused reel ──────────────────────────────────────────────────────────
+   The reel is a control (it scrolls by keyboard); focus must be visible without
+   a border. Its spine — a scale's edge of light on the stage's left, outside the
+   scroll — answers (ORRERY.md §3.1: a glass edge is a scale or nothing). */
+html body #screens > .k-screen.of-credits.orr-credits > .k-stage:focus-visible {
+  background: linear-gradient(180deg, transparent, rgb(236 230 216 / .6) 12%, rgb(236 230 216 / .6) 88%, transparent) 0 0 / 1.5px 100% no-repeat !important;
 }
 
+/* ── The key hint ──────────────────────────────────────────────────────────────
+   ESC reads as etched caps after ‹ BACK, not as a keycap: no bordered rectangle
+   anywhere on the surface (ORRERY.md §3.2). */
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back::after {
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 3px 0 4px !important;
+  margin-left: 14px !important;
+  color: rgb(236 230 216 / .78) !important;
+}
+html body #screens > .k-screen.of-credits.orr-credits > .k-foot > .k-words .sf-back:is(:hover, :focus-visible)::after {
+  color: rgb(255 253 248) !important;
+}
+
+/* ── The catch zone ────────────────────────────────────────────────────────────
+   The emblem's Hand and its caption stand at the reel's right shoulder; the reel
+   stops short of them at wide widths so no reel text (rows, values, unfolded
+   licences) runs under the instrument. Narrow widths park the emblem further
+   right and already clear (their media rules keep their own caps). */
+@media (min-width:1501px) {
+  html body #screens > .k-screen.of-credits.orr-credits > .k-stage .orr-cr-reel { max-width: min(560px, 100%); }
+}
+
+/* Forced colours: the system's palette replaces the instrument light. */
 @media (forced-colors: active) {
   #screens .of-credits.k-screen::before { background: Canvas; }
-  #screens .of-credits > .k-stage,
-  #screens .of-credits .of-credits-notice {
-    border-image-source: none !important;
-    background: Canvas;
-    border: 1px solid CanvasText;
-    color: CanvasText;
-  }
-  #screens .of-credits > .k-hang .k-word,
-  #screens .of-credits .k-foot .k-word {
-    border-image-source: none !important;
-    background: Canvas;
-    color: CanvasText;
-    border: 1px solid CanvasText;
-  }
-  #screens .of-credits > .k-hang .k-word[aria-current='true'] {
-    border: 2px solid Highlight;
-    color: Highlight;
-  }
-  #screens .of-credits .of-credits-notice > h2,
-  #screens .of-credits .of-credits-notice .k-sentence { color: CanvasText; }
-}
-
-/* ══ Deckplate (FRONTEND_PROGRAM Wave 2, 2026-09-19) — the same geometry, the deckplate
-   materials: section tabs are lit legends (lamp in the tab's own border, the open one amber with an
-   amber edge), Back is a machined keycap. The Field Hardware PNG keys above stay as the fallback
-   the forced-colours block already replaces. ══ */
-html body #screens .of-credits > .k-hang .k-word {
-  position: relative; border-image-source: none; border-radius: 2px;
-  font-family: var(--dp-face-etch); font-variation-settings: 'wght' 760, 'wdth' 78; letter-spacing: .16em;
-  color: var(--dp-ink-dim);
-}
-html body #screens .of-credits > .k-hang .k-word::before {
-  content: ''; position: absolute; left: -10px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%;
-  background: linear-gradient(var(--dp-rule-hi) 0 0);
-  box-shadow: none;
-}
-html body #screens .of-credits > .k-hang .k-word:hover,
-html body #screens .of-credits > .k-hang .k-word:focus-visible {
-  border-image-source: none; color: var(--dp-ink);
-  background: linear-gradient(90deg, rgb(255 255 255 / .05), transparent 80%) padding-box;
-}
-html body #screens .of-credits > .k-hang .k-word[aria-current='true'] {
-  border-image-source: none; color: var(--dp-lamp-hot); text-shadow: var(--dp-emit-lamp);
-  background: linear-gradient(90deg, rgb(255 238 210 / .08), transparent 80%) padding-box;
-  box-shadow: 0 10px 16px -12px var(--dp-lamp-bloom);
-}
-html body #screens .of-credits > .k-hang .k-word[aria-current='true']::before {
-  background: linear-gradient(var(--dp-lamp) 0 0);
-  box-shadow: 0 0 6px var(--dp-lamp-bloom), 0 0 14px var(--dp-lamp-bloom-soft);
-}
-html body #screens .of-credits .k-foot .k-word {
-  border-image:none;
-  background: var(--dp-metal-3);
-  font-family: var(--dp-face-etch); font-variation-settings: 'wght' 760, 'wdth' 78; letter-spacing: .14em;
-  color: var(--dp-ink); text-shadow: 0 -1px 0 rgb(0 0 0 / .7);
-}
-html body #screens .of-credits .k-foot .k-word:hover,
-html body #screens .of-credits .k-foot .k-word:focus-visible {
-  border-image-source:none; color: var(--dp-lamp-hot); text-shadow: var(--dp-emit-lamp);
-  box-shadow: 0 8px 16px -10px var(--dp-lamp-bloom);
-}
-html body #screens .of-credits .k-foot .k-word:active { border-image-source:none; }
-@media (forced-colors: active) {
-  html body #screens .of-credits > .k-hang .k-word::before { forced-color-adjust: none; background: CanvasText; box-shadow: none; }
-  html body #screens .of-credits .k-foot .k-word { border-image: none; border-color: CanvasText; background: Canvas; color: CanvasText; }
-}
-/* the name sits inside its card at every width (it was clipped at the card's right edge) */
-html body #screens .of-credits .of-credits-name {
-  font-size: clamp(26px, min(2.2vw, 3.8vh), 44px); line-height: 1.05; overflow-wrap: anywhere; letter-spacing: .06em; text-transform: uppercase;
-  font-family: var(--dp-face-etch); font-variation-settings: 'wght' 820, 'wdth' 86; color: var(--dp-ink);
+  #screens .of-credits > .k-stage { background: Canvas; }
+  #screens .of-credits .k-hang .k-word,
+  #screens .of-credits .k-foot .k-word,
+  #screens .of-credits .orr-cr-unfold { color: CanvasText; }
+  #screens .of-credits :is(.k-word, .orr-cr-unfold, .k-stage):focus-visible { outline: 2px solid Highlight; }
 }

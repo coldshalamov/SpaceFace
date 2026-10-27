@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2ef4718b9c84505133994f3830e7d3862357d563e8c0af319d4ceebc8fbcc2e2",
+  "contentHash": "cfd6448a59c0994e87196eae3cf50d6d20131ff106c8487d68cdca0360c36524",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           -0.16047999262809753,
-          0.29399622278288007,
-          -0.01844041422009468
+          0.29399622267625275,
+          -0.01844041500256822
         ],
         "min": [
           -0.2795200049877167,
-          0.2860037903301418,
-          -0.061559587717056274
+          0.2860037904367691,
+          -0.06155958693458273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1060874f4abbd66f4093f7d791ae84a9c0163556ee020e1968c7d38f0f515e28",
+      "geometryHash": "b715f7800695d2a276adcd85ab02e7c7af1d504f63f536885b3ec987f30d5a25",
       "id": "sf.render.works-refinery.mesh.lod0-furnace-slit.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "d0356f3cf034de9f4999286aa1e0f7601e17cd03b15c289bcf0c58ac6cf72573",
+      "materialHash": "d00d55432450ca18fc986b4bdbb5fd64ac72718b227d3f2bd06b5cecec43d5db",
       "materialPipelineKey": "opaque",
       "meshName": "Furnace_SlitLens_Mesh",
       "nodeId": "sf.render.works-refinery.mesh.lod0-furnace-slit",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           0.32600000500679016,
-          0.7540006684139371,
-          -0.6361406948417425
+          0.7540006683376793,
+          -0.6361406940174309
         ],
         "min": [
           0.2939999997615814,
-          0.7419993234798312,
-          -0.6638593170791864
+          0.741999323556089,
+          -0.6638593179034981
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e982270ca0f1e934b14cb59ec67500a97350890704c28022b0da32efb2e54bd0",
+      "geometryHash": "244070f480447d8563db087ca7c21530e13015c63a008066c9f19e28519db846",
       "id": "sf.render.works-refinery.mesh.lod0-lamp-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "d63063cff86e86e8e39f9a3e1e5514b875f740f26dd00f8aa4fa7b6e1b2f09ff",
+      "materialHash": "080d798212eaadc506e877f4d8b3d653790cf3dda53120143d3461990fa8ec87",
       "materialPipelineKey": "opaque",
       "meshName": "Lamp_Lens_Mesh",
       "nodeId": "sf.render.works-refinery.mesh.lod0-lamp-lens",
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           0.9213700294494629,
-          1.2000216245651245,
-          0.5999888181686401
+          1.2000216490075972,
+          0.5999888276931593
         ],
         "min": [
           -0.8001000285148621,
-          -0.000021634268705383874,
-          -0.9462187886238098
+          -0.000021658711178096368,
+          -0.946218798148329
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59975613e4b66b8cf8ac4bfb654596c782d8d61ef37a0639c918ed1f2dae5d1d",
+      "geometryHash": "1a4eceda4eb295db80b67593a6cf3b9773eb32765da4d3fcdee80b04ff28a41d",
       "id": "sf.render.works-refinery.mesh.lod0-refinery.primitive.0",
       "indexCount": 22074,
       "indexed": true,
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           -0.16047999262809753,
-          0.29399622278288007,
-          -0.01844041422009468
+          0.29399622267625275,
+          -0.01844041500256822
         ],
         "min": [
           -0.2795200049877167,
-          0.2860037903301418,
-          -0.061559587717056274
+          0.2860037904367691,
+          -0.06155958693458273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b151a87d0264578e79b4fe0fbe8751511cfbcee91de2c4a5d7597e06a005e579",
+      "geometryHash": "dbecb012229eabe88632cbd6a050bc1bfe67ae3a185dba006895f7ee2ba458da",
       "id": "sf.render.works-refinery.mesh.lod1-furnace-slit.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "67183bba00e4672baa9afc3ec30982c420d6787bd19454028ae082b5adf9c4ae",
+      "materialHash": "39e9fb1479c2b922e51349e4d2da9760e91cf916b6f698f5bc65e9d0fb1e08f4",
       "materialPipelineKey": "opaque",
       "meshName": "Furnace_SlitLens_Mesh.001",
       "nodeId": "sf.render.works-refinery.mesh.lod1-furnace-slit",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           0.32600000500679016,
-          0.7540006684139371,
-          -0.6361406948417425
+          0.7540006683376793,
+          -0.6361406940174309
         ],
         "min": [
           0.2939999997615814,
-          0.7419993234798312,
-          -0.6638593170791864
+          0.741999323556089,
+          -0.6638593179034981
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e982270ca0f1e934b14cb59ec67500a97350890704c28022b0da32efb2e54bd0",
+      "geometryHash": "244070f480447d8563db087ca7c21530e13015c63a008066c9f19e28519db846",
       "id": "sf.render.works-refinery.mesh.lod1-lamp-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "c2c7b62d30dcd41cf4fe6b1ce57916464a3aef9778e95a3ae87e9dcfb67e3f22",
+      "materialHash": "2d39a91ebf3a5b31c8ebb0c56f6176b4253cb25d7f45dd36a42f509163eccbbc",
       "materialPipelineKey": "opaque",
       "meshName": "Lamp_Lens_Mesh.001",
       "nodeId": "sf.render.works-refinery.mesh.lod1-lamp-lens",
@@ -138,17 +138,17 @@
       "bounds": {
         "max": [
           0.9202499985694885,
-          1.2000478506088257,
-          0.6000104546546936
+          1.2000478399527617,
+          0.6000104600063237
         ],
         "min": [
           -0.7919999957084656,
-          -0.000047796442231629044,
-          -0.9540104269981384
+          -0.00004778578616759788,
+          -0.9540104323497686
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8293f89911f401680e4d477c2cff13abcfe1a034dac9f5f1a331fbc6e449ac2",
+      "geometryHash": "e2f0f1b2e39910046f91fe4f0dbc9a1ccd0bc29f9803f662998a4b2c02084a88",
       "id": "sf.render.works-refinery.mesh.lod1-refinery.primitive.0",
       "indexCount": 5364,
       "indexed": true,
@@ -165,10 +165,24 @@
   "lods": [],
   "materials": [
     {
-      "hash": "67183bba00e4672baa9afc3ec30982c420d6787bd19454028ae082b5adf9c4ae",
-      "id": "material:67183bba00e4672baa9afc3e",
+      "hash": "080d798212eaadc506e877f4d8b3d653790cf3dda53120143d3461990fa8ec87",
+      "id": "material:080d798212eaadc506e877f4",
+      "name": "Material_lamp_LOD0",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "2d39a91ebf3a5b31c8ebb0c56f6176b4253cb25d7f45dd36a42f509163eccbbc",
+      "id": "material:2d39a91ebf3a5b31c8ebb0c5",
+      "name": "Material_lamp_LOD1",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "39e9fb1479c2b922e51349e4d2da9760e91cf916b6f698f5bc65e9d0fb1e08f4",
+      "id": "material:39e9fb1479c2b922e51349e4",
       "name": "Material_slit_LOD1",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -198,13 +212,6 @@
       ]
     },
     {
-      "hash": "c2c7b62d30dcd41cf4fe6b1ce57916464a3aef9778e95a3ae87e9dcfb67e3f22",
-      "id": "material:c2c7b62d30dcd41cf4fe6b1c",
-      "name": "Material_lamp_LOD1",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "ccf7e529a99bc72515f2234b5d0df167db1468316818c553c68ba6ffbc4fa606",
       "id": "material:ccf7e529a99bc72515f2234b",
       "name": "Material_Refinery_LOD1",
@@ -231,17 +238,10 @@
       ]
     },
     {
-      "hash": "d0356f3cf034de9f4999286aa1e0f7601e17cd03b15c289bcf0c58ac6cf72573",
-      "id": "material:d0356f3cf034de9f4999286a",
+      "hash": "d00d55432450ca18fc986b4bdbb5fd64ac72718b227d3f2bd06b5cecec43d5db",
+      "id": "material:d00d55432450ca18fc986b4b",
       "name": "Material_slit_LOD0",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "d63063cff86e86e8e39f9a3e1e5514b875f740f26dd00f8aa4fa7b6e1b2f09ff",
-      "id": "material:d63063cff86e86e8e39f9a3e",
-      "name": "Material_lamp_LOD0",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -249,21 +249,21 @@
     {
       "id": "sf.render.works-refinery.mesh.lod0-furnace-slit",
       "localTransform": [
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
-        0,
-        0,
+        -0.001999989151954651,
+        -1.862645149230957e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -278,42 +278,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         -0.2199999988079071,
-        0.2919999957084656,
-        -0.03999999910593033,
+        0.2900000065565109,
+        -0.04000000096857548,
         1
       ]
     },
     {
       "id": "sf.render.works-refinery.mesh.lod0-lamp-lens",
       "localTransform": [
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
-        0,
-        0,
+        0.007999986410140991,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -328,42 +328,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0.3100000023841858,
-        0.7400000095367432,
-        -0.6499999761581421,
+        0.7479999959468842,
+        -0.6500000059604645,
         1
       ]
     },
     {
       "id": "sf.render.works-refinery.mesh.lod0-refinery",
       "localTransform": [
-        1,
+        0.8607350289821625,
         0,
         0,
         0,
         0,
-        1,
+        0.8607350289821625,
         0,
         0,
         0,
         0,
-        1,
+        0.8607350289821625,
         0,
-        0,
-        0,
-        0,
+        0.060635000467300415,
+        0.5999999951482096,
+        -0.17311498522758484,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -377,42 +377,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.8607350289821625,
         0,
         0,
         0,
         0,
-        1,
+        0.8607350289821625,
         0,
         0,
         0,
         0,
-        1,
+        0.8607350289821625,
         0,
-        0,
-        0,
-        0,
+        0.060635000467300415,
+        0.5999999951482096,
+        -0.17311498522758484,
         1
       ]
     },
     {
       "id": "sf.render.works-refinery.mesh.lod1-furnace-slit",
       "localTransform": [
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
-        0,
-        0,
+        -0.001999989151954651,
+        -1.862645149230957e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -427,42 +427,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         0,
         0,
         0,
-        1,
+        0.05952000617980957,
         0,
         -0.2199999988079071,
-        0.2919999957084656,
-        -0.03999999910593033,
+        0.2900000065565109,
+        -0.04000000096857548,
         1
       ]
     },
     {
       "id": "sf.render.works-refinery.mesh.lod1-lamp-lens",
       "localTransform": [
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
-        0,
-        0,
+        0.007999986410140991,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -477,42 +477,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0,
         0,
         0,
-        1,
+        0.01600000262260437,
         0,
         0.3100000023841858,
-        0.7400000095367432,
-        -0.6499999761581421,
+        0.7479999959468842,
+        -0.6500000059604645,
         1
       ]
     },
     {
       "id": "sf.render.works-refinery.mesh.lod1-refinery",
       "localTransform": [
-        1,
+        0.856124997138977,
         0,
         0,
         0,
         0,
-        1,
+        0.856124997138977,
         0,
         0,
         0,
         0,
-        1,
+        0.856124997138977,
         0,
-        0,
-        0,
-        0,
+        0.06412500143051147,
+        0.600000027083297,
+        -0.1769999861717224,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -526,21 +526,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-refinery.body",
       "worldTransform": [
-        1,
+        0.856124997138977,
         0,
         0,
         0,
         0,
-        1,
+        0.856124997138977,
         0,
         0,
         0,
         0,
-        1,
+        0.856124997138977,
         0,
-        0,
-        0,
-        0,
+        0.06412500143051147,
+        0.600000027083297,
+        -0.1769999861717224,
         1
       ]
     },
@@ -603,14 +603,14 @@
       "uri": "place_works_refinery.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3322084,
-    "sha256": "fde3989e4f69ff008069a7b6af76d0b188cff0d7489b7e1bd751d469fb656dab",
+    "bytes": 3195508,
+    "sha256": "fe2b56d4750bed08269b076d33e5b946baef59a93f3bbf3d700879ef6c5b1480",
     "uri": "render.glb"
   },
   "runtime": {
@@ -622,18 +622,18 @@
       ],
       "max": [
         0.9213700294494629,
-        1.2000478506088257,
-        0.6000104546546936
+        1.2000478399527617,
+        0.6000104600063237
       ],
       "min": [
         -0.8001000285148621,
-        -0.000047796442231629044,
-        -0.9540104269981384
+        -0.00004778578616759788,
+        -0.9540104323497686
       ],
       "size": [
         1.721470057964325,
-        1.2000956470510573,
-        1.554020881652832
+        1.2000956257389293,
+        1.5540208923560923
       ]
     },
     "hidden": [],
@@ -786,21 +786,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.05952000617980957,
           0,
           0,
           0,
           0,
-          1,
+          0.05952000617980957,
           0,
           0,
           0,
           0,
-          1,
+          0.05952000617980957,
           0,
           -0.2199999988079071,
-          0.2919999957084656,
-          -0.03999999910593033,
+          0.2900000065565109,
+          -0.04000000096857548,
           1
         ],
         "name": "LOD0_furnace_slit",
@@ -813,21 +813,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.05952000617980957,
           0,
           0,
           0,
           0,
-          1,
+          0.05952000617980957,
           0,
           0,
           0,
           0,
-          1,
+          0.05952000617980957,
           0,
           -0.2199999988079071,
-          0.2919999957084656,
-          -0.03999999910593033,
+          0.2900000065565109,
+          -0.04000000096857548,
           1
         ],
         "name": "LOD1_furnace_slit",
@@ -840,21 +840,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.01600000262260437,
           0,
           0,
           0,
           0,
-          1,
+          0.01600000262260437,
           0,
           0,
           0,
           0,
-          1,
+          0.01600000262260437,
           0,
           0.3100000023841858,
-          0.7400000095367432,
-          -0.6499999761581421,
+          0.7479999959468842,
+          -0.6500000059604645,
           1
         ],
         "name": "LOD0_lamp_lens",
@@ -867,21 +867,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.01600000262260437,
           0,
           0,
           0,
           0,
-          1,
+          0.01600000262260437,
           0,
           0,
           0,
           0,
-          1,
+          0.01600000262260437,
           0,
           0.3100000023841858,
-          0.7400000095367432,
-          -0.6499999761581421,
+          0.7479999959468842,
+          -0.6500000059604645,
           1
         ],
         "name": "LOD1_lamp_lens",
@@ -894,21 +894,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8607350289821625,
           0,
           0,
           0,
           0,
-          1,
+          0.8607350289821625,
           0,
           0,
           0,
           0,
-          1,
+          0.8607350289821625,
           0,
-          0,
-          0,
-          0,
+          0.060635000467300415,
+          0.5999999951482096,
+          -0.17311498522758484,
           1
         ],
         "name": "LOD0_refinery",
@@ -921,21 +921,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.856124997138977,
           0,
           0,
           0,
           0,
-          1,
+          0.856124997138977,
           0,
           0,
           0,
           0,
-          1,
+          0.856124997138977,
           0,
-          0,
-          0,
-          0,
+          0.06412500143051147,
+          0.600000027083297,
+          -0.1769999861717224,
           1
         ],
         "name": "LOD1_refinery",
@@ -950,20 +950,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_refinery.glb"
   },
-  "runtimeHash": "be3d1b15498bc2f10509206244a248b02a66ca72699de795bca900c42a890914",
+  "runtimeHash": "1c30f145c9190fb7f49217e46bb64a6e9b925d990eb2b0854e44ffdf46cbc357",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           0.9213700294494629,
-          1.2000478506088257,
-          0.6000104546546936
+          1.2000478399527617,
+          0.6000104600063237
         ],
         "min": [
           -0.8001000285148621,
-          -0.000047796442231629044,
-          -0.9540104269981384
+          -0.00004778578616759788,
+          -0.9540104323497686
         ]
       },
       "id": "sf.render.works-refinery.body",

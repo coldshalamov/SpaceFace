@@ -1,0 +1,2476 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hundred-hand-mile.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        32,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentNodeId": "sf.render.hundred-hand-mile.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        32,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.anchor.socket-record",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        59,
+        3.200000047683716,
+        32,
+        1
+      ],
+      "nodeName": "SOCKET_Record",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.hundred-hand-mile.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        59,
+        3.200000047683716,
+        32,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hundred-hand-mile",
+  "collisions": [
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-a.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-pylon-a",
+      "reference": "COLLISION_PYLON_A"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-b.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-pylon-b",
+      "reference": "COLLISION_PYLON_B"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-1.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-1",
+      "reference": "COLLISION_RECEIVER_1"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-2.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-2",
+      "reference": "COLLISION_RECEIVER_2"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-3.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-3",
+      "reference": "COLLISION_RECEIVER_3"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-4.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-4",
+      "reference": "COLLISION_RECEIVER_4"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-5.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-5",
+      "reference": "COLLISION_RECEIVER_5"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-0.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-0",
+      "reference": "COLLISION_SPINE_0"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-1.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-1",
+      "reference": "COLLISION_SPINE_1"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-2.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-2",
+      "reference": "COLLISION_SPINE_2"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-3.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-3",
+      "reference": "COLLISION_SPINE_3"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-4.collision",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-4",
+      "reference": "COLLISION_SPINE_4"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "12c77f1341b1464268a92730592d2666cda233264120fe2634ccefcac14dbb96",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber"
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          -71.49954986572266,
+          20.307029724121094,
+          40.00046920776367
+        ],
+        "min": [
+          -88.50045013427734,
+          -4,
+          23.99953269958496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31776d9218cf1e74347cab4c7a88b052691a91332a223da20aca9945c14b3ee0",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-a.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_PYLON_A",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-pylon-a",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          88.50045013427734,
+          20.307029724121094,
+          40.00046920776367
+        ],
+        "min": [
+          71.49954986572266,
+          -4,
+          23.99953269958496
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f74bd77756b72f9108552588f383edd7cab0788a15b26cdd9016eb06380bb3a4",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-b.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_PYLON_B",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-pylon-b",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -54,
+          1.999786376953125,
+          35.800289154052734
+        ],
+        "min": [
+          -66,
+          0.0002136528491973877,
+          28.19971466064453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5e2fe90d2ebac3b07f6e09f7abf530477dbb87eaa608b0628b9e5bd95a110db",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-1.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_RECEIVER_1",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-1",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          -24,
+          1.999786376953125,
+          35.800289154052734
+        ],
+        "min": [
+          -36,
+          0.0002136528491973877,
+          28.19971466064453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5eaee252ff4d326f459a9c597020bdcbfb552aca4cae10f1e5d75fc5fff3215a",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_RECEIVER_2",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6,
+          1.999786376953125,
+          35.800289154052734
+        ],
+        "min": [
+          -6,
+          0.0002136528491973877,
+          28.19971466064453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fd2b7ee8f7fd9c51e92fdb7a6ef2c236029425561691f201499106fbb39147ad",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-3.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_RECEIVER_3",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          36,
+          1.999786376953125,
+          35.800289154052734
+        ],
+        "min": [
+          24,
+          0.0002136528491973877,
+          28.19971466064453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab02e9f00676fea2e0e8c185aad4459c18f306d32143465d34b3d1439c61470b",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-4.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_RECEIVER_4",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-4",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          66,
+          1.999786376953125,
+          35.800289154052734
+        ],
+        "min": [
+          54,
+          0.0002136528491973877,
+          28.19971466064453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70b51e0adf520087fabb3e41544ec3b300f44c3e7b9fb3d6ed724dcfe6e1828e",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-5.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_RECEIVER_5",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-receiver-5",
+      "primitiveIndex": 0,
+      "vertexCount": 100
+    },
+    {
+      "bounds": {
+        "max": [
+          -44.95812225341797,
+          0.17941829562187195,
+          35.60089111328125
+        ],
+        "min": [
+          -72.04187774658203,
+          -3.824418306350708,
+          28.39910888671875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31aecf06d653683acda82a9888cded6e345a31f0a22e2156b114fd3775b1d65f",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-0.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_SPINE_0",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-0",
+      "primitiveIndex": 0,
+      "vertexCount": 124
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.961902618408203,
+          0.18031558394432068,
+          35.59992599487305
+        ],
+        "min": [
+          -45.0380973815918,
+          -3.8253157138824463,
+          28.40007209777832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d84ab417d2639eddfe509a9bd3efe0f1fbec9a96784bc67c3d623d0589c17338",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-1.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_SPINE_1",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-1",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          15.038097381591797,
+          0.18031558394432068,
+          35.59992599487305
+        ],
+        "min": [
+          -15.038097381591797,
+          -3.8253157138824463,
+          28.40007209777832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bfd450f3b6040e2302d57bd362c5cc865df526b4fc55d5c0b18073099da1900",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-2.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_SPINE_2",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-2",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          45.0380973815918,
+          0.18031558394432068,
+          35.59992599487305
+        ],
+        "min": [
+          14.961902618408203,
+          -3.8253157138824463,
+          28.40007209777832
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9dafa1657f47210a0af13b4b580b78b54b0b0184604d89b91bd8268b57b5ad8",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-3.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_SPINE_3",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-3",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          72.04187774658203,
+          0.17941829562187195,
+          35.60089111328125
+        ],
+        "min": [
+          44.95812225341797,
+          -3.824418306350708,
+          28.39910888671875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "559a0d35de582cf3833e2c38fa2c6ef812ae7a27df4c37cc74e1a2d2709234a5",
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-4.primitive.0",
+      "indexCount": 228,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_SPINE_4",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.collision-spine-4",
+      "primitiveIndex": 0,
+      "vertexCount": 124
+    },
+    {
+      "bounds": {
+        "max": [
+          83.19999694824219,
+          14.50178337097168,
+          35.894649505615234
+        ],
+        "min": [
+          -83.19999694824219,
+          -0.0017835341859608889,
+          28.155351638793945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3a4e6985d7ddad9a306c42bf9c922d668584ec359993066e3a9244f5cf8eb3d4",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-armor.primitive.0",
+      "indexCount": 5076,
+      "indexed": true,
+      "materialHash": "78a1b02ce41e356dddbb0caed0c1a697eef46fd944c934946f23461bc6338b3e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1606
+    },
+    {
+      "bounds": {
+        "max": [
+          84,
+          20.305191040039062,
+          35.9991455078125
+        ],
+        "min": [
+          -84,
+          0.0018378794193267822,
+          28.0008544921875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9ab0c4fcaabd6602d6172cf9a7dd59fb43f987c50263c022dc17c6e436d0bec",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 17484,
+      "indexed": true,
+      "materialHash": "f2392bb39fc12d30953e059064c9c96c0d772b7982c502f75a4590ff55cf7b37",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 5332
+    },
+    {
+      "bounds": {
+        "max": [
+          70.36000061035156,
+          4.869704452073072,
+          34.05767311850353
+        ],
+        "min": [
+          -70.36000061035156,
+          3.770295891249682,
+          33.542325355617564
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec42dd4becd432c214e891deb1e2aff784d4d4110925111fe3f1663a34d3e49f",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber.primitive.0",
+      "indexCount": 4512,
+      "indexed": true,
+      "materialHash": "6264eeaf5bf09717875aa3a0667378087045a4bc75f78ff45d5011a737db02ba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_HUNDRED_HAND_LAMPS_Beacon_Amber",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 1440
+    },
+    {
+      "bounds": {
+        "max": [
+          60.29999923706055,
+          3.1699915457882195,
+          32.850055006690056
+        ],
+        "min": [
+          57.70000076293945,
+          3.0900086830936164,
+          31.149943085961315
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ab66cfc4fb752adca34a3064b9a85bf121aab49873616363bf4405afebdb591",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "6264eeaf5bf09717875aa3a0667378087045a4bc75f78ff45d5011a737db02ba",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_HUNDRED_HAND_RECORD_Beacon_Amber",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 184
+    },
+    {
+      "bounds": {
+        "max": [
+          88.5,
+          11.99462890625,
+          39.99462890625
+        ],
+        "min": [
+          -88.5,
+          -3.994628667831421,
+          24.00537109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b1ff4ccdcd436f8ab73c57723a96dea0a98fdbfdf5ffbe71c4cb9a470d5142d2",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hull.primitive.0",
+      "indexCount": 10152,
+      "indexed": true,
+      "materialHash": "c9a26f8893bc04fd9eb2e5c5aea54e95efecb1696f21749fe4b262444d088d6a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 3234
+    },
+    {
+      "bounds": {
+        "max": [
+          83.8499984741211,
+          18.14633560180664,
+          35.84870147705078
+        ],
+        "min": [
+          -83.8499984741211,
+          -3.8199222087860107,
+          28.15129852294922
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c71098902b5ca9220d6d1f1e22e0fafcc4ee132f35c0a02d84eb653b35a503a3",
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 29700,
+      "indexed": true,
+      "materialHash": "9cfb6d46ed4cca0a235c5e6edd5b1a2705d82f9bd80914d648237a0382597b1a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.hundred-hand-mile.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 10586
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "6264eeaf5bf09717875aa3a0667378087045a4bc75f78ff45d5011a737db02ba",
+      "id": "material:6264eeaf5bf09717875aa3a0",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "78a1b02ce41e356dddbb0caed0c1a697eef46fd944c934946f23461bc6338b3e",
+      "id": "material:78a1b02ce41e356dddbb0cae",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9cfb6d46ed4cca0a235c5e6edd5b1a2705d82f9bd80914d648237a0382597b1a",
+      "id": "material:9cfb6d46ed4cca0a235c5e6e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c9a26f8893bc04fd9eb2e5c5aea54e95efecb1696f21749fe4b262444d088d6a",
+      "id": "material:c9a26f8893bc04fd9eb2e5c5",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f2392bb39fc12d30953e059064c9c96c0d772b7982c502f75a4590ff55cf7b37",
+      "id": "material:f2392bb39fc12d30953e0590",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_PYLON_A",
+      "nodeName": "COLLISION_PYLON_A",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-pylon-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_PYLON_B",
+      "nodeName": "COLLISION_PYLON_B",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_RECEIVER_1",
+      "nodeName": "COLLISION_RECEIVER_1",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_RECEIVER_2",
+      "nodeName": "COLLISION_RECEIVER_2",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_RECEIVER_3",
+      "nodeName": "COLLISION_RECEIVER_3",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_RECEIVER_4",
+      "nodeName": "COLLISION_RECEIVER_4",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-receiver-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_RECEIVER_5",
+      "nodeName": "COLLISION_RECEIVER_5",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_SPINE_0",
+      "nodeName": "COLLISION_SPINE_0",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_SPINE_1",
+      "nodeName": "COLLISION_SPINE_1",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_SPINE_2",
+      "nodeName": "COLLISION_SPINE_2",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_SPINE_3",
+      "nodeName": "COLLISION_SPINE_3",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.collision-spine-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_SPINE_4",
+      "nodeName": "COLLISION_SPINE_4",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber",
+      "localTransform": [
+        70.36000061035156,
+        0,
+        0,
+        0,
+        0,
+        70.36000061035156,
+        0,
+        0,
+        0,
+        0,
+        70.36000061035156,
+        0,
+        0,
+        4.320000171661377,
+        33.79999923706055,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_HUNDRED_HAND_LAMPS_Beacon_Amber",
+      "nodeName": "LOD0_HOOK_HUNDRED_HAND_LAMPS_Beacon_Amber",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        70.36000061035156,
+        0,
+        0,
+        0,
+        0,
+        70.36000061035156,
+        0,
+        0,
+        0,
+        0,
+        70.36000061035156,
+        0,
+        0,
+        4.320000171661377,
+        33.79999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber",
+      "localTransform": [
+        1.2999992370605469,
+        0,
+        0,
+        0,
+        0,
+        1.2999992370605469,
+        0,
+        0,
+        0,
+        0,
+        1.2999992370605469,
+        0,
+        59,
+        3.130000114440918,
+        31.999999046325684,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_HUNDRED_HAND_RECORD_Beacon_Amber",
+      "nodeName": "LOD0_HOOK_HUNDRED_HAND_RECORD_Beacon_Amber",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1.2999992370605469,
+        0,
+        0,
+        0,
+        0,
+        1.2999992370605469,
+        0,
+        0,
+        0,
+        0,
+        1.2999992370605469,
+        0,
+        59,
+        3.130000114440918,
+        31.999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.hundred-hand-mile.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-mile.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_HUNDRED_HAND_MILE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-mile.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d209988a4617f40f8aee307c87afb836fc55d99c6f6df312241dbb3a32faee53"
+    },
+    "sourceGlb": {
+      "bytes": 465564,
+      "sha256": "87083b50fc01d0fb0f4177883e4485102605a0ba13fc7c4d477219783f811e80",
+      "uri": "place_hundred_hand_mile.glb"
+    },
+    "sourceManifest": {
+      "bytes": 276190,
+      "sha256": "da7021a52f3430a0560a4858cffd2d8a9164f726eeaa3d65f93ef31efc5d578d",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 855976,
+    "sha256": "dc23f5073fc3039c247a0ae317aa319cc7b9e97d12f648da61c58a2e2b9d4c63",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        8.153514862060547,
+        32.000000953674316
+      ],
+      "max": [
+        88.50045013427734,
+        20.307029724121094,
+        40.00046920776367
+      ],
+      "min": [
+        -88.50045013427734,
+        -4,
+        23.99953269958496
+      ],
+      "size": [
+        177.0009002685547,
+        24.307029724121094,
+        16.00093650817871
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -60,
+          0.20000000298023224,
+          32,
+          1
+        ],
+        "name": "MODULE_SOCKET_01",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "MODULE_SOCKET_01",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -30,
+          0.20000000298023224,
+          32,
+          1
+        ],
+        "name": "MODULE_SOCKET_02",
+        "planIndex": 21,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "MODULE_SOCKET_02",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0.20000000298023224,
+          32,
+          1
+        ],
+        "name": "MODULE_SOCKET_03",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "MODULE_SOCKET_03",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          30,
+          0.20000000298023224,
+          32,
+          1
+        ],
+        "name": "MODULE_SOCKET_04",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "MODULE_SOCKET_04",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          60,
+          0.20000000298023224,
+          32,
+          1
+        ],
+        "name": "MODULE_SOCKET_05",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "MODULE_SOCKET_05",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -80,
+          0,
+          32,
+          1
+        ],
+        "name": "PYLON_A",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "PYLON_A",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          80,
+          0,
+          32,
+          1
+        ],
+        "name": "PYLON_B",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "PYLON_B",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          32,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 27,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.hundred-hand-mile.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          59,
+          3.200000047683716,
+          32,
+          1
+        ],
+        "name": "SOCKET_Record",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Record",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Record",
+            "recordIds": [
+              "sf.render.hundred-hand-mile.anchor.socket-record"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 14,
+      "mechanical": 2,
+      "signal": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 29,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          70.36000061035156,
+          0,
+          0,
+          0,
+          0,
+          70.36000061035156,
+          0,
+          0,
+          0,
+          0,
+          70.36000061035156,
+          0,
+          0,
+          4.320000171661377,
+          33.79999923706055,
+          1
+        ],
+        "name": "LOD0_HOOK_HUNDRED_HAND_LAMPS_Beacon_Amber",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2999992370605469,
+          0,
+          0,
+          0,
+          0,
+          1.2999992370605469,
+          0,
+          0,
+          0,
+          0,
+          1.2999992370605469,
+          0,
+          59,
+          3.130000114440918,
+          31.999999046325684,
+          1
+        ],
+        "name": "LOD0_HOOK_HUNDRED_HAND_RECORD_Beacon_Amber",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_hundred_hand_mile.glb"
+  },
+  "runtimeHash": "5ecd79c80038d8521e26c1448bbe75c9566a3705e9e47f29fe8b31be764d3dbd",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          88.50045013427734,
+          20.307029724121094,
+          40.00046920776367
+        ],
+        "min": [
+          -88.50045013427734,
+          -4,
+          23.99953269958496
+        ]
+      },
+      "id": "sf.render.hundred-hand-mile.body",
+      "nodeIds": [
+        "sf.render.hundred-hand-mile.mesh.collision-pylon-a",
+        "sf.render.hundred-hand-mile.mesh.collision-pylon-b",
+        "sf.render.hundred-hand-mile.mesh.collision-receiver-1",
+        "sf.render.hundred-hand-mile.mesh.collision-receiver-2",
+        "sf.render.hundred-hand-mile.mesh.collision-receiver-3",
+        "sf.render.hundred-hand-mile.mesh.collision-receiver-4",
+        "sf.render.hundred-hand-mile.mesh.collision-receiver-5",
+        "sf.render.hundred-hand-mile.mesh.collision-spine-0",
+        "sf.render.hundred-hand-mile.mesh.collision-spine-1",
+        "sf.render.hundred-hand-mile.mesh.collision-spine-2",
+        "sf.render.hundred-hand-mile.mesh.collision-spine-3",
+        "sf.render.hundred-hand-mile.mesh.collision-spine-4",
+        "sf.render.hundred-hand-mile.mesh.lod0-armor",
+        "sf.render.hundred-hand-mile.mesh.lod0-brushedmetal",
+        "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-lamps-beacon-amber",
+        "sf.render.hundred-hand-mile.mesh.lod0-hook-hundred-hand-record-beacon-amber",
+        "sf.render.hundred-hand-mile.mesh.lod0-hull",
+        "sf.render.hundred-hand-mile.mesh.lod0-mechanical",
+        "sf.render.hundred-hand-mile.root"
+      ]
+    }
+  ]
+}

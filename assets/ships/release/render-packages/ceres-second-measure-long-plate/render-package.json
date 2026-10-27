@@ -191,24 +191,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "00b7ade7a49afa3b90a11e776d5bd3da6102f378d4f1c4f5ce3cb6db5d492e81",
+  "contentHash": "0470521ba7f5edec11baac68e6cbfa19d19cae4b95cf77705f03bed6922fed0e",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          17.000167846679688,
-          2.2994415760040283,
+          17.000167851802118,
+          2.2994414874347315,
           27.25
         ],
         "min": [
-          -17.000167846679688,
-          -1.4994416236877441,
+          -17.000167851802118,
+          -1.4994415351184474,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ffcf1a9cfe2b40a62ba3c575af2dc38a47c46abd57f5d0c033ea53735e773b1",
+      "geometryHash": "cf9f23284759a912340235fdc50ff79f40b8c19a421861e93c0878966fb9c8b1",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-armor.primitive.0",
       "indexCount": 6852,
       "indexed": true,
@@ -222,18 +222,18 @@
     {
       "bounds": {
         "max": [
-          17.001708984375,
-          2.50079345703125,
+          17.001709036530656,
+          2.500793481246376,
           27.5
         ],
         "min": [
-          -17.001708984375,
-          -1.50079345703125,
+          -17.001709036530656,
+          -1.500793481246376,
           -27.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3a6ce2a8bd8abfa930a9b200299ec107eaa47c60d19a498ff087399f569e7b0",
+      "geometryHash": "47af1b6553c6f7590672ae8b6a7720531b2a56c7ce91804171a0d2626c31b15a",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 13536,
       "indexed": true,
@@ -247,18 +247,18 @@
     {
       "bounds": {
         "max": [
-          4.5007781982421875,
-          0.4491821229457855,
+          4.500778221991638,
+          0.4491821158669722,
           27.25
         ],
         "min": [
-          -4.5007781982421875,
-          -0.3491820991039276,
+          -4.500778221991638,
+          -0.3491820920251143,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5644048a28b74074d647ec66caf113664617a926c3dce69f06f60cb63214e193",
+      "geometryHash": "bc7f36a083e9fa8d79876ede582cb0b38100a89c18159eb9265731db35ba44b6",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -272,18 +272,18 @@
     {
       "bounds": {
         "max": [
-          14.500252723693848,
-          2.287532091140747,
+          14.500252483201558,
+          2.2875320813142666,
           25.983253479003906
         ],
         "min": [
-          -14.500252723693848,
-          1.4374680519104004,
+          -14.500252483201558,
+          1.437468061736881,
           -25.983253479003906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "356990c20b4e1611ef7be3491a727ed2f5e2189182bb35de2406f01a2fef8e46",
+      "geometryHash": "a9643bae3499954b4cee0bdff260e0ddfc5053bc01d05a5318782c601c32f703",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-livery.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -297,18 +297,18 @@
     {
       "bounds": {
         "max": [
-          3.549394369125366,
-          1.9762463569641113,
+          3.5493942075869014,
+          1.97624625194701,
           27.25
         ],
         "min": [
-          -3.549394369125366,
-          -2.501246452331543,
+          -3.5493942075869014,
+          -2.5012463473144417,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a25101e81121534525fbd883953ced5d23cc573a05f93846536cbbc6893358fd",
+      "geometryHash": "63a9c3f4d13b74bf76ee00dc79c265ed90a6b8d6e9f3d67c776dfbdcefcde993",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4512,
       "indexed": true,
@@ -322,18 +322,18 @@
     {
       "bounds": {
         "max": [
-          17.000167846679688,
-          2.2994415760040283,
+          17.000167851802118,
+          2.2994414874347315,
           27.25
         ],
         "min": [
-          -17.000167846679688,
-          -1.4994416236877441,
+          -17.000167851802118,
+          -1.4994415351184474,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccff1ce19e6024c1d8c7d43d6d53954a0e39bad1d924162cb24c1d996ca46a03",
+      "geometryHash": "ce383029037b23bcdb547751eb61e3b89e7fe5319683d14b88e2b94228569084",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-armor.primitive.0",
       "indexCount": 4542,
       "indexed": true,
@@ -347,18 +347,18 @@
     {
       "bounds": {
         "max": [
-          16.99689292907715,
-          2.4982001781463623,
+          16.996893020233127,
+          2.4982000219213276,
           27.497953414916992
         ],
         "min": [
-          -16.99689292907715,
-          -1.4963301420211792,
+          -16.996893020233127,
+          -1.4963299857961447,
           -27.497325897216797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c6afb00f9880501a3e2af1a8977d4c0a615f108a7a85f581c8239020d6de274",
+      "geometryHash": "fbad162814508708fd15d1e659285e5650db41d7ab52c581a4a1e2b1abe0867c",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 2412,
       "indexed": true,
@@ -372,18 +372,18 @@
     {
       "bounds": {
         "max": [
-          4.5007781982421875,
-          0.4491821229457855,
+          4.500778221991638,
+          0.4491821158669722,
           27.25
         ],
         "min": [
-          -4.5007781982421875,
-          -0.3491820991039276,
+          -4.500778221991638,
+          -0.3491820920251143,
           -27.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eb9ca3b852cd9ca96571b4782af99e4c6c1a3959551f2661838f22b05a5b2c4",
+      "geometryHash": "3f29dc4c378c0ca91011e6010e3d91041f6863530de52b82eaaa84d8a80eb586",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -398,17 +398,17 @@
       "bounds": {
         "max": [
           3.549999952316284,
-          2.2817699909210205,
-          1.1251182556152344
+          2.2817699665439997,
+          1.1251182441115943
         ],
         "min": [
           -3.549999952316284,
-          1.8683418035507202,
-          -1.1251182556152344
+          1.868341827927741,
+          -1.1251182441115943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad9c9dbb869fbf36e2e656c5319d67e27b738274b7d2a597dbfe3d86831d81ac",
+      "geometryHash": "8300463b8fc6ee9267b85b501234e660a0c3531f27b74bf1857349440b74b269",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-livery.primitive.0",
       "indexCount": 348,
       "indexed": true,
@@ -422,18 +422,18 @@
     {
       "bounds": {
         "max": [
-          3.5455825328826904,
-          1.969054937362671,
+          3.545582449199348,
+          1.969054844205743,
           27.24627113342285
         ],
         "min": [
-          -3.5455825328826904,
-          -2.494520902633667,
+          -3.545582449199348,
+          -2.494520809476739,
           -27.24627113342285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce236ea05742beeacf43e39ffaf6c2dea86a50f137b7e39deef8c533aea61b2",
+      "geometryHash": "c49504fc1de28ac20b1490d5fdea8cb68d111c6a232fb2a6c0882d070b9c9d2d",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-mechanical.primitive.0",
       "indexCount": 2592,
       "indexed": true,
@@ -447,18 +447,18 @@
     {
       "bounds": {
         "max": [
-          16.992769241333008,
-          2.2924082279205322,
+          16.992770233978543,
+          2.292408185092939,
           27.243473052978516
         ],
         "min": [
-          -16.992769241333008,
-          -1.4989135265350342,
+          -16.992770233978543,
+          -1.498913483707441,
           -27.243473052978516
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d3182a35f07885f3d57c5e1c6b55b845083c3e573c2b8619b9f2cef26d0939b",
+      "geometryHash": "4618dabd436b86e42d62fd5d75145d35e08df59f43406091512e8952f4c48fbb",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-armor.primitive.0",
       "indexCount": 2064,
       "indexed": true,
@@ -472,18 +472,18 @@
     {
       "bounds": {
         "max": [
-          16.994848251342773,
-          2.493757963180542,
+          16.994848089928002,
+          2.4937579506309513,
           27.49433135986328
         ],
         "min": [
-          -16.994848251342773,
-          -1.4935787916183472,
+          -16.994848089928002,
+          -1.4935787790687565,
           -27.49433135986328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "525d6c714c5e777e93a9a8875ee428898b777e6c893ea85dbcdc3d363f3b20c6",
+      "geometryHash": "bd9d6cb16f07b7a0ed0fe40d18bc7d823f071cdefdcfeaa23368c5800c5efa1a",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 1056,
       "indexed": true,
@@ -497,18 +497,18 @@
     {
       "bounds": {
         "max": [
-          4.492971897125244,
-          0.4424283504486084,
+          4.492971996037631,
+          0.4424283430837503,
           27.24300765991211
         ],
         "min": [
-          -4.492971897125244,
-          -0.3424283564090729,
+          -4.492971996037631,
+          -0.34242834904421476,
           -27.24300765991211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "afbc1d95c97024c31b905e59d5e3e48ac421de894ee0dec2bb57ba51f701f3ff",
+      "geometryHash": "3253fb26499a01d6dd27ba5b5361e517f1b133067daac803964331ded66cea65",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-hull.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -523,17 +523,17 @@
       "bounds": {
         "max": [
           3.5443007946014404,
-          2.279836893081665,
-          1.1194179058074951
+          2.27983685376119,
+          1.1194179791659387
         ],
         "min": [
           -3.5443007946014404,
-          1.873995065689087,
-          -1.1194179058074951
+          1.8739951050095618,
+          -1.1194179791659387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c122bb2d3d5c98bce99d439f0e56089462a65f5b873eae5cde6defdc5909948f",
+      "geometryHash": "f40a25196756d3ccc90d6d247074eefccec07d07e7017e0a59168706ace14d02",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-livery.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -547,18 +547,18 @@
     {
       "bounds": {
         "max": [
-          3.5451536178588867,
-          1.9646879434585571,
+          3.545153302683888,
+          1.9646879503472805,
           27.24297332763672
         ],
         "min": [
-          -3.5451536178588867,
-          -2.4916961193084717,
+          -3.545153302683888,
+          -2.491696126197195,
           -27.24297332763672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ac1cea98ad9cd62fc1787bed0f49c8ac9e1e4ecf51f507a5571b7be0641cd26",
+      "geometryHash": "3848c56065290b6961a88814dd0fb322131abc08082e526b756064c56d736b38",
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-mechanical.primitive.0",
       "indexCount": 1116,
       "indexed": true,
@@ -739,20 +739,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-armor",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.3999999761581421,
         0,
         1
       ],
@@ -767,20 +767,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.3999999761581421,
         0,
         1
       ]
@@ -788,20 +788,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-brushedmetal",
       "localTransform": [
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
-        0,
+        0.5,
         0,
         1
       ],
@@ -816,20 +816,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
         0,
         0,
-        1,
+        27.5,
         0,
         0,
-        0,
+        0.5,
         0,
         1
       ]
@@ -837,20 +837,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-hull",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.050000011920928955,
         0,
         1
       ],
@@ -865,20 +865,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.050000011920928955,
         0,
         1
       ]
@@ -886,20 +886,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-livery",
       "localTransform": [
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
-        0,
+        1.8625000715255737,
         0,
         1
       ],
@@ -914,20 +914,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
         0,
         0,
-        1,
+        25.983253479003906,
         0,
         0,
-        0,
+        1.8625000715255737,
         0,
         1
       ]
@@ -935,20 +935,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.2625000476837158,
         0,
         1
       ],
@@ -963,20 +963,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        -0.2625000476837158,
         0,
         1
       ]
@@ -984,20 +984,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-armor",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.3999999761581421,
         0,
         1
       ],
@@ -1012,20 +1012,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.3999999761581421,
         0,
         1
       ]
@@ -1033,21 +1033,21 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-brushedmetal",
       "localTransform": [
-        1,
+        27.497639656066895,
         0,
         0,
         0,
         0,
-        1,
+        27.497639656066895,
         0,
         0,
         0,
         0,
-        1,
+        27.497639656066895,
         0,
         0,
-        0,
-        0,
+        0.5009350180625916,
+        0.00031375885009765625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1061,41 +1061,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.497639656066895,
         0,
         0,
         0,
         0,
-        1,
+        27.497639656066895,
         0,
         0,
         0,
         0,
-        1,
+        27.497639656066895,
         0,
         0,
-        0,
-        0,
+        0.5009350180625916,
+        0.00031375885009765625,
         1
       ]
     },
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-hull",
       "localTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.050000011920928955,
         0,
         1
       ],
@@ -1110,20 +1110,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
         0,
         0,
-        1,
+        27.25,
         0,
         0,
-        0,
+        0.050000011920928955,
         0,
         1
       ]
@@ -1131,20 +1131,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-livery",
       "localTransform": [
-        1,
+        3.549999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.549999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.549999952316284,
         0,
         0,
-        0,
+        2.0750558972358704,
         0,
         1
       ],
@@ -1159,20 +1159,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        3.549999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.549999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.549999952316284,
         0,
         0,
-        0,
+        2.0750558972358704,
         0,
         1
       ]
@@ -1180,20 +1180,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        27.24627113342285,
         0,
         0,
         0,
         0,
-        1,
+        27.24627113342285,
         0,
         0,
         0,
         0,
-        1,
+        27.24627113342285,
         0,
         0,
-        0,
+        -0.26273298263549805,
         0,
         1
       ],
@@ -1208,20 +1208,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.24627113342285,
         0,
         0,
         0,
         0,
-        1,
+        27.24627113342285,
         0,
         0,
         0,
         0,
-        1,
+        27.24627113342285,
         0,
         0,
-        0,
+        -0.26273298263549805,
         0,
         1
       ]
@@ -1229,20 +1229,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-armor",
       "localTransform": [
-        1,
+        27.243473052978516,
         0,
         0,
         0,
         0,
-        1,
+        27.243473052978516,
         0,
         0,
         0,
         0,
-        1,
+        27.243473052978516,
         0,
         0,
-        0,
+        0.396747350692749,
         0,
         1
       ],
@@ -1257,20 +1257,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.243473052978516,
         0,
         0,
         0,
         0,
-        1,
+        27.243473052978516,
         0,
         0,
         0,
         0,
-        1,
+        27.243473052978516,
         0,
         0,
-        0,
+        0.396747350692749,
         0,
         1
       ]
@@ -1278,20 +1278,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-brushedmetal",
       "localTransform": [
-        1,
+        27.49433135986328,
         0,
         0,
         0,
         0,
-        1,
+        27.49433135986328,
         0,
         0,
         0,
         0,
-        1,
+        27.49433135986328,
         0,
         0,
-        0,
+        0.5000895857810974,
         0,
         1
       ],
@@ -1306,20 +1306,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.49433135986328,
         0,
         0,
         0,
         0,
-        1,
+        27.49433135986328,
         0,
         0,
         0,
         0,
-        1,
+        27.49433135986328,
         0,
         0,
-        0,
+        0.5000895857810974,
         0,
         1
       ]
@@ -1327,20 +1327,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-hull",
       "localTransform": [
-        1,
+        27.24300765991211,
         0,
         0,
         0,
         0,
-        1,
+        27.24300765991211,
         0,
         0,
         0,
         0,
-        1,
+        27.24300765991211,
         0,
         0,
-        0,
+        0.04999999701976776,
         0,
         1
       ],
@@ -1355,20 +1355,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.24300765991211,
         0,
         0,
         0,
         0,
-        1,
+        27.24300765991211,
         0,
         0,
         0,
         0,
-        1,
+        27.24300765991211,
         0,
         0,
-        0,
+        0.04999999701976776,
         0,
         1
       ]
@@ -1376,20 +1376,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-livery",
       "localTransform": [
-        1,
+        3.5443007946014404,
         0,
         0,
         0,
         0,
-        1,
+        3.5443007946014404,
         0,
         0,
         0,
         0,
-        1,
+        3.5443007946014404,
         0,
         0,
-        0,
+        2.076915979385376,
         0,
         1
       ],
@@ -1404,20 +1404,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        3.5443007946014404,
         0,
         0,
         0,
         0,
-        1,
+        3.5443007946014404,
         0,
         0,
         0,
         0,
-        1,
+        3.5443007946014404,
         0,
         0,
-        0,
+        2.076915979385376,
         0,
         1
       ]
@@ -1425,20 +1425,20 @@
     {
       "id": "sf.render.ceres-second-measure-long-plate.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        27.24297332763672,
         0,
         0,
         0,
         0,
-        1,
+        27.24297332763672,
         0,
         0,
         0,
         0,
-        1,
+        27.24297332763672,
         0,
         0,
-        0,
+        -0.2635040879249573,
         0,
         1
       ],
@@ -1453,20 +1453,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-second-measure-long-plate.body",
       "worldTransform": [
-        1,
+        27.24297332763672,
         0,
         0,
         0,
         0,
-        1,
+        27.24297332763672,
         0,
         0,
         0,
         0,
-        1,
+        27.24297332763672,
         0,
         0,
-        0,
+        -0.2635040879249573,
         0,
         1
       ]
@@ -1530,36 +1530,36 @@
       "uri": "place_ceres_second_measure_long_plate.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 654772,
-    "sha256": "cb638c3bd56c335b91ef011abef5802f009d6d51e88431a89e625faff0a70c30",
+    "bytes": 370940,
+    "sha256": "c16a043a8672713fa1ad6890b94905d74a5feaff22de4336efdd99a7711132b4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        -0.00022649765014648438,
+        -0.00022643303403291348,
         0
       ],
       "max": [
-        17.001708984375,
-        2.50079345703125,
+        17.001709036530656,
+        2.500793481246376,
         27.5
       ],
       "min": [
-        -17.001708984375,
-        -2.501246452331543,
+        -17.001709036530656,
+        -2.5012463473144417,
         -27.5
       ],
       "size": [
-        34.00341796875,
-        5.002039909362793,
+        34.00341807306131,
+        5.002039828560818,
         55
       ]
     },
@@ -1858,20 +1858,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          0.3999999761581421,
           0,
           1
         ],
@@ -1885,20 +1885,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.5,
           0,
           0,
           0,
           0,
-          1,
+          27.5,
           0,
           0,
           0,
           0,
-          1,
+          27.5,
           0,
           0,
-          0,
+          0.5,
           0,
           1
         ],
@@ -1912,20 +1912,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          0.050000011920928955,
           0,
           1
         ],
@@ -1939,20 +1939,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.983253479003906,
           0,
           0,
           0,
           0,
-          1,
+          25.983253479003906,
           0,
           0,
           0,
           0,
-          1,
+          25.983253479003906,
           0,
           0,
-          0,
+          1.8625000715255737,
           0,
           1
         ],
@@ -1966,20 +1966,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          -0.2625000476837158,
           0,
           1
         ],
@@ -1993,20 +1993,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          0.3999999761581421,
           0,
           1
         ],
@@ -2020,21 +2020,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.497639656066895,
           0,
           0,
           0,
           0,
-          1,
+          27.497639656066895,
           0,
           0,
           0,
           0,
-          1,
+          27.497639656066895,
           0,
           0,
-          0,
-          0,
+          0.5009350180625916,
+          0.00031375885009765625,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -2047,20 +2047,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
           0,
           0,
-          1,
+          27.25,
           0,
           0,
-          0,
+          0.050000011920928955,
           0,
           1
         ],
@@ -2074,20 +2074,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.549999952316284,
           0,
           0,
           0,
           0,
-          1,
+          3.549999952316284,
           0,
           0,
           0,
           0,
-          1,
+          3.549999952316284,
           0,
           0,
-          0,
+          2.0750558972358704,
           0,
           1
         ],
@@ -2101,20 +2101,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24627113342285,
           0,
           0,
           0,
           0,
-          1,
+          27.24627113342285,
           0,
           0,
           0,
           0,
-          1,
+          27.24627113342285,
           0,
           0,
-          0,
+          -0.26273298263549805,
           0,
           1
         ],
@@ -2128,20 +2128,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.243473052978516,
           0,
           0,
           0,
           0,
-          1,
+          27.243473052978516,
           0,
           0,
           0,
           0,
-          1,
+          27.243473052978516,
           0,
           0,
-          0,
+          0.396747350692749,
           0,
           1
         ],
@@ -2155,20 +2155,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.49433135986328,
           0,
           0,
           0,
           0,
-          1,
+          27.49433135986328,
           0,
           0,
           0,
           0,
-          1,
+          27.49433135986328,
           0,
           0,
-          0,
+          0.5000895857810974,
           0,
           1
         ],
@@ -2182,20 +2182,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24300765991211,
           0,
           0,
           0,
           0,
-          1,
+          27.24300765991211,
           0,
           0,
           0,
           0,
-          1,
+          27.24300765991211,
           0,
           0,
-          0,
+          0.04999999701976776,
           0,
           1
         ],
@@ -2209,20 +2209,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.5443007946014404,
           0,
           0,
           0,
           0,
-          1,
+          3.5443007946014404,
           0,
           0,
           0,
           0,
-          1,
+          3.5443007946014404,
           0,
           0,
-          0,
+          2.076915979385376,
           0,
           1
         ],
@@ -2236,20 +2236,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.24297332763672,
           0,
           0,
           0,
           0,
-          1,
+          27.24297332763672,
           0,
           0,
           0,
           0,
-          1,
+          27.24297332763672,
           0,
           0,
-          0,
+          -0.2635040879249573,
           0,
           1
         ],
@@ -2265,19 +2265,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_second_measure_long_plate.glb"
   },
-  "runtimeHash": "9f13bfaaaf5c17870ac2d7ec22cfa468f02d4be6f9436c328c4251cfd50d9edb",
+  "runtimeHash": "dd237ca5188ea27b6931568a7d2269ce9cd8b134de18a219a159e3f778c0c4b6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          17.001708984375,
-          2.50079345703125,
+          17.001709036530656,
+          2.500793481246376,
           27.5
         ],
         "min": [
-          -17.001708984375,
-          -2.501246452331543,
+          -17.001709036530656,
+          -2.5012463473144417,
           -27.5
         ]
       },

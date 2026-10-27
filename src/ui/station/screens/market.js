@@ -14,6 +14,7 @@ import { FACTION_LABELS } from '../../../data/encounters.js';
 import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
 import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
@@ -855,7 +856,9 @@ export function createMarketScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel k-panel--split sx-mkt orr-market';
   // ORRERY: the Ladder, the trace as light, the quantity dial (src/ui/orrery/marketLayouts.js)
+  // plus this screen's own layout home (receipt lane, arrival — station-marketLayouts.js).
   injectOrreryMarket(document);
+  injectStationMarketLayouts(document);
   el.innerHTML = marketFrameHtml();
   const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
@@ -984,6 +987,24 @@ export function createMarketScreen(ctx) {
     paintLegend(routesEl.querySelector('.sx-mkt__routes-head'), true);
     for (const row of routesEl.querySelectorAll('.sx-route-row')) paintRow(row, false);
     for (const btn of routesEl.querySelectorAll('[data-course]')) paintKey(btn, 'small');
+  }
+
+  // ARRIVAL. Marks a region `.is-arriving` for one settle so a rebuilt reading plays the
+  // station-marketLayouts entry (reduced motion reaches the end state instantly). Only real
+  // state changes call this — price ticks rebuild the same markup bare and replay nothing.
+  let arriveTimers = new Map();
+  function arrive(region) {
+    if (!region || !region.classList) return;
+    const prior = arriveTimers.get(region);
+    if (prior) clearTimeout(prior);
+    region.classList.remove('is-arriving');
+    // restart the entry even when the previous settle is still running
+    void (region.offsetWidth || 0);
+    region.classList.add('is-arriving');
+    arriveTimers.set(region, setTimeout(() => {
+      arriveTimers.delete(region);
+      region.classList.remove('is-arriving');
+    }, 720));
   }
 
   // The commodity your tracked contract wants loaded. Market flags it so the accept→buy→deliver loop
@@ -1205,7 +1226,7 @@ export function createMarketScreen(ctx) {
     }
   }
 
-  function commodityRowHtml(r, state, tracked_, selected) {
+  function commodityRowHtml(r, state, tracked_, selected, order = 0) {
     const sid = stationId(state);
     const hist = priceHistory(laneHistoryPoints(sid, r.id, r.entry), r.entry, r.def, state && state.simTime);
     const buy = unitBuy(r.entry, r.def);
@@ -1219,6 +1240,7 @@ export function createMarketScreen(ctx) {
       ...marketStockStatus(state, sid, r.id),
       profitPct: heldProfitPct(state, r.id, sell, r.def),
       driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_,
+      order,
       presentation: commodityPresentationFor(r.def) });
   }
 
@@ -1274,6 +1296,8 @@ export function createMarketScreen(ctx) {
     qty = mode === 'sell' ? sellOpeningQuantity(ctx.state || {}, id) : 1;
     pinSealedSellQuantity(ctx.state || {}, id);
     const state = ctx.state || {};
+    arrive(quoteEl);
+    if (decisionEl) arrive(decisionEl);
     renderStage(state); renderConsole(state);
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
@@ -1397,7 +1421,7 @@ export function createMarketScreen(ctx) {
       const prior = typeof document !== 'undefined' ? document.activeElement : null;
       const focused = !!(prior && tbodyEl.contains(prior));
       const priorCmdty = prior && prior.getAttribute ? prior.getAttribute('data-cmdty') : null;
-      syncRows(visible.map((r) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId)]));
+      syncRows(visible.map((r, index) => [r.id, commodityRowHtml(r, state, tracked_, r.id === selectedId, index)]));
       const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
       emptyEl.hidden = visible.length > 0;
       emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
@@ -1526,11 +1550,34 @@ export function createMarketScreen(ctx) {
     dissolveDrivers(quoteEl);
     const demandVal = quoteEl.querySelector('.sx-mkt-readouts__item--demand dd');
     if (demandVal) demandVal.innerHTML = demandArcHtml(info.demandLevel, info.demandWord);
+    syncDemandKey(info);
     if (plot) {
       syncTraceBand(plot);
       syncSpreadBracket(plot, info.buy, info.sell);
       syncGhost(plot, impact01Of(selectedTradeQuote(state, r)), mode);
     }
+  }
+
+  // THE DEMAND READING RIDES THE TRACE'S KEY. The readouts grid that owns the arc is the quote's
+  // last row: below the analysis fold at rest on tall screens, its label sliced by the scroll
+  // fade — an instrument the player never sees. The key line under the trace has the room, and
+  // the readings were always the trace's key (marketPresentation readoutsHtml) — so the arc joins
+  // it, aria-hidden like the dissolved driver words; the readouts grid stays in the DOM for
+  // assistive technology and the tests (station-marketLayouts lifts it out of the scroll flow).
+  function syncDemandKey(info) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+    const key = quoteEl.querySelector('.sx-mkt-chart-key');
+    if (!key) return;
+    let host = key.querySelector('.orr-mkt-demand-key');
+    if (!host) {
+      host = document.createElement('span');
+      host.className = 'orr-mkt-demand-key';
+      host.setAttribute('aria-hidden', 'true');
+      key.appendChild(host);
+    }
+    const html = `<span class="orr-mkt-demand-key__k">Demand</span>`
+      + demandArcHtml(info.demandLevel, info.demandWord);
+    if (host.innerHTML !== html) host.innerHTML = html;
   }
 
   // The hero numeral's grid row: the instrument's own row, counting only the siblings that take
@@ -2206,6 +2253,8 @@ export function createMarketScreen(ctx) {
       const nextMode = seg.getAttribute('data-mode');
       if (nextMode === mode) return;
       openTradeMode(nextMode, ctx.state || {}, { cargoOnly: nextMode === 'sell' });
+      arrive(quoteEl);
+      if (decisionEl) arrive(decisionEl);
       renderList(ctx.state || {}); renderStage(ctx.state || {}); renderConsole(ctx.state || {});
       placeTradeHand();
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
@@ -2493,6 +2542,8 @@ export function createMarketScreen(ctx) {
       visible = false;
       historyBackfill.reset();
       cancelDeferred();
+      for (const timer of arriveTimers.values()) clearTimeout(timer);
+      arriveTimers.clear();
       if (ctx.bus && typeof ctx.bus.off === 'function') {
         ctx.bus.off('economy:tradeFailed', onTradeFailed);
         ctx.bus.off('economy:tradeCompleted', onTradeCompleted);

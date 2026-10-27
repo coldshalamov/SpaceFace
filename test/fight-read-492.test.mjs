@@ -6,7 +6,7 @@ import {
   resolveMasslineLatchRimPlan,
   MASSLINE_LATCH_RIM_COLOR,
 } from '../src/render/masslineLatchRim.js';
-import { resolveMasslineWhipGlow } from '../src/render/masslinePresentation.js';
+import { MASSLINE_LINE_COLOR, resolveMasslineWhipGlow } from '../src/render/masslinePresentation.js';
 import { createMasslineReleaseArcPlan } from '../src/render/masslineReleaseArc.js';
 
 test('row 492: the latched body wears the Line colour on its rim', () => {
@@ -18,9 +18,14 @@ test('row 492: the latched body wears the Line colour on its rim', () => {
   assert.equal(plan.z, -40);
   assert.ok(plan.radius > 18, 'rim rides just off the hull edge');
   assert.ok(plan.opacity > 0.5, 'rim is lit, not a whisper');
-  // Line colour: the cable's neon green family.
-  assert.ok(MASSLINE_LATCH_RIM_COLOR.g > 0.9 && MASSLINE_LATCH_RIM_COLOR.r < 0.8,
-    'rim is the Line colour, not a threat red');
+  // Line colour: the ONE colour the whole Line family wears — cable neon, swing trace, release
+  // annulus (MASSLINE_LINE_COLOR). Row 492 "The Line you can see": the rim no longer drifts to
+  // its own green; a glance down the rope must match rim to line.
+  assert.deepEqual(
+    { r: MASSLINE_LATCH_RIM_COLOR.r, g: MASSLINE_LATCH_RIM_COLOR.g, b: MASSLINE_LATCH_RIM_COLOR.b },
+    { r: MASSLINE_LINE_COLOR.r, g: MASSLINE_LINE_COLOR.g, b: MASSLINE_LINE_COLOR.b },
+    'rim is the Line colour, not its own hue and not a threat red',
+  );
 });
 
 test('row 492: rim thickens and brightens as strain rises', () => {

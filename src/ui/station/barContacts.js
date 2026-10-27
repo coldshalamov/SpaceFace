@@ -1,3 +1,5 @@
+import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { commodityDisplayName } from '../commodityNames.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
 
@@ -6,6 +8,10 @@
 // with role-specific dialog that pulls real game data (economy events, market
 // intel, mission boards, sector danger, asteroid fields). Read-only except for
 // the mission-accept button which emits ui:acceptMission.
+import { BORROWED_SUN } from '../../data/borrowedSun.js';
+import { lastShiftLocalReport } from '../../data/lastShift.js';
+import { ILEX_ARK } from '../../data/ilexArk.js';
+import { ilexGreenhouseFor, ilexGreenhouseReply } from '../../data/ilexGreenhouse.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -243,6 +249,25 @@ for (const sec of SECTORS) {
   }
 }
 
+// The visiting carrier publishes its current berth through the existing owner projection.
+// Metadata answers identity and local context only; it never grants docking or service access.
+function barStationInfo(stationId, state) {
+  if (stationId !== BORROWED_SUN.stationId) return STATION_INDEX.get(stationId);
+  const projected = state?.content?.sectors;
+  const sectors = Array.isArray(projected) ? projected
+    : projected && typeof projected === 'object' ? Object.values(projected) : [];
+  let found = null;
+  for (const sector of sectors) {
+    if (!sector || !Array.isArray(sector.stations)) continue;
+    for (const station of sector.stations) {
+      if (station?.id !== stationId) continue;
+      if (found) return null;
+      found = { station, sector };
+    }
+  }
+  return found;
+}
+
 /* ── deterministic RNG (FNV-1a hash + mulberry32 PRNG) ──────────── */
 
 function fnvHash(s) {
@@ -408,21 +433,163 @@ const CANONICAL_CONTACTS = [
       { id: 'approach', label: 'Ask what he is counting.' },
     ],
   },
+  // W-FACES (row 543, 03 §4.1 + §4.2): the rest of the canon cast and the eleven new faces, each at
+  // the station their canon ties them to. First lines are the canon lines from 03 §4.2.
+  {
+    key: 'sula_dree',
+    stationIds: ['station_dione_customs'],
+    name: 'Inspector Sula Dree',
+    role: 'pilot',
+    roleLabel: 'Gate Inspector',
+    factionId: 'faction_scn',
+    line: 'Gate 3 is a weighing, not a court. An honest manifest keeps its fine unpaid.',
+  },
+  {
+    key: 'callum',
+    stationIds: ['station_dione'],
+    name: 'Callum Oakes',
+    role: 'merchant',
+    roleLabel: 'Futures Broker',
+    factionId: 'faction_mts',
+    line: 'Futures settle at the tone. Everything else is sentiment.',
+  },
+  {
+    key: 'wex',
+    stationIds: ['station_helios'],
+    name: 'Wex',
+    role: 'engineer',
+    roleLabel: 'Bay 7 Depot Keeper',
+    factionId: 'faction_scn',
+    line: 'Nineteen years of install-pending tags. I file them anyway.',
+  },
+  {
+    key: 'sump',
+    stationIds: ['station_ashcache'],
+    name: 'Sump',
+    role: 'engineer',
+    roleLabel: 'Sweeper',
+    factionId: 'faction_pitborn',
+    line: 'Dust goes this side, then it goes that side. Someone has to push it.',
+  },
+  {
+    key: 'ma_sprocket',
+    stationIds: ['station_ashcache'],
+    name: 'Ma Sprocket',
+    role: 'merchant',
+    roleLabel: 'Cull Announcer',
+    factionId: 'faction_pitborn',
+    line: "Heavy's honest, babies! COUNT 'EM!",
+  },
+  {
+    key: 'clatter',
+    stationIds: ['station_sker'],
+    name: 'Clatter',
+    role: 'pilot',
+    roleLabel: 'Cull Rival Ace',
+    factionId: 'faction_pitborn',
+    line: 'That rock had my name on it. It has your hull on it now.',
+  },
+  {
+    key: 'moss_keeps_moss',
+    stationIds: ['station_eunomia'],
+    name: 'Moss-Keeps-Moss',
+    role: 'merchant',
+    roleLabel: 'Garden Elder',
+    factionId: 'faction_understory',
+    line: 'Bring us what died. We will make it something.',
+  },
+  {
+    key: 'brother_index',
+    stationIds: ['station_orcus_shadow'],
+    name: 'Brother Index',
+    role: 'merchant',
+    roleLabel: 'Reading-Room Keeper',
+    factionId: 'faction_archive',
+    line: 'That entry is sealed. Unseal one of yours.',
+  },
+  {
+    key: 'addendum_seroy',
+    stationIds: ['station_phoebe_echo'],
+    name: 'Addendum Seroy',
+    role: 'merchant',
+    roleLabel: 'Contract Officer',
+    factionId: 'faction_vael',
+    line: 'Provided that you read it, the terms are fair.',
+  },
+  {
+    key: 'cantor_lise',
+    stationIds: ['station_depot3'],
+    name: 'Cantor Lise',
+    role: 'barkeep',
+    roleLabel: 'Shrine Keeper',
+    factionId: 'faction_choir',
+    line: 'The relic was never inert. Only waiting.',
+  },
+  {
+    key: 'mael_ost',
+    stationIds: ['station_sedna'],
+    name: 'Adjudicator Mael Ost',
+    role: 'pilot',
+    roleLabel: 'Audit Adjudicator',
+    factionId: 'faction_helix',
+    line: 'Lawful interdiction. Read the invoice.',
+  },
+  {
+    key: 'petra_lusk',
+    stationIds: ['station_dione_customs'],
+    name: 'Commander Petra Lusk',
+    role: 'pilot',
+    roleLabel: 'Relief Captain',
+    factionId: 'faction_scn',
+    line: 'Hold for weight. I will not ask twice.',
+  },
+  {
+    key: 'nine_finger_abe',
+    stationIds: ['station_hyperion_claim'],
+    name: 'Nine-Finger Abe',
+    role: 'miner',
+    roleLabel: 'Claim Boss',
+    factionId: 'faction_dmc',
+    line: "The rock took one. It won't take another.",
+  },
+  {
+    key: 'tamsin',
+    stationIds: ['station_reach'],
+    name: 'Tamsin',
+    role: 'pilot',
+    roleLabel: 'Homestead Pilot',
+    factionId: 'faction_free',
+    line: 'Still temporary. Tell me where to put the wall.',
+  },
+  {
+    key: 'clerk_0003',
+    stationIds: ['station_tethys'],
+    name: 'Clerk 0003',
+    role: 'merchant',
+    roleLabel: 'Routing Clerk',
+    factionId: 'faction_fulfillment',
+    line: 'Your order has always been important to us.',
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
 for (const contact of CANONICAL_CONTACTS) {
   for (const stationId of contact.stationIds) {
-    CANONICAL_BY_STATION.set(stationId, contact);
+    const list = CANONICAL_BY_STATION.get(stationId);
+    if (list) list.push(contact);
+    else CANONICAL_BY_STATION.set(stationId, [contact]);
   }
 }
 
 /* ── contact generation ─────────────────────────────────────────────── */
 
-function canonicalContactForStation(stationId) {
-  const base = CANONICAL_BY_STATION.get(stationId);
-  if (!base) return null;
-  return {
+// Row 543: a station can keep more than one authored face (Wex shares Helios with Kessler; Sump,
+// Ma Sprocket and Kurtz all live at the Pit; Sula Dree and Petra Lusk share Gate 3's customs post).
+// List order is insertion order into the bar's line-up.
+function canonicalContactsForStation(stationId) {
+  const bases = CANONICAL_BY_STATION.get(stationId);
+  if (!bases || !bases.length) return [];
+  return bases.map((base) => ({
     id: 'contact_' + stationId + '_' + base.key,
     name: base.name,
     role: base.role,
@@ -431,7 +598,7 @@ function canonicalContactForStation(stationId) {
     line: base.line,
     canonicalKey: base.key,
     choices: Array.isArray(base.choices) ? base.choices.slice() : undefined,
-  };
+  }));
 }
 
 export function authoredBarContactsForStation(stationId, state = {}) {
@@ -528,6 +695,8 @@ const SHIFT_END_LINE = 'Shift just turned — the rail is three deep and the tab
 const FESTIVAL_MOOD_LINE = 'The whole berth is keeping the day. Tabs run light, voices run loud.';
 
 export function generateContacts(stationId, state = {}, opts = {}) {
+  const info = barStationInfo(stationId, state);
+  if (stationId === BORROWED_SUN.stationId && !info) return [];
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
   let count = 2 + Math.floor(rng() * 3); // 2-4 contacts
@@ -536,10 +705,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // keeps them all night. Both are deterministic reads of simTime + stationId.
   const pressure = barPressureAt(stationId, state && state.simTime);
   const festival = festivalAt(stationId, state && state.simTime,
-    (STATION_INDEX.get(stationId) || {}).station && STATION_INDEX.get(stationId).station.type);
+    info?.station?.type);
   if (pressure >= 0.6 || festival) count = Math.min(count + 1, 5);
 
-  const info = STATION_INDEX.get(stationId);
   const stationFactionId = info ? info.station.factionId : 'faction_scn';
   const sector = info ? info.sector : SECTORS[0];
 
@@ -578,6 +746,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       name: fullName,
       role,
       factionId,
+      ilexGreenhouse: role === 'barkeep' && stationId === ILEX_ARK.stationId && !!ilexGreenhouseFor(state),
       line: barGreetingBarkFor(factionId, role, fnvHash(contactId + '_line')) || ROLE_LINES[role],
       approach: barApproachBarkFor(factionId, fnvHash(contactId + '_approach')),
     });
@@ -592,12 +761,19 @@ export function generateContacts(stationId, state = {}, opts = {}) {
     contacts[0].calendarMood = 'shift_end';
   }
 
-  const canonical = canonicalContactForStation(stationId);
-  if (canonical) {
+  // Row 543: every authored face the station keeps is inserted in list order; each spliced face
+  // nudges a procedural patron out rather than crowding the bar past four.
+  let insertAt = 1;
+  for (const canonical of canonicalContactsForStation(stationId)) {
+    if (canonical.canonicalKey === 'kessler') {
+      const slipChoice = kesslerWeightSlipChoice(state, stationId);
+      if (slipChoice) canonical.choices = [...getChoices(canonical.role, canonical), slipChoice];
+    }
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
     } else {
-      contacts.splice(1, 0, canonical);
+      contacts.splice(insertAt, 0, canonical);
+      insertAt += 1;
       if (contacts.length > 4) contacts.pop();
     }
   }
@@ -629,7 +805,32 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampChoirReliefMemory(listed, stationId, state);
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
+  stampLastShiftLocalReport(listed, stationId, state);
   return listed;
+}
+
+// The existing refinery host can discuss a filed local record without replacing local work,
+// rumors, calendar greetings, named contacts, or their choices. Nothing is announced on arrival.
+function stampLastShiftLocalReport(contacts, stationId, state) {
+  if (stationId !== 'station_ceres' || !lastShiftLocalReport(state)) return;
+  const host = contacts.find(contact => contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  host.choices = [...getChoices(host.role, host), {
+    id: 'last_shift_report', label: 'What did the Last Shift record establish?',
+  }];
+}
+
+function lastShiftLocalReply(state, stationId, contact) {
+  if (stationId !== 'station_ceres' || contact?.id !== 'contact_station_ceres_0'
+    || contact.role !== 'barkeep') return { text: 'Ask the Ceres Refinery host about its filed local record.' };
+  const report = lastShiftLocalReport(state);
+  if (!report) return { text: 'No verified Last Shift report is filed. File what you learned with the archive first.' };
+  const custody = report.recorderReturned
+    ? (report.recorderStationId === stationId
+      ? 'The original tug recorder was accepted by this refinery\'s archive.'
+      : 'The original tug recorder was accepted by another archive, not this refinery.')
+    : 'The filed evidence does not confirm a physical recorder handoff.';
+  return { text: `Crews here need to know whether those lanes are safe. The filed account says: ${report.text} ${custody} Filing the account and returning the original are separate; it is a record, not a bounty.` };
 }
 
 /** WORLD-05 — a new game can hear a station's wreck rumor before the wreck is scanned. */
@@ -717,7 +918,7 @@ function stampChoirReliefMemory(contacts, stationId, state) {
 }
 
 function stampAceRouteRumor(contacts, stationId, state) {
-  const info = STATION_INDEX.get(stationId);
+  const info = barStationInfo(stationId, state);
   const sector = info ? info.sector : null;
   const sectorId = sector ? sector.id : null;
   if (!sectorId) return;
@@ -742,6 +943,7 @@ export function getChoices(role, contact = null) {
   if (contact && Array.isArray(contact.choices) && contact.choices.length) return contact.choices;
   switch (role) {
     case 'barkeep':       return [
+      ...(contact?.ilexGreenhouse ? [{ id: 'ilex_greenhouse', label: 'How is the Ilex greenhouse doing?' }] : []),
       { id: 'rumors',    label: 'Any rumors?' },
       { id: 'word',      label: 'What\'s the word?' },
       { id: 'drink',     label: 'Just a drink.' },
@@ -866,26 +1068,26 @@ function openMissionLog(ctx) {
 
 function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
-  return c ? c.name : id;
+  return c ? c.name : commodityDisplayName(id);
 }
-function stationName(id) {
-  const info = STATION_INDEX.get(id);
+function stationName(id, state) {
+  const info = barStationInfo(id, state);
   return info ? info.station.name : id;
 }
-function sectorForStation(id) {
-  const info = STATION_INDEX.get(id);
+function sectorForStation(id, state) {
+  const info = barStationInfo(id, state);
   return info ? info.sector : null;
 }
 
-function stationFor(stationId) {
-  const info = STATION_INDEX.get(stationId);
+function stationFor(stationId, state) {
+  const info = barStationInfo(stationId, state);
   return info ? info.station : null;
 }
 
 /** Find the sector this stationId belongs to */
-function currentSector(stationId) {
-  const info = STATION_INDEX.get(stationId);
-  return info ? info.sector : SECTORS[0];
+function currentSector(stationId, state) {
+  const info = barStationInfo(stationId, state);
+  return info ? info.sector : stationId === BORROWED_SUN.stationId ? null : SECTORS[0];
 }
 
 function sectorDiscovered(state, sectorId) {
@@ -894,7 +1096,8 @@ function sectorDiscovered(state, sectorId) {
 }
 
 export function availableSurveyOffer(state, stationId) {
-  const sec = currentSector(stationId);
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
   const candidates = [];
   for (const nId of (sec.neighbors || [])) {
     const ns = SECTOR_BY_ID.get(nId);
@@ -917,8 +1120,9 @@ export function surveyOfferLabel(offer) {
 }
 
 /** Find a dangerous neighbor sector */
-function dangerousSector(stationId) {
-  const sec = currentSector(stationId);
+function dangerousSector(stationId, state) {
+  const sec = currentSector(stationId, state);
+  if (!sec) return null;
   let worst = null;
   for (const nId of (sec.neighbors || [])) {
     const ns = SECTOR_BY_ID.get(nId);
@@ -996,8 +1200,9 @@ function combatSlots(slots) {
   return slots.filter((m) => m && (m.type === 'bounty_hunt' || m.type === 'patrol_clear' || m.type === 'escort'));
 }
 
-function blackmarketLead(stationId) {
-  const here = currentSector(stationId);
+function blackmarketLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
   const markets = findBlackmarkets();
   return markets.find((m) => m.sector.id === here.id)
     || markets.find((m) => (here.neighbors || []).includes(m.sector.id))
@@ -1005,8 +1210,9 @@ function blackmarketLead(stationId) {
     || null;
 }
 
-function miningLead(stationId) {
-  const here = currentSector(stationId);
+function miningLead(stationId, state) {
+  const here = currentSector(stationId, state);
+  if (!here) return null;
   const fields = findMiningFields();
   return fields.find((m) => m.sector.id === here.id)
     || fields.find((m) => (here.neighbors || []).includes(m.sector.id))
@@ -1015,8 +1221,8 @@ function miningLead(stationId) {
     || null;
 }
 
-function serviceSummary(stationId) {
-  const st = stationFor(stationId);
+function serviceSummary(stationId, state) {
+  const st = stationFor(stationId, state);
   const services = st && Array.isArray(st.services) ? st.services : [];
   if (!services.length) return 'field repairs only';
   const names = [];
@@ -1030,7 +1236,8 @@ function serviceSummary(stationId) {
 
 export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   const role = contact.role || 'barkeep';
-  const sec = currentSector(stationId);
+  const sec = currentSector(stationId, state);
+  if (!sec) return [{ label: 'Station', text: 'No current Borrowed Sun berth record', kind: 'warn' }];
   const slots = missionBoardSlots(state, stationId);
   const tags = [];
   const add = (label, text, kind = 'info') => {
@@ -1054,29 +1261,29 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
 
   if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
-    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
+    if (route) add('Route', commodityName(route.cmdtyId) + ' → ' + stationName(route.sellStationId, state) + ' +' + Math.round(route.spread) + '/u', 'ok');
     const ev = localEconEvent(state, stationId);
     if (ev) add('Market', commodityName(ev.commodityId) + ' ' + String(ev.type || 'event'), 'warn');
   } else if (role === 'pilot') {
     add('Board', slots.length ? slots.length + ' live contract' + (slots.length === 1 ? '' : 's') : 'board quiet', slots.length ? 'ok' : 'warn');
-    const danger = dangerousSector(stationId);
+    const danger = dangerousSector(stationId, state);
     if (danger) add('Outside', danger.name + ' ' + securityLabel(danger), danger.security < 0.35 ? 'bad' : 'warn');
   } else if (role === 'smuggler') {
-    const market = blackmarketLead(stationId);
+    const market = blackmarketLead(stationId, state);
     if (market) add('Black Market', market.station.name + ' / ' + market.sector.name, market.sector.security < 0.2 ? 'bad' : 'warn');
     add('Scan Risk', sec.security >= 0.6 ? 'high security customs' : 'patrol gaps', sec.security >= 0.6 ? 'bad' : 'ok');
   } else if (role === 'engineer') {
-    add('Station', serviceSummary(stationId), 'ok');
+    add('Station', serviceSummary(stationId, state), 'ok');
     add('Hull Note', sec.hazards && sec.hazards.length ? 'hazards tax armor' : 'routine wear', sec.hazards && sec.hazards.length ? 'warn' : 'info');
   } else if (role === 'bounty_hunter') {
     const combat = combatSlots(slots);
     add('Targets', combat.length ? combat.length + ' combat posting' + (combat.length === 1 ? '' : 's') : 'no clean tags', combat.length ? 'ok' : 'warn');
-    const danger = dangerousSector(stationId);
+    const danger = dangerousSector(stationId, state);
     if (danger) add('Heat', danger.name + ' density ' + Math.round((danger.enemyDensity || 0) * 100) + '%', (danger.enemyDensity || 0) > 0.45 ? 'bad' : 'warn');
   } else if (role === 'miner') {
-    const field = miningLead(stationId);
+    const field = miningLead(stationId, state);
     if (field && field.fields.length) add('Field', field.sector.name + ' / ' + fieldTypeName(field.fields[0].type), field.sector.security < 0.4 ? 'warn' : 'ok');
-    const services = serviceSummary(stationId);
+    const services = serviceSummary(stationId, state);
     add('Buyer', services.includes('market') ? 'sell ore here' : 'find ore buyer', services.includes('market') ? 'ok' : 'warn');
   } else {
     const ev = localEconEvent(state, stationId);
@@ -1142,6 +1349,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
+    return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
+  }
+  if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
@@ -1149,6 +1360,9 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
+  if (role === 'barkeep' && choiceId === 'ilex_greenhouse' && stationId === ILEX_ARK.stationId) {
+    return { text: ilexGreenhouseReply(state) || 'No Ilex planting is recorded here.' };
+  }
   if (role === 'barkeep' && choiceId === 'word') {
     const deed = mostCitedShipDeed(state);
     if (deed) return { text: `Your ship's ledger keeps coming back to this: ${deed.text}`, ledgerDeed: deed };
@@ -1192,19 +1406,22 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     };
   }
 
+  // A one-shot authored wreck lead outranks a transient rotating ace sighting — the ace
+  // window repeats, the lead does not, so letting the ace answer first can starve the lead
+  // for the entire time a route stands in the sector (Sker opens with one at t=0).
+  const wreckRumor = role === 'barkeep'
+    ? uniqueWreckBarRumor(state, stationId, choiceId)
+    : null;
+  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
+
   const aceRoute = role === 'barkeep' && choiceId === 'rumors'
     ? (() => {
-        const info = STATION_INDEX.get(stationId);
+        const info = barStationInfo(stationId, state);
         const sectorId = info && info.sector ? info.sector.id : null;
         return getActiveAceRouteForSector(sectorId, Number(state?.simTime) || 0);
       })()
     : null;
   if (aceRoute) return { text: aceRoute.rumorLine, aceRouteRumor: aceRoute };
-
-  const wreckRumor = role === 'barkeep'
-    ? uniqueWreckBarRumor(state, stationId, choiceId)
-    : null;
-  if (wreckRumor) return { text: wreckRumor.text, uniqueWreckRumor: wreckRumor };
 
   const authoredDockRumor = role === 'barkeep' && choiceId === 'rumors'
     ? AUTHORED_DOCK_RUMORS[stationId]
@@ -1244,7 +1461,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         if (events.length > 0) {
           const ev = events[0];
           const cName = commodityName(ev.commodityId);
-          const sName = stationName(ev.stationId);
+          const sName = stationName(ev.stationId, state);
           const dir = (ev.type === 'surplus' || ev.type === 'glut') ? 'down' : 'up';
           return { text: 'Word is there\'s a ' + ev.type + ' affecting ' + cName + ' at ' + sName + '. Prices are ' + dir + '.' };
         }
@@ -1258,7 +1475,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
             surveyOffer: survey,
           };
         }
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         if (danger) {
           return { text: 'Watch the lanes near ' + danger.name + ' — security is thin out there. Patrols don\'t reach that far.' };
         }
@@ -1272,7 +1489,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
-          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
+          return { text: 'Buy ' + commodityName(route.cmdtyId) + ' here, sell at ' + stationName(route.sellStationId, state) + ' — good margin right now. About ' + route.spread + ' credits per unit.' };
         }
         return { text: 'Markets are tight everywhere. Nothing jumps out right now. Check back after a supply event shakes things up.' };
       }
@@ -1305,7 +1522,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Board\'s empty right now. Try a bigger station or come back later — jobs cycle regularly.' };
       }
       if (choiceId === 'outside') {
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         if (danger) {
           const sec = danger.security < 0.3 ? 'lawless' : danger.security < 0.5 ? 'rough' : 'uneasy';
           return { text: danger.name + ' is ' + sec + ' space. Hostiles patrol the lanes — don\'t fly without shields charged.' };
@@ -1338,14 +1555,14 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     /* ── ENGINEER ──────────────────────────────────────── */
     case 'engineer': {
       if (choiceId === 'tech') {
-        const sec = currentSector(stationId);
+        const sec = currentSector(stationId, state);
         if (sec.security < 0.5) {
           return { text: 'Out here? Shield boosters and hull reinforcement. You\'ll take hits — make sure you can soak them. A good reactor helps everything run smoother too.' };
         }
         return { text: 'Cargo expanders if you\'re trading, mining lasers if you\'re cracking rock. Match the module to the mission. Don\'t waste slots on weapons in safe space.' };
       }
       if (choiceId === 'fix') {
-        const info = STATION_INDEX.get(stationId);
+        const info = barStationInfo(stationId, state);
         const stType = info ? info.station.type : 'station';
         const typeDesc = {
           trade_hub:   'Half the docking clamps need recalibration. Trade hubs run hard.',
@@ -1378,7 +1595,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Board\'s dry for combat work. Try the frontier stations — more trouble out there means more bounties.' };
       }
       if (choiceId === 'action') {
-        const sec = currentSector(stationId);
+        const sec = currentSector(stationId, state);
         let worst = null;
         for (const nId of (sec.neighbors || [])) {
           const ns = SECTOR_BY_ID.get(nId);
@@ -1424,7 +1641,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
           }
         }
         if (bestOre) {
-          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
+          return { text: commodityName(bestOre.oreId) + ' is fetching good prices at ' + stationName(bestOre.stationId, state) + ' — ' + Math.round(bestOre.price) + ' cr per unit. Worth the haul.' };
         }
         return { text: 'Ore prices are flat right now. Refineries aren\'t paying premium for anything. Just steady work.' };
       }
@@ -1535,11 +1752,13 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
   const state = ctx.state || {};
 
   switch (contact.canonicalKey) {
-    case 'kessler':
+    case 'kessler': {
+      const slipReply = kesslerWeightSlipReply(state, stationId, choiceId);
+      if (slipReply) return slipReply;
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
         if (route) {
-          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
+          return { text: 'Take ' + commodityName(route.cmdtyId) + ' to ' + stationName(route.sellStationId, state) + '. Keep the seal intact, let the spread explain itself, and do not ask why the weight changed.' };
         }
         return { text: 'No clean spread today. Contract 47-A is still the only line worth watching, and it is still pending.' };
       }
@@ -1548,6 +1767,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
       }
       if (choiceId === 'dismiss') return { text: 'Then do not sign the seal. Pilots always sign the seal.' };
       return null;
+    }
 
     case 'rook':
       if (choiceId === 'bounties') {
@@ -1582,7 +1802,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'hale':
       if (choiceId === 'work') return { text: 'There is always inspection work. Hold position, show the manifest, pay the second fine if the first one was inconvenient.' };
       if (choiceId === 'outside') {
-        const danger = dangerousSector(stationId);
+        const danger = dangerousSector(stationId, state);
         const name = danger ? danger.name : 'the outer lanes';
         return { text: name + ' is not lawless. It is documented poorly, which is worse.' };
       }
@@ -1592,7 +1812,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'mira':
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
-        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId) + '. Payment on delivery. The seal code should look familiar by then.' };
+        if (route) return { text: 'Route is clear to ' + stationName(route.sellStationId, state) + '. Payment on delivery. The seal code should look familiar by then.' };
         return { text: 'No route I would put my name on. Plenty I would put someone else on.' };
       }
       if (choiceId === 'market') return { text: 'Cargo insurance wants verified seals. Verification writes to the same database freight uses, so the seal becomes true when it arrives.' };
@@ -1608,7 +1828,7 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
     case 'drift':
       if (choiceId === 'routes') {
         const route = bestTradeRoute(state, stationId);
-        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId) + '. Quota met, credit transferred, loss rounded down.' };
+        if (route) return { text: commodityName(route.cmdtyId) + ' moves well to ' + stationName(route.sellStationId, state) + '. Quota met, credit transferred, loss rounded down.' };
         return { text: 'No margin today. Wait for the ledger to need a different answer.' };
       }
       if (choiceId === 'market') return { text: 'The exchange does not audit small losses. Enough small losses and a whole planet starts buying air.' };

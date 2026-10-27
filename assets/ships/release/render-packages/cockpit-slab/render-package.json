@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e944bf67679f0e6b719c590d75e7363c9bdcadbfce6d1aed8b5c879722d1ff3e",
+  "contentHash": "87969568e16454e277155d3cfb7da09eef31194d67581bc1bebb05eae0105255",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.055026531219482,
-          1.2598977088928223,
+          4.055026667109414,
+          1.2598977429517098,
           1.3899999856948853
         ],
         "min": [
-          2.5049734115600586,
-          0.8401022553443909,
+          2.5049732756701273,
+          0.8401022212855034,
           -1.3899999856948853
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78692fb3b4d470c7c9ef84e022b84dac5607ec3319c3e704ff1e55c5dc5af525",
+      "geometryHash": "92bdc9812ed50087cdd294c87fff3af19c31dde81408f4d689c9215eb6b55be8",
       "id": "sf.render.cockpit-slab.node.cockpit-slab-material-glass-merged.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           4,
-          1.8098852634429932,
-          1.8499609231948853
+          1.8098852669619356,
+          1.8499609321664148
         ],
         "min": [
           -0.25999999046325684,
-          0.6251146197319031,
-          -1.8499609231948853
+          0.6251146162129607,
+          -1.8499609321664148
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d15f2c0e93fe9edd3cfc1f17ac4c8a9148311b38958e51d9083258f1a510f2f7",
+      "geometryHash": "0427e133184a1ae561b63205180b3f174cb1801270c61b46b98044cefbbadc56",
       "id": "sf.render.cockpit-slab.node.cockpit-slab-material-mechanical-merged.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -63,21 +63,21 @@
       "bounds": {
         "max": [
           2.049999952316284,
-          0.469988077878952,
-          1.169995665550232
+          0.46998807274924537,
+          1.1699957003885801
         ],
         "min": [
           1.1500000953674316,
-          0.23001191020011902,
-          1.1300042867660522
+          0.23001191532982568,
+          1.130004251927704
         ]
       },
       "drawMode": 4,
-      "geometryHash": "849533ab0e1b71ca00e86261f85e48c04962c65056a6354bc9a52da820de6e2d",
+      "geometryHash": "a6e5a4f7daa2a514165ed2f0bdc274fd67fce8ebbcfd39e8c995bf55f4f7b1d0",
       "id": "sf.render.cockpit-slab.node.det-belt-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "4ad34ebfc58410647ef2e9b34e62f1a8dab3dcf787eb706eab012ce38ad7c16b",
+      "materialHash": "9fd78198aea93bd18822ed88ead58eb1ad4d102d6f9e6bd522a1cd73354dcc8e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.cockpit-slab.node.det-belt-stencil",
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          3.040010690689087,
+          3.040010578520411,
           0.625,
-          0.5700079202651978
+          0.570007947167053
         ],
         "min": [
-          2.8599894046783447,
+          2.859989516847021,
           0.07499998807907104,
-          0.5299921035766602
+          0.5299920766748049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c24a97533e2c3b06f774d3bb0be244bb48cd15ce554e69b1640fdcd667924b95",
+      "geometryHash": "85fe5d9e77bb53873b32a36c67e870dfe1ef2317fb909d830417ab432049e6c2",
       "id": "sf.render.cockpit-slab.node.det-dock-scuff.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "996e6d26806c5cbbb7616b4f07858f25d3584271b0214a32f3cbdccdf72f4ad4",
+      "materialHash": "e6444fee7a1482331b75d3de8445a98ec447a79b8ef44c71858eca723b965bce",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.cockpit-slab.node.det-dock-scuff",
@@ -113,17 +113,17 @@
       "bounds": {
         "max": [
           3,
-          1.3999526500701904,
-          0.5599978566169739
+          1.3999526625324672,
+          0.559997876022545
         ],
         "min": [
           1.1999999284744263,
-          0.7000472545623779,
-          0.540002167224884
+          0.7000472421001012,
+          0.5400021478193129
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3411882028de063e2caab4fe3b7c75bcbcc069301e2a1714808af04a2460408",
+      "geometryHash": "505c389b8212694824985ff92e7b937d535eac26c370e4e93cf0c41f8ae21e30",
       "id": "sf.render.cockpit-slab.node.det-laminate-scratch.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          2.75,
-          0.08000275492668152,
+          2.7500000596046448,
+          0.08000275456412313,
           0.9000000357627869
         ],
         "min": [
-          2.6500000953674316,
-          0.0199972465634346,
+          2.650000035762787,
+          0.019997246925992987,
           0.800000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db4712e662a5e16bc0384234118376dc2643f117e15e7f0186793262dbe122fe",
+      "geometryHash": "842ad1a2643069eb083b5217daf7b4fd865177fa1ec6c808a6ee06ad198e8089",
       "id": "sf.render.cockpit-slab.node.det-mount-bolt-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -163,17 +163,17 @@
       "bounds": {
         "max": [
           0.6000000238418579,
-          0.08000275492668152,
+          0.08000275456412313,
           0.9000000357627869
         ],
         "min": [
           0.5,
-          0.0199972465634346,
+          0.019997246925992987,
           0.800000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20718c336bb7527b3417a377c8e3ceeb181d7886d4ff2674391e7c78a8184edb",
+      "geometryHash": "e166b9cfef12072e3dd1d3c66b94246fbe791617eb817cc780886d736f30cdff",
       "id": "sf.render.cockpit-slab.node.det-mount-bolt.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -187,18 +187,18 @@
     {
       "bounds": {
         "max": [
-          0.8999893665313721,
-          0.5700201392173767,
+          0.8999893423635413,
+          0.5700201541371831,
           0.699999988079071
         ],
         "min": [
-          0.8000106811523438,
-          0.5299798846244812,
+          0.8000107053201745,
+          0.5299798697046748,
           -0.30000001192092896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00f0037076ea602e87dc858fd66f3306c47fd257376f78f5a51e95abc1f62173",
+      "geometryHash": "53658b1f2933b4879318e78fe641ff5287a65be7d2dab8890e8c757398750799",
       "id": "sf.render.cockpit-slab.node.det-panel-seam-l.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -212,18 +212,18 @@
     {
       "bounds": {
         "max": [
-          2.4499893188476562,
-          0.5700201392173767,
+          2.449989413889115,
+          0.5700201541371831,
           0.699999988079071
         ],
         "min": [
-          2.350010871887207,
-          0.5299798846244812,
+          2.3500107768457483,
+          0.5299798697046748,
           -0.30000001192092896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77d010e8ea7ee83ed74ffc91090b6495f3d447eda1a527a68adcbba9b95fba85",
+      "geometryHash": "53658b1f2933b4879318e78fe641ff5287a65be7d2dab8890e8c757398750799",
       "id": "sf.render.cockpit-slab.node.det-panel-seam-r.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -238,17 +238,17 @@
       "bounds": {
         "max": [
           1.9000000953674316,
-          0.2299829125404358,
-          0.9699957370758057
+          0.22998291391301887,
+          0.9699957159985322
         ],
         "min": [
           0.5000000596046448,
-          0.07001709192991257,
-          0.9300042390823364
+          0.07001709055732949,
+          0.9300042601596099
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b1c94dd1473b42e159c14250a1b77e080b3e4a0c9347585f3777134098b50dd",
+      "geometryHash": "93bea5d715ad3e1f7a4fa513d9478186ed0e4a1fe3943901a6509ab20cf738d3",
       "id": "sf.render.cockpit-slab.node.det-rust-streak.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -262,18 +262,18 @@
     {
       "bounds": {
         "max": [
-          3.169985055923462,
-          0.8000106811523438,
+          3.1699849962033078,
+          0.800010689141589,
           0.5
         ],
         "min": [
-          2.9300148487091064,
-          0.29998934268951416,
+          2.9300149084292606,
+          0.2999893347002689,
           -0.19999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b843c9379b00e446b825a8a9898e5f6da5ef6ac1fbaff0efe0c1840f53a3a7e6",
+      "geometryHash": "a8e5fd46cb9c5940fb9ded740540196c97d9677cd9b5952675a56c16ef1696bc",
       "id": "sf.render.cockpit-slab.node.det-vent-grille-detail.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -288,17 +288,17 @@
       "bounds": {
         "max": [
           2.6500000953674316,
-          1.1900097131729126,
-          0.3579958379268646
+          1.1900097420811744,
+          0.3579958435222468
         ],
         "min": [
           2.1500000953674316,
-          1.1099902391433716,
-          0.3420041501522064
+          1.1099902102351098,
+          0.34200414455682426
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bec4fe00c5d5dc1dc946632ff3657efeac6885e02e048d346fa50a6c0d0ef301",
+      "geometryHash": "10b46eedc46636e249e0db0cce0a6e096658b9612baf6472102c66f37414c632",
       "id": "sf.render.cockpit-slab.node.det-wiper-scar.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -313,21 +313,21 @@
       "bounds": {
         "max": [
           4,
-          1.6050983667373657,
-          1.7000031471252441
+          1.605098377938078,
+          1.700003077182967
         ],
         "min": [
           -0.8000000715255737,
-          -0.045098479837179184,
-          -1.7000031471252441
+          -0.04509849103789143,
+          -1.700003077182967
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18ef46877ce1a3631f67c317e58f2cb21badf535886651b2d40190ba35701846",
+      "geometryHash": "53e6c9311b05b65a90f7c5ebc1ae8692f98637ac70ae3c69bacbd88413392757",
       "id": "sf.render.cockpit-slab.node.slab-bridge-block.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "996e6d26806c5cbbb7616b4f07858f25d3584271b0214a32f3cbdccdf72f4ad4",
+      "materialHash": "e6444fee7a1482331b75d3de8445a98ec447a79b8ef44c71858eca723b965bce",
       "materialPipelineKey": "opaque",
       "meshName": "Slab_Bridge_Block",
       "nodeId": "sf.render.cockpit-slab.node.slab-bridge-block",
@@ -339,20 +339,6 @@
   "kind": "part",
   "lods": [],
   "materials": [
-    {
-      "hash": "4ad34ebfc58410647ef2e9b34e62f1a8dab3dcf787eb706eab012ce38ad7c16b",
-      "id": "material:4ad34ebfc58410647ef2e9b3",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "89bf77b06f7fac8094a32c736cb2a60db3ce48fd9d1e238e6a5c043bf19e54b5",
       "id": "material:89bf77b06f7fac8094a32c73",
@@ -380,10 +366,24 @@
       ]
     },
     {
-      "hash": "996e6d26806c5cbbb7616b4f07858f25d3584271b0214a32f3cbdccdf72f4ad4",
-      "id": "material:996e6d26806c5cbbb7616b4f",
+      "hash": "9fd78198aea93bd18822ed88ead58eb1ad4d102d6f9e6bd522a1cd73354dcc8e",
+      "id": "material:9fd78198aea93bd18822ed88",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e6444fee7a1482331b75d3de8445a98ec447a79b8ef44c71858eca723b965bce",
+      "id": "material:e6444fee7a1482331b75d3de",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -876,20 +876,20 @@
     {
       "id": "sf.render.cockpit-slab.node.cockpit-slab-material-glass-merged",
       "localTransform": [
-        1,
+        1.3899999856948853,
         0,
         0,
         0,
         0,
-        1,
+        1.3899999856948853,
         0,
         0,
         0,
         0,
-        1,
+        1.3899999856948853,
         0,
-        0,
-        0,
+        3.2799999713897705,
+        1.0499999821186066,
         0,
         1
       ],
@@ -904,20 +904,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        1.3899999856948853,
         0,
         0,
         0,
         0,
-        1,
+        1.3899999856948853,
         0,
         0,
         0,
         0,
-        1,
+        1.3899999856948853,
         0,
-        0,
-        0,
+        3.2799999713897705,
+        1.0499999821186066,
         0,
         1
       ]
@@ -925,20 +925,20 @@
     {
       "id": "sf.render.cockpit-slab.node.cockpit-slab-material-mechanical-merged",
       "localTransform": [
-        1,
+        2.1299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        2.1299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        2.1299999952316284,
         0,
-        0,
-        0,
+        1.8700000047683716,
+        1.2174999415874481,
         0,
         1
       ],
@@ -953,20 +953,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        2.1299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        2.1299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        2.1299999952316284,
         0,
-        0,
-        0,
+        1.8700000047683716,
+        1.2174999415874481,
         0,
         1
       ]
@@ -974,21 +974,21 @@
     {
       "id": "sf.render.cockpit-slab.node.det-belt-stencil",
       "localTransform": [
-        1,
+        0.44999992847442627,
         0,
         0,
         0,
         0,
-        1,
+        0.44999992847442627,
         0,
         0,
         0,
         0,
-        1,
+        0.44999992847442627,
         0,
-        0,
-        0,
-        0,
+        1.600000023841858,
+        0.3499999940395355,
+        1.149999976158142,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1001,42 +1001,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.44999992847442627,
         0,
         0,
         0,
         0,
-        1,
+        0.44999992847442627,
         0,
         0,
         0,
         0,
-        1,
+        0.44999992847442627,
         0,
-        0,
-        0,
-        0,
+        1.600000023841858,
+        0.3499999940395355,
+        1.149999976158142,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-dock-scuff",
       "localTransform": [
-        1,
+        0.2750000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.2750000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.2750000059604645,
         0,
-        0,
-        0,
-        0,
+        2.950000047683716,
+        0.3499999940395355,
+        0.550000011920929,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1049,42 +1049,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.2750000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.2750000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.2750000059604645,
         0,
-        0,
-        0,
-        0,
+        2.950000047683716,
+        0.3499999940395355,
+        0.550000011920929,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-laminate-scratch",
       "localTransform": [
-        1,
+        0.9000000357627869,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000357627869,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000357627869,
         0,
-        0,
-        0,
-        0,
+        2.099999964237213,
+        1.0499999523162842,
+        0.550000011920929,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1097,42 +1097,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.9000000357627869,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000357627869,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000357627869,
         0,
-        0,
-        0,
-        0,
+        2.099999964237213,
+        1.0499999523162842,
+        0.550000011920929,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-mount-bolt",
       "localTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        0.550000011920929,
+        0.05000000074505806,
+        0.8500000238418579,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1145,42 +1145,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        0.550000011920929,
+        0.05000000074505806,
+        0.8500000238418579,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-mount-bolt-001",
       "localTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        2.700000047683716,
+        0.05000000074505806,
+        0.8500000238418579,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1193,42 +1193,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
         0,
         0,
         0,
-        1,
+        0.050000011920928955,
         0,
-        0,
-        0,
-        0,
+        2.700000047683716,
+        0.05000000074505806,
+        0.8500000238418579,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-panel-seam-l",
       "localTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
-        0,
+        0.8500000238418579,
+        0.550000011920929,
+        0.19999998807907104,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1241,42 +1241,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
-        0,
+        0.8500000238418579,
+        0.550000011920929,
+        0.19999998807907104,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-panel-seam-r",
       "localTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
-        0,
+        2.4000000953674316,
+        0.550000011920929,
+        0.19999998807907104,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1289,42 +1289,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
-        0,
-        0,
-        0,
+        2.4000000953674316,
+        0.550000011920929,
+        0.19999998807907104,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-rust-streak",
       "localTransform": [
-        1,
+        0.7000000178813934,
         0,
         0,
         0,
         0,
-        1,
+        0.7000000178813934,
         0,
         0,
         0,
         0,
-        1,
+        0.7000000178813934,
         0,
-        0,
-        0,
-        0,
+        1.2000000774860382,
+        0.15000000223517418,
+        0.949999988079071,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1337,42 +1337,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.7000000178813934,
         0,
         0,
         0,
         0,
-        1,
+        0.7000000178813934,
         0,
         0,
         0,
         0,
-        1,
+        0.7000000178813934,
         0,
-        0,
-        0,
-        0,
+        1.2000000774860382,
+        0.15000000223517418,
+        0.949999988079071,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-vent-grille-detail",
       "localTransform": [
-        1,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.3499999940395355,
         0,
-        0,
-        0,
-        0,
+        3.049999952316284,
+        0.550000011920929,
+        0.15000000596046448,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1385,42 +1385,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.3499999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.3499999940395355,
         0,
-        0,
-        0,
-        0,
+        3.049999952316284,
+        0.550000011920929,
+        0.15000000596046448,
         1
       ]
     },
     {
       "id": "sf.render.cockpit-slab.node.det-wiper-scar",
       "localTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
-        0,
+        2.4000000953674316,
+        1.149999976158142,
+        0.3499999940395355,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1433,21 +1433,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
-        0,
+        2.4000000953674316,
+        1.149999976158142,
+        0.3499999940395355,
         1
       ]
     },
@@ -1552,20 +1552,20 @@
     {
       "id": "sf.render.cockpit-slab.node.slab-bridge-block",
       "localTransform": [
-        1,
+        2.400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        2.400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        2.400000035762787,
         0,
-        0,
-        0,
+        1.5999999642372131,
+        0.7799999434500933,
         0,
         1
       ],
@@ -1580,20 +1580,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cockpit-slab.body",
       "worldTransform": [
-        1,
+        2.400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        2.400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        2.400000035762787,
         0,
-        0,
-        0,
+        1.5999999642372131,
+        0.7799999434500933,
         0,
         1
       ]
@@ -1858,37 +1858,37 @@
       "uri": "cockpit_slab.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 559444,
-    "sha256": "fced13eb6bd9c13eb2f13272c6da3282340c1377180f19eff7046b2a82a028a2",
+    "bytes": 523720,
+    "sha256": "78e5e36d81d7d2ce006746778e1c5f94cf59a53ebbac4731d1c59a0b0d3ccea8",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        1.6275132298469543,
-        0.882393391802907,
+        1.62751329779192,
+        0.882393387962022,
         0
       ],
       "max": [
-        4.055026531219482,
-        1.8098852634429932,
-        1.8499609231948853
+        4.055026667109414,
+        1.8098852669619356,
+        1.8499609321664148
       ],
       "min": [
         -0.8000000715255737,
-        -0.045098479837179184,
-        -1.8499609231948853
+        -0.04509849103789143,
+        -1.8499609321664148
       ],
       "size": [
-        4.855026602745056,
-        1.8549837432801723,
-        3.6999218463897705
+        4.8550267386349875,
+        1.8549837579998272,
+        3.6999218643328295
       ]
     },
     "hidden": [],
@@ -2007,20 +2007,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.3899999856948853,
           0,
           0,
           0,
           0,
-          1,
+          1.3899999856948853,
           0,
           0,
           0,
           0,
-          1,
+          1.3899999856948853,
           0,
-          0,
-          0,
+          3.2799999713897705,
+          1.0499999821186066,
           0,
           1
         ],
@@ -2033,20 +2033,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          2.1299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          2.1299999952316284,
           0,
-          0,
-          0,
+          1.8700000047683716,
+          1.2174999415874481,
           0,
           1
         ],
@@ -2059,20 +2059,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.400000035762787,
           0,
           0,
           0,
           0,
-          1,
+          2.400000035762787,
           0,
           0,
           0,
           0,
-          1,
+          2.400000035762787,
           0,
-          0,
-          0,
+          1.5999999642372131,
+          0.7799999434500933,
           0,
           1
         ],
@@ -2085,21 +2085,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9000000357627869,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000357627869,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000357627869,
           0,
-          0,
-          0,
-          0,
+          2.099999964237213,
+          1.0499999523162842,
+          0.550000011920929,
           1
         ],
         "name": "DET_laminate_scratch",
@@ -2111,21 +2111,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999992847442627,
           0,
           0,
           0,
           0,
-          1,
+          0.44999992847442627,
           0,
           0,
           0,
           0,
-          1,
+          0.44999992847442627,
           0,
-          0,
-          0,
-          0,
+          1.600000023841858,
+          0.3499999940395355,
+          1.149999976158142,
           1
         ],
         "name": "DET_belt_stencil",
@@ -2137,21 +2137,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
-          0,
-          0,
-          0,
+          2.4000000953674316,
+          1.149999976158142,
+          0.3499999940395355,
           1
         ],
         "name": "DET_wiper_scar",
@@ -2163,21 +2163,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
-          0,
-          0,
-          0,
+          0.8500000238418579,
+          0.550000011920929,
+          0.19999998807907104,
           1
         ],
         "name": "DET_panel_seam_L",
@@ -2189,21 +2189,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
-          0,
-          0,
-          0,
+          2.4000000953674316,
+          0.550000011920929,
+          0.19999998807907104,
           1
         ],
         "name": "DET_panel_seam_R",
@@ -2215,21 +2215,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7000000178813934,
           0,
           0,
           0,
           0,
-          1,
+          0.7000000178813934,
           0,
           0,
           0,
           0,
-          1,
+          0.7000000178813934,
           0,
-          0,
-          0,
-          0,
+          1.2000000774860382,
+          0.15000000223517418,
+          0.949999988079071,
           1
         ],
         "name": "DET_rust_streak",
@@ -2241,21 +2241,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
-          0,
-          0,
-          0,
+          0.550000011920929,
+          0.05000000074505806,
+          0.8500000238418579,
           1
         ],
         "name": "DET_mount_bolt",
@@ -2267,21 +2267,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
           0,
           0,
           0,
-          1,
+          0.050000011920928955,
           0,
-          0,
-          0,
-          0,
+          2.700000047683716,
+          0.05000000074505806,
+          0.8500000238418579,
           1
         ],
         "name": "DET_mount_bolt001",
@@ -2293,21 +2293,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3499999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.3499999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.3499999940395355,
           0,
-          0,
-          0,
-          0,
+          3.049999952316284,
+          0.550000011920929,
+          0.15000000596046448,
           1
         ],
         "name": "DET_vent_grille_detail",
@@ -2319,21 +2319,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2750000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.2750000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.2750000059604645,
           0,
-          0,
-          0,
-          0,
+          2.950000047683716,
+          0.3499999940395355,
+          0.550000011920929,
           1
         ],
         "name": "DET_dock_scuff",
@@ -2347,20 +2347,20 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_slab.glb"
   },
-  "runtimeHash": "8fd2d9ed0a73a48432d1d9bcb7a575317226625b2831c09bad2bb2bc9d1a5950",
+  "runtimeHash": "1b268bc2a6cbc4cd1a8020fb7facf4ba6c1cae3d661fdb714b7825c84a9a0a0f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.055026531219482,
-          1.8098852634429932,
-          1.8499609231948853
+          4.055026667109414,
+          1.8098852669619356,
+          1.8499609321664148
         ],
         "min": [
           -0.8000000715255737,
-          -0.045098479837179184,
-          -1.8499609231948853
+          -0.04509849103789143,
+          -1.8499609321664148
         ]
       },
       "id": "sf.render.cockpit-slab.body",

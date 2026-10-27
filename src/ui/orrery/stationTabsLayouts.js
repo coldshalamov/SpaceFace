@@ -34,7 +34,7 @@ ${T} ${row}:is(${chosen})::after { content:"" !important; display:block !importa
   translate:none !important; scale:none !important; rotate:none !important;
   clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
-${T} ${row}:focus-visible { outline:none !important; }`;
+${T} ${row}:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4) !important; outline-offset:-2px !important; }`;
 /** A verb that commits: a bone word at the reading's weight; amber where the player reaches it. */
 const commit = (sel) => `
 ${T} ${sel} { ${PLAIN} min-height:0 !important; min-width:0 !important; height:auto !important; border-radius:0 !important; padding:8px 2px 12px !important;
@@ -293,7 +293,13 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
-  ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; }
+  ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
+  ${D} .sx-ct__hang > .sx-ct__board, ${D} .sx-ct__dossier > .sx-dossier { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  /* the dossier half opens on which job ACCEPT takes: kind and title, then the verbs, then the terms */
+  ${D} .sx-dossier > .k-caps { order:-3 !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
@@ -392,6 +398,10 @@ ${T} .sx-ind-row__body { gap:1px !important; }
 ${T} .sx-ind-row__name, ${T} .sx-ind-row__name:is(.k-good, .k-signal, .k-bad) { font-family:var(--dp-face-body, "Instrument Sans") !important; font-size:13px !important; font-weight:560;
   letter-spacing:.02em !important; text-transform:none !important; color:rgb(${BONE} / .86) !important; }
 ${T} .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__name { color:rgb(250 247 238) !important; }
+${T} .sx-ind-process__items .sx-ind-row:is(:hover, :focus-visible) .sx-ind-row__name { color:rgb(255 250 240) !important; text-shadow:0 0 10px rgb(255 250 236 / .3); }
+${T} .sx-ind-process__items .sx-ind-row:not(.is-active, [aria-selected="true"]):is(:hover, :focus-visible)::before { left:2px !important; width:11px !important; height:2px !important; background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(${BONE} / .45) !important; }
+${T} .sx-ind-process__items .sx-ind-row:active::before { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .55) !important; }
+
 ${T} .sx-ind-row__tier { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; }
 /* the reading: the chain is the instrument; the inputs a ledger under it; Fabricate the Lamp Key */
 ${T} .sx-fab { padding-right:0 !important; max-width:780px; }

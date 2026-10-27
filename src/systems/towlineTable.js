@@ -28,7 +28,8 @@ export const towlineTable={name:'towlineTable',init(ctx){
   on('scan:completed',p=>{const e=this.state.entities.get(p?.targetId);if(e?.data?.towlineMemberId)this.offer(e.data.towlineMemberId);
     else if(e)this.offer(this._availableMember(e),e.id);});
   for(const [event,method] of [['take','take'],['deliver','deliver'],['assist','assist'],['release','releaseCleanup']])on(`towlineTable:${event}`,p=>{
-    const r=this[method](p?.memberId,p?.revision,p?.targetId);if(!r.ok)this._say(p?.memberId,`Refused · ${r.reason}.`);});
+    // A target identifies cargo only for assist; it must never select deliver's actor.
+    const r=event==='assist'?this[method](p?.memberId,p?.revision,p?.targetId):this[method](p?.memberId,p?.revision);if(!r.ok)this._say(p?.memberId,`Refused · ${r.reason}.`);});
   on('towlineTable:course',()=>{const anchor=this._anchor(this._player());
     if(anchor)this.bus.emit('ui:setCourse',{pos:{x:anchor.x,z:anchor.z},sectorId:C.sectorId,label:'Towline Table · Ceres receiver'});});
   on('npcJobs:towAssistLost',p=>this._leaseEnded(p,false));on('npcJobs:towAssistComplete',p=>this._leaseEnded(p,true));

@@ -1,4 +1,5 @@
 import { COMMODITIES } from '../data/commodities.js';
+import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
 import {
   MISSION_TUNING,
@@ -317,8 +318,7 @@ function fmtClock(value) {
 }
 
 function commodityName(id) {
-  const commodity = id ? COMMODITY_BY_ID.get(id) : null;
-  return (commodity && commodity.name) || String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ');
+  return id ? commodityDisplayName(id) : 'cargo';
 }
 
 function missionCargoTargetUnits(m) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { openingGateBudgetMs } from '../src/render/startupPacing.js';
 
 const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const pipeline = readFileSync(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
@@ -23,7 +24,7 @@ const loadingSource = between(renderer, '    state.render.beginOpeningLoadingAdm
   '    const openingCohort = createOpeningAdmissionCohort();');
 
 function fixture() {
-  const context = vm.createContext({ setTimeout, clearTimeout, performance,
+  const context = vm.createContext({ setTimeout, clearTimeout, performance, openingGateBudgetMs,
     reportBootWork() {}, yieldToBrowser: () => Promise.resolve() });
   vm.runInContext(`${readinessSource}\n${releaseSource}\n`
     + 'globalThis.api = { waitForOpeningFirstPicture, waitForCurrentRenderPipelines, '

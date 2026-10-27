@@ -329,7 +329,9 @@ const refineryActors = Object.freeze([
     identity: 'reuse:factionPresence:pitborn:yardTender:sector_ceres_belt',
     presentationRole: 'tender',
     jobKind: 'tender',
-    spawnOffset: point(-44, 24),
+    // West service staging clears the station, Furnace Mouth anvil and visual client.
+    // Keep R1's <=95 WU immediate band without borrowing clearance from missing producers.
+    spawnOffset: point(-94, 0),
     binding: Object.freeze({
       owner: 'factionPresence',
       match: Object.freeze({
@@ -343,13 +345,13 @@ const refineryActors = Object.freeze([
       id: 'ceres_refinery_tender_service',
       jobKind: 'tender',
       durationS: 28,
-      // Wide oblique, 147.0 deg / 217.7 WU — the same yard-crossing family as the hauler but a
-      // longer, slower swing, and aimed at the opposite quadrant because its client is. The berth
-      // sits on the tender's own spawn side (127.8 deg vs a spawn bearing of 151.4), so it leaves
-      // from where it lives. The client mark keeps its 0.59 rad offset from the real hull bearing.
+      // Wide oblique, 147.3 deg / 228.5 WU. The west berth and staging center avoid
+      // the Furnace Mouth anvil occupying the former northwestern service berth.
+      // The southeast fallback mark stays distinct from the actual southwestern client;
+      // production steering binds that unchanged real hull, not this abstract mark.
       marks: [
-        mark('refinery_tender_berth', -66, 85, 'station:station_ceres:service-berth'),
-        mark('refinery_tender_client', 10, -119, 'object:ceres_refinery_disabled_hull'),
+        mark('refinery_tender_berth', -120, 15, 'station:station_ceres:service-berth'),
+        mark('refinery_tender_client', 90, -75, 'object:ceres_refinery_disabled_hull'),
       ],
     }),
   }),
@@ -979,19 +981,22 @@ assertDistinctRouteTopology(HELIOS_ACTIVITY_POCKETS, HELIOS_ROUTE_TOPOLOGY, 'Hel
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export const PALLAS_ACTIVITY_SECTOR_ID = 'sector_pallas_drift';
-export const PALLAS_AUTHORED_ACTIVITY_CAPACITY = 8;
+export const PALLAS_AUTHORED_ACTIVITY_CAPACITY = 10;
 
 const pallasZones = requireArray(SECTOR_ZONES[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector zones');
 const pallasAnchors = requireRecord(SECTOR_ANCHORS[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector anchors');
 const pallasBelt = findById(pallasZones, 'zone_pallas_belt', 'Pallas belt zone');
 const pallasDrift = findById(pallasZones, 'zone_pallas_drift', 'Pallas drift zone');
 const pallasAmbushZone = findById(pallasZones, 'zone_pallas_ambush', 'Pallas ambush zone');
+const pallasSeamField = findById(pallasAnchors.fields, 'f_pallas_1', 'Pallas metallic seam');
 const pallasGraveField = findById(pallasAnchors.fields, 'f_pallas_3', 'Pallas grave field');
+const stationSmuggler = findById(pallasAnchors.stations, 'station_smuggler', 'Pallas smuggler den station anchor');
 
 const pallasSeamId = 'pallas_working_seam';
 const pallasHubId = 'pallas_hub_pocket';
 const pallasAmbushId = 'pallas_ambush_run';
 const pallasGraveId = 'pallas_nebula_grave';
+const pallasDenId = 'pallas_den_shoal';
 
 function pallasActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, lawful = false) {
   return actor({
@@ -1007,13 +1012,30 @@ function pallasActor(id, pocketId, role, jobKind, spawn, routeId, durationS, mar
   });
 }
 
+// The den's own cast. The fence runner is the Quiet's courier — the drop leg
+// out along the Sker run, the return leg to the real den berth — and the shoal scav works
+// the archipelago's inner face on the proven salvage kernel. Neither is lawful:
+// the Quiet keep the lights on and the records off.
+const pallasDenActors = Object.freeze([
+  pallasActor('pallas_den_fence', pallasDenId, 'smuggler', 'hauler', point(60, -30),
+    'pallas_den_fence_run', 26, [
+      mark('pallas_fence_drop_leg', 103, 0, 'activity:pallas-den-fence-drop'),
+      mark('pallas_fence_den_leg', -99.8, 24.7, 'dest:station_smuggler'),
+    ]),
+  pallasActor('pallas_shoal_scav', pallasDenId, 'salvor', 'salvor', point(-40, 20),
+    'pallas_shoal_salvage_loop', 22, [
+      mark('pallas_shoal_face', 99.5, 26.7, 'activity:pallas-shoal-face'),
+      mark('pallas_shoal_gate', -43.5, 93.4, 'activity:pallas-shoal-gate'),
+    ]),
+]);
+
 export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
   pocket({
     id: pallasSeamId,
     label: 'Independent Seam',
     identity: Object.freeze({ zoneId: pallasBelt.id, fieldId: 'f_pallas_1' }),
     anchor: canonicalAnchor({
-      kind: 'zone', id: pallasBelt.id, zoneId: pallasBelt.id, localPos: pallasBelt.center,
+      kind: 'field', id: pallasSeamField.id, zoneId: pallasBelt.id, localPos: pallasSeamField.center,
     }),
     actorSlots: Object.freeze([
       pallasActor('pallas_seam_miner', pallasSeamId, 'miner', 'miner', point(30, -20),
@@ -1021,7 +1043,7 @@ export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
           mark('pallas_miner_a', 103.4, 37.6),
           mark('pallas_miner_b', -9.2, 104.6),
         ]),
-      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'miner', point(-24, 18),
+      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'surveyor', point(-24, 18),
         'pallas_seam_survey', 28, [
           mark('pallas_survey_a', -91.9, 77.1),
           mark('pallas_survey_b', -34.2, -94),
@@ -1117,6 +1139,18 @@ export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
         offset: point(-28, 40), runtimeOwner: 'world',
       }),
     ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasDenId,
+    label: 'Den Shoal',
+    identity: Object.freeze({ zoneId: pallasDrift.id, stationId: stationSmuggler.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationSmuggler.id, zoneId: pallasDrift.id,
+      placeId: stationSmuggler.id, localPos: stationSmuggler.pos,
+    }),
+    actorSlots: pallasDenActors,
+    objectSlots: Object.freeze([]),
     sectorId: PALLAS_ACTIVITY_SECTOR_ID,
   }),
 ]);
@@ -1381,8 +1415,9 @@ assertDistinctRouteTopology(VESTA_ACTIVITY_POCKETS, VESTA_ROUTE_TOPOLOGY, 'Vesta
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export const TETHYS_ACTIVITY_SECTOR_ID = 'sector_tethys_junction';
-/** Four pockets × two actors: the queue, the lane, the cache, and the log. */
-export const TETHYS_AUTHORED_ACTIVITY_CAPACITY = 8;
+/** Six pockets / twelve actors: the queue, the lane, the cache, the log — and the standing
+ * garrison pair at the Customs Gate (watch + overwatch, stores + relief rotation). */
+export const TETHYS_AUTHORED_ACTIVITY_CAPACITY = 12;
 
 const tethysZones = requireArray(SECTOR_ZONES[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector zones');
 const tethysAnchors = requireRecord(SECTOR_ANCHORS[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector anchors');
@@ -1401,6 +1436,8 @@ const tethysQueueId = 'tethys_checkpoint_queue';
 const tethysLaneId = 'tethys_lane_patrol';
 const tethysCacheId = 'tethys_quiet_cache';
 const tethysLogId = 'tethys_customs_log';
+const tethysGarrisonId = 'tethys_gate_garrison';
+const tethysStoresId = 'tethys_gate_stores';
 
 function tethysActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
   return actor({
@@ -1533,6 +1570,38 @@ const tethysLogActors = Object.freeze([
     ]),
 ]);
 
+// The garrison. station_customs is the confirmation six's one military hull, and its chart
+// line — everything transits, nothing transits unread — promised a standing body of law, not
+// two lone beats. Four hulls hold the gate whether or not anyone misbehaves, in two pockets:
+// the watch flies the tight gate wedge while the overwatch crosses the approaches, and the
+// stores tender runs berth-to-picket while the relieved wing walks its slow chord to the hub
+// berth — the rotation you can watch is what makes it a garrison, not a checkpoint.
+const tethysGarrisonActors = Object.freeze([
+  tethysActor('tethys_garrison_watch', tethysGarrisonId, 'patrol', 'patrol', point(30, -26),
+    'tethys_garrison_watch_loop', 16, [
+      mark('tethys_garrison_watch_a', 95.2, -39.4, 'activity:tethys-garrison-watch-a'),
+      mark('tethys_garrison_watch_b', 95.2, 39.4, 'activity:tethys-garrison-watch-b'),
+    ], { lawful: true }),
+  tethysActor('tethys_garrison_overwatch', tethysGarrisonId, 'patrol', 'patrol', point(-36, 12),
+    'tethys_garrison_overwatch_arc', 26, [
+      mark('tethys_garrison_overwatch_out', 103, 0, 'activity:tethys-garrison-overwatch-out'),
+      mark('tethys_garrison_overwatch_back', -63.4, 81.2, 'activity:tethys-garrison-overwatch-back'),
+    ], { lawful: true }),
+]);
+
+const tethysStoresActors = Object.freeze([
+  tethysActor('tethys_garrison_tender', tethysStoresId, 'tender', 'surveyor', point(24, 30),
+    'tethys_garrison_stores_run', 28, [
+      mark('tethys_garrison_stores_leg', 102.1, -13.5, 'activity:tethys-garrison-stores'),
+      mark('tethys_garrison_berth_leg', -95.2, 40.3, 'dest:station_customs'),
+    ]),
+  tethysActor('tethys_garrison_relieved', tethysStoresId, 'patrol', 'patrol', point(40, -10),
+    'tethys_garrison_relieved_walk', 15, [
+      mark('tethys_relieved_hub_leg', 99.5, 26.7, 'dest:station_tethys'),
+      mark('tethys_relieved_berth_leg', 99.5, -26.7, 'activity:tethys-garrison-berth'),
+    ], { lawful: true }),
+]);
+
 export const TETHYS_ACTIVITY_POCKETS = Object.freeze([
   pocket({
     id: tethysQueueId,
@@ -1580,6 +1649,30 @@ export const TETHYS_ACTIVITY_POCKETS = Object.freeze([
     }),
     actorSlots: tethysLogActors,
     objectSlots: tethysLogObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysGarrisonId,
+    label: 'Gate Garrison',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, stationId: stationCustoms.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationCustoms.id, zoneId: tethysCheckpointZone.id,
+      placeId: stationCustoms.id, localPos: stationCustoms.pos,
+    }),
+    actorSlots: tethysGarrisonActors,
+    objectSlots: Object.freeze([]),
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysStoresId,
+    label: 'Garrison Rotation',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, stationId: stationCustoms.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationCustoms.id, zoneId: tethysCheckpointZone.id,
+      placeId: stationCustoms.id, localPos: stationCustoms.pos,
+    }),
+    actorSlots: tethysStoresActors,
+    objectSlots: Object.freeze([]),
     sectorId: TETHYS_ACTIVITY_SECTOR_ID,
   }),
 ]);
@@ -2302,7 +2395,7 @@ const LIVED_FRONTIER_SET_LIST = [
         id: 'charon_colony_barge',
         label: 'Colony Barge',
         anchor: { kind: 'zone', id: 'zone_charon_colony' },
-        // The air pod the colony pays for, on the hauler's refinery-ward bearing (-53.9 deg).
+        // Abandoned intact air stock the visiting salvage crew recovers, on the hauler's refinery-ward bearing (-53.9 deg).
         objects: [
           { id: 'charon_colony_air_pod', kind: 'cargo_staging_pod', offset: [38.8, -53.4],
             targetRef: 'object:charon_colony_air_pod' },

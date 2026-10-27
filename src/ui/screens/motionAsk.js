@@ -5,7 +5,7 @@
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { createTitleFrame } from '../views/menuFrames.js';
 import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
-import { el, words, stamp } from '../kit/index.js';
+import { el, words, stamp, settle } from '../kit/index.js';
 import {
   FIRST_BOOT_MOTION_ASK_ID,
   MOTION_ASK_CHOICES,
@@ -52,7 +52,7 @@ export const motionAskScreen = {
     // empty box (design/frontend/THE_BAR.md §3). Each choice carries its own lamp instead.
     const list = words([
       { action: 'full', label: 'Full', sub: 'Keep combat feel', primary: true, current: true },
-      { action: 'reduce', label: 'Reduce', sub: 'Calm shake, punch and hit-stop' },
+      { action: 'reduce', label: 'Reduce', sub: 'Calms shake, punch and hit-stop' },
     ], {
       ariaLabel: 'Motion effects',
       // LIGHT, like the title whose frame this borrows. It was left on 'dp' when the title moved,
@@ -69,6 +69,7 @@ export const motionAskScreen = {
 
     refs = {
       root: rootEl,
+      title,
       list,
       buttons: [...list.querySelectorAll('button')],
     };
@@ -78,6 +79,9 @@ export const motionAskScreen = {
     if (!refs) return;
     const first = refs.buttons[0];
     if (first) try { first.focus(); } catch (_) {}
+    // The borrowed frame arrives like the title's: the head settles from the top and the two
+    // choices stamp in — nothing on this gate just appears (ORRERY.md §3.5).
+    if (refs.title) try { settle(refs.title, { from: 'top', state: 'motionAsk:arrive' }); } catch (_) {}
     try { stamp(refs.buttons, { state: 'motionAsk:arrive' }); } catch (_) {}
   },
 

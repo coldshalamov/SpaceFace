@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d9ecf91a99b069b25a5acd9bd2120888a1a9f9d4dc797a08ebda48737e65be79",
+  "contentHash": "1e9b19bfaa019b7a2590a6528ecc0d823855f487b3ab92627099c31780b48480",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -2.6644742488861084,
-          0.7857826352119446,
+          -2.664474130768246,
+          0.785782659626938,
           1.8768824338912964
         ],
         "min": [
-          -3.307579517364502,
-          -0.24796955287456512,
+          -3.3075796354823646,
+          -0.2479695772895586,
           -3.5654311180114746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e57984bb9d2b5699cac451fb15064644546cfb8b53cafded4491d3d5005211e",
+      "geometryHash": "5867ff2b7ebaf5714e08b65b62d667637746273bb2ac227fdc5ba5b6994c16c6",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar0",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
@@ -37,22 +37,22 @@
     {
       "bounds": {
         "max": [
-          -0.4429430067539215,
-          0.8809911608695984,
+          -0.44294299294418726,
+          0.8809911629328501,
           1.8768824338912964
         ],
         "min": [
-          -1.0860484838485718,
-          -0.1527610719203949,
+          -1.086048497658306,
+          -0.15276107398364658,
           -3.5654311180114746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "030cef0da763a30a2dfaf0e4eae5c1efbdc8590e4438c15fd87a713c602cda76",
+      "geometryHash": "6176434105b7e90d07e63ebe4292758d255b58ea3feec7492af2bda29e1721dd",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar1",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
@@ -62,22 +62,22 @@
     {
       "bounds": {
         "max": [
-          1.7785881757736206,
-          0.9761996865272522,
+          1.7785881746821937,
+          0.9761997016290199,
           1.8768824338912964
         ],
         "min": [
-          1.135482668876648,
-          -0.057552520185709,
+          1.135482669968075,
+          -0.057552535287476725,
           -3.5654311180114746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4dbd619595945779200e77e2850539bf71c7a8554f61b6fbc7d8724d972d10e7",
+      "geometryHash": "95d6fc12f03eb0332d774bf83b78e0c59945ce36d73f2f4ce3c51e93f8315c3c",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar2",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          4.000119209289551,
-          1.0714080333709717,
+          4.000119327407413,
+          1.0714080633739007,
           1.8768824338912964
         ],
         "min": [
-          3.3570139408111572,
-          0.03765585646033287,
+          3.3570138226932946,
+          0.03765582645740395,
           -3.5654311180114746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10c59493be5dac6b577ef5757d7d380e14eb15b872148e76116c4062a9f57124",
+      "geometryHash": "29bbe691647b65fba507ad9a584f24e793a795c4a1d21e48b6f523191e57b410",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar3",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           3.7774438858032227,
-          3.782386302947998,
-          3.5656087398529053
+          3.782386457173902,
+          3.56560885663377
         ],
         "min": [
           -4,
-          -3.782386302947998,
-          -0.49745094776153564
+          -3.782386457173902,
+          -0.4974510645424002
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f009f08d22a11360a994aded971c58f55d55f2990878498916a86df53433344",
+      "geometryHash": "fc6cf436b36eb0b3459d332f45d1883686493329ac6f4d68c44e0a3f0039796d",
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
+      "materialHash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
       "materialPipelineKey": "opaque",
       "meshName": "grate",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.grate",
@@ -140,10 +140,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
-      "id": "material:55cf3807fb7e4c7e740b0413",
+      "hash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "id": "material:203cc84c70ad17be35f60b4e",
       "name": "Forge_ore_barge_wk_frame__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -172,10 +172,10 @@
       ]
     },
     {
-      "hash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
-      "id": "material:596e78a82c1a871d551d1ad7",
+      "hash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
+      "id": "material:edf55240cfd35c4f717eb63a",
       "name": "Forge_ore_barge_wk_scorch__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -208,21 +208,21 @@
     {
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
       "localTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        -2.986026883125305,
+        0.26890654116868973,
+        -0.8442743420600891,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -236,42 +236,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        -2.986026883125305,
+        0.26890654116868973,
+        -0.8442743420600891,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
       "localTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        -0.7644957453012466,
+        0.36411504447460175,
+        -0.8442743420600891,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -285,42 +285,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        -0.7644957453012466,
+        0.36411504447460175,
+        -0.8442743420600891,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
       "localTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        1.4570354223251343,
+        0.4593235831707716,
+        -0.8442743420600891,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -334,42 +334,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        1.4570354223251343,
+        0.4593235831707716,
+        -0.8442743420600891,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
       "localTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        3.678566575050354,
+        0.5545319449156523,
+        -0.8442743420600891,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -383,42 +383,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
         0,
         0,
         0,
-        1,
+        2.7211567759513855,
         0,
-        0,
-        0,
-        0,
+        3.678566575050354,
+        0.5545319449156523,
+        -0.8442743420600891,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate",
       "localTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -432,21 +432,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet.body",
       "worldTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ]
     },
@@ -509,37 +509,37 @@
       "uri": "place_aftermath_frag_grating_sheet.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 47580,
-    "sha256": "a8be53233879b56057720962037b3c0950d95f078843ea3fac440431942d64c5",
+    "bytes": 44632,
+    "sha256": "257277849992c2c9f30c49e2b90b3158defb4c7c38bef9f10c28e1411c9d236b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000059604644775390625,
+        0.00005966370370646956,
         0,
-        0.00008881092071533203
+        0.0000888693111475991
       ],
       "max": [
-        4.000119209289551,
-        3.782386302947998,
-        3.5656087398529053
+        4.000119327407413,
+        3.782386457173902,
+        3.56560885663377
       ],
       "min": [
         -4,
-        -3.782386302947998,
+        -3.782386457173902,
         -3.5654311180114746
       ],
       "size": [
-        8.00011920928955,
-        7.564772605895996,
-        7.13103985786438
+        8.000119327407413,
+        7.564772914347804,
+        7.131039974645244
       ]
     },
     "hidden": [],
@@ -581,21 +581,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
-          0,
-          0,
-          0,
+          -2.986026883125305,
+          0.26890654116868973,
+          -0.8442743420600891,
           1
         ],
         "name": "gBar0",
@@ -608,21 +608,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
-          0,
-          0,
-          0,
+          -0.7644957453012466,
+          0.36411504447460175,
+          -0.8442743420600891,
           1
         ],
         "name": "gBar1",
@@ -635,21 +635,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
-          0,
-          0,
-          0,
+          1.4570354223251343,
+          0.4593235831707716,
+          -0.8442743420600891,
           1
         ],
         "name": "gBar2",
@@ -662,21 +662,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
           0,
           0,
           0,
-          1,
+          2.7211567759513855,
           0,
-          0,
-          0,
-          0,
+          3.678566575050354,
+          0.5545319449156523,
+          -0.8442743420600891,
           1
         ],
         "name": "gBar3",
@@ -689,21 +689,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
+          -0.11127805709838867,
           0,
-          0,
-          0,
+          1.5340788960456848,
           1
         ],
         "name": "grate",
@@ -718,19 +718,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb"
   },
-  "runtimeHash": "23e2a04d6c880e2e389388096c3bf3a896dfbacf176d345a8d81f9824fd2235c",
+  "runtimeHash": "6d9430fe4be4213ae05521849ac9dfcc4d72937557192bbd98f63e77bf037c4e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.000119209289551,
-          3.782386302947998,
-          3.5656087398529053
+          4.000119327407413,
+          3.782386457173902,
+          3.56560885663377
         ],
         "min": [
           -4,
-          -3.782386302947998,
+          -3.782386457173902,
           -3.5654311180114746
         ]
       },

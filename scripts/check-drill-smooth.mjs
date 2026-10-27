@@ -386,14 +386,19 @@ assert.equal(DRILL_CONST.MOVE_CRUISE_INTERVAL_S, MOVE_CRUISE_INTERVAL_S, 'DRILL_
 {
   const { state } = setup();
   drill.begin(420042);
+  // A fracture plane is its own visible mark (crack glyph + 'Cracked' chip), so faulted and
+  // clean dirt are different-looking materials — each class must still read one cut rate.
   const dirtProfiles = new Set();
   for (const column of state.drill.field) {
     for (const tile of column) {
-      if (tile.type === 'dirt') dirtProfiles.add(`${tile.maxHp}:${tile.hardness}`);
+      if (tile.type === 'dirt') dirtProfiles.add(`${tile.maxHp}:${tile.hardness}:${!!tile.fault}`);
     }
   }
-  assert.equal(dirtProfiles.size, 1,
+  assert.ok(dirtProfiles.size <= 2,
     `identical-looking soft regolith must not hide multiple cut rates (${[...dirtProfiles].join(', ')})`);
+  const cleanDirt = [...dirtProfiles].filter((p) => p.endsWith(':false'));
+  assert.equal(cleanDirt.length, 1,
+    `clean soft regolith must read one cut rate (${cleanDirt.join(', ')})`);
 
   const soft = { type: 'dirt', hp: 12, maxHp: 12, hardness: 0.65 };
   const hard = { type: 'rock', hp: 12, maxHp: 12, hardness: 1.9 };

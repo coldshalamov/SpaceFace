@@ -24,6 +24,7 @@ import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
 import { drawGlyph, glyphSvg } from '../glyphs.js';
+import { injectOrrery } from '../orrery/tokens.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../../world/livingWorldViews.js';
 import { objectiveText } from './missionLog.js';
 
@@ -245,11 +246,11 @@ const LOCALMAP_STYLE = `
   font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
   font-size: 13px; letter-spacing: 0;
 }
+/* The head stands on the field, its bottom edge the one rule (ORRERY §3.1, pinned by INST-15). */
 #sf-localmap .lm-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 92%, transparent));
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 #sf-localmap .lm-title {
   font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
@@ -257,49 +258,64 @@ const LOCALMAP_STYLE = `
   display: flex; align-items: center; gap: 8px;
 }
 #sf-localmap .lm-title::before {
-  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--dp-lamp, var(--sf-goal)); border-radius: 0;
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--dp-line-hi, var(--sf-edge)); border-radius: 0;
 }
 #sf-localmap .lm-scale {
   font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); margin-top: var(--sp-1);
 }
+/* CLOSE: the deckplate ghost key (pinned) dressed in the etched label role. A field ghost at
+   rest — the border track stays for the pinned lamp hover signal, but no rectangle shows. */
 #sf-localmap .lm-close {
-  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 8%, transparent)); border: 1px solid var(--dp-rule, var(--sf-edge)); color: var(--dp-ink, var(--sf-paper));
-  padding: var(--sp-1) var(--sp-3); border-radius: 2px; cursor: pointer; font-size: 13px; font-weight: 500;
-  transition: all 0.15s ease;
+  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 8%, transparent));
+  border: 1px solid transparent; color: var(--dp-ink, var(--sf-paper));
+  min-height: 40px; padding: var(--sp-2) var(--sp-3); cursor: pointer; border-radius: 0;
+  font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+  transition: color 160ms var(--dp-ease-out, ease-out), border-color 160ms var(--dp-ease-out, ease-out), background-color 160ms var(--dp-ease-out, ease-out);
 }
 #sf-localmap .lm-close:hover {
-  border-color: var(--dp-lamp, var(--sf-you)); color: var(--dp-lamp-hot, var(--sf-you)); background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-you) 12%, transparent));
-  translate: 0 -1px;
+  border-color: var(--dp-lamp, var(--sf-you)); color: var(--dp-lamp-hot, var(--sf-you));
+  background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-you) 12%, transparent));
 }
 #sf-localmap .lm-close:active {
   translate: 0 1px;
 }
 #sf-localmap .lm-close:focus-visible {
-  outline: 1px solid var(--dp-lamp, var(--sf-you)); outline-offset: 2px;
+  outline: 2px solid var(--dp-line-hi, var(--sf-edge)); outline-offset: 2px; color: var(--dp-ink, var(--sf-paper));
 }
 #sf-localmap .lm-body { flex: 1; position: relative; min-height: 0; }
 #sf-localmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+/* The legend is a foot veil, its top edge dissolved — no box, no border. */
 #sf-localmap .lm-legend {
-  position: absolute; left: var(--sp-3); bottom: var(--sp-3);
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center;
+  column-gap: var(--sp-3); row-gap: var(--sp-1);
   font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink, var(--sf-paper));
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--dp-rule, var(--sf-edge)); border-radius: 2px;
-  padding: var(--sp-1) var(--sp-2); line-height: 1.5;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: var(--sp-4) var(--sp-4) var(--sp-3); line-height: 1.5;
+  text-shadow: var(--dp-text-legible, none);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 18px); mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0) 18px);
+  animation: orr-rise 420ms var(--dp-ease-out, ease-out) both; animation-delay: 300ms;
 }
 #sf-localmap .lm-legend .lm-mark { width: 14px; height: 14px; vertical-align: -2px; }
-#sf-localmap .lm-legend .lm-mark--foe { color: var(--sf-foe); }
-#sf-localmap .lm-legend .lm-mark--goal { color: var(--sf-goal); }
+#sf-localmap .lm-legend .lm-mark--foe { color: var(--dp-danger, var(--sf-foe)); }
+#sf-localmap .lm-legend .lm-mark--goal { color: var(--dp-ice, var(--sf-calm)); }
+/* The routes ladder: a field with corner ticks (glass never has a border). */
 #sf-localmap .lm-routes {
-  position: absolute; right: var(--sp-3); top: var(--sp-3); width: 230px; max-height: 60%; overflow-y: auto;
+  position: absolute; right: var(--sp-3); top: var(--sp-3); width: 250px; max-height: 60%; overflow-y: auto;
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--dp-rule, var(--sf-edge)); border-radius: 2px;
   padding: var(--sp-2) var(--sp-3); font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; color: var(--dp-ink, var(--sf-paper));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   scrollbar-width: thin; scrollbar-color: var(--dp-rule-hi, color-mix(in srgb, var(--sf-calm) 25%, transparent)) transparent;
+}
+/* Corner ticks are the glass edge (glass never has a border). The ticked panels position
+   themselves (.lm-objective / .lm-routes are absolute); this only paints their corners. */
+#sf-localmap .lm-ticked::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(var(--dp-line-hi, var(--sf-edge)), var(--dp-line-hi, var(--sf-edge))) 0 0 / 16px 1px no-repeat,
+    linear-gradient(var(--dp-line-hi, var(--sf-edge)), var(--dp-line-hi, var(--sf-edge))) 0 0 / 1px 16px no-repeat,
+    linear-gradient(var(--dp-line-hi, var(--sf-edge)), var(--dp-line-hi, var(--sf-edge))) 100% 100% / 16px 1px no-repeat,
+    linear-gradient(var(--dp-line-hi, var(--sf-edge)), var(--dp-line-hi, var(--sf-edge))) 100% 100% / 1px 16px no-repeat;
 }
 #sf-localmap .lm-routes h4 {
   margin: 0 0 var(--sp-2) 0; font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600; font-size: 12px;
@@ -308,12 +324,17 @@ const LOCALMAP_STYLE = `
 }
 #sf-localmap .lm-route {
   display: block; width: 100%; text-align: left; background: transparent; color: inherit;
-  border: 0; border-bottom: 1px solid var(--dp-rule, var(--sf-edge)); padding: var(--sp-1) 4px; line-height: 1.4; cursor: pointer;
-  font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; border-radius: 2px; transition: all 0.15s ease;
+  border: 0; border-bottom: 1px solid var(--dp-rule, var(--sf-edge)); padding: var(--sp-2) 4px; line-height: 1.4; cursor: pointer;
+  font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 13px; border-radius: 0;
+  transition: color 160ms var(--dp-ease-out, ease-out), background-color 160ms var(--dp-ease-out, ease-out);
 }
 #sf-localmap .lm-route:last-child { border-bottom: none; }
-#sf-localmap .lm-route:hover, #sf-localmap .lm-route:focus-visible {
-  outline: 0; background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-goal) 12%, transparent)); color: var(--dp-ink, var(--sf-paper));
+#sf-localmap .lm-route:hover {
+  background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-calm) 14%, transparent)); color: var(--dp-ink, var(--sf-paper));
+}
+#sf-localmap .lm-route:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-edge)); outline-offset: -2px;
+  background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-calm) 14%, transparent)); color: var(--dp-ink, var(--sf-paper));
 }
 #sf-localmap .lm-route:active {
   translate: 0 1px;
@@ -324,18 +345,16 @@ const LOCALMAP_STYLE = `
 #sf-localmap .lm-route .lm-route-path { color: var(--dp-ink-mute, var(--sf-calm)); }
 #sf-localmap .lm-route .lm-route-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: 2px; color: var(--dp-ink-mute, var(--sf-calm)); }
 #sf-localmap .lm-route .lm-route-action {
-  margin-top: 2px; color: var(--dp-lamp-hot, var(--sf-you)); font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600;
+  margin-top: 2px; color: var(--dp-ink, var(--sf-paper)); font-family: var(--dp-face-etch, var(--sf-subhead-face)); font-weight: 600;
   font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase;
 }
 #sf-localmap .lm-route .lm-route-stale { color: var(--dp-danger, var(--sf-foe)); font-size: 13px; }
 #sf-localmap .lm-routes-empty { color: var(--dp-ink-dim, var(--sf-calm)); }
+/* The objective: glass with corner ticks; the amber kicker is the screen's one warm leader. */
 #sf-localmap .lm-objective {
-  position: absolute; left: var(--sp-3); top: var(--sp-3); width: min(340px, calc(100% - 270px)); min-width: 230px;
+  position: absolute; left: var(--sp-3); top: var(--sp-3); width: min(340px, calc(100% - 290px)); min-width: 230px;
   background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--dp-rule, var(--sf-edge)); border-left: var(--sf-rail-w) solid var(--dp-lamp, var(--sf-goal));
-  border-radius: 2px; padding: var(--sp-2) var(--sp-3); color: var(--dp-ink, var(--sf-paper));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 0; border-radius: 0; padding: var(--sp-2) var(--sp-3); color: var(--dp-ink, var(--sf-paper));
 }
 #sf-localmap .lm-objective[hidden] { display: none; }
 #sf-localmap .lm-objective-k {
@@ -343,22 +362,23 @@ const LOCALMAP_STYLE = `
   letter-spacing: var(--sf-track-micro); text-transform: uppercase;
 }
 #sf-localmap .lm-objective-title {
-  margin-top: var(--sp-1); font-family: var(--dp-face-display, var(--sf-display-face)); font-weight: 700; font-size: 28px;
-  line-height: 1.1; color: var(--dp-ink, var(--sf-paper)); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
+  margin-top: var(--sp-1); font-family: var(--dp-face-display, var(--sf-display-face)); font-weight: 800; font-stretch: 125%; font-size: 28px;
+  line-height: 1.05; color: var(--dp-ink, var(--sf-paper)); letter-spacing: -0.01em; text-transform: none; overflow-wrap: anywhere;
 }
 #sf-localmap .lm-objective-body {
   margin-top: var(--sp-1); font-family: var(--dp-face-read, var(--sf-body-face)); font-size: 14px; color: var(--dp-ink-dim, var(--sf-calm)); line-height: 1.45;
 }
 #sf-localmap .lm-objective-meta { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-2); color: var(--dp-ink-mute, var(--sf-calm)); }
-#sf-localmap .lm-objective-meta .hot { color: var(--dp-lamp, var(--sf-goal)); }
+#sf-localmap .lm-objective-meta .hot { color: var(--dp-phos, var(--sf-you)); }
 @media (max-width: 760px) {
   #sf-localmap .lm-objective { left: var(--sp-2); right: var(--sp-2); top: 58px; width: auto; max-width: none; min-width: 0; }
   #sf-localmap .lm-routes { right: var(--sp-2); left: var(--sp-2); top: auto; bottom: 54px; width: auto; max-height: 25%; }
-  #sf-localmap .lm-legend { left: var(--sp-2); right: var(--sp-2); bottom: var(--sp-2); }
 }
 @media (prefers-reduced-motion: reduce) {
   #sf-localmap, #sf-localmap * { animation: none; transition: none; }
 }
+/* the game's own reduce setting (html.sf-reduce-motion), not just the OS hint (ORRERY §3.5) */
+html.sf-reduce-motion #sf-localmap .lm-legend, html.sf-reduce-motion #sf-localmap .orr-rise { animation: none; }
 @media (forced-colors: active) {
   #sf-localmap, #sf-localmap .lm-objective, #sf-localmap .lm-routes, #sf-localmap .lm-legend {
     background: Canvas; color: CanvasText; border-color: CanvasText;
@@ -377,7 +397,7 @@ function injectStyle() {
 }
 
 function canvasRoles() {
-  const fallback = { you: '#4fbf8f', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350' };
+  const fallback = { you: '#4fbf8f', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350', motion: '#84a0c8', void: '#0b1220' };
   if (typeof document === 'undefined' || !document.documentElement) return fallback;
   let cs;
   try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
@@ -390,6 +410,10 @@ function canvasRoles() {
     paper: read('--dp-ink', read('--sf-paper', fallback.paper)),
     surface: read('--dp-field', read('--sf-surface', fallback.surface)),
     edge: read('--dp-rule', read('--sf-edge', fallback.edge)),
+    // data in motion only (ORRERY §3.3): scan highlights, unresolved contacts, live pulses
+    motion: read('--dp-ice', fallback.motion),
+    // the deep veil the instrument draws over the world — the chart has no plate
+    void: read('--dp-void', fallback.void),
   };
 }
 
@@ -430,8 +454,9 @@ function intel() {
 export function localMapIntel() { return intel(); }
 
 // Legend marks quote the exact shapes the chart above draws — station = filled berth circle,
-// gate = open diamond, contacts = heading triangles (hue is the only hostile/friendly channel,
-// same as the canvas), asteroid = micro dot, scan ping = the shared dashed unknown glyph. Same
+// gate = open diamond, contacts = heading triangles with the IFF carried by the fill state
+// (hostile solid, friendly hollow — the securityPips channel; hue only reinforces, same as the
+// canvas), asteroid = micro dot, scan ping = the shared dashed unknown glyph. Same
 // 24-grid / 1.6-stroke / currentColor grammar as glyphs.js; static strings, safe for innerHTML.
 function lmMarkSvg(inner, cls = 'lm-mark') {
   return `<svg class="${cls}" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">${inner}</svg>`;
@@ -439,8 +464,10 @@ function lmMarkSvg(inner, cls = 'lm-mark') {
 const LM_LEGEND_MARKS = {
   station: lmMarkSvg('<circle cx="12" cy="12" r="7.5" fill="currentColor"/>'),
   gate: lmMarkSvg('<path d="M12 4 20 12 12 20 4 12Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
-  hostile: glyphSvg('iff_hostile', 14, 'lm-mark lm-mark--foe'),
-  friendly: glyphSvg('iff_hostile', 14, 'lm-mark'),
+  // The canvas draws hostile contacts solid and friendly contacts hollow (one heading triangle,
+  // fill state = the IFF channel); these quote that pair exactly, hue class on top.
+  hostile: lmMarkSvg('<path d="M12 4.5 20 19H4Z" fill="currentColor"/>'),
+  friendly: lmMarkSvg('<path d="M12 4.5 20 19H4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'),
   asteroid: lmMarkSvg('<circle cx="12" cy="12" r="4" fill="currentColor"/>'),
   ping: glyphSvg('unknown', 14, 'lm-mark lm-mark--goal'),
 };
@@ -488,23 +515,26 @@ export const localmapScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
+    // The instrument composes the ORRERY library: the .orr-* arrival roles (orr-rise) and the
+    // --dp light tokens this sheet speaks come from the one library sheet (ORRERY.md §4).
+    injectOrrery();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-localmap';
     const localMapKey = BINDINGS.localmap.label;
     const starMapKey = BINDINGS.starmap.label;
     rootEl.innerHTML =
-      '<div class="lm-head sf-crest">' +
+      '<div class="lm-head sf-crest orr-rise">' +
         '<div><div class="lm-title">Local System Map</div>' +
         `<div class="lm-scale">SYSTEM SCALE · remembered contacts age + fade · press ${localMapKey} or Esc to close</div></div>` +
         `<button class="lm-close" type="button" aria-label="Close Local Map">Close (${localMapKey})</button>` +
       '</div>' +
       '<div class="lm-body sf-stage"><canvas></canvas>' +
-      '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
+      '<div class="lm-objective lm-ticked orr-rise" id="sf-localmap-objective" style="--orr-delay:60ms" hidden></div>' +
       '<div class="lm-legend">' +
         localMapLegendText() +
       '</div>' +
-      '<div class="lm-routes sf-apron" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
+      '<div class="lm-routes lm-ticked sf-apron orr-rise" id="sf-localmap-routes" style="--orr-delay:180ms"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
     this._body = rootEl.querySelector('.lm-body');
     this._canvas = rootEl.querySelector('canvas');
@@ -913,19 +943,22 @@ export const localmapScreen = {
     canvasFonts();
 
     g.clearRect(0, 0, w, h);
-    g.fillStyle = paint(roles.surface, 0.92);
+    // No plate (galaxyMap INK law): a deep veil of the void lets the world read through and the
+    // instrument draws on top of it. The grid is rest light — warm bone, never blue.
+    g.fillStyle = paint(roles.void, 0.74);
     g.fillRect(0, 0, w, h);
-    g.strokeStyle = paint(roles.calm, 0.12); g.lineWidth = 1;
+    g.strokeStyle = paint(roles.paper, 0.05); g.lineWidth = 1;
     const grid = 48;
     for (let gx = (C.x % grid); gx < w; gx += grid) { g.beginPath(); g.moveTo(gx, 0); g.lineTo(gx, h); g.stroke(); }
     for (let gy = (C.y % grid); gy < h; gy += grid) { g.beginPath(); g.moveTo(0, gy); g.lineTo(w, gy); g.stroke(); }
-    g.strokeStyle = paint(roles.calm, 0.22); g.lineWidth = 1; g.setLineDash([3, 5]);
+    g.strokeStyle = paint(roles.calm, 0.3); g.lineWidth = 1; g.setLineDash([3, 5]);
     for (const r of [0.25, 0.5, 1.0]) { g.beginPath(); g.arc(C.x, C.y, Math.min(w, h) * 0.42 * r, 0, Math.PI * 2); g.stroke(); }
     g.setLineDash([]);
-    g.fillStyle = roles.calm; g.font = canvasFont(500, 13, 'data'); g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillStyle = roles.you; g.font = canvasFont(500, 13, 'data'); g.textAlign = 'left'; g.textBaseline = 'middle';
     for (const r of [0.25, 0.5, 1.0]) g.fillText(Math.round(span * r) + 'u', C.x + Math.min(w, h) * 0.42 * r + 3, C.y - 6);
 
-    // Static landmarks (stations/gates) — persistent, high confidence. Same calm hue; shape differs.
+    // Static landmarks (stations/gates) — persistent, high confidence. Places read warm bone
+    // (the kit's brass stands in via --dp-ink); the shape still tells gate from berth.
     for (const lm of map.landmarks || []) {
       const x = wx(lm.position.x), y = wz(lm.position.z);
       const isGate = lm.kind === 'gate';
@@ -963,7 +996,7 @@ export const localmapScreen = {
         });
       }
       g.save();
-      g.fillStyle = roles.calm;
+      g.fillStyle = roles.paper;
       g.strokeStyle = roles.calm;
       if (isGate) { g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y); g.closePath(); g.stroke(); }
       else { g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.fill(); }
@@ -1050,7 +1083,11 @@ export const localmapScreen = {
 
         const ang = c.heading || 0;
         g.translate(x, y); g.rotate(Math.PI + ang);
-        g.beginPath(); g.moveTo(4, 0); g.lineTo(-3, -2.6); g.lineTo(-3, 2.6); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(4, 0); g.lineTo(-3, -2.6); g.lineTo(-3, 2.6); g.closePath();
+        // IFF is not colour-only (rubric Q4): hostile solid, friendly hollow — the fill state
+        // carries the channel at 1.6 stroke, hue only reinforces, same pair the legend prints.
+        if (c.hostile) g.fill();
+        else { g.lineWidth = 1.6; g.stroke(); }
         g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
         g.restore();
       }
@@ -1097,6 +1134,18 @@ export const localmapScreen = {
       g.beginPath(); g.moveTo(pxs, pys); g.lineTo(x, y); g.stroke();
       g.setLineDash([]);
       g.globalAlpha = 1;
+      // The course is a beam (ORRERY #6): a travelling pulse reads its direction. The phase is
+      // simTime, so the motion is deterministic and stops under reduced motion.
+      if (!prefersReducedMotion()) {
+        const t = ((state.simTime || 0) * 0.45) % 1;
+        const bx = pxs + (x - pxs) * t;
+        const by = pys + (y - pys) * t;
+        g.globalAlpha = 0.3;
+        g.beginPath(); g.arc(bx, by, 6, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 1;
+        g.fillStyle = roles.paper;
+        g.beginPath(); g.arc(bx, by, 2.6, 0, Math.PI * 2); g.fill();
+      }
       g.restore();
     }
 
@@ -1114,23 +1163,29 @@ export const localmapScreen = {
       if (!rect) continue;
       job.target.labelRect = rect;
       g.font = job.font;
+      // a dark knockout under the type, so a label survives a bright world behind it — geometry,
+      // never a filter (the chart's `knock` treatment)
+      g.lineJoin = 'round';
+      g.lineWidth = 3;
+      g.strokeStyle = paint(roles.void, 0.78);
+      g.strokeText(job.text, rect.x, job.y);
       g.fillStyle = job.color;
       g.fillText(job.text, rect.x, job.y);
     }
 
     // Player at its own screen position — the view focuses on the inspected point, not on you.
     g.save();
-    g.fillStyle = roles.you; g.strokeStyle = roles.you; g.lineWidth = 1.4;
+    g.fillStyle = roles.paper; g.strokeStyle = roles.paper; g.lineWidth = 1.4;
     g.translate(pxs, pys); g.rotate(Math.PI + (player.rot || 0));
     g.beginPath(); g.moveTo(7, 0); g.lineTo(-5, -4.5); g.lineTo(-5, 4.5); g.closePath(); g.fill();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     g.restore();
 
-    // Velocity vector — your momentum.
+    // Velocity vector — your momentum, a rest-light dash.
     const sp = Math.hypot(player.vel.x, player.vel.z);
     if (sp > 1) {
       const vx = wx(player.pos.x + player.vel.x * 1.5), vz = wz(player.pos.z + player.vel.z * 1.5);
-      g.strokeStyle = paint(roles.you, 0.8); g.lineWidth = 1.3; g.setLineDash([4, 3]);
+      g.strokeStyle = paint(roles.calm, 0.8); g.lineWidth = 1.3; g.setLineDash([4, 3]);
       g.beginPath(); g.moveTo(pxs, pys); g.lineTo(vx, vz); g.stroke(); g.setLineDash([]);
     }
   },
@@ -1203,8 +1258,9 @@ export const localmapScreen = {
       const x = wx(e.pos.x), y = wz(e.pos.z);
       const glyph = data.scanOreGlyph || asteroidScanGlyph(data.typeId);
       g.save();
-      g.strokeStyle = ink.goal;
-      g.fillStyle = ink.goal;
+      // a live scan answer is data in motion — ice, not the Hand's amber (ORRERY §3.3)
+      g.strokeStyle = ink.motion;
+      g.fillStyle = ink.motion;
       g.lineWidth = 1.2;
       g.beginPath(); g.arc(x, y, 5, 0, Math.PI * 2); g.stroke();
       g.font = canvasFont(700, 12, 'data');
@@ -1220,14 +1276,15 @@ export const localmapScreen = {
     if (!marks.length) return;
     for (const { x, y, target } of marks) {
       // Unresolved-contact mark: dashed diamond + "?" glyph from the shared set (was a stroked
-      // diamond with a fillText '?' inside — two visual languages for one idea).
-      drawGlyph(g, 'unknown', x, y, 16, { color: ink.goal });
+      // diamond with a fillText '?' inside — two visual languages for one idea). Ice: the ping
+      // is arriving data, not the course.
+      drawGlyph(g, 'unknown', x, y, 16, { color: ink.motion });
       this._lastClickTargets.push(target);
       labelJobs.push({
         x, y, dx: 10,
         text: target.label,
         font: canvasFont(500, 13, 'body'),
-        color: ink.goal,
+        color: ink.motion,
         priority: target.priority,
         target,
       });

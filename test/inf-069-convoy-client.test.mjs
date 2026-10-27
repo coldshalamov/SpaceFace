@@ -44,6 +44,7 @@ test('the voice never leaks onto other contracts or outcomes', () => {
 
 test('the wiring binds the voice to settlement and first credit only', () => {
   const source = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
+  const objectiveOps = readFileSync(new URL('../src/systems/missionObjectiveOps.js', import.meta.url), 'utf8');
   assert.match(
     source,
     /convoyClientVoice\(m, 'completed', this\._stationName\(m && m\.destStationId\)\)/,
@@ -54,8 +55,9 @@ test('the wiring binds the voice to settlement and first credit only', () => {
     /convoyClientVoice\(m, 'failed', this\._stationName\(m && m\.destStationId\)\)/,
     'the cold file is authored inside loss settlement',
   );
+  // The first-credit once-flag lives in the objective-ops extraction (the convoy watcher moved there).
   assert.match(
-    source,
+    objectiveOps,
     /convoyClientReacted = true;/,
     'the reaction carries a persisted once-flag',
   );

@@ -87,7 +87,12 @@ function ensureBarStyle() {
     'linear-gradient(90deg, transparent 0 30px, rgb(12 15 20 / .55) 34px, rgb(12 15 20 / 0) 230px)!important}' +
     // B3: the ladder band off the floor (.27 -> .32, about lum 80); the hover lift restated so it survives
     `${P} .sx-bar .sx-bar__hang::after{background:${spine(3, 0.55)}, ${band(3, 0.32)}!important}` +
-    `${P} .sx-bar .sx-bar__hang:is(:hover, :focus-within)::after{background:${spine(3, 0.62)}, ${band(3, 0.38)}!important}`;
+    `${P} .sx-bar .sx-bar__hang:is(:hover, :focus-within)::after{background:${spine(3, 0.62)}, ${band(3, 0.38)}!important}` +
+    // B5: an offer is the reply's consequence — it settles in on the settle preset (transform+opacity
+    // only; reduce-motion lands it at once like every other arrival on this screen)
+    '@keyframes sf-bar-offer-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}' +
+    `${P} .sx-bar .sx-bar-offer{animation:sf-bar-offer-in 260ms cubic-bezier(.22,.61,.36,1) both}` +
+    `html.sf-reduce-motion ${P} .sx-bar .sx-bar-offer{animation:none}`;
   document.head.appendChild(style);
 }
 
@@ -443,7 +448,9 @@ export function createBarScreen(ctx) {
       // that runs level from the last glyph and elbows at 45 degrees to the arc's track
       const lineEl = stageEl.querySelector('.sx-talk__reply.is-said') || stageEl.querySelector('.sx-talk__memory') || stageEl.querySelector('.sx-talk__reply');
       const lineText = String((lineEl ? lineEl.textContent : c.line) || '');
-      const spokenEl = stageEl.querySelector('.sx-talk__memory') || nameEl;
+      // the leader labels the voice, so it anchors to the same line whose envelope the bars carry —
+      // at rest that is the memory (her opening words ride in it); once she speaks, the said line
+      const spokenEl = lineEl || stageEl.querySelector('.sx-talk__memory') || nameEl;
       const avatar = stageEl.querySelector('[data-bigpic]');
       try {
         const sr = stageEl.getBoundingClientRect();
@@ -490,7 +497,8 @@ export function createBarScreen(ctx) {
       const hint = document.createElement('p');
       hint.className = 'k-caps sx-talk__keys';
       hint.setAttribute('aria-hidden', 'true');
-      hint.textContent = '1\u20133 \u00b7 Enter answers';
+      const shortcutCount = Math.min(9, stageEl.querySelectorAll('.sx-choice').length);
+      hint.textContent = `${shortcutCount === 1 ? '1' : `1\u2013${shortcutCount}`} \u00b7 Enter answers`;
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');

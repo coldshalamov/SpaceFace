@@ -84,7 +84,7 @@ function testFieldCoverage() {
       liveFields.set(field.id, { sectorId: sector.id, field });
     }
   }
-  assert.equal(liveFields.size, 20, 'all 20 live asteroid fields are discoverable from sectors.js');
+  assert.equal(liveFields.size, 53, 'all 53 live asteroid fields are discoverable from sectors.js');
   assert.deepEqual([...Object.keys(FIELD_ASTEROID_MOTION)].sort(), [...liveFields.keys()].sort(),
     'the SPIN-AND-DRIFT field table covers every live field and no stale ids');
 

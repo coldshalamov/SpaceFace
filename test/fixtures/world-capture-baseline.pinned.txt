@@ -1,0 +1,96 @@
+  _captureSectorDurableRecords(sectorId, opts = {}) {
+    const state = this.state;
+    if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._captureTethysEntranceParcel();
+    const bag = ensureWorldRecords(state.world);
+    const recMeta = state.world.residentSectors && state.world.residentSectors[sectorId];
+    const epoch = recMeta && Number.isFinite(recMeta.epoch) ? recMeta.epoch : 0;
+    const tick = state.tick | 0;
+    const seed = (state.meta && state.meta.seed) || 1;
+    const list = state.entityList || [];
+    const despawnIds = opts.despawnIds instanceof Set ? opts.despawnIds : null;
+    const despawnIndexes = despawnIds && despawnIds.size ? [] : null;
+    if (despawnIndexes) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e) continue;
+        const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+        if (despawnIds.has(e.id)
+            && !this._isProtectedFromResidency(e)
+            && (!home || home === sectorId)) {
+          despawnIndexes.push(i);
+        }
+      }
+    }
+    // Alive-convoy ledger bound (MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR). Counted lazily once
+    // per capture pass; an existing record id always refreshes, only first-time convoy
+    // captures spend slots. A hull skipped by the cap stays live ambience — it is not
+    // persisted and must not keep the phantom record id it was stamped with.
+    let aliveConvoyRecords = -1;
+    const countAliveConvoyRecords = () => {
+      if (aliveConvoyRecords < 0) {
+        aliveConvoyRecords = 0;
+        for (const r of recordsForSector(bag, sectorId)) {
+          if (r && r.kind === RECORD_KIND.CONVOY && r.alive !== false
+            && r.outcome !== 'destroyed' && r.outcome !== 'defeated') {
+            aliveConvoyRecords++;
+          }
+        }
+      }
+      return aliveConvoyRecords;
+    };
+    forEachLivingWorldActor(state, (e) => {
+      // The bounded entrance run lives under its rumor record, never in two save owners.
+      if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
+      const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+      const dataSector = e.data && e.data.sectorId;
+      // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
+      const ownedHere = home === sectorId || dataSector === sectorId;
+      if (!ownedHere) return;
+      if (!entityIsDurableCandidate(e, state.playerId)) return;
+      // Protected mission-pinned still get a durable record for Continue rematerialize,
+      // even though live despawn skips them.
+      const captured = captureEntityRecord(e, {
+        sectorId,
+        seed,
+        epoch,
+        tick,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : tick,
+        createdTick: (e.data && e.data.recordCreatedTick) || tick,
+        durableReason: opts.reason || 'evict',
+        previousRecord: e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null,
+        recordsBag: bag,
+        stationSource: state,
+        extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
+          ? bag.byId[e.data.worldRecordId].extra
+          : null,
+      });
+      if (!captured) return;
+      if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
+        if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
+          if (e.data && e.data.worldRecordId === captured.recordId) {
+            delete e.data.worldRecordId;
+            // Unregistered clear — decrement the counted lane now so the refused record id
+            // can't leave a stale positive entry (or a stale miss-memo negative) behind.
+            registerEntityWorldRecordId(state && state.entityIndex, e);
+          }
+          // The hull's job is keyed on that record id and re-enters the world ONLY through a
+          // persisted record — npcJobsRuntime restores every job VIRTUAL and re-links it by
+          // worldRecordId — so a refused record leaves a job nothing will ever bind. Release it
+          // here or the bag grows ~+4 phantom convoy jobs per save/load roundtrip until the save
+          // quota refuses writes (release soak: 5 MB of storage by cycle 42). The hull itself
+          // stays live ambience under the ordinary traffic stepper, exactly as before.
+          this.helpers?.npcJobs?.release?.(`job:${captured.recordId}`);
+          return;
+        }
+        aliveConvoyRecords++;
+      }
+      upsertRecord(bag, captured);
+      if (e.data) e.data.worldRecordId = captured.recordId;
+      // Register the stamp with the counted lane — the delete path above registers its clear;
+      // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
+      // so every lookup takes the self-heal walk and the lane never bumps.
+      registerEntityWorldRecordId(state && state.entityIndex, e);
+    });
+    // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
+    this._destroyEntitiesAtIndices(despawnIndexes);
+  },

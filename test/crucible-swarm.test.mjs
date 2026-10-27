@@ -29,7 +29,6 @@ import {
   pickSwarmArchetype,
   swarmArenaPhase,
   SWARM_BOSS_ROTATION,
-  SWARM_LEVEL_CAP,
   SWARM_QUOTA_CAP,
   SWARM_WAVE_DURATION_TICKS,
   SWARM_ROSTER,
@@ -37,7 +36,6 @@ import {
   swarmBossFor,
   swarmConcurrent,
   swarmCurveIsSane,
-  swarmFullIntensityWave,
   swarmLevel,
   swarmGateFor,
   swarmOpeningCount,
@@ -526,21 +524,19 @@ test('the stat curve is pinned at 1, so a deep run ends on execution rather than
   // materialization. This closes an existing route to HP escalation; count, composition, mass,
   // hazards and bearings carry the difficulty curve.
   assert.equal(swarmLevel(1), 1);
-  assert.equal(swarmLevel(swarmFullIntensityWave()), 1);
   for (const wave of [8, 22, 30, 60, 100, 500, 999]) {
     assert.equal(swarmLevel(wave), 1, `wave ${wave} never inflates hull`);
   }
-  // SWARM_LEVEL_CAP still names the wave at which concurrency and roster max out — not HP.
-  assert.equal(swarmFullIntensityWave(), 1 + (SWARM_LEVEL_CAP - 1) * 3);
   // FB-026: the authored arc is under the same law now — its curve is composition, so the arc's
   // materialization level is flat too.
   assert.equal(levelForWave(60), 1, 'the authored arc materializes at level 1 as well');
 });
 
-test('everything the mode has is on the table by the full-intensity wave', () => {
-  // The claim the cap is priced on: by then concurrency, roster and chip valuation are all maxed, so
-  // the only thing left to test is whether the player can keep doing it.
-  const full = swarmFullIntensityWave();
+test('everything the mode has is on the table by the last roster unlock', () => {
+  // The claim the cap is priced on: by the wave the final archetype arrives, concurrency,
+  // roster and chip valuation are all maxed, so the only thing left to test is whether the
+  // player can keep doing it. The wave is derived from the roster, not a magic number.
+  const full = Math.max(...SWARM_ROSTER.map((entry) => entry.fromWave));
   assert.equal(swarmConcurrent(full), SWARM_CONCURRENT_MAX, 'concurrency is at its ceiling');
   assert.equal(swarmQuota(full), SWARM_QUOTA_CAP, 'the chip-valuation curve is at its cap');
   assert.equal(swarmRosterFor(full).length, SWARM_ROSTER.length, 'every archetype has arrived');

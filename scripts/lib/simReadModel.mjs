@@ -1,3 +1,4 @@
+import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 // S1 Phase-B stage 3 — main-side read model v1.
 //
 // Reconstructs what the present lane reads from live sim state, fed entirely by
@@ -116,6 +117,16 @@ function foldAiState(row, fields) {
   row.data.ai.state = fields.aiFsm;
 }
 
+function foldPallasSeamVitals(row, fields) {
+  if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  const data = row.data;
+  if (typeof fields.pallasSeamCutting === 'boolean') data.minerShiftActive = fields.pallasSeamCutting;
+  if (fields.pallasSeamStandbyTick === null || Number.isSafeInteger(fields.pallasSeamStandbyTick)) {
+    data.pallasSeamStandbyTick = fields.pallasSeamStandbyTick;
+  }
+}
+
 // Retain one small presentation object per deployment so VFX can follow later replies.
 function foldCountermeasureVitals(row, fields) {
   if (fields.cmEffectId === undefined) return;
@@ -220,6 +231,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
+      foldPallasSeamVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -301,6 +313,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
+    foldPallasSeamVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.
@@ -608,9 +621,12 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'cursor',
   // Bounded live pod facts only: the leaf projector excludes other planet authority.
   'planet.ships', 'planet.orchardForecast',
+  'ilexGreenhousePublic',
   'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
   'survivalDraftPublic', 'survivalResultsPublic', 'careers',
   'physicsVenueSession', 'world.wreckCourtRulings',
+  // Home/worksite labels and offers join native bodies through the ordinary entity journal.
+  'salvageTender', 'salvageTenderOffer', 'salvageOutfits', 'rigWorkshop',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -631,6 +647,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  // Bounded paired-passage receipt for main-side Pallas Hail, not the traffic owner graph.
+  'traffic.pallasWorkLoop',
+  // The existing survey ledger caps this sector at24 plain records; no global history mirror.
+  'npcJobs.surveyMarks.sector_pallas_drift',
   // Fold-authored ui.* fields the worker owns but main still reads: docked gates
   // presentationFreeze/uiStage/doDock re-entry, and the soak probe reads the
   // facade's ui.docked. Without these mirrors the fold write never reaches main.
@@ -681,7 +701,7 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade
@@ -716,6 +736,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, 'npcJobs.revision': 1, factionPresence: 10, automation: 30,
   sites: 10,
+  salvageOutfits: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   'save.sharedStoreStatus': 1,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
@@ -785,6 +806,7 @@ const activeDomainConfig = {
 const NPC_JOBS_MIRROR_RULE = Object.freeze({ project: 'npcJobs' });
 const COMBAT_TRACE_PRESENTATION_RULE = Object.freeze({ project: 'combatPause' });
 const ORCHARD_FORECAST_MIRROR_RULE = Object.freeze({ project: 'orchardForecast' });
+const ILEX_GREENHOUSE_MIRROR_RULE = Object.freeze({ project: 'ilexGreenhouse' });
 const ORCHARD_EXPOSURE_MIRROR_RULE = Object.freeze({ project: 'orchardExposure' });
 
 // Named diagnostic wire profiles. The ordinary runtime installs the station
@@ -845,6 +867,7 @@ export function configureDomainMirroring(config = {}) {
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
 function domainLeafViewFor(segs) {
+  if (segs.length === 1 && segs[0] === 'ilexGreenhousePublic') return ILEX_GREENHOUSE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
   if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
@@ -940,6 +963,7 @@ function projectDomainLeaf(rule, v, state) {
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
+  if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);
   if (rule && rule.project === 'npcJobs') return projectNpcJobsById(v);
   if (rule && rule.project === 'marketLive') return projectMarketLive(v);
@@ -959,7 +983,7 @@ function expandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
-  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast') return 0;
+  if (segs[0] === 'planet.ships' || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic') return 0;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.

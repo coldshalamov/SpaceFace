@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { LOCAL_PORTRAIT_POOL, LOCAL_PORTRAIT_ROOT, localPortraitForContact } from '../src/data/localPortraits.js';
+import { LOCAL_PORTRAIT_POOL, LOCAL_PORTRAIT_ROOT, STATION_CULTURE, localPortraitForContact } from '../src/data/localPortraits.js';
 import * as portraitRegistry from '../src/data/portraits.js';
 import { SECTORS } from '../src/data/sectors.js';
 
@@ -21,29 +21,34 @@ test('every declared pool face ships, and the manifest records each one', async 
 });
 
 test('a local gets one stable face from its role pool, never a role mask', () => {
+  // Row 543: cultured stations draw from their people pool instead — the role pool is checked at an
+  // uncultured station (station_smuggler keeps the role pools).
   for (const role of Object.keys(LOCAL_PORTRAIT_POOL)) {
-    const first = localPortraitForContact(contact('station_ceres', 0, role));
-    assert.equal(first, localPortraitForContact(contact('station_ceres', 0, role)), 'the same person keeps the same face');
+    const first = localPortraitForContact(contact('station_smuggler', 0, role));
+    assert.equal(first, localPortraitForContact(contact('station_smuggler', 0, role)), 'the same person keeps the same face');
     assert.match(first, new RegExp(`^${LOCAL_PORTRAIT_ROOT}${role}_\\d{2}\\.jpg$`));
   }
-  // Across the 34 stations the pool is spread EVENLY: no face is used more than its fair share.
+  // Across the uncultured stations the pool is spread EVENLY: no face is used more than its share.
   const stations = [];
   for (const sector of SECTORS) for (const station of sector.stations || []) stations.push(station.id);
-  assert.ok(stations.length >= 30);
+  const uncultured = stations.filter((id) => !STATION_CULTURE[id]);
+  assert.ok(uncultured.length >= 8);
   for (const [role, count] of Object.entries(LOCAL_PORTRAIT_POOL)) {
     const uses = new Map();
-    for (const id of stations) {
+    for (const id of uncultured) {
       const face = localPortraitForContact(contact(id, 0, role));
       uses.set(face, (uses.get(face) || 0) + 1);
     }
-    assert.equal(uses.size, count, `${role}: every authored face is used`);
-    assert.ok(Math.max(...uses.values()) <= Math.ceil(stations.length / count), `${role}: no face repeats more than ${Math.ceil(stations.length / count)} times`);
+    // Every station lands on a different face until the pool runs out — as many authored faces as
+    // possible are used, and none repeats while the pool allows.
+    assert.equal(uses.size, Math.min(count, uncultured.length), `${role}: authored faces are used before any repeats`);
+    assert.ok(Math.max(...uses.values()) <= Math.ceil(uncultured.length / count), `${role}: no face repeats more than ${Math.ceil(uncultured.length / count)} times`);
   }
 });
 
 test('people at one station never share a face while the pool allows', () => {
   for (const role of Object.keys(LOCAL_PORTRAIT_POOL)) {
-    for (const station of ['station_ceres', 'station_helios', 'station_beltout', 'a-station-with-an-odd-id']) {
+    for (const station of ['station_smuggler', 'station_helios', 'station_beltout', 'a-station-with-an-odd-id']) {
       const faces = [0, 1, 2, 3].map((slot) => localPortraitForContact(contact(station, slot, role)));
       assert.equal(new Set(faces).size, faces.length, `${role} at ${station} must not repeat a face`);
     }
@@ -51,9 +56,9 @@ test('people at one station never share a face while the pool allows', () => {
 });
 
 test('authored cast, unknown roles and empty contacts never receive a pool face', () => {
-  assert.equal(localPortraitForContact({ id: 'contact_station_ceres_0', canonicalKey: 'kessler', role: 'barkeep' }), null);
-  assert.equal(localPortraitForContact({ id: 'contact_station_ceres_1', role: 'courier' }), null);
-  assert.equal(localPortraitForContact({ id: 'contact_station_ceres_1', role: 'no_such_role' }), null);
+  assert.equal(localPortraitForContact({ id: 'contact_station_smuggler_0', canonicalKey: 'kessler', role: 'barkeep' }), null);
+  assert.equal(localPortraitForContact({ id: 'contact_station_smuggler_1', role: 'courier' }), null);
+  assert.equal(localPortraitForContact({ id: 'contact_station_smuggler_1', role: 'no_such_role' }), null);
   assert.equal(localPortraitForContact(null), null);
   assert.equal(localPortraitForContact(undefined), null);
 });

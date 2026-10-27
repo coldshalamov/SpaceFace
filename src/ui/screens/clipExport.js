@@ -386,7 +386,12 @@ function fillRect(pixels, width, height, x, y, w, h, color) {
   }
 }
 
-/** Software title-card frames for a clip that has no GPU capture. */
+/**
+ * Software title-card frames for a clip that has no GPU capture. Currently unreferenced —
+ * exportClip fails closed without recorded pixels (pinned by pq-160-01) — kept as a manual
+ * fallback. Colours follow the ORRERY palette (--dp-void ground, --dp-ink bone rules,
+ * --dp-phos readings, --dp-ink-dim meta): the card is produced art, never the rejected cyan.
+ */
 export function rasterizeClipCard(clip, { width = 240, height = 72, frames = 4 } = {}) {
   const w = width;
   const h = height;
@@ -399,14 +404,14 @@ export function rasterizeClipCard(clip, { width = 240, height = 72, frames = 4 }
   const out = [];
   for (let i = 0; i < n; i += 1) {
     const px = new Uint8Array(w * h * 4);
-    fillRect(px, w, h, 0, 0, w, h, [8, 14, 24]);
-    fillRect(px, w, h, 0, 0, w, 2, [57, 208, 255]);
-    fillRect(px, w, h, 0, h - 2, w, 2, [57, 208, 255]);
-    plotText(px, w, h, label, 8, 10, [215, 230, 255]);
-    plotText(px, w, h, ticks, 8, 24, [120, 160, 200]);
-    plotText(px, w, h, seed, 8, 38, [120, 160, 200]);
+    fillRect(px, w, h, 0, 0, w, h, [8, 11, 16]);
+    fillRect(px, w, h, 0, 0, w, 2, [232, 226, 212]);
+    fillRect(px, w, h, 0, h - 2, w, 2, [232, 226, 212]);
+    plotText(px, w, h, label, 8, 10, [223, 238, 255]);
+    plotText(px, w, h, ticks, 8, 24, [183, 180, 166]);
+    plotText(px, w, h, seed, 8, 38, [183, 180, 166]);
     const barW = Math.floor((w - 16) * ((i + 1) / n));
-    fillRect(px, w, h, 8, h - 12, barW, 4, [57, 208, 255]);
+    fillRect(px, w, h, 8, h - 12, barW, 4, [232, 226, 212]);
     out.push(px);
   }
   return { frames: out, width: w, height: h, source: 'software-card' };

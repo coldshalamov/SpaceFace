@@ -37,6 +37,78 @@ function environmentError(quote) {
   return err;
 }
 
+/**
+ * The terminal startup surface's own cause, when the game has already stopped trying.
+ *
+ * Two owners present a terminal startup failure, and both must be read or the route keeps polling
+ * for its whole timeout and reports a generic timeout over a cause the player can see:
+ *  - `failGameStart` / loadingPresenter retire the opening paint hold and put a public Retry /
+ *    Back to menu pane inside #boot-overlay, marked `data-startup-failure="true"` on the pane.
+ *  - the boot shell's failed import marks #boot-overlay itself `data-startup-failure="failed"`
+ *    and writes the module error into the loading label/detail ("Reload to retry. ... (The
+ *    requested module ... does not provide an export named ...)"). `retrying` is that shell
+ *    scheduling one reload, not a terminal state, so it is left to the reload.
+ *
+ * The surfaces stay in the DOM after a retry/back, so only a VISIBLE one on a VISIBLE overlay
+ * counts; a stale node under a hidden overlay is not a failure.
+ */
+export async function readStartupFailure(page) {
+  const facts = await page.evaluate(() => {
+    const overlay = document.getElementById('boot-overlay');
+    if (!overlay) return { found: false };
+    const pane = overlay.querySelector('[data-startup-failure="true"]');
+    const bootShell = !pane && overlay.getAttribute('data-startup-failure') === 'failed';
+    if (!pane && !bootShell) return { found: false };
+    const overlayStyle = getComputedStyle(overlay);
+    const node = pane || overlay;
+    const nodeStyle = getComputedStyle(node);
+    const line = (sel) => String((node.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+    const overlayVisible = overlayStyle.display !== 'none' && overlayStyle.visibility !== 'hidden'
+      && Number(overlayStyle.opacity) >= 0.05;
+    if (pane) {
+      return {
+        found: true,
+        overlayVisible,
+        paneVisible: nodeStyle.display !== 'none' && nodeStyle.visibility !== 'hidden'
+          && node.getClientRects().length > 0,
+        stage: String(pane.getAttribute('data-startup-stage') || ''),
+        code: String((pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
+        headline: line('.sf-state__head'),
+        detail: line('.sf-state__detail'),
+        text: String(pane.innerText || ''),
+      };
+    }
+    return {
+      found: true,
+      overlayVisible,
+      paneVisible: overlayVisible && node.getClientRects().length > 0,
+      stage: 'boot import',
+      code: 'BOOT_IMPORT',
+      headline: line('[data-loading-label]'),
+      detail: line('[data-loading-detail]'),
+      text: String(overlay.innerText || ''),
+    };
+  }).catch(() => ({ found: false }));
+  return startupFailureQuote(facts);
+}
+
+/** Pure decision for [readStartupFailure]: the player's stage, code and cause, or null. */
+export function startupFailureQuote(facts = {}) {
+  if (!facts || facts.found !== true || facts.overlayVisible !== true || facts.paneVisible !== true) return null;
+  const stage = norm(facts.stage) || 'startup';
+  const code = norm(facts.code);
+  const reported = norm(facts.detail) || norm(facts.text) || norm(facts.headline) || 'the launch stopped';
+  return `startup failed during ${stage}${code ? ` (${code})` : ''}: ${reported}`;
+}
+
+// A terminal startup pane is the game's own verdict, so it must never be re-classified as a host
+// problem by the load-string whitelist. run.mjs checks this marker before that whitelist.
+function startupFailureError(quote) {
+  const err = new Error(quote);
+  err.startupFailure = quote;
+  return err;
+}
+
 export async function bootToMenu(page, baseUrl, step) {
   await installFirstLightPromptHandler(page, step);
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
@@ -44,6 +116,8 @@ export async function bootToMenu(page, baseUrl, step) {
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
+    const failure = await readStartupFailure(page);
+    if (failure) throw startupFailureError(failure);
     const ready = await page.evaluate(() => {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
@@ -59,6 +133,8 @@ export async function bootToMenu(page, baseUrl, step) {
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
+  const failure = await readStartupFailure(page);
+  if (failure) throw startupFailureError(failure);
   throw new Error('main menu did not appear');
 }
 
@@ -93,6 +169,8 @@ export async function waitUntilFlight(page, { timeout = 600000, active = false }
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
+    const failure = await readStartupFailure(page);
+    if (failure) throw startupFailureError(failure);
     const flight = await page.evaluate((needActive) => {
       const st = window.SF && window.SF.state;
       if (!st || st.mode !== 'flight') return false;
@@ -104,6 +182,8 @@ export async function waitUntilFlight(page, { timeout = 600000, active = false }
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
+  const failure = await readStartupFailure(page);
+  if (failure) throw startupFailureError(failure);
   throw new Error(active ? 'flight did not become active before the timeout' : 'flight did not start before the timeout');
 }
 
@@ -754,11 +834,18 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
 export async function racingToFlight(page, step) {
   await clickText(page, 'Circuits', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: 60000 });
-  const course = await page.evaluate(() => { const c = document.querySelector('#screens .race-board-course h2'); return c ? c.textContent.trim() : null; });
-  step('mode select', true, `Circuits · first course ${course}`);
-  await page.waitForFunction(() => { const b = document.querySelector('#screens .race-board-launch'); return b && !b.disabled; }, null, { timeout: 60000 });
-  const word = await page.evaluate(() => document.querySelector('#screens .race-board-launch').textContent.trim());
-  await page.locator('#screens .race-board-launch').first().click();
+  const course = await page.evaluate(() => {
+    const board = document.querySelector('#screens [data-screen="raceBoard"]');
+    const c = board?.querySelector('.race-board-start h2') || board?.querySelector('.race-board-course h2');
+    return c ? c.textContent.trim() : null;
+  });
+  step('mode select', true, `Circuits · selected event ${course}`);
+  // Prepared hidden screens can share the board classes (for example physics venues).
+  // Use the actual Circuits screen and the control a player can see.
+  const start = page.locator('#screens [data-screen="raceBoard"] .race-board-launch:visible').first();
+  await start.waitFor({ state: 'visible', timeout: 60000 });
+  const word = (await start.textContent()).trim();
+  await start.click();
   // The board asks "Launch a temporary circuit flight?" before it leaves the menu: answer it like a player.
   const ok = page.locator('.sf-confirm .sf-confirm__ok').first();
   let confirmed = null;

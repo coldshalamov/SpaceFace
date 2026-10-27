@@ -40,7 +40,8 @@ export function applyHangarToPlayer(state, hangar) {
     if (Number.isFinite(entity.shieldsMax)) entity.shieldsMax = next;
     if (Number.isFinite(entity.shield)) entity.shield = Math.min(next, Math.round(entity.shield * shieldMul));
   }
+  // The magnet rank is deliberately NOT stamped on the entity — the pickup path reads it live
+  // from run telemetry through magnetMultiplier(hangar) (mining.js), so no second copy exists.
   entity.data.hangarApplied = true;
-  entity.data.hangarMagnetMul = 1 + hangarRank(bag, 'magnet') * 0.15;
   return true;
 }
