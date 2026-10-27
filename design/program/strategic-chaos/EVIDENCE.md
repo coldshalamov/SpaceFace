@@ -19,13 +19,15 @@ The generic simulation schema already exists. The narrative schema separately re
 
 Run the commands in FOUNDATIONS.md. The delivery ZIP carries the actual local TAP output, bundle-validation output and content hashes. Those results cover the new utilities, declared packet structure, CLI behavior and disposable-Git board integration. They do not prove every referenced source file was available in this local source-only environment.
 
-The narrow added workflow can perform the same checks plus owner-path existence against the actual PR tree. A workflow definition is not a passing workflow run: read its real status before claiming hosted success.
+The narrow added workflow has run successfully: GitHub Actions run `40442269085`, job `121985136549`, on synthetic PR checkout `4bbf7ae3e8a7fa4fdd6cdc88e55ff7074f062188` (candidate `bfe42733319fa14b77b90e4bbca4dde8ce0131e9` with base `b827ac3ba4337a0ea0589a7d877b4330c1797843`). Its actual log reports **64 passed, 0 failed, 0 skipped**, and default validation reports `sourcePathCheck: checked`. This proves the new tools and declared owner-path existence on that graph, not game behavior. The hosted TAP artifact is `12706691190`, ZIP SHA256 `39a0e81f8716d5af733fd35b02b614d99deaf0cd4534388a03d84abb5f054bc5`.
+
+The subsequent map commit `48ba280c252177174ce73c0ed5c3c57a0e6536a1` changes only the additive board link and removes the one-shot integration workflow. That remote diff was verified. New utility/test/task bytes are unchanged. Any later documentation commit is not silently represented as this historic CI head; current CI status belongs to the PR.
 
 ## Explicitly not measured here
 
 No complete game checkout or native B12 runtime was available locally. The native B12 suite, ordinary player input routes, full repository regression suite, save compatibility of future gameplay changes, actual visuals, target hardware performance and player enjoyment were not measured. The adapter’s missing-source behavior is tested; that is not a measured failure of SpaceFace itself.
 
-No gameplay behavior is claimed to have changed in this foundation delivery. No open combat/lighting/world PR is claimed merged or accepted. No external agent or paid chat was launched. The root-board insertion is supplied as an additive patch/installer rather than an unsafe whole-file replacement; its pending status is explicit in INTEGRATION.md.
+No gameplay behavior is claimed to have changed in this foundation delivery. No open combat/lighting/world PR is claimed merged or accepted. No external agent or paid chat was launched. The root-board insertion is committed on the candidate and independently supplied as an additive patch/installer, rather than an unsafe whole-file replacement. It is not a master merge.
 
 ## How evidence must advance
 

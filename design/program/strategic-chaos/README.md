@@ -9,7 +9,7 @@ The goal is not an RTS pasted onto a space shooter. It is personally piloted phy
 
 A dependency-free authoring/evidence toolchain: validated agent commissions; copy-ready briefs; a bounded adapter invoking the existing five-seed Ceres B12 proof; a fail-closed auditor that distinguishes malformed/incomplete output from a genuine miss; a diagnostic paired-strategy comparator; and an additive, dirty-file-safe build-map installer. Focused tests exercise these real tools. This package does not claim that the thirteen gameplay commissions have been implemented, that an imported report is authentic, or that a passing fixture proves the game is fun.
 
-The source-only ZIP additionally includes the exact additive build-map patch and an overlay installer. The PR retains the same map installer so a host with the live board can apply it without replacing the large concurrently edited file. See [integration](INTEGRATION.md) for the explicit boundary.
+The PR includes the actual ten-line root build-map insertion, committed at `48ba280c252177174ce73c0ed5c3c57a0e6536a1` without replacing existing rows. The source-only ZIP also includes the additive patch and a safe overlay installer for other checkouts. See [integration](INTEGRATION.md).
 
 ## Start here
 

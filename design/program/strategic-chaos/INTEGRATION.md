@@ -2,15 +2,17 @@
 
 ## Scope of this candidate
 
-New files only: the Strategic Chaos program and thirteen task documents, the dependency-free CLI/helper modules, focused tests and a narrowly scoped read-only test workflow. Existing gameplay, assets, locks, saves, main-branch state and other open PRs are unchanged.
+New files: the Strategic Chaos program and thirteen task documents, the dependency-free CLI/helper modules, focused tests and a narrowly scoped read-only test workflow. The only existing file changed is `build_map.md`, with ten additive navigation lines. Existing gameplay, assets, locks, saves, main-branch state and other open PRs are unchanged.
 
 The inspected base is `2f1078e9a3ba54f21064f8163b3fca3476d49182`. Refresh source and open-PR overlap before implementation; do not treat this source pin as a demand to stay on an old checkout.
 
-## Build-map integration — explicit boundary
+## Build-map integration — completed on the candidate
 
-The connector exposes whole-file replacement rather than a small patch operation. This candidate deliberately does not replace the large live `build_map.md` from a partial read or stale snapshot. It includes an exact additive patch in `integration/BUILD_MAP.patch` and a tested installer that reads the current file before making the same edit.
+Commit `48ba280c252177174ce73c0ed5c3c57a0e6536a1` applies the exact ten-line navigation section to `build_map.md`. Its remote diff was read back: ten additions, no board deletions. A branch-restricted one-shot workflow ran the focused checks and actual source-path validation, verified the sole board hunk against the installer output, committed it, and removed itself in the same commit. The final candidate contains no write-enabled integration workflow.
 
-On the current integration host, inspect the exact live board claim/diff, then run:
+The connector did not replace the large board from a partial read or stale snapshot. The exact additive patch in `integration/BUILD_MAP.patch` and tested installer remain available for other checkouts.
+
+The PR already has the link. On a separate source-overlay integration host, inspect the exact live board claim/diff, then run:
 
 ```sh
 node scripts/strategic-chaos.mjs map
@@ -21,7 +23,7 @@ git diff -- build_map.md
 
 If the board contains foreign uncommitted work, preserve it and coordinate/reconcile just the new navigation hunk. Do not reset the file, overwrite it with an archived copy, or postpone all disjoint foundation work. No task IDs, statuses, claims, acceptance thresholds, existing priorities or completion counts are changed by this link. The detailed crosswalk remains in PROGRAM.md.
 
-**Until that exact hunk is applied, the package is delivered but root-board insertion remains unapplied.** The ZIP contains the same patch and an installer; it is not a claim that the remote root file already changed.
+**Root-board insertion is complete in PR638, not merged into master.** The ZIP carries the same additive change rather than a stale full copy of the board.
 
 ## Existing work to reconcile
 
