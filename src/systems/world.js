@@ -1,6 +1,7 @@
 import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
 import {TALLY_THREE} from '../data/tallyThree.js';
 import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
 // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
 //
 // Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
@@ -1084,6 +1085,10 @@ export const world = {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
+    // Producer identity for the whole generator. The restore lane drives this across
+    // awaited paint frames; a route/listener that resets the world or enters another
+    // sector inside one of those gaps must not let this stale producer publish later.
+    const producerWorld = state.world;
 
     // Capture the pre-transition occupant cohort before exit listeners, residency
     // materialization, or any yield can mint arrivals. Tick/time cannot distinguish
@@ -1100,15 +1105,34 @@ export const world = {
 
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
-      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
-      // Bump the epoch NOW: the deferred-enter FIFO holds entries minted under the
+      // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
       // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
       // hold beat inside that gap would still see the old epoch as live and mint into
       // the departing sector. A run-scoped monotonic minted at exit keeps every
       // pre-gap payload dead for the rest of the enter.
       state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
       state.world.enterSerial = state.enterSerialSeq;
+      const departingWorld = state.world;
+      const enterEpoch = state.world.enterSerial;
+      // Retire only the captured departing cohort before exit listeners or destination
+      // residency can see it. The later enter listener keeps its generation fence for
+      // sliced delivery and arrivals minted after this boundary.
+      handlePayloadSectorTransition(state, this.helpers, { enterEpoch, payloadGenerationCutoff });
+      // Canonical removal can synchronously reset or re-enter the world. Never continue
+      // this now-stale transition over the replacement run or sector.
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
+      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
     }
+
+    // The serial is final for this producer: sector-changing enters minted it at the
+    // departure boundary, same-sector refresh/Continue mints at the emit below. Any
+    // later reset, replacement world or nested enter changes it.
+    const producerEpoch = state.world.enterSerial;
+    const superseded = () => state.world !== producerWorld
+      || state.world.enterSerial !== producerEpoch;
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
     // Free-flight membership jitter must not inflate visitedCount.
@@ -1149,8 +1173,15 @@ export const world = {
     if (this._applyResidencyPlan !== world._applyResidencyPlan) {
       this._applyResidencyPlan(sectorId, planOpts);
     } else {
-      yield* this._applyResidencyPlanChunks(sectorId, planOpts);
+      // Resume-gated delegation: each paint point re-checks the producer before the
+      // stale generator can run the next materialization brick or write the residency
+      // queue under the replacement run.
+      for (const step of this._applyResidencyPlanChunks(sectorId, planOpts)) {
+        yield step;
+        if (superseded()) return null;
+      }
     }
+    if (superseded()) return null;
 
     const active = state.world.sectorContents[sectorId]
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
@@ -1173,6 +1204,9 @@ export const world = {
     // One paint point before the atomic emit tail — sector:enter listeners see a fully
     // materialized world either way, but the restore lane gets to paint between spawn bricks.
     yield 'enter-pre-emit';
+    // The paint gap can host a nested reset/enter; never publish the stale emitter's
+    // membership or sector:enter payload under the replacement world's current serial.
+    if (superseded()) return null;
 
     if (firstVisit) {
       this.bus.emit('sector:discovered', { sectorId });
@@ -1180,6 +1214,8 @@ export const world = {
     }
     // Reveal direct neighbors on the map ("see one hop ahead") without marking them visited.
     for (const nb of (sector.neighbors || [])) this._discoveryFor(nb);
+    // Discovery/toast listeners can synchronously start another route.
+    if (superseded()) return null;
 
     this.bus.emit('world:membership', {
       sectorId,
@@ -1188,6 +1224,9 @@ export const world = {
       tick: state.tick | 0,
       noTeleport,
     });
+    // A membership listener may have started a newer route; the serial mint and the
+    // sector:enter tail below belong to this producer only while it still owns the world.
+    if (superseded()) return null;
     // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
     // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
     // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
@@ -1203,7 +1242,9 @@ export const world = {
     const enterPayload = {
       sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
       enterEpoch: state.world.enterSerial,
-      payloadGenerationCutoff,
+      // A same-sector refresh or Continue is not a departure; pre-existing
+      // payloads in that sector must not be treated as an outgoing cohort.
+      payloadGenerationCutoff: prevSectorId && prevSectorId !== sectorId ? payloadGenerationCutoff : null,
       // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
       // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
       // stamps that want the enter's own clock don't wobble by the window length.

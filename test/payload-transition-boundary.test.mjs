@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createBus} from '../src/core/eventBus.js';
 import {createGameState} from '../src/core/gameState.js';
+import {createSimulation} from '../src/core/sim.js';
 import {core} from '../src/core/coreSystem.js';
 import {weapons} from '../src/systems/weapons.js';
 import {resetRunState} from '../src/core/newGameBoot.js';
@@ -23,6 +24,35 @@ function worldOwner(f,onMaterialize){
  _applyResidencyPlan:onMaterialize,_emptySectorBag(){return{};},
  _spawnVestaOreCachePickup(){},_presentVestaOreCacheDecision(){},_spawnPallasHiddenCachePickup(){},_presentPallasHiddenCacheDecision(){},_ensureTethysEntranceRun(){},_placePlayer(){},_resolveShipModules(){},_flushPendingSpawns(){}});return owner;
 }
+test('departure retires the captured transient before exit and destination materialization',()=>{
+ const f=fixture(true);try{
+  const old=f.spawn();let exitArrival,materialized;
+  f.bus.on('sector:exit',()=>{assert.equal(f.state.entities.has(old.id),false);exitArrival=f.spawn();});
+  const owner=worldOwner(f,()=>{assert.notEqual(f.state.entities.get(old.id),old);materialized=f.spawn();});
+  const gen=owner.enterSectorChunked('boundary-target');gen.next();gen.next();f.flush();
+  assert.equal(f.state.entities.get(exitArrival.id),exitArrival);
+  assert.equal(f.state.entities.get(materialized.id),materialized);
+ }finally{f.close();}
+});
+test('a reset during departure cleanup aborts the stale world transition',()=>{
+ const f=fixture();try{
+  const old=f.spawn(),remove=f.helpers.removeEntity;let exited=0;
+  f.bus.on('sector:exit',()=>exited++);
+  f.helpers.removeEntity=(id,opts)=>{const result=remove(id,opts);if(id===old.id)resetRunState(f.state,{seed:49});return result;};
+  const owner=worldOwner(f,()=>assert.fail('stale transition must not materialize'));
+  const result=owner.enterSectorChunked('boundary-target').next();
+  assert.equal(result.done,true);assert.equal(exited,0);
+  assert.notEqual(f.state.world.currentSectorId,'boundary-target');
+ }finally{f.close();}
+});
+test('same-sector Continue keeps the pre-existing transient payload',()=>{
+ const f=fixture(true);try{
+  const saved=f.spawn(),owner=worldOwner(f,()=>{});
+  f.state.world.currentSectorId='boundary-target';
+  const gen=owner.enterSectorChunked('boundary-target',{restoreDurableRecords:true});gen.next();gen.next();f.flush();
+  assert.equal(f.state.entities.get(saved.id),saved);
+ }finally{f.close();}
+});
 for(const sliced of [false,true])test(`real world emitter preserves same-tick arrivals (${sliced?'sliced':'inline'})`,()=>{
  const f=fixture(sliced);try{
   const old=f.spawn(),cutoff=f.state.nextOccupantGeneration;let materialized,exitArrival,late,emitted;
@@ -81,4 +111,54 @@ for(const effect of ['reuse-id','reset-epoch'])test(`reentrant canonical removal
 });
 test('inline weapons cleanup stops if payload removal enters a new run',()=>{
  const f=fixture();try{f.spawn();const p=boundary(f),remove=f.helpers.removeEntity;let ship;f.owner.helpers={...f.helpers,removeEntity(id,options){const result=remove(id,options);resetRunState(f.state,{seed:50});f.owner._shuntCooldown=new Map([['new-run',1]]);ship=f.helpers.spawnEntity({type:'ship',data:{momentumSinkPlant:{active:true,anchorId:99}}});return result;}};f.bus.emit('sector:enter',p);assert.equal(f.owner._shuntCooldown.get('new-run'),1);assert.equal(ship.data.momentumSinkPlant.active,true);assert.equal(ship.data.momentumSinkPlant.anchorId,99);}finally{f.close();}
+});
+
+function realWorldEnter(seed = 47) {
+ const sim = createSimulation({seed, systems: [world]});
+ const owner = sim.registry.get('world');
+ const enters = [];
+ sim.bus.on('sector:enter', payload => enters.push([payload.sectorId, payload.enterEpoch]));
+ return {sim, state: sim.state, bus: sim.bus, owner, enters};
+}
+function drainAborted(gen, limit = 4000) {
+ let ret, done = false;
+ for (let i = 0; i < limit && !done; i += 1) {
+  const step = gen.next();
+  if (step.done) { done = true; ret = step.value; }
+ }
+ return {done, ret};
+}
+test('nested enter during a yielded residency cannot republish the stale producer', () => {
+ const h = realWorldEnter(); try {
+  h.state.mode = 'loading';
+  h.state.world.currentSectorId = null;
+  const gen = h.owner.enterSectorChunked('sector_helios_prime');
+  assert.equal(gen.next().done, false, 'the real residency plan must yield a paint point');
+  assert.equal(gen.next().done, false);
+  h.owner.enterSector('sector_ceres_belt');
+  const nestedEpoch = h.state.world.enterSerial;
+  const run = drainAborted(gen);
+  assert.equal(run.done, true);
+  assert.equal(run.ret, null, 'the superseded producer returns no active bag');
+  assert.equal(h.state.world.currentSectorId, 'sector_ceres_belt');
+  assert.equal(h.state.world.enterSerial, nestedEpoch, 'no stale serial mint');
+  assert.deepEqual(h.enters, [['sector_ceres_belt', nestedEpoch]]);
+ } finally { h.sim.dispose(); }
+});
+test('reset during a yielded residency cannot republish the replaced world', () => {
+ const h = realWorldEnter(); try {
+  h.state.mode = 'loading';
+  h.state.world.currentSectorId = null;
+  const gen = h.owner.enterSectorChunked('sector_helios_prime');
+  assert.equal(gen.next().done, false);
+  assert.equal(gen.next().done, false);
+  resetRunState(h.state, {seed: 48});
+  const resetWorld = h.state.world;
+  const run = drainAborted(gen);
+  assert.equal(run.done, true);
+  assert.equal(run.ret, null);
+  assert.equal(h.state.world, resetWorld);
+  assert.deepEqual(h.enters, []);
+  assert.notEqual(h.state.world.currentSectorId, 'sector_helios_prime');
+ } finally { h.sim.dispose(); }
 });
