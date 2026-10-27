@@ -277,13 +277,16 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
   function relayout() {
     const artUrl = hullPosterUrl(hullId, 'jig') || hullPosterUrl(hullId, 'top');
     const info = entry();
-    const W = host.clientWidth || 0;
-    const H = host.clientHeight || 0;
+    let W = host.clientWidth || 0;
+    let H = host.clientHeight || 0;
     // Phone landscape stages can sit under 320px tall once the berth foot is reserved; still draw
     // the jig there with compact columns instead of standing down to empty glass.
     if (!artUrl || !info || W < 480 || H < 200 || !nodes.length) { standDown(); return; }
     on = true;
     host.classList.add('orr-hull--on');
+    // The jig class fills the screen; measure that frame rather than the previous row band.
+    W = host.clientWidth || 0;
+    H = host.clientHeight || 0;
     if (art.getAttribute('src') !== artUrl) { art.classList.remove('is-ready'); alphaMap = null; art.src = artUrl; }
     if (art.complete && art.naturalWidth) { art.classList.add('is-ready'); if (!alphaMap) sampleArt(); }
     art.hidden = false;
@@ -312,6 +315,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       if ((ob.top + ob.bottom) / 2 < H / 2) region.top = Math.max(region.top, ob.bottom);
       else region.bottom = Math.min(region.bottom, ob.top);
     }
+
+    // The count sits above the actual chrome even when its foot wraps to another row.
+    host.style.setProperty('--orr-hull-count-bottom', `${Math.max(0, H - region.bottom) + 8}px`);
 
     // the dial: as large as the band allows with a label column clear of it on each side (the band
     // also holds the drifting orbit above and the engraving below: 52 px of it each side).
@@ -377,6 +383,9 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
         else bottom = Math.min(bottom, ob.top);
       }
       const t = stackEvenly(list.map((i) => heights[i]), hy, top, bottom, { minGap: 16, maxGap: 56 });
+      // Keep the same hardpoint choices in their scrollable row layout when a whole column
+      // cannot clear the title and keys. Never park lower verbs behind the footer.
+      if (t.some((y, k) => y < top - 0.5 || y + heights[list[k]] > bottom + 0.5)) { standDown(); return; }
       list.forEach((i, k) => { tops[i] = t[k]; sides[i] = side; });
     }
 
