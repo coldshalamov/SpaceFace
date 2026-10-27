@@ -2060,6 +2060,8 @@ export function createMarketScreen(ctx) {
     if (ev.target.matches('[data-market-search]')) {
       if (ev.key !== 'Escape' || !marketQuery) return;
       ev.preventDefault();
+      // Clearing Find owns this Escape; the document's modal router must not also depart.
+      ev.stopPropagation();
       marketQuery = '';
       listRenderSignature = '';
       const state = ctx.state || {};
