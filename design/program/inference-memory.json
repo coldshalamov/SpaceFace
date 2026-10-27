@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-26",
+  "updated": "2026-10-27",
   "runs": [
     {
       "date": "2026-08-12",
@@ -131,19 +131,6 @@
     }
   ],
   "units": [
-    {
-      "id": "seed-st-09-first-route",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "repair",
-      "verdict": "implemented",
-      "reason": "The first cross-sector route names Engage on the Star Map once and does not fly the route.",
-      "fingerprint": "verb=learn,subject=first-route,sector=lane,layer=map,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "1bf8d93e92",
-      "verification": "focused_green"
-    },
     {
       "id": "seed-st-11-world-units",
       "date": "2026-10-23",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "aa7cbfc7654",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-repair-points",
+      "date": "2026-10-27",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A short repair names the hull points that weld will put back.",
+      "fingerprint": "verb=weld,subject=repair,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "e0a4c7eb51582499d76df1cfafea336e74cc5b31",
       "verification": "focused_green"
     }
   ],
