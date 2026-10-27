@@ -3833,6 +3833,10 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
     return true;
   });
 
+  // Guaranteed beats are splice-immune: the cap budgets organic draws, not authored promises.
+  // Without the shield each new same-tier guarantee evicts the previously-placed guarantee —
+  // four day-0 ambient promises then collapse to whichever one pushes last.
+  const guaranteedIds = new Set(guaranteed.map((e) => e.id));
   for (const enc of guaranteed) {
     // An organic pick of the same shape already holds the beat — a second copy would fire two
     // copies of the same authored opening inside the rail (combat_busy is bypassed there). But
@@ -3860,7 +3864,7 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
     const currentTierItems = out.filter((x) => x.tier === item.tier);
     if (currentTierItems.length >= maxForTier) {
       for (let i = out.length - 1; i >= 0; i--) {
-        if (out[i].tier === item.tier) {
+        if (out[i].tier === item.tier && !guaranteedIds.has(out[i].shapeId)) {
           if (shapeCounts) {
             const dropEnc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
             if (dropEnc) {
