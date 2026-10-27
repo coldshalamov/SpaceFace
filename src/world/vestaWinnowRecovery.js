@@ -179,6 +179,20 @@ function reserveBlocked(owner, pod) {
   return owner._deferOrdinaryCleanupClaim?.(pod) === true
     || owner.state.player?.tether?.active === true && owner.state.player.tether.targetId === pod.id;
 }
+// A deliberate player release may happen before the tether mirror is cleared.
+// Readiness defers the automatic station sale; it grants no claim or cargo transfer.
+// Matching velocity remains the later physical pickup gate, after the line is free.
+export function winnowCarrierHandoffReady(owner,pod) {
+  const s=owner?.state;if(!s || !living(s,pod)) return false;
+  const stamp=pod.data?.vestaWinnowPod,b=stamp&&batch(s,stamp.batchId),r=rowFor(b,pod);
+  if(!r || !r.loose || b.phase!=='collect' || sourcePod(s,b,r)!==pod) return false;
+  const e=currentCarrier(owner,b),rec=e&&recordFor(owner,e);
+  if(!e || !ownsWinnowRecoveryHull(s,e) || e.data.jobId || e.data.violenceAlarmed || rec?.violenceAlarmed
+    || pod.data.salvorClaimedBy && pod.data.salvorClaimedBy!==b.carrierId
+    || vestaWinnowPhase(s.simTime).phase!=='calm' || !pose(e) || !pose(pod)
+    || Math.hypot(pod.pos.x-e.pos.x,pod.pos.z-e.pos.z)>180) return false;
+  return !!nativeRecord(owner,e) && !!nativeRecord(owner,pod);
+}
 function clearTarget(state, b) {
   for (const e of state.entityList) if (e.data?.vestaWinnowPod?.batchId === b.id
     && e.data.salvorClaimedBy === b.carrierId) delete e.data.salvorClaimedBy;

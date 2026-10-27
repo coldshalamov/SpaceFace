@@ -1,3 +1,4 @@
+import { winnowCarrierHandoffReady } from '../world/vestaWinnowRecovery.js';
 // economy system — stock-based market economy + SOLE writer of state.player.credits.
 // Contract: ARCHITECTURE §0.6 (single-writer credits), §0.12/§0.13 (cargo: volume is the only
 // hard cap), §3.6 (economy schema), §4.4 (master event table), design/specs/03-economy-trading.md.
@@ -3727,6 +3728,12 @@ export const economy = {
       : null;
     const data = pod && pod.data;
     if (!pod || pod.alive === false || !data || data.jettisonedCargo !== true) return;
+    // The player's promised physical handoff takes priority over the broad automatic chute.
+    // This only defers sale: traffic still owns interception, contact and finite custody.
+    if (winnowCarrierHandoffReady(this._registry?.get?.('traffic'), pod)) {
+      this.bus.emit('comms:log', { from:'SLAG-RUN',kind:'encounter',text:'Pod released for Tann. Keep clear while I collect it.' });
+      return;
+    }
     const commodityId = typeof data.commodityId === 'string' ? data.commodityId : '';
     const qty = Math.floor(Number(data.amount) || 0);
     if (!commodityId || qty <= 0) return;
