@@ -1160,6 +1160,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
+  // One warm sim step per veil hold (see advanceSimulation). Reset whenever the hold is re-armed.
+  const veilWarm = { done: false, armed: false, sawHold: false };
+  function shouldTakeVeilWarmStep() {
+    if (veilWarm.done) return false;
+    if (shouldSkipFullTickSystems(state)) return false;
+    if (!(Number(state.timeScale) > 0)) return false;
+    const r = state.render;
+    if (!r || !Number.isFinite(r.firstPlayableFrameAt)) return false;
+    return true;
+  }
+
   function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
     // The worker lane owns a monotonic timer so a busy renderer cannot stop authoritative
@@ -1169,11 +1180,30 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // The flight reveal veil (loadingPresenter) also holds the main-lane sim at its spawn state
     // until the world is on screen.
     const veilHeld = flightVeilHeld();
+    if (veilHeld && !veilWarm.sawHold) { veilWarm.done = false; veilWarm.armed = false; }
+    veilWarm.sawHold = veilHeld;
     bindFlightVeilHook();
     syncFlightVeilClock();
-    const stepResult = restoring || workerPumpOwnsClock || veilHeld
-      ? simulationRunner.prepareWithoutAdvance()
-      : simulationRunner.advance(frameDt, state.timeScale, stepCap);
+    const warmStep = !restoring && !workerPumpOwnsClock && veilHeld && shouldTakeVeilWarmStep();
+    if (!veilHeld && veilWarm.armed) {
+      // First advance after the hold lifts: no catch-up burst on top of the reveal.
+      veilWarm.armed = false;
+      stepCap = 1;
+    }
+    if (warmStep) {
+      // Veil warm step: run ONE fixed step behind the opaque veil once the first playable frame
+      // is on screen, so the first step the player can see is not the cold one (first-time
+      // NPC/traffic/AI wake-up, first emits, JIT). The picture under the veil moves by one tick.
+      veilWarm.done = true;
+      veilWarm.armed = true;
+      diagnostics.veilWarmSteps = (diagnostics.veilWarmSteps || 0) + 1;
+    }
+    const warmDt = Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT;
+    const stepResult = warmStep
+      ? simulationRunner.advance(warmDt, 1, 1)
+      : restoring || workerPumpOwnsClock || veilHeld
+        ? simulationRunner.prepareWithoutAdvance()
+        : simulationRunner.advance(frameDt, state.timeScale, stepCap);
     if (!restoring && !workerPumpOwnsClock && stepCap === HITCH_CATCHUP_STEPS) {
       diagnostics.hitchCappedFrameCount++;
     }
