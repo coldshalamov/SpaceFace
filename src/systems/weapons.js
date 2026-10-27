@@ -499,12 +499,13 @@ export const weapons = {
       }
     });
     on('sector:enter', (p) => {
+      if (!this._isCurrentSectorEnter(p)) return;
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the
       // entity-list walks below otherwise run atomic inside the presented
       // transition frame's emit tail. The deferred drain steps the legs under
       // its slice clock in listener order.
-      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps())) return;
-      this._onSectorEnter();
+      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps(p))) return;
+      this._onSectorEnter(p);
     });
     this._playerIncomingLock = false;
     this._opticSpent = new Set();
@@ -513,8 +514,15 @@ export const weapons = {
     on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
   },
 
-  _onSectorEnter() {
-    handlePayloadSectorTransition(this.state, this.helpers);
+  _isCurrentSectorEnter(payload) {
+    return Number.isSafeInteger(payload?.enterEpoch) && payload.enterEpoch > 0
+      && payload.enterEpoch === this.state.world?.enterSerial;
+  },
+
+  _onSectorEnter(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
+    if (!this._isCurrentSectorEnter(payload)) return;
     clearAllMomentumSinkPlants(this.state);
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
@@ -526,11 +534,14 @@ export const weapons = {
     this._weaponsQuiet = null;
   },
 
-  *_onSectorEnterSteps() {
-    handlePayloadSectorTransition(this.state, this.helpers);
+  *_onSectorEnterSteps(payload) {
+    if (!this._isCurrentSectorEnter(payload)) return;
+    handlePayloadSectorTransition(this.state, this.helpers, payload);
     yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
     clearAllMomentumSinkPlants(this.state);
     yield;
+    if (!this._isCurrentSectorEnter(payload)) return;
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
     this._opticSpent = collectOpticSpentIds(this.state);

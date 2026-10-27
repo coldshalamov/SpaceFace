@@ -61,3 +61,29 @@ export function lastShiftArchiveEvidence(state) {
   return { id: 'ceres_last_shift', flag: 'doss_ceres_last_shift', title: 'The Last Shift',
     copy: `The Last Shift: ${receipt.text}`, detail: ids.length === 3 ? 'three sources' : `${ids.length} source${ids.length === 1 ? '' : 's'}` };
 }
+
+// A local conversation cites the last explicitly filed account, not newly read/unfiled clues.
+// This is a pure presenter: the Last Shift owner remains the only evidence/custody writer.
+export function lastShiftLocalReport(state) {
+  const row = state?.world?.lastShift;
+  if (!Array.isArray(row?.knownClueIds) || !Array.isArray(row?.receipts)) return null;
+  const receipt = row.receipts.at(-1);
+  const destroyed = receipt?.destroyedClueIds;
+  if (destroyed !== undefined && (!Array.isArray(destroyed)
+    || lastShiftFactIds(destroyed).length !== destroyed.length)) return null;
+  const evidence = lastShiftArchiveEvidence(state);
+  if (!evidence) return null;
+  if (!Number.isInteger(row.revision) || receipt.revision > row.revision) return null;
+  const returned = row.recorderReturn;
+  const recorderReturned = !!(returned?.id === `${LAST_SHIFT.siteId}:recorder:return`
+    && returned.bodyKey === lastShiftBodyKey('recorder')
+    && row.bodies?.recorder?.status === 'returned'
+    && row.knownClueIds.includes('recorder')
+    && typeof returned.stationId === 'string' && /^[a-z0-9][a-z0-9_-]{0,95}$/.test(returned.stationId)
+    && Number.isFinite(returned.at) && returned.at >= 0);
+  return {
+    text: receipt.text,
+    recorderReturned,
+    recorderStationId: recorderReturned ? returned.stationId : null,
+  };
+}

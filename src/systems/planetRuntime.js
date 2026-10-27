@@ -77,6 +77,7 @@ function defaultRuntime() {
       collectorOn: false, pendingShallow: 0, pendingRich: 0, harvestedUnits: 0,
       recoveryBurn: false, commitCueAt: -Infinity,
     },
+    workerHarvestCarry: null, // one bound life, sub-unit path yield only; never thermal admission
     ships: {},             // non-player exposure: nearest ships + at most three released Orchard pods
     aftermath: [],         // [{x,z,at,until}] recent plunge terminations (presentation memory)
     telemetry: { tracked: 0, inBands: 0, burnsRouted: 0, harvestUnits: 0, dragImpulses: 0 },
@@ -88,6 +89,27 @@ function ensureRuntime(state) {
   if (p && p.schemaVersion === 1) return p;
   state.planet = defaultRuntime();
   return state.planet;
+}
+
+function restoreWorkerFraction(rec, carry, key) {
+  const value = carry[key];
+  if (rec[key] === undefined && Number.isFinite(value) && value >= 0 && value < 1) rec[key] = value;
+}
+
+function workerFraction(rec, key) {
+  const value = rec[key];
+  return Number.isFinite(value) && value >= 0 && value < 1 ? value : 0;
+}
+
+function retainWorkerFractions(rt, worker, recordId, siteId, rec) {
+  // Eligibility/life validation happens before this helper; keep one bounded object,
+  // rather than allocating bookkeeping closures and objects on every admitted tick.
+  const carry = rt.workerHarvestCarry || (rt.workerHarvestCarry = {
+    id: worker.id, generation: occupantGenerationOf(worker), recordId, siteId,
+    pendingShallow: 0, pendingRich: 0,
+  });
+  carry.pendingShallow = workerFraction(rec, 'pendingShallow');
+  carry.pendingRich = workerFraction(rec, 'pendingRich');
 }
 
 function newShipRecord(entity) {
@@ -805,6 +827,24 @@ export const planetRuntime = {
   _tickWorkerHarvest(dt, state, rt, site) {
     if (!(Number.isFinite(dt) && dt > 0)) return;
     const worker = state.entities.get(rt.witnessId);
+    // The bounded thermal set may evict a still-working collector between ticks.
+    // Retain only already-flown fractional yield, never heat or off-budget progress.
+    // This transient carry deliberately resets on Continue/sector teardown, like the
+    // pre-existing fractional accumulator; it is not inventory or a hidden whole-unit reserve.
+    const recordId = worker?.data?.worldRecordId;
+    const regionNow = worker?.pos && classifyPlanetRegion(site,
+      Math.hypot(worker.pos.x - rt.center.x, worker.pos.z - rt.center.z));
+    const carryEligible = boundLife(worker, rt.witnessId, rt.witnessGeneration)
+      && worker.alive !== false && worker.hull > 0
+      && worker.data?.anvilSlingWitness === true
+      && worker.data?.itinerary?.kind === 'anvil_work'
+      && worker.data.itinerary.role === 'collector' && worker.data.itinerary.phase === 'collect'
+      && typeof recordId === 'string' && recordId.length > 0
+      && (regionNow === 'skim' || regionNow === 'danger');
+    const carry = rt.workerHarvestCarry;
+    if (!carryEligible || (carry && (carry.id !== worker.id
+      || carry.generation !== occupantGenerationOf(worker)
+      || carry.recordId !== recordId || carry.siteId !== site.id))) rt.workerHarvestCarry = null;
     // Numeric ids recycle during restore/residency. Validate the bound life before even
     // clearing the presentation flag on what may now be a different occupant.
     if (!boundLife(worker, rt.witnessId, rt.witnessGeneration)
@@ -820,6 +860,10 @@ export const planetRuntime = {
     if (typeof traffic?.acceptAnvilHarvest !== 'function') return;
     const region = rec.region;
     if (region !== 'skim' && region !== 'danger') return;
+    if (carryEligible && rt.workerHarvestCarry) {
+      restoreWorkerFraction(rec, rt.workerHarvestCarry, 'pendingShallow');
+      restoreWorkerFraction(rec, rt.workerHarvestCarry, 'pendingRich');
+    }
     const speed = Math.hypot(finite(worker.vel?.x), finite(worker.vel?.z));
     if (speed < site.harvest.minSpeed) return;
     rec.collectorOn = true;
@@ -830,10 +874,14 @@ export const planetRuntime = {
     rec[key] = finite(rec[key]) + speed * dt
       * (rich ? site.harvest.densityDanger : site.harvest.densitySkim);
     const whole = Math.floor(rec[key]);
-    if (whole < 1) return;
+    if (whole < 1) {
+      if (carryEligible) retainWorkerFractions(rt, worker, recordId, site.id, rec);
+      return;
+    }
     // Discard refused whole units, as the player collector does. No hidden reserve can
     // appear after unloading or while the intake is closed.
     rec[key] -= whole;
+    if (carryEligible) retainWorkerFractions(rt, worker, recordId, site.id, rec);
     let orchardQty = 0;
     if (commodityId === ANVIL_ORCHARD.commodityId) {
       const machine = this.registry?.get?.('environmentalMachinery');

@@ -56,13 +56,9 @@ export function installCaptainMemory(host) {
       || (payload.causality?.carrierWorldRecordId
         ? state.entityList?.find(entity => entity?.data?.worldRecordId === payload.causality.carrierWorldRecordId) : null);
   };
-  const remember = (outcome, payload) => {
-    const entity = entityFor(payload);
-    const identity = entity && stampCaptainIdentity(state, entity);
-    let row = identity && rows().find(item => item.id === identity.id);
-    if (!row && payload.entityId != null) row = rows().find(item => item.podKey
-      && item.podKey === state.entities?.get?.(payload.entityId)?.data?.captainPodKey);
-    if (!row && !identity) return null;
+  const rowForIdentity = (identity, payload) => {
+    if (!identity) return null;
+    let row = rows().find(item => item.id === identity.id);
     if (!row) {
       const home = SECTORS.find(sector => sector.id === identity.sectorId)?.stations?.[0];
       row = { ...identity, homeStationId: payload.stationId || home?.id || 'station_helios',
@@ -70,6 +66,16 @@ export function installCaptainMemory(host) {
       rows(true).push(row);
       if (rows().length > CAPTAIN_ROSTER_CAP) rows().splice(0, rows().length - CAPTAIN_ROSTER_CAP);
     }
+    return row;
+  };
+  const remember = (outcome, payload, podRow = null) => {
+    const entity = podRow ? null : entityFor(payload);
+    const identity = entity && stampCaptainIdentity(state, entity);
+    let row = podRow || (identity && rows().find(item => item.id === identity.id));
+    if (!row && payload.entityId != null) row = rows().find(item => item.podKey
+      && item.podKey === state.entities?.get?.(payload.entityId)?.data?.captainPodKey);
+    if (!row) row = rowForIdentity(identity, payload);
+    if (!row) return null;
     const receiptId = String(payload.receiptId || (typeof payload.id === 'string' ? payload.id : null) || payload.encounterId
       || `${outcome}:${entity?.id}:${state.tick || 0}:${state.simTime || 0}`);
     const key = `${outcome}:${receiptId}`;
@@ -99,16 +105,24 @@ export function installCaptainMemory(host) {
     if (payload?.outcome === 'robbed') remember('robbed', payload);
   });
   on('survivorPod:ejected', payload => {
-    const identity = stampCaptainIdentity(state, state.entities?.get?.(payload?.victimId));
     const pod = state.entities?.get?.(payload?.entityId);
-    if (!identity || !pod) return;
-    const row = rows().find(item => item.id === identity.id);
+    // Ejection nests inside entity:killed before traffic hears the death. Establish
+    // the bounded row now, without inventing an outcome; never retag an existing pod.
+    if (!pod?.data || pod.data.captainPodKey) return;
+    const identity = stampCaptainIdentity(state, state.entities?.get?.(payload?.victimId));
+    const row = rowForIdentity(identity, payload);
     if (!row) return;
     row.podKey = `captain-pod:${identity.id}:${state.tick || 0}`;
     pod.data.captainPodKey = row.podKey;
   });
   on('survivorPod:rescued', payload => {
-    if (payload?.playerAnswered === true) remember('rescued', payload);
+    if (payload?.playerAnswered !== true) return;
+    // victimId is historical numeric provenance, not identity (especially after
+    // Continue). A missing/evicted/ambiguous binding must not reward its new occupant.
+    const key = state.entities?.get?.(payload.entityId)?.data?.captainPodKey;
+    if (!key) return;
+    const matches = rows().filter(row => row.podKey === key);
+    if (matches.length === 1) remember('rescued', payload, matches[0]);
   });
   return { remember, destroy() { for (const unsubscribe of off) unsubscribe(); } };
 }

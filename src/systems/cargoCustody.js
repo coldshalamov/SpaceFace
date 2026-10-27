@@ -132,6 +132,7 @@ export function ensureCommittedIntents(state) {
  */
 export function massDeclarationForTarget(state, target) {
   if (!state || !target || target.alive === false || target.destroyed === true) return null;
+  if (!state.entities?.get || state.entities.get(target.id) !== target) return null;
   const data = target.data && typeof target.data === 'object' ? target.data : null;
   if (!data) return null;
   const missionId = data.missionId != null && data.missionId !== ''
@@ -142,6 +143,8 @@ export function massDeclarationForTarget(state, target) {
   if (!active) return null;
   const mission = active.find((m) => m && String(m.id) === String(missionId));
   if (!mission || mission.status !== 'active' || mission.type !== 'tow_recovery') return null;
+  if (!Array.isArray(mission.targetEntityIds)
+      || !mission.targetEntityIds.some(id => String(id) === String(target.id))) return null;
   const decl = mission.params && mission.params.massDeclaration;
   if (!decl || typeof decl !== 'object') return null;
   const declaredMassT = Number(decl.declaredMassT);
@@ -176,15 +179,15 @@ function massTargetSlotOf(data, missionId) {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
-/**
- * The authored mass stamped on the live body — `target.mass`, never `physicsBody.mass`:
- * tumble normalization re-derives the physics body after a knock-loose, so the durable
- * slip reads the entity stamp missions wrote at spawn. Rejects missing, dead, invalid.
+/** Read the native-normalized body mass when published; entity mass is the pre-body fallback.
+ * A mission's declaration and pre-physics spawn hint never override the mass the line moves.
  */
 export function physicalMassT(target) {
   if (!target || target.alive === false || target.destroyed === true) return null;
-  const m = Number(target.mass);
-  return Number.isFinite(m) && m > 0 ? m : null;
+  const bodyMass = Number(target.physicsBody?.mass);
+  if (Number.isFinite(bodyMass) && bodyMass > 0) return bodyMass;
+  const mass = Number(target.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : null;
 }
 
 /** Declared vs measured. Pure arithmetic over two positive masses; null on invalid input. */

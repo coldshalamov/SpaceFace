@@ -2,6 +2,7 @@
 // Pure presentation rules used by hud.js, toasts.js, and onboarding. Tests drive these
 // functions directly — do not re-implement them in a check.
 
+import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
@@ -56,6 +57,8 @@ export function admitReceipt({
   channel = '',
   _fromVoice = false,
   combat = false,
+  charonApproach = null,
+  state = null,
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
@@ -69,9 +72,12 @@ export function admitReceipt({
   if (CONTROL_LAUNDRY.test(line) || BIND_WALL.test(line)) {
     return { admit: false, reason: 'key-laundry' };
   }
-  if (RADIO_CHATTER.test(line)) {
+  const charonDiscovery = charonApproach != null && validCharonApproachReceipt(state, { text, charonApproach });
+  if (charonApproach != null && !charonDiscovery) return { admit: false, reason: 'stale-charon-approach' };
+  if (RADIO_CHATTER.test(line) && !charonDiscovery) {
     return { admit: false, reason: 'radio-chatter' };
   }
+  if (charonDiscovery && combat) return { admit: false, reason: 'combat-quiet' };
   const k = String(kind || 'info');
   if (k === 'stunt') return { admit: true, reason: 'stunt' };
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };

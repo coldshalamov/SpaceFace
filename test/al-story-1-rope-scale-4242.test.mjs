@@ -253,6 +253,8 @@ test('a save/load severs the weigh — partial dwell never straddles a reload', 
   startWeigh(t, target);
   t.step(15);
   t.bus.emit('save:loaded', {});
+  assert.equal(t.state.entities.get(target.id), target, 'Continue preserves the original physical body');
+  assert.ok(t.state.missions.active[0].targetEntityIds.includes(target.id), 'the owner retains its original promoted core');
   // The reload severs the latch: the dwell clock restarts from zero on the next tick.
   t.step(29);
   assert.equal(emitted(t, 'tether:massWeighed').length, 0,
@@ -725,4 +727,128 @@ test('measurement changes nothing about payment, cargo, or ordinary delivery', (
   assert.equal(grants.length, 1, 'exactly one payout for the tow lands through the credits writer');
   assert.equal(massScale(t).completed['eco_mass_scale_weight_audit_station_helios'], true,
     'the observer closes the case without minting a second reward');
+});
+
+// Adversarial observer contracts. These fixtures exercise the projection boundary;
+// the separate native evidence test is responsible for physical attachment and impulses.
+test('zero, repeated and backward simulation time cannot manufacture dwell', () => {
+  const t=boot(); const {target}=acceptAndTarget(t,CASES[0]); startWeigh(t,target);
+  t.tel.update(0.5,t.state);
+  assert.equal(emitted(t,'tether:massWeighed').length,0,'zero simulation age is not half a second');
+  t.step(15);
+  for(let i=0;i<100;i++)t.tel.update(DT,t.state);
+  assert.equal(emitted(t,'tether:massWeighed').length,0,'same simulation instant never accrues');
+  t.state.simTime=0;
+  t.tel.update(DT,t.state);
+  t.step(29);
+  assert.equal(emitted(t,'tether:massWeighed').length,0,'clock rollback resets partial dwell');
+  t.step();
+  assert.equal(emitted(t,'tether:massWeighed').length,1);
+});
+
+test('release and same-body relatch between observations restart dwell; NPC breaks do not', () => {
+  const t=boot(); const {target}=acceptAndTarget(t,CASES[0]); startWeigh(t,target);
+  t.state.player.tether.attachmentId='player-line-a'; t.step(15);
+  t.bus.emit('tether:released',{targetId:target.id});
+  startWeigh(t,target);t.state.player.tether.attachmentId='player-line-b';
+  t.step(15);
+  assert.equal(emitted(t,'tether:massWeighed').length,0,'release cannot bridge two partial dwells');
+  t.bus.emit('tether:broken',{ownerId:999,controllerId:999,targetId:target.id,attachmentId:'npc-line'});
+  t.step(15);
+  assert.equal(emitted(t,'tether:massWeighed').length,1,'unrelated NPC line does not erase valid dwell');
+});
+
+test('attachment replacement alone and own authority break sever the clock', () => {
+  const t=boot();const {target}=acceptAndTarget(t,CASES[0]);startWeigh(t,target);
+  t.state.player.tether.attachmentId='first';t.step(15);
+  t.state.player.tether.attachmentId='second';t.step(15);
+  assert.equal(emitted(t,'tether:massWeighed').length,0,'same target does not mean same line');
+  t.bus.emit('tether:broken',{ownerId:t.player.id,targetId:target.id,attachmentId:'second'});
+  t.step(29);assert.equal(emitted(t,'tether:massWeighed').length,0);
+  t.step();assert.equal(emitted(t,'tether:massWeighed').length,1);
+});
+
+test('invalid motion, mass and mission membership never earn a slip', () => {
+  for(const invalidate of [
+    (t,target)=>{target.vel.x=NaN;},
+    (t,target)=>{target.mass=Infinity;},
+    (t,target)=>{target.mass=0;},
+    (t,target)=>{t.state.missions.active[0].targetEntityIds=[];},
+    (t,target)=>{t.state.missions.active[0].status='completed';},
+  ]) {
+    const t=boot();const {target}=acceptAndTarget(t,CASES[0]);startWeigh(t,target);
+    t.step(15);invalidate(t,target);t.step(60);
+    assert.equal(emitted(t,'tether:massWeighed').length,0);
+    assert.equal(t.state.player.masslineTelemetry.massWeighing,undefined);
+  }
+});
+
+test('filing refuses wrong issuer, survives reentry and changes no independent sanction', () => {
+  const t=boot(); const {target}=acceptAndTarget(t,CASES[0]);startWeigh(t,target);t.step(30);
+  const slip=Object.values(slips(t))[0];const id=slip.slipId;
+  t.state.player.heat=5;
+  const before={credits:t.state.player.credits,cargo:JSON.stringify(t.state.player.cargo)};
+  t.law._fileMassSlipsAt('station_ceres');
+  assert.equal(emitted(t,'customs:massSlipFiled').length,0);
+  slip.issuingStationId='station_ceres';
+  t.law._fileMassSlipsAt('station_helios');
+  assert.equal(emitted(t,'customs:massSlipFiled').length,0,'kind and issuer must agree');
+  slip.issuingStationId='station_helios';
+  t.bus.on('customs:massSlipFiled',()=>t.law._fileMassSlipsAt('station_helios'));
+  t.law._fileMassSlipsAt('station_helios');
+  t.law._fileMassSlipsAt('station_helios');
+  assert.equal(emitted(t,'customs:massSlipFiled').length,1);
+  assert.equal(emitted(t,'law:incidentReceipt').filter(r=>r.cause==='mass_manifest').length,1);
+  assert.equal(massScale(t).pendingNotices.length,1);
+  assert.ok(slips(t)[id].filedAtStations.station_helios);
+  assert.equal(t.state.player.heat,5,'filing grants no immunity for independent heat');
+  assert.equal(t.state.player.credits,before.credits);
+  assert.equal(JSON.stringify(t.state.player.cargo),before.cargo);
+});
+
+test('production game:newGame event severs dwell and removes earned presentation', () => {
+  const t=boot();const {target}=acceptAndTarget(t,CASES[0]);startWeigh(t,target);t.step(15);
+  t.bus.emit('game:newGame',{seed:4242});
+  assert.equal(t.tel._weigh,null,'production reset does not depend on calling newGame directly');
+  assert.equal(t.state.player.masslineTelemetry.massWeighing,undefined);
+  t.step(29);assert.equal(emitted(t,'tether:massWeighed').length,0);
+  t.step();assert.equal(emitted(t,'tether:massWeighed').length,1);
+  t.bus.emit('game:newGame',{seed:4242});
+  assert.equal(t.state.player.masslineTelemetry.massWeighing,undefined,'old earned projection is gone');
+});
+
+
+test('law files no receipt when the durable evidence owner refuses the acknowledgment', () => {
+  const t=boot(); const {target}=acceptAndTarget(t,CASES[0]);startWeigh(t,target);t.step(30);
+  t.bus.off('customs:massSlipFiled',t.eco._onMassSlipFiled);
+  t.law._fileMassSlipsAt('station_helios');
+  assert.equal(emitted(t,'law:incidentReceipt').filter(r=>r.cause==='mass_manifest').length,0,
+    'a notification is not an accepted filing');
+  assert.equal(Object.values(slips(t))[0].filedAtStations.station_helios,undefined);
+});
+
+test('a measurement inside the existing discrepancy tolerance creates no false customs filing', () => {
+  const t=boot(); const {target}=acceptAndTarget(t,CASES[0]);target.mass=20.5;startWeigh(t,target);t.step(30);
+  assert.equal(Object.values(slips(t))[0].discrepant,false);
+  t.law._fileMassSlipsAt('station_helios');
+  assert.equal(emitted(t,'customs:massSlipFiled').length,0);
+  assert.equal(emitted(t,'law:incidentReceipt').filter(r=>r.cause==='mass_manifest').length,0);
+});
+
+
+test('Continue adoption accepts only current live mission-bound slag cores', () => {
+  const t=boot(); const {inst,target}=acceptAndTarget(t,CASES[0]);
+  const spawn=(data,extra={})=>t.mis.helpers.spawnEntity({type:'asteroid',alive:true,
+    pos:{x:40,z:40},vel:{x:0,z:0},radius:4,mass:40,
+    data:{missionId:inst.id,missionTag:inst.id,missionTargetSlot:1,physicalRole:'slag_core',...data},...extra});
+  const foreign=spawn({missionId:'another-mission',missionTag:'another-mission'});
+  const dead=spawn({}, {alive:false});
+  const ordinary=spawn({physicalRole:'ordinary_rock'});
+  const stale=spawn({});
+  t.state.entities.set(stale.id,{...stale,data:{...stale.data,missionId:'another-mission',missionTag:'another-mission'}});
+  t.mis._adoptLiveMissionTargets(inst);
+  assert.deepEqual(inst.targetEntityIds,[target.id]);
+  assert.equal(t.state.entities.get(target.id),target);
+  assert.equal(foreign.alive,true);assert.equal(ordinary.alive,true);
+  assert.equal(dead.alive,false);assert.equal(stale.alive,true,'a stale indexed occupant is not adopted or destroyed');
 });

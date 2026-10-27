@@ -54,7 +54,7 @@ test('ECON-04: an applied intake raises one receipt line naming value and yard',
   const lines = h.said.filter((p) => p.channel === 'alert');
   assert.equal(lines.length, 1, 'one receipt line per applied intake');
   assert.match(lines[0].text, /SALVAGE INTAKE/);
-  assert.match(lines[0].text, /12t scrap/);
+  assert.match(lines[0].text, /12u salvage/);
   assert.match(lines[0].text, /840 CR/);
   assert.equal(lines[0].id, 'alert:salvage-intake:intake_1');
 });
@@ -66,7 +66,7 @@ test('ECON-04: failed and malformed intakes stay silent', () => {
   h.bus.emit('economy:salvageIntakeApplied', { ok: true, intakeId: 'intake_2', qty: 0, valueCr: 0 });
   const lines = h.said.filter((p) => p.channel === 'alert');
   assert.equal(lines.length, 1, 'only the applied zero-qty intake still names its line');
-  assert.match(lines[0].text, /0t scrap/);
+  assert.match(lines[0].text, /0u salvage/);
 });
 
 test('ECON-04: the economy emit carries the nominal lot value', () => {
@@ -93,4 +93,16 @@ test('ECON-04: the economy emit carries the nominal lot value', () => {
   });
   assert.equal(dup.duplicate, true);
   assert.equal(emitted.length, 1, 'no second emit, so no second receipt');
+});
+
+// Mixed units are not all scrap or a mass measurement.
+test('ECON-04: mixed industrial salvage receipt does not relabel electronics as scrap', () => {
+  const h = harness();
+  h.bus.emit('economy:salvageIntakeApplied', { ok: true, intakeId: 'mixed', yardId: 'station_forge',
+    qty: 7, valueCr: 140, acceptedLines: [
+      { commodityId: 'cmdty_scrap_metal', qty: 5 }, { commodityId: 'cmdty_salvage_electronics', qty: 2 },
+    ] });
+  const line = h.said.find(p => p.channel === 'alert');
+  assert.match(line.text, /7u salvage taken in/);
+  assert.doesNotMatch(line.text, /7t|7u scrap/);
 });

@@ -7544,6 +7544,74 @@
       ],
       "outputDir": "assets/ships/release/render-packages/var-station-kit-verge-v01",
       "metadataUrl": "assets/ships/release/render-packages/var-station-kit-verge-v01/render-package.json"
+    },
+    {
+      "key": "charon-colony-service-barge",
+      "assetId": "sf.render.charon-colony-service-barge",
+      "runtimeAssetId": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_charon_colony_service_barge",
+      "sourceUrl": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb",
+      "releaseSha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+      "releaseBytes": 498992,
+      "rootNode": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/charon-colony-service-barge",
+      "metadataUrl": "assets/ships/release/render-packages/charon-colony-service-barge/render-package.json"
+    },
+    {
+      "key": "stormshift-receiver",
+      "assetId": "sf.render.stormshift-receiver",
+      "runtimeAssetId": "SF_STORMSHIFT_RECEIVER_V01",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_ship_stormshift_receiver_v01",
+      "sourceUrl": "assets/ships/release/parts/wholeships/ship_stormshift_receiver_v01.glb",
+      "releaseSha256": "a52eab433d89cb52c1995d5dde990a02049c0f2e5b7cfdcb483f3aaebc8cb471",
+      "releaseBytes": 1051880,
+      "rootNode": "STORMSHIFT_RECEIVER_ROOT",
+      "dynamicNameIncludes": [
+        "MOTION_STORMSHIFT_RECEIVER_STATUS"
+      ],
+      "outputDir": "assets/ships/release/render-packages/stormshift-receiver",
+      "metadataUrl": "assets/ships/release/render-packages/stormshift-receiver/render-package.json"
+    },
+    {
+      "key": "thimble-recorder",
+      "assetId": "sf.render.thimble-recorder",
+      "runtimeAssetId": "SF_PROP_THIMBLE_RECORDER",
+      "kind": "prop",
+      "slot": "pod",
+      "releaseAssetId": "wholeship_thimble_recorder",
+      "sourceUrl": "assets/ships/release/parts/wholeships/thimble_recorder.glb",
+      "releaseSha256": "5ca41debe7cc66efd0df473905a2032c398f9186c1a35fa54671a3859b43a8ff",
+      "releaseBytes": 339968,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/thimble-recorder",
+      "metadataUrl": "assets/ships/release/render-packages/thimble-recorder/render-package.json"
+    },
+    {
+      "key": "last-shift-fairlead",
+      "assetId": "sf.render.last-shift-fairlead",
+      "runtimeAssetId": "place_last_shift_fairlead",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_last_shift_fairlead",
+      "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "releaseSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+      "releaseBytes": 332868,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/last-shift-fairlead",
+      "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
@@ -779,6 +780,34 @@ export function classifyEntityKind(entity) {
   return RECORD_KIND.NPC;
 }
 
+// A commissioned ordinary workpiece is finite cargo still attached to its original body.
+// Keep only that source's identity, remaining pool and body recipe in the existing record;
+// generic wrecks continue using their original compact representation.
+const SALVOR_SOURCE_DATA_KEYS = [
+  'salvagePool', 'salvageTimeLeft', 'parentType', 'parentDefId', 'defId', 'wreckClass',
+  'salvorTargetKey', 'salvorClaimedBy', 'salvorNoticeAt',
+];
+const SALVOR_SOURCE_BODY_KEYS = ['radius', 'mass', 'collides', 'collisionProxy', 'physicsBody'];
+function validSalvorSource(source, recordId) {
+  if (!source || source.version !== 1 || source.recordId !== recordId
+    || !/^salvor:\d+:\d+:\d+$/.test(source.data?.salvorTargetKey || '')
+    || typeof source.data?.salvorClaimedBy !== 'string' || !source.data.salvorClaimedBy
+    || !Number.isFinite(source.body?.radius) || source.body.radius <= 0
+    || !Number.isFinite(source.body?.mass) || source.body.mass <= 0) return false;
+  const pool = source.data.salvagePool;
+  return !!pool && typeof pool === 'object' && !Array.isArray(pool)
+    && Object.entries(pool).every(([id, qty]) => /^cmdty_[a-z0-9_]+$/.test(id)
+      && Number.isSafeInteger(qty) && qty >= 0);
+}
+function captureSalvorSource(entity, recordId) {
+  if (entity.type !== 'wreck' || entity.data?.persistenceOwner
+    || entity.data?.markerId || entity.data?.missionId || entity.data?.missionTag) return null;
+  const source = { version: 1, recordId, body: {}, data: {} };
+  for (const key of SALVOR_SOURCE_BODY_KEYS) if (entity[key] !== undefined) source.body[key] = clonePlain(entity[key]);
+  for (const key of SALVOR_SOURCE_DATA_KEYS) if (entity.data?.[key] !== undefined) source.data[key] = clonePlain(entity.data[key]);
+  return validSalvorSource(source, recordId) ? source : null;
+}
+
 /**
  * Build a durable record snapshot from a live entity.
  * Preserves existing data.worldRecordId when present (identity stability).
@@ -893,6 +922,14 @@ export function captureEntityRecord(entity, opts = {}) {
   const deactivation = opts.deactivation !== undefined
     ? opts.deactivation
     : (d.deactivation !== undefined ? d.deactivation : (previous && previous.deactivation));
+  const priorExtra = opts.extra !== undefined ? opts.extra : previous?.extra || null;
+  const salvorSource = captureSalvorSource(entity, recordId);
+  let extra = priorExtra;
+  if (salvorSource || priorExtra?.salvorSource) {
+    extra = { ...priorExtra };
+    if (salvorSource) extra.salvorSource = salvorSource;
+    else delete extra.salvorSource;
+  }
   const rec = normalizeRecord({
     recordId,
     kind,
@@ -951,9 +988,10 @@ export function captureEntityRecord(entity, opts = {}) {
     scheduledEventIds,
     regeneration,
     deactivation,
-    extra: claimsTallyAssessor(entity) ? {...(opts.extra !== undefined ? opts.extra : previous?.extra),tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
-      : opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
+    extra: claimsTallyAssessor(entity) ? {...extra,tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
+      : extra,
   });
+  rec.extra = captureOrchardWorkDamage(opts.stationSource || opts.state, entity, rec.extra);
   return rec;
 }
 
@@ -1161,6 +1199,18 @@ export function spawnSpecFromRecord(record) {
     return role ? ceresWorkfleetHardwareSpec(role,record) : null;
   }
 
+  if (rec.extra?.salvorSource) {
+    const source = rec.extra.salvorSource;
+    // A foreign/malformed source recipe never falls through to a plausible generic shell.
+    if (rec.kind !== RECORD_KIND.WRECK || rec.type !== 'wreck' || rec.markerId || rec.missionId
+      || !validSalvorSource(source, rec.recordId)) return null;
+    return { ...clonePlain(source.body), type: 'wreck', factionId: rec.factionId, team: rec.team,
+      pos: cloneXZ(rec.pos), vel: cloneXZ(rec.vel), rot: rec.rot, angVel: rec.angVel,
+      hull: rec.hull, hullMax: rec.hullMax, flags: { noInterp: true },
+      data: { ...clonePlain(source.data), worldRecordId: rec.recordId,
+        homeSectorId: rec.homeSectorId, sectorId: rec.sectorId, durable: true } };
+  }
+
   if (rec.type === 'wreck' || rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
     return {
       type: 'wreck',
@@ -1236,9 +1286,11 @@ export function spawnSpecFromRecord(record) {
   // Anvil's two workers start with canonical Mule hardware. A defId-only shell changes
   // their drive, mass and collision scale on Continue. Reconstruct hardware before
   // native admission; saved motion, damage, itinerary and cargo remain authoritative.
-  if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId === 'ship_mule'
-    && rec.sectorId === PLANET_SITE.sectorId && rec.itinerary?.kind === 'anvil_work'
-    && ['collector', 'receiver'].includes(rec.itinerary.role)) {
+  // Salvor cutters likewise keep their public hardware across a mid-cut Continue.
+  if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId
+    && (rec.trafficRole === 'salvor' || (rec.shipDefId === 'ship_mule'
+      && rec.sectorId === PLANET_SITE.sectorId && rec.itinerary?.kind === 'anvil_work'
+      && ['collector', 'receiver'].includes(rec.itinerary.role)))) {
     const hardware = makeShipEntitySpec(rec.shipDefId, {
       team: rec.team, factionId: rec.factionId, pos: spec.pos, rot: spec.rot, ai: spec.data.ai,
     });

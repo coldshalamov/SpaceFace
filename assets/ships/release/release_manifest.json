@@ -6773,6 +6773,72 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_ship_stormshift_receiver_v01",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ship_stormshift_receiver_v01.glb",
+      "release": "assets/ships/release/parts/wholeships/ship_stormshift_receiver_v01.glb",
+      "sourceSha256": "62496358cb6c10313931b47d942d3fe7abbac917726c2405670b36b201806801",
+      "releaseSha256": "a52eab433d89cb52c1995d5dde990a02049c0f2e5b7cfdcb483f3aaebc8cb471",
+      "sourceBytes": 2650496,
+      "releaseBytes": 1051880,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 166,
+      "contractNodeCount": 60
+    },
+    {
+      "id": "place_charon_colony_service_barge",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_charon_colony_service_barge.glb",
+      "release": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb",
+      "sourceSha256": "bbebfbc2fef5575e3df1a3cc97c1784c367a5ced41ceb0110bd3837eba59487a",
+      "releaseSha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+      "sourceBytes": 1392088,
+      "releaseBytes": 498992,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 125,
+      "contractNodeCount": 45,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "wholeship_thimble_recorder",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/thimble_recorder.glb",
+      "release": "assets/ships/release/parts/wholeships/thimble_recorder.glb",
+      "sourceSha256": "5b415593d93dc5a257c13eafe89cac48d057181e90a80fa39ea21ca48e0a9bda",
+      "releaseSha256": "5ca41debe7cc66efd0df473905a2032c398f9186c1a35fa54671a3859b43a8ff",
+      "sourceBytes": 370008,
+      "releaseBytes": 339968,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 18,
+      "contractNodeCount": 6
+    },
+    {
+      "id": "place_last_shift_fairlead",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_last_shift_fairlead.glb",
+      "release": "assets/ships/release/parts/places/place_last_shift_fairlead.glb",
+      "sourceSha256": "4bf1cdf55d587924716fd01faca905aef1ab9f59e95e12614c23a044ba626e50",
+      "releaseSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+      "sourceBytes": 800756,
+      "releaseBytes": 332868,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 107,
+      "contractNodeCount": 28,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

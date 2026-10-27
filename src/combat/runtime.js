@@ -1,3 +1,5 @@
+import { hydrateOrchardWorkDamage } from './orchardWorkDamage.js';
+import { recomputeCombatantModifiers } from './subsystems.js';
 import {
   ACTION_DEFS,
   ATTACHMENT_DEFS,
@@ -88,8 +90,11 @@ export function ensureCombatant(state, entity, catalog) {
   let runtime = combat.entities[entity.id];
   const profile = resolveCombatProfile(entity, catalog);
   if (!runtime || runtime.profileId !== (profile && profile.id)) {
+    const cold = !runtime;
     runtime = createCombatantRuntime(entity, profile, catalog, runtime);
     combat.entities[entity.id] = runtime;
+    if (cold && hydrateOrchardWorkDamage(state, entity, runtime, profile, catalog))
+      recomputeCombatantModifiers({ state, catalog }, entity, runtime, null, false);
   }
   // Backfill dissipation for runtimes created before this field existed; create path
   // already stamps it. Avoid rewriting the same number every quiet ensure.

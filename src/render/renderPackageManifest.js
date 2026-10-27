@@ -4101,6 +4101,46 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "e687bc2dc48fbd1fa92949790eaead6899c93ed14aa7ccfa05075c663f02fa8d",
     "sourceUrl": "assets/ships/release/parts/places/var_station_kit_verge_v01.glb"
+  },
+  {
+    "assetId": "sf.render.charon-colony-service-barge",
+    "expectedContentHash": "0d1c169dd2aa0e41131cca9eea87c75317675e96f86f6e9025a73ac7fa252e9d",
+    "key": "charon-colony-service-barge",
+    "metadataUrl": "assets/ships/release/render-packages/charon-colony-service-barge/render-package.json",
+    "runtimeAssetId": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE",
+    "slot": "place",
+    "sourceSha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+    "sourceUrl": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb"
+  },
+  {
+    "assetId": "sf.render.stormshift-receiver",
+    "expectedContentHash": "ffbb2f74864c84f94506f65a7683304cd465dde596c478e99ec2e3d60000ed1f",
+    "key": "stormshift-receiver",
+    "metadataUrl": "assets/ships/release/render-packages/stormshift-receiver/render-package.json",
+    "runtimeAssetId": "SF_STORMSHIFT_RECEIVER_V01",
+    "slot": "hull",
+    "sourceSha256": "a52eab433d89cb52c1995d5dde990a02049c0f2e5b7cfdcb483f3aaebc8cb471",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ship_stormshift_receiver_v01.glb"
+  },
+  {
+    "assetId": "sf.render.thimble-recorder",
+    "expectedContentHash": "41b7a76161ca526db09f3cf54545c37c8e6b4b84b3594267d6476816dcfbb303",
+    "key": "thimble-recorder",
+    "metadataUrl": "assets/ships/release/render-packages/thimble-recorder/render-package.json",
+    "runtimeAssetId": "SF_PROP_THIMBLE_RECORDER",
+    "slot": "pod",
+    "sourceSha256": "5ca41debe7cc66efd0df473905a2032c398f9186c1a35fa54671a3859b43a8ff",
+    "sourceUrl": "assets/ships/release/parts/wholeships/thimble_recorder.glb"
+  },
+  {
+    "assetId": "sf.render.last-shift-fairlead",
+    "expectedContentHash": "6009694b9e959e8eec897815aba641094833b06e3ea23744e063e1e70dc87f0b",
+    "key": "last-shift-fairlead",
+    "metadataUrl": "assets/ships/release/render-packages/last-shift-fairlead/render-package.json",
+    "runtimeAssetId": "place_last_shift_fairlead",
+    "slot": "place",
+    "sourceSha256": "d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c",
+    "sourceUrl": "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
   }
 ];
 

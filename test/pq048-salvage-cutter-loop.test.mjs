@@ -110,6 +110,7 @@ function boot(seed = 0x4807) {
     updateOrder: [mining, npcJobsRuntime, traffic, lootShards, economy],
   });
   const state = sim.state;
+  state.settings.gameplay.physicsBackend = 'custom'; // owner fixture; native travel is tested separately
   state.mode = 'flight';
   state.world.currentSectorId = SECTOR_ID;
   state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, sector]));
@@ -195,6 +196,9 @@ function dispatchSourceCutter(ctx) {
 function completeSourceWork(ctx, salvor) {
   const job = salvorJob(ctx.sim, salvor);
   assert.ok(job);
+  ctx.state.settings.gameplay.physicsBackend = 'custom'; // Continue pins native in production
+  const target = ctx.sim.helpers.salvage.entityForPoint(SOURCE_POINT_ID, SOURCE_KEY);
+  if (target) { salvor.pos = { x: target.pos.x - 20, z: target.pos.z }; salvor.vel = { ...target.vel }; }
   job.phase = NPC_JOB_PHASE.WORK;
   job.routeIndex = 1;
   job.progress = 0.99;
@@ -209,6 +213,9 @@ function completeSourceWork(ctx, salvor) {
 function unloadAtForge(ctx, salvor) {
   const job = salvorJob(ctx.sim, salvor);
   assert.ok(job);
+  ctx.state.settings.gameplay.physicsBackend = 'custom';
+  const forge = ctx.state.entityList.find(e => e.alive !== false && e.data?.stationId === FORGE_ID);
+  assert.ok(forge); salvor.pos = { x: forge.pos.x + ctx.trafficSys._salvorReach(salvor, forge) - 4, z: forge.pos.z }; salvor.vel = { x: 0, z: 0 };
   job.phase = NPC_JOB_PHASE.UNLOAD;
   job.routeIndex = 0;
   job.progress = 0.99;

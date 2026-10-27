@@ -2200,6 +2200,7 @@ function emitPickupCollected(bus, pk, col) {
     commodityId: d.commodityId,
     pos: { x: pk.pos.x, z: pk.pos.z },
     ...(d.worldSiteId ? { worldSiteId: d.worldSiteId, worldSitePayloadId: d.worldSitePayloadId } : {}),
+    ...(d.richLotSource ? { richLotSource: d.richLotSource } : {}),
   };
   bus.emit('pickup:collected', payload);
   return payload;

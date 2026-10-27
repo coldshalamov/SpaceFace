@@ -1,3 +1,5 @@
+import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
+export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
@@ -3875,6 +3877,8 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  const evidence = lastShiftPackagedFile(e);
+  if (evidence) return evidence;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
   if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
@@ -5102,7 +5106,7 @@ function buildWreck(e) {
     roughness: 0.68, metalness: 0.72, emissive: 0x230900, emissiveIntensity: 0.1,
     materialRole: 'torn-exposed-metal',
   });
-  const rnd = mulberryLite(hashId(e.id));
+  const rnd = mulberryLite(hashId(lastShiftPackagedFile(e) ? e.data.lastShiftBodyKey : e.id));
 
   // A long, broken load-bearing spine gives wrecks an unmistakable manufactured axis. The old
   // five-box clump plus a broad orange halo read as a molten asteroid at flight scale.

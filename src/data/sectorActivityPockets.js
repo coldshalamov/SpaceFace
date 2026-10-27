@@ -2305,7 +2305,7 @@ const LIVED_FRONTIER_SET_LIST = [
         id: 'charon_colony_barge',
         label: 'Colony Barge',
         anchor: { kind: 'zone', id: 'zone_charon_colony' },
-        // The air pod the colony pays for, on the hauler's refinery-ward bearing (-53.9 deg).
+        // Abandoned intact air stock the visiting salvage crew recovers, on the hauler's refinery-ward bearing (-53.9 deg).
         objects: [
           { id: 'charon_colony_air_pod', kind: 'cargo_staging_pod', offset: [38.8, -53.4],
             targetRef: 'object:charon_colony_air_pod' },

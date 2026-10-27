@@ -13,6 +13,7 @@ import {
   getAuthoritativeInitOrder,
   getAuthoritativeUpdateOrder,
   getSystemClock,
+  getSystemCapability,
   isNodeSafeSystemId,
   validateSystemClockDeclarations,
 } from '../src/runtime/authoritativeSystemManifest.js';
@@ -23,6 +24,9 @@ import {
 import { actions } from '../src/systems/actions.js';
 import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
+import { lastShiftPrompt } from '../src/ui/lastShiftPrompt.js';
+import { ilexArkPrompt } from '../src/ui/ilexArkPrompt.js';
+import { towlineTablePrompt } from '../src/ui/towlineTablePrompt.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
   // 135 -> 142 and 101 -> 103: the Crucible (PQ-133) adds seven systems. Six are event-driven
@@ -270,7 +274,7 @@ test('Node production resolve (nodeSafeOnly) shares feature values and authorita
   assert.deepEqual(browserPath.features, nodePath.features);
   assert.equal(browserPath.profileHash, nodePath.profileHash);
 
-  // Node drops presentation platform IDs only.
+  // Node drops declared non-Node-safe systems, including presentation platform IDs.
   for (const id of PRESENTATION_PLATFORM_IDS) {
     assert.ok(browserPath.authoritativeSystemIds.includes(id));
     assert.ok(!nodePath.authoritativeSystemIds.includes(id));
@@ -298,7 +302,7 @@ test('createRegistry (browser path) and resolveRuntimeManifest (Node path) agree
   assert.equal(registry.runtimeManifest.profileId, nodeResolved.profileId);
   assert.deepEqual(registry.runtimeManifest.features, nodeResolved.features);
 
-  // Authoritative gameplay IDs (excluding presentation platform) match Node resolve.
+  // Authoritative Node-safe IDs (excluding main-realm adapters/platform) match Node resolve.
   const registryGameplayIds = registry.runtimeManifest.authoritativeSystemIds
     .filter(isNodeSafeSystemId);
   assert.deepEqual([...registryGameplayIds], [...nodeResolved.authoritativeSystemIds]);
@@ -442,12 +446,53 @@ test('every production update-order system has exactly one declared clock', () =
   assert.deepEqual(violations, [], `clock declaration violations: ${violations.join('; ')}`);
 });
 
-test('every manifest id resolves to a real node factory or presentation platform system', async () => {
+test('every manifest id resolves to a real browser factory and every Node-safe id to a Node factory', async () => {
   // Regression: 0a59973d4e referenced ids/constants with no module on master and crashed boot.
+  // The browser lookup must materialize ALL IDs. The Node table intentionally excludes
+  // main-realm HUD adapters as well as the five presentation platform systems.
+  const registry = createRegistry({ state: createGameState(17), bus: createBus(), helpers: {}, applyRuntimeFeatures: false });
+  const browserTable = new Map(registry.runtimeManifest.authoritativeSystemIds.map((id, index) => [id, registry.systems[index]]));
   const { getNodeSystemFactoryTable } = await import('../src/runtime/nodeSystemFactoryTable.js');
-  const table = getNodeSystemFactoryTable();
-  const has = (id) => (table instanceof Map ? table.has(id) : Object.hasOwn(table, id));
-  const ids = new Set([...PRODUCTION_INIT_ORDER, ...PRODUCTION_UPDATE_ORDER]);
-  const missing = [...ids].filter((id) => !has(id) && !PRESENTATION_PLATFORM_IDS.includes(id));
-  assert.deepEqual(missing, []);
+  const nodeTable = getNodeSystemFactoryTable();
+  const ids = [...new Set([...PRODUCTION_INIT_ORDER, ...PRODUCTION_UPDATE_ORDER])];
+  assert.deepEqual(ids.filter((id) => !browserTable.get(id)), [], 'missing browser factories');
+  assert.deepEqual(ids.filter((id) => isNodeSafeSystemId(id) && !nodeTable.get(id)), [], 'missing Node-safe factories');
+});
+
+for (const [id, adapter] of [
+  ['lastShiftPrompt', lastShiftPrompt],
+  ['ilexArkPrompt', ilexArkPrompt],
+  ['towlineTablePrompt', towlineTablePrompt],
+]) test(`${id} remains an imported, main-realm, init-only HUD adapter`, async () => {
+  const registry = createRegistry({ state: createGameState(19), bus: createBus(), helpers: {}, applyRuntimeFeatures: false });
+  const { getNodeSystemFactoryTable } = await import('../src/runtime/nodeSystemFactoryTable.js');
+  const nodePath = resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: true });
+  assert.equal(registry.get(id), adapter, 'browser must materialize the real imported adapter');
+  assert.equal(PRODUCTION_INIT_ORDER.filter((entry) => entry === id).length, 1);
+  assert.equal(PRODUCTION_UPDATE_ORDER.includes(id), false);
+  assert.deepEqual(getSystemCapability(id), { nodeSafe: false, phase: 'platform', capability: 'hud' });
+  assert.equal(PRESENTATION_PLATFORM_IDS.includes(id), false, 'HUD adapters are not generic presentation platform systems');
+  assert.equal(isNodeSafeSystemId(id), false);
+  assert.equal(getNodeSystemFactoryTable().has(id), false);
+  assert.equal(nodePath.authoritativeSystemIds.includes(id), false);
+  assert.equal(nodePath.authoritativeUpdateOrderIds.includes(id), false);
+});
+
+test('missing required Node and main-realm factories still fail manifest materialization', async () => {
+  const { getNodeSystemFactoryTable } = await import('../src/runtime/nodeSystemFactoryTable.js');
+  const nodeTable = getNodeSystemFactoryTable();
+  nodeTable.delete('actions');
+  assert.throws(
+    () => resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: true, systemLookup: nodeTable }),
+    /missing system "actions" for init order/,
+  );
+  const registry = createRegistry({ state: createGameState(23), bus: createBus(), helpers: {}, applyRuntimeFeatures: false });
+  for (const id of ['lastShiftPrompt', 'ilexArkPrompt', 'towlineTablePrompt']) {
+    const browserTable = new Map(registry.runtimeManifest.authoritativeSystemIds.map((entry, index) => [entry, registry.systems[index]]));
+    browserTable.delete(id);
+    assert.throws(
+      () => resolveRuntimeManifest({ profileId: 'production', nodeSafeOnly: false, systemLookup: browserTable }),
+      new RegExp(`missing system "${id}" for init order`),
+    );
+  }
 });

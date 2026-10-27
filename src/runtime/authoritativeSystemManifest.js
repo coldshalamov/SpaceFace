@@ -199,13 +199,13 @@ export const SLOT_SYSTEM_IDS = Object.freeze(['aiSlot', 'flightSlot']);
  * Unlisted systems default to { nodeSafe: true, phase: 'sim' }.
  */
 export const SYSTEM_CAPABILITIES = Object.freeze({
-  // Event-only deck adapters. newGame only resolves a card, and promptDeck stays
-  // importable without a DOM, so a fresh run can clear them under Node the same way
-  // customsPrompt does. capability stays hud: they are not a sim tick.
-  lastShiftPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  // Event-only deck adapters. Capability stays hud: they are not a sim tick.
+  // Last Shift, Ilex and Towline require the main realm's decision deck.
+  // Other node-safe adapters can still clear cards during fresh-run setup.
+  lastShiftPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   redKitePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  ilexArkPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  towlineTablePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  ilexArkPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  towlineTablePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   mothlightPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   palletJackPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   borrowedVoicePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),

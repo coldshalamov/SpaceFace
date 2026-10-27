@@ -1,3 +1,7 @@
+import { NPC_JOB_PHASE } from './npcJobs.js';
+import { hullEnvelopeWu } from '../data/collisionProxyManifests.js';
+import { markAuxRowDirty } from '../world/auxRowJournal.js';
+import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -325,6 +329,9 @@ export const trafficRoleOps = {
     if (!this._civilianHaulerRole(hauler, rec)) return null;
     let current = data.cargoManifest || (rec && rec.manifest) || null;
     if (!validCausalManifest(current)) {
+      // A known empty finite hold is not legacy unknown cargo; never synthesize a replacement lot.
+      const finiteItinerary = data.itinerary || rec?.itinerary;
+      if (current != null || finiteItinerary?.kind === 'anvil_work' || finiteItinerary?.kind === 'vesta_winnow_recovery') return null;
       if (data.cargo && typeof data.cargo === 'object') {
         const lines = Object.entries(data.cargo)
           .filter(([id, q]) => typeof id === 'string' && Number.isSafeInteger(q) && q > 0)
@@ -402,6 +409,7 @@ export const trafficRoleOps = {
     let totalQty = 0;
     for (let i = 0; i < nextLines.length; i++) totalQty += nextLines[i].qty;
     this._setTrafficManifest(hauler, rec, { ...current, lines: nextLines, totalQty });
+    this._recordAnvilSpill(hauler, pod, current, dump);
     const t = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('freight:cargoSpilled', {
@@ -1787,8 +1795,35 @@ export const trafficRoleOps = {
     delete entity.data.salvorClaimedBy;
   },
 
+  _deferOrdinaryCleanupClaim(target) {
+    if (this._salvageSourceBinding(target)) return false; // authored source owner keeps its existing claim contract
+    const state = this.state, player = state.entities?.get(state.playerId);
+    if (!player || player.alive !== true || !(player.hull > 0) || !target || target.alive !== true
+      || state.entities.get(target.id) !== target) return false;
+    const physics = this._registry?.get?.('physics'), native = physics?._sg02;
+    for (const a of Object.values(state.combat?.attachments?.byId || {})) {
+      if (a?.state !== 'active' || a.defId !== 'tether_standard' || a.ownerId !== player.id || a.targetId !== target.id
+        || a.ownerGeneration !== player.occupantGeneration || a.targetGeneration !== target.occupantGeneration
+        || (a.controlMode != null && a.controlMode !== 'player')
+        || (a.controllerId != null && (a.controllerId !== player.id || a.controllerGeneration !== player.occupantGeneration))) continue;
+      if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') {
+        const line = native?.attachments?.get(a.id), owner = native?.records?.get(player.id), body = native?.records?.get(target.id);
+        if (physics?.state !== state || physics._diag?.sg02Ready !== true || physics._nativeRestorePending || physics._nativeRestoreDeferred
+          || !native?.world || !line || a.physicsHandle?.id !== a.id
+          || line.owner !== owner || line.target !== body || owner?.entity !== player || body?.entity !== target
+          || line.ownerEntity !== player || line.targetEntity !== target
+          || line.ownerLife !== player.occupantGeneration || line.targetLife !== target.occupantGeneration) continue;
+        try { if (!owner.body?.isValid() || !body.body?.isValid() || !owner.body.isEnabled() || !body.body.isEnabled()) continue; }
+        catch { continue; }
+      }
+      return true;
+    }
+    return false;
+  },
+
   _stampSalvorClaim(entity, worldRecordId) {
     if (!entity || !entity.data || !worldRecordId) return false;
+    if (!this._salvorClaimantOf(entity) && this._deferOrdinaryCleanupClaim(entity)) return false;
     const source = this._salvageSourceBinding(entity);
     if (source) {
       const salvageApi = this.helpers && this.helpers.salvage;
@@ -1857,7 +1892,7 @@ export const trafficRoleOps = {
     let bestD2 = Infinity;
     for (const target of this._listSalvageTargets()) {
       const claim = this._salvorClaimantOf(target);
-      if (claim) continue;
+      if (claim || this._deferOrdinaryCleanupClaim(target)) continue;
       if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
@@ -1886,6 +1921,7 @@ export const trafficRoleOps = {
       payload: {
         targetId: target.id,
         targetType: target.type,
+        ...(!source ? { targetKey: this._salvorTargetKey(target) } : {}),
         ...(source ? {
           salvageSource: source.sourceKey,
           salvagePointId: source.salvagePointId,
@@ -1896,27 +1932,30 @@ export const trafficRoleOps = {
   },
 
   _resolveSalvorTargetFromWaypoint(waypointId, payload = null) {
-    const source = this._salvageSourceBindingFromPayload(payload);
-    if (source) {
-      const salvageApi = this.helpers && this.helpers.salvage;
-      return salvageApi && typeof salvageApi.entityForPoint === 'function'
-        ? salvageApi.entityForPoint(source.salvagePointId, source.sourceKey)
-        : null;
+    // An unavailable authored source is authoritative absence. It must not fall through
+    // to the numeric id formerly occupied by that wreck, even in a legacy save.
+    if (payload?.salvageSource) {
+      const source = this._salvageSourceBindingFromPayload(payload);
+      const salvageApi = this.helpers?.salvage;
+      return source && typeof salvageApi?.entityForPoint === 'function'
+        ? salvageApi.entityForPoint(source.salvagePointId, source.sourceKey) : null;
     }
-    if (typeof waypointId !== 'string' || !waypointId) return null;
-    let raw = null;
-    if (waypointId.startsWith('hulk:')) raw = waypointId.slice(5);
-    else if (waypointId.startsWith('payload:')) raw = waypointId.slice(8);
-    else return null;
-    if (!raw) return null;
-    const numeric = Number(raw);
-    return this.state.entities && this.state.entities.get
-      ? (this.state.entities.get(raw)
-        || (Number.isFinite(numeric) ? this.state.entities.get(numeric) : null))
-      : null;
+    if (typeof payload?.targetKey === 'string') {
+      let found = null, matches = 0;
+      forEachJobInteractable(this.state, (entity) => {
+        if (entity.alive !== false && entity.type === payload.targetType
+          && entity.data?.salvorTargetKey === payload.targetKey) {
+          found = entity; matches++;
+        }
+      });
+      return matches === 1 ? found : null;
+    }
+    // Old ordinary jobs cannot prove which occupant they commissioned. Maintenance may
+    // commission a newly observed takeable body, but old WORK/LOAD cannot consume one.
+    return null;
   },
 
-  _buildSalvorManifest(entity, seq, pool, source = null) {
+  _buildSalvorManifest(entity, seq, pool, source = null, workId = null) {
     const lines = [];
     let totalQty = 0;
     for (const commodityId of Object.keys(pool || {}).sort((a, b) => a.localeCompare(b))) {
@@ -1936,7 +1975,7 @@ export const trafficRoleOps = {
     // a random market draw in place of taken salvage.
     const manifest = buildCargoManifest({
       seed,
-      freighterKey: `${freighterKey}:salvage:${Math.max(0, seq | 0)}`,
+      freighterKey: workId || `${freighterKey}:salvage:${Math.max(0, seq | 0)}`,
       role: 'hauler',
       marketKeys,
       capacity: Math.max(0, totalQty),
@@ -1971,9 +2010,20 @@ export const trafficRoleOps = {
 
   _takeSalvageValueOntoSalvor(context, intent, target) {
     if (!context || !context.entity || !target) return false;
+    const entry = this.helpers?.npcJobs?.get(context.jobId);
+    const job = entry?.job;
+    if (!job || entry.control || entry.entityId !== context.entity.id
+      || this._resolveSalvorTargetFromWaypoint(job.route?.[1]?.id, job.payload) !== target
+      || !this._isSalvageableBody(target) || !this._salvorAtTarget(context.entity, target)) return false;
+    const claimant = this._salvorClaimantOf(target);
+    if (claimant && claimant !== context.worldRecordId) return false;
     const seq = Number.isSafeInteger(intent && intent.seq) && intent.seq >= 0 ? intent.seq : 0;
-    const workId = `npc-salvor-work:${context.worldRecordId}:${seq}`;
     const source = this._salvageSourceBinding(target);
+    // A released worker's next commission may restart the same job sequence. Bind new cut/lot
+    // identity to the existing durable source, not a reused entity id or the clock alone.
+    const sourceIdentity = source?.sourceKey || this._salvorTargetKey(target);
+    if (!sourceIdentity) return false;
+    const workId = `npc-salvor-work:${context.worldRecordId}:${seq}:${sourceIdentity}`;
     this._ensureState();
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) {
       this.state.traffic.appliedSalvorWorkIds = [];
@@ -1998,7 +2048,7 @@ export const trafficRoleOps = {
 
     if (total > 0) {
       if (!source && !this._stampSalvorClaim(target, context.worldRecordId)) return false;
-      const manifest = this._buildSalvorManifest(context.entity, seq, pool, source);
+      const manifest = this._buildSalvorManifest(context.entity, seq, pool, source, workId);
       this._setTrafficManifest(context.entity, context.rec, manifest);
       // Drain the body so the player cannot double-take what the cutter already loaded.
       if (!source && target.data) {
@@ -2015,10 +2065,9 @@ export const trafficRoleOps = {
     }
 
     // Keep job planning payload honest for save/Continue observers.
-    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
-    const entry = typeof getJob === 'function' ? getJob(context.jobId) : null;
     if (entry && entry.job) {
       entry.job.payload = {
+        ...entry.job.payload,
         targetId: target.id,
         targetType: target.type,
         ...(source ? {
@@ -2104,4 +2153,121 @@ export const trafficRoleOps = {
     this.state.traffic.freighters.push(rec);
     return { entity: ent, rec };
   },
+  _salvorTargetDescriptor(worker, target, reach) {
+    const workPose = this._salvorBodyState(worker), targetPose = this._salvorBodyState(target);
+    if (!workPose || !targetPose) return { blocked: true };
+    return { ...targetPose, workPose, reach, salvorPhysical: true, settled: this._salvorAtTarget(worker, target, reach) };
+  },
+
+  _salvorWorkTarget(entry, entity) {
+    const job = entry?.job;
+    if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
+      || !job.route?.[0]?.id?.startsWith('yard:')) return null;
+    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+    if (!context || context.entity !== entity || entry.entityId !== entity.id
+      || this.helpers.npcJobs?.get(job.id) !== entry) return { blocked: true };
+    // Commission is the yard's dispatch paperwork, not a delivery manoeuvre. The cutter
+    // already spawned near the yard; forcing it back to the berth delays urgent spill work.
+    // Source work and the loaded return still require the native arrival gates below.
+    if (job.phase === NPC_JOB_PHASE.COMMISSION) return null;
+    if (job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
+    const stationId = job.route[0].id.slice(5);
+    const home = this._sectorStations().find(station => stationIdentity(station) === stationId);
+    const manifest = entity.data.cargoManifest || context.rec.manifest;
+    const carried = manifest?.totalQty > 0;
+    const homeLeg = job.payload?.sourceUnavailable === true || (carried && job.phase !== NPC_JOB_PHASE.LOAD) || job.phase === NPC_JOB_PHASE.RETURN
+      || (job.routeIndex === 0 && job.phase !== NPC_JOB_PHASE.TRANSIT);
+    if (homeLeg) {
+      if (!home) return { blocked: true };
+      if (manifest?.salvageIntakeHeld && this._salvorAtTarget(entity, home,
+        Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0))) return { blocked: true };
+      return this._salvorTargetDescriptor(entity, home, Math.max(this._salvorReach(entity, home), home.data?.dockRadius || 0));
+    }
+    // Once the finite load is aboard, the short wrangle act finishes where it was cut.
+    // A consumed payload need not remain alive to authorize the already-conserved hold.
+    if (carried && job.phase === NPC_JOB_PHASE.LOAD) {
+      return this._salvorTargetDescriptor(entity, entity, 1);
+    }
+    const target = this._resolveSalvorTargetFromWaypoint(job.route[1]?.id, job.payload);
+    const claimant = target && this._salvorClaimantOf(target);
+    if (!target || !this._isSalvageableBody(target) || (claimant && claimant !== context.worldRecordId)) {
+      return { blocked: true };
+    }
+    return this._salvorTargetDescriptor(entity, target, this._salvorReach(entity, target));
+  },
+
+  _salvorSourceTarget(entry, entity) {
+    const job = entry?.job;
+    if (job?.kind !== 'salvor' || entity?.data?.ceresActivityCast || entity?.data?.activityActorSlotId
+      || !job.route?.[0]?.id?.startsWith('yard:')) return undefined;
+    const context = this._jobTrafficContext({ jobId: job.id, kind: 'salvor' }, 'salvor');
+    if (!context || context.entity !== entity || entry.entityId !== entity.id
+      || this.helpers.npcJobs?.get(job.id) !== entry) return null;
+    const target = this._resolveSalvorTargetFromWaypoint(job.route[1]?.id, job.payload);
+    const claimant = target && this._salvorClaimantOf(target);
+    return target && (!claimant || claimant === context.worldRecordId) ? target : null;
+  },
+
+  _salvorAtTarget(worker, target, reach = this._salvorReach(worker, target)) {
+    const w = this._salvorBodyState(worker), t = this._salvorBodyState(target);
+    return !!w && !!t && Math.hypot(w.pos.x - t.pos.x, (w.pos.y || 0) - (t.pos.y || 0), w.pos.z - t.pos.z) <= reach
+      && Math.hypot(w.vel.x - t.vel.x, (w.vel.y || 0) - (t.vel.y || 0), w.vel.z - t.vel.z) <= 8;
+  },
+
+  _salvorReach(worker, target) {
+    return hullEnvelopeWu(worker) + hullEnvelopeWu(target) + 22;
+  },
+
+  _salvorBodyState(entity) {
+    if (!entity || entity.alive === false || this.state.entities?.get(entity.id) !== entity) return null;
+    if (this.state.settings?.gameplay?.physicsBackend !== 'rapier-dynamic') {
+      return { pos: entity.pos, vel: entity.vel || { x: 0, z: 0 } };
+    }
+    const physics = this._registry?.get('physics'), owner = physics?._sg02;
+    const record = owner?.records.get(entity.id);
+    if (physics?._nativeRestorePending || physics?._nativeRestoreDeferred
+      || !physicsBodyNativeReady(entity) || record?.entity !== entity || !record.body
+      || !Number.isInteger(owner?._simTick) || this.state.tick - owner._simTick < 0
+      || this.state.tick - owner._simTick > 2
+      || (record.spec.dynamic !== false && record._postStepReadTick !== owner.tick)) return null;
+    try {
+      if (record.body.isEnabled() === false) return null;
+      const pos = record.body.translation(), vel = record.body.linvel();
+      const rotation = record.body.rotation(), angular = record.body.angvel();
+      const origin = owner._frameOrigin || { x: 0, z: 0 };
+      if (![pos.x, pos.y, pos.z, vel.x, vel.y, vel.z, rotation.x, rotation.y, rotation.z,
+        rotation.w, angular.x, angular.y, angular.z].every(Number.isFinite)) return null;
+      return { pos: { x: pos.x + origin.x, y: pos.y, z: pos.z + origin.z },
+        vel: { x: vel.x, y: vel.y, z: vel.z } };
+    } catch { return null; }
+  },
+
+  _salvorSourceShelved(payload) {
+    const source = this._salvageSourceBindingFromPayload(payload);
+    const matches = (this.state.world?.farActors?.rows || []).filter(row => row.alive !== false
+      && (source ? row.data?.salvagePointId === source.salvagePointId && row.data?.salvageSourceKey === source.sourceKey
+        : typeof payload?.targetKey === 'string' && row.type === payload.targetType
+          && row.data?.salvorTargetKey === payload.targetKey));
+    return matches.length === 1;
+  },
+
+  _salvorTargetKey(entity) {
+    if (!entity?.data || this.state.entities?.get(entity.id) !== entity) return null;
+    if (typeof entity.data.salvorTargetKey !== 'string') {
+      entity.data.salvorTargetKey = `salvor:${this.state.meta?.seed || 1}:${entity.id}:${entity.occupantGeneration}`;
+    }
+    return entity.data.salvorTargetKey;
+  },
+
+  _releaseShelvedSalvorClaims(worldRecordId) {
+    // Traffic still owns this reservation while the world owns its lean projection.
+    // A lost worker must not leave the preserved ordinary source permanently reserved.
+    const table = this.state.world?.farActors;
+    for (const row of table?.rows || []) {
+      if (typeof row.data?.salvorTargetKey !== 'string' || row.data.salvorClaimedBy !== worldRecordId) continue;
+      this._clearSalvorClaim(row, worldRecordId);
+      markAuxRowDirty(table, row.id);
+    }
+  },
+
 };

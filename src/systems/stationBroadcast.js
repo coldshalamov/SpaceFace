@@ -6,9 +6,10 @@
 // mission. Doctrine pillar: world-was-here + one-voice.
 //
 // This is a SYSTEMS-only entry that is NOT in UPDATE_ORDER's gameplay path: it is cosmetic-only
-// and fully `typeof window`-guarded. The evaluation timer is a window.setInterval — headless sim
-// never installs it, so the module is a strict silent no-op in every deterministic harness
-// (golden telemetry untouched). Nothing here writes sim state.
+// Browser-main uses window.setInterval; the production worker uses the existing economy:tick
+// cadence. Ordinary headless sims install neither (golden telemetry untouched). The worker
+// is identified by its existing mobileSeams lane marker, not by the absence of a DOM alone.
+// Nothing here writes sim state.
 //
 // One-voice contract (THE packet failureMode — chatter):
 //   * Routes through ctx.helpers.voice.say({channel:'ambient', priority: AMBIENT_PRIORITY}).
@@ -43,6 +44,7 @@
 // noTouch honored: world.js / voiceArbiter.js / combat.js / render root are never edited.
 
 import { hash32 } from '../core/rng.js';
+import { ilexGreenhouseBroadcast } from '../data/ilexGreenhouse.js';
 
 /** Explicit numeric priority for ambient lines — strictly below every CHANNEL_PRIORITY default. */
 export const AMBIENT_PRIORITY = 1;
@@ -221,6 +223,32 @@ export const stationBroadcast = {
     this._ctx = ctx;
     this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
+    // Only a presentation latch. Continue may recap the restored facts once locally; nothing
+    // is persisted, queued globally, or inferred from an event arriving before its domain view.
+    this._ilexBroadcastId = null;
+    this._ilexPending = null;
+    this._ilexVoiceId = null;
+    this._ilexAttempt = this._ilexAttempt || 0;
+    this._restoring = false;
+    this._onSurface = (p) => {
+      const pending = this._ilexPending;
+      if (this._restoring || !pending || p?.id !== pending.voiceId
+        || p.text !== pending.text || p.channel !== 'ambient') return;
+      this._lastSayAt = Math.max(this._lastSayAt, this._state?.simTime || 0);
+      this._ilexBroadcastId = pending.factId;
+      this._ilexPending = null;
+    };
+    this._bus?.on?.('voice:surface', this._onSurface);
+    this._onRestoring = () => {
+      this._restoring = true;
+      this._cancelIlex();
+    };
+    this._onLoaded = () => { this.newGame(); };
+    this._onRestoreError = () => { if (this._restoring) this.newGame(); };
+    this._bus?.on?.('save:restoring', this._onRestoring);
+    this._bus?.on?.('save:loaded', this._onLoaded);
+    this._bus?.on?.('save:error', this._onRestoreError);
+    this._bus?.on?.('game:newGame', this._onLoaded);
     this._lastSayAt = -Infinity;     // state.simTime of the last ambient line (rate cap)
     this._lastCombatAt = -Infinity;  // state.simTime of the last player-involved combat:damage
     this._onDamage = (p) => {
@@ -231,14 +259,32 @@ export const stationBroadcast = {
       }
     };
     if (this._bus && this._bus.on) this._bus.on('combat:damage', this._onDamage);
-    // Cosmetic-only timer: never installed headless — the whole system is silent without window.
+    // Exactly one clock. The worker already owns the voice arbiter and bridges its receipts;
+    // window-only polling left this entire owner silent on the default worker route.
+    this._onEconomyTick = null;
+    if (typeof window === 'undefined' && ctx?.helpers?.mobileSeams?.lane === 'worker'
+      && this._state?.runtime?.profileId === 'production') {
+      this._onEconomyTick = () => this._tick();
+      this._bus?.on?.('economy:tick', this._onEconomyTick);
+    }
+    // Ordinary headless simulations still install neither clock.
     this._timer = null;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && ctx?.simLane !== 'worker') {
       this._timer = window.setInterval(() => this._tick(), TICK_MS);
     }
   },
 
+  _cancelIlex() {
+    // Drop the pending receipt before cancellation can synchronously flush the arbiter.
+    this._ilexPending = null;
+    if (this._ilexVoiceId) this._ctx.helpers?.voice?.cancel?.(this._ilexVoiceId);
+    this._ilexVoiceId = null;
+  },
+
   newGame() {
+    this._cancelIlex();
+    this._ilexBroadcastId = null;
+    this._restoring = false;
     this._lastSayAt = -Infinity;
     this._lastCombatAt = -Infinity;
   },
@@ -256,10 +302,10 @@ export const stationBroadcast = {
 
   // One evaluation pass. All gates re-checked every fire; every early return is a strict no-op
   // (no state writes, no voice, no events). Exposed for the headless acceptance check, which
-  // drives it directly — in play only the window interval calls it.
+  // drives it directly — in play the selected browser/worker cadence calls it.
   _tick() {
     const state = this._state;
-    if (!state || state.mode !== 'flight') return;
+    if (!state || this._restoring || state.mode !== 'flight') return;
     // One-voice: yield the channel entirely while the first-hour tutorial is active.
     // Cosmetic only — no sim writes; speech resumes after tutorial completion.
     if (isOnboardingActive(state)) return;
@@ -276,6 +322,35 @@ export const stationBroadcast = {
     if (latchLine) {
       const said = this._ctx.helpers?.voice?.say({ id: 'latch-nine:guidance', channel: 'ambient', priority: AMBIENT_PRIORITY, text: latchLine, ttl: LINE_TTL_S });
       if (said !== false) this._lastSayAt = now;
+      return;
+    }
+    // The existing bounded greenhouse projection is also available on the worker facade.
+    // Read it at the cadence, so away-from-Ceres harvests and cold Continue need no event replay.
+    const greenhouse = ilexGreenhouseBroadcast(state, data.stationId);
+    if (greenhouse && greenhouse.id !== this._ilexBroadcastId) {
+      const say = this._ctx.helpers?.voice?.say;
+      if (typeof say !== 'function') return;
+      this._cancelIlex();
+      const voiceId = `${greenhouse.id}:${++this._ilexAttempt}`;
+      this._ilexVoiceId = voiceId;
+      // Install before say(): a same-floor refresh can synchronously emit voice:surface.
+      this._ilexPending = { voiceId, factId: greenhouse.id, text: greenhouse.text };
+      const accepted = this._ctx.helpers.voice.say({
+        id: voiceId, channel: 'ambient', priority: AMBIENT_PRIORITY,
+        text: greenhouse.text, kind: 'stationBroadcast', stationId: data.stationId,
+        factionId: data.factionId || null, ttl: LINE_TTL_S,
+        valid: () => {
+          if (this._restoring || state.mode !== 'flight' || isOnboardingActive(state)
+            || (state.simTime || 0) - this._lastCombatAt < COMBAT_SILENCE_S) return false;
+          const near = nearestVisibleStation(state, NEAR_RANGE);
+          return near?.id === station.id
+            && ilexGreenhouseBroadcast(state, near.data?.stationId)?.id === greenhouse.id;
+        },
+      });
+      // Acceptance is not delivery. Expired/preempted queued lines can retry after the
+      // ordinary cadence; only our matching surface receipt suppresses the local recap.
+      this._lastSayAt = now;
+      if (accepted === false) this._cancelIlex();
       return;
     }
     const def = STATION_BROADCASTS[data.stationTypeId];
@@ -323,10 +398,19 @@ export const stationBroadcast = {
   },
 
   destroy() {
+    this._cancelIlex();
+    this._bus?.off?.('voice:surface', this._onSurface);
+    if (this._onEconomyTick) this._bus?.off?.('economy:tick', this._onEconomyTick);
+    this._onEconomyTick = null;
     if (this._timer != null && typeof window !== 'undefined') window.clearInterval(this._timer);
     this._timer = null;
     if (this._bus && this._bus.off && this._onDamage) this._bus.off('combat:damage', this._onDamage);
     this._onDamage = null;
+    this._bus?.off?.('save:restoring', this._onRestoring);
+    this._bus?.off?.('save:loaded', this._onLoaded);
+    this._bus?.off?.('save:error', this._onRestoreError);
+    this._bus?.off?.('game:newGame', this._onLoaded);
+    this._restoring = true;
   },
 };
 

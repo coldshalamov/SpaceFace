@@ -15,17 +15,22 @@
 // per visit), and the calendar pass that walks the drone home through the
 // impulse membrane. Nothing here writes entity.vel.
 import { BELLHOP } from '../data/bellhop.js';
+import { PHOEBE_CHIME_POST, phoebePracticeRecognition, livePhoebeTuner } from '../data/phoebePracticeConnection.js';
 import {
   bellhopCrystalSpot, bellhopNoteOf, bellhopRings, bellhopStrikeResult,
   bellhopStepLine, bellhopDriftHome,
 } from '../characters/bellhopRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
+
+// The five fixed crystals keep a pentatonic glass voice, even after tuning.
+const CHIME_RATES = Object.freeze([1, 2 ** (2 / 12), 2 ** (4 / 12), 2 ** (7 / 12), 2 ** (9 / 12)]);
 
 export function bellhopSpec() {
   return {
     type: 'drone',
-    pos: { ...BELLHOP.post }, vel: { x: 0, z: 0 },
+    pos: { ...PHOEBE_CHIME_POST }, vel: { x: 0, z: 0 },
     radius: 11, mass: 48, hull: 240, hullMax: 240,
     homeSectorId: BELLHOP.sectorId,
     data: {
@@ -41,7 +46,7 @@ export function bellhopSpec() {
 export function bellhopCrystalSpec(index, tuned) {
   return {
     type: 'debris',
-    pos: { ...bellhopCrystalSpot(index) }, vel: { x: 0, z: 0 },
+    pos: { ...bellhopCrystalSpot(index, PHOEBE_CHIME_POST) }, vel: { x: 0, z: 0 },
     radius: 14, mass: 240, hull: 320, hullMax: 320,
     homeSectorId: BELLHOP.sectorId,
     data: {
@@ -65,12 +70,12 @@ export function createBellhop() {
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = [];
-      this._announced = false;
+      this._announced = false; this._practiceRecognition = null;
       this._lastRing = new Map(); // entity -> tick — bounce debounce, per visit
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
-      const seam = () => { this._announced = false; this._lastRing.clear(); };
+      const seam = () => { this._announced = false; this._practiceRecognition = null; this._lastRing.clear(); };
       on('sector:enter', (p) => {
         seam();
         if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
@@ -172,19 +177,30 @@ export function createBellhop() {
      *  what hit it, only that the hit was real and not its own bounce. */
     _onImpact(p) {
       if (!this._adventure() || !p) return;
+      if (p.backend !== 'rapier-dynamic' || p.tick !== this.state.tick) return;
       if (!bellhopRings(p.impulse)) return;
       const a = this._entity(p.aId);
       const b = this._entity(p.bId);
+      if (!a?.alive || !b?.alive || this.state.entities?.get(a.id) !== a
+          || this.state.entities?.get(b.id) !== b
+          || occupantGenerationOf(a) == null || occupantGenerationOf(b) == null
+          || p.aGeneration !== occupantGenerationOf(a) || p.bGeneration !== occupantGenerationOf(b)) return;
       const crystal = bellhopNoteOf(a) >= 0 ? a : (bellhopNoteOf(b) >= 0 ? b : null);
-      if (!crystal) return;
+      if (!crystal || crystal.data.runtimeOwner !== 'bellhop'
+          || crystal.data.homeSectorId !== BELLHOP.sectorId
+          || !Number.isFinite(crystal.pos?.x) || !Number.isFinite(crystal.pos?.z)
+          || Math.hypot(crystal.pos.x-PHOEBE_CHIME_POST.x, crystal.pos.z-PHOEBE_CHIME_POST.z) > 1000) return;
       const note = bellhopNoteOf(crystal);
       const tick = Number(this.state?.tick) || 0;
       if (tick - (this._lastRing.get(crystal) ?? -Infinity) < BELLHOP.ringDebounceTicks) return;
       this._lastRing.set(crystal, tick);
+      // The real crystal sounds independently of its judge and reward ledger.
+      this.bus?.emit('audio:cue', { id: 'sfx_discovery_plate_note',
+        position: { x: crystal.pos.x, z: crystal.pos.z }, gain: 0.5, rate: CHIME_RATES[note] });
+      const robot = livePhoebeTuner(this.state, this._robot());
+      if (!robot) return; // A missing/unavailable tuner cannot judge a phrase remotely.
       const flags = this._flags();
       if (!flags || flags[BELLHOP.sungFlag] === true) return; // post-song chimes are the sandbox
-      const robot = this._robot();
-      if (!robot) return; // no tuner, no judge — the crystal still rings silent
       const result = bellhopStrikeResult(flags[BELLHOP.progressFlag], note);
       if (result.verdict === 'miss') {
         flags[BELLHOP.progressFlag] = 0;
@@ -227,7 +243,15 @@ export function createBellhop() {
       this._housekeep();
       const robot = this._robot();
       if (!robot || !robot.pos) return;
-      const dv = bellhopDriftHome(robot);
+      // Exceptional older saves may retain player-held/stunt-owned bodies in the old
+      // local frame. Preserve them and their custody; do not pull or duplicate them.
+      if (!livePhoebeTuner(s, robot)) return;
+      const recognition = phoebePracticeRecognition(s, robot, this._practiceRecognition);
+      if (recognition && recognition.key !== this._practiceRecognition) {
+        this._practiceRecognition = recognition.key;
+        this._say('bellhop_practice_' + recognition.key, recognition.text, 12);
+      }
+      const dv = bellhopDriftHome(robot, PHOEBE_CHIME_POST);
       if (dv && robot.mass > 0) {
         queuePhysicsImpulse(robot, { x: dv.x * robot.mass, z: dv.z * robot.mass }, { tick: s.tick });
       }

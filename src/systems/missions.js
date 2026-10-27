@@ -137,7 +137,7 @@ import {
 } from '../missions/capitalBossSpawn.js';
 import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
 import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
-import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders } from './captainStandingOrders.js';
+import { syncCaptainStandingOrders, noteStandingOrderCompletion, normalizeStandingOrders, captainStandingOfferPreflight } from './captainStandingOrders.js';
 import { syncColdburnBid, coldburnDeliveryBonus } from './coldburnRey.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -2255,6 +2255,15 @@ export const missions = {
         kind: 'warn',
         ttl: 4,
       });
+      return false;
+    }
+    // A remembered captain can die or rotate their desk while this row is still displayed.
+    // Refuse before fees, sealed cargo or an active instance; accepted contracts keep their terms.
+    const captainPreflight = captainStandingOfferPreflight(state, offer);
+    if (!captainPreflight.ok) {
+      if (board && Array.isArray(board.slots)) board.slots = board.slots.filter(candidate => candidate?.id !== offer.id);
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      this.bus.emit('toast', { text: captainPreflight.reason, kind: 'warn', ttl: 4 });
       return false;
     }
     if (offer.storyDisposition) {

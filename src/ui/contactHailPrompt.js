@@ -17,6 +17,7 @@ import {
 import { getPromptDeck } from './promptDeck.js';
 
 const STYLE_ID = 'sf-contact-hail-style';
+const ROUTE_READING_GRACE_S = 30;
 
 function clamp01(value) {
   const n = Number(value);
@@ -51,6 +52,7 @@ export function createContactHailPrompt(ctx) {
       </button>
       <div class="sf-contact-hail__lines" data-k="lines"></div>
       <div class="sf-contact-hail__actions" data-k="actions"></div>
+      <button type="button" class="sf-contact-hail__close" data-k="close" hidden aria-label="Close route details">CLOSE DETAILS</button>
     </aside>`;
   document.getElementById('ui-root').appendChild(root);
 
@@ -58,6 +60,7 @@ export function createContactHailPrompt(ctx) {
   const panel = root.querySelector('[data-k="panel"]');
   const linesEl = root.querySelector('[data-k="lines"]');
   const actionsEl = root.querySelector('[data-k="actions"]');
+  const closeBtn = root.querySelector('[data-k="close"]');
   const deckBtn = root.querySelector('[data-k="deck"]');
   const crestEl = root.querySelector('[data-k="crest"]');
   const pilotEl = root.querySelector('[data-k="pilot"]');
@@ -67,6 +70,7 @@ export function createContactHailPrompt(ctx) {
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
 
   let active = null;
+  let routeReadUntil = null;
   let availability = { enabled: false, targetId: null, kind: null, label: 'HAIL' };
   let destroyed = false;
   let previousFreq = '';
@@ -99,7 +103,8 @@ export function createContactHailPrompt(ctx) {
     deckBtn.hidden = false;
     crestEl.innerHTML = visual.factionId ? factionIcon(visual.factionId, 22) : stationIcon('target', 22);
     pilotEl.textContent = visual.pilot;
-    classEl.textContent = visual.classWord;
+    // A selected route can contain actionable prose, not a ship-class word.
+    classEl.textContent = payload?.choice === 'route' ? 'ROUTE DETAILS · SNAPSHOT' : visual.classWord;
     const now = Number(state.simTime) || 0;
     const ttl = active && active.choice ? CONTACT_HAIL_RECEIPT_TTL_S : CONTACT_HAIL_REQUEST_TTL_S;
     const amplitude = active
@@ -114,23 +119,55 @@ export function createContactHailPrompt(ctx) {
 
   function hidePanel() {
     active = null;
+    routeReadUntil = null;
+    if (panel.contains(document.activeElement)) hailButton.focus?.();
+    closeBtn.hidden = true;
     panel.hidden = true;
+    panel.classList.remove('sf-contact-hail__panel--detail');
+    panel.removeAttribute('tabindex');
     linesEl.replaceChildren();
     actionsEl.replaceChildren();
     updateDeckVisual(true);
   }
 
+  function clearReceipt(payload) {
+    // Scanner still expires its receipt at four seconds. Only its exact expiry notice
+    // may leave this zero-action route snapshot on screen for reading.
+    if (active && routeReadUntil != null && payload?.reason === 'expired'
+      && active.requestId != null && payload.requestId === active.requestId
+      && payload.targetId === active.targetId) return;
+    hidePanel();
+  }
+
   function render(payload) {
     if (!payload || payload.targetId !== state.player.targetId) return false;
     active = { ...payload };
+    const detail = payload.choice === 'route';
+    // Retain a read-only reply for reading, never extend simulation receipts or actions.
+    routeReadUntil = detail && !(payload.actions?.length)
+      ? (Number(state.simTime) || 0) + ROUTE_READING_GRACE_S : null;
+    closeBtn.hidden = !detail;
+    panel.classList.toggle('sf-contact-hail__panel--detail', detail);
+    // Keyboard users can focus and scroll a long chosen route.
+    if (detail) panel.setAttribute('tabindex', '0');
+    else panel.removeAttribute('tabindex');
     const lines = Array.isArray(payload.lines) ? payload.lines : [];
     const actions = Array.isArray(payload.actions) ? payload.actions : [];
+    // Scanner deliberately caps normal lines at two; advice has its own bounded
+    // transport field and one visible wrapped row. Never extend receipt lifetime.
+    const towAdvice=payload.kind==='tally_three'&&typeof payload.towAdvice==='string'
+      ?payload.towAdvice.trim().slice(0,240):'';
     linesEl.replaceChildren(...lines.slice(0, 2).map((line) => {
       const row = document.createElement('div');
       row.className = 'sf-contact-hail__line';
       row.textContent = line;
       return row;
     }));
+    if(towAdvice){
+      const row=document.createElement('div');
+      row.className='sf-contact-hail__line sf-contact-hail__tow-advice';
+      row.textContent=towAdvice;linesEl.appendChild(row);
+    }
     actionsEl.replaceChildren(...actions.slice(0, 3).map((action, index) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -145,7 +182,7 @@ export function createContactHailPrompt(ctx) {
       toldRequestId = payload.requestId;
       markTold(state, payload.deedId, { by: `hail:${payload.targetId}` });
     }
-    panel.setAttribute('aria-label', lines.slice(0, 2).join(' '));
+    panel.setAttribute('aria-label', [...lines.slice(0,2),...(towAdvice?[towAdvice]:[])].join(' '));
     nextRibbonUpdateAt = Number(state.simTime) || 0;
     updateDeckVisual(true);
     return true;
@@ -222,7 +259,8 @@ export function createContactHailPrompt(ctx) {
       const now = Number(state.simTime) || 0;
       if (active.targetId !== state.player.targetId
         || state.mode !== 'flight' || state.ui && state.ui.docked
-        || Number(active.expiresAt) <= now) hidePanel();
+        || (routeReadUntil == null ? Number(active.expiresAt) <= now
+          : routeReadUntil <= now && !panel.contains(document.activeElement))) hidePanel();
     }
     if (!panel.hidden) {
       const now = Number(state.simTime) || 0;
@@ -238,10 +276,12 @@ export function createContactHailPrompt(ctx) {
     for (const [event, handler] of busBindings) bus.off(event, handler);
     document.removeEventListener('keydown', onKeyDown, true);
     deckBtn.removeEventListener('click', onDeckClick);
+    closeBtn.removeEventListener('click', hidePanel);
     try { freqMorph.dispose(); } catch (_) {}
     root.remove();
   }
 
+  closeBtn.addEventListener('click', hidePanel);
   hailButton.addEventListener('click', () => request('pointer'));
   panel.addEventListener('click', onPanelClick);
   deckBtn.addEventListener('click', onDeckClick);
@@ -250,7 +290,7 @@ export function createContactHailPrompt(ctx) {
     ['contactHail:availability', applyAvailability],
     ['contactHail:offer', render],
     ['contactHail:response', render],
-    ['contactHail:clear', hidePanel],
+    ['contactHail:clear', clearReceipt],
     ['contactHail:handoff', hidePanel],
     ['game:new', hidePanel],
     ['game:load', hidePanel],
@@ -317,6 +357,17 @@ function injectStyle() {
   .sf-contact-hail__lines { display:grid; gap:2px; }
   .sf-contact-hail__line { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-size:12px; line-height:1.35; letter-spacing:.02em; }
+  .sf-contact-hail__panel--detail { max-height:min(480px, calc(100dvh - 90px));
+    overflow-y:auto; overscroll-behavior:contain; }
+  .sf-contact-hail__close { margin-top:8px; min-height:30px; width:100%;
+    border:1px solid var(--sf-edge); border-radius:3px; background:var(--sf-surface);
+    color:var(--sf-paper); font:500 12px var(--hud-data, monospace); cursor:pointer; }
+  .sf-contact-hail__close[hidden] { display:none; }
+  .sf-contact-hail__close:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
+  .sf-contact-hail__panel--detail:focus-visible { outline:2px solid var(--sf-goal); outline-offset:2px; }
+  .sf-contact-hail__panel--detail .sf-contact-hail__line,
+  .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space:normal;
+    overflow:visible; overflow-wrap:anywhere; text-overflow:clip; }
   .sf-contact-hail__line + .sf-contact-hail__line { color:var(--sf-calm); }
   .sf-contact-hail__actions { display:flex; gap:6px; margin-top:8px; }
   .sf-contact-hail__actions:empty { display:none; }

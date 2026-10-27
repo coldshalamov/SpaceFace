@@ -1,3 +1,4 @@
+import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 import { isOrchardFrame } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
@@ -865,8 +866,33 @@ function slotForPackagedFile(file) {
   return String(file || '').replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place';
 }
 
+
+const LAST_SHIFT_RECORDER_PACKAGED_PROP = Object.freeze({
+  file: 'wholeships/thimble_recorder.glb',
+  slot: 'pod',
+  // Decoded LOD0 XZ radius is 4.855893 WU at this fit, inside the original radius-5
+  // ball's planar envelope. This is not full-3D or exact-shape collision parity.
+  radius: 4.4,
+  hideImmediately: true,
+});
+
+export function lastShiftRecorderPackagedPropSpec(entity) {
+  const data = entity?.data;
+  if (entity?.alive === false || entity?.type !== 'wreck'
+    || entity.radius !== 5 || entity.mass !== 5
+    || data?.persistenceOwner !== LAST_SHIFT.persistenceOwner
+    || data.lastShiftSiteId !== LAST_SHIFT.siteId || data.lastShiftClueId !== 'recorder'
+    || data.lastShiftBodyKey !== lastShiftBodyKey('recorder')
+    || data.parentType !== 'communicator'
+    || data.authoredPayloadAssetId || data.packagedPropFile || data.packagedPropRadius != null
+    || data.assetRef || data.precompileProbe === true) return null;
+  return LAST_SHIFT_RECORDER_PACKAGED_PROP;
+}
+
 export function packagedPropSpec(entity) {
   if (!entity || entity.alive === false) return null;
+  const recorder = lastShiftRecorderPackagedPropSpec(entity);
+  if (recorder) return recorder;
   const data = entity.data || {};
   if (data.authoredPayloadAssetId) return null;
   if (data.precompileProbe === true) return null;
@@ -1423,10 +1449,17 @@ export function installVisualOverrides(factory, options = {}) {
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
-    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule
+    const lastShiftRecorder = lastShiftRecorderPackagedPropSpec(entity);
+    const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder
       ? null
       : build47aScenarioProp(entity);
-    if (directShip) {
+    if (lastShiftRecorder) {
+      // A fresh ownership boundary prevents the generic wreck factory from starting a
+      // competing hash-selected package. The original simulation body remains unchanged.
+      visual = new THREE.Group();
+      visual.name = 'LastShiftRecorder_AuthoredBoundary';
+      visual.userData.kind = 'wreck';
+    } else if (directShip) {
       // The production catalog is resident before control. The live route therefore needs only a
       // zero-draw ownership boundary while the exact GLB composition is committed; constructing a
       // complete bespoke/procedural ship here would allocate and dispose an object graph that is

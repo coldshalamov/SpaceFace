@@ -1,6 +1,8 @@
 import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
 import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
 import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
+import { orchardTowIntercept } from './orchardTowIntercept.js';
+import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -2863,6 +2865,14 @@ export const npcJobsRuntime = {
   },
 
   _findSalvorTractorTarget(entry, entity) {
+    const bookedSource = this.helpers.traffic?.salvorSourceTarget?.(entry, entity);
+    if (bookedSource !== undefined) {
+      // The physical cutter and its tractor share traffic's durable source resolution.
+      // Continue or a recycled allocator slot cannot make the line grab another body.
+      return bookedSource && isSalvorTractorTarget(bookedSource, entity.data?.worldRecordId)
+        && Math.hypot(bookedSource.pos.x - entity.pos.x, bookedSource.pos.z - entity.pos.z) <= NPC_TOW_MAX_RANGE_WU
+        ? bookedSource : null;
+    }
     const data = entity && entity.data;
     const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
     const payload = entry && entry.job && entry.job.payload;
@@ -3040,6 +3050,11 @@ export const npcJobsRuntime = {
     }
     const attachments = this._combatAttachments();
     if (!attachments) return false;
+    const salvorSource = this.helpers.traffic?.salvorSourceTarget?.(entry, entity);
+    if (salvorSource !== undefined && entry.towAttachmentId != null
+      && (!salvorSource || entry.towTargetRef !== salvorSource)) {
+      this._clearTugAttachment(entry, 'npc_salvor_source_changed');
+    }
 
     if (entry.towAttachmentId != null) {
       const existing = attachments.get(entry.towAttachmentId);
@@ -3572,25 +3587,11 @@ export const npcJobsRuntime = {
       }
     }
     if (assist.phase === 'approach' && entry.orchardAssist) {
-      // Acquire a quiet line from the outward side, rather than latching while
-      // crossing the pod at approach speed and turning that velocity into an orbit.
-      const ox=assist.destPos.x-target.pos.x,oz=assist.destPos.z-target.pos.z;
-      const length=Math.hypot(ox,oz)||1,outward=Math.atan2(oz,ox);
-      const dx=target.pos.x+ox/length*300-hull.pos.x;
-      const dz=target.pos.z+oz/length*300-hull.pos.z,dist=Math.hypot(dx,dz);
-      const speed=Math.hypot(hull.vel?.x||0,hull.vel?.z||0);
-      if(dist>20){
-        const closing=Math.min(180,Math.sqrt(40*Math.max(0,dist-15)));
-        const vx=(target.vel?.x||0)+dx/dist*closing-(hull.vel?.x||0);
-        const vz=(target.vel?.z||0)+dz/dist*closing-(hull.vel?.z||0);
-        const aim=Math.atan2(vz,vx),error=Math.hypot(vx,vz);
-        const brake=Math.abs(shortestAngleDelta(aim,hull.rot||0))>CERES_ESCORT_TURN_ONLY_RAD;
-        this._writeIntent(hull,0,brake?0:clamp(error/120,.05,1),!brake&&dist>1200,aim,brake);
-        return;
-      }
-      this._writeIntent(hull,0,0,false,outward,true);
-      if(speed>Math.max(5,Math.hypot(target.vel?.x||0,target.vel?.z||0)+5) || Math.hypot((hull.vel?.x||0)-(target.vel?.x||0),(hull.vel?.z||0)-(target.vel?.z||0))>8)return;
-      if(this._attachTowAssist(entry,hull,target))assist.phase='tow';
+      const def=this.registry?.get('combat')?.kernel?.catalog?.attachments?.get(NPC_TOW_ATTACHMENT_DEF_ID);
+      const reach=def && effectiveTetherPolicy(def,hull,state.runtime?.features)?.maxLength;
+      const command=orchardTowIntercept(hull,target,assist.destPos,resolvePropulsionProfile(hull,state),reach);
+      this._writeIntent(hull,command.moveX,command.moveZ,command.boost,command.aimAngle,command.brake);
+      if(command.ready && this._attachTowAssist(entry,hull,target))assist.phase='tow';
       return;
     }
     if (assist.phase === 'approach') {
@@ -4397,8 +4398,9 @@ export const npcJobsRuntime = {
       const approachingSeam = !claimedBeforeAdvance && starterRock && entity.pos
         && Math.hypot(entity.pos.x - starterRock.pos.x, entity.pos.z - starterRock.pos.z)
           > BEAM_MK1.range + (starterRock.radius || 0);
-      const physicalTarget = !claimedBeforeAdvance && (pallasSeamTarget(this, entry, entity)
-        || this._ceresTenderPhysicalTarget(entry, entity) || this._livingAdventureWorkTarget(entry, entity));
+      const salvorTarget = !claimedBeforeAdvance && this.helpers.traffic?.salvorWorkTarget?.(entry, entity);
+      const physicalTarget = salvorTarget || (!claimedBeforeAdvance && (pallasSeamTarget(this, entry, entity)
+        || this._ceresTenderPhysicalTarget(entry, entity) || this._livingAdventureWorkTarget(entry, entity)));
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
       // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
@@ -4411,7 +4413,7 @@ export const npcJobsRuntime = {
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
         && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
           && entry.worldRecordId === this._heliosStarterMinerRecordId)
-        && (Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+        && (physicalTarget.settled === false || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
           || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
             (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
@@ -4429,7 +4431,7 @@ export const npcJobsRuntime = {
       const braced = !claimedBeforeAdvance && entry.closeCallUntil != null && simT < entry.closeCallUntil;
       if (step > 0 && !approachingSeam && !holdingForArrival && !entry.berthHold && !braced
         && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-        advance(entry.job, step, this._sink);
+        advance(entry.job, salvorTarget ? Math.min(step, 0.1) : step, this._sink);
       }
 
       // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
@@ -4920,8 +4922,12 @@ export const npcJobsRuntime = {
     const planningSpeed = Math.min(40, entry.job.speed || 35);
     if (profile.family === DRIVE_FAMILIES.PULSE_PLATE) {
       // PulsePlate's BRAKE fires the plate. Delicate work uses its authored RCS instead.
-      const speed = close ? 0 : Math.min(planningSpeed,
-        Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
+      const speed = close ? 0 : target.salvorPhysical === true
+        // General salvage uses a velocity-error RCS controller. Its response takes time:
+        // taper early, stopping outside the two hull envelopes rather than ramming a light wreck.
+        ? Math.min(20, planningSpeed, Math.max(0, distance - (target.reach - 4)) * 0.5)
+        : Math.min(planningSpeed,
+          Math.sqrt(2 * Math.max(1, profile.rcsReverseAccel) * Math.max(0, distance - target.reach * 0.6)));
       const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (vel?.x || 0);
       const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (vel?.z || 0);
       const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
@@ -5040,7 +5046,8 @@ export const npcJobsRuntime = {
       return;
     }
 
-    const physicalTarget = pallasSeamTarget(this, entry, entity) || this._livingAdventureWorkTarget(entry, entity);
+    const physicalTarget = this.helpers.traffic?.salvorWorkTarget?.(entry, entity)
+      || pallasSeamTarget(this, entry, entity) || this._livingAdventureWorkTarget(entry, entity);
     if (physicalTarget?.blocked) {
       this._driveLivingAdventureWorker(entry, entity, { pos: entity.pos, vel: { x: 0, z: 0 }, reach: 1, workPose: { pos: entity.pos, vel: entity.vel } });
       return;

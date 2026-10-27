@@ -1,3 +1,4 @@
+import { admitWinnowRecovery } from '../world/vestaWinnowRecovery.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { FREIGHT_MARKET_KEYS_FALLBACK, FREIGHT_TRADING_ROLES, abstractBaselineVolume, buildArrivalIntent, buildCargoManifest, filterNewFreightIntents, liveVolumeForSector, mergeAppliedFreightIds, pressureShareRecipe } from '../economy/freightCausality.js';
@@ -204,6 +205,9 @@ export const trafficEscortOps = {
     rec.dockSeq = Math.max(rec.dockSeq | 0, dockSeq + 1);
     if (entity && entity.data) entity.data.freightDockSeq = rec.dockSeq;
     this._noteHeliosFreightDisposition(manifest && manifest.manifestId, 'delivered');
+
+    // Only the original Tann after real settlement can defer ordinary refill for recovery.
+    if (admitWinnowRecovery(this, entity, rec, manifest)) return true;
 
     // After delivery, refresh manifest for the next leg (still deterministic per dockSeq key).
     const nextKey = `${freighterKey}:leg:${rec.dockSeq}`;
