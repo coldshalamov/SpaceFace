@@ -220,6 +220,8 @@ import { mop } from '../systems/mop.js';
 import { tallyho } from '../systems/tallyho.js';
 import { tare } from '../systems/tare.js';
 import { lamplighter } from '../systems/lamplighter.js';
+import { special500Director } from '../systems/special500Director.js';   // special-500 campaign catalog runtime
+
 import { shepherd12 } from '../systems/shepherd12.js';
 import { quill } from '../systems/quill.js';
 import { holdfast } from '../systems/holdfast.js';
@@ -720,6 +722,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['tallyho', tallyho],
     ['tare', tare],
     ['lamplighter', lamplighter],
+    ['special500', special500Director],
+
     ['shepherd12', shepherd12],
     ['quill', quill],
     ['holdfast', holdfast],
