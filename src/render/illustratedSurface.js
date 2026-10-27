@@ -248,6 +248,17 @@ function memoSurfaceSource(memo, source, rewrite) {
   return out;
 }
 
+// Called once at flight-veil lift: the memo only speeds up the compile burst behind the veil, so
+// dropping it keeps the rewritten shader strings from being carried into the post-lift heap.
+export function releaseSurfaceSourceMemo() {
+  SURFACE_VERTEX_MEMO.clear();
+  SURFACE_FRAGMENT_MEMO.clear();
+}
+
+export function surfaceSourceMemoSize() {
+  return SURFACE_VERTEX_MEMO.size + SURFACE_FRAGMENT_MEMO.size;
+}
+
 /** Chain existing packed-ORM/breakup hooks. One version key for every colour and hull. */
 export function installIllustratedSurface(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)

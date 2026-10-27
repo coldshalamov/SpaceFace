@@ -14,6 +14,7 @@ import {
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
 import { resolveFrameCap } from '../render/adaptiveQuality.js';
+import { releaseSurfaceSourceMemo } from '../render/illustratedSurface.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
@@ -1309,7 +1310,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // Track the flight-veil lift: for a short window after it the catch-up ceiling is lowered
       // (postLiftStepCap) so first-flight steps cannot stack into one long frame.
       const veilNow = flightVeilHeld();
-      if (veilWasHeld && !veilNow) veilLiftedAt = measureNow();
+      if (veilWasHeld && !veilNow) {
+        veilLiftedAt = measureNow();
+        releaseSurfaceSourceMemo();
+      }
       veilWasHeld = veilNow;
       const stepCap = restoring
         ? undefined
