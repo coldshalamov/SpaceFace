@@ -28,6 +28,22 @@ import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
 // Read inside functions only — the sibling module already imports this one, so a top-level
 // dereference here would race the cycle.
 import { SWARM_BROOD_LATE_FAMILIES } from './swarmBroodLate.js';
+// The Bloom's authored pathology windows live in one place; the BROOD_* names below are this
+// engine's aliases of them (values are never restated here).
+import {
+  BLOOM_AGGRESSION_S,
+  BLOOM_CASCADE_RADIUS,
+  BLOOM_FILAMENT_FLARE_S,
+  BLOOM_GRIEF_RING,
+  BLOOM_GRIEF_S,
+  BLOOM_PANIC_KILL_MASS,
+  BLOOM_PANIC_REFORM_S,
+  BLOOM_PANIC_SCATTER_MAX_S,
+  BLOOM_PANIC_SCATTER_MIN_S,
+  BLOOM_THRASH_RADIUS,
+  BLOOM_THRASH_S,
+  BLOOM_THRASH_SWEEP,
+} from './bloomLadder.js';
 
 export const SWARM_BROOD_SCHEMA_VERSION = 1;
 
@@ -596,22 +612,26 @@ export const TENDRIL_SEG_PAY_FAMILY = 'mite';
 /** Entity `data.lootTableId` the Brood Queen champion carries — the cascade's relay node. */
 export const BROOD_QUEEN_LOOT_ID = 'brood_queen';
 
-/** Linked members within this radius draw coupling filaments (the flock's link radius). */
+/**
+ * Linked members within this radius draw coupling filaments (the flock's link radius). This one
+ * stays arena-local on purpose: bloomLadder's BLOOM_FILAMENT_RADIUS is the tide-scale reach,
+ * and the arena's tight flocks read at their own link radius.
+ */
 export const BROOD_FILAMENT_RADIUS = BROOD_LINK_RADIUS;
 /** Filaments flare this long after a linked node dies — the pack's visible flinch. */
-export const BROOD_FILAMENT_FLARE_S = 0.7;
+export const BROOD_FILAMENT_FLARE_S = BLOOM_FILAMENT_FLARE_S;
 /** The flinch: a node's death pushes linked members outward this hard (wu/s of Δv). */
 export const BROOD_FILAMENT_FLINCH_DV = 26;
 
 /** A mass kill above this total mass (wu) inside the pack triggers the panic cascade. */
-export const BROOD_PANIC_KILL_MASS = 90;
+export const BROOD_PANIC_KILL_MASS = BLOOM_PANIC_KILL_MASS;
 /** The scatter band — per-body fixed-seed, authored 1.5–2.5 s. */
-export const BROOD_PANIC_SCATTER_MIN_S = 1.5;
-export const BROOD_PANIC_SCATTER_MAX_S = 2.5;
+export const BROOD_PANIC_SCATTER_MIN_S = BLOOM_PANIC_SCATTER_MIN_S;
+export const BROOD_PANIC_SCATTER_MAX_S = BLOOM_PANIC_SCATTER_MAX_S;
 /** Then the knot: members re-form tight for this long (the throw window the spec promises). */
-export const BROOD_PANIC_REFORM_S = 1.3;
+export const BROOD_PANIC_REFORM_S = BLOOM_PANIC_REFORM_S;
 /** Members inside this radius of the trigger join the pathology. */
-export const BROOD_CASCADE_RADIUS = 220;
+export const BROOD_CASCADE_RADIUS = BLOOM_CASCADE_RADIUS;
 /** Scatter speed: how hard the pack bolts during the panic window (wu/s² accel). */
 export const BROOD_PANIC_SCATTER_ACCEL = 260;
 /** Knot accel: how hard the pack converges when the knot reforms. */
@@ -620,14 +640,14 @@ export const BROOD_PANIC_REFORM_ACCEL = 220;
 export const BROOD_PANIC_KNOT_RADIUS = 26;
 
 /** Aggression cascade: the relay/Queen hit turns linked members on the player this long. */
-export const BROOD_AGGRESSION_S = 4.0;
+export const BROOD_AGGRESSION_S = BLOOM_AGGRESSION_S;
 /** Rush speed multiplier over family cruise during the aggression window. */
 export const BROOD_AGGRESSION_ACCEL = 300;
 
 /** Grief loop: cluster around the corpse for this long. */
-export const BROOD_GRIEF_S = 5.0;
+export const BROOD_GRIEF_S = BLOOM_GRIEF_S;
 /** The mourning ring the members orbit/crowd around the corpse. */
-export const BROOD_GRIEF_RING = 30;
+export const BROOD_GRIEF_RING = BLOOM_GRIEF_RING;
 export const BROOD_GRIEF_ACCEL = 140;
 
 /** Cascade kinds (published on the view; the renderer flushes the filaments on them). */
@@ -648,13 +668,13 @@ export const BROOD_CASCADE_EVENTS = Object.freeze(['entity:killed', 'swarm:hiveS
 // stump into the swarm — the opening the spec sells.
 
 /** Thrash duration after a cut frees a chain lead (fixed-seed jitter, ±20%). */
-export const TENDRIL_THRASH_S = 2.2;
+export const TENDRIL_THRASH_S = BLOOM_THRASH_S;
 /** The arc's radius around the cut point (wu). */
-export const TENDRIL_THRASH_RADIUS = 14;
+export const TENDRIL_THRASH_RADIUS = BLOOM_THRASH_RADIUS;
 /** Fixed angular speed of the arc (rad/s), seeded direction per segment. */
 export const TENDRIL_THRASH_OMEGA = 4.2;
 /** A thrashing stump sweeps pack bodies in its path — kills them on contact. */
-export const TENDRIL_THRASH_SWEEP = true;
+export const TENDRIL_THRASH_SWEEP = BLOOM_THRASH_SWEEP;
 
 // --- W-BLOOM-LOW family tuning (row 507), kept beside the families that feel them ---------
 
