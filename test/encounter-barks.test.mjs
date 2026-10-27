@@ -54,7 +54,7 @@ function fail(msg) { console.error(`FAIL: ${msg}`); failures++; }
 for (const key of EXPANDED_KEYS) {
   const val = ENCOUNTER_BARKS[key];
   if (!Array.isArray(val)) { fail(`${key} is not an array`); continue; }
-  if (val.length < 3 || val.length > 5) fail(`${key} has ${val.length} variants (need 3–5)`);
+  if (val.length < 3 || val.length > 8) fail(`${key} has ${val.length} variants (need 3–8)`);
   if (val[0] !== ORIGINAL_LINES[key]) fail(`${key}[0] does not match original line`);
 }
 

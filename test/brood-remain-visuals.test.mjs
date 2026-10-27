@@ -1,23 +1,22 @@
-// W-BLOOM-LOW remains visuals — the six latchable remain kinds carry family-authored
+// W-BLOOM-LOW remains visuals — the latchable remain kinds carry family-authored
 // silhouettes so the throw-selection reads at glance range: the field shows what the
-// sac/leech/eel will DO before the tooltip says it. The seam is buildPayload's remain
-// dispatch; the contract underneath (payload kind, ordnance tumble, per-entity teardown)
-// is unchanged.
+// sac/leech/eel/shell/charge will DO before the tooltip says it. The seam is
+// buildPayload's remain dispatch; the contract underneath (payload kind, ordnance
+// tumble, per-entity teardown) is unchanged. The kind roster is read off both family
+// tables — a new authored remain lands in this battery automatically.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
 import { resolveOrdnanceKindConfig } from '../src/render/ordnanceMotionPresentation.js';
 import { SWARM_BROOD_FAMILIES } from '../src/data/swarmBrood.js';
+import { SWARM_BROOD_LATE_FAMILIES } from '../src/data/swarmBroodLate.js';
 
-const KIND_BY_FAMILY = Object.freeze({
-  mite: 'husk_shards', spitter: 'acid_sac', charger: 'horn_plate',
-  leecher: 'leech_glue', glassback: 'glass_shards', wake_eel: 'eel_body',
-});
-const REMAIN_KINDS = Object.freeze(Object.values(KIND_BY_FAMILY));
-const FAMILY_BY_KIND = new Map(REMAIN_KINDS.map((kind) => [
-  kind, SWARM_BROOD_FAMILIES.find((f) => f.remains && f.remains.kind === kind),
-]));
+const REMAIN_FAMILIES = Object.freeze(
+  [...SWARM_BROOD_FAMILIES, ...SWARM_BROOD_LATE_FAMILIES].filter((f) => f.remains),
+);
+const REMAIN_KINDS = Object.freeze(REMAIN_FAMILIES.map((f) => f.remains.kind));
+const FAMILY_BY_KIND = new Map(REMAIN_FAMILIES.map((f) => [f.remains.kind, f]));
 
 function remainEntity(kind, radius = 4) {
   const family = FAMILY_BY_KIND.get(kind);
@@ -85,7 +84,8 @@ test('every authored remain kind resolves its own distinct silhouette recipe', (
     assert.ok(!signatures.has(sig), `${kind} silhouette collides with ${signatures.get(sig)}`);
     signatures.set(sig, kind);
   }
-  assert.equal(signatures.size, REMAIN_KINDS.length, 'six kinds, six silhouettes');
+  assert.equal(signatures.size, REMAIN_KINDS.length,
+    `${REMAIN_KINDS.length} kinds, ${REMAIN_KINDS.length} silhouettes`);
   const canister = factory.build({ id: 'plain-pod', type: 'payload', radius: 4, data: {} });
   for (const sig of signatures.keys()) {
     assert.notEqual(sig, silhouetteSignature(canister), 'a remain never reads as the cargo canister');
@@ -105,6 +105,13 @@ test('the authored consequence reads off the silhouette — sac glows, glass tra
   const size = new THREE.Vector3(); box.getSize(size);
   assert.ok(size.x > size.y * 2 && size.x > size.z * 1.5,
     `the eel body is the long silhouette — a held whip (x ${size.x.toFixed(2)} vs y ${size.y.toFixed(2)}, z ${size.z.toFixed(2)})`);
+  const shell = factory.build(remainEntity('cracked_shell'));
+  assert.ok(meshes(shell).length >= 3,
+    'the cracked shell reads as the pieces it already is — it shatters');
+  const charge = factory.build(remainEntity('spent_charge'));
+  const embers = meshes(charge).filter((m) => m.material.emissiveIntensity > 0.6);
+  assert.ok(embers.length >= 1 && embers.every((m) => m.material.emissiveIntensity < 2),
+    'the spent charge carries a faint ember — it still pops, weakly, never the sac\'s hot bead');
 });
 
 test('the authored look keeps the latchable payload contract and never touches the entity', () => {

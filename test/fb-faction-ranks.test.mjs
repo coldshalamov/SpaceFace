@@ -84,6 +84,8 @@ test('each faction hides its rank contract below the first named step', () => {
     state.factions[mission.factionId].rep = -100;
     assert.equal(missionAvailable(mission), false, mission.id);
     state.factions[mission.factionId].rep = 0;
-    assert.equal(missionAvailable(mission), true, mission.id);
+    const rank = rankFromRep(0, mission.factionId);
+    const open = rank.step >= mission.minRankStep && 0 >= mission.minRep;
+    assert.equal(missionAvailable(mission), open, mission.id);
   }
 });

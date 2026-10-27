@@ -138,6 +138,7 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
   ['Shield pylons (place / link / recall)', 'deployShieldPylon', (g) => g],
   ['Chase / overhead camera', 'steeringView', (g) => g],
+  ['Restart time trial', 'raceRestart', (g) => g],
 ]);
 
 // Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
@@ -281,6 +282,7 @@ export function controlSections(state) {
       ['Local system map', null, BINDINGS.localmap.label],
       ['Tech tree', null, BINDINGS.techTree.label],
       ['Chase / overhead camera', null, BINDINGS.steeringView.label],
+      ['Restart time trial', null, BINDINGS.raceRestart.label],
       ['Mission log', null, BINDINGS.missionLog.label],
       ['Cargo hold', null, BINDINGS.cargo.label],
       ['Comms log', null, BINDINGS.comms.label],
@@ -356,6 +358,7 @@ function fixedRowCodes() {
     ['Local system map', code(BINDINGS.localmap)],
     ['Tech tree', code(BINDINGS.techTree)],
     ['Chase / overhead camera', code(BINDINGS.steeringView)],
+    ['Restart time trial', code(BINDINGS.raceRestart)],
     ['Mission log', code(BINDINGS.missionLog)],
     ['Cargo hold', code(BINDINGS.cargo)],
     ['Comms log', code(BINDINGS.comms)],

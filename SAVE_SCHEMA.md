@@ -25,6 +25,12 @@ Current save version: `22`
 - `economyContracts`
 - `factions`
 - `vergeCourt`
+- `frontier`
+- `helix`
+- `vael`
+- `meridian`
+- `archive`
+- `tallyho`
 - `environmentMaterials`
 - `reactiveMatter`
 - `spectrum`
@@ -160,6 +166,7 @@ Current save version: `22`
 | `$` | object | {} |
 | `$.aceMemory` | object | {} |
 | `$.aftermathWrecks` | object | {} |
+| `$.archive` | object | {} |
 | `$.automation` | object | {} |
 | `$.automation.accumulators` | object | {} |
 | `$.automation.accumulators.creditBuffer` | number | 0 |
@@ -279,6 +286,8 @@ Current save version: `22`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.frontier` | object | {} |
+| `$.helix` | object | {} |
 | `$.ilexArk` | null | null |
 | `$.industrialDisasters` | object | {} |
 | `$.industrialDisasters.schemaVersion` | number | 1 |
@@ -310,6 +319,7 @@ Current save version: `22`
 | `$.lossLedger` | object | {} |
 | `$.mail` | object | {} |
 | `$.mercyService` | null | null |
+| `$.meridian` | object | {} |
 | `$.meta` | object | {} |
 | `$.meta.createdAt` | string | schema-fixture |
 | `$.meta.lastSavedAt` | string | <iso8601> |
@@ -592,6 +602,7 @@ Current save version: `22`
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
+| `$.tallyho` | object | {} |
 | `$.tensionDirector` | null | null |
 | `$.towlineTable` | null | null |
 | `$.traffic` | object | {} |
@@ -600,6 +611,7 @@ Current save version: `22`
 | `$.uiScreenMemory.v` | number | 1 |
 | `$.uiWatchlist` | array | length 0 |
 | `$.v2Flavor` | object | {} |
+| `$.vael` | object | {} |
 | `$.vergeCourt` | object | {} |
 | `$.vesper` | object | {} |
 | `$.world` | object | {} |

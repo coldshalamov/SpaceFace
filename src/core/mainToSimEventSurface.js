@@ -283,6 +283,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:cycleTarget',
   'ui:endgameConfirm',
   'ui:endingArchiveOpen',
+  'ui:entityDrawer',
   'ui:globalFind',
   'ui:heliosBay7Scan',
   'ui:loadingHidden',

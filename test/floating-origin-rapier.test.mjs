@@ -70,6 +70,10 @@ test('origin rebase preserves global poses, handles, velocity, distance, and tet
     assert.equal(attachment.attachmentId, 'tether-1');
     const restLength = owner.getAttachmentTelemetry({ attachmentId: 'tether-1' }).restLength;
 
+    // The body's yaw rate carries the engine's own sign convention (the entity's angVel maps
+    // to a negated Rapier angvel.y); what the rebase must guarantee is that it does not change.
+    const yawRateBefore = recA.body.angvel().y;
+    assert.ok(Math.abs(Math.abs(yawRateBefore) - 0.2) < 1e-5, 'the entity yaw rate reaches the body');
     assert.equal(owner.setFrameOrigin(NEXT_ORIGIN, 2), true);
     assert.deepEqual(a.pos, POS_A);
     assert.deepEqual(b.pos, POS_B);
@@ -81,7 +85,7 @@ test('origin rebase preserves global poses, handles, velocity, distance, and tet
     assert.equal(owner.getAttachmentTelemetry({ attachmentId: 'tether-1' }).restLength, restLength);
     assert.deepEqual(owner.quantizedSnapshot(), snapshot);
     assert.ok(Math.abs(recA.body.linvel().x - 11) < 1e-5);
-    assert.ok(Math.abs(recA.body.angvel().y - 0.2) < 1e-5);
+    assert.ok(Math.abs(recA.body.angvel().y - yawRateBefore) < 1e-9, 'the rebase leaves the yaw rate untouched');
     assert.equal(owner.setFrameOrigin(NEXT_ORIGIN, 2), false);
   } finally { owner.dispose(); }
 });

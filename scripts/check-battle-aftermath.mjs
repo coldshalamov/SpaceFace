@@ -106,8 +106,13 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
   assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 3,
     'three zone kills record three aftermath markers');
   assert.equal(t.log.recorded.length, 3, 'each marker emits a recorded receipt');
-  assert.equal(t.log.news.length, 3, 'each marker emits a station-news headline event');
-  assert.match(t.log.news[0].headline, /Sker-Run Ambush|wreckage/i,
+  // LAW-08: a player pirate kill owns lawSecurity's witness-gated rescue headline instead —
+  // unwitnessed kills publish nothing, so the generic residue line must not invent a witness.
+  assert.equal(t.log.news.length, 0, 'player pirate kills defer headlines to lawSecurity');
+
+  emitKill(t, 99, { killerId: 42 });
+  assert.equal(t.log.news.length, 1, 'a witnessed non-player kill still emits the residue headline');
+  assert.match(t.log.news[0].headline, /wreckage|Aftermath reported/i,
     'headline names the authored zone or aftermath');
 
   // 77786438c reversed the evanescent contract deliberately: a kill outside a named zone now
@@ -121,7 +126,7 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     victimClass: 'out_of_zone',
   });
   const withOpenSpace = aftermathForSector(t.state, 'sector_pallas_drift');
-  assert.equal(withOpenSpace.length, 4,
+  assert.equal(withOpenSpace.length, 5,
     'a kill outside named zones now records a zone-less marker');
   const openSpace = withOpenSpace.find((marker) => marker && marker.victimId === 99999);
   assert.ok(openSpace, 'the open-space kill records its own marker');
@@ -135,7 +140,7 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     pos: sectorLocalToGlobalForSector({ x: 1420, z: 760 }, 'sector_pallas_drift'),
     victimClass: 'player_ship',
   });
-  assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 4,
+  assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 5,
     'player death does not create a salvage marker');
 
   for (let i = 3; i < 12; i++) emitKill(t, i);

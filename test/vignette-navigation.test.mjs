@@ -193,7 +193,10 @@ test('moving-point speed allowance leaves ordinary intercept caps and obstacle b
   const directive = { squadId: 'point', formation: { slot: { x: 500, z: 0 }, bound: 170 } };
   const maneuver = { kind: 'intercept', targetId: null, breakFormation: true,
     formationSlot: { x: 500, z: 0 }, formationVelocity: { x: 88, z: 0 } };
-  const plan = (reason, contacts = []) => new ManeuverPlanner({ seed: 2011 }).plan({
+  // Isolate the moving-frame allowance from later authored enemy-cruise tuning:
+  // this hull is above its explicit stationary budget, below the 88-WU/s waypoint allowance.
+  const plan = (reason, contacts = []) => new ManeuverPlanner({ seed: 2011,
+    config: { interceptSpeed: 72 } }).plan({
     entityId: 2, tick: 1, perception: { ...perception, contacts }, directive,
     behavior: { maneuver: { ...maneuver, reason } },
   });

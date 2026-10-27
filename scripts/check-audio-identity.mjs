@@ -422,6 +422,11 @@ const EMITTED_CUES = {
   sfx_capital_predetonation: { distinct: true },
   sfx_ruud_tick: { distinct: true }, sfx_ruud_hiss: { distinct: true },
   sfx_vent_chime: { distinct: true },
+  // Discovery plate note (bellhop hail + rigWorkshop signature + trailer beats) and the travel
+  // interdiction cue (environmentalMachinery blackout; also the presentation.travel.interdiction
+  // recipe target) — each is its own authored recipe played by literal id.
+  sfx_discovery_plate_note: { distinct: true },
+  sfx_travel_interdiction: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

@@ -211,11 +211,30 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     // keep the numeric readout on screen when the thumb lands near a side edge
     const half = 92, centre = clamp(p.ox, half + 6, w - half - 6);
     stickUI.root.style.setProperty('--mf-shift', `${centre - p.ox}px`);
-    // the numeric readout goes where there is room: under the ring unless that would run off the bottom
-    const keys = q('.mf-buttons')?.getBoundingClientRect?.();
-    const under = { l: p.ox - 90, r: p.ox + 90, t: p.oy + p.radius * 1.62, b: p.oy + p.radius * 1.62 + 58 };
-    const hitsKeys = !!keys && under.r > keys.left && under.l < keys.right && under.b > keys.top && under.t < keys.bottom;
-    stickUI.root.dataset.side = under.b > h || hitsKeys ? 'above' : 'below';
+    // The readout sits on whichever side of the ring collides less: under it by default, above when
+    // the way down is blocked — scored against the key cluster and every HUD block it would print
+    // through (the travel tape, the contextual stack, alerts, receipts, the cadence card), and
+    // against the frame itself. Ties fall to 'below', the reading's resting place.
+    const drop = p.radius * 1.62, readH = 60;
+    const sides = {
+      below: { l: centre - half, r: centre + half, t: p.oy + drop + 6, b: p.oy + drop + 6 + readH },
+      above: { l: centre - half, r: centre + half, b: p.oy - drop - 24, t: p.oy - drop - 24 - readH },
+    };
+    const obstacles = [q('.mf-buttons'), q('.mf-dock')];
+    for (const sel of ['#hud .sf-leftcontext', '#hud .sf-vtape', '#hud .sf-tells', '#alerts', '#toasts', '.ml2-cadence-slot']) {
+      // Optional call: a minimal document double (the lifecycle tests) has no querySelectorAll.
+      for (const el of doc.querySelectorAll?.(sel) || []) obstacles.push(el);
+    }
+    const blocked = (rect, el) => {
+      const b = el?.getBoundingClientRect?.();
+      if (!b || ![b.left, b.top, b.right, b.bottom].every(Number.isFinite) || b.width <= 0 || b.height <= 0) return 0;
+      const w2 = Math.min(rect.r, b.right) - Math.max(rect.l, b.left);
+      const h2 = Math.min(rect.b, b.bottom) - Math.max(rect.t, b.top);
+      return w2 > 0 && h2 > 0 ? w2 * h2 : 0;
+    };
+    const cost = rect => (rect.t < 0 || rect.b > h ? 1e9
+      : obstacles.reduce((sum, el) => sum + blocked(rect, el), 0));
+    stickUI.root.dataset.side = cost(sides.above) < cost(sides.below) ? 'above' : 'below';
   }
   function pointerDown(e) {
     if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
@@ -379,7 +398,9 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
       if (p.boost && !lastBoost) haptic();
       lastBoost = p.boost;
     } else { lastBoost = false; if (!stickUI.leaving) stickUI.hide(); }
-    ghost.hidden = taught || !!p || !wheel.root.hidden;
+    // the first-run ghost stands down for the stick, the wheel, and the tether reel (their
+    // furniture shares the bottom-left lane); the model's live hold, not last frame's reel flag
+    ghost.hidden = taught || !!p || !wheel.root.hidden || model.held('tether');
     setIf(gunKey, 'held', model.held('fire') ? '1' : '0');
     setIf(tetherKey, 'held', model.held('tether') ? '1' : '0');
     setIf(tetherKey, 'latched', state.player?.tether?.active ? '1' : '0');

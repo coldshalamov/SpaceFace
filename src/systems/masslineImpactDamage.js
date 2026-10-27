@@ -12,20 +12,30 @@
 //
 // Both route through the combat kernel like every other damage source (never direct hull writes)
 // and are attributed to the player (the fling caused it). combat.js itself is untouched.
+//
+// ROW 482 (ROCK-GUN, build_map §33.1) — "the rock is the gun": these are the impact-payoff
+// coefficients on the player's own thrown bodies. Every scale here reads the SAME momentum /
+// impulse input the victim-side packets read (mass × relative speed), so the club half and the
+// victim half of one impact stay proportionate; the club deliberately pays MORE than the struck
+// hull (being ammunition hurts). The tuning rewards multi-kill packing: a caught hull swung
+// through a pack survives several committed contacts (the recoil per contact is bounded by
+// RECOIL_DAMAGE_MAX), so one throw can sweep multiple packmates before the club breaks.
+// BEFORE the 2026-10-23 guns-nudge retune: MOMENTUM_DAMAGE_SCALE 1/250, TUMBLE_DAMAGE_SCALE
+// 1/60, TUMBLE_IMPACT_MIN_DP 400 (a flung Wasp at 100 WU/s chipped itself for ~4 — noise next
+// to the gun grind the retune removes). Pinned by test/zc-a34-guns-nudge.test.mjs.
 import { massline2Flag } from '../data/featureFlags.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isMasslineTumbling } from '../combat/tumbleStatus.js';
 import { isHostileToPlayer } from './scanner.js';
 
-// Mirror the whip-damage scaling (combat.js) so the two halves of one impact stay proportionate.
-const MOMENTUM_DAMAGE_SCALE = 1 / 250;
-const WHIP_RECOIL_FRACTION = 0.65;   // thrown ship's share of the damage its impact dealt
-const RECOIL_DAMAGE_MAX = 300;
-const TUMBLE_IMPACT_MIN_DP = 400;    // physics:impact dp floor before a tumble contact hurts
-const TUMBLE_DAMAGE_SCALE = 1 / 60;  // dp -> damage (dp is impulse x material impactScale)
-const TUMBLE_DAMAGE_MAX = 300;
-const MONOFILAMENT_DAMAGE_SCALE = 1 / 1600;
-const MONOFILAMENT_DAMAGE_MAX = 35;
+export const MOMENTUM_DAMAGE_SCALE = 1 / 100;   // momentum -> recoil damage on the thrown body
+export const WHIP_RECOIL_FRACTION = 0.65;       // thrown ship's share of the damage its impact dealt
+export const RECOIL_DAMAGE_MAX = 300;
+export const TUMBLE_IMPACT_MIN_DP = 300;        // physics:impact dp floor before a tumble contact hurts
+export const TUMBLE_DAMAGE_SCALE = 1 / 40;      // dp -> damage (dp is impulse x material impactScale)
+export const TUMBLE_DAMAGE_MAX = 300;
+export const MONOFILAMENT_DAMAGE_SCALE = 1 / 1600;
+export const MONOFILAMENT_DAMAGE_MAX = 35;
 const DAMAGEABLE = new Set(['ship', 'drone']);
 
 const _kineticHitPos = { x: 0, z: 0 };

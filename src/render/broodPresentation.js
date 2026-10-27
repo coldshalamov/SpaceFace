@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { SWARM_BROOD_FAMILIES, BROOD_SPITTER_SPLASH_RADIUS, BROOD_SPITTER_POOL_RADIUS,
   BROOD_CHARGER_DASH_SPEED, BROOD_CHARGER_DASH_MAX_S,
   TENDRIL_SEG_MAX, TENDRIL_SEG_RADIUS } from '../data/swarmBrood.js';
-import { SWARM_BROOD_LATE_FAMILIES } from '../data/swarmBroodLate.js';
+import { SWARM_BROOD_LATE_FAMILIES, SWARM_BROOD_STRAINS } from '../data/swarmBroodLate.js';
 import { circleHitRadius, corridorHalfWidth, dashReach } from '../combat/telegraphFootprint.js';
 
 const DRAW_FAMILIES = SWARM_BROOD_FAMILIES.concat(SWARM_BROOD_LATE_FAMILIES);
@@ -266,6 +266,11 @@ export function createBroodPresentation(scene, capacity = 400) {
   const FAMILY_COLORS = DRAW_FAMILIES.map((def) => color.clone().setRGB(
     def.bodyColor[0], def.bodyColor[1], def.bodyColor[2],
   ));
+  // The strain marks: byte index → the strain's authored tint (swarmBroodLate.js). A marked
+  // body burns pale-hot over its family's recipe — the cooked flesh reads before it pops.
+  const STRAIN_TINTS = SWARM_BROOD_STRAINS.map((strain) => color.clone().setRGB(
+    strain.tint[0], strain.tint[1], strain.tint[2],
+  ));
 
   function dispose() {
     for (const m of [mesh, rings, pools, lines, lanes, lobs, segs]) {
@@ -324,6 +329,10 @@ export function createBroodPresentation(scene, capacity = 400) {
         if (drawn && (drawn.splits || drawn.births) && Array.isArray(drawn.bodyEmissive)) {
           splitTint.setRGB(drawn.bodyEmissive[0], drawn.bodyEmissive[1], drawn.bodyEmissive[2]);
           color.lerp(splitTint, drawn.births ? 0.55 : 0.45);
+        }
+        if (view.affix && view.affix[i] > 0) {
+          const markTint = STRAIN_TINTS[view.affix[i] - 1];
+          if (markTint) color.lerp(markTint, 0.72);
         }
         mesh.setColorAt(written, color);
         // The charger's line telegraph: one stretched marker per winding pass.

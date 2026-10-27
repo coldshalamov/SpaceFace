@@ -1223,14 +1223,14 @@ function loadingDetailForStage(stageOrId) {
   const stage = stageOrId && typeof stageOrId === 'object' ? stageOrId : null;
   if (stage && typeof stage.detail === 'string' && stage.detail) return stage.detail;
   const stageId = stage ? stage.id : stageOrId;
-  if (stageId === 'preparing-run') return 'Creating the pilot, ship, and starting sector';
-  if (stageId === 'authored-library') return 'Loading only what the opening scene needs';
-  if (stageId === 'authored-visuals') return 'Placing ships and stations before you arrive';
-  if (stageId === 'render-pipelines') return 'Warming up so the opening runs smooth';
-  if (stageId === 'gpu-resources') return 'Loading the opening stretch smoothly';
-  if (stageId === 'physics-authority') return 'Waking the flight dynamics';
-  if (stageId === 'entering-flight') return 'Final checks before handover';
-  return 'Preparing the flight';
+  if (stageId === 'preparing-run') return 'Initializing pilot profile and sector data';
+  if (stageId === 'authored-library') return 'Loading sector assets';
+  if (stageId === 'authored-visuals') return 'Populating ships and stations';
+  if (stageId === 'render-pipelines') return 'Compiling shaders and render pipelines';
+  if (stageId === 'gpu-resources') return 'Uploading graphics resources';
+  if (stageId === 'physics-authority') return 'Initializing flight physics';
+  if (stageId === 'entering-flight') return 'Final system checks';
+  return 'Preparing flight systems';
 }
 
 // D35/D36: rAF can starve entirely on an occluded or compositor-blocked host while timers keep

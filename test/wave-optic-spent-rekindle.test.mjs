@@ -7,6 +7,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { world as worldSystem } from '../src/systems/world.js';
 import {
+  OPTIC_LATTICE_SPACING,
   OPTIC_MATERIALS,
   OPTIC_SPEND_QUIET,
   collectOpticSpentIds,
@@ -52,7 +53,7 @@ function bootWorld(seed = 42) {
  * (world.update → tickOpticFieldRocks). Park the player on a shelved cell and drive the
  * same per-tick call the real loop makes.
  */
-function promoteGallery(state, world) {
+function promoteGallery(state, world, { dx = 32, dz = 32, ticks = 3 } = {}) {
   const rec = ((state.world.asteroidField && state.world.asteroidField.rocks) || []).find(
     (r) => r && r.data && r.data.opticStructureId === CERES_PRISM_GALLERY_ID && r.pos,
   );
@@ -60,9 +61,9 @@ function promoteGallery(state, world) {
   const player = state.entities.get(state.playerId);
   // Half a spacing step off the cell: inside the decode disc but not dead-centre on a lattice
   // cell, where the admit-overlap guard would keep that one body shelved.
-  player.pos.x = rec.pos.x + 32;
-  player.pos.z = rec.pos.z + 32;
-  for (let i = 0; i < 3; i++) {
+  player.pos.x = rec.pos.x + dx;
+  player.pos.z = rec.pos.z + dz;
+  for (let i = 0; i < ticks; i++) {
     state.tick = (state.tick | 0) + 1;
     state.simTime = (state.simTime || 0) + 1 / 60;
     tickOpticFieldRocks(state, world.helpers);
@@ -225,7 +226,9 @@ test('a contact past the window rekindles lazily — the bolt meets live crystal
 test('the quiet window rides the world save — dark mid-cooldown, healed while closed', () => {
   const { state, world } = bootWorld(42);
   world.enterSector('sector_ceres_belt');
-  promoteGallery(state, world);
+  // Park beside the authored murder field — the decode disc promotes only the cells near the
+  // player, and the field cells sit ~400 WU east of the gallery stamp.
+  promoteGallery(state, world, { dx: 7 * OPTIC_LATTICE_SPACING, dz: 0, ticks: 12 });
   const gallery = state.entityList.filter(
     (e) => e.alive && e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID,
   );
@@ -254,7 +257,7 @@ test('the quiet window rides the world save — dark mid-cooldown, healed while 
   mid.state.simTime = 20; // saveSystem restores the saved clock before enterSector
   mid.world.deserialize(saved);
   mid.world.enterSector('sector_ceres_belt');
-  promoteGallery(mid.state, mid.world);
+  promoteGallery(mid.state, mid.world, { dx: 7 * OPTIC_LATTICE_SPACING, dz: 0, ticks: 12 });
   const midCells = new Map(
     mid.state.entityList
       .filter((e) => e.alive && e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID)
@@ -273,7 +276,7 @@ test('the quiet window rides the world save — dark mid-cooldown, healed while 
   late.state.simTime = 5 + OPTIC_SPEND_QUIET + 30;
   late.world.deserialize(saved);
   late.world.enterSector('sector_ceres_belt');
-  promoteGallery(late.state, late.world);
+  promoteGallery(late.state, late.world, { dx: 7 * OPTIC_LATTICE_SPACING, dz: 0, ticks: 12 });
   const lateCells = new Map(
     late.state.entityList
       .filter((e) => e.alive && e.data && e.data.opticStructureId === CERES_PRISM_GALLERY_ID)

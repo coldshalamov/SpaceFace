@@ -38,35 +38,55 @@ function environmentError(quote) {
 }
 
 /**
- * The terminal startup pane's own cause, when the game has already stopped trying.
+ * The terminal startup surface's own cause, when the game has already stopped trying.
  *
- * `failGameStart` retires the opening paint hold and presents a public Retry / Back to menu pane
- * inside #boot-overlay. That pane is a definitive route failure - the running game decided the
- * launch cannot finish - but a reader that only matches known load sentences keeps polling for the
- * whole timeout and then reports a generic timeout, hiding the cause the player is looking at.
+ * Two owners present a terminal startup failure, and both must be read or the route keeps polling
+ * for its whole timeout and reports a generic timeout over a cause the player can see:
+ *  - `failGameStart` / loadingPresenter retire the opening paint hold and put a public Retry /
+ *    Back to menu pane inside #boot-overlay, marked `data-startup-failure="true"` on the pane.
+ *  - the boot shell's failed import marks #boot-overlay itself `data-startup-failure="failed"`
+ *    and writes the module error into the loading label/detail ("Reload to retry. ... (The
+ *    requested module ... does not provide an export named ...)"). `retrying` is that shell
+ *    scheduling one reload, not a terminal state, so it is left to the reload.
  *
- * The pane stays in the DOM after a retry/back, so only a VISIBLE pane on a VISIBLE overlay counts;
- * a stale node under a hidden overlay is not a failure.
+ * The surfaces stay in the DOM after a retry/back, so only a VISIBLE one on a VISIBLE overlay
+ * counts; a stale node under a hidden overlay is not a failure.
  */
 export async function readStartupFailure(page) {
   const facts = await page.evaluate(() => {
     const overlay = document.getElementById('boot-overlay');
-    const pane = overlay && overlay.querySelector('[data-startup-failure="true"]');
-    if (!pane) return { found: false };
+    if (!overlay) return { found: false };
+    const pane = overlay.querySelector('[data-startup-failure="true"]');
+    const bootShell = !pane && overlay.getAttribute('data-startup-failure') === 'failed';
+    if (!pane && !bootShell) return { found: false };
     const overlayStyle = getComputedStyle(overlay);
-    const paneStyle = getComputedStyle(pane);
-    const line = (sel) => String((pane.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+    const node = pane || overlay;
+    const nodeStyle = getComputedStyle(node);
+    const line = (sel) => String((node.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+    const overlayVisible = overlayStyle.display !== 'none' && overlayStyle.visibility !== 'hidden'
+      && Number(overlayStyle.opacity) >= 0.05;
+    if (pane) {
+      return {
+        found: true,
+        overlayVisible,
+        paneVisible: nodeStyle.display !== 'none' && nodeStyle.visibility !== 'hidden'
+          && node.getClientRects().length > 0,
+        stage: String(pane.getAttribute('data-startup-stage') || ''),
+        code: String((pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
+        headline: line('.sf-state__head'),
+        detail: line('.sf-state__detail'),
+        text: String(pane.innerText || ''),
+      };
+    }
     return {
       found: true,
-      overlayVisible: overlayStyle.display !== 'none' && overlayStyle.visibility !== 'hidden'
-        && Number(overlayStyle.opacity) >= 0.05,
-      paneVisible: paneStyle.display !== 'none' && paneStyle.visibility !== 'hidden'
-        && pane.getClientRects().length > 0,
-      stage: String(pane.getAttribute('data-startup-stage') || ''),
-      code: String((pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
-      headline: line('.sf-state__head'),
-      detail: line('.sf-state__detail'),
-      text: String(pane.innerText || ''),
+      overlayVisible,
+      paneVisible: overlayVisible && node.getClientRects().length > 0,
+      stage: 'boot import',
+      code: 'BOOT_IMPORT',
+      headline: line('[data-loading-label]'),
+      detail: line('[data-loading-detail]'),
+      text: String(overlay.innerText || ''),
     };
   }).catch(() => ({ found: false }));
   return startupFailureQuote(facts);

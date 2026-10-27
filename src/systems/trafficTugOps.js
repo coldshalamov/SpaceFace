@@ -6,6 +6,7 @@ import { makeShipEntitySpec } from './ships.js';
 import { forEachJobInteractable } from '../world/livingWorldViews.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { NPC_JOB_PHASE } from './npcJobs.js';
+import { CHARON_SUPPLY } from '../world/charonSupplyReadout.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE, MAX_GENERAL_SALVORS_PER_SECTOR, MAX_YARD_TUGS_PER_SECTOR, PINNED_BODY_MASS, TOWABLE_BODY_MIN_RADIUS_WU, TRAFFIC_ROLES, YARD_TUG_LOT, factionHullFor, stationIdentity } from './traffic.js';
 
 export const trafficTugOps = {
@@ -407,8 +408,12 @@ export const trafficTugOps = {
     for (const rec of this.state.traffic.freighters || []) {
       if (!rec || rec.role !== 'salvor') continue;
       const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+      // Authored activity casts own their choreography — the generic retarget must not
+      // hijack their work legs. The Charon supply salvor is the one sanctioned exception:
+      // its job is real salvage work whose work leg the finite-supply feature retargets
+      // (charonSupplyReadout/originalJob's allowSalvageRetarget blesses that exact mutation).
       if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true
-        || ent.data.activityActorSlotId) continue;
+        || (ent.data.activityActorSlotId && ent.data.activityActorSlotId !== CHARON_SUPPLY.salvor)) continue;
       const entry = getJob(ent.data.jobId);
       const job = entry && entry.job;
       if (!job || job.corrupt) {

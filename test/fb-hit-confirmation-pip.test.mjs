@@ -32,6 +32,9 @@ function stubEl(tag) {
     get textContent() { return this._text !== undefined ? this._text : this.children.map((c) => c.textContent).join(''); },
     set textContent(v) { this.children.length = 0; this._text = v; },
     appendChild(child) { this.children.push(child); child.parent = this; return child; },
+    setAttribute(name, value) { (this._attrs || (this._attrs = {}))[name] = String(value); },
+    getAttribute(name) { return this._attrs ? this._attrs[name] ?? null : null; },
+    removeAttribute(name) { if (this._attrs) delete this._attrs[name]; },
   };
 }
 const elementsById = new Map();

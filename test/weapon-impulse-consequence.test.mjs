@@ -425,9 +425,20 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   const second = readTumbleStatus(state, victim);
   const until2 = second.data.until;
   assert.ok(until2 >= until1 - 1e-9, 'a second hit must never shorten the existing until');
+  // SFQ-B036 (89ffc4edfa): a chained hit keeps decayPerChain^n of the base duration, so the
+  // retrigger window is now + the CHAINED duration — the retrigger still never shortens the
+  // existing until (max). The old full-T expectation here predates the chain law.
+  const chained = resolveHitstunLaw({
+    deltaV: 0.30 * cruise,
+    victimCruise: cruise,
+    attackerMass: 18,
+    victimMass: 16,
+    shove: isShoveClassHitstunSource('gun'),
+    chainCount: 1,
+  });
   assert.ok(
-    Math.abs(until2 - (state.simTime + law.durationS)) < 1e-6,
-    'until = max(existing, now+T)',
+    Math.abs(until2 - Math.max(until1, state.simTime + chained.durationS)) < 1e-6,
+    'until = max(existing, now + chained-T)',
   );
   assert.equal(tumbled.length, 2, 'retrigger emits a second combat:tumbled');
   assert.equal(tumbled[1].startedAt, startedAt, 'retrigger preserves original startedAt');

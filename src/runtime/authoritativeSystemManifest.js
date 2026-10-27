@@ -131,7 +131,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger', 'recoveryEncounter',
   'factions',
   // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
@@ -356,6 +356,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'receipt',
   // row 506 MOP: the clean-up patrol is a seconds-scale census.
   'mop',
+  // row 506 TALLYHO: the hunt board's quarry/rival census is a seconds-scale read;
+  // the event pump covers spawn/kill bursts, the tick covers expiry and steering.
+  'tallyho',
   // row 506 TARE: the scale deck census reads settled bodies on the 2 Hz pass.
   'tare',
   // row 506 LAMPLIGHTER: the arm ring and stock census is a seconds-scale read.

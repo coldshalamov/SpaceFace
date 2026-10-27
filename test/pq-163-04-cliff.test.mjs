@@ -350,6 +350,16 @@ function driveMissingThree(h) {
   const st = h.state;
   const three = st.onboarding.missingThree;
   assert.ok(three, 'the missing-three rail must be staged by the opening');
+  // The rail speaks one verb at a time: a beat's next leg only stages after ≥SILENCE_S of text
+  // silence, and a field deploy only counts when its beat is the live one — exactly what a real
+  // pilot hears ("Drop the plow…") before plowing. Wait for the beat to go live, then use the verb.
+  const waitForBeat = (key) => {
+    for (let i = 0; i < 12 && three.current !== key; i++) {
+      advanceTime(h);
+      tick(h);
+    }
+    assert.equal(three.current, key, `the ${key} beat must stage inside its silence window`);
+  };
 
   // boost — the same live verb the flight model raises.
   st.input.boost = true;
@@ -364,19 +374,22 @@ function driveMissingThree(h) {
   assert.equal(three.beats.stroke.state, 'done', 'stroke must complete on the live draw-to-fly path');
   st.input.autoTargetPath = { active: false, drawing: false, points: [] };
 
-  // well — the field deployment the fields owner emits.
+  // well — the field deployment the fields owner emits, once the well lesson is the live beat.
+  waitForBeat('well');
   h.bus.emit('fields:deployed', { kind: 'well', atS: st.simTime });
   advanceTime(h);
   tick(h);
   assert.equal(three.beats.well.state, 'done', 'well must complete on the live fields:deployed signal');
 
-  // repulsor — a player-owned field deploy.
+  // repulsor — a player-owned field deploy, once the shove lesson is the live beat.
+  waitForBeat('repulsor');
   h.bus.emit('fields:deployed', { kind: 'repulsor', sourceId: st.playerId, atS: st.simTime });
   advanceTime(h);
   tick(h);
   assert.equal(three.beats.repulsor.state, 'done', 'repulsor must complete on the live fields:deployed signal');
 
   // cone — the fields owner's own toggle emit (no sourceId on the player path).
+  waitForBeat('cone');
   h.bus.emit('fields:coneToggled', { active: true, fieldId: 'field_cone_test' });
   advanceTime(h);
   tick(h);
@@ -455,27 +468,28 @@ function playSessionTwo(seed, savedStory) {
     'session 2 (Continue) must not restage the tutorial rail');
 
   const board = h.missions.ensureBoard(STATION_HELIOS);
-  const offer = board.slots.find((row) => row && row.storyTag === 'campaign47a:b1:honest_work');
-  assert.ok(offer, 'session 2 must post the beat-1 contract on the Helios board');
+  const offer = board.slots.find((row) => row && row.storyTag === 'campaign47a:b1:alloy_run');
+  assert.ok(offer, 'session 2 must post the beat-1 alloy run on the Helios board');
   const kind = classifyBeatOne(offer);
+  const authored = !!(offer.params && offer.params.bookScene);
 
   // The scripted session-2 player accepts the beat-1 work and stays with it for the horizon.
   const accepted = h.missions.acceptMission(offer.id);
   assert.equal(accepted, true, 'the beat-1 contract must be acceptable');
-  const active = state.missions.active.find((m) => m && m.storyTag === 'campaign47a:b1:honest_work');
+  const active = state.missions.active.find((m) => m && m.storyTag === 'campaign47a:b1:alloy_run');
   assert.ok(active, 'the accepted beat-1 contract is live');
 
-  // The discriminator that makes "still in the beat" non-trivial: a generic fly-there completion —
-  // the shape that would finish an errand — cannot settle a physical set piece. The beat survives
-  // the shortcut and the player is still in it. (B1–B3 only advance through the authored physical
-  // contract, src/systems/missions.js _advanceEmbodiedStoryMission.)
+  // The discriminator that makes "still in the beat" non-trivial: a bare generic completion — the
+  // shape that would finish a fly-there errand — cannot settle an authored book leg. The beat
+  // survives the shortcut and the player is still in it. (B1–B3 only advance through the authored
+  // contract's own method receipts, src/systems/missions.js _advanceEmbodiedStoryMission.)
   h.bus.emit('mission:completed', {
     missionId: active.id,
     storyTag: active.storyTag,
     source: 'test-generic-shortcut',
   });
   assert.equal(state.story.beatIndex, SESSION2_BEAT,
-    'a bare generic completion must not settle the physical set piece');
+    'a bare generic completion must not settle the authored beat-1 leg');
 
   const dt = 0.25;
   const ticks = Math.round(RETENTION_HORIZON_S / dt);
@@ -486,10 +500,11 @@ function playSessionTwo(seed, savedStory) {
   }
 
   const stillInBeat = state.story.beatIndex === SESSION2_BEAT;
-  const retained = stillInBeat && !quitToMenu && kind === 'set_piece';
+  const retained = stillInBeat && !quitToMenu && authored;
   return {
     seed,
     kind,
+    authored,
     type: offer.type,
     physicalVerb: offer.params && offer.params.physicalVerb,
     methods: offer.params && offer.params.completionMethods,
@@ -526,23 +541,27 @@ test('the PQ-152 classifier calls a fly-there fetch an errand and the wrecking b
   assert.equal(classifyBeatOne(null), 'errand');
 });
 
-// ── Contract: beat 1 data is the PQ-152 spine entry ───────────────────────────────────────
-test('story beat 1 is authored as a named physical problem, not a fetch', () => {
+// ── Contract: beat 1 data is the authored three-leg book ───────────────────────────────────
+// W-BOOKS-0-2 moved "Honest Work" off the single wrecking-ball placeholder onto the scripted
+// Book-1 list — sealed alloy run, Scale 4 weigh, infested hauler furnace detail. The named
+// physical problem with two authored solutions survives on beat 3's variance tow (long_tow).
+test('story beat 1 is the authored three-leg book, and the two-solution set piece lives on beat 3', () => {
   const beat = STORY_BEATS[SESSION2_BEAT];
   assert.ok(beat, 'beat 1 exists');
   assert.equal(beat.id, 'honest_work');
-  assert.equal(beat.headlineVerb, 'knock');
-  assert.equal(beat.setPiece, 'wrecking-ball contract');
-  assert.equal(beat.authoredSetPieceId, 'wrecking_ball');
-  assert.match(beat.objective, /^Knock\b/, 'the beat-1 objective leads with its physical verb');
-  const authored = authoredSetPieceById(beat.authoredSetPieceId);
-  assert.ok(authored, 'the beat-1 authored set piece is live');
-  assert.equal(authored.methods.length, 2, 'the wrecking ball has two solutions');
+  assert.equal(beat.headlineVerb, 'weigh');
+  assert.equal(beat.setPiece, 'alloy run + Scale 4 + infested hauler furnace detail');
+  const b3 = STORY_BEATS[3];
+  assert.equal(b3.physicalType, 'tow_recovery', 'beat 3 keeps the physical contract type');
+  assert.equal(b3.authoredSetPieceId, 'long_tow', 'beat 3 keeps the authored set piece');
+  const authored = authoredSetPieceById(b3.authoredSetPieceId);
+  assert.ok(authored, 'the beat-3 authored set piece is live');
+  assert.equal(authored.methods.length, 2, 'the long tow keeps two solutions');
   assert.equal(STORY_BEATS[0].id, 'cold_start', 'beat 0 is the 47-A cold open');
 });
 
 // ── The leaf scenario: opening → 47-A → session 2 → classify → measure ─────────────────────
-test('session 2 after 47-A opens on a set piece and holds the beat at T+180s', () => {
+test('session 2 after 47-A opens on the authored beat-1 work and holds the beat at T+180s', () => {
   const s1 = playSessionOne(SEED);
   assert.deepEqual(s1.rail.missingThreeOrder, ['boost', 'stroke', 'well', 'repulsor', 'cone'], 'the leftover rail teaches the five');
   assert.equal(s1.story.beatIndex, 1, 'session 1 hands off on beat 1');
@@ -554,7 +573,7 @@ test('session 2 after 47-A opens on a set piece and holds the beat at T+180s', (
   console.log(`SESSION2_BEAT1_IN_BEAT_AT_${RETENTION_HORIZON_S}S=${s2.stillInBeat}`);
   console.log(`SESSION2_QUIT_TO_MENU=${s2.quitToMenu}`);
 
-  assert.equal(s2.kind, 'set_piece', 'beat 1 after 47-A must be a set piece, never an errand');
+  assert.equal(s2.authored, true, 'beat 1 after 47-A must offer authored book work, not a bare fetch');
   assert.equal(s2.stillInBeat, true, `the player is still in beat 1 at T+${RETENTION_HORIZON_S}s`);
   assert.equal(s2.quitToMenu, false, 'no quit-to-menu intent in the session-2 horizon');
   assert.equal(RESCUE_PROOF_SEED, 47, 'the shared rescue proof seed stays 47');
@@ -577,8 +596,8 @@ test('session-2 retention proxy over the seeded cohort', () => {
   for (const row of rows) {
     console.log(`  seed ${row.seed}: kind=${row.kind} in_beat=${row.stillInBeat} quit=${row.quitToMenu}`);
   }
-  assert.ok(rows.every((row) => row.kind === 'set_piece'),
-    'every seeded session-2 boot must open beat 1 as a set piece');
+  assert.ok(rows.every((row) => row.authored),
+    'every seeded session-2 boot must open beat 1 on authored book work');
   assert.ok(rows.every((row) => row.stillInBeat && !row.quitToMenu),
     'every seeded session-2 boot must hold the beat to T+180s without a quit-to-menu');
   assert.ok(rate >= RETENTION_TARGET,

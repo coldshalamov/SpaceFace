@@ -39,7 +39,10 @@ test('fresh Crucible starts with a readable gun, bank-shot rig and escape tool',
   assert.ok(!kit.loadout.some((slot) => slot.defId === 'wpn_railgun_m'));
   const pulse = WEAPONS.find((w) => w.id === 'wpn_pulse_laser_s');
   assert.ok(pulse.dmg > 0 && pulse.rof > 0, 'Pulse stays a readable starter gun');
-  assert.equal(pulse.dmg, 8);
+  // ROW 482 (ROCK-GUN, build_map §33.1) guns-nudge retune 2026-10-23: starter payload
+  // 8 -> 5 (dps 44 -> 27.5) — the gun is the nudge/finisher, committed thrown mass is the
+  // killer. Cadence, impulse and heat are untouched. Pinned by test/zc-a34-guns-nudge.test.mjs.
+  assert.equal(pulse.dmg, 5);
   assert.equal(pulse.rof, 5.5);
   assert.equal(pulse.impulsePerHit, 84, 'B4 starter 5% cruise impulse is intact');
   assert.equal(pulse.heatPerShot, 8, 'kit-balance vent lever; not a deleted gun');

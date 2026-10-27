@@ -63,7 +63,9 @@ import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { createVisualArmory } from '../orrery/crucibleArmory.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
+import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
 
 /**
  * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
@@ -220,31 +222,6 @@ function fittingName(defId) {
 const SLOT_WORD = Object.freeze({
   weapon: 'Weapon', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
 });
-
-/**
- * The rail's compact voice: at 1500px and under the verb column holds short words, so long verbs
- * abbreviate by dictionary instead of mid-word ellipsis. Verbs of six letters or fewer ("Screen",
- * "Volume") still fit and stay whole; the card's aria-label keeps the full verb either way.
- */
-const RAIL_VERB_SHORT = Object.freeze({
-  SIDEARM: 'SID', CHARGES: 'CHG', SCRAMBLE: 'SRM', UNSTEER: 'UNS', SUSTAIN: 'SUS', CADENCE: 'CAD',
-});
-
-function railCompact() {
-  try {
-    return typeof matchMedia === 'function' && matchMedia('(max-width: 1500px)').matches;
-  } catch {
-    return false;
-  }
-}
-
-function railVerbDisplay(verb, compact) {
-  const full = String(verb || '');
-  if (!compact || full.length < 7) return full;
-  const known = RAIL_VERB_SHORT[full.toUpperCase()];
-  if (known) return known;
-  return full.slice(0, 3).toUpperCase();
-}
 
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
@@ -1045,6 +1022,9 @@ export const crucibleDraftScreen = {
       ? ctx.bus.on('run:draftOffered', () => { if (this._ctx) this.refresh(this._ctx); })
       : null;
     this.refresh(ctx);
+    // The door unit's composition sheet lands last in the mount so it wins the cascade against
+    // the armory sheet (crucible-doorLayouts.js documents what it carries).
+    injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     rootEl.dataset.kReady = '1';
   },
 
@@ -1734,7 +1714,12 @@ export const crucibleDraftScreen = {
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
     head.appendChild(key);
-    head.appendChild(el('p', 'k-caps sf-cru-verb', visualShop ? (offer.category || lines.verb) : railVerbDisplay(lines.verb, railCompact())));
+    // The shop's verb line names the offer's category (the visual armory's narrow rail). The
+    // plain cards — the scored rearm, the refit-family drafts — have no narrow verb column, so
+    // their verb is the authored word, whole; the aria-label carries the full sentence either
+    // way. (A former ≤1500px abbreviation dictionary is gone with its only caller: a wide plain
+    // card reading "SRM"/"UNS" was jargon, and the words always fit.)
+    head.appendChild(el('p', 'k-caps sf-cru-verb', visualShop ? (offer.category || lines.verb) : lines.verb));
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
@@ -1794,6 +1779,7 @@ export const crucibleRefitScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
     injectOrreryScreens();
     injectCruciblePreparation();
+    injectCrucibleRefitLayouts(rootEl.ownerDocument || document);
     rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';

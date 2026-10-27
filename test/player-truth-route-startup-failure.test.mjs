@@ -57,3 +57,25 @@ test('ordinary active flight with no pane reports no startup failure', async () 
   const page = { evaluate: async () => ({ found: false }) };
   assert.equal(await readStartupFailure(page), null);
 });
+
+test("the boot shell's failed import is quoted with the module cause, and a scheduled retry is not", async () => {
+  // Captured on 2026-10-27 from a published-master candidate that could not boot: the shell
+  // marked the overlay "failed" and put the missing-export error in the loading detail, while the
+  // route only recognised the loadingPresenter pane and reported "main menu did not appear".
+  const shell = {
+    found: true, overlayVisible: true, paneVisible: true,
+    stage: 'boot import', code: 'BOOT_IMPORT',
+    headline: 'Startup could not finish',
+    detail: 'Reload to retry. Your saved games have not been changed. (The requested module '
+      + "'./masslinePresentation.js' does not provide an export named 'resolveMasslineCableRadiance')",
+    text: '',
+  };
+  assert.equal(startupFailureQuote(shell),
+    'startup failed during boot import (BOOT_IMPORT): Reload to retry. Your saved games have not been changed. '
+    + "(The requested module './masslinePresentation.js' does not provide an export named 'resolveMasslineCableRadiance')");
+  // A hidden shell (already reloading/back) is not a live failure.
+  assert.equal(startupFailureQuote({ ...shell, overlayVisible: false }), null);
+  // The presenter's own reader must accept the shell shape too, not only the pane shape.
+  const page = { evaluate: async () => shell };
+  assert.match(await readStartupFailure(page), /^startup failed during boot import/);
+});

@@ -326,7 +326,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     }
     const needsStart = wasHidden || !terminalArt;
     const art = artwork(); if (needsStart) art.start(); attachPointer();
-    art.updateProgress({ ...stage, progress: ring?.snapshot().shown ?? Number(stage.progress) ?? 0 });
+    const shown = Number(ring?.snapshot().shown);
+    const staged = Number(stage.progress);
+    art.updateProgress({ ...stage, progress: Number.isFinite(shown) ? shown : (Number.isFinite(staged) ? staged : 0) });
   }
   /** completed=false on error/timeout/menu cancellation: never celebrate a failed load as 100%. */
   // The sim stays held through the veil fade and until a real frame has been presented after it,

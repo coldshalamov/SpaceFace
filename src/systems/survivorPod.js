@@ -222,6 +222,19 @@ function publicMeta(state, rec) {
   };
 }
 
+// Pod-owned scan labels always carry this prefix. Encounter and mission scripts author richer
+// identity labels (e.g. 'BITE TWO CREW POD — SIX SOULS — O2 LOW') — the countdown refreshers only
+// maintain their own line and never stomp an authored one. Oxygen/strip state still rides
+// ent.data.survivorPod for the inspector.
+const POD_SCAN_LABEL_PREFIX = 'Survivor Pod';
+
+function setPodScanLabel(ent, text) {
+  if (!ent || !ent.data) return;
+  const current = ent.data.scanLabel;
+  if (current && !String(current).startsWith(POD_SCAN_LABEL_PREFIX)) return;
+  ent.data.scanLabel = text;
+}
+
 function mirrorMeta(state, rec, point, ent) {
   const meta = publicMeta(state, rec);
   rec.oxygenRemaining_s = meta.oxygenRemaining_s;
@@ -230,7 +243,7 @@ function mirrorMeta(state, rec, point, ent) {
   if (point) point.survivorPod = { ...meta };
   if (ent && ent.data) {
     ent.data.survivorPod = { ...meta };
-    ent.data.scanLabel = meta.oxygenExpired ? 'Survivor Pod - oxygen depleted' : `Survivor Pod - ${meta.label}`;
+    setPodScanLabel(ent, meta.oxygenExpired ? 'Survivor Pod - oxygen depleted' : `Survivor Pod - ${meta.label}`);
   }
   return meta;
 }
@@ -1082,7 +1095,7 @@ export const survivorPod = {
       // Unnoticed, the pod is just a pod. Once the player has come within hail, the air left is readable.
       if (Number.isFinite(rec.playerNoticedAt)) {
         const left = Math.max(0, Math.ceil((Number(rec.expireAt) || 0) - now));
-        entity.data.scanLabel = `Survivor Pod - oxygen ${left}s`;
+        setPodScanLabel(entity, `Survivor Pod - oxygen ${left}s`);
       }
 
       if (Number.isFinite(rec.expireAt) && now >= rec.expireAt) {
@@ -1285,7 +1298,7 @@ export const survivorPod = {
         if (ent.data) {
           ent.data.survivorPod = { ...publicMeta(state, rec), stripped: true };
           ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
-          ent.data.scanLabel = 'Survivor Pod - stripped';
+          setPodScanLabel(ent, 'Survivor Pod - stripped');
         }
       }
       return true;
@@ -1299,7 +1312,7 @@ export const survivorPod = {
       ent.data.salvagePool = clone(rec.stripPool || STRIP_POOL);
       ent.data.tetherRole = 'survivor_pod';
       ent.data.survivorPod = { ...point.survivorPod };
-      ent.data.scanLabel = `Survivor Pod - ${countdownLabel(state, rec)}`;
+      setPodScanLabel(ent, `Survivor Pod - ${countdownLabel(state, rec)}`);
     }
     return true;
   },
@@ -1388,7 +1401,7 @@ export const survivorPod = {
       ent.data.salvagePool = clone(STRIP_POOL);
       ent.data.tetherRole = 'survivor_pod';
       ent.data.survivorPod = { ...point.survivorPod };
-      ent.data.scanLabel = `Survivor Pod - ${countdownLabel(state, rec)}`;
+      setPodScanLabel(ent, `Survivor Pod - ${countdownLabel(state, rec)}`);
     }
 
     if (this._bus && this._bus.emit) {

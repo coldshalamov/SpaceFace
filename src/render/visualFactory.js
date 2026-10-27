@@ -6715,6 +6715,46 @@ function buildRemainEelBody(g, kind, family) {
     shell, 'BroodRemain_EelBody_Fin', [1.24, 0, 0]);
 }
 
+// cracked_shell — the burrower's burst-open carapace: a shallow bowl split into two
+// offset dish halves with a kicked-up flake at the seam. The only broken-dish silhouette
+// — "it shatters on impact" reads as the pieces it already is.
+function buildRemainCrackedShell(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const dish = (phiStart) => () => new THREE
+    .SphereGeometry(0.62, 10, 5, phiStart, Math.PI * 0.92, 0, Math.PI * 0.42)
+    .scale(1, 0.55, 1);
+  remainMesh(g, 'remain:cracked_shell:dish_a', dish(0), shell,
+    'BroodRemain_CrackedShell_DishA', [-0.16, 0.18, 0], null, { rotation: [0.22, 0.4, -0.12] });
+  remainMesh(g, 'remain:cracked_shell:dish_b', dish(Math.PI * 1.04), shell,
+    'BroodRemain_CrackedShell_DishB', [0.2, 0.12, 0.1], null, { rotation: [-0.14, -2.3, 0.3] });
+  remainMesh(g, 'remain:cracked_shell:flake', () =>
+    new THREE.TetrahedronGeometry(0.24, 0).scale(1, 0.4, 0.8),
+    shell, 'BroodRemain_CrackedShell_Flake', [0.02, 0.36, -0.3], 1.1);
+}
+
+// spent_charge — the remora's dead-fuse casing: a stubby dart-canister, blunt nose, tail
+// fins, and a faint ember at the nozzle — the "it still pops, weakly" tell. The only
+// stubby-ordnance silhouette (the eel is long and limber, the horn a flat wedge).
+function buildRemainSpentCharge(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const ember = remainGlowMaterial(kind, family, 0.9);
+  remainMesh(g, 'remain:spent_charge:body', () =>
+    new THREE.CylinderGeometry(0.24, 0.28, 0.72, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Body');
+  remainMesh(g, 'remain:spent_charge:nose', () =>
+    new THREE.ConeGeometry(0.24, 0.34, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Nose', [-0.52, 0, 0]);
+  remainMesh(g, 'remain:spent_charge:fin_v', () =>
+    new THREE.BoxGeometry(0.26, 0.05, 0.34),
+    shell, 'BroodRemain_SpentCharge_FinV', [0.34, 0.14, 0], null, { rotation: [0, 0, 0.18] });
+  remainMesh(g, 'remain:spent_charge:fin_h', () =>
+    new THREE.BoxGeometry(0.26, 0.34, 0.05),
+    shell, 'BroodRemain_SpentCharge_FinH', [0.34, 0, 0.14], null, { rotation: [0.18, 0, 0] });
+  remainMesh(g, 'remain:spent_charge:ember', () =>
+    new THREE.SphereGeometry(0.11, 8, 6),
+    ember, 'BroodRemain_SpentCharge_Ember', [0.46, 0, 0]);
+}
+
 const REMAIN_BUILDERS = Object.freeze({
   husk_shards: buildRemainHuskShards,
   acid_sac: buildRemainAcidSac,
@@ -6722,6 +6762,8 @@ const REMAIN_BUILDERS = Object.freeze({
   leech_glue: buildRemainLeechGlue,
   glass_shards: buildRemainGlassShards,
   eel_body: buildRemainEelBody,
+  cracked_shell: buildRemainCrackedShell,
+  spent_charge: buildRemainSpentCharge,
 });
 
 function buildBroodRemainVisual(e) {
