@@ -19,6 +19,8 @@
 //       magnetic  — drags the run's credit chips off the field and eats them
 //       commander — hardens the hulls flying near it
 //       hasted    — runs a third faster than its kin
+//     From Zone 5 the veteran band doubles a seeded share of marked hulls: a second, always
+//     distinct trick on `data.swarmAffix2` — two behaviors, never a bigger number.
 //     The scan runs on a cheap cadence; the kill/impact effects are receipt-driven.
 //
 //   * PERK EFFECTS. The two-slot loadout begin stamped on `run.telemetry.perks` gets its live
@@ -46,6 +48,8 @@ import {
   SWARM_AFFIX_BY_ID,
   swarmAffixFor,
   swarmAffixFromWave,
+  swarmAffixVeteranFor,
+  swarmAffixVeteranPct,
   swarmThreatEliteHullMult,
   swarmThreatSpeedMult,
 } from '../data/swarmThreats.js';
@@ -54,6 +58,9 @@ import {
 const SWARM_ELITE_SCAN_TICKS = 12;
 /** Seeded-affix hash stride: FNV over seed + wave + stamp ordinal. */
 const SWARM_AFFIX_SALT = 0x51e7a2;
+/** Veteran band: the second-affix roll rides its own salts so the primary pick never shifts. */
+const SWARM_AFFIX_VETERAN_ROLL_SALT = 0x2f6e2b;
+const SWARM_AFFIX_VETERAN_PICK_SALT = 0x85ebca;
 /** Shielded: the bubble's hull. Small enough to pop fast, real enough to notice. */
 const SWARM_AFFIX_BUBBLE = 70;
 /** Hasted: §6.4 — a third faster than its kin. */
@@ -112,13 +119,19 @@ function simTickOf(state) {
 
 /**
  * The seeded affix pick for one body. hash(seed ^ wave ^ ordinal): the same run stamps the
- * same hulls the same way, every replay.
+ * same hulls the same way, every replay. The veteran band reuses the law under its own
+ * salts so a second trick can never shift the primary pick.
  */
-function affixHash(seed, wave, ordinal) {
-  let h = (seed >>> 0) ^ SWARM_AFFIX_SALT;
+function affixHash(seed, wave, ordinal, salt = SWARM_AFFIX_SALT) {
+  let h = (seed >>> 0) ^ (salt >>> 0);
   h = Math.imul(h ^ (wave >>> 0), 0x01000193) >>> 0;
   h = Math.imul(h ^ (ordinal >>> 0), 0x01000193) >>> 0;
   return h >>> 0;
+}
+
+/** A body's affix vocabulary: the primary plus the veteran second when the band gave one. */
+function bodyHasAffix(data, id) {
+  return data.swarmAffix === id || data.swarmAffix2 === id;
 }
 
 export const swarmElites = {
@@ -181,16 +194,16 @@ export const swarmElites = {
     else this._deathLedger = createRewardDeathLedger();
   },
 
-  /** Live readout for tests: affix count by id on live cohort bodies. */
+  /** Live readout for tests: affix count by id on live cohort bodies (veterans count both). */
   affixCensus() {
     const out = {};
     const entities = this.state && this.state.entities;
     if (!entities || typeof entities.forEach !== 'function') return out;
     entities.forEach((e) => {
       const data = entityData(e);
-      if (e && e.alive !== false && data && typeof data.swarmAffix === 'string') {
-        out[data.swarmAffix] = (out[data.swarmAffix] || 0) + 1;
-      }
+      if (!e || e.alive === false || !data) return;
+      if (typeof data.swarmAffix === 'string') out[data.swarmAffix] = (out[data.swarmAffix] || 0) + 1;
+      if (typeof data.swarmAffix2 === 'string') out[data.swarmAffix2] = (out[data.swarmAffix2] || 0) + 1;
     });
     return out;
   },
@@ -272,10 +285,45 @@ export const swarmElites = {
     if (wave < affixFloor) return;
     if (data.swarmChampion !== true && data.runRole !== 'elite') return;
     const ordinal = this._affixOrdinal++;
-    const affix = swarmAffixFor(affixHash(Number.isInteger(run.seed) ? run.seed : 1, wave, ordinal));
+    const seed = Number.isInteger(run.seed) ? run.seed : 1;
+    const affix = swarmAffixFor(affixHash(seed, wave, ordinal));
     if (!affix || !SWARM_AFFIX_BY_ID[affix]) return;
     data.swarmAffix = affix;
     data.swarmAffixWave = wave;
+    // The veteran band (§6.4): from Zone 5 a seeded share of affixed hulls roll a second,
+    // distinct trick — two behaviors on one body, never a bigger hull or a hotter gun. The
+    // roll rides its own salts so band waves can never shift the primary pick, and the wave
+    // gate is absolute — a live Threat brings affixes early, never the band.
+    let affix2 = null;
+    const veteranPct = swarmAffixVeteranPct(wave);
+    if (veteranPct > 0 && affixHash(seed, wave, ordinal, SWARM_AFFIX_VETERAN_ROLL_SALT) % 100 < veteranPct) {
+      const pick = swarmAffixVeteranFor(affixHash(seed, wave, ordinal, SWARM_AFFIX_VETERAN_PICK_SALT), affix);
+      if (pick && pick !== affix && SWARM_AFFIX_BY_ID[pick]) {
+        affix2 = pick;
+        data.swarmAffix2 = pick;
+      }
+    }
+    this._applyAffixStamp(e, affix);
+    if (affix2) this._applyAffixStamp(e, affix2);
+    this._emit('swarm:affix', {
+      id: e.id,
+      affix,
+      name: SWARM_AFFIX_BY_ID[affix].name,
+      affix2,
+      name2: affix2 ? SWARM_AFFIX_BY_ID[affix2].name : null,
+      affixes: affix2 ? [affix, affix2] : [affix],
+      veteran: affix2 != null,
+      wave,
+      pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
+    });
+  },
+
+  /**
+   * The stamp-side effects an affix lands the moment it is marked — the bubble and the
+   * legs. Splitter/volatile/magnetic/commander ride the kill and aura seams instead. A
+   * distinct pair can never fire the same stamp twice.
+   */
+  _applyAffixStamp(e, affix) {
     if (affix === 'shielded') {
       const bubble = Math.max(Number.isFinite(e.shieldMax) ? e.shieldMax : 0, SWARM_AFFIX_BUBBLE);
       e.shieldMax = bubble;
@@ -286,13 +334,6 @@ export const swarmElites = {
       if (Number.isFinite(e.combatSpeed)) e.combatSpeed *= SWARM_AFFIX_HASTE;
       if (Number.isFinite(e.thrust)) e.thrust *= SWARM_AFFIX_HASTE;
     }
-    this._emit('swarm:affix', {
-      id: e.id,
-      affix,
-      name: SWARM_AFFIX_BY_ID[affix].name,
-      wave,
-      pos: e.pos ? { x: e.pos.x, z: e.pos.z } : null,
-    });
   },
 
   // ---- kills -----------------------------------------------------------------
@@ -344,13 +385,13 @@ export const swarmElites = {
       player.boost.energy = Math.min(player.boost.max, player.boost.energy + SWARM_OVERCLOCK_ENERGY);
     }
 
-    const affix = data && data.swarmAffix;
-    if (affix === 'volatile') {
+    // A veteran pair fires both of its tricks — a volatile splitter still blasts AND bursts.
+    if (data && bodyHasAffix(data, 'volatile')) {
       // A volatile killed BY its own blast chain attributes through the killer that started it —
       // a body a thrown rock popped still belongs to the throw (the receipt's own provenance).
       this._blast(victim, playerKill ? this.state.playerId : (killerId != null ? killerId : id), 'volatile');
     }
-    if (affix === 'splitter') this._split(victim, run);
+    if (data && bodyHasAffix(data, 'splitter')) this._split(victim, run);
   },
 
   /**
@@ -574,7 +615,7 @@ export const swarmElites = {
     entities.forEach((e) => {
       if (hasAura) return;
       const data = entityData(e);
-      if (e && e.alive !== false && data && (data.swarmAffix === 'magnetic' || data.swarmAffix === 'commander')) {
+      if (e && e.alive !== false && data && (bodyHasAffix(data, 'magnetic') || bodyHasAffix(data, 'commander'))) {
         hasAura = true;
       }
     });
@@ -583,7 +624,8 @@ export const swarmElites = {
       if (!e || e.alive === false || !e.pos) return;
       const data = entityData(e);
       if (!data) return;
-      if (data.swarmAffix === 'magnetic') {
+      // A veteran can carry both auras — the magnetic branch no longer returns early.
+      if (bodyHasAffix(data, 'magnetic')) {
         entities.forEach((pickup) => {
           if (!pickup || pickup.alive === false || pickup.type !== 'pickup' || !pickup.pos) return;
           const pd = pickup.data || {};
@@ -602,9 +644,8 @@ export const swarmElites = {
           pickup.pos.x += dx * pull * Math.min(1, dist / 4);
           pickup.pos.z += dz * pull * Math.min(1, dist / 4);
         });
-        return;
       }
-      if (data.swarmAffix === 'commander') {
+      if (bodyHasAffix(data, 'commander')) {
         entities.forEach((ally) => {
           if (!ally || ally === e || ally.alive === false || !ally.pos) return;
           const ad = entityData(ally);

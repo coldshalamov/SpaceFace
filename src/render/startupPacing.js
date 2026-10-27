@@ -17,6 +17,12 @@
 let cachedScale = null;
 
 function detectStartupBudgetScale(win = globalThis) {
+  // Dev screen-inspection routes (?dev=screen:…) pin the widest class explicitly: they run on
+  // contended automation hosts whose software GL legitimately needs the handset ceiling. SF_DEBUG
+  // callers only — player launches keep the detected class.
+  const search = win && win.location && win.location.search;
+  if (typeof search === 'string' && search.includes('dev=')
+      && new URLSearchParams(search).get('dev')?.startsWith('screen:')) return 6;
   const nav = win && win.navigator;
   let coarse = false;
   try {

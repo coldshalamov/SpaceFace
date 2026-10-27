@@ -579,8 +579,29 @@ async function boot() {
           if (devTicks < 2400) setTimeout(reachWantedScreen, 100); // ~4 min, then the log speaks
           else console.error('[SpaceFace] dev screen route gave up waiting for a run: mode =', state.mode);
         };
-        setTimeout(() => {
-          if (wantsWorld) {
+        setTimeout(async () => {
+          // A screen-inspection route emulates a returning player: mark the first-run First Light
+          // offer as already shown so the title screen cannot raise its confirm mid-mount.
+          const access = state && state.settings && state.settings.accessibility;
+          if (access && typeof access === 'object') access.firstLightOffered = true;
+          // The fail-closed startup budgets are tuned for real devices (startupPacing.js); an
+          // inspection route may run on a contended/software-GL host that legitimately needs the
+          // widest class ceiling — detectStartupBudgetScale pins it for ?dev=screen: routes.
+          // Gates still settle as soon as their work completes; a wedge still dies, later.
+          // &devsetup=<sandbox preset id> launches through the harness's own pipeline instead of
+          // a bare game:new — so `?dev=screen:drill&devsetup=drill` boots a real drill session
+          // (asteroid + session + screen open) rather than a screen that pops for lack of one.
+          const devSetupId = devQuery.get('devsetup') || '';
+          let launched = false;
+          if (wantsWorld && devSetupId) {
+            try {
+              const { SCENARIO_PRESETS, requestSandboxGame } = await import('./ui/sandbox/sandboxSetup.js');
+              const preset = SCENARIO_PRESETS.find((p) => p.id === devSetupId);
+              if (preset) { requestSandboxGame(bus, preset.config); launched = true; }
+              else console.error('[SpaceFace] dev screen route: unknown devsetup', devSetupId);
+            } catch (err) { console.error('[SpaceFace] devsetup launch failed:', err); }
+          }
+          if (wantsWorld && !launched) {
             bus.emit('game:new', Number.isFinite(devSeed) && devSeed > 0 ? { seed: devSeed } : {});
           }
           reachWantedScreen();

@@ -42,7 +42,7 @@ import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults,
-  stationRefuelRationU, grudgeLive, splitStationConditionsForSave,
+  stationRefuelRationU, grudgeLive, splitStationConditionsForSave, stationGrudgeOwedCr,
 } from '../economy/stationConditions.js';
 import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';
@@ -344,7 +344,6 @@ const STATION_STRIKE_REACH_WU = 3500;
 const CONDITION_LINES = Object.freeze({
   strike: 'Crews are off the floor over what you did to their shift.',
   boom: 'The yard is flush — repair and fuel are running cheap today.',
-  grudge: 'Pay your note before you come through our ring again.',
 });
 
 /**
@@ -358,7 +357,9 @@ export function stationConditionLine(state, stationId) {
   if (live.outage) parts.push(`repair bay down ${Math.max(1, Math.ceil(live.outage.remainingS / 60))} min`);
   if (live.strike) parts.push(CONDITION_LINES.strike);
   if (live.boom) parts.push(CONDITION_LINES.boom);
-  if (live.grudge) parts.push(CONDITION_LINES.grudge);
+  if (live.grudge) {
+    parts.push(`Pay the ${stationGrudgeOwedCr(state, stationId)} cr on your note before you come through our ring again.`);
+  }
   if (live.blockade) {
     const [a, b] = live.blockade.factions;
     parts.push(`Blockade — the ${factionShortLabel(a)}–${factionShortLabel(b)} front is on this lane, goods run dear and the pumps are rationed.`);

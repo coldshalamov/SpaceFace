@@ -28,6 +28,7 @@ import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { armCallbackAfterPresent } from '../../render/compilePresentSlice.js';
+import { isMobileRenderContext } from '../../render/renderCapabilityProfile.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, channelPins }
   from '../kit/computedMaterial.js';
@@ -967,6 +968,9 @@ export const newGameScreen = {
   // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
   // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
   _emitEmbarkSpec() {
+    // A whole-sector speculative decode competes with the opening scene on phones.
+    // Let the live opening admission request its required assets after Launch instead.
+    if (isMobileRenderContext()) return;
     if (!this._embarkSpecActive || !refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
     // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
     // requests — running it inside the gesture task drops a menu frame per keystroke.

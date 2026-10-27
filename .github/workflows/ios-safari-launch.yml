@@ -1,0 +1,53 @@
+name: ios-safari-launch
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Public deployment URL to launch in iOS Simulator Safari
+        default: https://spaceface-play-demo.vercel.app/
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: ios-safari-launch
+  cancel-in-progress: false
+jobs:
+  public-launch:
+    runs-on: macos-26
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: tools/probe-ios-safari.mjs
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start an available iPhone simulator and Apple SafariDriver
+        run: |
+          mkdir -p .devshots/ios-safari-launch
+          sw_vers > .devshots/ios-safari-launch/host.txt
+          xcodebuild -version >> .devshots/ios-safari-launch/host.txt
+          xcrun simctl list devices available -j > .devshots/ios-safari-launch/simulators.json
+          SF_IOS_SIM_UDID=$(jq -r '[.devices | to_entries[] | select(.key | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) as $rt | $rt.value[] | select(.isAvailable and (.name | startswith("iPhone"))) | {v:($rt.key | sub("^.*iOS-";"") | split("-") | map(tonumber)), udid}] | sort_by(.v) | last | .udid' .devshots/ios-safari-launch/simulators.json)
+          test -n "$SF_IOS_SIM_UDID" && test "$SF_IOS_SIM_UDID" != null
+          echo "SF_IOS_SIM_UDID=$SF_IOS_SIM_UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$SF_IOS_SIM_UDID"
+          open -a Simulator --args -CurrentDeviceUDID "$SF_IOS_SIM_UDID"
+          xcrun simctl bootstatus "$SF_IOS_SIM_UDID" -b
+          sudo /usr/bin/safaridriver --enable
+          /usr/bin/safaridriver --port 4444 > .devshots/ios-safari-launch/driver.log 2>&1 &
+      - name: Public menu to flight and mobile Pause
+        run: node tools/probe-ios-safari.mjs
+        env:
+          SF_IOS_URL: ${{ inputs.url }}
+      - name: Preserve the iOS engine result and failure picture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-safari-launch
+          path: .devshots/ios-safari-launch/
+          retention-days: 7
+          if-no-files-found: warn
