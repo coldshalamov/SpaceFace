@@ -132,19 +132,6 @@
   ],
   "units": [
     {
-      "id": "seed-st-01",
-      "date": "2026-10-23",
-      "wf": "WF-14",
-      "mode": "starved",
-      "verdict": "implemented",
-      "reason": "Title mode verbs (Crucible, Archive, Circuits, Sandbox, Physics challenges) show a visible one-line gloss instead of aria-only labels",
-      "fingerprint": "verb=teach,subject=title-verbs,sector=title,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "3a21675c52",
-      "verification": "focused_green"
-    },
-    {
       "id": "seed-st-02",
       "date": "2026-10-23",
       "wf": "WF-14",
@@ -1689,6 +1676,19 @@
       "references": [],
       "integration": "live",
       "commit": "8ccbb59fcef3e12b6bc00894925c64257aa3b3bf",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-relay-shelved",
+      "date": "2026-10-27",
+      "wf": "WF-06",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "A launched relay hauler that is off the map is not paid as if it docked.",
+      "fingerprint": "verb=hold,subject=hauler,sector=helios,domain=wf-06",
+      "references": [],
+      "integration": "live",
+      "commit": "158c8604baeb3b3ca7bc1853ca1e26e9b6432d4e",
       "verification": "focused_green"
     }
   ],
