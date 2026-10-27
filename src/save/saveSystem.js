@@ -914,6 +914,11 @@ export const save = {
       // The Verge border record (paid permits, incident ledger, receipt dedupe keys,
       // court, live marks) rides the same boundary — additive slot, absent owner → {}.
       ['vergeCourt', () => this._callSerialize('vergeCourt') || {}],
+      // The Frontier board (homestead recs, leads, debts, disputes, calls,
+      // vendettas, paid stamps, planted sites) rides the same boundary. The plan
+      // key IS the envelope key — 'frontier', matching _serializeDataSteps and
+      // the data.frontier the restore lane reads.
+      ['frontier', () => this._callSerialize('frontierHomesteads') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
@@ -1095,6 +1100,8 @@ export const save = {
     // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
     data.vergeCourt = this._callSerialize('vergeCourt') || {};
     yield 'serialize:vergeCourt';
+    data.frontier = this._callSerialize('frontierHomesteads') || {};
+    yield 'serialize:frontierHomesteads';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
     data.reactiveMatter = this._callSerialize('reactiveMatter');
@@ -6798,6 +6805,8 @@ export const save = {
       this._callDeserialize('factions', data.factions);
       // Absent on older saves — the verge deserialize heals a missing bag to fresh state.
       this._callDeserialize('vergeCourt', data.vergeCourt);
+      // Absent on older saves — the frontier deserialize heals a missing bag to fresh state.
+      this._callDeserialize('frontierHomesteads', data.frontier);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
