@@ -538,32 +538,37 @@ export function createBroodEngine(deps = {}) {
       immediateLeft -= count;
       return { ...part, count };
     }).filter(part => part.count > 0);
-    // A splitter's death becomes three mites. Two of those bodies are held back from the
-    // mite share now, so the split spends the wave's own budget and the total never grows.
+    // A splits-carrying body's death becomes three mites. Two of those bodies are held
+    // back from the mite share now, so the split spends the wave's own budget and the
+    // total never grows. The hold-back keys on the `splits` flag, not the family id:
+    // every splits family the wave fields funds its children the same way.
     splitterReserve = 0;
-    const splitterRow = pendingPlan.find((part) => part.id === 'splitter');
-    if (splitterRow && splitterRow.count > 0) {
-      const miteRow = pendingPlan.find((part) => part.id === 'mite');
+    for (const part of pendingPlan) {
+      const splitDef = liveFamilyDef[familyIndexOf(part.id)];
+      if (!splitDef || !splitDef.splits || part.count <= 0) continue;
+      const miteRow = pendingPlan.find((row) => row.id === 'mite');
       const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
-      const take = Math.min(splitterRow.count * 2, room);
+      const take = Math.min(part.count * 2, room);
       if (miteRow && take > 0) miteRow.count -= take;
-      splitterReserve = take;
-      pendingPlan = pendingPlan.filter((part) => part.count > 0);
+      splitterReserve += take;
     }
+    pendingPlan = pendingPlan.filter((part) => part.count > 0);
     // The mother's mite tide is the same kind of reserve: bodies held back from the plan,
-    // released on her cadence, and dropped when she dies. It is not a Hive sac.
+    // released on her cadence, and dropped when she dies. It is not a Hive sac. The
+    // hold-back keys on the `births` flag, not the family id — each births family in the
+    // plan funds its tide out of the mite share, per its own authored `birthBudget`.
     motherReserve = 0;
-    const motherRow = pendingPlan.find((part) => part.id === 'brood_mother');
-    if (motherRow && motherRow.count > 0) {
-      const miteRow = pendingPlan.find((part) => part.id === 'mite');
+    for (const part of pendingPlan) {
+      const birthDef = liveFamilyDef[familyIndexOf(part.id)];
+      if (!birthDef || !birthDef.births || part.count <= 0) continue;
+      const miteRow = pendingPlan.find((row) => row.id === 'mite');
       const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
-      const late = swarmBroodLateFamily('brood_mother');
-      const per = late && late.birthBudget > 0 ? Math.trunc(late.birthBudget) : 12;
-      const take = Math.min(motherRow.count * per, room);
+      const per = birthDef.birthBudget > 0 ? Math.trunc(birthDef.birthBudget) : 12;
+      const take = Math.min(part.count * per, room);
       if (miteRow && take > 0) miteRow.count -= take;
-      motherReserve = take;
-      pendingPlan = pendingPlan.filter((part) => part.count > 0);
+      motherReserve += take;
     }
+    pendingPlan = pendingPlan.filter((part) => part.count > 0);
     // B5 — a late non-Hive wave holds back one small specialist group for a mid-wave
     // drop. The Hive keeps its own sac tide instead (hiveMode), and champion waves are
     // exempt inside the picker — so this never touches the Hive's or a boss's plan.
@@ -2040,7 +2045,8 @@ export function createBroodEngine(deps = {}) {
     const mothers = [];
     for (let i = 0; i < CAP; i++) {
       if (!alive[i] || birthLeft[i] > 0) continue;
-      if (liveFamilyId[family[i]] !== 'brood_mother') continue;
+      const def = liveFamilyDef[family[i]];
+      if (!def || !def.births) continue;
       mothers.push(i);
     }
     if (mothers.length === 0) return;
@@ -2049,8 +2055,11 @@ export function createBroodEngine(deps = {}) {
     for (const slot of mothers) {
       const give = each + (extra > 0 ? 1 : 0);
       if (extra > 0) extra -= 1;
-      birthLeft[slot] = give;
       const def = liveFamilyDef[family[slot]];
+      // Her authored `birthBudget` is her own tide's ceiling: a mother never walks
+      // with more than her spec carries, whatever share the pool's division hands her.
+      const tide = def && def.birthBudget > 0 ? Math.trunc(def.birthBudget) : give;
+      birthLeft[slot] = Math.min(give, tide);
       timer[slot] = def && def.birthEveryS > 0 ? def.birthEveryS : 1.2;
     }
   }

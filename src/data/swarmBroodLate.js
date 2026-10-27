@@ -264,6 +264,117 @@ export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
     slowRadius: 84,
     slowAccel: 18,
   },
+  // ── The third band: waves 61–75 ────────────────────────────────────────────────────
+  // The deep band's clock stops at 55 and the roster then runs silent until the wrapped
+  // champions at 140 — an 85-wave plateau of rooms the pilot has already solved. These
+  // three keep the band's own law: flag recipes the engine already runs, folded out of
+  // the mite share, gated on the same 6-8 wave cadence. Each is a problem the roster
+  // does not already pose — a brake that is also the bomb, an egg only mass can hatch,
+  // and a mother only a blast can stop.
+  {
+    id: 'mirebulb',
+    name: 'Mirebulb',
+    role: 'brake-bomb',
+    fromWave: 61,
+    weight: 2,
+    cohort: 4,
+    radius: 3.4,
+    mass: 14,
+    hull: 16,
+    speed: 40,
+    turn: 2.6,
+    credits: 4,
+    score: 40,
+    telegraph: {
+      bark: 'warn',
+      line: 'A mirebulb\'s pitch drags your hull — and the bulb is cooking.',
+      cue: 'engine_flare',
+    },
+    counter: 'The drag is the fuse\'s delivery. Burn out of the pitch before the pop — or burst it far out.',
+    deathLeaves: 'a pitch burst that shoves the pack',
+    bodyColor: [0.46, 0.40, 0.12],
+    bodyEmissive: [0.40, 0.30, 0.04],
+    // A round bladder on the drift's hazard law carrying the wisp's deadline:
+    // `hazard`+`slowRadius` brakes the signature inside its reach while `primeRange`+
+    // `primeS` runs the fuse — the undertow's grip with a pop at the end of it. The
+    // brake bites first (slowRadius > primeRange), so the fuse arms while the escape
+    // is already taxed. Where it dies it bursts: kill it close and the shove still
+    // lands — burst it far out, or burn clear before primeS ends.
+    stretch: Object.freeze([1.05, 0.90, 1.10]),
+    hazard: true,
+    slowRadius: 80,
+    slowAccel: 26,
+    primeRange: 56,
+    primeS: 1.6,
+    burstRadius: 78,
+    burstDv: 115,
+  },
+  {
+    id: 'clutchstone',
+    name: 'Clutchstone',
+    role: 'armored-egg',
+    fromWave: 67,
+    weight: 2,
+    cohort: 3,
+    radius: 5.4,
+    mass: 60,
+    hull: 34,
+    speed: 24,
+    turn: 1.4,
+    credits: 5,
+    score: 48,
+    telegraph: {
+      bark: 'warn',
+      line: 'The clutchstone cracks — three mites spill out of the shell.',
+      cue: 'weapon_charge',
+    },
+    counter: 'Guns only sing off the egg. Crack it with mass — and crack it away from you.',
+    deathLeaves: 'three mites out of the shell',
+    bodyColor: [0.38, 0.34, 0.30],
+    bodyEmissive: [0.16, 0.10, 0.06],
+    stretch: Object.freeze([1.20, 1.00, 1.15]),
+    // The glassback's armor wrapped around the splitter's law: `massOnly` means a
+    // collision is the only way to hatch it — a thrown body, a fast rock, a ram —
+    // and `splits` pays the splitter's three mites out of the wave's own held share
+    // the moment the shell gives. Where it hatches is where the brood lands, so the
+    // feed is the placement the pilot owns: crack it out there, never on the hull.
+    massOnly: true,
+    splits: true,
+  },
+  {
+    id: 'poxsac',
+    name: 'Pox Sac',
+    role: 'blast-mother',
+    fromWave: 75,
+    weight: 2,
+    cohort: 1,
+    radius: 6.0,
+    mass: 75,
+    hull: 44,
+    speed: 20,
+    turn: 1.0,
+    credits: 6,
+    score: 64,
+    telegraph: {
+      bark: 'warn',
+      line: 'The pox sac is walking — her tide only stops for a blast.',
+      cue: 'engine_flare',
+    },
+    counter: 'Guns, walls and whips all ping off her. Only a detonation stops the tide — carry her a bomb.',
+    deathLeaves: 'the rest of her tide, unspent',
+    bodyColor: [0.42, 0.30, 0.36],
+    bodyEmissive: [0.36, 0.10, 0.20],
+    stretch: Object.freeze([1.30, 1.15, 1.40]),
+    // The brood mother's tide behind the wisp's kill-gate: `births` walks her dropping
+    // mites paid from the wave's own held share, and `blastOnly` means every cause but
+    // 'explosive' pings off — guns, whips, rocks, rams. The answer the mother taught
+    // (focus fire) is inverted: a cyst, an acid sac, a mine, a charge — bring a blast
+    // or eat the whole tide. Excluded from the late reserve by her own `births` flag.
+    blastOnly: true,
+    births: true,
+    birthEveryS: 1.2,
+    birthBudget: 10,
+  },
 ]);
 
 /** The late family def for an id, or null. Pure. */
