@@ -13168,6 +13168,12 @@ export const vfx = {
     publishMaterialFields(this._scene,this.state,this._materialFieldLocalizer);
     this._updateCauseMarks(dt);
     this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
+    // Owned exceptional-speed scalar: read once per update and shared by every
+    // projectile surface this frame (presenter ribbons, trail-plan wakes).
+    this._exceptionalSpeed = (this.state.settings && this.state.settings.video
+      && this.state.settings.video.motionReduce)
+      ? 0
+      : readOwnedExceptionalSpeed(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
       const activeGraph = activeWeaponRenderGraph(this.state);
@@ -13184,6 +13190,7 @@ export const vfx = {
       context.depthTexture = weaponPresenterDepthTexture(activeGraph);
       context.depthWidth = 0;
       context.depthHeight = 0;
+      context.exceptionalSpeed = this._exceptionalSpeed;
       this._weaponPresenter.update(dt, context);
     }
     this._updateDamageVenting(dt);
@@ -16846,9 +16853,8 @@ export const vfx = {
     const qualityMul = q === 'low' ? 0.45 : (q === 'med' || q === 'medium' ? 0.72 : 1.0);
     const motionMul = (video && video.motionReduce) ? 0.5 : 1.0;
     const burst = (this._burst || 1) * qualityMul * motionMul;
-    const exceptionalSpeed = (video && video.motionReduce)
-      ? 0
-      : readOwnedExceptionalSpeed(this.state);
+    const exceptionalSpeed = this._exceptionalSpeed
+      ?? ((video && video.motionReduce) ? 0 : readOwnedExceptionalSpeed(this.state));
     this._projectileTrailFrameIndex = ((this._projectileTrailFrameIndex || 0) + 1) >>> 0;
 
     let anySpawned = false;

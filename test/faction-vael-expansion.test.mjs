@@ -941,3 +941,234 @@ test('vaelBook is a detached read-model — poking it cannot write the ledger', 
     sim.dispose();
   }
 });
+
+// ── second-pass review regressions ────────────────────────────────────────────
+
+test('a turned page fires once — earned pages with no closable stain never re-fire', () => {
+  const { sim, state, visit, collect } = boot();
+  try {
+    quiet(visit);
+    const v = ensureVaelState(state);
+    // A clean book earns a page with nothing to forgive — nothing may speak.
+    v.book.clauses = VAEL_LEDGER.forgiveEvery;
+    v.book.stains = 0;
+    const pages = collect('vael:pageTurned');
+    sim.step(); sim.step(); sim.step();
+    assert.equal(pages.length, 0, 'a clean book has no page to turn');
+    assert.equal(v.book.forgiven, 0);
+    // Earned pages outnumber the stains: one closes, then the book goes quiet
+    // — before the latch, this barked and filed a log row every tick forever.
+    v.book.clauses = VAEL_LEDGER.forgiveEvery * 3;
+    v.book.stains = 1;
+    sim.step();
+    assert.equal(pages.length, 1, 'the open stain closes once');
+    assert.equal(v.book.forgiven, 1);
+    sim.step(); sim.step(); sim.step();
+    assert.equal(pages.length, 1, 'a turned page does not re-turn every tick');
+    // A fresh stain the earned pages already cover closes on the next read.
+    v.book.stains = 2;
+    sim.step();
+    assert.equal(pages.length, 2, 'a new stain meets the earned page once');
+    assert.equal(v.book.forgiven, 2);
+    sim.step();
+    assert.equal(pages.length, 2);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a stale writ telegraph on a recycled tender id cannot serve with no wind-up', () => {
+  const { sim, state, player, sys, visit, collect } = boot();
+  try {
+    quiet(visit);
+    const inv = sys._fileInvoice(state, { amount: 400, mass: 10, cause: 'test' });
+    inv.stage = 2;
+    inv.nextWritAt = state.simTime;
+    sim.step();
+    const writ = ensureVaelState(state).writs[0];
+    const crew = state.entities.get(writ.tenderId);
+    crew.pos.x = player.pos.x + 40;
+    crew.pos.z = player.pos.z;
+    // A ghost latch — a stale bag row or a recycled id — past-due on the crew's
+    // number but belonging to no writ this crew serves.
+    ensureVaelState(state).writTelegraphs[crew.id] = {
+      tenderId: crew.id, targetId: player.id, writId: 'writ:ghost',
+      fireAt: state.simTime - 1,
+    };
+    const served = collect('vael:writServed');
+    sim.step();
+    assert.equal(served.length, 0, 'the ghost latch cannot serve');
+    assert.equal(inv.state, 'open', 'the paper was never touched');
+    const fresh = ensureVaelState(state).writTelegraphs[crew.id];
+    assert.ok(fresh && fresh.writId === writ.id, 'the live crew arms its own wind-up');
+    sim.runTicks(Math.ceil(VAEL_LEDGER.writTelegraphS * 60) + 2);
+    assert.equal(served.length, 1, 'a real wind-up still serves');
+    assert.equal(inv.state, 'served');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('the lien serves only in open space — a non-flight contract telegraph never arms', () => {
+  const { sim, state, player, visit, collect } = boot({ contract: true, mode: 'station' });
+  try {
+    quiet(visit);
+    tender(sim, 100, 0); // inside clampRange with a contract job running
+    const telegraphs = collect('vael:lienTelegraph');
+    sim.step();
+    assert.equal(Object.keys(ensureVaelState(state).telegraphs).length, 0,
+      'no wind-up while the pilot is not flying');
+    assert.equal(telegraphs.length, 0);
+    assert.equal(lienAnchorFor(state, player.id), null);
+    state.mode = 'flight';
+    sim.step();
+    assert.equal(telegraphs.length, 1, 'back in open space the tender reads its clause');
+    sim.runTicks(Math.ceil(VAEL_LIEN.telegraphS * 60) + 2);
+    assert.ok(lienAnchorFor(state, player.id), 'the wind-up still lands in flight');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a late kill event on an already-healed anchor cannot re-bill or re-strip', () => {
+  const { sim, state, player, visit, bus, collect, sys } = boot({ contract: true });
+  try {
+    quiet(visit);
+    tender(sim, 100, 0);
+    sim.runTicks(Math.ceil(VAEL_LIEN.telegraphS * 60) + 2);
+    const anchor = lienAnchorFor(state, player.id);
+    assert.ok(anchor);
+    assert.equal(player.mass, 24 + VAEL_LIEN.anchorMass);
+    const filed = collect('vael:invoiceFiled');
+    // The silent death — alive=false, no kill event yet: the heal files the paper.
+    anchor.alive = false;
+    sys._tickAnchors(state, 1 / 60); // heal now, corpse still addressable
+    assert.equal(filed.length, 1);
+    assert.equal(filed[0].cause, 'anchor_lost');
+    assert.equal(player.mass, 24);
+    assert.equal(anchor.data.lienReleased, true, 'the accounted corpse is stamped');
+    // The kill event arrives late — before the corpse sweep. One bill, not two.
+    killBy(bus, anchor.id, player.id);
+    assert.equal(filed.length, 1, 'no second filing on the released corpse');
+    assert.equal(player.mass, 24, 'the release cannot strip the mass twice');
+    sim.step();
+    assert.equal(vaelOpenInvoices(state).length, 1);
+    assert.equal(player.mass, 24);
+  } finally {
+    sim.dispose();
+  }
+});
+
+// ── third-pass review regressions ─────────────────────────────────────────────
+
+test('malformed wind-ups heal on sight — a garbage latch cannot wedge a live tender', () => {
+  const { sim, state, player, visit, collect } = boot({ contract: true });
+  try {
+    quiet(visit);
+    const t = tender(sim, 100, 0);
+    const v = ensureVaelState(state);
+    // Torn/hostile bag rows: a non-finite fireAt can never fire, yet sitting
+    // latched it would block the tender's own wind-up forever.
+    v.telegraphs[t.id] = { tenderId: t.id, fireAt: 'never' };
+    v.telegraphs['junk-key'] = 'not-an-object';
+    v.writTelegraphs['ghost'] = { tenderId: 99, fireAt: 'never' }; // no writId
+    v.writTelegraphs['dead-writ'] = { tenderId: 97, writId: 'writ:gone', fireAt: state.simTime };
+    const telegraphs = collect('vael:lienTelegraph');
+    sim.step();
+    assert.equal(v.telegraphs['junk-key'], undefined, 'non-object row dropped');
+    assert.equal(v.writTelegraphs['ghost'], undefined, 'a wind-up must name its writ');
+    assert.equal(v.writTelegraphs['dead-writ'], undefined, 'a wind-up dies with its paper');
+    const fresh = v.telegraphs[t.id];
+    assert.ok(fresh && Number.isFinite(fresh.fireAt),
+      'the live tender arms its own countdown instead of inheriting a dead latch');
+    assert.equal(telegraphs.length, 1, 'the real wind-up still speaks once');
+    sim.runTicks(Math.ceil(VAEL_LIEN.telegraphS * 60) + 2);
+    assert.ok(lienAnchorFor(state, player.id), 'and it still clamps');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a forged high-water tier mark re-syncs to the clauses actually honored', () => {
+  const { sim, state, player, sys, visit, collect } = boot();
+  try {
+    quiet(visit);
+    const v = ensureVaelState(state);
+    // The bag claims kept-party crossings the book never earned — every future
+    // paperTier emit would stay silenced below the forged mark.
+    v.book.clauses = VAEL_PAPER_TIERS[3].clauses - 1;
+    v.book.tier = VAEL_PAPER_TIERS[3].tier;
+    sim.step();
+    assert.equal(v.book.tier, vaelTierFor(v.book.clauses).tier,
+      'the announce mark reconciles to earned paper');
+    const tierEvents = collect('vael:paperTier');
+    const clause = sys._postClause(state, 'serve');
+    const defaulter = state.entities.get(clause.targetId);
+    player.pos.x = defaulter.pos.x + VAEL_LEDGER.serveR - 60;
+    player.pos.z = defaulter.pos.z;
+    sim.step(); sim.step(); // sign, then serve
+    assert.equal(clause.state, 'done');
+    assert.equal(tierEvents.length, 1, 'the real crossing still gets to speak');
+    assert.equal(tierEvents[0].tier, VAEL_PAPER_TIERS[3].tier);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('closing a writ mid-iteration cannot skip the next crew — gc copies the list', () => {
+  const { sim, state, sys, visit, collect } = boot();
+  try {
+    quiet(visit);
+    const v = ensureVaelState(state);
+    // Five closed rows ahead of two live crews: the first close splices one
+    // out and a live iteration would step over the second crew entirely.
+    for (let i = 0; i < 5; i++) {
+      v.writs.push({ id: `writ:old${i}`, invoiceId: `inv:old${i}`, state: 'spent' });
+    }
+    const invA = sys._fileInvoice(state, { amount: 100, mass: 5, cause: 'test' });
+    const invB = sys._fileInvoice(state, { amount: 200, mass: 5, cause: 'test' });
+    const writA = sys._postWrit(state, invA);
+    const writB = sys._postWrit(state, invB);
+    // Both tenders die the same night — both crews must break on one sweep.
+    for (const w of [writA, writB]) {
+      const t = state.entities.get(w.tenderId);
+      t.alive = false;
+    }
+    const closed = collect('vael:writClosed');
+    sim.step();
+    assert.equal(writA.state, 'broken');
+    assert.equal(writB.state, 'broken', 'the second crew was not skipped');
+    assert.equal(closed.length, 2);
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a recovery debtor does not flee its own clamp — only real Vael signatures', () => {
+  const { sim, state, player, sys, visit } = boot();
+  try {
+    quiet(visit);
+    const clause = sys._postClause(state, 'recovery');
+    const debtor = state.entities.get(clause.targetId);
+    assert.ok(lienAnchorFor(state, debtor.id), 'the mark carries its clamp');
+    player.pos.x = debtor.pos.x + 100; player.pos.z = debtor.pos.z; // proximity signs
+    sim.step();
+    assert.equal(clause.state, 'signed');
+    const steered = [];
+    const orig = sys._steer;
+    sys._steer = (s, e, ...rest) => { steered.push(e.id); return orig.call(sys, s, e, ...rest); };
+    sim.step();
+    sys._steer = orig;
+    assert.equal(steered.filter((id) => id === debtor.id).length, 0,
+      'the paper riding its hull is not a pursuer');
+    // A live signature in reach still sends it running.
+    tender(sim, debtor.pos.x + 300, debtor.pos.z);
+    const again = [];
+    sys._steer = (s, e, ...rest) => { again.push(e.id); return orig.call(sys, s, e, ...rest); };
+    sim.step();
+    sys._steer = orig;
+    assert.ok(again.includes(debtor.id), 'a real tender still spooks it');
+  } finally {
+    sim.dispose();
+  }
+});

@@ -147,7 +147,8 @@ export function createFloatingText(ctx) {
   layer.id = 'sf-floattext';
   // Pure presentation: numbers and pips are visuals over the world; the screen-reader channels
   // for the same facts are alerts.js and the receipt lane (the damageIndicators contract).
-  layer.setAttribute('aria-hidden', 'true');
+  // Optional call: headless test stubs mount a minimal DOM without setAttribute.
+  layer.setAttribute?.('aria-hidden', 'true');
   const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
   root.appendChild(layer);
 
@@ -390,12 +391,32 @@ export function createFloatingText(ctx) {
       * (Math.cos(SNAP_WD * t) + SNAP_RATIO * Math.sin(SNAP_WD * t));
   }
 
+  // Reduced motion on a JS-owned motion path cannot be cut by a CSS guard, so the surface reads
+  // the switches itself — the same pattern starmap.js and uiRoot.js use. All three are honoured:
+  // settings.video.motionReduce (the runtime contract accessibility.js resolves and keeps in sync
+  // with the html.sf-reduce-motion class), the class itself for paths that set it directly (the
+  // kit lab's ?motion=reduce), and the OS prefers-reduced-motion query so a reduce audience gets a
+  // stilled entrance even before an in-game choice exists.
+  let _motionMql = null, _motionMqlTried = false;
+  function motionReduced() {
+    if (state.settings?.video?.motionReduce) return true;
+    const el = typeof document !== 'undefined' ? document.documentElement : null;
+    if (el && typeof el.matches === 'function' && el.matches('html.sf-reduce-motion')) return true;
+    if (!_motionMqlTried) {
+      _motionMqlTried = true;
+      try { _motionMql = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; }
+      catch (_) { _motionMql = null; }
+    }
+    return !!(_motionMql && _motionMql.matches);
+  }
+
   function update(dt) {
     if (activeCount <= 0) return;
     if (!helpers.worldToScreen) return;
     // Viewport for the edge-overshoot fade — the same measures worldToScreen maps NDC against.
     const vw = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 720;
+    const reduced = motionReduced();
     for (let i = 0; i < POOL; i++) {
       const n = nodes[i];
       if (!n.alive) continue;
@@ -412,7 +433,6 @@ export function createFloatingText(ctx) {
       const t = n.age / n.life;
       const rise = n.vy * n.age + n.oy;     // integrated rise (px), plus the birth offset
       const drift = n.vx * n.age;
-      const reduced = state.settings?.video?.motionReduce;
       const sc = reduced ? 1 : popScale(n.age);
       const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
       if (n._sfHudTransform !== nextTransform) {

@@ -72,7 +72,8 @@ function makeWorker(id, role, phase, reads, recordId) {
     maxSpeed: 100,
     // bindCollectorCollision no-ops when the proxy manifest already matches.
     physicsBody: { collisionProxyManifest: { id: STORMSHIFT_COLLECTOR_COLLISION.id } },
-    data: countingData(reads, recordId, {
+    data: {
+      jobId: null,
       itinerary: {
         kind: ANVIL_WORK.kind,
         role,
@@ -83,7 +84,12 @@ function makeWorker(id, role, phase, reads, recordId) {
       cargoManifest: role === 'collector'
         ? { totalQty: 0, lines: [] }
         : { totalQty: ANVIL_WORK.receiverCapacity, lines: [] },
-    }),
+      // Plain field on the workers: the counted contract is "no bystander worldRecordId
+      // walks". The resolved worker's own field is legitimately read by actor()'s carrier
+      // verify (added 2026-10-27) — that read is not a list walk.
+      worldRecordId: recordId,
+      __recordId: recordId,
+    },
   };
 }
 
@@ -123,6 +129,9 @@ function makeState(reads, { index = makeIndex(), register = true } = {}) {
   };
   const collector = makeWorker(collectorId, 'collector', 'berthed', reads, recordIds.collector);
   const receiver = makeWorker(receiverId, 'receiver', 'receiving', reads, recordIds.receiver);
+  // The receiver physically travels a buyer leg now: it only counts as the intake berth while
+  // actually home (receiving phase, within transferRange of the berth) — park it there.
+  receiver.pos = { x: 512 + ANVIL_WORK.berthRadius, z: 512 };
   void collectorRecord;
   void receiverRecord;
   for (let i = 0; i < BYSTANDER_COUNT; i++) {
@@ -144,10 +153,17 @@ function makeState(reads, { index = makeIndex(), register = true } = {}) {
 
 function makeOwner(state) {
   return {
+    // _stepAnvilWork delegates receiver stepping into the anvil mixin and reaches traffic's
+    // sector-station helper — the owner surface must carry the same seams production mixes in.
+    ...anvilTrafficMethods,
     state,
     bus: { emit() {} },
     _registry: { get: () => null },
     _active: [],
+    _sectorStations() {
+      return (state.entityList || []).filter((e) => e && e.type === 'station'
+        && !(e.data && e.data.isGate));
+    },
     _ensureState() { return {}; },
     _stampTrafficDurableIdentity() {},
     _setTrafficManifest() {},

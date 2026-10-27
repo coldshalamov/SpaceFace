@@ -73,7 +73,11 @@ test('rail, siege and molten flight retain fundamentally different carried anato
   const thermal = resolveWeaponRecipe('wpn_plasma_cannon_m').flight;
   assert.equal(new Set([rail.boltVariant, siege.boltVariant, thermal.boltVariant]).size, 3);
   assert.ok(siege.width > rail.width * 4, 'a loaded bore chamber is not a rail needle');
-  assert.ok(rail.intensity < 2 && siege.intensity < 2, 'body identity survives broad white clipping');
+  // 4ec2bc37938's event-carrier rebuild retuned rail to 2.22; the contract is that the
+  // physical-body families stay dimmer than the thermal family, with absolute headroom.
+  assert.ok(rail.intensity < 2.5 && siege.intensity < 2.5, 'body identity survives broad white clipping');
+  assert.ok(rail.intensity < thermal.intensity && siege.intensity < thermal.intensity,
+    'the hot family still reads hotter than the carried bodies');
   assert.notEqual(thermal.coreColor, rail.coreColor);
 });
 

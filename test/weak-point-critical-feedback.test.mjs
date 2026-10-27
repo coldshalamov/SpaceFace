@@ -96,24 +96,25 @@ test('projectile hit produces one critical callout and one correctly multiplied 
   assert.equal(f.damage[0].applied, 16);
   assert.equal(f.target.hull, 984);
   // FB-019: a player-caused hull hit also paints its layer pip between the callout and the
-  // number (a flat mark — no --rise), and spawns carry the --rise class since demo-prep.
+  // number (a flat mark — no rise velocity). The entrance pop is no longer a class: the ORRERY
+  // sweep folded it into the JS snap-spring popScale, so every spawn is exactly 'sf-ft ' + cls.
   assert.deepEqual(dom.visible().map(el => [el.textContent, el.className]), [
-    ['CRIT · DRIVE COIL', 'sf-ft sf-ft--rise sf-ft--weak sf-ft--critical'],
+    ['CRIT · DRIVE COIL', 'sf-ft sf-ft--weak sf-ft--critical'],
     ['', 'sf-ft sf-ft--pip sf-ft--pip-hull'],
-    ['16', 'sf-ft sf-ft--rise sf-ft--hull'],
+    ['16', 'sf-ft sf-ft--hull'],
   ]);
   // An ordinary hit in the same burst still aggregates solely into the numeric receipt.
   f.bus.emit('projectile:hit', { ...HIT, pos: { x: 10, z: 0 } });
   assert.equal(f.receipts.length, 1);
   assert.equal(f.target.hull, 974);
   assert.deepEqual(dom.visible().map(el => el.textContent), ['CRIT · DRIVE COIL', '', '26']);
-  assert.equal(dom.visible()[2].className, 'sf-ft sf-ft--rise sf-ft--hull sf-ft--big');
+  assert.equal(dom.visible()[2].className, 'sf-ft sf-ft--hull sf-ft--big');
 });
 
 // FB-019: player-caused hull hits paint their layer pip beside the number (a control receipt,
 // not a crit path) — only the non-player-attacker case keeps a pip-free list.
-const ORDINARY = [['10', 'sf-ft sf-ft--rise sf-ft--hull']];
-const WITH_PIP = [['', 'sf-ft sf-ft--pip sf-ft--pip-hull'], ['10', 'sf-ft sf-ft--rise sf-ft--hull']];
+const ORDINARY = [['10', 'sf-ft sf-ft--hull']];
+const WITH_PIP = [['', 'sf-ft sf-ft--pip sf-ft--pip-hull'], ['10', 'sf-ft sf-ft--hull']];
 for (const [name, options, hit, expected] of [
   ['outside the weak arc', {}, { ...HIT, pos: { x: 10, z: 0 } }, WITH_PIP],
   ['a hull without a weak point', { shipClass: 'fighter' }, HIT, WITH_PIP],
@@ -159,12 +160,23 @@ test('critical text uses the pool and existing reduced-motion lifetime without n
   assert.equal(critical.style.transform, legacy.style.transform, 'critical uses the existing motion path');
   assert.match(critical.style.transform, /scale\(1\)$/);
   assert.equal(critical.style.opacity, legacy.style.opacity);
-  assert.equal(legacy.className, 'sf-ft sf-ft--rise sf-ft--weak');
+  assert.equal(legacy.className, 'sf-ft sf-ft--weak');
   assert.equal(legacy.textContent, 'DRIVE COIL');
   f.state.settings.video.motionReduce = false;
   dom.text.update(0.02);
   const scale = Number(critical.style.transform.match(/scale\(([^)]+)\)$/)[1]);
-  assert.ok(Math.abs(scale - 1.075) < 1e-12);
+  // The entrance is the ORRERY §3.5 snap spring (stiffness 420, damping 38, mass 1) solved
+  // closed-form in popScale: 1 + 0.3·e^(-ζωt)(cos ωd t + (ζω/ωd) sin ωd t), with ζω = 19
+  // exactly. At age 0.04 (two 20 ms update steps) the numeral is still settling from its
+  // 1.3 landing — derive the pinned value from the spring's own constants, not a stale
+  // ease-out figure: expectedScale ≈ 1.2386879350583948.
+  const springW = Math.sqrt(420);
+  const springZeta = 38 / (2 * springW);
+  const springWd = springW * Math.sqrt(1 - springZeta * springZeta);
+  const springAge = 0.04;
+  const expectedScale = 1 + 0.3 * Math.exp(-19 * springAge)
+    * (Math.cos(springWd * springAge) + (19 / springWd) * Math.sin(springWd * springAge));
+  assert.ok(Math.abs(scale - expectedScale) < 1e-12);
   assert.equal(critical.style.transform, legacy.style.transform);
   dom.text.update(1);
   assert.equal(dom.text._activeCount(), 0);
@@ -176,7 +188,7 @@ test('critical text uses the pool and existing reduced-motion lifetime without n
   for (let i = 0; i < dom.pool.length + 1; i++) {
     f.bus.emit('combat:damage', { amount: 5, pos: HIT.pos });
   }
-  assert.ok(dom.visible().every(el => el.textContent === '5' && el.className === 'sf-ft sf-ft--rise sf-ft--hull'));
+  assert.ok(dom.visible().every(el => el.textContent === '5' && el.className === 'sf-ft sf-ft--hull'));
   assert.equal(dom.allocations(), allocated, 'spawns and updates reuse the existing DOM pool');
 });
 

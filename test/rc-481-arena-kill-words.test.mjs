@@ -316,6 +316,42 @@ test('arena-renamed physics words land on the stunt line; gun kills and friendly
   owner.destroy();
 });
 
+test('the ARENA register rolls a kill storm on its one slot instead of flashing words', () => {
+  const bus = createBus();
+  const owner = createStuntCallout({ state: calloutState(), bus, doc: fakeDocument() });
+  const kill = (word) => bus.emit('swarm:killPopup', {
+    pos: { x: 0, z: 0 }, word, cause: 'terrain', friendlyFire: false, wave: 2,
+  });
+
+  // The single-kill path is unchanged: one kill files one plain register line.
+  kill('SWALLOWED');
+  owner.update(0);
+  let text = calloutTextFor(owner.root);
+  assert.match(text, /ARENA: SWALLOWED/, 'the register files the arena word');
+  assert.ok(!/ARENA: SWALLOWED ×/.test(text), 'a lone kill carries no count');
+
+  // The storm rolls the word's own count on the same register slot.
+  kill('SWALLOWED');
+  kill('SWALLOWED');
+  kill('SWALLOWED');
+  owner.update(10);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /ARENA: SWALLOWED ×4/, 'the register counts the storm');
+
+  // A different word files fresh — one slot supersedes — with its own run,
+  // and the earlier word's count is remembered, not restarted.
+  kill('WEBBED');
+  kill('WEBBED');
+  owner.update(20);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /ARENA: WEBBED ×2/, 'a new word files fresh with its own run');
+  kill('SWALLOWED');
+  owner.update(30);
+  text = calloutTextFor(owner.root);
+  assert.match(text, /ARENA: SWALLOWED ×5/, 'the earlier word keeps its count');
+  owner.destroy();
+});
+
 test('the cause lane stays dark outside a run even for an arena word', () => {
   const bus = createBus();
   const st = calloutState();
