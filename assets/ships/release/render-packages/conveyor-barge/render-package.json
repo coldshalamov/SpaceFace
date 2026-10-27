@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c3ff117ed1df7781fa9021094cb4a5b7937e8e3dd18ce0db2aaf6ebca5927088",
+  "contentHash": "641d4ce8f3f7e817dd3f96b204184fcf0112c8322ea7d543290d3fea81cd090e",
   "dynamicGroups": [
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -511,17 +511,17 @@
       "bounds": {
         "max": [
           72.29331970214844,
-          11.097270965576172,
-          8.298539161682129
+          11.097271141810467,
+          8.298538654590615
         ],
         "min": [
           -1,
-          0.0027290736325085163,
-          -8.298539161682129
+          0.0027288973982146913,
+          -8.298538654590615
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c201204626144090a85b29045694f7a2f6bd5c8e8a7f891c6cbed4ab5528d7ec",
+      "geometryHash": "6cef834cc4d2cad68a0844d8969bd36311320ae8fc28928c038f2ad69b1ee55a",
       "id": "sf.render.conveyor-barge.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -536,17 +536,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.093689918518066,
-          8.301018714904785
+          11.093690189754508,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc1dfdd5ffe0ab67916890a05c3d5e6956281eae7f6d06d2701763b5fadc21a4",
+      "geometryHash": "af10a7a1ba91055402b49dddd47fafcaf4b99b6d328a3f0122f189d808880bab",
       "id": "sf.render.conveyor-barge.mesh.lod0-armor.primitive.0",
       "indexCount": 10308,
       "indexed": true,
@@ -561,17 +561,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.756001472473145,
-          5.60039758682251
+          10.756001140926742,
+          5.600397505947773
         ],
         "min": [
           1.7519989013671875,
-          5.861499786376953,
-          -4.2483978271484375
+          5.861500117923356,
+          -4.2483977462737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fcb704a5d4e5af515e49b908f9f8ffef898abfe138bab6ac01b1a74cd587daa",
+      "geometryHash": "8f246833c3a944b3c41c5679e8585ed3264b6f259fbffee35a6df85acd147a62",
       "id": "sf.render.conveyor-barge.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -635,18 +635,18 @@
     {
       "bounds": {
         "max": [
-          70.00000762939453,
-          3.0994138717651367,
+          70.00000922619581,
+          3.0994139580533515,
           8.100000381469727
         ],
         "min": [
-          66.99999237060547,
-          0.7005858421325684,
+          66.99999077380419,
+          0.7005857558443536,
           -8.100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9db8df819533d6ce20c547d43ea7aa1d4b50e496d3bb2351c4541f2ec4413780",
+      "geometryHash": "a6696eba24f693d51c1eb1a42c1ed73314ba0b997cbc65708015fff25f4a5b1c",
       "id": "sf.render.conveyor-barge.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -661,17 +661,17 @@
       "bounds": {
         "max": [
           72.17097473144531,
-          11.098254203796387,
-          2.070068120956421
+          11.098254127985872,
+          2.0700678752653
         ],
         "min": [
           -0.48614501953125,
-          4.401745319366455,
-          -6.285046577453613
+          4.40174539517697,
+          -6.2850463317624925
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28f3100f91bb0492f43806df419627f21de44ee31d4fbcc7460fd85a77b572ae",
+      "geometryHash": "19952c7a7cd13d7c3cf01ade023004890a334675adb75e53de5be17787205b7b",
       "id": "sf.render.conveyor-barge.mesh.lod0-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -686,17 +686,17 @@
       "bounds": {
         "max": [
           3.8999996185302734,
-          7.649964809417725,
-          -1.5199804306030273
+          7.64996484849081,
+          -1.5199804678970863
         ],
         "min": [
           0.09999847412109375,
-          6.750034809112549,
-          -1.6800196170806885
+          6.750034770039464,
+          -1.6800195797866295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfc090ec336db3f298c7c3796996b186e8d64bebb47f8da479e4ca322fb4a8e7",
+      "geometryHash": "98f8a6c99f0260d1aa2ca90f85ddc29515f087ec3bdb8bf7fa66ada0f141c4fe",
       "id": "sf.render.conveyor-barge.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -710,18 +710,18 @@
     {
       "bounds": {
         "max": [
-          2.3079674243927,
-          8.839986801147461,
+          2.307967386883994,
+          8.839986429611175,
           -3.6841259002685547
         ],
         "min": [
-          1.6920287609100342,
-          8.700013160705566,
+          1.6920287984187403,
+          8.700013532241853,
           -4.315874099731445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64490a874034a17b18ed986ad41304b1b14639ae739c5117f90ad3def847f834",
+      "geometryHash": "0b442b7940650966a16ee8f9e979978b7b747b382dd98c01302cc150f92394dd",
       "id": "sf.render.conveyor-barge.mesh.lod0-mechanical.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -736,17 +736,17 @@
       "bounds": {
         "max": [
           72.30000305175781,
-          9.69977855682373,
-          7.000702381134033
+          9.699778732243328,
+          7.000702227475672
         ],
         "min": [
           1.5,
-          1.8002210855484009,
-          -7.000702381134033
+          1.8002209101288043,
+          -7.000702227475672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "800013ffa65cea7256a7e605801fafe2952c6d432b857f625e064f2357738b0a",
+      "geometryHash": "7b66cdfbde2b40c948f4f0d836e966e11417b8a0d5d626a7babf02afd87729e9",
       "id": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 6528,
       "indexed": true,
@@ -761,17 +761,17 @@
       "bounds": {
         "max": [
           56.5,
-          5.999031066894531,
-          4.999298095703125
+          5.999031037324137,
+          4.999298074282052
         ],
         "min": [
           5.5,
-          5.500968933105469,
-          -4.999298095703125
+          5.500968962675863,
+          -4.999298074282052
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5d1c4ac88bf5bdc1b66cc9f775e6cfb0b0e5f8c3a7b910b4ad39f8f47d5156e",
+      "geometryHash": "d67beac1d033b75f036ffbe9a80a4e3d03a1002797db494829aac2a5099a3cbe",
       "id": "sf.render.conveyor-barge.mesh.lod0-stone.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -786,17 +786,17 @@
       "bounds": {
         "max": [
           68,
-          5.700371265411377,
-          7.201147556304932
+          5.700371348276149,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.7496283054351807,
-          -7.201147556304932
+          3.7496282225704087,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4a9ff03f27993e2c03e4c2a7cf210ceada8aa10c13606df53a0fd1701bf686a",
+      "geometryHash": "a8479ec29dc87051d4f9d00ce2efb36766ee4a67611eb72432bec095de7a7480",
       "id": "sf.render.conveyor-barge.mesh.lod0-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -811,17 +811,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.093689918518066,
-          8.301018714904785
+          11.093690189754508,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e15d3023ec68242c07194aef93bd7bbf4c3a08c0b920a419b5a80253c65afa1f",
+      "geometryHash": "a2c4b1804ea7df29ee87776ef1c56bfca30a95b39bbc2463b41c698d4377f7d9",
       "id": "sf.render.conveyor-barge.mesh.lod1-armor.primitive.0",
       "indexCount": 4794,
       "indexed": true,
@@ -836,17 +836,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.75601577758789,
-          5.600278854370117
+          10.756015740101013,
+          5.600278830533353
         ],
         "min": [
           1.7515678405761719,
-          5.861484527587891,
-          -4.248577117919922
+          5.861484565074768,
+          -4.248577094083157
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a19ba7c4535e81b592724911324eaef04733e4b87a9f3e0d40ae1da733ee511",
+      "geometryHash": "855271641400b0c487ab8b151338429cab9f48015b6e72c1bb1e3ec5cebfaf4c",
       "id": "sf.render.conveyor-barge.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -910,18 +910,18 @@
     {
       "bounds": {
         "max": [
-          69.99514770507812,
-          3.0957183837890625,
+          69.99514586793008,
+          3.095718280341797,
           8.094786643981934
         ],
         "min": [
-          67.0048599243164,
-          0.7042814493179321,
+          67.00486176146445,
+          0.7042815527651975,
           -8.095338821411133
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c90046dfbab7bf09f9ede263083fbfbf3b14166e65b47ebdc31cd907ba518d55",
+      "geometryHash": "4df68c8a08da631344c64faebdea67bee5368da0766513c0273860cdabf97397",
       "id": "sf.render.conveyor-barge.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 630,
       "indexed": true,
@@ -936,17 +936,17 @@
       "bounds": {
         "max": [
           72.17097473144531,
-          11.098254203796387,
-          2.070068120956421
+          11.098254127985872,
+          2.0700678752653
         ],
         "min": [
           -0.48614501953125,
-          4.401745319366455,
-          -6.285046577453613
+          4.40174539517697,
+          -6.2850463317624925
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee94f04fd452755b3578211414b26e1b82255a7849aac798f228af2a4b4c518d",
+      "geometryHash": "69ab170516670c352e0f93da680a57615e4cac38050e697762b366f33191fda5",
       "id": "sf.render.conveyor-barge.mesh.lod1-hull.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -961,17 +961,17 @@
       "bounds": {
         "max": [
           3.8999996185302734,
-          7.649964809417725,
-          -1.5199804306030273
+          7.64996484849081,
+          -1.5199804678970863
         ],
         "min": [
           0.09999847412109375,
-          6.750034809112549,
-          -1.6800196170806885
+          6.750034770039464,
+          -1.6800195797866295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76a6da1cdae37a6dfe9d9bbebf752e76a3aa0f0a2eeccedcf39beecc69d87218",
+      "geometryHash": "4d260d98120dc5d30a41ca18ef07d706f36632c9154e21258625ca907b9ed4df",
       "id": "sf.render.conveyor-barge.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -985,18 +985,18 @@
     {
       "bounds": {
         "max": [
-          2.3081657886505127,
-          8.838047981262207,
+          2.3081657841829384,
+          8.838047996993307,
           -3.6841206550598145
         ],
         "min": [
-          1.6918284893035889,
-          8.702287673950195,
+          1.6918284937711632,
+          8.702287658219095,
           -4.315645217895508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04ec5fd4946f86f171b8907021ca0a832cc606270d0f4a284859f77e5c020163",
+      "geometryHash": "0d4b993216153b2d360b2464bd02d80ddb6f34af179897fed9e34d661a69d759",
       "id": "sf.render.conveyor-barge.mesh.lod1-mechanical.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -1011,17 +1011,17 @@
       "bounds": {
         "max": [
           72.29485321044922,
-          9.695525169372559,
-          6.9958720207214355
+          9.695524974583773,
+          6.995871904520846
         ],
         "min": [
           1.5,
-          1.8051837682724,
-          -6.9958720207214355
+          1.8051839630611868,
+          -6.995871904520846
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb09b538328dc13831bc2178cf7256c948d67a154b44c418b1b6b5cc085162c7",
+      "geometryHash": "a001c8cf6409ae3053568ca8082ac42fe1c7d27118d164097ef31c9b430ab29f",
       "id": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -1036,17 +1036,17 @@
       "bounds": {
         "max": [
           56.49488067626953,
-          5.995811939239502,
-          4.995185375213623
+          5.995811788135079,
+          4.995185791047291
         ],
         "min": [
           5.505121231079102,
-          5.5040740966796875,
-          -4.995177745819092
+          5.504074247784111,
+          -4.99517816165276
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e277f908846497ecf796bd95d0056590f19903d48f6773c30902e105fc1ce707",
+      "geometryHash": "c97f53e57f9836cd0b20e53682aa49ae177b13b743b6b2298c4a0d00f58c67f6",
       "id": "sf.render.conveyor-barge.mesh.lod1-stone.primitive.0",
       "indexCount": 528,
       "indexed": true,
@@ -1061,17 +1061,17 @@
       "bounds": {
         "max": [
           68,
-          5.700371265411377,
-          7.201147556304932
+          5.700371348276149,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.7496283054351807,
-          -7.201147556304932
+          3.7496282225704087,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7792beac5573b2e39608b476888df1aead6ce7c9ffce57d5d0aac4e45b6f7f6",
+      "geometryHash": "3aaea0e6b021f07e22ae44b3a52cd9470b497794272ec2eadd44ba787ec02561",
       "id": "sf.render.conveyor-barge.mesh.lod1-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1086,17 +1086,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.092205047607422,
-          8.281222343444824
+          11.092205359805781,
+          8.281222706991866
         ],
         "min": [
           -0.9796028137207031,
-          0.018629595637321472,
-          -8.281222343444824
+          0.01862928343896275,
+          -8.281222706991866
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fa28bcb88cce648dc73bba1ac62a1b6a339998281a3e8babd541d090e55559e",
+      "geometryHash": "b1dcdb34c2fdf53aa0608e61225483ced9f5e25e758d5abaacf361086ed0b099",
       "id": "sf.render.conveyor-barge.mesh.lod2-armor.primitive.0",
       "indexCount": 1668,
       "indexed": true,
@@ -1111,17 +1111,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.756082534790039,
-          5.598442554473877
+          10.756082391289222,
+          5.5984422280208
         ],
         "min": [
           1.7496757507324219,
-          5.861418724060059,
-          -4.259222507476807
+          5.861418867560874,
+          -4.25922218102373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b6a0510078a95caf9290cae16bbac4a028fc0e31a9d1a6bacc7e320895d0e5f",
+      "geometryHash": "d765b6dd06f7ae89300a60781f65a71b3d64f2834cbcd3095da8d97a7b3f1930",
       "id": "sf.render.conveyor-barge.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -1185,18 +1185,18 @@
     {
       "bounds": {
         "max": [
-          69.9708251953125,
-          3.0898654460906982,
+          69.97082339000501,
+          3.089865439872293,
           8.07547664642334
         ],
         "min": [
-          67.02918243408203,
-          0.7101345658302307,
+          67.02918423938952,
+          0.7101345720486358,
           -8.075443267822266
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51b5e1efd1b7bed195ede307f57ff978f0d989f7ac492900f1b2e735157a8af7",
+      "geometryHash": "095066db980e2fcbbdcbd9fe96f8c5adefdfa0d47d36cbc403cdc4cfa561dfc4",
       "id": "sf.render.conveyor-barge.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -1211,17 +1211,17 @@
       "bounds": {
         "max": [
           72.1607894897461,
-          11.08041000366211,
-          2.05893611907959
+          11.080409633704754,
+          2.0589360006452138
         ],
         "min": [
           -0.4728202819824219,
-          4.421534061431885,
-          -6.26687479019165
+          4.42153443138924,
+          -6.266874671757274
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e57453c1a6b75367e6d827216206e6ac5a4db24b7537dfd91fb039837ac62a91",
+      "geometryHash": "cad5883750f4d1438a39632b1eb9ba85151d8d5ab9786ae9fc8fb3b2b62a0797",
       "id": "sf.render.conveyor-barge.mesh.lod2-hull.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1236,17 +1236,17 @@
       "bounds": {
         "max": [
           2.3219432830810547,
-          8.838019371032715,
-          -3.686190128326416
+          8.838019712925846,
+          -3.6861900545677826
         ],
         "min": [
           1.6780052185058594,
-          8.702263832092285,
-          -4.315506935119629
+          8.702263490199154,
+          -4.315507008878262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64a05ec53062d4e25e082adbf18b96343897ef1265054078c9669826b1b28a8c",
+      "geometryHash": "e34c3f146026e7fac5bd8d221928d6fbee29ccc11ce946317918060da2b8bd80",
       "id": "sf.render.conveyor-barge.mesh.lod2-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1261,17 +1261,17 @@
       "bounds": {
         "max": [
           72.2841567993164,
-          9.684870719909668,
-          5.298325061798096
+          9.684870829365238,
+          5.298325095108447
         ],
         "min": [
           3.006336212158203,
-          4.948937892913818,
-          -5.298325061798096
+          4.9489377834582475,
+          -5.298325095108447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "415e497043dee60da232e48593397af470987ef26a8a6a5d9bf00b139cde3b2f",
+      "geometryHash": "69be6225eff1e9cbd5d1ef96a155c60e9445652ffa39ddda9db9ef74ac465bb5",
       "id": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1286,17 +1286,17 @@
       "bounds": {
         "max": [
           56.48415756225586,
-          5.983321666717529,
-          4.983748435974121
+          5.983321551215453,
+          4.983748333962082
         ],
         "min": [
           5.515842437744141,
-          5.516678333282471,
-          -4.983748435974121
+          5.516678448784547,
+          -4.983748333962082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c5d6f1f736395c3f0c85fb38228afe5253b4c01dcba36e2aed0ea657488f6b0",
+      "geometryHash": "6f397b96b17f47701286a8a7c775cf5e642053c86646c6fd68d7595ba5d790c3",
       "id": "sf.render.conveyor-barge.mesh.lod2-stone.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1311,17 +1311,17 @@
       "bounds": {
         "max": [
           68,
-          5.700371265411377,
-          7.201147556304932
+          5.700371348276149,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.7496283054351807,
-          -7.201147556304932
+          3.7496282225704087,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7792beac5573b2e39608b476888df1aead6ce7c9ffce57d5d0aac4e45b6f7f6",
+      "geometryHash": "3aaea0e6b021f07e22ae44b3a52cd9470b497794272ec2eadd44ba787ec02561",
       "id": "sf.render.conveyor-barge.mesh.lod2-warning.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1569,20 +1569,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.collision-hull",
       "localTransform": [
-        1,
+        36.64665985107422,
         0,
         0,
         0,
         0,
-        1,
+        36.64665985107422,
         0,
         0,
         0,
         0,
-        1,
+        36.64665985107422,
         0,
-        0,
-        0,
+        35.64665985107422,
+        5.55000001960434,
         0,
         1
       ],
@@ -1597,20 +1597,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        36.64665985107422,
         0,
         0,
         0,
         0,
-        1,
+        36.64665985107422,
         0,
         0,
         0,
         0,
-        1,
+        36.64665985107422,
         0,
-        0,
-        0,
+        35.64665985107422,
+        5.55000001960434,
         0,
         1
       ]
@@ -1618,20 +1618,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-armor",
       "localTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ],
@@ -1646,20 +1646,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ]
@@ -1667,21 +1667,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
-        0,
-        0,
-        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1695,21 +1695,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
-        0,
-        0,
-        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
         1
       ]
     },
@@ -1814,21 +1814,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hull",
       "localTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1842,41 +1842,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-hull-aged",
       "localTransform": [
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
-        0,
-        0,
+        68.5,
+        1.8999998569488525,
         0,
         1
       ],
@@ -1891,20 +1891,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
-        0,
-        0,
+        68.5,
+        1.8999998569488525,
         0,
         1
       ]
@@ -1912,21 +1912,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-lights-warm",
       "localTransform": [
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
-        0,
-        0,
-        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1940,42 +1940,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
-        0,
-        0,
-        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        0.3158740997314453,
         0,
         0,
         0,
         0,
-        1,
+        0.3158740997314453,
         0,
         0,
         0,
         0,
-        1,
+        0.3158740997314453,
         0,
-        0,
-        0,
-        0,
+        1.9999980926513672,
+        8.769999980926514,
+        -4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1989,41 +1989,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        0.3158740997314453,
         0,
         0,
         0,
         0,
-        1,
+        0.3158740997314453,
         0,
         0,
         0,
         0,
-        1,
+        0.3158740997314453,
         0,
-        0,
-        0,
-        0,
+        1.9999980926513672,
+        8.769999980926514,
+        -4,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        35.400001525878906,
         0,
         0,
         0,
         0,
-        1,
+        35.400001525878906,
         0,
         0,
         0,
         0,
-        1,
+        35.400001525878906,
         0,
-        0,
-        0,
+        36.900001525878906,
+        5.749999821186066,
         0,
         1
       ],
@@ -2038,20 +2038,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        35.400001525878906,
         0,
         0,
         0,
         0,
-        1,
+        35.400001525878906,
         0,
         0,
         0,
         0,
-        1,
+        35.400001525878906,
         0,
-        0,
-        0,
+        36.900001525878906,
+        5.749999821186066,
         0,
         1
       ]
@@ -2059,20 +2059,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-stone",
       "localTransform": [
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ],
@@ -2087,20 +2087,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ]
@@ -2108,20 +2108,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod0-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ],
@@ -2136,20 +2136,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ]
@@ -2157,20 +2157,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-armor",
       "localTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ],
@@ -2185,20 +2185,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ]
@@ -2206,21 +2206,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
-        0,
-        0,
-        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2234,21 +2234,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
-        0,
-        0,
-        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
         1
       ]
     },
@@ -2353,21 +2353,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-hull",
       "localTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2381,42 +2381,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -2.107489228248596,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-hull-aged",
       "localTransform": [
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2430,42 +2430,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-lights-warm",
       "localTransform": [
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
-        0,
-        0,
-        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2479,42 +2479,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
         0,
         0,
         0,
-        1,
+        1.9000005722045898,
         0,
-        0,
-        0,
-        0,
+        1.9999990463256836,
+        7.199999809265137,
+        -1.600000023841858,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        0.3157622814178467,
         0,
         0,
         0,
         0,
-        1,
+        0.3157622814178467,
         0,
         0,
         0,
         0,
-        1,
+        0.3157622814178467,
         0,
-        0,
-        0,
-        0,
+        1.9999971389770508,
+        8.770167827606201,
+        -3.999882936477661,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2528,41 +2528,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        0.3157622814178467,
         0,
         0,
         0,
         0,
-        1,
+        0.3157622814178467,
         0,
         0,
         0,
         0,
-        1,
+        0.3157622814178467,
         0,
-        0,
-        0,
-        0,
+        1.9999971389770508,
+        8.770167827606201,
+        -3.999882936477661,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        35.39742660522461,
         0,
         0,
         0,
         0,
-        1,
+        35.39742660522461,
         0,
         0,
         0,
         0,
-        1,
+        35.39742660522461,
         0,
-        0,
-        0,
+        36.89742660522461,
+        5.750354468822479,
         0,
         1
       ],
@@ -2577,20 +2577,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        35.39742660522461,
         0,
         0,
         0,
         0,
-        1,
+        35.39742660522461,
         0,
         0,
         0,
         0,
-        1,
+        35.39742660522461,
         0,
-        0,
-        0,
+        36.89742660522461,
+        5.750354468822479,
         0,
         1
       ]
@@ -2598,21 +2598,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-stone",
       "localTransform": [
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
-        0,
-        0,
-        0,
+        31.000000953674316,
+        5.749943017959595,
+        0.000003814697265625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2626,41 +2626,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
-        0,
-        0,
-        0,
+        31.000000953674316,
+        5.749943017959595,
+        0.000003814697265625,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod1-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ],
@@ -2675,20 +2675,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ]
@@ -2696,20 +2696,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-armor",
       "localTransform": [
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
-        0,
-        0,
+        34.705671310424805,
+        5.555417321622372,
         0,
         1
       ],
@@ -2724,20 +2724,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
-        0,
-        0,
+        34.705671310424805,
+        5.555417321622372,
         0,
         1
       ]
@@ -2745,21 +2745,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
-        0,
-        0,
-        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2773,21 +2773,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
-        0,
-        0,
-        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
         1
       ]
     },
@@ -2892,21 +2892,21 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-hull",
       "localTransform": [
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
-        0,
-        0,
-        0,
+        35.843984603881836,
+        7.750972032546997,
+        -2.1039693355560303,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2920,42 +2920,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
-        0,
-        0,
-        0,
+        35.843984603881836,
+        7.750972032546997,
+        -2.1039693355560303,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-hull-aged",
       "localTransform": [
-        1,
+        8.075459957122803,
         0,
         0,
         0,
         0,
-        1,
+        8.075459957122803,
         0,
         0,
         0,
         0,
-        1,
+        8.075459957122803,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.9000000059604645,
+        0.000016689300537109375,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2969,42 +2969,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        8.075459957122803,
         0,
         0,
         0,
         0,
-        1,
+        8.075459957122803,
         0,
         0,
         0,
         0,
-        1,
+        8.075459957122803,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.9000000059604645,
+        0.000016689300537109375,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        0.32196903228759766,
         0,
         0,
         0,
         0,
-        1,
+        0.32196903228759766,
         0,
         0,
         0,
         0,
-        1,
+        0.32196903228759766,
         0,
-        0,
-        0,
-        0,
+        1.999974250793457,
+        8.7701416015625,
+        -4.0008485317230225,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3018,41 +3018,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        0.32196903228759766,
         0,
         0,
         0,
         0,
-        1,
+        0.32196903228759766,
         0,
         0,
         0,
         0,
-        1,
+        0.32196903228759766,
         0,
-        0,
-        0,
-        0,
+        1.999974250793457,
+        8.7701416015625,
+        -4.0008485317230225,
         1
       ]
     },
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        34.6389102935791,
         0,
         0,
         0,
         0,
-        1,
+        34.6389102935791,
         0,
         0,
         0,
         0,
-        1,
+        34.6389102935791,
         0,
-        0,
-        0,
+        37.645246505737305,
+        7.316904306411743,
         0,
         1
       ],
@@ -3067,20 +3067,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34.6389102935791,
         0,
         0,
         0,
         0,
-        1,
+        34.6389102935791,
         0,
         0,
         0,
         0,
-        1,
+        34.6389102935791,
         0,
-        0,
-        0,
+        37.645246505737305,
+        7.316904306411743,
         0,
         1
       ]
@@ -3088,20 +3088,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-stone",
       "localTransform": [
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ],
@@ -3116,20 +3116,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ]
@@ -3137,20 +3137,20 @@
     {
       "id": "sf.render.conveyor-barge.mesh.lod2-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ],
@@ -3165,20 +3165,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.conveyor-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        4.724999785423279,
         0,
         1
       ]
@@ -3242,37 +3242,37 @@
       "uri": "place_conveyor_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 642972,
-    "sha256": "d8588425fc9ddb27df3009d239f14c5d712dd279d62a55737ede45bccce22253",
+    "bytes": 393192,
+    "sha256": "98c27c334c46c43f8bfbc6873b5af65c5312b051373a5eb26ee88c1de9b7fc93",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         35.650001525878906,
-        5.548886939272052,
+        5.548886765748573,
         0
       ],
       "max": [
         72.30000305175781,
-        11.098254203796387,
-        8.301018714904785
+        11.098254127985872,
+        8.301019382479717
       ],
       "min": [
         -1,
-        -0.00048032525228336453,
-        -8.301018714904785
+        -0.00048059648872467164,
+        -8.301019382479717
       ],
       "size": [
         73.30000305175781,
-        11.09873452904867,
-        16.60203742980957
+        11.098734724474596,
+        16.602038764959435
       ]
     },
     "hidden": [
@@ -3895,20 +3895,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
-          0,
-          0,
+          34.695472717285156,
+          5.5466047966328915,
           0,
           1
         ],
@@ -3922,21 +3922,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.98649978637695,
           0,
           0,
           0,
           0,
-          1,
+          34.98649978637695,
           0,
           0,
           0,
           0,
-          1,
+          34.98649978637695,
           0,
-          0,
-          0,
-          0,
+          36.73849868774414,
+          8.308750629425049,
+          0.6759998798370361,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -4005,21 +4005,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
-          0,
-          0,
-          0,
+          35.84241485595703,
+          7.749999761581421,
+          -2.107489228248596,
           1
         ],
         "name": "LOD0_Hull",
@@ -4032,20 +4032,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.100000381469727,
           0,
-          0,
-          0,
+          68.5,
+          1.8999998569488525,
           0,
           1
         ],
@@ -4059,21 +4059,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9000005722045898,
           0,
           0,
           0,
           0,
-          1,
+          1.9000005722045898,
           0,
           0,
           0,
           0,
-          1,
+          1.9000005722045898,
           0,
-          0,
-          0,
-          0,
+          1.9999990463256836,
+          7.199999809265137,
+          -1.600000023841858,
           1
         ],
         "name": "LOD0_Lights_Warm",
@@ -4086,21 +4086,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3158740997314453,
           0,
           0,
           0,
           0,
-          1,
+          0.3158740997314453,
           0,
           0,
           0,
           0,
-          1,
+          0.3158740997314453,
           0,
-          0,
-          0,
-          0,
+          1.9999980926513672,
+          8.769999980926514,
+          -4,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -4113,20 +4113,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.400001525878906,
           0,
           0,
           0,
           0,
-          1,
+          35.400001525878906,
           0,
           0,
           0,
           0,
-          1,
+          35.400001525878906,
           0,
-          0,
-          0,
+          36.900001525878906,
+          5.749999821186066,
           0,
           1
         ],
@@ -4140,20 +4140,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.5,
           0,
           0,
           0,
           0,
-          1,
+          25.5,
           0,
           0,
           0,
           0,
-          1,
+          25.5,
           0,
-          0,
-          0,
+          31,
+          5.75,
           0,
           1
         ],
@@ -4167,20 +4167,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          4.724999785423279,
           0,
           1
         ],
@@ -4194,20 +4194,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
-          0,
-          0,
+          34.695472717285156,
+          5.5466047966328915,
           0,
           1
         ],
@@ -4221,21 +4221,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.98671531677246,
           0,
           0,
           0,
           0,
-          1,
+          34.98671531677246,
           0,
           0,
           0,
           0,
-          1,
+          34.98671531677246,
           0,
-          0,
-          0,
-          0,
+          36.73828315734863,
+          8.30875015258789,
+          0.6758508682250977,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -4304,21 +4304,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
-          0,
-          0,
-          0,
+          35.84241485595703,
+          7.749999761581421,
+          -2.107489228248596,
           1
         ],
         "name": "LOD1_Hull",
@@ -4331,21 +4331,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.095062732696533,
           0,
           0,
           0,
           0,
-          1,
+          8.095062732696533,
           0,
           0,
           0,
           0,
-          1,
+          8.095062732696533,
           0,
-          0,
-          0,
-          0,
+          68.50000381469727,
+          1.8999999165534973,
+          -0.0002760887145996094,
           1
         ],
         "name": "LOD1_Hull_aged",
@@ -4358,21 +4358,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9000005722045898,
           0,
           0,
           0,
           0,
-          1,
+          1.9000005722045898,
           0,
           0,
           0,
           0,
-          1,
+          1.9000005722045898,
           0,
-          0,
-          0,
-          0,
+          1.9999990463256836,
+          7.199999809265137,
+          -1.600000023841858,
           1
         ],
         "name": "LOD1_Lights_Warm",
@@ -4385,21 +4385,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3157622814178467,
           0,
           0,
           0,
           0,
-          1,
+          0.3157622814178467,
           0,
           0,
           0,
           0,
-          1,
+          0.3157622814178467,
           0,
-          0,
-          0,
-          0,
+          1.9999971389770508,
+          8.770167827606201,
+          -3.999882936477661,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -4412,20 +4412,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.39742660522461,
           0,
           0,
           0,
           0,
-          1,
+          35.39742660522461,
           0,
           0,
           0,
           0,
-          1,
+          35.39742660522461,
           0,
-          0,
-          0,
+          36.89742660522461,
+          5.750354468822479,
           0,
           1
         ],
@@ -4439,21 +4439,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.494879722595215,
           0,
           0,
           0,
           0,
-          1,
+          25.494879722595215,
           0,
           0,
           0,
           0,
-          1,
+          25.494879722595215,
           0,
-          0,
-          0,
-          0,
+          31.000000953674316,
+          5.749943017959595,
+          0.000003814697265625,
           1
         ],
         "name": "LOD1_Stone",
@@ -4466,20 +4466,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          4.724999785423279,
           0,
           1
         ],
@@ -4493,20 +4493,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.68527412414551,
           0,
           0,
           0,
           0,
-          1,
+          35.68527412414551,
           0,
           0,
           0,
           0,
-          1,
+          35.68527412414551,
           0,
-          0,
-          0,
+          34.705671310424805,
+          5.555417321622372,
           0,
           1
         ],
@@ -4520,21 +4520,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.987661361694336,
           0,
           0,
           0,
           0,
-          1,
+          34.987661361694336,
           0,
           0,
           0,
           0,
-          1,
+          34.987661361694336,
           0,
-          0,
-          0,
-          0,
+          36.73733711242676,
+          8.308750629425049,
+          0.6696100234985352,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -4603,21 +4603,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.31680488586426,
           0,
           0,
           0,
           0,
-          1,
+          36.31680488586426,
           0,
           0,
           0,
           0,
-          1,
+          36.31680488586426,
           0,
-          0,
-          0,
-          0,
+          35.843984603881836,
+          7.750972032546997,
+          -2.1039693355560303,
           1
         ],
         "name": "LOD2_Hull",
@@ -4630,21 +4630,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.075459957122803,
           0,
           0,
           0,
           0,
-          1,
+          8.075459957122803,
           0,
           0,
           0,
           0,
-          1,
+          8.075459957122803,
           0,
-          0,
-          0,
-          0,
+          68.50000381469727,
+          1.9000000059604645,
+          0.000016689300537109375,
           1
         ],
         "name": "LOD2_Hull_aged",
@@ -4657,21 +4657,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.32196903228759766,
           0,
           0,
           0,
           0,
-          1,
+          0.32196903228759766,
           0,
           0,
           0,
           0,
-          1,
+          0.32196903228759766,
           0,
-          0,
-          0,
-          0,
+          1.999974250793457,
+          8.7701416015625,
+          -4.0008485317230225,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -4684,20 +4684,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.6389102935791,
           0,
           0,
           0,
           0,
-          1,
+          34.6389102935791,
           0,
           0,
           0,
           0,
-          1,
+          34.6389102935791,
           0,
-          0,
-          0,
+          37.645246505737305,
+          7.316904306411743,
           0,
           1
         ],
@@ -4711,20 +4711,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.48415756225586,
           0,
           0,
           0,
           0,
-          1,
+          25.48415756225586,
           0,
           0,
           0,
           0,
-          1,
+          25.48415756225586,
           0,
-          0,
-          0,
+          31,
+          5.75,
           0,
           1
         ],
@@ -4738,20 +4738,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          4.724999785423279,
           0,
           1
         ],
@@ -4767,20 +4767,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_conveyor_barge.glb"
   },
-  "runtimeHash": "29db77b91b41eab85226985a7f0bcf71e662fa148be945132236ec981109ed7b",
+  "runtimeHash": "1fa47356d1d5e9775024dd65df80fb4ce17fc3059c769dde7ef60078c81e3ecc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           72.30000305175781,
-          11.098254203796387,
-          8.301018714904785
+          11.098254127985872,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "id": "sf.render.conveyor-barge.body",

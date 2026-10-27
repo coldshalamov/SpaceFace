@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "22df3fb1f1d7110c1282c7acf06b552659cacbc14e4b23d1d8235dac831d86fa",
+  "contentHash": "e9b7ca18cfb4d1c9843e76ee59c229c5adbc85444bb604f81819cd89b4e1c880",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.23999999463558197,
-          0.5600000023841858,
+          0.24001892962710636,
+          0.5600177114372102,
           0.4000000059604645
         ],
         "min": [
-          -0.23999999463558197,
-          0,
+          -0.24001892962710636,
+          -0.00001770905302439507,
           -1.3200000524520874
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ef64bfcd359501737bd22ac03762eeaacc1a55a979b7a7519b1e4b7d87fc2d2",
+      "geometryHash": "8ea181ebbce7785ca71a5b900a6f404175c0c43420b9aefa4f8ce8ce390e5bf2",
       "id": "sf.render.io-reach-wreck.mesh.brokennave.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           0.6000000238418579,
-          0.25,
-          0.2199999988079071
+          0.24998321591528527,
+          0.21996490515125722
         ],
         "min": [
           -0.7599999904632568,
-          0.07000000029802322,
-          -0.2800000011920929
+          0.07001678438273795,
+          -0.279964907535443
         ]
       },
       "drawMode": 4,
-      "geometryHash": "283ddbc5785d68348843a65fc055a72f8524887b1a6cbcdf0bb36b891f707699",
+      "geometryHash": "91f9345f88ab04e7f32c3ed877b4738a0efc7b310c320d60460c5286d1ba375d",
       "id": "sf.render.io-reach-wreck.mesh.unequaltransepts.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -83,21 +83,21 @@
     {
       "id": "sf.render.io-reach-wreck.mesh.brokennave",
       "localTransform": [
-        1,
+        0.8600000292062759,
         0,
         0,
         0,
         0,
-        1,
+        0.8600000292062759,
         0,
         0,
         0,
         0,
-        1,
+        0.8600000292062759,
         0,
         0,
-        0,
-        0,
+        0.2800000011920929,
+        -0.46000002324581146,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -111,42 +111,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.io-reach-wreck.body",
       "worldTransform": [
-        1,
+        0.8600000292062759,
         0,
         0,
         0,
         0,
-        1,
+        0.8600000292062759,
         0,
         0,
         0,
         0,
-        1,
+        0.8600000292062759,
         0,
         0,
-        0,
-        0,
+        0.2800000011920929,
+        -0.46000002324581146,
         1
       ]
     },
     {
       "id": "sf.render.io-reach-wreck.mesh.unequaltransepts",
       "localTransform": [
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
-        0,
-        0,
-        0,
+        -0.07999998331069946,
+        0.1600000001490116,
+        -0.030000001192092896,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -160,21 +160,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.io-reach-wreck.body",
       "worldTransform": [
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
-        0,
-        0,
-        0,
+        -0.07999998331069946,
+        0.1600000001490116,
+        -0.030000001192092896,
         1
       ]
     },
@@ -237,14 +237,14 @@
       "uri": "place_io_reach_wreck.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 6296,
-    "sha256": "d76c2cd813b90cf3fdedca297309342f4b8555f28877a7b2b7c60ec3d2fd2855",
+    "bytes": 4672,
+    "sha256": "470ac9d48064d09dc74e9d88341a8b33a7c7c980dcbd5b0e4ddd86b1e76fc51b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -256,17 +256,17 @@
       ],
       "max": [
         0.6000000238418579,
-        0.5600000023841858,
+        0.5600177114372102,
         0.4000000059604645
       ],
       "min": [
         -0.7599999904632568,
-        0,
+        -0.00001770905302439507,
         -1.3200000524520874
       ],
       "size": [
         1.3600000143051147,
-        0.5600000023841858,
+        0.5600354204902347,
         1.7200000584125519
       ]
     },
@@ -294,21 +294,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8600000292062759,
           0,
           0,
           0,
           0,
-          1,
+          0.8600000292062759,
           0,
           0,
           0,
           0,
-          1,
+          0.8600000292062759,
           0,
           0,
-          0,
-          0,
+          0.2800000011920929,
+          -0.46000002324581146,
           1
         ],
         "name": "BrokenNave",
@@ -320,21 +320,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6800000071525574,
           0,
           0,
           0,
           0,
-          1,
+          0.6800000071525574,
           0,
           0,
           0,
           0,
-          1,
+          0.6800000071525574,
           0,
-          0,
-          0,
-          0,
+          -0.07999998331069946,
+          0.1600000001490116,
+          -0.030000001192092896,
           1
         ],
         "name": "UnequalTransepts",
@@ -348,19 +348,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_io_reach_wreck.glb"
   },
-  "runtimeHash": "02748bb110e60c40bfbfa9f8a55419ea158c7476da6dc592729184350ea30d27",
+  "runtimeHash": "70757e4bc7da639a53b3a0d50d0b042e255277ca3df77456ea81ad052a586ed3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           0.6000000238418579,
-          0.5600000023841858,
+          0.5600177114372102,
           0.4000000059604645
         ],
         "min": [
           -0.7599999904632568,
-          0,
+          -0.00001770905302439507,
           -1.3200000524520874
         ]
       },

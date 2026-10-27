@@ -30,5 +30,11 @@ test('soft-GPU opening cook passes deadlineMs into residency', () => {
   assert.ok(start > 0);
   const section = rendererSrc.slice(start, start + 9000);
   assert.match(section, /deadlineMs:\s*options.required !== true && softGpuOpening\s*\?\s*residencyBudgetMs/);
-  assert.match(section, /residencyBudgetMs\s*=\s*softGpuOpening\s*\?\s*750\s*:\s*5000/);
+  assert.match(section, /const residencyBudgetMs = resourcePolicy\.residencyBudgetMs/,
+    'residency budget is read from the opening-load policy');
+  const policySrc = readFileSync(join(root, 'src/render/openingLoadPolicy.js'), 'utf8');
+  assert.match(policySrc, /SERIAL_RESIDENCY_BUDGET_MS:\s*750/,
+    'serial-link (soft-GPU) route keeps the 750 ms residency budget');
+  assert.match(policySrc, /PARALLEL_RESIDENCY_BUDGET_MS:\s*5000/,
+    'parallel route keeps the 5000 ms residency budget');
 });

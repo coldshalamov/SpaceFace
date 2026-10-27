@@ -30,6 +30,15 @@ ${W} .sx-sw-verb.is-active { color:rgb(248 244 234) !important; }
    the tab words and the hero numeral's fixed seat */
 ${W} .sx-sw-row .k-row__sub { font-stretch:94%; font-variation-settings:"wdth" 94, "wght" 650 !important; letter-spacing:.09em !important; line-height:1.25 !important; }
 ${W} .sx-sw-row .sx-sw-row__flag { font-variation-settings:"wdth" 94, "wght" 650 !important; letter-spacing:.14em !important; }
+/* hover and focus-visible lean the tick in and brighten the name; active press snaps tick to amber */
+${W} .sx-sw-row:not(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true']):is(:hover, :focus-visible)::before {
+  left:2px !important; width:11px !important; height:2px !important; background:rgb(${BONE} / .45) !important; box-shadow:0 0 8px rgb(${BONE} / .45) !important;
+}
+${W} .sx-sw-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 250 240) !important; text-shadow:0 0 10px rgb(255 250 236 / .3); }
+${W} .sx-sw-row:active::before {
+  background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .55) !important;
+}
+
 `;
 
 export function injectOrreryStationShipworks(doc) {

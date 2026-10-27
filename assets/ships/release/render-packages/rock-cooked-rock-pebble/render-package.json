@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d5431631b5fd22c0d081c984ac09f1f91fb24a0c191dc1618565b348419f010",
+  "contentHash": "21ccf9b55dd218235f32902afb57f0c14b4a834521a831804feec6cd41091c56",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.dynamic",
@@ -588,17 +588,17 @@
       "bounds": {
         "max": [
           2.7213425636291504,
-          2.391674041748047,
-          2.6774632930755615
+          2.3916739910840077,
+          2.677463417963909
         ],
         "min": [
           -3.1004176139831543,
-          -3.076164722442627,
-          -2.602043390274048
+          -3.0761646717785878,
+          -2.6020435151623955
         ]
       },
       "drawMode": 4,
-      "geometryHash": "04882860bcc2747d189fb75038ed1e3190e0abcad80a5ac6a3a2f69e4865302a",
+      "geometryHash": "2774637c7ff486543ef410107c7442cc9ded5037b932775b270e6ae862de4bcc",
       "id": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull.primitive.0",
       "indexCount": 858,
       "indexed": true,
@@ -623,7 +623,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cfef586282928f3df4dc70ddf59ef80a861ed4b6a9132549f643393ff953f89",
+      "geometryHash": "d6f8e874fa42a6dafa0a38161495b0b1afcd120c73017d1812eaafb40acc25ea",
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 2328,
       "indexed": true,
@@ -638,17 +638,17 @@
       "bounds": {
         "max": [
           2.7213425636291504,
-          2.391674041748047,
-          2.6774632930755615
+          2.3916739910840077,
+          2.677463417963909
         ],
         "min": [
           -3.1004176139831543,
-          -3.076164722442627,
-          -2.602043390274048
+          -3.0761646717785878,
+          -2.6020435151623955
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5871aea766820d186b80da9dc8b0e7863407d1faaad04b980ec24a3eccf99223",
+      "geometryHash": "89eca86aa303426a4cbec02236b95f6d564285aa17fa68f677da57ab54da086e",
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone.primitive.0",
       "indexCount": 3840,
       "indexed": true,
@@ -688,17 +688,17 @@
       "bounds": {
         "max": [
           2.7321834564208984,
-          2.3962197303771973,
-          2.6765127182006836
+          2.3962196465119505,
+          2.6765127981295174
         ],
         "min": [
           -3.08733868598938,
-          -3.071648359298706,
-          -2.5753896236419678
+          -3.0716482754334593,
+          -2.5753897035708015
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a208dc5b4b10121d42e1ad6767e4d4e53e82506729df222d4adf252b105e0bd8",
+      "geometryHash": "a20b5bf817b6b348e3aec558cd3d3a4e0e130d2cd8424934488e6156fc60f57b",
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone.primitive.0",
       "indexCount": 2298,
       "indexed": true,
@@ -738,17 +738,17 @@
       "bounds": {
         "max": [
           2.7586910724639893,
-          2.334256410598755,
-          2.6766984462738037
+          2.3342565243945668,
+          2.6766985352905857
         ],
         "min": [
           -3.0713562965393066,
-          -3.098663568496704,
-          -2.5370187759399414
+          -3.098663682292516,
+          -2.5370188649567234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "45d269f6b416fc6c7d0bbf7a165bbfcd184737493e0b77229c2ea75fb100030c",
+      "geometryHash": "929556d30d415b1b0a6987ec1e17d257e79c02bb7e7c74f7360d895152ef82f1",
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -783,21 +783,21 @@
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.collision-hull",
       "localTransform": [
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
-        0,
-        0,
-        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -811,21 +811,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
       "worldTransform": [
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
-        0,
-        0,
-        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
         1
       ]
     },
@@ -881,21 +881,21 @@
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod0-stone",
       "localTransform": [
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
-        0,
-        0,
-        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -909,21 +909,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
       "worldTransform": [
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
         0,
         0,
         0,
-        1,
+        2.9108800888061523,
         0,
-        0,
-        0,
-        0,
+        -0.18953752517700195,
+        -0.34224534034729004,
+        0.037709951400756836,
         1
       ]
     },
@@ -979,21 +979,21 @@
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod1-stone",
       "localTransform": [
-        1,
+        2.909761071205139,
         0,
         0,
         0,
         0,
-        1,
+        2.909761071205139,
         0,
         0,
         0,
         0,
-        1,
+        2.909761071205139,
         0,
-        0,
-        0,
-        0,
+        -0.17757761478424072,
+        -0.3377143144607544,
+        0.05056154727935791,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1007,21 +1007,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
       "worldTransform": [
-        1,
+        2.909761071205139,
         0,
         0,
         0,
         0,
-        1,
+        2.909761071205139,
         0,
         0,
         0,
         0,
-        1,
+        2.909761071205139,
         0,
-        0,
-        0,
-        0,
+        -0.17757761478424072,
+        -0.3377143144607544,
+        0.05056154727935791,
         1
       ]
     },
@@ -1077,21 +1077,21 @@
     {
       "id": "sf.render.rock-cooked-rock-pebble.mesh.lod2-stone",
       "localTransform": [
-        1,
+        2.915023684501648,
         0,
         0,
         0,
         0,
-        1,
+        2.915023684501648,
         0,
         0,
         0,
         0,
-        1,
+        2.915023684501648,
         0,
-        0,
-        0,
-        0,
+        -0.1563326120376587,
+        -0.3822035789489746,
+        0.06983983516693115,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1105,21 +1105,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.rock-cooked-rock-pebble.body",
       "worldTransform": [
-        1,
+        2.915023684501648,
         0,
         0,
         0,
         0,
-        1,
+        2.915023684501648,
         0,
         0,
         0,
         0,
-        1,
+        2.915023684501648,
         0,
-        0,
-        0,
-        0,
+        -0.1563326120376587,
+        -0.3822035789489746,
+        0.06983983516693115,
         1
       ]
     },
@@ -1182,37 +1182,37 @@
       "uri": "place_rock_cooked_rock_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 230464,
-    "sha256": "ab3fcd120b78e63feaf48614fab6f0aa57a4e02c08ed9ad6e640e7e08cc6ca45",
+    "bytes": 126832,
+    "sha256": "5bffb8782c34476adfe217a8e4151e728b0429013a06c6d2d01b5b171beeec02",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.17086327075958252,
-        -0.3512219190597534,
+        -0.35122201789028273,
         0.037709951400756836
       ],
       "max": [
         2.7586910724639893,
-        2.3962197303771973,
-        2.6774632930755615
+        2.3962196465119505,
+        2.677463417963909
       ],
       "min": [
         -3.1004176139831543,
-        -3.098663568496704,
-        -2.602043390274048
+        -3.098663682292516,
+        -2.6020435151623955
       ],
       "size": [
         5.8591086864471436,
-        5.494883298873901,
-        5.279506683349609
+        5.494883328804466,
+        5.279506933126305
       ]
     },
     "hidden": [
@@ -1907,21 +1907,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9108800888061523,
           0,
           0,
           0,
           0,
-          1,
+          2.9108800888061523,
           0,
           0,
           0,
           0,
-          1,
+          2.9108800888061523,
           0,
-          0,
-          0,
-          0,
+          -0.18953752517700195,
+          -0.34224534034729004,
+          0.037709951400756836,
           1
         ],
         "name": "LOD0_Stone",
@@ -1962,21 +1962,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.909761071205139,
           0,
           0,
           0,
           0,
-          1,
+          2.909761071205139,
           0,
           0,
           0,
           0,
-          1,
+          2.909761071205139,
           0,
-          0,
-          0,
-          0,
+          -0.17757761478424072,
+          -0.3377143144607544,
+          0.05056154727935791,
           1
         ],
         "name": "LOD1_Stone",
@@ -2017,21 +2017,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.915023684501648,
           0,
           0,
           0,
           0,
-          1,
+          2.915023684501648,
           0,
           0,
           0,
           0,
-          1,
+          2.915023684501648,
           0,
-          0,
-          0,
-          0,
+          -0.1563326120376587,
+          -0.3822035789489746,
+          0.06983983516693115,
           1
         ],
         "name": "LOD2_Stone",
@@ -2046,20 +2046,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_cooked_rock_pebble.glb"
   },
-  "runtimeHash": "ade51322cdfa2f5bef385fb69c6f86a31e248b5392f515ce4df19859318b57af",
+  "runtimeHash": "ca38d540ec6e999877a02f6ff8da857bf8d555b43071e9a2c64688c9f6fb9d8d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           2.7586910724639893,
-          2.3962197303771973,
-          2.6774632930755615
+          2.3962196465119505,
+          2.677463417963909
         ],
         "min": [
           -3.1004176139831543,
-          -3.098663568496704,
-          -2.602043390274048
+          -3.098663682292516,
+          -2.6020435151623955
         ]
       },
       "id": "sf.render.rock-cooked-rock-pebble.body",

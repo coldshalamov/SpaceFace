@@ -2608,7 +2608,7 @@ export function createHud(ctx, alerts) {
       '<svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       '<path class="sf-cmark__shape" d="M7 2.6 11.8 11 2.2 11Z"/>' +
       '<circle class="sf-cmark__core" cx="7" cy="7" r="1.5"/></svg>';
-    el._sfShapePath = el.firstElementChild.firstElementChild;
+    el._sfShapePath = el.querySelector('.sf-cmark__shape');
     root.appendChild(el);
     contactMarkEls.push(el);
   }

@@ -11,6 +11,7 @@ import {
   CLAIMABLE_BODY_SITES,
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { escapeHtml } from '../comms.js';
 import { icon } from '../station/icons.js';
 import { BINDINGS } from '../bindings.js';
@@ -605,7 +606,7 @@ export function describeBaseInvestmentConfirm(item, player = {}, body = {}, opti
   );
   const materialLine = materials.length
     ? ' Uses ' + materials.map(([id, qty]) => (
-      Math.max(0, Number(qty) || 0) + ' ' + pretty(id.replace(/^cmdty_/, ''))
+      Math.max(0, Number(qty) || 0) + ' ' + commodityDisplayName(id)
     )).join(', ') + ' from your hold.'
     : '';
   const targetName = body.name || 'this claim';
@@ -695,8 +696,8 @@ export function describeBaseBuildAction(mod, player = {}, body = {}) {
     return {
       state: 'materials',
       disabled: true,
-      label: 'Need ' + (need - have) + ' ' + pretty(id.replace(/^cmdty_/, '')),
-      title: mod.name + ' requires ' + need + ' ' + pretty(id.replace(/^cmdty_/, '')) + '; the hold carries ' + have + '.',
+      label: 'Need ' + (need - have) + ' ' + commodityDisplayName(id),
+      title: mod.name + ' requires ' + need + ' ' + commodityDisplayName(id) + '; the hold carries ' + have + '.',
     };
   }
   if (!afford) {
@@ -1637,8 +1638,8 @@ export const baseScreen = {
           const deliver = document.createElement('button');
           const amount = Math.min(10, available);
           deliver.className = 'k-word k-word--emph';
-          deliver.textContent = 'Deliver ' + amount + 'u · ' + pretty(goodId.replace(/^cmdty_/, ''));
-          deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + pretty(goodId.replace(/^cmdty_/, '')) + ' to ' + body.name);
+          deliver.textContent = 'Deliver ' + amount + 'u · ' + commodityDisplayName(goodId);
+          deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + commodityDisplayName(goodId) + ' to ' + body.name);
           deliver.addEventListener('click', () => {
             claims.deliverToClaim(body.id, goodId, amount);
             this._render();
@@ -1710,7 +1711,7 @@ export const baseScreen = {
       const buildAction = describeBaseBuildAction(mod, player, body);
       const techLabel = mod.techReq ? ' · ' + techName(mod.techReq) : '';
       const materialLabel = Object.entries(mod.materials || {})
-        .map(([id, qty]) => qty + ' ' + pretty(id.replace(/^cmdty_/, '')))
+        .map(([id, qty]) => qty + ' ' + commodityDisplayName(id))
         .join(' · ');
       card.innerHTML =
         '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span class="orr-base__built">✓ Built</span>' : '') + '</div>' +

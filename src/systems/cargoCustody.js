@@ -1,3 +1,4 @@
+import { occupantGenerationOf } from '../core/entity.js';
 // PQ-177.06 — operation-owned cargo and one-commit sales.
 // Production adapter for tools/reference/.../transferPlan.mjs semantics. That file is never imported.
 // Canonical writers stay economy→credits and cargo→player cargo. An operation hold is NOT the
@@ -163,6 +164,36 @@ export function massDeclarationForTarget(state, target) {
     sourceOfferId: mission.sourceOfferId != null ? String(mission.sourceOfferId) : String(mission.id),
     issuingStationId: mission.destStationId != null ? String(mission.destStationId) : null,
   };
+}
+
+// A mission owner grants this transient lease only while stamping the actual original
+// recovery body. Saved declaration fields alone never grant a Line-tier exception.
+const massScaleTowLeases = new WeakMap();
+const MASS_SCALE_ISSUERS = Object.freeze({ weight_audit: 'station_helios', sealed_recovery: 'station_smuggler', carrier_frame: 'station_ceres' });
+function activeMassScaleTowMission(state, target) {
+  if (!target || target.alive !== true || !(target.hull > 0) || target.type !== 'asteroid'
+    || state?.entities?.get(target.id) !== target || target.data?.physicalRole !== 'slag_core') return null;
+  const data=target.data,mission=state.missions?.active?.find(m=>m?.status==='active'
+    &&m.type==='tow_recovery'&&m.id===data.missionId&&m.id===data.missionTag);
+  const decl=mission?.params?.massDeclaration,stationId=MASS_SCALE_ISSUERS[decl?.kind];
+  if (!mission || !stationId || decl.version!==1 || decl.targetSlot!==0
+    || mission.destStationId!==stationId
+    || mission.sourceOfferId!==`eco_mass_scale_${decl.kind}_${stationId}`
+    || data.missionTargetSlot!==0 || data.identityKey!==`mission:${mission.id}:0`
+    || !data.worldRecordId || !Number.isFinite(decl.declaredMassT) || !(decl.declaredMassT>0)) return null;
+  return mission;
+}
+export function registerMassScaleTow(state, target, mission) {
+  const generation=occupantGenerationOf(target);
+  if (generation==null || activeMassScaleTowMission(state,target)!==mission) return false;
+  massScaleTowLeases.set(target,{state,generation,mission,recordId:target.data.worldRecordId,identity:target.data.identityKey});
+  return true;
+}
+export function isOriginalMassScaleTow(state, target) {
+  const lease=target&&massScaleTowLeases.get(target),mission=activeMassScaleTowMission(state,target);
+  return !!(lease&&mission&&lease.state===state&&lease.mission===mission
+    &&lease.generation===occupantGenerationOf(target)&&lease.recordId===target.data.worldRecordId
+    &&lease.identity===target.data.identityKey&&massDeclarationForTarget(state,target));
 }
 
 // Mirror of missions.js's missionTargetSlotOf (module-private there): explicit

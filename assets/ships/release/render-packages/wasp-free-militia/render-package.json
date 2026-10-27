@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "30fb007deb460bc51719039bda140c34fde7938b0e7fcae88398fffc04783360",
+  "contentHash": "9fe0ad693ab9f3b4ba4eb9e101a581b7ba2dcf4316a33e4472f937acb293d682",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-free-militia.node.lod0-hook-armor-flap-armor.dynamic",
@@ -678,17 +678,17 @@
       "bounds": {
         "max": [
           10.90018367767334,
-          1.7494304180145264,
-          8.079551696777344
+          1.7494303941368332,
+          8.079551247458697
         ],
         "min": [
           -10.72028636932373,
-          -0.8977856040000916,
-          -8.079551696777344
+          -0.8977855801223984,
+          -8.079551247458697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cac18b3054be6d16529ed651e28fc831420123cf802caf2d16ee27c1927246ed",
+      "geometryHash": "5f20f06c2313126b4a267db80f1217a27a1be9910e85141244de7ff3b7946423",
       "id": "sf.render.wasp-free-militia.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -703,17 +703,17 @@
       "bounds": {
         "max": [
           3.9499857425689697,
-          1.174497127532959,
-          5.189459323883057
+          1.174497104673931,
+          5.189459539967403
         ],
         "min": [
           -9.092623710632324,
-          -0.7966019511222839,
-          -5.189459323883057
+          -0.796601928263256,
+          -5.189459539967403
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83e8061c48fd10279aac4cd5c51c14ce62a70a2b5616738c082489e0d73a7939",
+      "geometryHash": "555e43861e82aeef45228398b8935bf11527e767624abc07329e017f78e3782e",
       "id": "sf.render.wasp-free-militia.node.lod0-armor.primitive.0",
       "indexCount": 19188,
       "indexed": true,
@@ -727,18 +727,18 @@
     {
       "bounds": {
         "max": [
-          -1.440000057220459,
-          1.202001929283142,
+          -1.4400000013411045,
+          1.202001979904206,
           0.05999999865889549
         ],
         "min": [
-          -1.559999942779541,
-          1.1179980039596558,
+          -1.5599999986588955,
+          1.1179979533385918,
           -0.05999999865889549
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5149e437007fd5ce351e886ee119c4260918422aceb603df1ca6fe663cb4b07",
+      "geometryHash": "55ba1c8d843a1b9af5eecce208654f1de68058a6e1c92c4f338e93856282b049",
       "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -753,17 +753,17 @@
       "bounds": {
         "max": [
           6.900000095367432,
-          1.286102056503296,
-          0.617908239364624
+          1.2861020630273003,
+          0.6179082786923751
         ],
         "min": [
           1.7999999523162842,
-          0.72017902135849,
-          -0.617908239364624
+          0.7201790148344854,
+          -0.6179082786923751
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7038c3e04e5a40381f05237800ce0f950af139335071511f47274766757ec52",
+      "geometryHash": "a70652d41f5f04c44d3af84c578523f1661b03c441e07eb1d6f52f0fe541071e",
       "id": "sf.render.wasp-free-militia.node.lod0-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -788,7 +788,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "843ee34fcf4e68bbc533d0fad9feb72db3d93511de9e06c45b718c983000e199",
+      "geometryHash": "feaa321cb5245a40140077ade0360c2d32a03353ebfceead418e09372a0e4b17",
       "id": "sf.render.wasp-free-militia.node.lod0-hook-armor-flap-armor.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -813,7 +813,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b67f08e9efb38436cf29225d7302c8b3eadd0edb40d1145b72a7e38ab72a574d",
+      "geometryHash": "b9445ea091b2be9741c3bc273afda58c97871763558eb241bf76e7e4ca51f243",
       "id": "sf.render.wasp-free-militia.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -888,7 +888,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "32f2c61064f707cea1f3a7229ffb43d88717fd96a9fc91f71ba812b3365f6392",
+      "geometryHash": "22ac4727372a13670b1eb821fc0732abb169f32d5067d6a19ae417df61075008",
       "id": "sf.render.wasp-free-militia.node.lod0-hook-secondary-fin-mechanical.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -938,7 +938,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3735ffe85318031a48c792fc61662799e7769e89e87625bf2e305787c5359181",
+      "geometryHash": "154b9f3f58240945ff5ce981af2407c11091633fa2294085a49decf08b9d1916",
       "id": "sf.render.wasp-free-militia.node.lod0-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -953,17 +953,17 @@
       "bounds": {
         "max": [
           10.899999618530273,
-          1.1493643522262573,
-          5.299777984619141
+          1.149364306352673,
+          5.29977756778136
         ],
         "min": [
           -9.99996566772461,
-          -0.8993642926216125,
-          -5.299777984619141
+          -0.8993642467480283,
+          -5.29977756778136
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccd987d71899efdebe33ed5ae871311a38d36fb3fe6b93f062581b142316b894",
+      "geometryHash": "ac6b16158e351030399629ad35b6d27ac78b0082d590d7bacee9d5fe85520a28",
       "id": "sf.render.wasp-free-militia.node.lod0-hull.primitive.0",
       "indexCount": 32037,
       "indexed": true,
@@ -978,17 +978,17 @@
       "bounds": {
         "max": [
           10.134282112121582,
-          1.1644269227981567,
-          4.37022590637207
+          1.1644269247726164,
+          4.370225772621335
         ],
         "min": [
           -7.5,
-          -0.12288051098585129,
-          -4.37022590637207
+          -0.12288051296031088,
+          -4.370225772621335
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f37266531b88e183dd79c856c6779ff352368b2eb9468247692b87b85209a061",
+      "geometryHash": "7104221f0441c4c16bdbd67956afb1050e135f9fc634851d57674e8911630ba2",
       "id": "sf.render.wasp-free-militia.node.lod0-lights-cyan.primitive.0",
       "indexCount": 6234,
       "indexed": true,
@@ -1003,17 +1003,17 @@
       "bounds": {
         "max": [
           10.899686813354492,
-          0.8748956918716431,
-          5.361869812011719
+          0.8748956287908035,
+          5.361869779312567
         ],
         "min": [
           -10.720000267028809,
-          -0.8748956918716431,
-          -5.361869812011719
+          -0.8748956287908035,
+          -5.361869779312567
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d66e25c6c39df7a9ddd343e6ebfb2f35777bbe1dab9627b0a96e4096d89322f6",
+      "geometryHash": "7d745c1d86c1e2c2555f037cf1a28b0d673990e7f3336b8e73ea8ac17fdb5172",
       "id": "sf.render.wasp-free-militia.node.lod0-mechanical.primitive.0",
       "indexCount": 11775,
       "indexed": true,
@@ -1028,17 +1028,17 @@
       "bounds": {
         "max": [
           6.848999977111816,
-          1.0699667930603027,
-          5.3880696296691895
+          1.0699668143758712,
+          5.388069809667322
         ],
         "min": [
           -10.720000267028809,
-          -0.8559906482696533,
-          -5.3880696296691895
+          -0.8559906695852217,
+          -5.388069809667322
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9e2a64cd8e5e4085558a53274388acd14fa9f3d75385d55885434e6db9627c1",
+      "geometryHash": "08462d08398faf08563898039c127355e62a8fce2f392e56129f94ad9bce20ea",
       "id": "sf.render.wasp-free-militia.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 32964,
       "indexed": true,
@@ -1052,18 +1052,18 @@
     {
       "bounds": {
         "max": [
-          4.893016576766968,
-          0.7201091945171356,
+          4.89301655299387,
+          0.7201091934320754,
           3.9884297847747803
         ],
         "min": [
-          1.5069836378097534,
-          0.3198907673358917,
+          1.5069836615828516,
+          0.319890768420952,
           -3.9884297847747803
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d59955d8d377be46ff274185900b1a53284d7bc5a2184e0a001202c71a9a76ec",
+      "geometryHash": "8f8876c5ba3e2716db9c28516a40d21f147e6fabb61c86a676a82737aad85fec",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-armor.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -1077,18 +1077,18 @@
     {
       "bounds": {
         "max": [
-          8.892627954483032,
-          0.7001620829105377,
+          8.892627850091682,
+          0.7001620826581453,
           3.930000066757202
         ],
         "min": [
-          4.799872159957886,
-          0.3998379707336426,
+          4.7998722643492355,
+          0.399837970986035,
           -3.930000066757202
         ]
       },
       "drawMode": 4,
-      "geometryHash": "703c7bac1a5e885ba87c9fa94225613effb74aade66976f08c23456bf7db17e8",
+      "geometryHash": "a7f512e58814d14d38f4f83f9e76568a68a31008622e61a7e2b681260dcbf605",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-mechanical.primitive.0",
       "indexCount": 3672,
       "indexed": true,
@@ -1102,18 +1102,18 @@
     {
       "bounds": {
         "max": [
-          8.89977478981018,
-          0.6981667578220367,
+          8.899774610677914,
+          0.6981667641986987,
           3.9279773235321045
         ],
         "min": [
-          8.000224828720093,
-          0.40183326601982117,
+          8.00022500785236,
+          0.4018332596431592,
           -3.9279773235321045
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f32fcea7fb3de7d3101c01349472cdeab3f637e6f4172bdb3b8320dbeed8a74",
+      "geometryHash": "df00191129768a4a78038c605f8d4bcb449158bb38cbee0a50550a64263e7ea3",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-mechanicaldark.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -1128,17 +1128,17 @@
       "bounds": {
         "max": [
           -5.313230514526367,
-          0.08003251254558563,
-          -4.999957369524054
+          0.08003251474844902,
+          -4.999957378314388
         ],
         "min": [
           -9.995752334594727,
-          -0.12003250420093536,
-          -7.900042772293091
+          -0.12003250640379876,
+          -7.900042763502757
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c78877a5e04b13d9140d6d99f467663f7874e1ef8a7edf87172a7b8dd99855e",
+      "geometryHash": "1ed18881ebe059e56c61c7bd9b18019021ee2bfab127d95da0b567eaefb61f81",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -1163,7 +1163,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d27e043f1eb69eac2dc08c20dd3a3271fc72a77b175142d7d95b943c56bcdd7e",
+      "geometryHash": "38a61d131a2cf1305070d47d8930ff62a6d122e7e271f989595127e4bf5ef794",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-p-hook-secondary-fin-armor.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -1178,17 +1178,17 @@
       "bounds": {
         "max": [
           -8.100000381469727,
-          0.10985015332698822,
-          -7.820149898529053
+          0.10985014703309282,
+          -7.820149904822948
         ],
         "min": [
           -10.300000190734863,
-          -0.14985014498233795,
-          -8.079850196838379
+          -0.14985013868844255,
+          -8.079850190544484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a17005556cccaa7619535d8a9c94ce8cb507ed4825a95b7413069b38eb5850ff",
+      "geometryHash": "4ff6af44355cb15895d380faafb54ca6081f54394b3ba74ab8a5721c518b67c1",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-p-mechanical.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -1203,17 +1203,17 @@
       "bounds": {
         "max": [
           -5.313230514526367,
-          1.7499466687440872,
-          7.90008020401001
+          1.7499466827339067,
+          7.900080220372319
         ],
         "min": [
           -9.995752334594727,
-          -0.11994673311710358,
-          4.329919934272766
+          -0.11994674710692321,
+          4.329919917910457
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2283ccf13160c3f1df28a274da8265f407d0f706631bf9e4cdc42b000cdcfe8",
+      "geometryHash": "31d84678008f4fe7da4f855485ecd63a4faa5ebbb49a4f1182c3b9e73a12796d",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-armor.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -1228,17 +1228,17 @@
       "bounds": {
         "max": [
           -8.100000381469727,
-          0.10985015332698822,
-          8.079850196838379
+          0.10985014703309282,
+          8.079850190544484
         ],
         "min": [
           -10.300000190734863,
-          -0.14985014498233795,
-          7.820149898529053
+          -0.14985013868844255,
+          7.820149904822948
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c407b0b8f306c34ca4c9b428a8662dc8cb7ea4b13abf66538f79e62bb3244b4",
+      "geometryHash": "73b7bb331306837cd6faa429f7b1aede168ef93b0fb39ce47a03e6684d9edc38",
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-mechanical.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -1253,17 +1253,17 @@
       "bounds": {
         "max": [
           3.9500184059143066,
-          1.1744749546051025,
-          5.189472198486328
+          1.1744749263207732,
+          5.18947253622476
         ],
         "min": [
           -9.092623710632324,
-          -0.7966290712356567,
-          -5.189472198486328
+          -0.7966290429513274,
+          -5.18947253622476
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d428230e4293862964406ea180f37f9168d5ff1cf4e137e70b6477a0441210a8",
+      "geometryHash": "ebd5aa4b78ceb3c708ede8cfbd6a3e7edd5094d2279df8df8d9816062d6e86e3",
       "id": "sf.render.wasp-free-militia.node.lod1-armor.primitive.0",
       "indexCount": 5115,
       "indexed": true,
@@ -1277,18 +1277,18 @@
     {
       "bounds": {
         "max": [
-          -1.440000057220459,
-          1.202001929283142,
+          -1.4400000013411045,
+          1.202001979904206,
           0.05999999865889549
         ],
         "min": [
-          -1.559999942779541,
-          1.1179980039596558,
+          -1.5599999986588955,
+          1.1179979533385918,
           -0.05999999865889549
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
+      "geometryHash": "3ca289664af409b3a04b4da0172e315e74d5f886545643d3663e7070ab4d78ff",
       "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1303,17 +1303,17 @@
       "bounds": {
         "max": [
           6.90000057220459,
-          1.286128044128418,
-          0.6179082989692688
+          1.2861280473062895,
+          0.6179083364652417
         ],
         "min": [
           1.7999999523162842,
-          0.7202049493789673,
-          -0.6179082989692688
+          0.7202049462010958,
+          -0.6179083364652417
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de1d2e97280f9f866ae05c76ceb22428f008955da5d9e292241f81aacf6a3f73",
+      "geometryHash": "5765a27363535241ad3c0d4e710c4ca194a88afdd6b7da2de943e4d84d644871",
       "id": "sf.render.wasp-free-militia.node.lod1-canopy.primitive.0",
       "indexCount": 1338,
       "indexed": true,
@@ -1338,7 +1338,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2f7408a7214917a255263a7403efdcc5e4cc1840a787f3821e71da77c0f4829",
+      "geometryHash": "83321608405def6c5037a9dea2e63b8e5ea070894ef49c98d6a2b8e60affc04e",
       "id": "sf.render.wasp-free-militia.node.lod1-hook-armor-flap-armor.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -1363,7 +1363,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b67f08e9efb38436cf29225d7302c8b3eadd0edb40d1145b72a7e38ab72a574d",
+      "geometryHash": "b9445ea091b2be9741c3bc273afda58c97871763558eb241bf76e7e4ca51f243",
       "id": "sf.render.wasp-free-militia.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -1438,7 +1438,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f7adb51307b41b8c4da32d1e76bff8674eef4359c2764863273274cdbe93c35",
+      "geometryHash": "e5c41aa8f67b7d49ca10e5a6dd42751341c2fc6a1a872a88386598fdeb4213b8",
       "id": "sf.render.wasp-free-militia.node.lod1-hook-secondary-fin-mechanical.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1488,7 +1488,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be68a3ee05337872e307b659c79810ead564fe494cef50deb87e3873eaa8e26b",
+      "geometryHash": "6d4d687e444f02ca6ba77a45b08664ae262f1f457c2dcd1a7f2a89bec767c167",
       "id": "sf.render.wasp-free-militia.node.lod1-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 258,
       "indexed": true,
@@ -1503,17 +1503,17 @@
       "bounds": {
         "max": [
           10.899992942810059,
-          1.1493496894836426,
-          5.2997870445251465
+          1.149349661475808,
+          5.29978675736344
         ],
         "min": [
           -10.000008583068848,
-          -0.899382472038269,
-          -5.2997870445251465
+          -0.8993824440304345,
+          -5.29978675736344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a564db1df0d967c38c1059c9f9c2f4a4c40adcfbd3a1dbde84819b600342485",
+      "geometryHash": "29009cda90c198842c532ad5a090bd94c05415d0f9a3ee54214b350642477626",
       "id": "sf.render.wasp-free-militia.node.lod1-hull.primitive.0",
       "indexCount": 11598,
       "indexed": true,
@@ -1528,17 +1528,17 @@
       "bounds": {
         "max": [
           10.134803771972656,
-          1.1643606424331665,
-          3.997096538543701
+          1.1643605887166566,
+          3.9970963469946335
         ],
         "min": [
           -6.900099277496338,
-          -0.12286197394132614,
-          -3.997096300125122
+          -0.12286192022481612,
+          -3.9970961085760544
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2841caaa9f1c0dc1d955e70ce25284caa28a7dbca6746a93a58e623d87fff50",
+      "geometryHash": "e507c54e6ff95303e6d8f8c482b14284655b356ddf9aa4cb750baedb34c87a78",
       "id": "sf.render.wasp-free-militia.node.lod1-lights-cyan.primitive.0",
       "indexCount": 3534,
       "indexed": true,
@@ -1553,17 +1553,17 @@
       "bounds": {
         "max": [
           10.89993667602539,
-          0.8749057650566101,
-          5.361931800842285
+          0.8749057401193234,
+          5.361931747420574
         ],
         "min": [
           -10.720000267028809,
-          -0.8749057650566101,
-          -5.361931800842285
+          -0.8749057401193234,
+          -5.361931747420574
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c40e07768330a9cf49973b334546e4b0618b2955ddda75f3ff68d83ebec0c8ca",
+      "geometryHash": "c934130fe3be8f40b7478ce41e34dd76fb27d025ef417abac441892fc4881032",
       "id": "sf.render.wasp-free-militia.node.lod1-mechanical.primitive.0",
       "indexCount": 9840,
       "indexed": true,
@@ -1578,17 +1578,17 @@
       "bounds": {
         "max": [
           6.848999977111816,
-          1.0699586868286133,
-          5.3880696296691895
+          1.0699586783418593,
+          5.388069809667322
         ],
         "min": [
           -10.720000267028809,
-          -0.8559988141059875,
-          -5.3880696296691895
+          -0.8559988056192336,
+          -5.388069809667322
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dce1bcbaa4ccb13499493f309526a4ecab4ab085d183812342451874bacfb9ae",
+      "geometryHash": "26062db8fc371f5c4d03ca966ce096941a63387c3a5d8a55b27fd2200a791cd3",
       "id": "sf.render.wasp-free-militia.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 9633,
       "indexed": true,
@@ -1602,18 +1602,18 @@
     {
       "bounds": {
         "max": [
-          4.893285393714905,
-          0.719232052564621,
+          4.893285364710233,
+          0.7192320561831561,
           3.9879844188690186
         ],
         "min": [
-          1.5066568851470947,
-          0.321005642414093,
+          1.506656914151766,
+          0.3210056387955579,
           -3.9879844188690186
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb658398d12a03b2b20776db7c761168e6581e11f3df38515a96faee025e3dab",
+      "geometryHash": "fadf70ec81255653f5f391a023df81e0bc55ad89d7bccaba2f13f9a3b2582a9b",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-armor.primitive.0",
       "indexCount": 402,
       "indexed": true,
@@ -1627,18 +1627,18 @@
     {
       "bounds": {
         "max": [
-          8.891014337539673,
-          0.6991439759731293,
+          8.891014253747187,
+          0.6991439719571328,
           3.929065465927124
         ],
         "min": [
-          4.800191164016724,
-          0.4008098244667053,
+          4.800191247809209,
+          0.40080982848270175,
           -3.929065465927124
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60d4f701215a87db93dd6aaff3bdf9db4b870f08e5042918b6d51ff4b100edf5",
+      "geometryHash": "52cd8fc44600f583017cc585ac5ff78c9279d26ed38898fbb933096fc92ec0e5",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-mechanical.primitive.0",
       "indexCount": 1404,
       "indexed": true,
@@ -1652,18 +1652,18 @@
     {
       "bounds": {
         "max": [
-          8.900077104568481,
-          0.6991439759731293,
+          8.900077069169868,
+          0.6991439719571328,
           3.929065465927124
         ],
         "min": [
-          8.000278234481812,
-          0.4008098244667053,
+          8.000278269880425,
+          0.40080982848270175,
           -3.929065465927124
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c4a69c3a8fd1fff6d4c651913e381e780fce9d2426ca47996fc5e76332f85dd",
+      "geometryHash": "f672e60a84a48eb0b9095a403e7008c4655c5e70ccf7247fe228f31a52fd947d",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-mechanicaldark.primitive.0",
       "indexCount": 774,
       "indexed": true,
@@ -1678,17 +1678,17 @@
       "bounds": {
         "max": [
           -5.313105583190918,
-          0.07907119393348694,
-          -5.00091100478312
+          0.07907119353534348,
+          -5.000911020194182
         ],
         "min": [
           -9.99589729309082,
-          -0.11986206471920013,
-          -7.89944863319397
+          -0.11986206432105667,
+          -7.899448617782908
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1027743a0c86abf8d1d9ce2849b325c93795b7c76daa73e0c06344f6792ee2ff",
+      "geometryHash": "537f7fbdb3040a2d075f20d5d9f137b791d2bb35aa3148c4ab91cd8e59b1c1ac",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1713,7 +1713,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abdf0074931d12b5a64cef01ac53898b2df49b6e27633f77e2c94c258c879769",
+      "geometryHash": "b0c5a76fa389651790c840d3145b87b968e40313c6d8e8d338f727ebb402f575",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-p-hook-secondary-fin-armor.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1728,17 +1728,17 @@
       "bounds": {
         "max": [
           -8.10042953491211,
-          0.10900501161813736,
-          -7.821239709854126
+          0.10900500041407127,
+          -7.8212397044552
         ],
         "min": [
           -10.29978084564209,
-          -0.14900784194469452,
-          -8.078715562820435
+          -0.14900783074062843,
+          -8.07871556821936
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13fcf615574d93e47117334082cad6707a049be5b336f784973fa35f00296817",
+      "geometryHash": "2d6d6855dbb28284e8db202e9df01b71e9cefd6f2628e284e8215ccc4d5d7de8",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-p-mechanical.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1753,17 +1753,17 @@
       "bounds": {
         "max": [
           -5.313167572021484,
-          1.7488221675157547,
-          7.899120807647705
+          1.7488221190054647,
+          7.8991208003124065
         ],
         "min": [
           -9.995492935180664,
-          -0.11984972655773163,
-          4.331396639347076
+          -0.11984967804744173,
+          4.331396646682375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05d274a0effbe6c8edd39df1b9c5f3a9fec15ea03c7ad37a11b4f75bd2bc953b",
+      "geometryHash": "1eb4c24fc05acd60088939d4de26f5eb416906698c88a78a8416ffd14a9d4fdd",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-armor.primitive.0",
       "indexCount": 546,
       "indexed": true,
@@ -1778,17 +1778,17 @@
       "bounds": {
         "max": [
           -8.099956512451172,
-          0.10876016318798065,
-          8.078737735748291
+          0.10876015354886165,
+          8.078737785713816
         ],
         "min": [
           -10.299687385559082,
-          -0.14876015484333038,
-          7.8212175369262695
+          -0.14876014520421138,
+          7.821217486960744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b01224a0c112ccd600823572bda78e61936cdbad38dc8d1cdcc41568557eaa85",
+      "geometryHash": "5e357ce9ee60f4911b67ac6e6d785679fcf6dda38e4c6070b8717580784d5d8e",
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-mechanical.primitive.0",
       "indexCount": 522,
       "indexed": true,
@@ -1803,17 +1803,17 @@
       "bounds": {
         "max": [
           3.9502506256103516,
-          1.174453616142273,
-          5.189359664916992
+          1.1744535893595651,
+          5.1893600284785855
         ],
         "min": [
           -9.092108726501465,
-          -0.7966076731681824,
-          -5.189359664916992
+          -0.7966076463854745,
+          -5.1893600284785855
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52aeef640788cf6537c7f57da966480b1be460f2fb1d6afe932158e92c516830",
+      "geometryHash": "b5b5f38f92989765b2e7a779ba513fe5d36668bc30d4ff17ebe540e324720bdb",
       "id": "sf.render.wasp-free-militia.node.lod2-armor.primitive.0",
       "indexCount": 2700,
       "indexed": true,
@@ -1827,18 +1827,18 @@
     {
       "bounds": {
         "max": [
-          -1.440000057220459,
-          1.202001929283142,
+          -1.4400000013411045,
+          1.202001979904206,
           0.05999999865889549
         ],
         "min": [
-          -1.559999942779541,
-          1.1179980039596558,
+          -1.5599999986588955,
+          1.1179979533385918,
           -0.05999999865889549
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac391e16d99412d081d2c476f9e375b013fd381de8f41bea0029952dd2929f80",
+      "geometryHash": "3ca289664af409b3a04b4da0172e315e74d5f886545643d3663e7070ab4d78ff",
       "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1853,17 +1853,17 @@
       "bounds": {
         "max": [
           6.900122165679932,
-          1.2863448858261108,
-          0.6176261305809021
+          1.2863448763206917,
+          0.6176261118874871
         ],
         "min": [
           1.7998675107955933,
-          0.7197709679603577,
-          -0.6176295280456543
+          0.7197709774657768,
+          -0.6176295093522393
         ]
       },
       "drawMode": 4,
-      "geometryHash": "256a710be0b870bcc747f357596a91849958c915b747a9f5c19fc9d44bce5259",
+      "geometryHash": "6eacac5f0edab95ff2824374da7dffd5f462c8ecf36adfe167e34d2de48b90e1",
       "id": "sf.render.wasp-free-militia.node.lod2-canopy.primitive.0",
       "indexCount": 690,
       "indexed": true,
@@ -1888,7 +1888,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a6812ed835b0058c701b703c0d98828947c456cebb758550270ebdb5e253efb",
+      "geometryHash": "4463c5e3fd6e07d31993d359262d032d148bbd365424ed26fc747e46340260b6",
       "id": "sf.render.wasp-free-militia.node.lod2-hook-armor-flap-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1913,7 +1913,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e028fcfc35010280aa3eaf15ddfd5c78f6318636a69547cfc290e1d95d30a096",
+      "geometryHash": "03ccfaeeda08d4e08a92e604ad1305b0146b9d2be23e014a55ea5910ccb072bc",
       "id": "sf.render.wasp-free-militia.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1978,17 +1978,17 @@
       "bounds": {
         "max": [
           10.90002155303955,
-          1.1491793394088745,
-          5.299827575683594
+          1.1491793091363292,
+          5.29982714315837
         ],
         "min": [
           -10.000139236450195,
-          -0.8995684385299683,
-          -5.299827575683594
+          -0.8995684082574229,
+          -5.29982714315837
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fb6cd3811a8b063e312b6cd007458f0ce5cc5085ef484003330ac43bb740efb",
+      "geometryHash": "ea2bec98eb8aba127d353269b36a77fd976c5230f8ce733b45dba47aa1b186f4",
       "id": "sf.render.wasp-free-militia.node.lod2-hull.primitive.0",
       "indexCount": 5556,
       "indexed": true,
@@ -2003,17 +2003,17 @@
       "bounds": {
         "max": [
           10.133886337280273,
-          1.1642097234725952,
-          3.9981091022491455
+          1.164209672574809,
+          3.9981088900393655
         ],
         "min": [
           -6.899877071380615,
-          -0.12292677164077759,
-          -3.995548963546753
+          -0.12292672074299138,
+          -3.995548751336973
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fba70b54e4485cf0ab110989b515b47ec3f1ed42c85a7cc572f423f2b4bda262",
+      "geometryHash": "a8336effcfa62261f73676385396beb7a8d96860b7f66acd08749c85c6348773",
       "id": "sf.render.wasp-free-militia.node.lod2-lights-cyan.primitive.0",
       "indexCount": 705,
       "indexed": true,
@@ -2028,17 +2028,17 @@
       "bounds": {
         "max": [
           10.90002155303955,
-          0.8749208450317383,
-          5.174635410308838
+          0.8749208299263893,
+          5.174635451506567
         ],
         "min": [
           -10.720288276672363,
-          -0.8749208450317383,
-          -5.174635410308838
+          -0.8749208299263893,
+          -5.174635451506567
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1ed5685664d6f75d347e9e5eb1d35b48ea2f6d8fadc5407fe48b4f4c565242a",
+      "geometryHash": "9687a234ad7851d08bfb0aa33fe2d40ee2c26e8d22c30700837acd8e8496f190",
       "id": "sf.render.wasp-free-militia.node.lod2-mechanical.primitive.0",
       "indexCount": 3363,
       "indexed": true,
@@ -2053,17 +2053,17 @@
       "bounds": {
         "max": [
           6.845832347869873,
-          0.9454470872879028,
-          5.256380081176758
+          0.9454470837798747,
+          5.256380521130961
         ],
         "min": [
           -10.720288276672363,
-          -0.855821430683136,
-          -5.2563796043396
+          -0.8558214271751079,
+          -5.2563800442938025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b07612937b8fd92a1db123cec46f4c96cb084ee022a19561ac29152ee2f76bda",
+      "geometryHash": "8f2903f613b9b00549879b79ba9a114559908794a191b459d34eaf0be1ba9ee7",
       "id": "sf.render.wasp-free-militia.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 4386,
       "indexed": true,
@@ -2077,18 +2077,18 @@
     {
       "bounds": {
         "max": [
-          4.891780853271484,
-          0.7162325978279114,
+          4.89178074917482,
+          0.7162325919210177,
           3.986781120300293
         ],
         "min": [
-          1.5081207752227783,
-          0.3220197856426239,
+          1.5081208793194427,
+          0.3220197915495175,
           -3.986781120300293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d45da43317979ca65a797e425be02d848b0dca44dee5e985755c41032a22cd8b",
+      "geometryHash": "9cd2d5a429fa3c01e07b5cc81f87acf5f16f12f308cf5e589b921dd85a39685b",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -2102,18 +2102,18 @@
     {
       "bounds": {
         "max": [
-          8.898472547531128,
-          0.69913549721241,
+          8.898472454168648,
+          0.6991355008882449,
           3.9291152954101562
         ],
         "min": [
-          4.800439238548279,
-          0.40083514153957367,
+          4.800439331910759,
+          0.40083513786373864,
           -3.9281258583068848
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03314179433cc2512a26dc02f56a029b5c22ef22587fc1c1f9f27595b3e8954d",
+      "geometryHash": "042a63521712b80126cef6c507bdc7dc24371660cc8a8e9dc881923ce3e32514",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-mechanical.primitive.0",
       "indexCount": 669,
       "indexed": true,
@@ -2127,18 +2127,18 @@
     {
       "bounds": {
         "max": [
-          8.89927887916565,
-          0.69913549721241,
+          8.899279038724993,
+          0.6991355008882449,
           3.9291152954101562
         ],
         "min": [
-          8.00054144859314,
-          0.40083514153957367,
+          8.000541289033796,
+          0.40083513786373864,
           -3.9281258583068848
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27c996ad448a116529db648141fd226e32330d8cb890da80a00c193beab79ec7",
+      "geometryHash": "44bf393366a3e63bd664db46fd16f00a84e4979b3442a81fca415ba941755bad",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-mechanicaldark.primitive.0",
       "indexCount": 309,
       "indexed": true,
@@ -2153,17 +2153,17 @@
       "bounds": {
         "max": [
           -5.313957691192627,
-          0.07689188420772552,
-          -5.0010310938814655
+          0.07689189157030983,
+          -5.001031072422998
         ],
         "min": [
           -9.99467658996582,
-          -0.11681075394153595,
-          -7.898285627365112
+          -0.11681076130412026,
+          -7.89828564882358
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eee73f363bcc8a48d8e4e89f158b5173756f6200fb1c323eefc313b50976d2da",
+      "geometryHash": "dbd403cc3039ff85810cbbc72198ed98eb9a31e522b406cf6877aef3c25efddf",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -2188,7 +2188,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e4022822df64cb8d37fa306bd648ba0897625a1a80bd733ed9b55c737275f34",
+      "geometryHash": "c2e8ff6717b762471d76882dc322e8247968662ea1855d72ce17df6fc8237fcc",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-p-hook-secondary-fin-armor.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -2203,17 +2203,17 @@
       "bounds": {
         "max": [
           -8.100729942321777,
-          0.10864691436290741,
-          -7.821220397949219
+          0.1086469038229064,
+          -7.8212203254639165
         ],
         "min": [
           -10.299532890319824,
-          -0.14876477420330048,
-          -8.078900337219238
+          -0.14876476366329947,
+          -8.07890040970454
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57b67fb12f23f2fbf112979c2c77d1c4816750590cf89b8ecba6a5d0c612cc8e",
+      "geometryHash": "e79c47f8561acf227271a2c24a66ad0c283c8929f4e7276873cf663bb0cae5e3",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-p-mechanical.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -2228,17 +2228,17 @@
       "bounds": {
         "max": [
           -5.314978122711182,
-          1.746362641453743,
-          7.89752721786499
+          1.746362644714381,
+          7.897527233553343
         ],
         "min": [
           -9.994998931884766,
-          -0.11739026010036469,
-          4.3321303725242615
+          -0.11739026336100267,
+          4.332130356835909
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cfb66c364e9a0e4f15a4904301867127b8fd875c14a0ca9ef80f5f3656b2792",
+      "geometryHash": "4439d4d8dc268c7c1cad31e86fbf5b12930e7e3439bb38a69bde686e087b3e38",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-s-armor.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -2253,17 +2253,17 @@
       "bounds": {
         "max": [
           -8.100625038146973,
-          0.10866118967533112,
-          8.078834056854248
+          0.10866117973697922,
+          8.078834076718218
         ],
         "min": [
           -10.299732208251953,
-          -0.14878611266613007,
-          7.821386814117432
+          -0.14878610272777817,
+          7.821386794253461
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30dd7a05a5e171b7df9f20912ddf519b1ed3835aeff39823b84aacf03aa74e8c",
+      "geometryHash": "644068799d5de84c7df062674f81579866b6114bedc7dd085b9c1dc081e4147c",
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-s-mechanical.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -2454,20 +2454,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.collision-hull",
       "localTransform": [
-        1,
+        10.810235023498535,
         0,
         0,
         0,
         0,
-        1,
+        10.810235023498535,
         0,
         0,
         0,
         0,
-        1,
+        10.810235023498535,
         0,
-        0,
-        0,
+        0.08994865417480469,
+        0.4258224070072174,
         0,
         1
       ],
@@ -2482,20 +2482,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.810235023498535,
         0,
         0,
         0,
         0,
-        1,
+        10.810235023498535,
         0,
         0,
         0,
         0,
-        1,
+        10.810235023498535,
         0,
-        0,
-        0,
+        0.08994865417480469,
+        0.4258224070072174,
         0,
         1
       ]
@@ -2503,20 +2503,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-armor",
       "localTransform": [
-        1,
+        6.521304726600647,
         0,
         0,
         0,
         0,
-        1,
+        6.521304726600647,
         0,
         0,
         0,
         0,
-        1,
+        6.521304726600647,
         0,
-        0,
-        0,
+        -2.5713189840316772,
+        0.18894758820533752,
         0,
         1
       ],
@@ -2531,20 +2531,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        6.521304726600647,
         0,
         0,
         0,
         0,
-        1,
+        6.521304726600647,
         0,
         0,
         0,
         0,
-        1,
+        6.521304726600647,
         0,
-        0,
-        0,
+        -2.5713189840316772,
+        0.18894758820533752,
         0,
         1
       ]
@@ -2552,20 +2552,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-beacon-amber-beacon",
       "localTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ],
@@ -2580,20 +2580,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ]
@@ -2601,20 +2601,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-canopy",
       "localTransform": [
-        1,
+        2.5500000715255737,
         0,
         0,
         0,
         0,
-        1,
+        2.5500000715255737,
         0,
         0,
         0,
         0,
-        1,
+        2.5500000715255737,
         0,
-        0,
-        0,
+        4.350000023841858,
+        1.003140538930893,
         0,
         1
       ],
@@ -2629,20 +2629,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.5500000715255737,
         0,
         0,
         0,
         0,
-        1,
+        2.5500000715255737,
         0,
         0,
         0,
         0,
-        1,
+        2.5500000715255737,
         0,
-        0,
-        0,
+        4.350000023841858,
+        1.003140538930893,
         0,
         1
       ]
@@ -2993,20 +2993,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-hull",
       "localTransform": [
-        1,
+        10.449982643127441,
         0,
         0,
         0,
         0,
-        1,
+        10.449982643127441,
         0,
         0,
         0,
         0,
-        1,
+        10.449982643127441,
         0,
-        0,
-        0,
+        0.45001697540283203,
+        0.1250000298023224,
         0,
         1
       ],
@@ -3021,20 +3021,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.449982643127441,
         0,
         0,
         0,
         0,
-        1,
+        10.449982643127441,
         0,
         0,
         0,
         0,
-        1,
+        10.449982643127441,
         0,
-        0,
-        0,
+        0.45001697540283203,
+        0.1250000298023224,
         0,
         1
       ]
@@ -3042,20 +3042,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-lights-cyan",
       "localTransform": [
-        1,
+        8.817141056060791,
         0,
         0,
         0,
         0,
-        1,
+        8.817141056060791,
         0,
         0,
         0,
         0,
-        1,
+        8.817141056060791,
         0,
-        0,
-        0,
+        1.317141056060791,
+        0.5207732059061527,
         0,
         1
       ],
@@ -3070,20 +3070,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.817141056060791,
         0,
         0,
         0,
         0,
-        1,
+        8.817141056060791,
         0,
         0,
         0,
         0,
-        1,
+        8.817141056060791,
         0,
-        0,
-        0,
+        1.317141056060791,
+        0.5207732059061527,
         0,
         1
       ]
@@ -3091,19 +3091,19 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-mechanical",
       "localTransform": [
-        1,
+        10.80984354019165,
         0,
         0,
         0,
         0,
-        1,
+        10.80984354019165,
         0,
         0,
         0,
         0,
-        1,
+        10.80984354019165,
         0,
-        0,
+        0.0898432731628418,
         0,
         0,
         1
@@ -3119,19 +3119,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.80984354019165,
         0,
         0,
         0,
         0,
-        1,
+        10.80984354019165,
         0,
         0,
         0,
         0,
-        1,
+        10.80984354019165,
         0,
-        0,
+        0.0898432731628418,
         0,
         0,
         1
@@ -3140,20 +3140,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
-        0,
-        0,
+        -1.935500144958496,
+        0.10698807239532471,
         0,
         1
       ],
@@ -3168,20 +3168,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
-        0,
-        0,
+        -1.935500144958496,
+        0.10698807239532471,
         0,
         1
       ]
@@ -3189,20 +3189,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-armor",
       "localTransform": [
-        1,
+        3.9884297847747803,
         0,
         0,
         0,
         0,
-        1,
+        3.9884297847747803,
         0,
         0,
         0,
         0,
-        1,
+        3.9884297847747803,
         0,
-        0,
-        0,
+        5.960464477539063e-8,
+        -0.030000030994415283,
         0,
         1
       ],
@@ -3218,20 +3218,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.9884297847747803,
         0,
         0,
         0,
         0,
-        1,
+        3.9884297847747803,
         0,
         0,
         0,
         0,
-        1,
+        3.9884297847747803,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        3.2000001072883606,
+        0.5199999809265137,
         0,
         1
       ]
@@ -3239,20 +3239,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-mechanical",
       "localTransform": [
-        1,
+        3.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.930000066757202,
         0,
-        0,
-        0,
+        3.646250009536743,
+        1.4901161193847656e-8,
         0,
         1
       ],
@@ -3268,20 +3268,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.930000066757202,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        6.846250057220459,
+        0.5500000268220901,
         0,
         1
       ]
@@ -3289,19 +3289,19 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-guns-mechanicaldark",
       "localTransform": [
-        1,
+        3.9279773235321045,
         0,
         0,
         0,
         0,
-        1,
+        3.9279773235321045,
         0,
         0,
         0,
         0,
-        1,
+        3.9279773235321045,
         0,
-        0,
+        5.249999761581421,
         0,
         0,
         1
@@ -3318,19 +3318,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.9279773235321045,
         0,
         0,
         0,
         0,
-        1,
+        3.9279773235321045,
         0,
         0,
         0,
         0,
-        1,
+        3.9279773235321045,
         0,
-        3.200000047683716,
+        8.449999809265137,
         0.550000011920929,
         0,
         1
@@ -3339,21 +3339,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-p-armor",
       "localTransform": [
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
-        0,
-        0,
-        0,
+        0.3455085754394531,
+        -0.2199999988079071,
+        -1.4500000709085725,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3368,21 +3368,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -7.654491424560547,
+        -0.019999995827674866,
+        -6.4500000709085725,
         1
       ]
     },
@@ -3439,21 +3439,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-p-mechanical",
       "localTransform": [
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
-        0,
-        0,
-        0,
+        -1.200000286102295,
+        -0.2199999988079071,
+        -2.950000047683716,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3468,42 +3468,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -9.200000286102295,
+        -0.019999995827674866,
+        -7.950000047683716,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-armor",
       "localTransform": [
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
-        0,
-        0,
-        0,
+        0.3455085754394531,
+        0.6149999648332596,
+        1.115000069141388,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3518,42 +3518,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
         0,
         0,
         0,
-        1,
+        2.3412609100341797,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -7.654491424560547,
+        0.8149999678134918,
+        6.115000069141388,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod0-motion-wasp-winglet-s-mechanical",
       "localTransform": [
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
-        0,
-        0,
-        0,
+        -1.200000286102295,
+        -0.2199999988079071,
+        2.950000047683716,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3568,41 +3568,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
         0,
         0,
         0,
-        1,
+        1.0999999046325684,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -9.200000286102295,
+        -0.019999995827674866,
+        7.950000047683716,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod1-armor",
       "localTransform": [
-        1,
+        6.521321058273315,
         0,
         0,
         0,
         0,
-        1,
+        6.521321058273315,
         0,
         0,
         0,
         0,
-        1,
+        6.521321058273315,
         0,
-        0,
-        0,
+        -2.571302652359009,
+        0.1889229416847229,
         0,
         1
       ],
@@ -3617,20 +3617,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        6.521321058273315,
         0,
         0,
         0,
         0,
-        1,
+        6.521321058273315,
         0,
         0,
         0,
         0,
-        1,
+        6.521321058273315,
         0,
-        0,
-        0,
+        -2.571302652359009,
+        0.1889229416847229,
         0,
         1
       ]
@@ -3638,20 +3638,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-beacon-amber-beacon",
       "localTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ],
@@ -3666,20 +3666,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ]
@@ -3687,20 +3687,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-canopy",
       "localTransform": [
-        1,
+        2.550000309944153,
         0,
         0,
         0,
         0,
-        1,
+        2.550000309944153,
         0,
         0,
         0,
         0,
-        1,
+        2.550000309944153,
         0,
-        0,
-        0,
+        4.350000262260437,
+        1.0031664967536926,
         0,
         1
       ],
@@ -3715,20 +3715,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.550000309944153,
         0,
         0,
         0,
         0,
-        1,
+        2.550000309944153,
         0,
         0,
         0,
         0,
-        1,
+        2.550000309944153,
         0,
-        0,
-        0,
+        4.350000262260437,
+        1.0031664967536926,
         0,
         1
       ]
@@ -4079,20 +4079,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-hull",
       "localTransform": [
-        1,
+        10.450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        10.450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        10.450000762939453,
         0,
-        0,
-        0,
+        0.44999217987060547,
+        0.12498360872268677,
         0,
         1
       ],
@@ -4107,20 +4107,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        10.450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        10.450000762939453,
         0,
-        0,
-        0,
+        0.44999217987060547,
+        0.12498360872268677,
         0,
         1
       ]
@@ -4128,21 +4128,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-lights-cyan",
       "localTransform": [
-        1,
+        8.517451524734497,
         0,
         0,
         0,
         0,
-        1,
+        8.517451524734497,
         0,
         0,
         0,
         0,
-        1,
+        8.517451524734497,
         0,
-        0,
-        0,
-        0,
+        1.6173522472381592,
+        0.5207493342459202,
+        1.1920928955078125e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4156,40 +4156,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.517451524734497,
         0,
         0,
         0,
         0,
-        1,
+        8.517451524734497,
         0,
         0,
         0,
         0,
-        1,
+        8.517451524734497,
         0,
-        0,
-        0,
-        0,
+        1.6173522472381592,
+        0.5207493342459202,
+        1.1920928955078125e-7,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod1-mechanical",
       "localTransform": [
-        1,
+        10.8099684715271,
         0,
         0,
         0,
         0,
-        1,
+        10.8099684715271,
         0,
         0,
         0,
         0,
-        1,
+        10.8099684715271,
         0,
-        0,
+        0.08996820449829102,
         0,
         0,
         1
@@ -4205,19 +4205,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.8099684715271,
         0,
         0,
         0,
         0,
-        1,
+        10.8099684715271,
         0,
         0,
         0,
         0,
-        1,
+        10.8099684715271,
         0,
-        0,
+        0.08996820449829102,
         0,
         0,
         1
@@ -4226,20 +4226,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
-        0,
-        0,
+        -1.935500144958496,
+        0.10697993636131287,
         0,
         1
       ],
@@ -4254,20 +4254,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
         0,
         0,
         0,
-        1,
+        8.784500122070312,
         0,
-        0,
-        0,
+        -1.935500144958496,
+        0.10697993636131287,
         0,
         1
       ]
@@ -4275,20 +4275,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-armor",
       "localTransform": [
-        1,
+        3.9879844188690186,
         0,
         0,
         0,
         0,
-        1,
+        3.9879844188690186,
         0,
         0,
         0,
         0,
-        1,
+        3.9879844188690186,
         0,
-        0,
-        0,
+        -0.000028908252716064453,
+        -0.02988116443157196,
         0,
         1
       ],
@@ -4304,20 +4304,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.9879844188690186,
         0,
         0,
         0,
         0,
-        1,
+        3.9879844188690186,
         0,
         0,
         0,
         0,
-        1,
+        3.9879844188690186,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        3.1999711394309998,
+        0.520118847489357,
         0,
         1
       ]
@@ -4325,20 +4325,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-mechanical",
       "localTransform": [
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
-        0,
-        0,
+        3.6456027030944824,
+        -0.000023111701011657715,
         0,
         1
       ],
@@ -4354,20 +4354,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        6.845602750778198,
+        0.5499769002199173,
         0,
         1
       ]
@@ -4375,20 +4375,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-guns-mechanicaldark",
       "localTransform": [
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
-        0,
-        0,
+        5.250177621841431,
+        -0.000023111701011657715,
         0,
         1
       ],
@@ -4404,20 +4404,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
         0,
         0,
         0,
-        1,
+        3.929065465927124,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        8.450177669525146,
+        0.5499769002199173,
         0,
         1
       ]
@@ -4425,21 +4425,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-p-armor",
       "localTransform": [
-        1,
+        2.341395854949951,
         0,
         0,
         0,
         0,
-        1,
+        2.341395854949951,
         0,
         0,
         0,
         0,
-        1,
+        2.341395854949951,
         0,
-        0,
-        0,
-        0,
+        0.34549856185913086,
+        -0.22039543837308884,
+        -1.4501798189885449,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4454,21 +4454,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.341395854949951,
         0,
         0,
         0,
         0,
-        1,
+        2.341395854949951,
         0,
         0,
         0,
         0,
-        1,
+        2.341395854949951,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -7.654501438140869,
+        -0.020395435392856598,
+        -6.450179818988545,
         1
       ]
     },
@@ -4525,21 +4525,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-p-mechanical",
       "localTransform": [
-        1,
+        1.0996756553649902,
         0,
         0,
         0,
         0,
-        1,
+        1.0996756553649902,
         0,
         0,
         0,
         0,
-        1,
+        1.0996756553649902,
         0,
-        0,
-        0,
-        0,
+        -1.2001051902770996,
+        -0.22000141814351082,
+        -2.9499776363372803,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4554,42 +4554,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.0996756553649902,
         0,
         0,
         0,
         0,
-        1,
+        1.0996756553649902,
         0,
         0,
         0,
         0,
-        1,
+        1.0996756553649902,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -9.2001051902771,
+        -0.02000141516327858,
+        -7.94997763633728,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-armor",
       "localTransform": [
-        1,
+        2.34116268157959,
         0,
         0,
         0,
         0,
-        1,
+        2.34116268157959,
         0,
         0,
         0,
         0,
-        1,
+        2.34116268157959,
         0,
-        0,
-        0,
-        0,
+        0.3456697463989258,
+        0.6144862174987793,
+        1.1152587234973907,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4604,42 +4604,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.34116268157959,
         0,
         0,
         0,
         0,
-        1,
+        2.34116268157959,
         0,
         0,
         0,
         0,
-        1,
+        2.34116268157959,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -7.654330253601074,
+        0.8144862204790115,
+        6.115258723497391,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod1-motion-wasp-winglet-s-mechanical",
       "localTransform": [
-        1,
+        1.099865436553955,
         0,
         0,
         0,
         0,
-        1,
+        1.099865436553955,
         0,
         0,
         0,
         0,
-        1,
+        1.099865436553955,
         0,
-        0,
-        0,
-        0,
+        -1.199821949005127,
+        -0.2199999988079071,
+        2.9499776363372803,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4654,41 +4654,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.099865436553955,
         0,
         0,
         0,
         0,
-        1,
+        1.099865436553955,
         0,
         0,
         0,
         0,
-        1,
+        1.099865436553955,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -9.199821949005127,
+        -0.019999995827674866,
+        7.94997763633728,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-armor",
       "localTransform": [
-        1,
+        6.521179676055908,
         0,
         0,
         0,
         0,
-        1,
+        6.521179676055908,
         0,
         0,
         0,
         0,
-        1,
+        6.521179676055908,
         0,
-        0,
-        0,
+        -2.5709290504455566,
+        0.1889229714870453,
         0,
         1
       ],
@@ -4703,20 +4703,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        6.521179676055908,
         0,
         0,
         0,
         0,
-        1,
+        6.521179676055908,
         0,
         0,
         0,
         0,
-        1,
+        6.521179676055908,
         0,
-        0,
-        0,
+        -2.5709290504455566,
+        0.1889229714870453,
         0,
         1
       ]
@@ -4724,20 +4724,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-beacon-amber-beacon",
       "localTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ],
@@ -4752,20 +4752,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
         0,
         0,
         0,
-        1,
+        0.05999999865889549,
         0,
-        0,
-        0,
+        -1.5,
+        1.159999966621399,
         0,
         1
       ]
@@ -4773,21 +4773,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-canopy",
       "localTransform": [
-        1,
+        2.550127327442169,
         0,
         0,
         0,
         0,
-        1,
+        2.550127327442169,
         0,
         0,
         0,
         0,
-        1,
+        2.550127327442169,
         0,
-        0,
-        0,
-        0,
+        4.3499948382377625,
+        1.0030579268932343,
+        -0.0000016987323760986328,
         1
       ],
       "materialPipelineKey": "blend",
@@ -4801,21 +4801,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.550127327442169,
         0,
         0,
         0,
         0,
-        1,
+        2.550127327442169,
         0,
         0,
         0,
         0,
-        1,
+        2.550127327442169,
         0,
-        0,
-        0,
-        0,
+        4.3499948382377625,
+        1.0030579268932343,
+        -0.0000016987323760986328,
         1
       ]
     },
@@ -5018,20 +5018,20 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-hull",
       "localTransform": [
-        1,
+        10.450080394744873,
         0,
         0,
         0,
         0,
-        1,
+        10.450080394744873,
         0,
         0,
         0,
         0,
-        1,
+        10.450080394744873,
         0,
-        0,
-        0,
+        0.44994115829467773,
+        0.12480545043945312,
         0,
         1
       ],
@@ -5046,20 +5046,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.450080394744873,
         0,
         0,
         0,
         0,
-        1,
+        10.450080394744873,
         0,
         0,
         0,
         0,
-        1,
+        10.450080394744873,
         0,
-        0,
-        0,
+        0.44994115829467773,
+        0.12480545043945312,
         0,
         1
       ]
@@ -5067,21 +5067,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-lights-cyan",
       "localTransform": [
-        1,
+        8.516881704330444,
         0,
         0,
         0,
         0,
-        1,
+        8.516881704330444,
         0,
         0,
         0,
         0,
-        1,
+        8.516881704330444,
         0,
-        0,
-        0,
-        0,
+        1.617004632949829,
+        0.5206414759159088,
+        0.001280069351196289,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5095,40 +5095,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.516881704330444,
         0,
         0,
         0,
         0,
-        1,
+        8.516881704330444,
         0,
         0,
         0,
         0,
-        1,
+        8.516881704330444,
         0,
-        0,
-        0,
-        0,
+        1.617004632949829,
+        0.5206414759159088,
+        0.001280069351196289,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-mechanical",
       "localTransform": [
-        1,
+        10.810154914855957,
         0,
         0,
         0,
         0,
-        1,
+        10.810154914855957,
         0,
         0,
         0,
         0,
-        1,
+        10.810154914855957,
         0,
-        0,
+        0.08986663818359375,
         0,
         0,
         1
@@ -5144,19 +5144,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        10.810154914855957,
         0,
         0,
         0,
         0,
-        1,
+        10.810154914855957,
         0,
         0,
         0,
         0,
-        1,
+        10.810154914855957,
         0,
-        0,
+        0.08986663818359375,
         0,
         0,
         1
@@ -5165,21 +5165,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        8.783060312271118,
         0,
         0,
         0,
         0,
-        1,
+        8.783060312271118,
         0,
         0,
         0,
         0,
-        1,
+        8.783060312271118,
         0,
-        0,
-        0,
-        0,
+        -1.9372279644012451,
+        0.04481282830238342,
+        2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5193,41 +5193,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        8.783060312271118,
         0,
         0,
         0,
         0,
-        1,
+        8.783060312271118,
         0,
         0,
         0,
         0,
-        1,
+        8.783060312271118,
         0,
-        0,
-        0,
-        0,
+        -1.9372279644012451,
+        0.04481282830238342,
+        2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-armor",
       "localTransform": [
-        1,
+        3.986781120300293,
         0,
         0,
         0,
         0,
-        1,
+        3.986781120300293,
         0,
         0,
         0,
         0,
-        1,
+        3.986781120300293,
         0,
-        0,
-        0,
+        -0.000049233436584472656,
+        -0.030873820185661316,
         0,
         1
       ],
@@ -5243,20 +5243,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.986781120300293,
         0,
         0,
         0,
         0,
-        1,
+        3.986781120300293,
         0,
         0,
         0,
         0,
-        1,
+        3.986781120300293,
         0,
-        3.200000047683716,
-        0.550000011920929,
+        3.1999508142471313,
+        0.5191261917352676,
         0,
         1
       ]
@@ -5264,21 +5264,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-mechanical",
       "localTransform": [
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
-        0,
-        0,
-        0,
+        3.6494558453559875,
+        -0.000014692544937133789,
+        0.0004947185516357422,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5293,42 +5293,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
-        3.200000047683716,
-        0.550000011920929,
-        0,
+        6.849455893039703,
+        0.5499853193759918,
+        0.0004947185516357422,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-guns-mechanicaldark",
       "localTransform": [
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
-        0,
-        0,
-        0,
+        5.249910116195679,
+        -0.000014692544937133789,
+        0.0004947185516357422,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5343,42 +5343,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
         0,
         0,
         0,
-        1,
+        3.9286205768585205,
         0,
-        3.200000047683716,
-        0.550000011920929,
-        0,
+        8.449910163879395,
+        0.5499853193759918,
+        0.0004947185516357422,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-p-armor",
       "localTransform": [
-        1,
+        2.3403594493865967,
         0,
         0,
         0,
         0,
-        1,
+        2.3403594493865967,
         0,
         0,
         0,
         0,
-        1,
+        2.3403594493865967,
         0,
-        0,
-        0,
-        0,
+        0.34568285942077637,
+        -0.21995943784713745,
+        -1.449658360623289,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5393,21 +5393,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.3403594493865967,
         0,
         0,
         0,
         0,
-        1,
+        2.3403594493865967,
         0,
         0,
         0,
         0,
-        1,
+        2.3403594493865967,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -7.654317140579224,
+        -0.019959434866905212,
+        -6.449658360623289,
         1
       ]
     },
@@ -5464,21 +5464,21 @@
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-p-mechanical",
       "localTransform": [
-        1,
+        1.0994014739990234,
         0,
         0,
         0,
         0,
-        1,
+        1.0994014739990234,
         0,
         0,
         0,
         0,
-        1,
+        1.0994014739990234,
         0,
-        0,
-        0,
-        0,
+        -1.2001314163208008,
+        -0.22005893290042877,
+        -2.9500603675842285,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5493,42 +5493,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.0994014739990234,
         0,
         0,
         0,
         0,
-        1,
+        1.0994014739990234,
         0,
         0,
         0,
         0,
-        1,
+        1.0994014739990234,
         0,
-        -8,
-        0.20000000298023224,
-        -5,
+        -9.2001314163208,
+        -0.020058929920196533,
+        -7.9500603675842285,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-s-armor",
       "localTransform": [
-        1,
+        2.340010404586792,
         0,
         0,
         0,
         0,
-        1,
+        2.340010404586792,
         0,
         0,
         0,
         0,
-        1,
+        2.340010404586792,
         0,
-        0,
-        0,
-        0,
+        0.34501147270202637,
+        0.6144861876964569,
+        1.1148287951946259,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5543,42 +5543,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        2.340010404586792,
         0,
         0,
         0,
         0,
-        1,
+        2.340010404586792,
         0,
         0,
         0,
         0,
-        1,
+        2.340010404586792,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -7.654988527297974,
+        0.8144861906766891,
+        6.114828795194626,
         1
       ]
     },
     {
       "id": "sf.render.wasp-free-militia.node.lod2-motion-wasp-winglet-s-mechanical",
       "localTransform": [
-        1,
+        1.0995535850524902,
         0,
         0,
         0,
         0,
-        1,
+        1.0995535850524902,
         0,
         0,
         0,
         0,
-        1,
+        1.0995535850524902,
         0,
-        0,
-        0,
-        0,
+        -1.200178623199463,
+        -0.2200624644756317,
+        2.95011043548584,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5593,21 +5593,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wasp-free-militia.body",
       "worldTransform": [
-        1,
+        1.0995535850524902,
         0,
         0,
         0,
         0,
-        1,
+        1.0995535850524902,
         0,
         0,
         0,
         0,
-        1,
+        1.0995535850524902,
         0,
-        -8,
-        0.20000000298023224,
-        5,
+        -9.200178623199463,
+        -0.020062461495399475,
+        7.95011043548584,
         1
       ]
     },
@@ -6405,37 +6405,37 @@
       "uri": "wasp_free_militia.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2223056,
-    "sha256": "213dbf09e1e7530367b08e369a2d1bef1216bea79fb13aa3c4988f16bf482a3c",
+    "bytes": 1199400,
+    "sha256": "ae6b8ec1bc13252b2541bb18009d2595ed186a2f92af10e15ff38dc2ef3a4d3c",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.08994770050048828,
-        0.4252515148450928,
+        0.4252515299813655,
         0
       ],
       "max": [
         10.90018367767334,
         1.750071468220154,
-        8.079850196838379
+        8.079850190544484
       ],
       "min": [
         -10.720288276672363,
-        -0.8995684385299683,
-        -8.079850196838379
+        -0.8995684082574229,
+        -8.079850190544484
       ],
       "size": [
         21.620471954345703,
-        2.649639906750122,
-        16.159700393676758
+        2.649639876477577,
+        16.159700381088967
       ]
     },
     "hidden": [
@@ -7603,20 +7603,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.521304726600647,
           0,
           0,
           0,
           0,
-          1,
+          6.521304726600647,
           0,
           0,
           0,
           0,
-          1,
+          6.521304726600647,
           0,
-          0,
-          0,
+          -2.5713189840316772,
+          0.18894758820533752,
           0,
           1
         ],
@@ -7630,20 +7630,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
-          0,
-          0,
+          -1.5,
+          1.159999966621399,
           0,
           1
         ],
@@ -7657,20 +7657,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.5500000715255737,
           0,
           0,
           0,
           0,
-          1,
+          2.5500000715255737,
           0,
           0,
           0,
           0,
-          1,
+          2.5500000715255737,
           0,
-          0,
-          0,
+          4.350000023841858,
+          1.003140538930893,
           0,
           1
         ],
@@ -7898,20 +7898,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.449982643127441,
           0,
           0,
           0,
           0,
-          1,
+          10.449982643127441,
           0,
           0,
           0,
           0,
-          1,
+          10.449982643127441,
           0,
-          0,
-          0,
+          0.45001697540283203,
+          0.1250000298023224,
           0,
           1
         ],
@@ -7925,20 +7925,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.817141056060791,
           0,
           0,
           0,
           0,
-          1,
+          8.817141056060791,
           0,
           0,
           0,
           0,
-          1,
+          8.817141056060791,
           0,
-          0,
-          0,
+          1.317141056060791,
+          0.5207732059061527,
           0,
           1
         ],
@@ -7952,19 +7952,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.80984354019165,
           0,
           0,
           0,
           0,
-          1,
+          10.80984354019165,
           0,
           0,
           0,
           0,
-          1,
+          10.80984354019165,
           0,
-          0,
+          0.0898432731628418,
           0,
           0,
           1
@@ -7979,20 +7979,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.784500122070312,
           0,
           0,
           0,
           0,
-          1,
+          8.784500122070312,
           0,
           0,
           0,
           0,
-          1,
+          8.784500122070312,
           0,
-          0,
-          0,
+          -1.935500144958496,
+          0.10698807239532471,
           0,
           1
         ],
@@ -8006,20 +8006,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.521321058273315,
           0,
           0,
           0,
           0,
-          1,
+          6.521321058273315,
           0,
           0,
           0,
           0,
-          1,
+          6.521321058273315,
           0,
-          0,
-          0,
+          -2.571302652359009,
+          0.1889229416847229,
           0,
           1
         ],
@@ -8033,20 +8033,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
-          0,
-          0,
+          -1.5,
+          1.159999966621399,
           0,
           1
         ],
@@ -8060,20 +8060,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.550000309944153,
           0,
           0,
           0,
           0,
-          1,
+          2.550000309944153,
           0,
           0,
           0,
           0,
-          1,
+          2.550000309944153,
           0,
-          0,
-          0,
+          4.350000262260437,
+          1.0031664967536926,
           0,
           1
         ],
@@ -8301,20 +8301,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.450000762939453,
           0,
           0,
           0,
           0,
-          1,
+          10.450000762939453,
           0,
           0,
           0,
           0,
-          1,
+          10.450000762939453,
           0,
-          0,
-          0,
+          0.44999217987060547,
+          0.12498360872268677,
           0,
           1
         ],
@@ -8328,21 +8328,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.517451524734497,
           0,
           0,
           0,
           0,
-          1,
+          8.517451524734497,
           0,
           0,
           0,
           0,
-          1,
+          8.517451524734497,
           0,
-          0,
-          0,
-          0,
+          1.6173522472381592,
+          0.5207493342459202,
+          1.1920928955078125e-7,
           1
         ],
         "name": "LOD1_Lights_Cyan",
@@ -8355,19 +8355,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.8099684715271,
           0,
           0,
           0,
           0,
-          1,
+          10.8099684715271,
           0,
           0,
           0,
           0,
-          1,
+          10.8099684715271,
           0,
-          0,
+          0.08996820449829102,
           0,
           0,
           1
@@ -8382,20 +8382,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.784500122070312,
           0,
           0,
           0,
           0,
-          1,
+          8.784500122070312,
           0,
           0,
           0,
           0,
-          1,
+          8.784500122070312,
           0,
-          0,
-          0,
+          -1.935500144958496,
+          0.10697993636131287,
           0,
           1
         ],
@@ -8409,20 +8409,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.521179676055908,
           0,
           0,
           0,
           0,
-          1,
+          6.521179676055908,
           0,
           0,
           0,
           0,
-          1,
+          6.521179676055908,
           0,
-          0,
-          0,
+          -2.5709290504455566,
+          0.1889229714870453,
           0,
           1
         ],
@@ -8436,20 +8436,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
           0,
           0,
           0,
-          1,
+          0.05999999865889549,
           0,
-          0,
-          0,
+          -1.5,
+          1.159999966621399,
           0,
           1
         ],
@@ -8463,21 +8463,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.550127327442169,
           0,
           0,
           0,
           0,
-          1,
+          2.550127327442169,
           0,
           0,
           0,
           0,
-          1,
+          2.550127327442169,
           0,
-          0,
-          0,
-          0,
+          4.3499948382377625,
+          1.0030579268932343,
+          -0.0000016987323760986328,
           1
         ],
         "name": "LOD2_CANOPY",
@@ -8620,20 +8620,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.450080394744873,
           0,
           0,
           0,
           0,
-          1,
+          10.450080394744873,
           0,
           0,
           0,
           0,
-          1,
+          10.450080394744873,
           0,
-          0,
-          0,
+          0.44994115829467773,
+          0.12480545043945312,
           0,
           1
         ],
@@ -8647,21 +8647,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.516881704330444,
           0,
           0,
           0,
           0,
-          1,
+          8.516881704330444,
           0,
           0,
           0,
           0,
-          1,
+          8.516881704330444,
           0,
-          0,
-          0,
-          0,
+          1.617004632949829,
+          0.5206414759159088,
+          0.001280069351196289,
           1
         ],
         "name": "LOD2_Lights_Cyan",
@@ -8674,19 +8674,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.810154914855957,
           0,
           0,
           0,
           0,
-          1,
+          10.810154914855957,
           0,
           0,
           0,
           0,
-          1,
+          10.810154914855957,
           0,
-          0,
+          0.08986663818359375,
           0,
           0,
           1
@@ -8701,21 +8701,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.783060312271118,
           0,
           0,
           0,
           0,
-          1,
+          8.783060312271118,
           0,
           0,
           0,
           0,
-          1,
+          8.783060312271118,
           0,
-          0,
-          0,
-          0,
+          -1.9372279644012451,
+          0.04481282830238342,
+          2.384185791015625e-7,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -8728,20 +8728,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9884297847747803,
           0,
           0,
           0,
           0,
-          1,
+          3.9884297847747803,
           0,
           0,
           0,
           0,
-          1,
+          3.9884297847747803,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          3.2000001072883606,
+          0.5199999809265137,
           0,
           1
         ],
@@ -8756,20 +8756,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          3.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          3.930000066757202,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          6.846250057220459,
+          0.5500000268220901,
           0,
           1
         ],
@@ -8784,19 +8784,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9279773235321045,
           0,
           0,
           0,
           0,
-          1,
+          3.9279773235321045,
           0,
           0,
           0,
           0,
-          1,
+          3.9279773235321045,
           0,
-          3.200000047683716,
+          8.449999809265137,
           0.550000011920929,
           0,
           1
@@ -8812,20 +8812,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9879844188690186,
           0,
           0,
           0,
           0,
-          1,
+          3.9879844188690186,
           0,
           0,
           0,
           0,
-          1,
+          3.9879844188690186,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          3.1999711394309998,
+          0.520118847489357,
           0,
           1
         ],
@@ -8840,20 +8840,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.929065465927124,
           0,
           0,
           0,
           0,
-          1,
+          3.929065465927124,
           0,
           0,
           0,
           0,
-          1,
+          3.929065465927124,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          6.845602750778198,
+          0.5499769002199173,
           0,
           1
         ],
@@ -8868,20 +8868,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.929065465927124,
           0,
           0,
           0,
           0,
-          1,
+          3.929065465927124,
           0,
           0,
           0,
           0,
-          1,
+          3.929065465927124,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          8.450177669525146,
+          0.5499769002199173,
           0,
           1
         ],
@@ -8896,20 +8896,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.986781120300293,
           0,
           0,
           0,
           0,
-          1,
+          3.986781120300293,
           0,
           0,
           0,
           0,
-          1,
+          3.986781120300293,
           0,
-          3.200000047683716,
-          0.550000011920929,
+          3.1999508142471313,
+          0.5191261917352676,
           0,
           1
         ],
@@ -8924,21 +8924,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9286205768585205,
           0,
           0,
           0,
           0,
-          1,
+          3.9286205768585205,
           0,
           0,
           0,
           0,
-          1,
+          3.9286205768585205,
           0,
-          3.200000047683716,
-          0.550000011920929,
-          0,
+          6.849455893039703,
+          0.5499853193759918,
+          0.0004947185516357422,
           1
         ],
         "name": "LOD2_MOTION_WASP_GUNS_Mechanical",
@@ -8952,21 +8952,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9286205768585205,
           0,
           0,
           0,
           0,
-          1,
+          3.9286205768585205,
           0,
           0,
           0,
           0,
-          1,
+          3.9286205768585205,
           0,
-          3.200000047683716,
-          0.550000011920929,
-          0,
+          8.449910163879395,
+          0.5499853193759918,
+          0.0004947185516357422,
           1
         ],
         "name": "LOD2_MOTION_WASP_GUNS_MechanicalDark",
@@ -8980,21 +8980,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3412609100341797,
           0,
           0,
           0,
           0,
-          1,
+          2.3412609100341797,
           0,
           0,
           0,
           0,
-          1,
+          2.3412609100341797,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -7.654491424560547,
+          -0.019999995827674866,
+          -6.4500000709085725,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Armor",
@@ -9037,21 +9037,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0999999046325684,
           0,
           0,
           0,
           0,
-          1,
+          1.0999999046325684,
           0,
           0,
           0,
           0,
-          1,
+          1.0999999046325684,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -9.200000286102295,
+          -0.019999995827674866,
+          -7.950000047683716,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_P_Mechanical",
@@ -9065,21 +9065,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.341395854949951,
           0,
           0,
           0,
           0,
-          1,
+          2.341395854949951,
           0,
           0,
           0,
           0,
-          1,
+          2.341395854949951,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -7.654501438140869,
+          -0.020395435392856598,
+          -6.450179818988545,
           1
         ],
         "name": "LOD1_MOTION_WASP_WINGLET_P_Armor",
@@ -9122,21 +9122,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0996756553649902,
           0,
           0,
           0,
           0,
-          1,
+          1.0996756553649902,
           0,
           0,
           0,
           0,
-          1,
+          1.0996756553649902,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -9.2001051902771,
+          -0.02000141516327858,
+          -7.94997763633728,
           1
         ],
         "name": "LOD1_MOTION_WASP_WINGLET_P_Mechanical",
@@ -9150,21 +9150,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3403594493865967,
           0,
           0,
           0,
           0,
-          1,
+          2.3403594493865967,
           0,
           0,
           0,
           0,
-          1,
+          2.3403594493865967,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -7.654317140579224,
+          -0.019959434866905212,
+          -6.449658360623289,
           1
         ],
         "name": "LOD2_MOTION_WASP_WINGLET_P_Armor",
@@ -9207,21 +9207,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0994014739990234,
           0,
           0,
           0,
           0,
-          1,
+          1.0994014739990234,
           0,
           0,
           0,
           0,
-          1,
+          1.0994014739990234,
           0,
-          -8,
-          0.20000000298023224,
-          -5,
+          -9.2001314163208,
+          -0.020058929920196533,
+          -7.9500603675842285,
           1
         ],
         "name": "LOD2_MOTION_WASP_WINGLET_P_Mechanical",
@@ -9235,21 +9235,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3412609100341797,
           0,
           0,
           0,
           0,
-          1,
+          2.3412609100341797,
           0,
           0,
           0,
           0,
-          1,
+          2.3412609100341797,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -7.654491424560547,
+          0.8149999678134918,
+          6.115000069141388,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Armor",
@@ -9263,21 +9263,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0999999046325684,
           0,
           0,
           0,
           0,
-          1,
+          1.0999999046325684,
           0,
           0,
           0,
           0,
-          1,
+          1.0999999046325684,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -9.200000286102295,
+          -0.019999995827674866,
+          7.950000047683716,
           1
         ],
         "name": "LOD0_MOTION_WASP_WINGLET_S_Mechanical",
@@ -9291,21 +9291,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.34116268157959,
           0,
           0,
           0,
           0,
-          1,
+          2.34116268157959,
           0,
           0,
           0,
           0,
-          1,
+          2.34116268157959,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -7.654330253601074,
+          0.8144862204790115,
+          6.115258723497391,
           1
         ],
         "name": "LOD1_MOTION_WASP_WINGLET_S_Armor",
@@ -9319,21 +9319,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.099865436553955,
           0,
           0,
           0,
           0,
-          1,
+          1.099865436553955,
           0,
           0,
           0,
           0,
-          1,
+          1.099865436553955,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -9.199821949005127,
+          -0.019999995827674866,
+          7.94997763633728,
           1
         ],
         "name": "LOD1_MOTION_WASP_WINGLET_S_Mechanical",
@@ -9347,21 +9347,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.340010404586792,
           0,
           0,
           0,
           0,
-          1,
+          2.340010404586792,
           0,
           0,
           0,
           0,
-          1,
+          2.340010404586792,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -7.654988527297974,
+          0.8144861906766891,
+          6.114828795194626,
           1
         ],
         "name": "LOD2_MOTION_WASP_WINGLET_S_Armor",
@@ -9375,21 +9375,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0995535850524902,
           0,
           0,
           0,
           0,
-          1,
+          1.0995535850524902,
           0,
           0,
           0,
           0,
-          1,
+          1.0995535850524902,
           0,
-          -8,
-          0.20000000298023224,
-          5,
+          -9.200178623199463,
+          -0.020062461495399475,
+          7.95011043548584,
           1
         ],
         "name": "LOD2_MOTION_WASP_WINGLET_S_Mechanical",
@@ -9405,7 +9405,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
   },
-  "runtimeHash": "82b4f55ad33a150549490776e34ee5831cae1074e02aa88f785998ee1d45f875",
+  "runtimeHash": "98a48e65f61e06ec882190c42428a3e1e401e5619e6638aae578410805b2c08a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -9413,12 +9413,12 @@
         "max": [
           10.90018367767334,
           1.750071468220154,
-          8.079850196838379
+          8.079850190544484
         ],
         "min": [
           -10.720288276672363,
-          -0.8995684385299683,
-          -8.079850196838379
+          -0.8995684082574229,
+          -8.079850190544484
         ]
       },
       "id": "sf.render.wasp-free-militia.body",

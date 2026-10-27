@@ -162,7 +162,15 @@ try {
           }, shotSpec);
           // Under a busy CPU the first frames can present before shaders finish linking: a blank
           // frame has almost no bright pixels. Re-shoot instead of reporting an empty ship.
-          const stats = await sharp(Buffer.from(res.url.split(',')[1], 'base64')).stats();
+          // Measure the region the file actually keeps — chase/close crop the center, and a
+          // starfield passes any full-frame threshold, which is how the first cold body of a
+          // fleet run once shipped an empty chase frame (hornet, 2026-10-24: zero warm pixels).
+          let frame = sharp(Buffer.from(res.url.split(',')[1], 'base64'));
+          if (CROPS[view]) {
+            const [cw, ch] = CROPS[view];
+            frame = frame.extract({ left: Math.round((1600 - cw) / 2), top: Math.round((1000 - ch) / 2), width: cw, height: ch });
+          }
+          const stats = await frame.stats();
           const lit = stats.channels.slice(0, 3).reduce((a, c) => a + c.max, 0);
           const spread = stats.channels.slice(0, 3).reduce((a, c) => a + c.stdev, 0);
           if (lit > 300 && spread > 6) break;

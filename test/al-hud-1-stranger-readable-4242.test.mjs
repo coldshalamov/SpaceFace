@@ -473,6 +473,12 @@ class HudElement {
   // Real appendChild DETACHES first, so appending a live node MOVES it. Without this the shim
   // duplicates any node a reconciler reorders.
   appendChild(child) {
+    if (child.nodeType === 11) {
+      const kids = (child.children || []).slice();
+      (child.children || []).length = 0;
+      for (const kid of kids) this.appendChild(kid);
+      return child;
+    }
     if (child.parentNode) child.parentNode.removeChild(child);
     child.parentNode = this; this.children.push(child); return child;
   }
@@ -488,6 +494,7 @@ class HudElement {
       typeof child === 'object' && child !== null ? child : new HudText(String(child))));
   }
   get firstChild() { return this.children[0] || null; }
+  get firstElementChild() { return this.children.find((child) => child.nodeType === 1) || null; }
   insertBefore(child, before) {
     if (child.parentNode) child.parentNode.removeChild(child);
     const i = before ? this.children.indexOf(before) : this.children.length;
@@ -562,6 +569,11 @@ class HudDocument {
   createElement(tagName) { return new HudElement(this, tagName); }
   createTextNode(text) { return new HudText(String(text)); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createDocumentFragment() {
+    const fragment = this.createElement('#fragment');
+    fragment.nodeType = 11;
+    return fragment;
+  }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
   querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }

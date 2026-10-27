@@ -142,7 +142,7 @@ function checkPulverizerRareOreChance() {
   };
 
   const hit = release(0.10, [0.05, 0.05, 0.05]);
-  assert.equal(hit.cargo.items.cmdty_exotic_amazonite, 3,
+  assert.equal(hit.cargo.items.cmdty_exotic_xenium, 3,
     'a forced 10% chance hit must substitute the tier-aware richOreForTier result');
   assert.equal(cargoUnitCount(hit.cargo), 3, 'rare substitutions must not change released quantity');
   assert.equal(hit.draws.length, 3, 'each forced hit consumes one deterministic chance draw per unit');
@@ -556,7 +556,7 @@ function checkYieldFloatingTextNamesCommodity() {
   // Starter beam is directToCargo — mining:yield is the only flight float for each unit.
   // Bare "+1" without a commodity name is unreadable (player can't tell iron from silicate).
   const floatSrc = readFileSync(resolve(ROOT, 'src/ui/floatingText.js'), 'utf8');
-  assert.match(floatSrc, /bus\.on\('mining:yield'/, 'floatingText must listen for mining:yield');
+  assert.match(floatSrc, /\bon\('mining:yield'/, 'floatingText must listen for mining:yield');
   // Slice A/6b made the float report the amount that actually landed (acceptedAmount — a full
   // hold can't float ore it never got); the "+N Commodity Name" contract is unchanged.
   assert.match(floatSrc, /'\+' \+ reported \+ ' ' \+ name/,

@@ -3592,6 +3592,115 @@ function buildCreditChip(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// SWARM REPAIR CELL (PQ-135 glance identity) — the one drop on the table that buys hull back.
+// Chips spend, commodities sell, remains latch and throw; a repair cell is medicine, so the
+// silhouette says medicine: a squat canister standing UPRIGHT on its foot flange — the
+// vent-dropped patch kit — wearing clamp bands, the white-hot weld seam where the lid seats,
+// and the luminous cross on the crown the top-down camera reads as the heal mark. Nothing
+// else stands on Y or carries a cross: the cargo canister and the eel lie along X, the chip
+// is flat, the bottle is a sphere, the remains are carapace. The pickup contract is intact —
+// userData.gem is still the body the tumble / transponder strobe / tractor intake poses and
+// the halo is still the takeable ring — only the recipe and paint are the cell's own: pale
+// ceramic shell, gunmetal clamps, and the repair verb's mint (actionVfx 'beam:repaired'
+// 0x84ffd2) so the eye learns "mint = hull back" from the welding beam to the drop.
+// Deterministic poses, shared-cache primitives, noDispose recipes — same law as the remains.
+// ---------------------------------------------------------------------------------------------
+const SWARM_REPAIR_GLOW = '#84ffd2';
+
+function isSwarmRepairEntity(e) {
+  const d = (e && e.data) || {};
+  return d.kind === 'swarm_repair' || d.swarmRepair === true;
+}
+
+function buildSwarmRepairCell(e) {
+  const R = Math.max(1.4, Number(e && e.radius) || 2.2);
+  const g = new THREE.Group();
+  g.name = 'SF_SwarmRepairCell';
+  const shell = getMaterial('swarmrepair:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0xc2d2c6, emissive: 0x16281e, emissiveIntensity: 0.3,
+    metalness: 0.42, roughness: 0.48, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const band = getMaterial('swarmrepair:band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x38423c, emissive: 0x0a140f, emissiveIntensity: 0.3,
+    metalness: 0.72, roughness: 0.42,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const weld = getMaterial('swarmrepair:weld', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x202b25, emissive: new THREE.Color('#f2fff8'), emissiveIntensity: 2.4,
+    metalness: 0.1, roughness: 0.3,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  // The crown cross is the heal mark; the material is cloned per drop so the breathe below
+  // never paints a sibling cell (same per-entity clone convention as the gem glint).
+  const cross = getMaterial('swarmrepair:cross', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x0c2218, emissive: new THREE.Color(SWARM_REPAIR_GLOW), emissiveIntensity: 2.0,
+    metalness: 0.15, roughness: 0.4,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
+
+  const body = new THREE.Group();
+  body.name = 'SwarmRepairCellBody';
+  const add = (geoKey, geoBuild, material, name, pos) => {
+    const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+    m.name = name;
+    if (pos) m.position.set(pos[0], pos[1], pos[2]);
+    m.frustumCulled = false;
+    body.add(m);
+    return m;
+  };
+  // Squat barrel on a planted flange — the upright stance is half the identity at a glance.
+  add('swarmrepair:barrel', () => new THREE.CylinderGeometry(0.46, 0.54, 0.66, 10),
+    shell, 'SwarmRepairBarrel', [0, -0.02, 0]);
+  add('swarmrepair:flange', () => new THREE.CylinderGeometry(0.64, 0.7, 0.12, 10),
+    band, 'SwarmRepairFootFlange', [0, -0.37, 0]);
+  add('swarmrepair:lid', () => new THREE.CylinderGeometry(0.5, 0.45, 0.18, 10),
+    shell, 'SwarmRepairLid', [0, 0.37, 0]);
+  add('swarmrepair:band-lo', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
+    band, 'SwarmRepairClampBandLo', [0, -0.16, 0]);
+  add('swarmrepair:band-hi', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
+    band, 'SwarmRepairClampBandHi', [0, 0.14, 0]);
+  // The weld seam where the lid seats — white-hot, the mark of a fresh patch kit.
+  add('swarmrepair:weldseam', () => new THREE.TorusGeometry(0.475, 0.032, 6, 18).rotateX(Math.PI / 2),
+    weld, 'SwarmRepairWeldSeam', [0, 0.27, 0]);
+  // The crown cross — two perpendicular bars sharing one cached geometry.
+  const crossBar = () => new THREE.BoxGeometry(0.58, 0.1, 0.17);
+  const barA = add('swarmrepair:crossbar', crossBar, cross, 'SwarmRepairCrossBarA', [0, 0.51, 0]);
+  const barB = add('swarmrepair:crossbar', crossBar, cross, 'SwarmRepairCrossBarB', [0, 0.51, 0]);
+  barB.rotation.y = Math.PI / 2;
+  body.scale.setScalar(R);
+  g.add(body);
+
+  // The takeable ring every scoopable drop carries — mint here, not a commodity tint.
+  const halo = new THREE.Mesh(
+    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
+    getMaterial(`pickuphalo:${SWARM_REPAIR_GLOW}`, () => new THREE.MeshBasicMaterial({
+      color: new THREE.Color(SWARM_REPAIR_GLOW), transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })),
+  );
+  halo.material = halo.material.clone();
+  halo.scale.setScalar(R);
+  halo.userData.baseScale = R;
+  halo.frustumCulled = false;
+  g.add(halo);
+
+  g.userData.kind = 'pickup';
+  g.userData.interactionKind = 'pickup';
+  g.userData.gem = body;
+  g.userData.pickupHalo = halo;
+  g.userData.pickupShape = 'repair_cell';
+  g.userData.pickupVisual = 'swarm_repair';
+  g.userData.visualLanguage = 'swarm-repair-cell';
+  g.userData.pickupRole = null;
+  // Heal pulse: the cross breathes on the gem's own glint beat, phased per drop so two cells
+  // on one field never pulse in lockstep. Cosmetic wall-clock is fine — this only paints.
+  const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
+  for (const bar of [barA, barB]) {
+    bar.onBeforeRender = () => {
+      cross.emissiveIntensity = 1.8 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
+    };
+  }
+  return g;
+}
+
 function buildPickup(e) {
   // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
   // the warning regardless of which spawn path dropped it.
@@ -3625,6 +3734,9 @@ function buildPickup(e) {
     chip.userData.pickupRole = PICKUP_ROLE.CHIP;
     return chip;
   }
+  // A vent-dropped repair cell is the swarm run's only way back to hull — it wears the
+  // patch-kit silhouette, never the fallback octahedron next to a credit chip.
+  if (isSwarmRepairEntity(e)) return buildSwarmRepairCell(e);
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
@@ -6603,6 +6715,46 @@ function buildRemainEelBody(g, kind, family) {
     shell, 'BroodRemain_EelBody_Fin', [1.24, 0, 0]);
 }
 
+// cracked_shell — the burrower's burst-open carapace: a shallow bowl split into two
+// offset dish halves with a kicked-up flake at the seam. The only broken-dish silhouette
+// — "it shatters on impact" reads as the pieces it already is.
+function buildRemainCrackedShell(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const dish = (phiStart) => () => new THREE
+    .SphereGeometry(0.62, 10, 5, phiStart, Math.PI * 0.92, 0, Math.PI * 0.42)
+    .scale(1, 0.55, 1);
+  remainMesh(g, 'remain:cracked_shell:dish_a', dish(0), shell,
+    'BroodRemain_CrackedShell_DishA', [-0.16, 0.18, 0], null, { rotation: [0.22, 0.4, -0.12] });
+  remainMesh(g, 'remain:cracked_shell:dish_b', dish(Math.PI * 1.04), shell,
+    'BroodRemain_CrackedShell_DishB', [0.2, 0.12, 0.1], null, { rotation: [-0.14, -2.3, 0.3] });
+  remainMesh(g, 'remain:cracked_shell:flake', () =>
+    new THREE.TetrahedronGeometry(0.24, 0).scale(1, 0.4, 0.8),
+    shell, 'BroodRemain_CrackedShell_Flake', [0.02, 0.36, -0.3], 1.1);
+}
+
+// spent_charge — the remora's dead-fuse casing: a stubby dart-canister, blunt nose, tail
+// fins, and a faint ember at the nozzle — the "it still pops, weakly" tell. The only
+// stubby-ordnance silhouette (the eel is long and limber, the horn a flat wedge).
+function buildRemainSpentCharge(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const ember = remainGlowMaterial(kind, family, 0.9);
+  remainMesh(g, 'remain:spent_charge:body', () =>
+    new THREE.CylinderGeometry(0.24, 0.28, 0.72, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Body');
+  remainMesh(g, 'remain:spent_charge:nose', () =>
+    new THREE.ConeGeometry(0.24, 0.34, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Nose', [-0.52, 0, 0]);
+  remainMesh(g, 'remain:spent_charge:fin_v', () =>
+    new THREE.BoxGeometry(0.26, 0.05, 0.34),
+    shell, 'BroodRemain_SpentCharge_FinV', [0.34, 0.14, 0], null, { rotation: [0, 0, 0.18] });
+  remainMesh(g, 'remain:spent_charge:fin_h', () =>
+    new THREE.BoxGeometry(0.26, 0.34, 0.05),
+    shell, 'BroodRemain_SpentCharge_FinH', [0.34, 0, 0.14], null, { rotation: [0.18, 0, 0] });
+  remainMesh(g, 'remain:spent_charge:ember', () =>
+    new THREE.SphereGeometry(0.11, 8, 6),
+    ember, 'BroodRemain_SpentCharge_Ember', [0.46, 0, 0]);
+}
+
 const REMAIN_BUILDERS = Object.freeze({
   husk_shards: buildRemainHuskShards,
   acid_sac: buildRemainAcidSac,
@@ -6610,6 +6762,8 @@ const REMAIN_BUILDERS = Object.freeze({
   leech_glue: buildRemainLeechGlue,
   glass_shards: buildRemainGlassShards,
   eel_body: buildRemainEelBody,
+  cracked_shell: buildRemainCrackedShell,
+  spent_charge: buildRemainSpentCharge,
 });
 
 function buildBroodRemainVisual(e) {

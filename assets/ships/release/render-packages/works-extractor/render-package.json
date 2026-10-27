@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "47335bb6a1ae9fbbcfbcdfd9876f06b86852ea0b469b4eaaad5a8ccfa6a4af74",
+  "contentHash": "8bf623b0a93b1afd90651b7367b2f163590ddca0ebd5e248822f721c26b97b07",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           0.32200001180171967,
-          0.17937524523586035,
-          0.16998352110385895
+          0.17937524612012934,
+          0.16998352514350293
         ],
         "min": [
           -0.5140000134706497,
-          0.0501750111579895,
-          -0.16998352110385895
+          0.05017501027372051,
+          -0.16998352514350293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af295522e894336a34791dbd505267c8342d01a3e4170f4db926cabd2cf861cd",
+      "geometryHash": "81b00b43d076a731817dd89413b13048ffc114babe372cc2223d62e008c999a6",
       "id": "sf.render.works-extractor.mesh.lod0-belt.primitive.0",
       "indexCount": 1740,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "belt_face_Mesh",
       "nodeId": "sf.render.works-extractor.mesh.lod0-belt",
@@ -37,22 +37,22 @@
     {
       "bounds": {
         "max": [
-          0.44004181027412415,
-          0.8000292778015137,
+          0.4400417759683013,
+          0.8000292541389612,
           0.7975999712944031
         ],
         "min": [
-          -0.945041835308075,
-          -0.000029238608476589434,
+          -0.9450418010022521,
+          -0.000029214945924116442,
           -0.7975999712944031
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f62cc0b1b790df4b33f727d92890157d06b31c9d4fdb059175ea0fe63f8169f",
+      "geometryHash": "60410ca42928e6546679d2db679a528eb85dfaf0adf51596eb155f4361f77584",
       "id": "sf.render.works-extractor.mesh.lod0-extractor.primitive.0",
       "indexCount": 3132,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "rail_P_Mesh",
       "nodeId": "sf.render.works-extractor.mesh.lod0-extractor",
@@ -62,22 +62,22 @@
     {
       "bounds": {
         "max": [
-          0.7279174029827118,
-          0.4472923129796982,
+          0.7279174026325457,
+          0.4472923134221809,
           0.7620000839233398
         ],
         "min": [
-          0.2620246112346649,
-          0.08004768192768097,
+          0.26202461158483104,
+          0.08004768148519828,
           -0.7620000243186951
         ]
       },
       "drawMode": 4,
-      "geometryHash": "284bb07681cec1b8814db28aacafca7839d919d13faea6efce90d4d655754e2d",
+      "geometryHash": "722ff83c87bcad38bb45efb109d69de752e7fc9a481c7f596419ca2985d35774",
       "id": "sf.render.works-extractor.mesh.lod0-head.primitive.0",
       "indexCount": 3600,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.works-extractor.mesh.lod0-head",
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          0.34500031918287277,
+          0.3450003186454587,
           0.5742346458137035,
           -0.7057653851807117
         ],
         "min": [
-          0.32899970561265945,
+          0.3289997061500735,
           0.5257653780281544,
           -0.7542346529662609
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f2e21881cbbfa3103251725c7a029e9b789c155540ff4b70aef27a5c37df6d3",
+      "geometryHash": "fe162da2d48564db1526a720b7003686c02761310375a658124506707fa4b63b",
       "id": "sf.render.works-extractor.mesh.lod0-lamp-lens.primitive.0",
       "indexCount": 276,
       "indexed": true,
-      "materialHash": "7684801207c684f35bf12544ab89b81b10c2d71e6c80ef0f930f1b148ae51faf",
+      "materialHash": "6d6f7143ce84e108b3531f02df8f5b6a47a37fafb277789c1475a6c3cb0a7602",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
       "nodeId": "sf.render.works-extractor.mesh.lod0-lamp-lens",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           0.3439999967813492,
-          0.6106640473008156,
-          -0.6662169471383095
+          0.610664045885826,
+          -0.6662169458315531
         ],
         "min": [
           0.14000000059604645,
-          0.4820021614432335,
-          -0.7937830910086632
+          0.48200216285822306,
+          -0.7937830923154195
         ]
       },
       "drawMode": 4,
-      "geometryHash": "161ac499d4af6a973f3d58e0525fa25e4dbb8c9741e39f06d575cdd4eba414c5",
+      "geometryHash": "90a8d3c27e06b4601c4ee241b1923f1f0f00d35ea1edd9809390f4da4c98e148",
       "id": "sf.render.works-extractor.mesh.lod0-lamp.primitive.0",
       "indexCount": 588,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.025",
       "nodeId": "sf.render.works-extractor.mesh.lod0-lamp",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           0.29999999701976776,
-          0.1803967747837305,
-          0.16998185217380524
+          0.18039677412185395,
+          0.1699818436775012
         ],
         "min": [
           -0.5140000134706497,
-          0.05082055181264877,
-          -0.16998185217380524
+          0.05082055247452531,
+          -0.1699818436775012
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dbae2a632d759a66a7f74c1461eb59e27d5fcc200ce8d3eada30f0e077f555fd",
+      "geometryHash": "90d95fbe5e0906b869e09863e21ba8fdcd43a6497c6d3b546c0b7ac1e4e035f5",
       "id": "sf.render.works-extractor.mesh.lod1-belt.primitive.0",
       "indexCount": 756,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "belt_face_Mesh.001",
       "nodeId": "sf.render.works-extractor.mesh.lod1-belt",
@@ -162,22 +162,22 @@
     {
       "bounds": {
         "max": [
-          0.44001027941703796,
-          0.7599474191665649,
+          0.44001028090910954,
+          0.7599474276055198,
           0.7975999712944031
         ],
         "min": [
-          -0.9400102496147156,
-          0.00005254472489468753,
+          -0.9400102511067872,
+          0.000052536285939874805,
           -0.7975999712944031
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d950619323c0f753ed122386a9820fc3be895bfb589788430dea5fc0cb9ae558",
+      "geometryHash": "712df07f8f63d98f66991f7efd5eafa7480225007aaf794aa64ace5d069e506b",
       "id": "sf.render.works-extractor.mesh.lod1-extractor.primitive.0",
       "indexCount": 900,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "rail_P_Mesh.001",
       "nodeId": "sf.render.works-extractor.mesh.lod1-extractor",
@@ -187,22 +187,22 @@
     {
       "bounds": {
         "max": [
-          0.7299735248088837,
-          0.442289799451828,
+          0.7299735277625579,
+          0.4422897920990211,
           0.7639999389648438
         ],
         "min": [
-          0.26975953578948975,
-          0.08005021512508392,
+          0.26975953283581555,
+          0.08005022247789084,
           -0.7640000581741333
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95dad2682dfd4a1a02a94e8df78a1e3bd8f68e28dc35dedb8cbea06e8890b45b",
+      "geometryHash": "191e161379ba6b0806413ffb989760dd3c26d2b0a5512f7d105376495da74af0",
       "id": "sf.render.works-extractor.mesh.lod1-head.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.works-extractor.mesh.lod1-head",
@@ -212,22 +212,22 @@
     {
       "bounds": {
         "max": [
-          0.3450009599328041,
-          0.5768486391752958,
+          0.34500095834079875,
+          0.5768486396751352,
           -0.6990000195801258
         ],
         "min": [
-          0.3289990648627281,
-          0.5231513846665621,
+          0.3289990664547335,
+          0.5231513841667227,
           -0.7610000185668468
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3209e101e115ab831bfd594ed75aa05e3587345bb0b279fffce5c920087714f6",
+      "geometryHash": "b43bf8a7058b1f1a7d45ecf1d6825b7b3fa76e6c0a56e5ec477dd53f748cf997",
       "id": "sf.render.works-extractor.mesh.lod1-lamp-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "29a56594327df662d27754ad2347683753e0ba0d356454d357b1b5ebf05f007c",
+      "materialHash": "3c600d1abfeef0a625f791b572f4bfe8841a28b52b6f810ebb00b9bfd345232b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.works-extractor.mesh.lod1-lamp-lens",
@@ -238,21 +238,21 @@
       "bounds": {
         "max": [
           0.3439999967813492,
-          0.6149997934699059,
-          -0.6649980694055557
+          0.6149997942673296,
+          -0.6649980639238638
         ],
         "min": [
           0.13499999046325684,
-          0.4790002182126045,
-          -0.7950019687414169
+          0.47900021741518073,
+          -0.7950019742231088
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c124f8d4b44418330a9a775a795efb4c598e191f6f722198055d48b273ac60db",
+      "geometryHash": "71aab4726ed77ba27b03ebd9064e49d309a2baaa3854dd7b1104850bbefc2ddc",
       "id": "sf.render.works-extractor.mesh.lod1-lamp.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.019",
       "nodeId": "sf.render.works-extractor.mesh.lod1-lamp",
@@ -265,10 +265,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "29a56594327df662d27754ad2347683753e0ba0d356454d357b1b5ebf05f007c",
-      "id": "material:29a56594327df662d27754ad",
+      "hash": "3c600d1abfeef0a625f791b572f4bfe8841a28b52b6f810ebb00b9bfd345232b",
+      "id": "material:3c600d1abfeef0a625f791b5",
       "name": "ExtractorAtlas_LOD1_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -297,10 +297,10 @@
       ]
     },
     {
-      "hash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
-      "id": "material:29f4831fbee6574df594e175",
+      "hash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
+      "id": "material:52f7a5e345c6654b878ded79",
       "name": "ExtractorAtlas_LOD0",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -323,36 +323,10 @@
       ]
     },
     {
-      "hash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
-      "id": "material:2e3ab9c0e8791ed8771b11b2",
-      "name": "ExtractorAtlas_LOD1",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "extractor_atlas_lod1_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "extractor_atlas_lod1_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "extractor_atlas_lod1_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7684801207c684f35bf12544ab89b81b10c2d71e6c80ef0f930f1b148ae51faf",
-      "id": "material:7684801207c684f35bf12544",
+      "hash": "6d6f7143ce84e108b3531f02df8f5b6a47a37fafb277789c1475a6c3cb0a7602",
+      "id": "material:6d6f7143ce84e108b3531f02",
       "name": "ExtractorAtlas_LOD0_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -375,6 +349,32 @@
         {
           "colorSpace": "linear",
           "name": "extractor_atlas_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
+      "id": "material:7cd3da19227c92771ed14a0a",
+      "name": "ExtractorAtlas_LOD1",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "extractor_atlas_lod1_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "extractor_atlas_lod1_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "extractor_atlas_lod1_normal",
           "slot": "normal",
           "uri": null
         }
@@ -385,20 +385,20 @@
     {
       "id": "sf.render.works-extractor.mesh.lod0-belt",
       "localTransform": [
-        1,
+        0.4180000126361847,
         0,
         0,
         0,
         0,
-        1,
+        0.4180000126361847,
         0,
         0,
         0,
         0,
-        1,
+        0.4180000126361847,
         0,
-        0,
-        0,
+        -0.01600000262260437,
+        -0.05522487359121442,
         0,
         1
       ],
@@ -414,20 +414,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.4180000126361847,
         0,
         0,
         0,
         0,
-        1,
+        0.4180000126361847,
         0,
         0,
         0,
         0,
-        1,
+        0.4180000126361847,
         0,
-        -0.07999999821186066,
-        0.17000000178813934,
+        -0.09600000083446503,
+        0.11477512819692492,
         0,
         1
       ]
@@ -435,20 +435,20 @@
     {
       "id": "sf.render.works-extractor.mesh.lod0-extractor",
       "localTransform": [
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
-        0,
-        0,
+        -0.2525000125169754,
+        0.40000001959651854,
         0,
         1
       ],
@@ -463,20 +463,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
-        0,
-        0,
+        -0.2525000125169754,
+        0.40000001959651854,
         0,
         1
       ]
@@ -484,21 +484,21 @@
     {
       "id": "sf.render.works-extractor.mesh.lod0-head",
       "localTransform": [
-        1,
+        0.7620000541210175,
         0,
         0,
         0,
         0,
-        1,
+        0.7620000541210175,
         0,
         0,
         0,
         0,
-        1,
+        0.7620000541210175,
         0,
-        0,
-        0,
-        0,
+        0.0749710202217102,
+        -0.03633001446723938,
+        2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -513,41 +513,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.7620000541210175,
         0,
         0,
         0,
         0,
-        1,
+        0.7620000541210175,
         0,
         0,
         0,
         0,
-        1,
+        0.7620000541210175,
         0,
-        0.41999998688697815,
-        0.30000001192092896,
-        0,
+        0.49497100710868835,
+        0.2636699974536896,
+        2.9802322387695312e-8,
         1
       ]
     },
     {
       "id": "sf.render.works-extractor.mesh.lod0-lamp",
       "localTransform": [
-        1,
+        0.10199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.10199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.10199999809265137,
         0,
-        0,
-        0,
+        -0.03800000250339508,
+        -0.003666907548904419,
         0,
         1
       ],
@@ -563,20 +563,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.10199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.10199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.10199999809265137,
         0,
-        0.2800000011920929,
-        0.550000011920929,
+        0.24199999868869781,
+        0.5463331043720245,
         -0.7300000190734863,
         1
       ]
@@ -584,19 +584,19 @@
     {
       "id": "sf.render.works-extractor.mesh.lod0-lamp-lens",
       "localTransform": [
-        1,
+        0.024234633892774582,
         0,
         0,
         0,
         0,
-        1,
+        0.024234633892774582,
         0,
         0,
         0,
         0,
-        1,
+        0.024234633892774582,
         0,
-        0,
+        0.05700001120567322,
         0,
         0,
         1
@@ -613,19 +613,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.024234633892774582,
         0,
         0,
         0,
         0,
-        1,
+        0.024234633892774582,
         0,
         0,
         0,
         0,
-        1,
+        0.024234633892774582,
         0,
-        0.2800000011920929,
+        0.3370000123977661,
         0.550000011920929,
         -0.7300000190734863,
         1
@@ -634,20 +634,20 @@
     {
       "id": "sf.render.works-extractor.mesh.lod1-belt",
       "localTransform": [
-        1,
+        0.40700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.40700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.40700000524520874,
         0,
-        0,
-        0,
+        -0.027000010013580322,
+        -0.0543913384899497,
         0,
         1
       ],
@@ -663,20 +663,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.40700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.40700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.40700000524520874,
         0,
-        -0.07999999821186066,
-        0.17000000178813934,
+        -0.10700000822544098,
+        0.11560866329818964,
         0,
         1
       ]
@@ -684,20 +684,20 @@
     {
       "id": "sf.render.works-extractor.mesh.lod1-extractor",
       "localTransform": [
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
-        0,
-        0,
+        -0.2499999850988388,
+        0.3799999819457298,
         0,
         1
       ],
@@ -712,20 +712,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
         0,
         0,
         0,
-        1,
+        0.7975999712944031,
         0,
-        0,
-        0,
+        -0.2499999850988388,
+        0.3799999819457298,
         0,
         1
       ]
@@ -733,21 +733,21 @@
     {
       "id": "sf.render.works-extractor.mesh.lod1-head",
       "localTransform": [
-        1,
+        0.7639999985694885,
         0,
         0,
         0,
         0,
-        1,
+        0.7639999985694885,
         0,
         0,
         0,
         0,
-        1,
+        0.7639999985694885,
         0,
-        0,
-        0,
-        0,
+        0.07986654341220856,
+        -0.03883000463247299,
+        -5.960464477539063e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -762,41 +762,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.7639999985694885,
         0,
         0,
         0,
         0,
-        1,
+        0.7639999985694885,
         0,
         0,
         0,
         0,
-        1,
+        0.7639999985694885,
         0,
-        0.41999998688697815,
-        0.30000001192092896,
-        0,
+        0.4998665302991867,
+        0.26117000728845596,
+        -5.960464477539063e-8,
         1
       ]
     },
     {
       "id": "sf.render.works-extractor.mesh.lod1-lamp",
       "localTransform": [
-        1,
+        0.10450000315904617,
         0,
         0,
         0,
         0,
-        1,
+        0.10450000315904617,
         0,
         0,
         0,
         0,
-        1,
+        0.10450000315904617,
         0,
-        0,
-        0,
+        -0.040500007569789886,
+        -0.003000006079673767,
         0,
         1
       ],
@@ -812,20 +812,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.10450000315904617,
         0,
         0,
         0,
         0,
-        1,
+        0.10450000315904617,
         0,
         0,
         0,
         0,
-        1,
+        0.10450000315904617,
         0,
-        0.2800000011920929,
-        0.550000011920929,
+        0.239499993622303,
+        0.5470000058412552,
         -0.7300000190734863,
         1
       ]
@@ -833,19 +833,19 @@
     {
       "id": "sf.render.works-extractor.mesh.lod1-lamp-lens",
       "localTransform": [
-        1,
+        0.03099999949336052,
         0,
         0,
         0,
         0,
-        1,
+        0.03099999949336052,
         0,
         0,
         0,
         0,
-        1,
+        0.03099999949336052,
         0,
-        0,
+        0.05700001120567322,
         0,
         0,
         1
@@ -862,19 +862,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-extractor.body",
       "worldTransform": [
-        1,
+        0.03099999949336052,
         0,
         0,
         0,
         0,
-        1,
+        0.03099999949336052,
         0,
         0,
         0,
         0,
-        1,
+        0.03099999949336052,
         0,
-        0.2800000011920929,
+        0.3370000123977661,
         0.550000011920929,
         -0.7300000190734863,
         1
@@ -939,36 +939,36 @@
       "uri": "place_works_extractor.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2091928,
-    "sha256": "3e5c65e6e87b473af56670efceab530f31a41fce1c449169a8f6eb18e02d8f6a",
+    "bytes": 2013628,
+    "sha256": "8fe94792c0d05a71ed48bf60a3314e2fbeec315c0e354ff5019b66ad9b2d674c",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.10753415524959564,
+        -0.10753413661984712,
         0.40000001959651854,
         0
       ],
       "max": [
-        0.7299735248088837,
-        0.8000292778015137,
+        0.7299735277625579,
+        0.8000292541389612,
         0.7975999712944031
       ],
       "min": [
-        -0.945041835308075,
-        -0.000029238608476589434,
+        -0.9450418010022521,
+        -0.000029214945924116442,
         -0.7975999712944031
       ],
       "size": [
-        1.6750153601169586,
-        0.8000585164099903,
+        1.67501532876481,
+        0.8000584690848853,
         1.5951999425888062
       ]
     },
@@ -1145,20 +1145,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4180000126361847,
           0,
           0,
           0,
           0,
-          1,
+          0.4180000126361847,
           0,
           0,
           0,
           0,
-          1,
+          0.4180000126361847,
           0,
-          -0.07999999821186066,
-          0.17000000178813934,
+          -0.09600000083446503,
+          0.11477512819692492,
           0,
           1
         ],
@@ -1172,20 +1172,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.40700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.40700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.40700000524520874,
           0,
-          -0.07999999821186066,
-          0.17000000178813934,
+          -0.10700000822544098,
+          0.11560866329818964,
           0,
           1
         ],
@@ -1199,21 +1199,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7620000541210175,
           0,
           0,
           0,
           0,
-          1,
+          0.7620000541210175,
           0,
           0,
           0,
           0,
-          1,
+          0.7620000541210175,
           0,
-          0.41999998688697815,
-          0.30000001192092896,
-          0,
+          0.49497100710868835,
+          0.2636699974536896,
+          2.9802322387695312e-8,
           1
         ],
         "name": "LOD0_head",
@@ -1226,21 +1226,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7639999985694885,
           0,
           0,
           0,
           0,
-          1,
+          0.7639999985694885,
           0,
           0,
           0,
           0,
-          1,
+          0.7639999985694885,
           0,
-          0.41999998688697815,
-          0.30000001192092896,
-          0,
+          0.4998665302991867,
+          0.26117000728845596,
+          -5.960464477539063e-8,
           1
         ],
         "name": "LOD1_head",
@@ -1253,20 +1253,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10199999809265137,
           0,
           0,
           0,
           0,
-          1,
+          0.10199999809265137,
           0,
           0,
           0,
           0,
-          1,
+          0.10199999809265137,
           0,
-          0.2800000011920929,
-          0.550000011920929,
+          0.24199999868869781,
+          0.5463331043720245,
           -0.7300000190734863,
           1
         ],
@@ -1280,19 +1280,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.024234633892774582,
           0,
           0,
           0,
           0,
-          1,
+          0.024234633892774582,
           0,
           0,
           0,
           0,
-          1,
+          0.024234633892774582,
           0,
-          0.2800000011920929,
+          0.3370000123977661,
           0.550000011920929,
           -0.7300000190734863,
           1
@@ -1307,20 +1307,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10450000315904617,
           0,
           0,
           0,
           0,
-          1,
+          0.10450000315904617,
           0,
           0,
           0,
           0,
-          1,
+          0.10450000315904617,
           0,
-          0.2800000011920929,
-          0.550000011920929,
+          0.239499993622303,
+          0.5470000058412552,
           -0.7300000190734863,
           1
         ],
@@ -1334,19 +1334,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.03099999949336052,
           0,
           0,
           0,
           0,
-          1,
+          0.03099999949336052,
           0,
           0,
           0,
           0,
-          1,
+          0.03099999949336052,
           0,
-          0.2800000011920929,
+          0.3370000123977661,
           0.550000011920929,
           -0.7300000190734863,
           1
@@ -1361,20 +1361,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7975999712944031,
           0,
           0,
           0,
           0,
-          1,
+          0.7975999712944031,
           0,
           0,
           0,
           0,
-          1,
+          0.7975999712944031,
           0,
-          0,
-          0,
+          -0.2525000125169754,
+          0.40000001959651854,
           0,
           1
         ],
@@ -1388,20 +1388,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7975999712944031,
           0,
           0,
           0,
           0,
-          1,
+          0.7975999712944031,
           0,
           0,
           0,
           0,
-          1,
+          0.7975999712944031,
           0,
-          0,
-          0,
+          -0.2499999850988388,
+          0.3799999819457298,
           0,
           1
         ],
@@ -1417,19 +1417,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_extractor.glb"
   },
-  "runtimeHash": "b239ae478397bb741be838de34f0dda9eec7b4e45527674cefb8e374597798b8",
+  "runtimeHash": "7dfdace1f905c417e7cfc5319af5e36b8074f276282b39cf8fe0533f42c1fa33",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          0.7299735248088837,
-          0.8000292778015137,
+          0.7299735277625579,
+          0.8000292541389612,
           0.7975999712944031
         ],
         "min": [
-          -0.945041835308075,
-          -0.000029238608476589434,
+          -0.9450418010022521,
+          -0.000029214945924116442,
           -0.7975999712944031
         ]
       },

@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "42515ef77ebc2fb24e9eff75fe9a666fe79d66d11eec15c407ab36fbca6f9fcf",
+  "contentHash": "2e019b70387b72d25becade22e0e33253231a20338c2d43d9f07fac2e70c630b",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.184976577758789,
+          1.184976628215457,
           0.5199999809265137,
           0.5199999809265137
         ],
         "min": [
-          1.1150233745574951,
+          1.1150233241008272,
           -0.5199999809265137,
           -0.5199999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d8ae39a7b89c01e7da4cd6f4610d77316d12cf2b4afec8edd1cead31ce595b0",
+      "geometryHash": "a4080e13f9de4d9e16f08d106cf14f2275ad4c7c1d221791ac47a73ff3829cb7",
       "id": "sf.render.engine-vector.node.det-heat-scorch-band.primitive.0",
       "indexCount": 180,
       "indexed": true,
-      "materialHash": "de838d001551c4c691c6956d5a03574b1f975374496c4049c0c619b15fd37978",
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.engine-vector.node.det-heat-scorch-band",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           1.340000033378601,
-          0.10500320047140121,
-          -0.09000640362501144
+          0.10500319823789828,
+          -0.09000640554421752
         ],
         "min": [
           1.0600000619888306,
-          0.0549967922270298,
-          -0.14999358355998993
+          0.05499679446053273,
+          -0.14999358164078386
         ]
       },
       "drawMode": 4,
-      "geometryHash": "daa60086d8379074857b7e81792248b33e369d1eb55a7c74cd16d748f3814f43",
+      "geometryHash": "4ff58d39a8a695b1de92e5378b03a00c0ee84e2ff287605516fd3f3c695589f5",
       "id": "sf.render.engine-vector.node.det-heat-streak.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "de838d001551c4c691c6956d5a03574b1f975374496c4049c0c619b15fd37978",
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.engine-vector.node.det-heat-streak",
@@ -62,22 +62,22 @@
     {
       "bounds": {
         "max": [
-          0.19998718798160553,
+          0.1999871846738835,
           0.2800000011920929,
           0.2800000011920929
         ],
         "min": [
-          0.000012816062735510059,
+          0.000012819370457550772,
           -0.2800000011920929,
           -0.2800000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff2bcf2df0006d18b16bec69412527ca99d64312b1b6aadb23833c79089ebf19",
+      "geometryHash": "08acdb6ea2a9d428aaf0e9ebb9d5130819a56acfdec2f71f31666f19417e8686",
       "id": "sf.render.engine-vector.node.hook-drive-core.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "9624decb297f12c2291647a03d2f407915481c71430dbcfe98bbf91da15a1b29",
+      "materialHash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_CORE_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-core",
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          0.44998931884765625,
+          0.44998932292140736,
           0.41999998688697815,
           0.41999998688697815
         ],
         "min": [
-          0.3500106930732727,
+          0.3500106889995216,
           -0.41999998688697815,
           -0.41999998688697815
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf0a0741dd49480858778503293d1246455e04e9381e2ed680e6fbc612a844ce",
+      "geometryHash": "25f41a1d6215ff0a9eaa3c17a3f4d03cb08f0b269f37bef84555d48bf9d02c8f",
       "id": "sf.render.engine-vector.node.hook-drive-fan.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "de838d001551c4c691c6956d5a03574b1f975374496c4049c0c619b15fd37978",
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_FAN_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-fan",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           1.725000023841858,
-          0.29392755031585693,
-          0.2939275801181793
+          0.2939275497746911,
+          0.2939275795770135
         ],
         "min": [
           0.9750000238418579,
-          -0.2939276099205017,
-          -0.2939275801181793
+          -0.2939276093793359,
+          -0.2939275795770135
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d8dffaa56dd4336de55b4add72061630a334b357d373fcb02acf63d8f21daf5",
+      "geometryHash": "0a3be34941efb90c50088110638409af130f13151afef6447a0b82abc0fa75cf",
       "id": "sf.render.engine-vector.node.hook-drive-plume.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "de838d001551c4c691c6956d5a03574b1f975374496c4049c0c619b15fd37978",
+      "materialHash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_PLUME_Mesh",
       "nodeId": "sf.render.engine-vector.node.hook-drive-plume",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           1.34755277633667,
-          0.5378707051277161,
-          0.5461615920066833
+          0.5378706766305584,
+          0.5461615541123397
         ],
         "min": [
           -0.6500000357627869,
-          -0.5378707051277161,
-          -0.5461615920066833
+          -0.5378706766305584,
+          -0.5461615541123397
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4047838d1c77c4fc0a9b1c9cb290139a076695d0752c3733a37bfb7e2f975eb",
+      "geometryHash": "a0844e741440de0a27854d6e82dd6d8b8e4e4d8a30cb37f05479b72b526a0de4",
       "id": "sf.render.engine-vector.node.lod0-engine-vector-main.primitive.0",
       "indexCount": 14976,
       "indexed": true,
-      "materialHash": "ef7b78b4c3726822b86b6245abb6b00d53eb55b955293458b94ed3a74db7bbe1",
+      "materialHash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
       "materialPipelineKey": "opaque",
       "meshName": "engine_vector_mesh",
       "nodeId": "sf.render.engine-vector.node.lod0-engine-vector-main",
@@ -165,24 +165,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "9624decb297f12c2291647a03d2f407915481c71430dbcfe98bbf91da15a1b29",
-      "id": "material:9624decb297f12c2291647a0",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "de838d001551c4c691c6956d5a03574b1f975374496c4049c0c619b15fd37978",
-      "id": "material:de838d001551c4c691c6956d",
+      "hash": "37e121594c0f26add74044996980efe985827a7f1f14d386e28491810ffd49f4",
+      "id": "material:37e121594c0f26add7404499",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "linear",
@@ -199,10 +185,24 @@
       ]
     },
     {
-      "hash": "ef7b78b4c3726822b86b6245abb6b00d53eb55b955293458b94ed3a74db7bbe1",
-      "id": "material:ef7b78b4c3726822b86b6245",
+      "hash": "6dc5ad407f2898fa42a2a20ec6cb5ce5f29f338668bf06a805670b89cce0420b",
+      "id": "material:6dc5ad407f2898fa42a2a20e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a755c615d9e1d505b2ae0e446244fafd877c6d3cda85a904b58bc4c4e118e47d",
+      "id": "material:a755c615d9e1d505b2ae0e44",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "linear",
@@ -223,19 +223,19 @@
     {
       "id": "sf.render.engine-vector.node.det-heat-scorch-band",
       "localTransform": [
-        1,
+        0.5199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.5199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.5199999809265137,
         0,
-        0,
+        1.149999976158142,
         0,
         0,
         1
@@ -250,19 +250,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.5199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.5199999809265137,
         0,
         0,
         0,
         0,
-        1,
+        0.5199999809265137,
         0,
-        0,
+        1.149999976158142,
         0,
         0,
         1
@@ -271,21 +271,21 @@
     {
       "id": "sf.render.engine-vector.node.det-heat-streak",
       "localTransform": [
-        1,
+        0.13999998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.13999998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.13999998569488525,
         0,
-        0,
-        0,
-        0,
+        1.2000000476837158,
+        0.07999999634921551,
+        -0.11999999359250069,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -298,21 +298,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.13999998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.13999998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.13999998569488525,
         0,
-        0,
-        0,
-        0,
+        1.2000000476837158,
+        0.07999999634921551,
+        -0.11999999359250069,
         1
       ]
     },
@@ -367,19 +367,19 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-core",
       "localTransform": [
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
-        0,
+        0.10000000202217052,
         0,
         0,
         1
@@ -395,19 +395,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
-        0,
+        0.10000000202217052,
         0,
         0,
         1
@@ -416,19 +416,19 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-fan",
       "localTransform": [
-        1,
+        0.41999998688697815,
         0,
         0,
         0,
         0,
-        1,
+        0.41999998688697815,
         0,
         0,
         0,
         0,
-        1,
+        0.41999998688697815,
         0,
-        0,
+        0.4000000059604645,
         0,
         0,
         1
@@ -444,19 +444,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.41999998688697815,
         0,
         0,
         0,
         0,
-        1,
+        0.41999998688697815,
         0,
         0,
         0,
         0,
-        1,
+        0.41999998688697815,
         0,
-        0,
+        0.4000000059604645,
         0,
         0,
         1
@@ -465,20 +465,20 @@
     {
       "id": "sf.render.engine-vector.node.hook-drive-plume",
       "localTransform": [
-        1,
+        0.375,
         0,
         0,
         0,
         0,
-        1,
+        0.375,
         0,
         0,
         0,
         0,
-        1,
+        0.375,
         0,
-        0,
-        0,
+        1.350000023841858,
+        -2.9802322387695312e-8,
         0,
         1
       ],
@@ -493,20 +493,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.375,
         0,
         0,
         0,
         0,
-        1,
+        0.375,
         0,
         0,
         0,
         0,
-        1,
+        0.375,
         0,
-        0,
-        0,
+        1.350000023841858,
+        -2.9802322387695312e-8,
         0,
         1
       ]
@@ -514,19 +514,19 @@
     {
       "id": "sf.render.engine-vector.node.lod0-engine-vector-main",
       "localTransform": [
-        1,
+        0.9987764060497284,
         0,
         0,
         0,
         0,
-        1,
+        0.9987764060497284,
         0,
         0,
         0,
         0,
-        1,
+        0.9987764060497284,
         0,
-        0,
+        0.34877637028694153,
         0,
         0,
         1
@@ -541,19 +541,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-vector.body",
       "worldTransform": [
-        1,
+        0.9987764060497284,
         0,
         0,
         0,
         0,
-        1,
+        0.9987764060497284,
         0,
         0,
         0,
         0,
-        1,
+        0.9987764060497284,
         0,
-        0,
+        0.34877637028694153,
         0,
         0,
         1
@@ -570,14 +570,14 @@
       "uri": "engine_vector.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 130424,
-    "sha256": "7f0616a1996c80cb9831b36131f23b2651b724b7bda3ec71934e71a42148bda3",
+    "bytes": 76856,
+    "sha256": "a4c85583bcd8f581fef1370c304dda7d8c3bba43c24b55f31894c7bb5963b60a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -589,18 +589,18 @@
       ],
       "max": [
         1.725000023841858,
-        0.5378707051277161,
-        0.5461615920066833
+        0.5378706766305584,
+        0.5461615541123397
       ],
       "min": [
         -0.6500000357627869,
-        -0.5378707051277161,
-        -0.5461615920066833
+        -0.5378706766305584,
+        -0.5461615541123397
       ],
       "size": [
         2.3750000596046448,
-        1.0757414102554321,
-        1.0923231840133667
+        1.0757413532611169,
+        1.0923231082246794
       ]
     },
     "hidden": [],
@@ -648,19 +648,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2800000011920929,
           0,
           0,
           0,
           0,
-          1,
+          0.2800000011920929,
           0,
           0,
           0,
           0,
-          1,
+          0.2800000011920929,
           0,
-          0,
+          0.10000000202217052,
           0,
           0,
           1
@@ -672,19 +672,19 @@
           "chamfered": true,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            0.2800000011920929,
             0,
             0,
             0,
             0,
-            1,
+            0.2800000011920929,
             0,
             0,
             0,
             0,
-            1,
+            0.2800000011920929,
             0,
-            0,
+            0.10000000202217052,
             0,
             0,
             1
@@ -695,19 +695,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.41999998688697815,
           0,
           0,
           0,
           0,
-          1,
+          0.41999998688697815,
           0,
           0,
           0,
           0,
-          1,
+          0.41999998688697815,
           0,
-          0,
+          0.4000000059604645,
           0,
           0,
           1
@@ -719,19 +719,19 @@
           "chamfered": true,
           "drive": "fan",
           "driveAnchorMatrix": [
-            1,
+            0.41999998688697815,
             0,
             0,
             0,
             0,
-            1,
+            0.41999998688697815,
             0,
             0,
             0,
             0,
-            1,
+            0.41999998688697815,
             0,
-            0,
+            0.4000000059604645,
             0,
             0,
             1
@@ -742,20 +742,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.375,
           0,
           0,
           0,
           0,
-          1,
+          0.375,
           0,
           0,
           0,
           0,
-          1,
+          0.375,
           0,
-          0,
-          0,
+          1.350000023841858,
+          -2.9802322387695312e-8,
           0,
           1
         ],
@@ -766,20 +766,20 @@
           "chamfered": true,
           "drive": "plume",
           "driveAnchorMatrix": [
-            1,
+            0.375,
             0,
             0,
             0,
             0,
-            1,
+            0.375,
             0,
             0,
             0,
             0,
-            1,
+            0.375,
             0,
-            0,
-            0,
+            1.350000023841858,
+            -2.9802322387695312e-8,
             0,
             1
           ],
@@ -789,19 +789,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9987764060497284,
           0,
           0,
           0,
           0,
-          1,
+          0.9987764060497284,
           0,
           0,
           0,
           0,
-          1,
+          0.9987764060497284,
           0,
-          0,
+          0.34877637028694153,
           0,
           0,
           1
@@ -818,19 +818,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5199999809265137,
           0,
           0,
           0,
           0,
-          1,
+          0.5199999809265137,
           0,
           0,
           0,
           0,
-          1,
+          0.5199999809265137,
           0,
-          0,
+          1.149999976158142,
           0,
           0,
           1
@@ -844,21 +844,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.13999998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.13999998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.13999998569488525,
           0,
-          0,
-          0,
-          0,
+          1.2000000476837158,
+          0.07999999634921551,
+          -0.11999999359250069,
           1
         ],
         "name": "DET_heat_streak",
@@ -872,20 +872,20 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_vector.glb"
   },
-  "runtimeHash": "0babe67be80c3a80abb0803216382f5f5de478c4d7bb60b8a92241ad0a92ace4",
+  "runtimeHash": "0ded214f943639e8b0202a17fe35480b4d7ea0470368baace46e0aff870b8d1d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.725000023841858,
-          0.5378707051277161,
-          0.5461615920066833
+          0.5378706766305584,
+          0.5461615541123397
         ],
         "min": [
           -0.6500000357627869,
-          -0.5378707051277161,
-          -0.5461615920066833
+          -0.5378706766305584,
+          -0.5461615541123397
         ]
       },
       "id": "sf.render.engine-vector.body",

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ManeuverKind } from '../src/ai/contracts.js';
+import { ContactKind, ManeuverKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner, REVERSAL_WINDOW_TICKS } from '../src/ai/maneuver.js';
-import { reflexAllowedForIntent } from '../src/ai/reflexes.js';
+import { emptyReflexState, evaluateReflexes, REFLEX_KIND, reflexAllowedForIntent } from '../src/ai/reflexes.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { getDerivedStats } from '../src/systems/ships.js';
 
@@ -72,5 +72,54 @@ test('row 491: combat-role enemies cruise at least 70% of a cruising player', ()
     if (t.anchored === true || t.fieldAnchor) continue; // fixture units do not pursue
     const cruise = t.combatSpeed || t.maxSpeed;
     assert.ok(cruise >= floor, `${t.id} (${t.aiArchetype}) cruises ${cruise} < 70% of player cruise ${floor.toFixed(0)}`);
+  }
+});
+
+function reflexContext() {
+  return { entityId: 2, tick: 10,
+    self: { id: 2, team: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+      rot: 0, radius: 12, hullFraction: 1, heatFraction: 0 },
+    contacts: [], target: null, intent: { kind: ManeuverKind.INTERCEPT },
+    temperament: { weave: 0, dash: 1, verve: 0, aim: 1 }, reflexState: emptyReflexState() };
+}
+
+test('row 491: an approach dodge yields to the next wind-up without resetting its refractory', () => {
+  const ctx = reflexContext();
+  ctx.contacts.push({ id: 3, kind: ContactKind.PROJECTILE, hostile: true, alive: true,
+    pos: { x: 100, z: 0 }, vel: { x: -200, z: 0 } });
+  assert.equal(evaluateReflexes(7, ctx).kind, REFLEX_KIND.VOLLEY_JINK);
+  const cooldowns = [...ctx.reflexState.cooldowns];
+  ctx.tick++;
+  ctx.intent = { kind: ManeuverKind.INTERCEPT, windup: true, committedRun: true };
+  assert.equal(evaluateReflexes(7, ctx), null, 'the announced attack line owns the next plan');
+  assert.equal(ctx.reflexState.burst, null);
+  assert.deepEqual([...ctx.reflexState.cooldowns], cooldowns, 'ending a burst does not earn another dodge');
+  ctx.tick++;
+  ctx.intent = { kind: ManeuverKind.INTERCEPT };
+  assert.equal(evaluateReflexes(7, ctx), null, 'the original refractory remains after returning to approach');
+});
+
+test('row 491: phase transitions keep survival and forward bursts while ending disallowed jinks', () => {
+  const rows = [
+    [REFLEX_KIND.HIT_WEAVE, { exposedRecovery: true }, false],
+    [REFLEX_KIND.BRAKE_CHECK, { exposedRecovery: true }, false],
+    [REFLEX_KIND.SCATTER_LOSS, { exposedRecovery: true }, false],
+    [REFLEX_KIND.VOLLEY_JINK, { exposedRecovery: true }, true],
+    [REFLEX_KIND.HIT_WEAVE, { committedRun: true }, false],
+    [REFLEX_KIND.BRAKE_CHECK, { committedRun: true }, false],
+    [REFLEX_KIND.SCATTER_LOSS, { committedRun: true }, false],
+    [REFLEX_KIND.BODY_DODGE, { committedRun: true }, true],
+    [REFLEX_KIND.POUNCE, { committedRun: true }, true],
+  ];
+  for (const [kind, phase, survives] of rows) {
+    const ctx = reflexContext();
+    ctx.tick++;
+    ctx.intent = { ...ctx.intent, ...phase };
+    ctx.reflexState.burst = { kind, startTick: 10, untilTick: 44, side: 1, amp: 80,
+      dodge: { x: 0, z: 1 }, boost: true };
+    const out = evaluateReflexes(7, ctx);
+    assert.equal(out?.kind ?? null, survives ? kind : null, `${kind}: ${JSON.stringify(phase)}`);
+    if (kind === REFLEX_KIND.BODY_DODGE) assert.deepEqual(out.dodge, { x: 0, z: 1 });
+    if (kind === REFLEX_KIND.POUNCE) assert.equal(out.boost, true);
   }
 });

@@ -92,7 +92,9 @@ export function createStick(doc = globalThis.document) {
   });
   const boostBloom = circle('mf-boost-bloom', BOOST_R);
   const boostLit = circle('mf-boost-lit', BOOST_R);
-  const boostLabel = circularText(0, 0, BOOST_R + 13, 'BOOST', { startDeg: -9, size: 8.5, className: 'mf-micro' });
+  // 16.5 units through the svg's 0.74 px/unit scale is the smallest label that still renders >= 12px
+  // (the .mf-micro CSS carries the same number; this attribute is the no-stylesheet fallback).
+  const boostLabel = circularText(0, 0, BOOST_R + 13, 'BOOST', { startDeg: -9, size: 16.5, className: 'mf-micro' });
   const dead = circle('mf-dead', 12);
   const brake = svg('g', { class: 'mf-brake' },
     [0, 90, 180, 270].map(a => svg('path', { d: 'M -7 -86 L 0 -77 L 7 -86', transform: `rotate(${a})` })));

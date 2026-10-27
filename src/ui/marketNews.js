@@ -19,6 +19,7 @@
 // the DOM ticker itself is cosmetic and may use timers/rAF freely (guarded by typeof window).
 
 import { COMMODITIES } from '../data/commodities.js';
+import { commodityDisplayName } from './commodityNames.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
 import { deedsFor, markNoted, wasNoted } from '../systems/deedRecord.js';
@@ -64,7 +65,7 @@ export function commodityName(commodityId, catalog) {
   if (commodityId === '*' || !commodityId) return 'the market';
   const def = (catalog && catalog.get && catalog.get(commodityId)) || CMDTY_BY_ID.get(commodityId);
   if (def && def.name) return def.name;
-  return String(commodityId).replace(/^cmdty_/, '').replace(/_/g, ' ');
+  return commodityDisplayName(String(commodityId));
 }
 
 /** Lowercased prose noun for a commodity, preferring bespoke atmospheric flavor. */

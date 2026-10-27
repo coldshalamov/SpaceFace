@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "46c247b46d6eeaa998dc06ddefeb3cc985f0b84109a2e2e724624c248fa99070",
+  "contentHash": "194667889e7d632fc686a9b0dfdd64e0a1b582ee9674dab6f190e1abd19d7531",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -2.412379741668701,
-          2.6658942699432373,
+          -2.4123796819749233,
+          2.665894389152527,
           8.966727256774902
         ],
         "min": [
-          -4.312561511993408,
-          -2.1919708251953125,
+          -4.312561571687186,
+          -2.191970944404602,
           4.108861923217773
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d95f6ba0fb4ed1f00a1f0f1f7ef59efd05566cf4a95fe9b5f13cbfa01eee67f",
+      "geometryHash": "ee067afcb7736cdaedf07cccc0ea85ac3f6b8eaddd0ed9e0f7883104f742470a",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          -3.441638708114624,
-          2.520308017730713,
-          8.82114028930664
+          -3.4416386949520152,
+          2.5203081665031206,
+          8.821141034125496
         ],
         "min": [
-          -4.312561511993408,
-          -2.046384572982788,
-          4.254447937011719
+          -4.312561571687186,
+          -2.046384721755196,
+          4.25444814586718
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b8dcf14f69b6a11b18e013c1e03251cf52384825535298c1a8ce96ac9819ac2",
+      "geometryHash": "2af0d3b54189ba4821e7c4871f858a978ec00e4206609806aa35c75d2e00a1ea",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          -3.441638708114624,
-          1.4417543411254883,
-          7.742587089538574
+          -3.4416386949520152,
+          1.4417544294619475,
+          7.742587297084323
         ],
         "min": [
-          -3.441638708114624,
-          -0.967831015586853,
-          5.333001613616943
+          -3.4416386949520152,
+          -0.9678309847140227,
+          5.333001882908353
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36cec25eca6f54062349519c599f48a30862fa56a3d135c5dfc070c6e72cdced",
+      "geometryHash": "a54b00c59f4ac6a26ccf97eec021f3bb9b652a1a741f1d774bdcda6cebe202ec",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -87,18 +87,18 @@
     {
       "bounds": {
         "max": [
-          -2.412492275238037,
+          -2.4124922746086477,
           3.2956175804138184,
-          3.047328472137451
+          3.0473285913467407
         ],
         "min": [
-          -4.312448978424072,
+          -4.312448979053462,
           -2.8216941356658936,
-          -3.0699830055236816
+          -3.069983124732971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5146c37dd1fd1163f161d0424ee25eb1366ab1f5219ad9ee3ae9bc65e3569eaa",
+      "geometryHash": "3bb44948fe4d57e2b05697698a79ecf9861ec871a180872dd9f8ecccb2b7be07",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -112,18 +112,18 @@
     {
       "bounds": {
         "max": [
-          -3.4416277408599854,
-          3.1122868061065674,
-          2.8639976978302
+          -3.441627710714773,
+          3.112286787079358,
+          2.86399779801228
         ],
         "min": [
-          -4.312448978424072,
-          -2.6383633613586426,
-          -2.8866522312164307
+          -4.312448979053462,
+          -2.638363342331433,
+          -2.8866523313985106
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3466cb84e25e6afcb19554d47953c4c0d6e035ab5c2c2c3590642b0258d136ba",
+      "geometryHash": "5714cb86a88fb6dacb182d9c75bb59b6978f8e193ea0bd4c29b2aec0a4519288",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          -3.4416277408599854,
-          1.7541080713272095,
-          1.5058190822601318
+          -3.441627710714773,
+          1.7541080482726341,
+          1.5058190592055565
         ],
         "min": [
-          -3.4416277408599854,
-          -1.2801846265792847,
-          -1.5284736156463623
+          -3.441627710714773,
+          -1.2801846035247093,
+          -1.528473592591787
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea5a37ce2d9c7037f8d2941e154155b95b1b974828676bbe91966771e7410c59",
+      "geometryHash": "0cb2fd70a998c1e1c2d413e10eabdfb69479d6b2e5f4f6f6599b948a9c698ded",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -162,18 +162,18 @@
     {
       "bounds": {
         "max": [
-          -2.412379741668701,
-          2.6658942699432373,
+          -2.4123796819749233,
+          2.665894389152527,
           -4.131516456604004
         ],
         "min": [
-          -4.312561511993408,
-          -2.1919708251953125,
+          -4.312561571687186,
+          -2.191970944404602,
           -8.989381790161133
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59ecc188b838c589d194abbf21b046763c5e8275fdd1cf6388fdd61df1237788",
+      "geometryHash": "216c394d54dce4dc61d519c631343fe6d8ab1d41eeefef080419884070c59ca0",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -187,18 +187,18 @@
     {
       "bounds": {
         "max": [
-          -3.441638708114624,
-          2.520308017730713,
-          -4.277102470397949
+          -3.4416386949520152,
+          2.5203081665031206,
+          -4.27710267925341
         ],
         "min": [
-          -4.312561511993408,
-          -2.046384572982788,
-          -8.843794822692871
+          -4.312561571687186,
+          -2.046384721755196,
+          -8.843795567511727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f10032bc5e1c029382803628938574aa90fa257a49ae713447ea8a355ea2d624",
+      "geometryHash": "432c5f6c440ab36fcbe958fa2ec224d598d76cbbf599f056a1e40aced1817b63",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -212,18 +212,18 @@
     {
       "bounds": {
         "max": [
-          -3.441638708114624,
-          1.4417543411254883,
-          -5.355656147003174
+          -3.4416386949520152,
+          1.4417544294619475,
+          -5.355656416294583
         ],
         "min": [
-          -3.441638708114624,
-          -0.967831015586853,
-          -7.765241622924805
+          -3.4416386949520152,
+          -0.9678309847140227,
+          -7.765241830470553
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cc7665080f5976b0ccc0674f346e8704e29219135d7f52c101d8486e5a576df",
+      "geometryHash": "513bf7316ce282edf61ad015c444e839a3de6a500c3084399945750640f5b0f9",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -237,22 +237,22 @@
     {
       "bounds": {
         "max": [
-          0.17375575006008148,
+          0.1737557236073029,
           5.9918670654296875,
-          5.825226783752441
+          5.825226676436068
         ],
         "min": [
-          -0.7209664583206177,
+          -0.720966431867839,
           -5.81061315536499,
-          -5.926826477050781
+          -5.926826369734408
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9c5248770842c368504c32e94a8d2aa43a5bfee5fc2bb98650488b0454834b1",
+      "geometryHash": "ee3330b02fc068bd07676a087a0542a2ab15013ad2ddc0b07df0aa2fa2b79333",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "Drum_xrib1a",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a",
@@ -262,22 +262,22 @@
     {
       "bounds": {
         "max": [
-          0.015977412462234497,
-          0.16453231871128082,
+          0.015977421951282295,
+          0.16453237272406773,
           -0.04355042427778244
         ],
         "min": [
-          -0.33049729466438293,
-          -3.6833548545837402,
+          -0.3304973041534307,
+          -3.6833549085965274,
           -8.10671615600586
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e324fd4e307395af614d124e5e10da85d64eaeeaff8ebab324473033f11d595f",
+      "geometryHash": "aab7546547a42e7007242a98a5785794ecb999407d89f94ece451103e6c88515",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "Drum_xrib1b",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b",
@@ -287,18 +287,18 @@
     {
       "bounds": {
         "max": [
-          0.04100736975669861,
-          6.537234783172607,
+          0.04100737154209122,
+          6.5372348217509115,
           8.439817428588867
         ],
         "min": [
-          -0.5871613025665283,
-          -5.092911243438721,
+          -0.5871613013223016,
+          -5.092911038206797,
           -8.45936393737793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9a618d603cadf3fe1287b65c1497e9e4bfe9399ad73111ccdebbc46c78a97f9",
+      "geometryHash": "45260bd078c0a02f91e8e06b22c236f751e4693a310e2bf35f5f291768f7f4bf",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.0",
       "indexCount": 699,
       "indexed": true,
@@ -312,18 +312,18 @@
     {
       "bounds": {
         "max": [
-          0.046164751052856445,
-          -4.869081020355225,
-          7.138095378875732
+          0.04616474980862978,
+          -4.8690808214390255,
+          7.138095154114543
         ],
         "min": [
-          -0.5417763590812683,
-          -6.537234783172607,
-          -7.050367832183838
+          -0.5417763725767626,
+          -6.5372348217509115,
+          -7.050368194959604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da29b2a39841da4cb05f68dc7450515e45ec13ef9e42038144007f115a0952bb",
+      "geometryHash": "38cd9ce9ee527bd51cdd96d50b725f553f0cc6b5e8f95d4eb1e4908d22416faf",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.1",
       "indexCount": 171,
       "indexed": true,
@@ -337,18 +337,18 @@
     {
       "bounds": {
         "max": [
-          -0.5314615964889526,
-          6.311083793640137,
-          8.051982879638672
+          -0.5314616160436855,
+          6.3110837847631975,
+          8.05198258294517
         ],
         "min": [
-          -0.5459022521972656,
-          -6.3556952476501465,
-          -8.077717781066895
+          -0.5459022751899933,
+          -6.355695106768756,
+          -8.077717945654078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6959ca34077685af4d37c2043aa393d47ab52aa0c93554e8afc90d3bf2ce5258",
+      "geometryHash": "20314343991381e54d14ead24b7bd00b5951062880873f8a6a6103d7a0714187",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.2",
       "indexCount": 816,
       "indexed": true,
@@ -363,21 +363,21 @@
       "bounds": {
         "max": [
           0.49273681640625,
-          -3.2750320434570312,
-          -4.413632869720459
+          -3.2750321292431894,
+          -4.4136329480776375
         ],
         "min": [
           -0.43196868896484375,
-          -4.09633731842041,
-          -5.197461128234863
+          -4.0963372326342515,
+          -5.197461049877685
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29914d44cdc4dd24c2d4a572bd74ca73c68ae857392bb1f9174db51f0c10882e",
+      "geometryHash": "2cf2fb9c6652a0cbfc7c2cd7655fdbb363a83260a5b52b72ff6131ba59465661",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib0",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0",
@@ -388,21 +388,21 @@
       "bounds": {
         "max": [
           0.6618518829345703,
-          -0.4972510039806366,
-          -7.255648612976074
+          -0.4972509924165133,
+          -7.25564873396439
         ],
         "min": [
           -0.44109153747558594,
-          -1.2789078950881958,
-          -8.306351661682129
+          -1.278907906652319,
+          -8.306351540693813
         ]
       },
       "drawMode": 4,
-      "geometryHash": "807758ef2b53e1379389e916b34a6362d2f83bbd35e184afdbc80a6192a26464",
+      "geometryHash": "41ecf1507e0476b9e0acfac6e511a82993a87289e56d0347c298a08495b78793",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib1",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1",
@@ -413,21 +413,21 @@
       "bounds": {
         "max": [
           0.4197216033935547,
-          2.651663064956665,
-          -6.650059223175049
+          2.6516630552138603,
+          -6.650059020060493
         ],
         "min": [
           -0.4143524169921875,
-          2.0060555934906006,
-          -7.426605224609375
+          2.0060556032334054,
+          -7.42660542772393
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1af545ccb724f4a8160916b8312baf4c282ed91b20febf4a77336687907f5937",
+      "geometryHash": "44445c288e0449b9a67206316df0c7e2148b0e4b60d1952186f521aa778db59b",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib2",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2",
@@ -438,21 +438,21 @@
       "bounds": {
         "max": [
           0.5855140686035156,
-          5.068649768829346,
-          -2.656371593475342
+          5.068649672783774,
+          -2.6563714807309378
         ],
         "min": [
           -0.43030548095703125,
-          4.148190021514893,
-          -3.4562978744506836
+          4.148190117560464,
+          -3.4562979871950876
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4606e88b00ac6d79a9ef6514e73b1140c483d15ee6c801ea67b8ba907612511e",
+      "geometryHash": "a1a5eda4b9a9af45769d603ce483c4f67c05b36166ff95c0e894369f0fd63898",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib3",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3",
@@ -463,21 +463,21 @@
       "bounds": {
         "max": [
           0.7310619354248047,
-          5.353396892547607,
-          2.758251905441284
+          5.353396658465631,
+          2.7582519505863408
         ],
         "min": [
           -0.4718780517578125,
-          4.2588300704956055,
-          1.8519444465637207
+          4.2588303045775815,
+          1.851944401418664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "778506f571af04cbfddbe267e7b2b07bf2d32b25ad20477812666adc6dd88f6c",
+      "geometryHash": "6e11ef11a30a80f33a857b9406103d22a3f60c26b9019d92f9321097e6fe82ba",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib4",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4",
@@ -488,21 +488,21 @@
       "bounds": {
         "max": [
           0.49905967712402344,
-          3.118549108505249,
-          7.061743259429932
+          3.1185491626000066,
+          7.0617433838817085
         ],
         "min": [
           -0.42954444885253906,
-          2.3774399757385254,
-          6.212263584136963
+          2.377439921643768,
+          6.212263459685186
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b07632e4b5cbd65ed0bf371ca301d51028fd44837f48097681cc5403643b533",
+      "geometryHash": "078db5193e430454e0ea7e3fd31eb7a4b7534ae303ed3c57821cddf68a0c5f00",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib5",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5",
@@ -513,21 +513,21 @@
       "bounds": {
         "max": [
           0.6594829559326172,
-          -0.046171143651008606,
-          8.419556617736816
+          -0.04617114465534877,
+          8.419556695613768
         ],
         "min": [
           -0.4492206573486328,
-          -0.7991570830345154,
-          7.363366603851318
+          -0.7991570820301752,
+          7.363366525974367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61baedc360ae3f7be24bf61a1b73a65abfa3a46988e33659088981cce54a321d",
+      "geometryHash": "fbc26f9a3ddfc8ef36ddf60f3b1f46000a623e59b2092e2d1fd853f0b13c9ad2",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib6",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6",
@@ -538,21 +538,21 @@
       "bounds": {
         "max": [
           0.42537689208984375,
-          -3.008674383163452,
-          5.731424808502197
+          -3.0086742850805503,
+          5.731424964001433
         ],
         "min": [
           -0.4120903015136719,
-          -3.735320806503296,
-          5.007027626037598
+          -3.7353209045861977,
+          5.007027470538362
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1c3d3a81155b827df7599b54dd0169be31c3a518e48c325ed1dbb479d1f170e",
+      "geometryHash": "883461b7d1cd2a081dc52b4938a50f8770b09ac38f3ac7184dff903e1b93e667",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib7",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7",
@@ -563,21 +563,21 @@
       "bounds": {
         "max": [
           0.5875968933105469,
-          -4.207674980163574,
-          0.7345908284187317
+          -4.207674860521352,
+          0.7345908206276841
         ],
         "min": [
           -0.4191417694091797,
-          -5.1584954261779785,
-          0.006612484809011221
+          -5.158495545820201,
+          0.00661249260005875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54419e44b2288fe5cd4ca2ee37cbdb5b7098155ba3e59ad95f6ced32444f3b75",
+      "geometryHash": "d8762d26eda1f9f6366c055846b8cbe1b0fcadceadd4be0b5c97ecf0d70ea8bb",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
+      "materialHash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_f_rib8",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8",
@@ -588,21 +588,21 @@
       "bounds": {
         "max": [
           2.2603607177734375,
-          5.4442362785339355,
-          0.8176104426383972
+          5.444236286723275,
+          0.8176104537256181
         ],
         "min": [
           -0.4587745666503906,
-          3.4906280040740967,
-          0.026192476972937584
+          3.4906279958847564,
+          0.02619246588571672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae5337076bd32a5b87e49ef4480aa8f13b4c23ed958911d8db890174a3952a69",
+      "geometryHash": "51c7a4c6553fa1e761881dc754211cf7dcaa18a476ed2b44bce53f710f3474d5",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear0",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0",
@@ -613,21 +613,21 @@
       "bounds": {
         "max": [
           4.31245231628418,
-          3.0862061977386475,
-          7.236149787902832
+          3.0862062075378422,
+          7.236149666638022
         ],
         "min": [
           -0.4589061737060547,
-          1.7697032690048218,
-          4.440637588500977
+          1.769703259205627,
+          4.440637709765786
         ]
       },
       "drawMode": 4,
-      "geometryHash": "771ebc8148dbe0d5e3af82a54db1195a2c4ae07035e2dde642bb7b089c708169",
+      "geometryHash": "dbcbfe6c96ffc6196c515fe108012f6244acb96894d03e60ef0760f09f002d99",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear1",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1",
@@ -638,21 +638,21 @@
       "bounds": {
         "max": [
           2.7778587341308594,
-          -0.29632338881492615,
-          8.377540588378906
+          -0.2963234014113574,
+          8.377540570654133
         ],
         "min": [
           -0.4632835388183594,
-          -1.8327674865722656,
-          5.88102912902832
+          -1.8327674739758344,
+          5.881029146753094
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09fad79b8581f9d48f3d378c60a816189d0ead2b074f7e34ab83829b1738ab26",
+      "geometryHash": "57db6860eb6be08583d66810d6c32b1eb58bc575f2e1bbd42103ed1d104bdfc4",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear2",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2",
@@ -662,22 +662,22 @@
     {
       "bounds": {
         "max": [
-          1.3514562845230103,
-          -3.204798460006714,
+          1.3514562820709377,
+          -3.2047984890604995,
           3.9239649772644043
         ],
         "min": [
-          -0.5758501291275024,
-          -4.931571006774902,
+          -0.5758501266754299,
+          -4.931570977721117,
           1.927945852279663
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c210a3d95a135f8947c7c3de83058f2a52f6696fe0d68cbc87ed8c998e6fce58",
+      "geometryHash": "84ee2837f865bfc05ed6caade8c331a418ca940aad9546456f670461011d92be",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear3",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3",
@@ -688,21 +688,21 @@
       "bounds": {
         "max": [
           3.2471160888671875,
-          -2.8074464797973633,
-          -2.651536703109741
+          -2.807446422599315,
+          -2.651536731694213
         ],
         "min": [
           -0.4195518493652344,
-          -4.247951030731201,
-          -4.4958930015563965
+          -4.247951087929249,
+          -4.495892972971925
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cfe3360b15947ca5130b018ae5e2a11317039785e9b550c785fe5c729d74309",
+      "geometryHash": "4ea9fa01636d69bc343c50cb4df0e92ab2a58c8f2c4b4cadef2c8dab94570fc1",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear4",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4",
@@ -713,21 +713,21 @@
       "bounds": {
         "max": [
           1.7228069305419922,
-          0.17375308275222778,
-          -6.798473834991455
+          0.1737530600296282,
+          -6.798473610324855
         ],
         "min": [
           -0.43421173095703125,
-          -1.4052212238311768,
-          -8.240523338317871
+          -1.4052212011085772,
+          -8.240523562984471
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18ddc85dff1d49e130882c2bea3a6bc5df4866b5dfaa35f93163141186f0087b",
+      "geometryHash": "fe1206f4c6f27a4e068428a7222d546ae972b89501f15011c18ab377bb59a04f",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear5",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5",
@@ -738,21 +738,21 @@
       "bounds": {
         "max": [
           3.8794898986816406,
-          3.5403451919555664,
-          -4.000694751739502
+          3.5403452563206517,
+          -4.000694832359573
         ],
         "min": [
           -0.5389347076416016,
-          2.1545562744140625,
-          -6.8262104988098145
+          2.1545562100489772,
+          -6.826210418189744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "715f21a56ccb841402635be603ddb81c624dcffde24f5ae0aa4c478c3df22c0f",
+      "geometryHash": "5ef80257c87199bf3494139e5e1e69f82de2e72ae76a43979d8d6ef7f0689fc6",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "podCut_t_tear6",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6",
@@ -762,22 +762,22 @@
     {
       "bounds": {
         "max": [
-          -1.1928666830062866,
-          5.00408935546875,
+          -1.1928666411082252,
+          5.004089361879064,
           9
         ],
         "min": [
-          -3.1682686805725098,
-          -4.761955738067627,
+          -3.1682687224705712,
+          -4.761955744477941,
           -9
         ]
       },
       "drawMode": 4,
-      "geometryHash": "632218bbfc1bc00d0a60c2f6d2ee83accf4336613650f8db02f67a766df49f3c",
+      "geometryHash": "18e53057729fe7ec581eab14d91ecd2867a131ce965d66c84a7c2babf88f9fd4",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "SternBlock_xrib2a",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a",
@@ -787,22 +787,22 @@
     {
       "bounds": {
         "max": [
-          -1.2363598346710205,
-          0.19284813106060028,
+          -1.2363598539071932,
+          0.19284832789478923,
           0.02345423772931099
         ],
         "min": [
-          -2.2356956005096436,
-          -4.699938774108887,
+          -2.235695581273471,
+          -4.699938970943076,
           -8.982385635375977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91e2d9a8900f9ced9d1b51e280668324de6cd257223585572ece93c857bfc3d2",
+      "geometryHash": "c468cf21d890300aab5a82815aaed48d130127692dd056d6e436b5f2f2226350",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "SternBlock_xrib2b",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b",
@@ -812,18 +812,18 @@
     {
       "bounds": {
         "max": [
-          -0.397510826587677,
-          4.872133255004883,
+          -0.3975108191741594,
+          4.872133106825483,
           8.912750244140625
         ],
         "min": [
-          -2.9880998134613037,
-          -4.628509044647217,
+          -2.9880998208748215,
+          -4.628508896467817,
           -8.935405731201172
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1b2c006028bb019862e765d268fbaa984daf509f218bd43eaed7dcd9a7c76cd",
+      "geometryHash": "082dae6e01f581e65551be5bffddd6285cd563c5e1e2c5edf64c78888031b022",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock.primitive.0",
       "indexCount": 414,
       "indexed": true,
@@ -840,6 +840,38 @@
   "lods": [],
   "materials": [
     {
+      "hash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
+      "id": "material:0c898285a1af648404c69513",
+      "name": "Forge_massline_express_liner_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "107b3b40aa7340bab3d64f33c838b650c0e1fe760558989064c350edd9dc0512",
       "id": "material:107b3b40aa7340bab3d64f33",
       "name": "Forge_massline_express_liner_glow_drive__dead",
@@ -851,6 +883,38 @@
       "id": "material:4910b1e96e545ef824c3f2f7",
       "name": "Forge_massline_express_liner_dark__dead",
       "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "493b666725c99e1410b46985d40e139266129bdfc79317dc042e026a93a503aa",
+      "id": "material:493b666725c99e1410b46985",
+      "name": "Forge_massline_express_liner_wk_frame__dead",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -911,38 +975,6 @@
       ]
     },
     {
-      "hash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
-      "id": "material:8e7bb086a9b3b9e3e1d2f26a",
-      "name": "Forge_massline_express_liner_wk_torn__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "abdafa9a3562195c30af8a2110302d9df76377f0de80a5d5177e6e150b5fae7b",
       "id": "material:abdafa9a3562195c30af8a21",
       "name": "Forge_massline_express_liner_paint__dead",
@@ -969,70 +1001,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b5a6d18a5afd893c95a48d69ae4586d9070a54fd032b4969c8ff15ee9c024d02",
-      "id": "material:b5a6d18a5afd893c95a48d69",
-      "name": "Forge_massline_express_liner_wk_frame__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
-      "id": "material:bd2c5bccc203471f40a56c83",
-      "name": "Forge_massline_express_liner_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1069,27 +1037,59 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
+      "id": "material:fba950ac866373efa7ab3678",
+      "name": "Forge_massline_express_liner_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55",
       "localTransform": [
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        6.537794589996338,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1103,42 +1103,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        6.537794589996338,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0",
       "localTransform": [
-        1,
+        3.058655858039856,
         0,
         0,
         0,
         0,
-        1,
+        3.058655858039856,
         0,
         0,
         0,
         0,
-        1,
+        3.058655858039856,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        -0.011327266693115234,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1152,42 +1152,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        3.058655858039856,
         0,
         0,
         0,
         0,
-        1,
+        3.058655858039856,
         0,
         0,
         0,
         0,
-        1,
+        3.058655858039856,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        -0.011327266693115234,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55",
       "localTransform": [
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        -6.560449123382568,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1201,42 +1201,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
         0,
         0,
         0,
-        1,
+        2.4289326667785645,
         0,
-        0,
-        0,
-        0,
+        -3.3624706268310547,
+        0.2369617223739624,
+        -6.560449123382568,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
       "localTransform": [
-        1,
+        8.449590682983398,
         0,
         0,
         0,
         0,
-        1,
+        8.449590682983398,
         0,
         0,
         0,
         0,
-        1,
+        8.449590682983398,
         0,
+        -0.27049827575683594,
         0,
-        0,
-        0,
+        -0.00977325439453125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1250,42 +1250,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        8.449590682983398,
         0,
         0,
         0,
         0,
-        1,
+        8.449590682983398,
         0,
         0,
         0,
         0,
-        1,
+        8.449590682983398,
         0,
+        -0.27049827575683594,
         0,
-        0,
-        0,
+        -0.00977325439453125,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1a",
       "localTransform": [
-        1,
+        5.901240110397339,
         0,
         0,
         0,
         0,
-        1,
+        5.901240110397339,
         0,
         0,
         0,
         0,
-        1,
+        5.901240110397339,
         0,
-        0,
-        0,
-        0,
+        -0.2736053541302681,
+        0.09062695503234863,
+        -0.05079984664916992,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1299,42 +1299,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        5.901240110397339,
         0,
         0,
         0,
         0,
-        1,
+        5.901240110397339,
         0,
         0,
         0,
         0,
-        1,
+        5.901240110397339,
         0,
-        0,
-        0,
-        0,
+        -0.2736053541302681,
+        0.09062695503234863,
+        -0.05079984664916992,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum-xrib1b",
       "localTransform": [
-        1,
+        4.0315828658640385,
         0,
         0,
         0,
         0,
-        1,
+        4.0315828658640385,
         0,
         0,
         0,
         0,
-        1,
+        4.0315828658640385,
         0,
-        0,
-        0,
-        0,
+        -0.15725994110107422,
+        -1.7594112679362297,
+        -4.075133290141821,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1348,42 +1348,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        4.0315828658640385,
         0,
         0,
         0,
         0,
-        1,
+        4.0315828658640385,
         0,
         0,
         0,
         0,
-        1,
+        4.0315828658640385,
         0,
-        0,
-        0,
-        0,
+        -0.15725994110107422,
+        -1.7594112679362297,
+        -4.075133290141821,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib0",
       "localTransform": [
-        1,
+        0.4623527526855469,
         0,
         0,
         0,
         0,
-        1,
+        0.4623527526855469,
         0,
         0,
         0,
         0,
-        1,
+        0.4623527526855469,
         0,
-        0,
-        0,
-        0,
+        0.030384063720703125,
+        -3.6856846809387207,
+        -4.805546998977661,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1397,42 +1397,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.4623527526855469,
         0,
         0,
         0,
         0,
-        1,
+        0.4623527526855469,
         0,
         0,
         0,
         0,
-        1,
+        0.4623527526855469,
         0,
-        0,
-        0,
-        0,
+        0.030384063720703125,
+        -3.6856846809387207,
+        -4.805546998977661,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib1",
       "localTransform": [
-        1,
+        0.5514717102050781,
         0,
         0,
         0,
         0,
-        1,
+        0.5514717102050781,
         0,
         0,
         0,
         0,
-        1,
+        0.5514717102050781,
         0,
-        0,
-        0,
-        0,
+        0.11038017272949219,
+        -0.8880794495344162,
+        -7.781000137329102,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1446,42 +1446,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.5514717102050781,
         0,
         0,
         0,
         0,
-        1,
+        0.5514717102050781,
         0,
         0,
         0,
         0,
-        1,
+        0.5514717102050781,
         0,
-        0,
-        0,
-        0,
+        0.11038017272949219,
+        -0.8880794495344162,
+        -7.781000137329102,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib2",
       "localTransform": [
-        1,
+        0.4170370101928711,
         0,
         0,
         0,
         0,
-        1,
+        0.4170370101928711,
         0,
         0,
         0,
         0,
-        1,
+        0.4170370101928711,
         0,
-        0,
-        0,
-        0,
+        0.0026845932006835938,
+        2.328859329223633,
+        -7.038332223892212,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1495,42 +1495,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.4170370101928711,
         0,
         0,
         0,
         0,
-        1,
+        0.4170370101928711,
         0,
         0,
         0,
         0,
-        1,
+        0.4170370101928711,
         0,
-        0,
-        0,
-        0,
+        0.0026845932006835938,
+        2.328859329223633,
+        -7.038332223892212,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib3",
       "localTransform": [
-        1,
+        0.5079097747802734,
         0,
         0,
         0,
         0,
-        1,
+        0.5079097747802734,
         0,
         0,
         0,
         0,
-        1,
+        0.5079097747802734,
         0,
-        0,
-        0,
-        0,
+        0.07760429382324219,
+        4.608419895172119,
+        -3.0563347339630127,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1544,42 +1544,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.5079097747802734,
         0,
         0,
         0,
         0,
-        1,
+        0.5079097747802734,
         0,
         0,
         0,
         0,
-        1,
+        0.5079097747802734,
         0,
-        0,
-        0,
-        0,
+        0.07760429382324219,
+        4.608419895172119,
+        -3.0563347339630127,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib4",
       "localTransform": [
-        1,
+        0.6014699935913086,
         0,
         0,
         0,
         0,
-        1,
+        0.6014699935913086,
         0,
         0,
         0,
         0,
-        1,
+        0.6014699935913086,
         0,
-        0,
-        0,
-        0,
+        0.1295919418334961,
+        4.8061134815216064,
+        2.3050981760025024,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1593,42 +1593,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.6014699935913086,
         0,
         0,
         0,
         0,
-        1,
+        0.6014699935913086,
         0,
         0,
         0,
         0,
-        1,
+        0.6014699935913086,
         0,
-        0,
-        0,
-        0,
+        0.1295919418334961,
+        4.8061134815216064,
+        2.3050981760025024,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib5",
       "localTransform": [
-        1,
+        0.46430206298828125,
         0,
         0,
         0,
         0,
-        1,
+        0.46430206298828125,
         0,
         0,
         0,
         0,
-        1,
+        0.46430206298828125,
         0,
-        0,
-        0,
-        0,
+        0.03475761413574219,
+        2.747994542121887,
+        6.637003421783447,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1642,42 +1642,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.46430206298828125,
         0,
         0,
         0,
         0,
-        1,
+        0.46430206298828125,
         0,
         0,
         0,
         0,
-        1,
+        0.46430206298828125,
         0,
-        0,
-        0,
-        0,
+        0.03475761413574219,
+        2.747994542121887,
+        6.637003421783447,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib6",
       "localTransform": [
-        1,
+        0.554351806640625,
         0,
         0,
         0,
         0,
-        1,
+        0.554351806640625,
         0,
         0,
         0,
         0,
-        1,
+        0.554351806640625,
         0,
-        0,
-        0,
-        0,
+        0.10513114929199219,
+        -0.422664113342762,
+        7.891461610794067,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1691,42 +1691,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.554351806640625,
         0,
         0,
         0,
         0,
-        1,
+        0.554351806640625,
         0,
         0,
         0,
         0,
-        1,
+        0.554351806640625,
         0,
-        0,
-        0,
-        0,
+        0.10513114929199219,
+        -0.422664113342762,
+        7.891461610794067,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib7",
       "localTransform": [
-        1,
+        0.4187335968017578,
         0,
         0,
         0,
         0,
-        1,
+        0.4187335968017578,
         0,
         0,
         0,
         0,
-        1,
+        0.4187335968017578,
         0,
-        0,
-        0,
-        0,
+        0.0066432952880859375,
+        -3.371997594833374,
+        5.3692262172698975,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1740,42 +1740,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.4187335968017578,
         0,
         0,
         0,
         0,
-        1,
+        0.4187335968017578,
         0,
         0,
         0,
         0,
-        1,
+        0.4187335968017578,
         0,
-        0,
-        0,
-        0,
+        0.0066432952880859375,
+        -3.371997594833374,
+        5.3692262172698975,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-f-rib8",
       "localTransform": [
-        1,
+        0.5033693313598633,
         0,
         0,
         0,
         0,
-        1,
+        0.5033693313598633,
         0,
         0,
         0,
         0,
-        1,
+        0.5033693313598633,
         0,
-        0,
-        0,
-        0,
+        0.0842275619506836,
+        -4.683085203170776,
+        0.37060165661387146,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1789,42 +1789,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.5033693313598633,
         0,
         0,
         0,
         0,
-        1,
+        0.5033693313598633,
         0,
         0,
         0,
         0,
-        1,
+        0.5033693313598633,
         0,
-        0,
-        0,
-        0,
+        0.0842275619506836,
+        -4.683085203170776,
+        0.37060165661387146,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear0",
       "localTransform": [
-        1,
+        1.359567642211914,
         0,
         0,
         0,
         0,
-        1,
+        1.359567642211914,
         0,
         0,
         0,
         0,
-        1,
+        1.359567642211914,
         0,
-        0,
-        0,
-        0,
+        0.9007930755615234,
+        4.467432141304016,
+        0.4219014598056674,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1838,42 +1838,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        1.359567642211914,
         0,
         0,
         0,
         0,
-        1,
+        1.359567642211914,
         0,
         0,
         0,
         0,
-        1,
+        1.359567642211914,
         0,
-        0,
-        0,
-        0,
+        0.9007930755615234,
+        4.467432141304016,
+        0.4219014598056674,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear1",
       "localTransform": [
-        1,
+        2.385679244995117,
         0,
         0,
         0,
         0,
-        1,
+        2.385679244995117,
         0,
         0,
         0,
         0,
-        1,
+        2.385679244995117,
         0,
-        0,
-        0,
-        0,
+        1.9267730712890625,
+        2.4279547333717346,
+        5.838393688201904,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1887,42 +1887,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        2.385679244995117,
         0,
         0,
         0,
         0,
-        1,
+        2.385679244995117,
         0,
         0,
         0,
         0,
-        1,
+        2.385679244995117,
         0,
-        0,
-        0,
-        0,
+        1.9267730712890625,
+        2.4279547333717346,
+        5.838393688201904,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear2",
       "localTransform": [
-        1,
+        1.6205711364746094,
         0,
         0,
         0,
         0,
-        1,
+        1.6205711364746094,
         0,
         0,
         0,
         0,
-        1,
+        1.6205711364746094,
         0,
-        0,
-        0,
-        0,
+        1.15728759765625,
+        -1.0645454376935959,
+        7.129284858703613,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1936,42 +1936,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        1.6205711364746094,
         0,
         0,
         0,
         0,
-        1,
+        1.6205711364746094,
         0,
         0,
         0,
         0,
-        1,
+        1.6205711364746094,
         0,
-        0,
-        0,
-        0,
+        1.15728759765625,
+        -1.0645454376935959,
+        7.129284858703613,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear3",
       "localTransform": [
-        1,
+        0.9980095624923706,
         0,
         0,
         0,
         0,
-        1,
+        0.9980095624923706,
         0,
         0,
         0,
         0,
-        1,
+        0.9980095624923706,
         0,
-        0,
-        0,
-        0,
+        0.3878030776977539,
+        -4.068184733390808,
+        2.9259554147720337,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1985,42 +1985,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        0.9980095624923706,
         0,
         0,
         0,
         0,
-        1,
+        0.9980095624923706,
         0,
         0,
         0,
         0,
-        1,
+        0.9980095624923706,
         0,
-        0,
-        0,
-        0,
+        0.3878030776977539,
+        -4.068184733390808,
+        2.9259554147720337,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear4",
       "localTransform": [
-        1,
+        1.833333969116211,
         0,
         0,
         0,
         0,
-        1,
+        1.833333969116211,
         0,
         0,
         0,
         0,
-        1,
+        1.833333969116211,
         0,
-        0,
-        0,
-        0,
+        1.4137821197509766,
+        -3.5276987552642822,
+        -3.573714852333069,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2034,42 +2034,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        1.833333969116211,
         0,
         0,
         0,
         0,
-        1,
+        1.833333969116211,
         0,
         0,
         0,
         0,
-        1,
+        1.833333969116211,
         0,
-        0,
-        0,
-        0,
+        1.4137821197509766,
+        -3.5276987552642822,
+        -3.573714852333069,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear5",
       "localTransform": [
-        1,
+        1.0785093307495117,
         0,
         0,
         0,
         0,
-        1,
+        1.0785093307495117,
         0,
         0,
         0,
         0,
-        1,
+        1.0785093307495117,
         0,
-        0,
-        0,
-        0,
+        0.6442975997924805,
+        -0.6157340705394745,
+        -7.519498586654663,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2083,42 +2083,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        1.0785093307495117,
         0,
         0,
         0,
         0,
-        1,
+        1.0785093307495117,
         0,
         0,
         0,
         0,
-        1,
+        1.0785093307495117,
         0,
-        0,
-        0,
-        0,
+        0.6442975997924805,
+        -0.6157340705394745,
+        -7.519498586654663,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.podcut-t-tear6",
       "localTransform": [
-        1,
+        2.209212303161621,
         0,
         0,
         0,
         0,
-        1,
+        2.209212303161621,
         0,
         0,
         0,
         0,
-        1,
+        2.209212303161621,
         0,
-        0,
-        0,
-        0,
+        1.6702775955200195,
+        2.8474507331848145,
+        -5.413452625274658,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2132,42 +2132,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        2.209212303161621,
         0,
         0,
         0,
         0,
-        1,
+        2.209212303161621,
         0,
         0,
         0,
         0,
-        1,
+        2.209212303161621,
         0,
-        0,
-        0,
-        0,
+        1.6702775955200195,
+        2.8474507331848145,
+        -5.413452625274658,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock",
       "localTransform": [
-        1,
+        8.924077987670898,
         0,
         0,
         0,
         0,
-        1,
+        8.924077987670898,
         0,
         0,
         0,
         0,
-        1,
+        8.924077987670898,
         0,
-        0,
-        0,
-        0,
+        -1.6928053200244904,
+        0.12181210517883301,
+        -0.011327743530273438,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2181,41 +2181,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        8.924077987670898,
         0,
         0,
         0,
         0,
-        1,
+        8.924077987670898,
         0,
         0,
         0,
         0,
-        1,
+        8.924077987670898,
         0,
-        0,
-        0,
-        0,
+        -1.6928053200244904,
+        0.12181210517883301,
+        -0.011327743530273438,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2a",
       "localTransform": [
-        1,
+        9,
         0,
         0,
         0,
         0,
-        1,
+        9,
         0,
         0,
         0,
         0,
-        1,
+        9,
         0,
-        0,
-        0,
+        -2.180567681789398,
+        0.12106680870056152,
         0,
         1
       ],
@@ -2230,20 +2230,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        9,
         0,
         0,
         0,
         0,
-        1,
+        9,
         0,
         0,
         0,
         0,
-        1,
+        9,
         0,
-        0,
-        0,
+        -2.180567681789398,
+        0.12106680870056152,
         0,
         1
       ]
@@ -2251,21 +2251,21 @@
     {
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.sternblock-xrib2b",
       "localTransform": [
-        1,
+        4.502919936552644,
         0,
         0,
         0,
         0,
-        1,
+        4.502919936552644,
         0,
         0,
         0,
         0,
-        1,
+        4.502919936552644,
         0,
-        0,
-        0,
-        0,
+        -1.736027717590332,
+        -2.253545321524143,
+        -4.479465698823333,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2279,21 +2279,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-drive-pod.body",
       "worldTransform": [
-        1,
+        4.502919936552644,
         0,
         0,
         0,
         0,
-        1,
+        4.502919936552644,
         0,
         0,
         0,
         0,
-        1,
+        4.502919936552644,
         0,
-        0,
-        0,
-        0,
+        -1.736027717590332,
+        -2.253545321524143,
+        -4.479465698823333,
         1
       ]
     },
@@ -2356,36 +2356,36 @@
       "uri": "place_aftermath_deb_liner_drive_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 231008,
-    "sha256": "760c773abda5c208b4782ac519147f0a9bb281d77c64e28dec21e20a09b495a7",
+    "bytes": 200696,
+    "sha256": "ee08e8a6121ee44f3ec10c3fdaa68f95706301371a045b8156e6d8443082a7bc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.00005459785461425781,
+        -0.00005462770150321816,
         0,
         0
       ],
       "max": [
         4.31245231628418,
-        6.537234783172607,
+        6.5372348217509115,
         9
       ],
       "min": [
-        -4.312561511993408,
-        -6.537234783172607,
+        -4.312561571687186,
+        -6.5372348217509115,
         -9
       ],
       "size": [
-        8.625013828277588,
-        13.074469566345215,
+        8.625013887971367,
+        13.074469643501823,
         18
       ]
     },
@@ -2569,21 +2569,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          6.537794589996338,
           1
         ],
         "name": "Drive-455_1",
@@ -2596,21 +2596,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          6.537794589996338,
           1
         ],
         "name": "Drive-455_2",
@@ -2623,21 +2623,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          6.537794589996338,
           1
         ],
         "name": "Drive-455_3",
@@ -2650,21 +2650,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -0.011327266693115234,
           1
         ],
         "name": "Drive00_1",
@@ -2677,21 +2677,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -0.011327266693115234,
           1
         ],
         "name": "Drive00_2",
@@ -2704,21 +2704,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
           0,
           0,
           0,
-          1,
+          3.058655858039856,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -0.011327266693115234,
           1
         ],
         "name": "Drive00_3",
@@ -2731,21 +2731,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -6.560449123382568,
           1
         ],
         "name": "Drive455_1",
@@ -2758,21 +2758,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -6.560449123382568,
           1
         ],
         "name": "Drive455_2",
@@ -2785,21 +2785,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
           0,
           0,
           0,
-          1,
+          2.4289326667785645,
           0,
-          0,
-          0,
-          0,
+          -3.3624706268310547,
+          0.2369617223739624,
+          -6.560449123382568,
           1
         ],
         "name": "Drive455_3",
@@ -2812,21 +2812,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
+          -0.27049827575683594,
           0,
-          0,
-          0,
+          -0.00977325439453125,
           1
         ],
         "name": "Drum_1",
@@ -2839,21 +2839,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
+          -0.27049827575683594,
           0,
-          0,
-          0,
+          -0.00977325439453125,
           1
         ],
         "name": "Drum_2",
@@ -2866,21 +2866,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
           0,
           0,
           0,
-          1,
+          8.449590682983398,
           0,
+          -0.27049827575683594,
           0,
-          0,
-          0,
+          -0.00977325439453125,
           1
         ],
         "name": "Drum_3",
@@ -2893,21 +2893,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.901240110397339,
           0,
           0,
           0,
           0,
-          1,
+          5.901240110397339,
           0,
           0,
           0,
           0,
-          1,
+          5.901240110397339,
           0,
-          0,
-          0,
-          0,
+          -0.2736053541302681,
+          0.09062695503234863,
+          -0.05079984664916992,
           1
         ],
         "name": "Drum_xrib1a",
@@ -2920,21 +2920,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.0315828658640385,
           0,
           0,
           0,
           0,
-          1,
+          4.0315828658640385,
           0,
           0,
           0,
           0,
-          1,
+          4.0315828658640385,
           0,
-          0,
-          0,
-          0,
+          -0.15725994110107422,
+          -1.7594112679362297,
+          -4.075133290141821,
           1
         ],
         "name": "Drum_xrib1b",
@@ -2947,21 +2947,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4623527526855469,
           0,
           0,
           0,
           0,
-          1,
+          0.4623527526855469,
           0,
           0,
           0,
           0,
-          1,
+          0.4623527526855469,
           0,
-          0,
-          0,
-          0,
+          0.030384063720703125,
+          -3.6856846809387207,
+          -4.805546998977661,
           1
         ],
         "name": "podCut_f_rib0",
@@ -2974,21 +2974,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5514717102050781,
           0,
           0,
           0,
           0,
-          1,
+          0.5514717102050781,
           0,
           0,
           0,
           0,
-          1,
+          0.5514717102050781,
           0,
-          0,
-          0,
-          0,
+          0.11038017272949219,
+          -0.8880794495344162,
+          -7.781000137329102,
           1
         ],
         "name": "podCut_f_rib1",
@@ -3001,21 +3001,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4170370101928711,
           0,
           0,
           0,
           0,
-          1,
+          0.4170370101928711,
           0,
           0,
           0,
           0,
-          1,
+          0.4170370101928711,
           0,
-          0,
-          0,
-          0,
+          0.0026845932006835938,
+          2.328859329223633,
+          -7.038332223892212,
           1
         ],
         "name": "podCut_f_rib2",
@@ -3028,21 +3028,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5079097747802734,
           0,
           0,
           0,
           0,
-          1,
+          0.5079097747802734,
           0,
           0,
           0,
           0,
-          1,
+          0.5079097747802734,
           0,
-          0,
-          0,
-          0,
+          0.07760429382324219,
+          4.608419895172119,
+          -3.0563347339630127,
           1
         ],
         "name": "podCut_f_rib3",
@@ -3055,21 +3055,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6014699935913086,
           0,
           0,
           0,
           0,
-          1,
+          0.6014699935913086,
           0,
           0,
           0,
           0,
-          1,
+          0.6014699935913086,
           0,
-          0,
-          0,
-          0,
+          0.1295919418334961,
+          4.8061134815216064,
+          2.3050981760025024,
           1
         ],
         "name": "podCut_f_rib4",
@@ -3082,21 +3082,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.46430206298828125,
           0,
           0,
           0,
           0,
-          1,
+          0.46430206298828125,
           0,
           0,
           0,
           0,
-          1,
+          0.46430206298828125,
           0,
-          0,
-          0,
-          0,
+          0.03475761413574219,
+          2.747994542121887,
+          6.637003421783447,
           1
         ],
         "name": "podCut_f_rib5",
@@ -3109,21 +3109,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.554351806640625,
           0,
           0,
           0,
           0,
-          1,
+          0.554351806640625,
           0,
           0,
           0,
           0,
-          1,
+          0.554351806640625,
           0,
-          0,
-          0,
-          0,
+          0.10513114929199219,
+          -0.422664113342762,
+          7.891461610794067,
           1
         ],
         "name": "podCut_f_rib6",
@@ -3136,21 +3136,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4187335968017578,
           0,
           0,
           0,
           0,
-          1,
+          0.4187335968017578,
           0,
           0,
           0,
           0,
-          1,
+          0.4187335968017578,
           0,
-          0,
-          0,
-          0,
+          0.0066432952880859375,
+          -3.371997594833374,
+          5.3692262172698975,
           1
         ],
         "name": "podCut_f_rib7",
@@ -3163,21 +3163,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5033693313598633,
           0,
           0,
           0,
           0,
-          1,
+          0.5033693313598633,
           0,
           0,
           0,
           0,
-          1,
+          0.5033693313598633,
           0,
-          0,
-          0,
-          0,
+          0.0842275619506836,
+          -4.683085203170776,
+          0.37060165661387146,
           1
         ],
         "name": "podCut_f_rib8",
@@ -3190,21 +3190,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.359567642211914,
           0,
           0,
           0,
           0,
-          1,
+          1.359567642211914,
           0,
           0,
           0,
           0,
-          1,
+          1.359567642211914,
           0,
-          0,
-          0,
-          0,
+          0.9007930755615234,
+          4.467432141304016,
+          0.4219014598056674,
           1
         ],
         "name": "podCut_t_tear0",
@@ -3217,21 +3217,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.385679244995117,
           0,
           0,
           0,
           0,
-          1,
+          2.385679244995117,
           0,
           0,
           0,
           0,
-          1,
+          2.385679244995117,
           0,
-          0,
-          0,
-          0,
+          1.9267730712890625,
+          2.4279547333717346,
+          5.838393688201904,
           1
         ],
         "name": "podCut_t_tear1",
@@ -3244,21 +3244,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6205711364746094,
           0,
           0,
           0,
           0,
-          1,
+          1.6205711364746094,
           0,
           0,
           0,
           0,
-          1,
+          1.6205711364746094,
           0,
-          0,
-          0,
-          0,
+          1.15728759765625,
+          -1.0645454376935959,
+          7.129284858703613,
           1
         ],
         "name": "podCut_t_tear2",
@@ -3271,21 +3271,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9980095624923706,
           0,
           0,
           0,
           0,
-          1,
+          0.9980095624923706,
           0,
           0,
           0,
           0,
-          1,
+          0.9980095624923706,
           0,
-          0,
-          0,
-          0,
+          0.3878030776977539,
+          -4.068184733390808,
+          2.9259554147720337,
           1
         ],
         "name": "podCut_t_tear3",
@@ -3298,21 +3298,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.833333969116211,
           0,
           0,
           0,
           0,
-          1,
+          1.833333969116211,
           0,
           0,
           0,
           0,
-          1,
+          1.833333969116211,
           0,
-          0,
-          0,
-          0,
+          1.4137821197509766,
+          -3.5276987552642822,
+          -3.573714852333069,
           1
         ],
         "name": "podCut_t_tear4",
@@ -3325,21 +3325,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0785093307495117,
           0,
           0,
           0,
           0,
-          1,
+          1.0785093307495117,
           0,
           0,
           0,
           0,
-          1,
+          1.0785093307495117,
           0,
-          0,
-          0,
-          0,
+          0.6442975997924805,
+          -0.6157340705394745,
+          -7.519498586654663,
           1
         ],
         "name": "podCut_t_tear5",
@@ -3352,21 +3352,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.209212303161621,
           0,
           0,
           0,
           0,
-          1,
+          2.209212303161621,
           0,
           0,
           0,
           0,
-          1,
+          2.209212303161621,
           0,
-          0,
-          0,
-          0,
+          1.6702775955200195,
+          2.8474507331848145,
+          -5.413452625274658,
           1
         ],
         "name": "podCut_t_tear6",
@@ -3379,21 +3379,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.924077987670898,
           0,
           0,
           0,
           0,
-          1,
+          8.924077987670898,
           0,
           0,
           0,
           0,
-          1,
+          8.924077987670898,
           0,
-          0,
-          0,
-          0,
+          -1.6928053200244904,
+          0.12181210517883301,
+          -0.011327743530273438,
           1
         ],
         "name": "SternBlock",
@@ -3406,20 +3406,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9,
           0,
           0,
           0,
           0,
-          1,
+          9,
           0,
           0,
           0,
           0,
-          1,
+          9,
           0,
-          0,
-          0,
+          -2.180567681789398,
+          0.12106680870056152,
           0,
           1
         ],
@@ -3433,21 +3433,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.502919936552644,
           0,
           0,
           0,
           0,
-          1,
+          4.502919936552644,
           0,
           0,
           0,
           0,
-          1,
+          4.502919936552644,
           0,
-          0,
-          0,
-          0,
+          -1.736027717590332,
+          -2.253545321524143,
+          -4.479465698823333,
           1
         ],
         "name": "SternBlock_xrib2b",
@@ -3462,19 +3462,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb"
   },
-  "runtimeHash": "8928d46d6a12e3aa3befa4173bf5c0c3f85279b26bacb08652eb258ec391c539",
+  "runtimeHash": "7c14c93b77f216f0fddb0da9c662b42fb72f82a239a651c73edb4432396d7ef4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4.31245231628418,
-          6.537234783172607,
+          6.5372348217509115,
           9
         ],
         "min": [
-          -4.312561511993408,
-          -6.537234783172607,
+          -4.312561571687186,
+          -6.5372348217509115,
           -9
         ]
       },

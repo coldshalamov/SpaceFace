@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8f2d4c18f258ced7da3ad196bfa8e7a0d99889e63e91e83b94bba7668c650d94",
+  "contentHash": "b25d4a05dcd7d527f83fc3f41e15b57cbb348954c0d5bae03494cdd7fad4385f",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.20000000298023224,
+          0.19999541173667096,
           1.1799999475479126,
-          0.07999999821186066
+          0.08000669279602605
         ],
         "min": [
-          0.11999999731779099,
+          0.12000458856135225,
           0.9200000166893005,
-          -0.07999999821186066
+          -0.08000669279602605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "127eea11efd5f3ed8463f191585793c71f1b70c7a08b5533d9f371a45eeafaf2",
+      "geometryHash": "8fe92d63f12e1e32aba1ee9a043c24d6b8056c6f3e76d7d4f97d1a5c9c9ca5ff",
       "id": "sf.render.orcus-signal-plinth.mesh.signalfacelamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          0.41999998688697815,
+          0.42003844616872754,
           1.399999976158142,
-          0.3199999928474426
+          0.31995299604663985
         ],
         "min": [
-          -0.41999998688697815,
+          -0.42003844616872754,
           0,
-          -0.3199999928474426
+          -0.31995299604663985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a344c9fd971791c3e6da88a11a1b649865061caaca8924797831d0e03976762d",
+      "geometryHash": "3415904745312d3a15dac34b23947f6a2697e80822844bcf36deb4d09e47d902",
       "id": "sf.render.orcus-signal-plinth.mesh.signalplinthstone.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -83,20 +83,20 @@
     {
       "id": "sf.render.orcus-signal-plinth.mesh.signalfacelamp",
       "localTransform": [
-        1,
+        0.12999996542930603,
         0,
         0,
         0,
         0,
-        1,
+        0.12999996542930603,
         0,
         0,
         0,
         0,
-        1,
+        0.12999996542930603,
         0,
-        0,
-        0,
+        0.1600000001490116,
+        1.0499999821186066,
         0,
         1
       ],
@@ -111,20 +111,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.orcus-signal-plinth.body",
       "worldTransform": [
-        1,
+        0.12999996542930603,
         0,
         0,
         0,
         0,
-        1,
+        0.12999996542930603,
         0,
         0,
         0,
         0,
-        1,
+        0.12999996542930603,
         0,
-        0,
-        0,
+        0.1600000001490116,
+        1.0499999821186066,
         0,
         1
       ]
@@ -132,20 +132,20 @@
     {
       "id": "sf.render.orcus-signal-plinth.mesh.signalplinthstone",
       "localTransform": [
-        1,
+        0.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        0.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        0.699999988079071,
         0,
         0,
-        0,
+        0.699999988079071,
         0,
         1
       ],
@@ -160,20 +160,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.orcus-signal-plinth.body",
       "worldTransform": [
-        1,
+        0.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        0.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        0.699999988079071,
         0,
         0,
-        0,
+        0.699999988079071,
         0,
         1
       ]
@@ -237,14 +237,14 @@
       "uri": "place_orcus_signal_plinth.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4452,
-    "sha256": "ddcb60966165bb4510cd5260b94eb8873178d19e6c9b9a847e044d728d343bb1",
+    "bytes": 4328,
+    "sha256": "318158ff8406172be6d310bec3f5c3e188c7d5732816d024410200f1bc71e303",
     "uri": "render.glb"
   },
   "runtime": {
@@ -255,19 +255,19 @@
         0
       ],
       "max": [
-        0.41999998688697815,
+        0.42003844616872754,
         1.399999976158142,
-        0.3199999928474426
+        0.31995299604663985
       ],
       "min": [
-        -0.41999998688697815,
+        -0.42003844616872754,
         0,
-        -0.3199999928474426
+        -0.31995299604663985
       ],
       "size": [
-        0.8399999737739563,
+        0.8400768923374551,
         1.399999976158142,
-        0.6399999856948853
+        0.6399059920932797
       ]
     },
     "hidden": [],
@@ -294,20 +294,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.699999988079071,
           0,
           0,
           0,
           0,
-          1,
+          0.699999988079071,
           0,
           0,
           0,
           0,
-          1,
+          0.699999988079071,
           0,
           0,
-          0,
+          0.699999988079071,
           0,
           1
         ],
@@ -320,20 +320,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.12999996542930603,
           0,
           0,
           0,
           0,
-          1,
+          0.12999996542930603,
           0,
           0,
           0,
           0,
-          1,
+          0.12999996542930603,
           0,
-          0,
-          0,
+          0.1600000001490116,
+          1.0499999821186066,
           0,
           1
         ],
@@ -348,20 +348,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_orcus_signal_plinth.glb"
   },
-  "runtimeHash": "d156d5ffc228db82cf99a36d0b1bab24c9c4a0571fec6d8d61b37ec8fda44af2",
+  "runtimeHash": "7d03d2e2f0e4385617b36f22cc53538ceb5796430cbdbb8ba9f3ccbc37b06bae",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          0.41999998688697815,
+          0.42003844616872754,
           1.399999976158142,
-          0.3199999928474426
+          0.31995299604663985
         ],
         "min": [
-          -0.41999998688697815,
+          -0.42003844616872754,
           0,
-          -0.3199999928474426
+          -0.31995299604663985
         ]
       },
       "id": "sf.render.orcus-signal-plinth.body",

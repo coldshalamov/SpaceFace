@@ -1,4 +1,5 @@
 import { targetFrameHtml } from './views/targetFrame.js';
+import { commodityDisplayName } from './commodityNames.js';
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
 // the radar. Populated from state.player.targetId → entity lookup. Shows name, faction tag,
 // three segmented bars, distance (wu) and closing speed. Hidden when there is neither a live
@@ -259,7 +260,7 @@ export function richSeamTargetReadout(target, state) {
   const line = manifest.lines.find((entry) => entry && entry.qty > 0);
   if (!line) return null;
   const commodity = COMMODITY_BY_ID.get(line.commodityId);
-  const name = commodity && commodity.name || String(line.commodityId || 'ORE').replace(/^cmdty_/, '').replace(/_/g, ' ');
+  const name = commodity && commodity.name || (line.commodityId ? commodityDisplayName(line.commodityId) : 'ORE');
   return Object.freeze({
     state: 'cargo',
     text: `RICH ORE · ${name.toUpperCase()} ×${line.qty}`,

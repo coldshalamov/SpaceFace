@@ -30,7 +30,12 @@ test('all action receipts are wired on the live bus; original 19 render finite, 
     // Additional receipts have their own production-shaped resolver fixtures.
     // A single invented generic payload must not substitute for those contracts.
     if(Object.hasOwn(ADDITIONAL_ACTION_VFX_RECIPES,name))continue;
-    handlers.get(name)(payload);
+    if(name==='salvageWatch:repairWork'){
+      s.mode='flight';s.world={currentSectorId:'sector_helios_prime'};
+      for(const body of s.entities.values()){body.type='ship';body.occupantGeneration=body.id;}
+      handlers.get(name)({...payload,encounterId:'watch:fixture',sectorId:s.world.currentSectorId,
+        sourceGeneration:1,targetGeneration:2,simTime:s.simTime});
+    }else handlers.get(name)(payload);
     s.simTime+=.09;system._actionVfx.update(s);
     assert.ok(system._actionVfx.mesh.count>0,name);
     assert.ok(system._actionVfx.batch.attributes.every(a=>a.array.every(Number.isFinite)));

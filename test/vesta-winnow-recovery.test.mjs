@@ -550,3 +550,38 @@ test('chute accounting refuses a live source and an old occupant receipt', async
   receipt.intakeId='dumpchute:40:9';winnowDestroyedReceipt({state:s},{entity:p});
   assert.equal(winnowRecoveryFacts(s,id).loose,0);assert.equal(winnowRecoveryFacts(s,id).otherConsumed,2);
 });
+
+
+for(const [podSpeed,expected] of [[20,2],[40,0]]) test(`a native ready Tann handoff defers automatic chute sale without granting custody (${podSpeed})`, async () => {
+ const {winnowCarrierHandoffReady,stepWinnowRecovery}=await import('../src/world/vestaWinnowRecovery.js');
+ const f=await vestaWinnowRecoveryFixture();
+ try {
+  const s=f.state,e=f.tann,p=f.pods[0],b=s.traffic.vestaWinnowRecovery.batches[0],rec=f.record;
+  // Native handoff/contact context setup, not movement or prior-haul proof.
+  delete e.data.jobId;delete e.data.civilianReaction;delete rec.civilianReaction;
+  b.phase='collect';b.carrierId=e.data.worldRecordId;
+  e.data.vestaWinnowRecovery={batchId:b.id,saved:{persistent:false}};
+  e.data.itinerary={kind:'vesta_winnow_recovery',batchId:b.id,destinationStationId:'station_forge',phase:'collect'};
+  f.owner._setTrafficManifest(e,rec,{finiteSource:'vesta_winnow_recovery',manifestId:`${b.id}:load`,freighterKey:b.carrierId,lotId:b.id,lines:[],totalQty:0,totalValue:0});
+  const station=s.entityList.find(x=>x.alive&&x.data?.stationId==='station_forge');
+  e.pos.x=p.pos.x=station.pos.x+300;e.pos.z=p.pos.z=station.pos.z+300;e.rot=0;
+  e.vel.x=20;p.vel.x=podSpeed;e.vel.z=p.vel.z=0;s.simTime=10;
+  const phys=f.runtime.getSystem('physics');assert.equal(await phys.prepareBackend(s),true);
+  assert.equal(winnowCarrierHandoffReady(f.owner,p),true,'a free original can be intercepted before velocity matches');
+  e.data.violenceAlarmed=true;assert.equal(winnowCarrierHandoffReady(f.owner,p),false);delete e.data.violenceAlarmed;
+  const prior=p.data.salvorClaimedBy;p.data.salvorClaimedBy='foreign';assert.equal(winnowCarrierHandoffReady(f.owner,p),false);p.data.salvorClaimedBy=prior;
+  const native=phys._sg02.records.get(p.id);phys._sg02.records.delete(p.id);assert.equal(winnowCarrierHandoffReady(f.owner,p),false);phys._sg02.records.set(p.id,native);
+  const before=structuredClone(winnowRecoveryFacts(s,b.id)),credits=s.player.credits,stock=s.economy.markets.station_forge.cmdty_ore_copper.stock;
+  // Real release dispatch precedes clearing this presentation mirror.
+  s.player.tether={...s.player.tether,active:true,targetId:p.id};
+  f.runtime.bus.emit('tether:releaseRated',{targetId:p.id,deliberate:true});f.runtime.bus.flush();
+  assert.equal(s.entities.get(p.id),p);assert.equal(p.alive,true);
+  assert.deepEqual(winnowRecoveryFacts(s,b.id),before,'deferring a sale grants no cargo');
+  assert.equal(s.player.credits,credits);assert.equal(s.economy.markets.station_forge.cmdty_ore_copper.stock,stock);
+  s.player.tether.active=false;s.player.tether.targetId=null;
+  stepWinnowRecovery(f.owner,e,rec);assert.equal(winnowRecoveryFacts(s,b.id).aboard,expected,'only safe relative native contact admits the cargo');
+  const another=f.pods[1];f.runtime.bus.emit('tether:releaseRated',{targetId:another.id,deliberate:true});f.runtime.bus.flush();
+  assert.equal(s.entities.get(another.id),undefined,'an unrelated original keeps ordinary chute access');
+  assert.equal(winnowRecoveryFacts(s,b.id).otherConsumed,2);assert.equal(s.economy.markets.station_forge.cmdty_ore_copper.stock,stock+2);
+ } finally {f.close();}
+});

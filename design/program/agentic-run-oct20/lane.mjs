@@ -14,6 +14,7 @@ const row = String(process.argv[2] || '').replace(/^R/i, '');
 if (!/^\d+$/.test(row)) { console.error('usage: lane.mjs <row>'); process.exit(2); }
 const arg = (k, d) => (process.argv.find((a) => a.startsWith(`--${k}=`)) || '').split('=')[1] || d;
 const FROM = arg('from', 'plan');
+const UNTIL = arg('until', '');
 const ROUNDS = Number(arg('rounds', '3'));
 const OUT = join(RUN, 'out', `R${row}`);
 const REL_OUT = `${REL_RUN}/out/R${row}`;
@@ -146,7 +147,7 @@ async function plan() {
   log(`plan: claude ${CLAUDE_MODEL}`);
   const r = await run('claude', ['-p', '--model', CLAUDE_MODEL, '--output-format', 'text', '--permission-mode', 'bypassPermissions', '--disallowedTools', 'Edit,Write,NotebookEdit'], { input: planPrompt(), logFile: join(OUT, 'plan.log'), timeoutMin: 40 });
   let text = r.out.trim();
-  if (r.code !== 0 && /session limit|usage limit|rate limit/i.test(text)) {
+  if (r.code !== 0 && /session limit|usage limit|rate limit|not logged in|please run \/login|unauthorized|\b401\b/i.test(text)) {
     log(`claude limited — planner fallback: codex ${CODEX_MODEL}`);
     const file = join(OUT, 'plan.codex.md');
     await run('node', [CODEX_JS, 'exec', '-m', CODEX_MODEL, '-c', 'model_reasoning_effort=high', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check', '-o', file, '-'], { input: planPrompt(), logFile: join(OUT, 'plan.codex.log'), timeoutMin: 40 });
@@ -159,14 +160,33 @@ async function plan() {
   return true;
 }
 
+const OPENCODE_FALLBACKS = (process.env.FLEET_OPENCODE_FALLBACKS || 'opencode/glm-5.3-flash-free,opencode/minimax-m3.1-flash-free,opencode/mimo-v2.6-flash-free').split(',');
+const IMPL_FIRST = process.env.FLEET_IMPL === 'codex' ? 'codex' : 'opencode';
+
 async function implement(prompt, tag) {
   writeFileSync(join(OUT, `${tag}.prompt.md`), prompt);
-  log(`${tag}: opencode ${OPENCODE_MODEL}`);
   const msg = `"Read the file ${REL_OUT}/${tag}.prompt.md and carry out every instruction in it exactly and completely."`;
-  const r = await run('opencode', ['run', '-m', OPENCODE_MODEL, '--auto', msg], { logFile: join(OUT, `${tag}.log`), timeoutMin: 120 });
-  log(`${tag} exit=${r.code} files=${manifest().length}`);
-  if (/API key has expired|rate limit|429|quota/i.test(r.out.slice(-4000))) log(`${tag} WARNING provider error in tail`);
-  return manifest().length > 0;
+  const codexAttempt = async () => {
+    log(`${tag}: codex ${CODEX_MODEL} (implementer)`);
+    const file = join(OUT, `${tag}.codex.md`);
+    const r = await run('node', [CODEX_JS, 'exec', '-m', CODEX_MODEL, '-c', 'model_reasoning_effort=high', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check', '-o', file, '-'], { input: `Read the file ${REL_OUT}/${tag}.prompt.md and carry out every instruction in it exactly and completely.`, logFile: join(OUT, `${tag}.log`), timeoutMin: 120 });
+    const providerDead = r.code !== 0 && manifest().length === 0;
+    log(`${tag} exit=${r.code} model=codex/${CODEX_MODEL} files=${manifest().length}${providerDead ? ' PROVIDER-ERROR' : ''}`);
+    return !providerDead && manifest().length > 0;
+  };
+  const attempts = [
+    ...[OPENCODE_MODEL, ...OPENCODE_FALLBACKS].map((model) => async () => {
+      log(`${tag}: opencode ${model}`);
+      const r = await run('opencode', ['run', '-m', model, '--auto', msg], { logFile: join(OUT, `${tag}.log`), timeoutMin: 120 });
+      const providerDead = r.code !== 0 || /API key has expired|Endpoint is unavailable|Unexpected server error|rate limit|429|quota|provider .* not (found|supported)/i.test(r.out.slice(-5000));
+      log(`${tag} exit=${r.code} model=${model} files=${manifest().length}${providerDead ? ' PROVIDER-ERROR' : ''}`);
+      return !providerDead && manifest().length > 0;
+    }),
+    codexAttempt,
+  ];
+  const ordered = IMPL_FIRST === 'codex' ? [codexAttempt, ...attempts.slice(0, -1)] : attempts;
+  for (const attempt of ordered) if (await attempt()) return true;
+  return false;
 }
 
 async function review(n) {
@@ -184,6 +204,7 @@ const status = (s, extra = {}) => { writeFileSync(join(OUT, 'status.json'), JSON
 
 (async () => {
   if (FROM === 'plan' || !existsSync(join(OUT, 'plan.md'))) { status('PLANNING'); if (!(await plan())) return status('PLAN-FAILED'); }
+  if (UNTIL === 'plan') return status('PLANNED');
   if (FROM !== 'review') { status('IMPLEMENTING'); if (!(await implement(implPrompt(), 'impl'))) return status('IMPL-NO-FILES'); }
   for (let n = 1; n <= ROUNDS; n++) {
     status(`REVIEW-${n}`);

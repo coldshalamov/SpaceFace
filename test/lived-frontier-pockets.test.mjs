@@ -41,6 +41,7 @@ import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
+import { ownsCharonSupplyHull } from '../src/world/charonSalvageSupply.js';
 
 const SEED = 4242;
 
@@ -377,7 +378,13 @@ for (const sectorId of EXPECTED_SECTORS) {
       assert.equal(rec.authoredActivityCast, true, `${slotId}: authored cast, not ambient filler`);
       assert.equal(entity.homeSectorId, sectorId, `${slotId} lives in ${sectorId}`);
       assert.ok(entity.data.worldRecordId, `${slotId} carries durable identity`);
-      assert.ok(entity.data.jobId, `${slotId} is flying a real job, not parked jobless`);
+      // Two authored hulls are not dispatcher job hulls: Charon's colony barge crew is owned by the
+      // finite air-pod supply book (the hauler flies the pod home, the salvor receives the handoff)
+      // and is deliberately released from its authored loop until the round is consumed. Employment
+      // there is the book's exact record pair, not a job id; every other slot still needs its job.
+      const supplyCrew = ownsCharonSupplyHull(state, entity);
+      assert.ok(entity.data.jobId || supplyCrew,
+        `${slotId} is flying a real job or its finite-supply round, not parked jobless`);
       ids.push(`${slotId}#${entity.data.worldRecordId}`);
     }
     assert.equal(new Set(ids).size, set.capacity, 'distinct durable identities');

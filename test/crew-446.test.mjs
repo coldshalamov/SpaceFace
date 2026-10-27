@@ -43,7 +43,9 @@ function makeState({ berthStage = 3 } = {}) {
     entities, entityList,
     entityIndex: { stations, collidables: entityList },
     player: {
-      credits: 1000,
+      // EXP-25: hires now charge an authored sign-on fee — the fixture purse must cover
+      // the pool's asks or the hire intent legitimately denies with reason 'credits'.
+      credits: 50000,
       efficiencyMods: { shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, jumpCooldownMult: 1 },
     },
     ui: { docked: false },

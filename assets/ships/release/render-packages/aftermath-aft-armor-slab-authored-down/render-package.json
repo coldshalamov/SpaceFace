@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7baf08e3143889f19d6f7938c4283a3ef07cceec1ed213bafbffe6cf4ce6d5ad",
+  "contentHash": "ad71697b8e97b37ab084f083e9a10dc88f6a6d09026233fe6ac761ba1050f32e",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           8.994230270385742,
-          2.025012969970703,
-          -0.7354118227958679
+          2.025013034188446,
+          -0.7354117993438312
         ],
         "min": [
           -0.8469457626342773,
-          -1.0915945768356323,
-          -3.263356924057007
+          -1.091594641053375,
+          -3.2633569475090436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3853d203fa6b4094bf3db5727ea52978cf0d8b524266615210253a2f2c82b4e",
+      "geometryHash": "7af0a20fbd2b2e8dc8b69a2dffc9dead4efaf4c4261b1ff2aeb77accc43b0efa",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-hull.primitive.0",
       "indexCount": 3348,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           7.872472763061523,
-          7.315018177032471,
-          5.443985462188721
+          7.315018133229869,
+          5.44398583756683
         ],
         "min": [
           -8.995903968811035,
-          -7.315018177032471,
-          -5.443985462188721
+          -7.315018133229869,
+          -5.44398583756683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91adb78491504d59c52a4e434c34bb7e906b0d533a1881b3ce13d37d66824fd8",
+      "geometryHash": "3f0ce2f4f6ba5d2fe14f436fe0c74dcab7134fc365aab3745fe4d3a9b01d8bda",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           8.995903968811035,
-          2.0277609825134277,
-          -0.7335165739059448
+          2.027760874300265,
+          -0.7335166960093347
         ],
         "min": [
           -0.8469457626342773,
-          -1.0917800664901733,
-          -3.266698122024536
+          -1.0917799582770102,
+          -3.2666979999211465
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c36a7c5f6617a27ee0ef82d90e102ddaa48c476ece41b2582f67a9bea38e2891",
+      "geometryHash": "b2e25df14401b7430160b96c730f7b1716d20e40bdc815e09b2fc0386b8b379d",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-hull.primitive.0",
       "indexCount": 1605,
       "indexed": true,
@@ -88,17 +88,17 @@
       "bounds": {
         "max": [
           7.872472763061523,
-          7.315018177032471,
-          5.443985462188721
+          7.315018133229869,
+          5.44398583756683
         ],
         "min": [
           -8.995903968811035,
-          -7.315018177032471,
-          -5.443985462188721
+          -7.315018133229869,
+          -5.44398583756683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70f4649ebe59f5952c61a14113157c128cbd9796701a5bc4468354622a0e4ffc",
+      "geometryHash": "b8e0b0b71f71d8cc9eb126a8d9a8dc51e915f6c68e4a94fb0ffc937541e76cd6",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 69,
       "indexed": true,
@@ -113,17 +113,17 @@
       "bounds": {
         "max": [
           8.995903968811035,
-          2.027888298034668,
-          -0.6902645230293274
+          2.02788828178514,
+          -0.6902645625180639
         ],
         "min": [
           -0.8469457626342773,
-          -1.0964587926864624,
-          -3.2667019367218018
+          -1.0964587764369342,
+          -3.266701897233065
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07ef51a7f8332b438f45705907abf71af8d0a76bbe44befc025fc473a279ccaf",
+      "geometryHash": "cf76b329752a84d6a96c296575f159ce76721474d38a27c40f886c6f2a118080",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-hull.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          0.20974095165729523,
+          0.20974133473837675,
           7.314996719360352,
-          4.972625732421875
+          4.972625603626218
         ],
         "min": [
-          -8.995898246765137,
+          -8.995898629846218,
           -7.314996719360352,
-          -5.443883419036865
+          -5.443883290241208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ffc42ebea97577be647cf84ffe6f606e056efddf7e573061b21a6b83b095498a",
+      "geometryHash": "8826473adb4a95255f8e4f43b310805559103418bea301c4c30dc97a03cfe444",
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-insulation.primitive.0",
       "indexCount": 27,
       "indexed": true,
@@ -378,21 +378,21 @@
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-hull",
       "localTransform": [
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
-        0,
-        0,
-        0,
+        4.074478626251221,
+        0.4667091965675354,
+        -1.9993843734264374,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -407,40 +407,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
         0,
         0,
         0,
-        1,
+        4.92058801651001,
         0,
-        -0.0008363723754882812,
-        0,
-        0,
+        4.073642253875732,
+        0.4667091965675354,
+        -1.9993843734264374,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod0-aft-armor-slab-material-insulation",
       "localTransform": [
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
-        0,
+        -0.5608792304992676,
         0,
         0,
         1
@@ -457,19 +457,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
-        -0.0008363723754882812,
+        -0.5617156028747559,
         0,
         0,
         1
@@ -527,21 +527,21 @@
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-hull",
       "localTransform": [
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
-        0,
-        0,
-        0,
+        4.075315475463867,
+        0.4679904580116272,
+        -2.0001073479652405,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -556,40 +556,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
-        -0.0008363723754882812,
-        0,
-        0,
+        4.074479103088379,
+        0.4679904580116272,
+        -2.0001073479652405,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod1-aft-armor-slab-material-insulation",
       "localTransform": [
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
-        0,
+        -0.5608792304992676,
         0,
         0,
         1
@@ -606,19 +606,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
         0,
         0,
         0,
-        1,
+        8.43418836593628,
         0,
-        -0.0008363723754882812,
+        -0.5617156028747559,
         0,
         0,
         1
@@ -676,21 +676,21 @@
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-hull",
       "localTransform": [
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
-        0,
-        0,
-        0,
+        4.075315475463867,
+        0.4657147526741028,
+        -1.9784832298755646,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -705,42 +705,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
         0,
         0,
         0,
-        1,
+        4.921424865722656,
         0,
-        -0.0008363723754882812,
-        0,
-        0,
+        4.074479103088379,
+        0.4657147526741028,
+        -1.9784832298755646,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.node.lod2-aft-armor-slab-material-insulation",
       "localTransform": [
-        1,
+        7.314996719360352,
         0,
         0,
         0,
         0,
-        1,
+        7.314996719360352,
         0,
         0,
         0,
         0,
-        1,
+        7.314996719360352,
         0,
+        -4.3922422751784325,
         0,
-        0,
-        0,
+        -0.23562884330749512,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -755,21 +755,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-armor-slab-authored-down.body",
       "worldTransform": [
-        1,
+        7.314996719360352,
         0,
         0,
         0,
         0,
-        1,
+        7.314996719360352,
         0,
         0,
         0,
         0,
-        1,
+        7.314996719360352,
         0,
-        -0.0008363723754882812,
+        -4.393078647553921,
         0,
-        0,
+        -0.23562884330749512,
         1
       ]
     }
@@ -784,14 +784,14 @@
       "uri": "place_aftermath_aft_armor_slab_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 613520,
-    "sha256": "f46444d16251b8958ff9e658e9370030322dec924e00e3de9eb22b02feeb2aaa",
+    "bytes": 586300,
+    "sha256": "76acc9dc54d5bc9304fb02dd924e3b707544b4a8687d10a2cb2f63e21ce7281a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -803,18 +803,18 @@
       ],
       "max": [
         8.995903968811035,
-        7.315018177032471,
-        5.443985462188721
+        7.315018133229869,
+        5.44398583756683
       ],
       "min": [
         -8.995903968811035,
-        -7.315018177032471,
-        -5.443985462188721
+        -7.315018133229869,
+        -5.44398583756683
       ],
       "size": [
         17.99180793762207,
-        14.630036354064941,
-        10.887970924377441
+        14.630036266459738,
+        10.88797167513366
       ]
     },
     "hidden": [],
@@ -861,21 +861,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
           0,
           0,
           0,
-          1,
+          4.92058801651001,
           0,
-          -0.0008363723754882812,
-          0,
-          0,
+          4.073642253875732,
+          0.4667091965675354,
+          -1.9993843734264374,
           1
         ],
         "name": "LOD0_aft_armor_slab_Material_Hull",
@@ -888,19 +888,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.43418836593628,
           0,
           0,
           0,
           0,
-          1,
+          8.43418836593628,
           0,
           0,
           0,
           0,
-          1,
+          8.43418836593628,
           0,
-          -0.0008363723754882812,
+          -0.5617156028747559,
           0,
           0,
           1
@@ -915,21 +915,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.921424865722656,
           0,
           0,
           0,
           0,
-          1,
+          4.921424865722656,
           0,
           0,
           0,
           0,
-          1,
+          4.921424865722656,
           0,
-          -0.0008363723754882812,
-          0,
-          0,
+          4.074479103088379,
+          0.4679904580116272,
+          -2.0001073479652405,
           1
         ],
         "name": "LOD1_aft_armor_slab_Material_Hull",
@@ -942,19 +942,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.43418836593628,
           0,
           0,
           0,
           0,
-          1,
+          8.43418836593628,
           0,
           0,
           0,
           0,
-          1,
+          8.43418836593628,
           0,
-          -0.0008363723754882812,
+          -0.5617156028747559,
           0,
           0,
           1
@@ -969,21 +969,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.921424865722656,
           0,
           0,
           0,
           0,
-          1,
+          4.921424865722656,
           0,
           0,
           0,
           0,
-          1,
+          4.921424865722656,
           0,
-          -0.0008363723754882812,
-          0,
-          0,
+          4.074479103088379,
+          0.4657147526741028,
+          -1.9784832298755646,
           1
         ],
         "name": "LOD2_aft_armor_slab_Material_Hull",
@@ -996,21 +996,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.314996719360352,
           0,
           0,
           0,
           0,
-          1,
+          7.314996719360352,
           0,
           0,
           0,
           0,
-          1,
+          7.314996719360352,
           0,
-          -0.0008363723754882812,
+          -4.393078647553921,
           0,
-          0,
+          -0.23562884330749512,
           1
         ],
         "name": "LOD2_aft_armor_slab_Material_Insulation",
@@ -1025,20 +1025,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab_authored_down.glb"
   },
-  "runtimeHash": "6118860820087c549f9725036cfb123db84c6b43c97bf91a533f52ccd5331b23",
+  "runtimeHash": "573ae17628368e09b4eb85f66e696d3f17f58421f7a640626c054427eeefc2eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.995903968811035,
-          7.315018177032471,
-          5.443985462188721
+          7.315018133229869,
+          5.44398583756683
         ],
         "min": [
           -8.995903968811035,
-          -7.315018177032471,
-          -5.443985462188721
+          -7.315018133229869,
+          -5.44398583756683
         ]
       },
       "id": "sf.render.aftermath-aft-armor-slab-authored-down.body",

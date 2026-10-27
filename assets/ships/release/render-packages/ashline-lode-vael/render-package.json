@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6ead8efb9bbcdd525e24768f6442a7bfc32b365c6fd566d31d498256da7e70e2",
+  "contentHash": "d16e7482d04e1d3e31004963c36988d49e5fc31aa83b6acdb33a17ba1ed5f583",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -618,17 +618,17 @@
       "bounds": {
         "max": [
           11.199649810791016,
-          3.0756101608276367,
-          5.5101799964904785
+          3.0756101805833738,
+          5.51017983212158
         ],
         "min": [
           -10.920051574707031,
-          -0.950449526309967,
-          -5.5101799964904785
+          -0.9504495460657041,
+          -5.51017983212158
         ]
       },
       "drawMode": 4,
-      "geometryHash": "baa6b08df126cd1ea027e83752ed0ea714002eff4d133de76a6a62b1c0e9b3a7",
+      "geometryHash": "e45d62b4c609e5d7a590033236536729778f8242ae7d3974d6bd7476d50e5c8a",
       "id": "sf.render.ashline-lode-vael.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -643,17 +643,17 @@
       "bounds": {
         "max": [
           10.899999618530273,
-          2.620434284210205,
-          5.350368022918701
+          2.6204342461248618,
+          5.350368101399575
         ],
         "min": [
           -8.997345924377441,
-          -0.950121283531189,
-          -5.350368022918701
+          -0.9501212454458456,
+          -5.350368101399575
         ]
       },
       "drawMode": 4,
-      "geometryHash": "136bcd27d1ae47ddfd2a1a98467b458a125e71f248fe3e711f5a319b846668f1",
+      "geometryHash": "7e1d8f8a63fd6abd5bfab54638bd2d81ffa846576e11596caa762f3168dcbd79",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 14124,
       "indexed": true,
@@ -668,17 +668,17 @@
       "bounds": {
         "max": [
           4.400000095367432,
-          3.074662923812866,
-          3.0999088287353516
+          3.0746629842583646,
+          3.099908781840374
         ],
         "min": [
           -8.460000038146973,
-          0.4498368203639984,
-          -3.0999088287353516
+          0.44983675991850003,
+          -3.099908781840374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "946ce31c11a268a461105d1e62d3b6b1727f9037026b83ff0174b5caebbbb470",
+      "geometryHash": "f32022c99ff88dbdde0bb58be86361b001b39cfa392bc6961ff062e0ea90f27c",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -693,17 +693,17 @@
       "bounds": {
         "max": [
           11.199649810791016,
-          0.6500585079193115,
-          2.399656057357788
+          0.6500585151850318,
+          2.3996562069996994
         ],
         "min": [
           -7.599999904632568,
-          -0.16005852818489075,
-          -2.399656057357788
+          -0.16005853545061094,
+          -2.3996562069996994
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66de1c916b146ac8abc6e1984453e711fe564a822a0c15678e0c5a8231b7279a",
+      "geometryHash": "ef53d39f5cdfbeccc4bc1a45105abe71764a52e43ae4a10b84cf22a92f3e7915",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 4416,
       "indexed": true,
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4dc8ed1d3afe6a6840fe166a8c234b53a22930c2f51bcd1e0ad27705a181925f",
+      "geometryHash": "93ae00adaa7af66ce717c5504fbe2138abd00cb9a11f46fd0397652d69c52939",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 4176,
       "indexed": true,
@@ -793,17 +793,17 @@
       "bounds": {
         "max": [
           4.598011493682861,
-          2.283454656600952,
-          5.350376129150391
+          2.28345457463115,
+          5.350376366579409
         ],
         "min": [
           -8.598012924194336,
-          -0.7997927665710449,
-          -5.350376129150391
+          -0.7997926846012429,
+          -5.350376366579409
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e407c99e615d13a92d4f890207435a09077cbf4b1170860af445aa9eb9c3dfb8",
+      "geometryHash": "2c1b33775515ac7318091ebb8456003a98485f457be403fb0b080b83bb564685",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 10503,
       "indexed": true,
@@ -817,18 +817,18 @@
     {
       "bounds": {
         "max": [
-          -0.4197053909301758,
-          1.2840641736984253,
+          -0.41970539727500444,
+          1.284064155466138,
           5.145147323608398
         ],
         "min": [
-          -5.592032432556152,
-          1.0717694759368896,
+          -5.592032426211324,
+          1.0717694941691769,
           -5.145176887512207
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4a40804f2dad383d5fe86cf5e8521422f2046fe96bab0e8de5ec45034b92620",
+      "geometryHash": "7c680077ffbcc65dcd2f6208b2e9e888a5656f086cb0a3fb671dba73d73abc04",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 1488,
       "indexed": true,
@@ -842,18 +842,18 @@
     {
       "bounds": {
         "max": [
-          3.419985055923462,
-          2.2749946117401123,
+          3.4199849487089544,
+          2.2749946585987093,
           0.44999998807907104
         ],
         "min": [
-          3.280014753341675,
-          2.2250053882598877,
+          3.2800148605561823,
+          2.2250053414012907,
           -0.44999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ad7f1f6017e27bfe5feceb2781f32555387edd87c6297d07c748e38a456b015",
+      "geometryHash": "78f59ec327684028463bbfad78973a7d89118269b93ff5691f37e8b2198bac50",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -868,17 +868,17 @@
       "bounds": {
         "max": [
           5.592355728149414,
-          2.246598720550537,
-          4.822566509246826
+          2.246598711181319,
+          4.822566859012783
         ],
         "min": [
           -8.997344970703125,
-          -0.22368113696575165,
-          -4.822566509246826
+          -0.22368112759653336,
+          -4.822566859012783
         ]
       },
       "drawMode": 4,
-      "geometryHash": "039c26e327c53efff8fd319fba6c763a495ee624e6dd7588b606c7915378655e",
+      "geometryHash": "0a94046fe2ac9b3a4539c6db9a7abede99eeb6ba74e76358261ea7d3f67e05d9",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 1212,
       "indexed": true,
@@ -893,17 +893,17 @@
       "bounds": {
         "max": [
           6.992500305175781,
-          3.0503463745117188,
-          5.176350116729736
+          3.050346396282958,
+          5.176350172799977
         ],
         "min": [
           -10.920000076293945,
-          -0.8003464341163635,
-          -5.176350116729736
+          -0.8003464558876026,
+          -5.176350172799977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f5fe3c54c25a0055a2ff9c60c89c00ee273c326cb33f553b03c0f2a2c266b55",
+      "geometryHash": "0d6911980fe9a9bad5dae7f1a759373830033b36114475883a2cab2ec3945dc9",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 16935,
       "indexed": true,
@@ -918,17 +918,17 @@
       "bounds": {
         "max": [
           7.199999809265137,
-          2.5398662090301514,
-          5.205345630645752
+          2.5398662568410186,
+          5.205345589244289
         ],
         "min": [
           -10.920000076293945,
-          -0.7338663935661316,
-          -5.205345630645752
+          -0.7338664413769986,
+          -5.205345589244289
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1358d7ef2318bcf934870ac63c711591c53e3a36cf6bcda537ecb9f25e7d05c",
+      "geometryHash": "ed6ab3d9b74afb45f1cc3325b4f5d0a6ae2c1e70bd01d8bfc8ae248b942befa9",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 7908,
       "indexed": true,
@@ -943,17 +943,17 @@
       "bounds": {
         "max": [
           9.26473617553711,
-          1.7000707387924194,
-          4.252997398376465
+          1.7000707127912187,
+          4.252997332066821
         ],
         "min": [
           -0.587016224861145,
-          -0.20010556280612946,
-          -4.252997398376465
+          -0.20010553680492882,
+          -4.252997332066821
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c540fdc5cac0f5da1213f723d0b561fa31b3e3ee267a991d55ba47f38f197f4",
+      "geometryHash": "c6a7462063349e862684eb72a19f44f610a67b30becbec777b0132c1dd1af620",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 1062,
       "indexed": true,
@@ -968,17 +968,17 @@
       "bounds": {
         "max": [
           10.900007247924805,
-          2.6185693740844727,
-          5.350119590759277
+          2.6185694448844297,
+          5.350120013709049
         ],
         "min": [
           -8.991900444030762,
-          -0.948581874370575,
-          -5.350119590759277
+          -0.9485819451705317,
+          -5.350120013709049
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bab6ccdfedaef57777b71487107e63004409d33adaa98b53699345dce06315e",
+      "geometryHash": "7e7e568fb3ebdb6fab1c14b6fe1654af51f93dc2b838a9afd94c4d43c65d6760",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-armor.primitive.0",
       "indexCount": 4335,
       "indexed": true,
@@ -993,17 +993,17 @@
       "bounds": {
         "max": [
           4.400000095367432,
-          3.074662923812866,
-          3.0999088287353516
+          3.0746629842583646,
+          3.099908781840374
         ],
         "min": [
           -8.460000038146973,
-          0.4498368203639984,
-          -3.0999088287353516
+          0.44983675991850003,
+          -3.099908781840374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6f7b1145c788a64ad0c94dca9a5d56f8f16c0f39910063b9336fe5744572424",
+      "geometryHash": "0c680ba543f4e9a099115171153290d24f934684a12068c5c7b82b1cb1d83ab8",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1018,17 +1018,17 @@
       "bounds": {
         "max": [
           11.199548721313477,
-          0.6484799981117249,
-          2.3996505737304688
+          0.6484800002702491,
+          2.399650574621801
         ],
         "min": [
           -7.6000447273254395,
-          -0.15933968126773834,
-          -2.3996474742889404
+          -0.15933968342626254,
+          -2.3996474751802728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce7fc6ffbd93e54ecec6b749e06413d6c81885648917364e4d8bef1ff5f2ecee",
+      "geometryHash": "64b985ef9f3885fd0a995247419480c9d8b6ff49997fd037318e6347732b7c7d",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 1002,
       "indexed": true,
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67c92df32fe07b5638d9094a887d815ac522fcccc4d1e97427899191733c75f8",
+      "geometryHash": "ca1611415300d04c0708477664fd6626c17588be1b73217629fff3a80bae092c",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1118,17 +1118,17 @@
       "bounds": {
         "max": [
           4.599389553070068,
-          2.282822608947754,
-          5.349882125854492
+          2.2828226252836865,
+          5.349882230027557
         ],
         "min": [
           -8.599390029907227,
-          -0.7994571328163147,
-          -5.349882125854492
+          -0.7994571491522475,
+          -5.349882230027557
         ]
       },
       "drawMode": 4,
-      "geometryHash": "704e6211baf58fac8773b267c0b3e49b84de1155bf5d884cb40ff21915717ede",
+      "geometryHash": "a8d00d0064fa9eee5f0e13d7bcfca087ed926c2ac5b6fe94e59d1ce743952eb7",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 2709,
       "indexed": true,
@@ -1142,18 +1142,18 @@
     {
       "bounds": {
         "max": [
-          -0.4196820855140686,
-          1.2840704917907715,
+          -0.41968188280061236,
+          1.2840705476427265,
           5.145139217376709
         ],
         "min": [
-          -5.591986179351807,
-          1.0717768669128418,
+          -5.591986382065263,
+          1.0717768110608867,
           -5.145140171051025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c84f360e37fcab5865a48cba56e64d5c4540c04461ae3aa2123c8076b494800a",
+      "geometryHash": "1265594b0f2d880e6223e84abca4bf3c9c01c19a06f52370bb82168b48518c3d",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -1167,18 +1167,18 @@
     {
       "bounds": {
         "max": [
-          3.419985055923462,
-          2.2749946117401123,
+          3.4199849487089544,
+          2.2749946585987093,
           0.44999998807907104
         ],
         "min": [
-          3.280014753341675,
-          2.2250053882598877,
+          3.2800148605561823,
+          2.2250053414012907,
           -0.44999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b876995bd7082b622d7f84e853f5700db89fefe5cb29902888b55fe2bcca581",
+      "geometryHash": "5c6846843ff7ae83f0550d76a48ab734d0c9c031f4ff480744ffb16464245da2",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1193,17 +1193,17 @@
       "bounds": {
         "max": [
           5.58397912979126,
-          2.2460005283355713,
-          4.991822719573975
+          2.246000508668512,
+          4.991822763005492
         ],
         "min": [
           -8.99139404296875,
-          -0.2093985378742218,
-          -4.898275375366211
+          -0.20939851820716293,
+          -4.898275418797728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "763393ac850575a06d301956a9bde5d35ea5321f94cf71bb7a0255c6fd73cdcb",
+      "geometryHash": "46d009459cd019dabf80b4859edc890aff6e81a81daa48f1709c62889bc1c43b",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1218,17 +1218,17 @@
       "bounds": {
         "max": [
           6.991034030914307,
-          3.0501887798309326,
-          5.175926685333252
+          3.050188792048548,
+          5.17592644920667
         ],
         "min": [
           -10.920000076293945,
-          -0.8001888394355774,
-          -5.175926685333252
+          -0.8001888516531925,
+          -5.17592644920667
         ]
       },
       "drawMode": 4,
-      "geometryHash": "419559250477beb98fff143323841968222bcf8c5df42b4fd1ef273bceddbb91",
+      "geometryHash": "80160211549843f0e94241a4b25a910e96325e00be47f29344192ccf37fe8ef4",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 8643,
       "indexed": true,
@@ -1243,17 +1243,17 @@
       "bounds": {
         "max": [
           7.198873996734619,
-          2.539303779602051,
-          5.205021858215332
+          2.5393037532959326,
+          5.205022176257145
         ],
         "min": [
           -10.920000076293945,
-          -0.7342255711555481,
-          -5.205021858215332
+          -0.7342255448494301,
+          -5.205022176257145
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe674ab55f7c378c18e8f7fc2661fd959527ed8139a1d28cab5b3e35fb8cf2d6",
+      "geometryHash": "bd408d06fd8adaec9469715cefaae878b9c62467924a681084766ec7a2ea41d4",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 5154,
       "indexed": true,
@@ -1268,17 +1268,17 @@
       "bounds": {
         "max": [
           9.409525871276855,
-          1.7000106573104858,
-          4.22529411315918
+          1.700010656236567,
+          4.225294115135572
         ],
         "min": [
           -0.5997795462608337,
-          -0.20000703632831573,
-          -4.499819278717041
+          -0.200007035254397,
+          -4.499819280693433
         ]
       },
       "drawMode": 4,
-      "geometryHash": "072f5c90137e6c907fd9903c1899e2a9bb9128c2b1306a39ec1a97b7f7e395c7",
+      "geometryHash": "e282b0307289b8d0ae9ea634f768b3d8b996b87392e37b9adb7b2ca70f6d378f",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-warning.primitive.0",
       "indexCount": 135,
       "indexed": true,
@@ -1293,17 +1293,17 @@
       "bounds": {
         "max": [
           10.899999618530273,
-          2.6146748065948486,
-          5.350185871124268
+          2.6146747525637575,
+          5.350186284251197
         ],
         "min": [
           -8.99666976928711,
-          -0.9484728574752808,
-          -5.350185871124268
+          -0.9484728034441896,
+          -5.350186284251197
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ceeecfc8c1196650103833f1d30c2cfc17c51f3b1a4fee4283c91dac3f6d90bf",
+      "geometryHash": "b2af8c0696884f0ca9d13c22c0fd068d4ffc1d372216940511649ad5f89f571a",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-armor.primitive.0",
       "indexCount": 1911,
       "indexed": true,
@@ -1318,17 +1318,17 @@
       "bounds": {
         "max": [
           4.400000095367432,
-          2.1830692291259766,
-          3.0999088287353516
+          2.1830692824412736,
+          3.099908781840374
         ],
         "min": [
           -8.460000038146973,
-          0.44993048906326294,
-          -3.0999088287353516
+          0.449930435747966,
+          -3.099908781840374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e148d051d771ddd9ee0d6530fe17053619f012465dd99ddd37da3117bb976281",
+      "geometryHash": "bc7d611c025105664ef4314445dbf614d80b376372f5a3053bf0a2a29b741409",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1343,17 +1343,17 @@
       "bounds": {
         "max": [
           11.199548721313477,
-          -0.0201177429407835,
-          2.4016470909118652
+          -0.020117742779996978,
+          2.4016470308215356
         ],
         "min": [
           4.000326156616211,
-          -0.1598530113697052,
-          -2.4016430377960205
+          -0.15985301153049172,
+          -2.401642977705691
         ]
       },
       "drawMode": 4,
-      "geometryHash": "741b42e5f0665adf75a5a13d9e8136a232cde060d7fda95774eeb5aa6da14655",
+      "geometryHash": "4075336948bc5302a6800e40ee9ebd2f5cf04a504886df7e7983fc3cd5fa9707",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -1378,7 +1378,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e93f4ecf07b333be3266786e7f3a4ee5b1fded7a299bc35c1ba72114fff35b31",
+      "geometryHash": "ff432a0bf82815107a71899719a1f512b4171cd676a3b3560fdb1bcb9ea83e47",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 1116,
       "indexed": true,
@@ -1443,17 +1443,17 @@
       "bounds": {
         "max": [
           4.597117900848389,
-          2.2837679386138916,
-          5.3505048751831055
+          2.28376792063718,
+          5.350504741265019
         ],
         "min": [
           -8.599223136901855,
-          -0.7995533347129822,
-          -5.3505048751831055
+          -0.7995533167362707,
+          -5.350504741265019
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72eb18f302241754a90601839122a2bd8e48c4dd1113d8a5ca5863f44df12996",
+      "geometryHash": "3d681ba7e8390ce5a7d0784a434e8442470a6455a8d20b42849fe4de7801a025",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 939,
       "indexed": true,
@@ -1467,18 +1467,18 @@
     {
       "bounds": {
         "max": [
-          -0.4196820855140686,
-          1.2840704917907715,
+          -0.41968188280061236,
+          1.2840705476427265,
           5.145139217376709
         ],
         "min": [
-          -5.591986179351807,
-          1.0717768669128418,
+          -5.591986382065263,
+          1.0717768110608867,
           -5.145140171051025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c84f360e37fcab5865a48cba56e64d5c4540c04461ae3aa2123c8076b494800a",
+      "geometryHash": "1265594b0f2d880e6223e84abca4bf3c9c01c19a06f52370bb82168b48518c3d",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -1492,18 +1492,18 @@
     {
       "bounds": {
         "max": [
-          3.419985055923462,
-          2.2749946117401123,
+          3.4199849487089544,
+          2.2749946585987093,
           0.44999998807907104
         ],
         "min": [
-          3.280014753341675,
-          2.2250053882598877,
+          3.2800148605561823,
+          2.2250053414012907,
           -0.44999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b876995bd7082b622d7f84e853f5700db89fefe5cb29902888b55fe2bcca581",
+      "geometryHash": "5c6846843ff7ae83f0550d76a48ab734d0c9c031f4ff480744ffb16464245da2",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1518,17 +1518,17 @@
       "bounds": {
         "max": [
           4.9929046630859375,
-          2.038674831390381,
-          4.995861530303955
+          2.0386747998661052,
+          4.995861718284057
         ],
         "min": [
           -8.581314086914062,
-          -0.2165834754705429,
-          -4.899270057678223
+          -0.21658344394626705,
+          -4.899270245658324
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57f727808c8c0df2a6e086e9c262c99bcc933b2e5b0d9fdb7f6285c070eb68d2",
+      "geometryHash": "9cce74ced14c4d8b56ae25a9c8c3c28e3f8c24a0232eae25d7e22d628cf0a898",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 21,
       "indexed": true,
@@ -1543,17 +1543,17 @@
       "bounds": {
         "max": [
           6.998476028442383,
-          2.656562566757202,
-          4.899369239807129
+          2.6565625537292026,
+          4.899369284242758
         ],
         "min": [
           -10.920680046081543,
-          -0.7996301651000977,
-          -4.899374485015869
+          -0.7996301520720981,
+          -4.8993745294514985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a970113f60bf42804505e15f0cd253cc84f3928ed49bbcc63246504f5723b96",
+      "geometryHash": "669ca35c23c0cff2795b37bbaeea31e5e948d6703f1a3ea11c7a47a71038e2d7",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 3456,
       "indexed": true,
@@ -1568,17 +1568,17 @@
       "bounds": {
         "max": [
           7.195088863372803,
-          2.5372917652130127,
-          4.253831386566162
+          2.537291793676518,
+          4.253831589607955
         ],
         "min": [
           -10.920680046081543,
-          -0.7356764674186707,
-          -4.254227161407471
+          -0.735676495882176,
+          -4.254227364449264
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7027b56c3810fbbfe00f9c3d1298024f0c8d1e0bbf58c6fe9f3ec46af96e8a3a",
+      "geometryHash": "9e550cf95236e9230e74a4585e129b7683781d3ee02c8642879c041eb84ad3da",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 1602,
       "indexed": true,
@@ -1593,17 +1593,17 @@
       "bounds": {
         "max": [
           9.42040729522705,
-          1.6998202800750732,
-          4.22575569152832
+          1.69982028012396,
+          4.225755568438099
         ],
         "min": [
           -0.5997795462608337,
-          -0.19981656968593597,
-          -4.500280857086182
+          -0.19981656973482276,
+          -4.50028073399596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cba0353a279e1a5fd42a79d956eea34cea9b8a65ec2eedd4f46ed27d207b6c69",
+      "geometryHash": "9af61fcaa1fe6588e1b774dd8215c6e76db76c44afa822137ab31602eb81b49b",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-warning.primitive.0",
       "indexCount": 63,
       "indexed": true,
@@ -1890,20 +1890,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.collision-hull",
       "localTransform": [
-        1,
+        11.059850692749023,
         0,
         0,
         0,
         0,
-        1,
+        11.059850692749023,
         0,
         0,
         0,
         0,
-        1,
+        11.059850692749023,
         0,
-        0,
-        0,
+        0.1397991180419922,
+        1.0625803172588348,
         0,
         1
       ],
@@ -1918,20 +1918,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        11.059850692749023,
         0,
         0,
         0,
         0,
-        1,
+        11.059850692749023,
         0,
         0,
         0,
         0,
-        1,
+        11.059850692749023,
         0,
-        0,
-        0,
+        0.1397991180419922,
+        1.0625803172588348,
         0,
         1
       ]
@@ -1939,20 +1939,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        9.948672771453857,
         0,
         0,
         0,
         0,
-        1,
+        9.948672771453857,
         0,
         0,
         0,
         0,
-        1,
+        9.948672771453857,
         0,
-        0,
-        0,
+        0.951326847076416,
+        0.8351565003395081,
         0,
         1
       ],
@@ -1968,20 +1968,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.948672771453857,
         0,
         0,
         0,
         0,
-        1,
+        9.948672771453857,
         0,
         0,
         0,
         0,
-        1,
+        9.948672771453857,
         0,
-        0,
-        0,
+        0.951326847076416,
+        0.8351565003395081,
         0,
         1
       ]
@@ -1989,20 +1989,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.7622498720884323,
         0,
         1
       ],
@@ -2018,20 +2018,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.7622498720884323,
         0,
         1
       ]
@@ -2039,20 +2039,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-brushedmetal",
       "localTransform": [
-        1,
+        9.399824857711792,
         0,
         0,
         0,
         0,
-        1,
+        9.399824857711792,
         0,
         0,
         0,
         0,
-        1,
+        9.399824857711792,
         0,
-        0,
-        0,
+        1.7998249530792236,
+        0.2449999898672104,
         0,
         1
       ],
@@ -2068,20 +2068,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.399824857711792,
         0,
         0,
         0,
         0,
-        1,
+        9.399824857711792,
         0,
         0,
         0,
         0,
-        1,
+        9.399824857711792,
         0,
-        0,
-        0,
+        1.7998249530792236,
+        0.2449999898672104,
         0,
         1
       ]
@@ -2239,20 +2239,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        6.598012208938599,
         0,
         0,
         0,
         0,
-        1,
+        6.598012208938599,
         0,
         0,
         0,
         0,
-        1,
+        6.598012208938599,
         0,
-        0,
-        0,
+        -2.0000007152557373,
+        0.7418309450149536,
         0,
         1
       ],
@@ -2268,20 +2268,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.598012208938599,
         0,
         0,
         0,
         0,
-        1,
+        6.598012208938599,
         0,
         0,
         0,
         0,
-        1,
+        6.598012208938599,
         0,
-        0,
-        0,
+        -2.0000007152557373,
+        0.7418309450149536,
         0,
         1
       ]
@@ -2289,21 +2289,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-cyan-sodium",
       "localTransform": [
-        1,
+        5.145162105560303,
         0,
         0,
         0,
         0,
-        1,
+        5.145162105560303,
         0,
         0,
         0,
         0,
-        1,
+        5.145162105560303,
         0,
-        0,
-        0,
-        0,
+        -3.005868911743164,
+        1.1779168248176575,
+        -0.000014781951904296875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2318,41 +2318,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        5.145162105560303,
         0,
         0,
         0,
         0,
-        1,
+        5.145162105560303,
         0,
         0,
         0,
         0,
-        1,
+        5.145162105560303,
         0,
-        0,
-        0,
-        0,
+        -3.005868911743164,
+        1.1779168248176575,
+        -0.000014781951904296875,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ],
@@ -2368,20 +2368,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ]
@@ -2389,20 +2389,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-livery",
       "localTransform": [
-        1,
+        7.2948503494262695,
         0,
         0,
         0,
         0,
-        1,
+        7.2948503494262695,
         0,
         0,
         0,
         0,
-        1,
+        7.2948503494262695,
         0,
-        0,
-        0,
+        -1.7024946212768555,
+        1.0114587917923927,
         0,
         1
       ],
@@ -2418,20 +2418,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        7.2948503494262695,
         0,
         0,
         0,
         0,
-        1,
+        7.2948503494262695,
         0,
         0,
         0,
         0,
-        1,
+        7.2948503494262695,
         0,
-        0,
-        0,
+        -1.7024946212768555,
+        1.0114587917923927,
         0,
         1
       ]
@@ -2439,20 +2439,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        8.956250190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.956250190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.956250190734863,
         0,
-        0,
-        0,
+        -1.963749885559082,
+        1.1249999701976776,
         0,
         1
       ],
@@ -2468,20 +2468,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        8.956250190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.956250190734863,
         0,
         0,
         0,
         0,
-        1,
+        8.956250190734863,
         0,
-        0,
-        0,
+        -1.963749885559082,
+        1.1249999701976776,
         0,
         1
       ]
@@ -2489,20 +2489,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        9.059999942779541,
         0,
         0,
         0,
         0,
-        1,
+        9.059999942779541,
         0,
         0,
         0,
         0,
-        1,
+        9.059999942779541,
         0,
-        0,
-        0,
+        -1.8600001335144043,
+        0.9029999077320099,
         0,
         1
       ],
@@ -2518,20 +2518,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.059999942779541,
         0,
         0,
         0,
         0,
-        1,
+        9.059999942779541,
         0,
         0,
         0,
         0,
-        1,
+        9.059999942779541,
         0,
-        0,
-        0,
+        -1.8600001335144043,
+        0.9029999077320099,
         0,
         1
       ]
@@ -2539,20 +2539,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-warning",
       "localTransform": [
-        1,
+        4.925876200199127,
         0,
         0,
         0,
         0,
-        1,
+        4.925876200199127,
         0,
         0,
         0,
         0,
-        1,
+        4.925876200199127,
         0,
-        0,
-        0,
+        4.338859975337982,
+        0.749982587993145,
         0,
         1
       ],
@@ -2568,20 +2568,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        4.925876200199127,
         0,
         0,
         0,
         0,
-        1,
+        4.925876200199127,
         0,
         0,
         0,
         0,
-        1,
+        4.925876200199127,
         0,
-        0,
-        0,
+        4.338859975337982,
+        0.749982587993145,
         0,
         1
       ]
@@ -2589,20 +2589,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-armor",
       "localTransform": [
-        1,
+        9.945953845977783,
         0,
         0,
         0,
         0,
-        1,
+        9.945953845977783,
         0,
         0,
         0,
         0,
-        1,
+        9.945953845977783,
         0,
-        0,
-        0,
+        0.9540534019470215,
+        0.8349937498569489,
         0,
         1
       ],
@@ -2618,20 +2618,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.945953845977783,
         0,
         0,
         0,
         0,
-        1,
+        9.945953845977783,
         0,
         0,
         0,
         0,
-        1,
+        9.945953845977783,
         0,
-        0,
-        0,
+        0.9540534019470215,
+        0.8349937498569489,
         0,
         1
       ]
@@ -2639,20 +2639,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.7622498720884323,
         0,
         1
       ],
@@ -2668,20 +2668,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.7622498720884323,
         0,
         1
       ]
@@ -2689,21 +2689,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-brushedmetal",
       "localTransform": [
-        1,
+        9.399796724319458,
         0,
         0,
         0,
         0,
-        1,
+        9.399796724319458,
         0,
         0,
         0,
         0,
-        1,
+        9.399796724319458,
         0,
-        0,
-        0,
-        0,
+        1.7997519969940186,
+        0.24457015842199326,
+        0.0000015497207641601562,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2718,21 +2718,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.399796724319458,
         0,
         0,
         0,
         0,
-        1,
+        9.399796724319458,
         0,
         0,
         0,
         0,
-        1,
+        9.399796724319458,
         0,
-        0,
-        0,
-        0,
+        1.7997519969940186,
+        0.24457015842199326,
+        0.0000015497207641601562,
         1
       ]
     },
@@ -2889,20 +2889,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-hull",
       "localTransform": [
-        1,
+        6.5993897914886475,
         0,
         0,
         0,
         0,
-        1,
+        6.5993897914886475,
         0,
         0,
         0,
         0,
-        1,
+        6.5993897914886475,
         0,
-        0,
-        0,
+        -2.000000238418579,
+        0.7416827380657196,
         0,
         1
       ],
@@ -2918,20 +2918,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.5993897914886475,
         0,
         0,
         0,
         0,
-        1,
+        6.5993897914886475,
         0,
         0,
         0,
         0,
-        1,
+        6.5993897914886475,
         0,
-        0,
-        0,
+        -2.000000238418579,
+        0.7416827380657196,
         0,
         1
       ]
@@ -2939,21 +2939,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-lights-cyan-sodium",
       "localTransform": [
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
-        0,
-        0,
-        0,
+        -3.0058341324329376,
+        1.1779236793518066,
+        -4.76837158203125e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2968,41 +2968,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
-        0,
-        0,
-        0,
+        -3.0058341324329376,
+        1.1779236793518066,
+        -4.76837158203125e-7,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ],
@@ -3018,20 +3018,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ]
@@ -3039,21 +3039,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-livery",
       "localTransform": [
-        1,
+        7.287686586380005,
         0,
         0,
         0,
         0,
-        1,
+        7.287686586380005,
         0,
         0,
         0,
         0,
-        1,
+        7.287686586380005,
         0,
-        0,
-        0,
-        0,
+        -1.7037074565887451,
+        1.0183009952306747,
+        0.046773672103881836,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3068,41 +3068,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        7.287686586380005,
         0,
         0,
         0,
         0,
-        1,
+        7.287686586380005,
         0,
         0,
         0,
         0,
-        1,
+        7.287686586380005,
         0,
-        0,
-        0,
-        0,
+        -1.7037074565887451,
+        1.0183009952306747,
+        0.046773672103881836,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        8.955517053604126,
         0,
         0,
         0,
         0,
-        1,
+        8.955517053604126,
         0,
         0,
         0,
         0,
-        1,
+        8.955517053604126,
         0,
-        0,
-        0,
+        -1.9644830226898193,
+        1.1249999701976776,
         0,
         1
       ],
@@ -3118,20 +3118,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        8.955517053604126,
         0,
         0,
         0,
         0,
-        1,
+        8.955517053604126,
         0,
         0,
         0,
         0,
-        1,
+        8.955517053604126,
         0,
-        0,
-        0,
+        -1.9644830226898193,
+        1.1249999701976776,
         0,
         1
       ]
@@ -3139,20 +3139,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        9.059437036514282,
         0,
         0,
         0,
         0,
-        1,
+        9.059437036514282,
         0,
         0,
         0,
         0,
-        1,
+        9.059437036514282,
         0,
-        0,
-        0,
+        -1.860563039779663,
+        0.9025391042232513,
         0,
         1
       ],
@@ -3168,20 +3168,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.059437036514282,
         0,
         0,
         0,
         0,
-        1,
+        9.059437036514282,
         0,
         0,
         0,
         0,
-        1,
+        9.059437036514282,
         0,
-        0,
-        0,
+        -1.860563039779663,
+        0.9025391042232513,
         0,
         1
       ]
@@ -3189,21 +3189,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-warning",
       "localTransform": [
-        1,
+        5.004652708768845,
         0,
         0,
         0,
         0,
-        1,
+        5.004652708768845,
         0,
         0,
         0,
         0,
-        1,
+        5.004652708768845,
         0,
-        0,
-        0,
-        0,
+        4.404873162508011,
+        0.750001810491085,
+        -0.13726258277893066,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3218,41 +3218,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        5.004652708768845,
         0,
         0,
         0,
         0,
-        1,
+        5.004652708768845,
         0,
         0,
         0,
         0,
-        1,
+        5.004652708768845,
         0,
-        0,
-        0,
-        0,
+        4.404873162508011,
+        0.750001810491085,
+        -0.13726258277893066,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-armor",
       "localTransform": [
-        1,
+        9.948334693908691,
         0,
         0,
         0,
         0,
-        1,
+        9.948334693908691,
         0,
         0,
         0,
         0,
-        1,
+        9.948334693908691,
         0,
-        0,
-        0,
+        0.951664924621582,
+        0.8331009745597839,
         0,
         1
       ],
@@ -3268,20 +3268,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.948334693908691,
         0,
         0,
         0,
         0,
-        1,
+        9.948334693908691,
         0,
         0,
         0,
         0,
-        1,
+        9.948334693908691,
         0,
-        0,
-        0,
+        0.951664924621582,
+        0.8331009745597839,
         0,
         1
       ]
@@ -3289,20 +3289,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.3164998590946198,
         0,
         1
       ],
@@ -3318,20 +3318,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
         0,
         0,
         0,
-        1,
+        6.430000066757202,
         0,
-        0,
-        0,
+        -2.0299999713897705,
+        1.3164998590946198,
         0,
         1
       ]
@@ -3339,21 +3339,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-brushedmetal",
       "localTransform": [
-        1,
+        3.599611282348633,
         0,
         0,
         0,
         0,
-        1,
+        3.599611282348633,
         0,
         0,
         0,
         0,
-        1,
+        3.599611282348633,
         0,
-        0,
-        0,
-        0,
+        7.599937438964844,
+        -0.08998537715524435,
+        0.0000020265579223632812,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3368,21 +3368,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        3.599611282348633,
         0,
         0,
         0,
         0,
-        1,
+        3.599611282348633,
         0,
         0,
         0,
         0,
-        1,
+        3.599611282348633,
         0,
-        0,
-        0,
-        0,
+        7.599937438964844,
+        -0.08998537715524435,
+        0.0000020265579223632812,
         1
       ]
     },
@@ -3539,20 +3539,20 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-hull",
       "localTransform": [
-        1,
+        6.598170518875122,
         0,
         0,
         0,
         0,
-        1,
+        6.598170518875122,
         0,
         0,
         0,
         0,
-        1,
+        6.598170518875122,
         0,
-        0,
-        0,
+        -2.0010526180267334,
+        0.7421073019504547,
         0,
         1
       ],
@@ -3568,20 +3568,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.598170518875122,
         0,
         0,
         0,
         0,
-        1,
+        6.598170518875122,
         0,
         0,
         0,
         0,
-        1,
+        6.598170518875122,
         0,
-        0,
-        0,
+        -2.0010526180267334,
+        0.7421073019504547,
         0,
         1
       ]
@@ -3589,21 +3589,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-lights-cyan-sodium",
       "localTransform": [
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
-        0,
-        0,
-        0,
+        -3.0058341324329376,
+        1.1779236793518066,
+        -4.76837158203125e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3618,41 +3618,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
         0,
         0,
         0,
-        1,
+        5.145139694213867,
         0,
-        0,
-        0,
-        0,
+        -3.0058341324329376,
+        1.1779236793518066,
+        -4.76837158203125e-7,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ],
@@ -3668,20 +3668,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
-        0,
-        0,
+        3.3499999046325684,
+        2.25,
         0,
         1
       ]
@@ -3689,21 +3689,21 @@
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-livery",
       "localTransform": [
-        1,
+        6.787109375,
         0,
         0,
         0,
         0,
-        1,
+        6.787109375,
         0,
         0,
         0,
         0,
-        1,
+        6.787109375,
         0,
-        0,
-        0,
-        0,
+        -1.7942047119140625,
+        0.911045677959919,
+        0.04829573631286621,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3718,42 +3718,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        6.787109375,
         0,
         0,
         0,
         0,
-        1,
+        6.787109375,
         0,
         0,
         0,
         0,
-        1,
+        6.787109375,
         0,
-        0,
-        0,
-        0,
+        -1.7942047119140625,
+        0.911045677959919,
+        0.04829573631286621,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        8.959578037261963,
         0,
         0,
         0,
         0,
-        1,
+        8.959578037261963,
         0,
         0,
         0,
         0,
-        1,
+        8.959578037261963,
         0,
-        0,
-        0,
-        0,
+        -1.96110200881958,
+        0.9284662008285522,
+        -0.0000026226043701171875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3768,42 +3768,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        8.959578037261963,
         0,
         0,
         0,
         0,
-        1,
+        8.959578037261963,
         0,
         0,
         0,
         0,
-        1,
+        8.959578037261963,
         0,
-        0,
-        0,
-        0,
+        -1.96110200881958,
+        0.9284662008285522,
+        -0.0000026226043701171875,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        9.057884454727173,
         0,
         0,
         0,
         0,
-        1,
+        9.057884454727173,
         0,
         0,
         0,
         0,
-        1,
+        9.057884454727173,
         0,
-        0,
-        0,
-        0,
+        -1.8627955913543701,
+        0.900807648897171,
+        -0.00019788742065429688,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3818,42 +3818,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        9.057884454727173,
         0,
         0,
         0,
         0,
-        1,
+        9.057884454727173,
         0,
         0,
         0,
         0,
-        1,
+        9.057884454727173,
         0,
-        0,
-        0,
-        0,
+        -1.8627955913543701,
+        0.900807648897171,
+        -0.00019788742065429688,
         1
       ]
     },
     {
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-warning",
       "localTransform": [
-        1,
+        5.010093420743942,
         0,
         0,
         0,
         0,
-        1,
+        5.010093420743942,
         0,
         0,
         0,
         0,
-        1,
+        5.010093420743942,
         0,
-        0,
-        0,
-        0,
+        4.4103138744831085,
+        0.7500018551945686,
+        -0.13726258277893066,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3868,21 +3868,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ashline-lode-vael.body",
       "worldTransform": [
-        1,
+        5.010093420743942,
         0,
         0,
         0,
         0,
-        1,
+        5.010093420743942,
         0,
         0,
         0,
         0,
-        1,
+        5.010093420743942,
         0,
-        0,
-        0,
-        0,
+        4.4103138744831085,
+        0.7500018551945686,
+        -0.13726258277893066,
         1
       ]
     },
@@ -4582,14 +4582,14 @@
       "uri": "ashline_lode_vael.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1427212,
-    "sha256": "6198b6344bf6b1473903f07ba62dcf41bbf45205a1e53bdd1e8c1e76ce442fff",
+    "bytes": 859180,
+    "sha256": "e3495fbae2ae934bf8076b299589cb5c1baf36b28d1710ba6e480041e0dfd052",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4601,18 +4601,18 @@
       ],
       "max": [
         11.199649810791016,
-        3.0756101608276367,
-        5.5101799964904785
+        3.0756101805833738,
+        5.51017983212158
       ],
       "min": [
         -10.920680046081543,
-        -0.950449526309967,
-        -5.5101799964904785
+        -0.9504495460657041,
+        -5.51017983212158
       ],
       "size": [
         22.12032985687256,
-        4.026059687137604,
-        11.020359992980957
+        4.026059726649078,
+        11.02035966424316
       ]
     },
     "hidden": [
@@ -5531,20 +5531,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.948672771453857,
           0,
           0,
           0,
           0,
-          1,
+          9.948672771453857,
           0,
           0,
           0,
           0,
-          1,
+          9.948672771453857,
           0,
-          0,
-          0,
+          0.951326847076416,
+          0.8351565003395081,
           0,
           1
         ],
@@ -5559,20 +5559,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
-          0,
-          0,
+          -2.0299999713897705,
+          1.7622498720884323,
           0,
           1
         ],
@@ -5587,20 +5587,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.399824857711792,
           0,
           0,
           0,
           0,
-          1,
+          9.399824857711792,
           0,
           0,
           0,
           0,
-          1,
+          9.399824857711792,
           0,
-          0,
-          0,
+          1.7998249530792236,
+          0.2449999898672104,
           0,
           1
         ],
@@ -5720,20 +5720,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.598012208938599,
           0,
           0,
           0,
           0,
-          1,
+          6.598012208938599,
           0,
           0,
           0,
           0,
-          1,
+          6.598012208938599,
           0,
-          0,
-          0,
+          -2.0000007152557373,
+          0.7418309450149536,
           0,
           1
         ],
@@ -5748,21 +5748,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.145162105560303,
           0,
           0,
           0,
           0,
-          1,
+          5.145162105560303,
           0,
           0,
           0,
           0,
-          1,
+          5.145162105560303,
           0,
-          0,
-          0,
-          0,
+          -3.005868911743164,
+          1.1779168248176575,
+          -0.000014781951904296875,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
@@ -5776,20 +5776,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
-          0,
-          0,
+          3.3499999046325684,
+          2.25,
           0,
           1
         ],
@@ -5804,20 +5804,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.2948503494262695,
           0,
           0,
           0,
           0,
-          1,
+          7.2948503494262695,
           0,
           0,
           0,
           0,
-          1,
+          7.2948503494262695,
           0,
-          0,
-          0,
+          -1.7024946212768555,
+          1.0114587917923927,
           0,
           1
         ],
@@ -5832,20 +5832,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.956250190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.956250190734863,
           0,
           0,
           0,
           0,
-          1,
+          8.956250190734863,
           0,
-          0,
-          0,
+          -1.963749885559082,
+          1.1249999701976776,
           0,
           1
         ],
@@ -5860,20 +5860,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.059999942779541,
           0,
           0,
           0,
           0,
-          1,
+          9.059999942779541,
           0,
           0,
           0,
           0,
-          1,
+          9.059999942779541,
           0,
-          0,
-          0,
+          -1.8600001335144043,
+          0.9029999077320099,
           0,
           1
         ],
@@ -5888,20 +5888,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.925876200199127,
           0,
           0,
           0,
           0,
-          1,
+          4.925876200199127,
           0,
           0,
           0,
           0,
-          1,
+          4.925876200199127,
           0,
-          0,
-          0,
+          4.338859975337982,
+          0.749982587993145,
           0,
           1
         ],
@@ -5916,20 +5916,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.945953845977783,
           0,
           0,
           0,
           0,
-          1,
+          9.945953845977783,
           0,
           0,
           0,
           0,
-          1,
+          9.945953845977783,
           0,
-          0,
-          0,
+          0.9540534019470215,
+          0.8349937498569489,
           0,
           1
         ],
@@ -5944,20 +5944,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
-          0,
-          0,
+          -2.0299999713897705,
+          1.7622498720884323,
           0,
           1
         ],
@@ -5972,21 +5972,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.399796724319458,
           0,
           0,
           0,
           0,
-          1,
+          9.399796724319458,
           0,
           0,
           0,
           0,
-          1,
+          9.399796724319458,
           0,
-          0,
-          0,
-          0,
+          1.7997519969940186,
+          0.24457015842199326,
+          0.0000015497207641601562,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_BrushedMetal",
@@ -6105,20 +6105,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.5993897914886475,
           0,
           0,
           0,
           0,
-          1,
+          6.5993897914886475,
           0,
           0,
           0,
           0,
-          1,
+          6.5993897914886475,
           0,
-          0,
-          0,
+          -2.000000238418579,
+          0.7416827380657196,
           0,
           1
         ],
@@ -6133,21 +6133,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.145139694213867,
           0,
           0,
           0,
           0,
-          1,
+          5.145139694213867,
           0,
           0,
           0,
           0,
-          1,
+          5.145139694213867,
           0,
-          0,
-          0,
-          0,
+          -3.0058341324329376,
+          1.1779236793518066,
+          -4.76837158203125e-7,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_sodium",
@@ -6161,20 +6161,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
-          0,
-          0,
+          3.3499999046325684,
+          2.25,
           0,
           1
         ],
@@ -6189,21 +6189,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.287686586380005,
           0,
           0,
           0,
           0,
-          1,
+          7.287686586380005,
           0,
           0,
           0,
           0,
-          1,
+          7.287686586380005,
           0,
-          0,
-          0,
-          0,
+          -1.7037074565887451,
+          1.0183009952306747,
+          0.046773672103881836,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Livery",
@@ -6217,20 +6217,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.955517053604126,
           0,
           0,
           0,
           0,
-          1,
+          8.955517053604126,
           0,
           0,
           0,
           0,
-          1,
+          8.955517053604126,
           0,
-          0,
-          0,
+          -1.9644830226898193,
+          1.1249999701976776,
           0,
           1
         ],
@@ -6245,20 +6245,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.059437036514282,
           0,
           0,
           0,
           0,
-          1,
+          9.059437036514282,
           0,
           0,
           0,
           0,
-          1,
+          9.059437036514282,
           0,
-          0,
-          0,
+          -1.860563039779663,
+          0.9025391042232513,
           0,
           1
         ],
@@ -6273,21 +6273,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.004652708768845,
           0,
           0,
           0,
           0,
-          1,
+          5.004652708768845,
           0,
           0,
           0,
           0,
-          1,
+          5.004652708768845,
           0,
-          0,
-          0,
-          0,
+          4.404873162508011,
+          0.750001810491085,
+          -0.13726258277893066,
           1
         ],
         "name": "LOD1_MOTION_HULL_CORE_Warning",
@@ -6301,20 +6301,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.948334693908691,
           0,
           0,
           0,
           0,
-          1,
+          9.948334693908691,
           0,
           0,
           0,
           0,
-          1,
+          9.948334693908691,
           0,
-          0,
-          0,
+          0.951664924621582,
+          0.8331009745597839,
           0,
           1
         ],
@@ -6329,20 +6329,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
           0,
           0,
           0,
-          1,
+          6.430000066757202,
           0,
-          0,
-          0,
+          -2.0299999713897705,
+          1.3164998590946198,
           0,
           1
         ],
@@ -6357,21 +6357,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.599611282348633,
           0,
           0,
           0,
           0,
-          1,
+          3.599611282348633,
           0,
           0,
           0,
           0,
-          1,
+          3.599611282348633,
           0,
-          0,
-          0,
-          0,
+          7.599937438964844,
+          -0.08998537715524435,
+          0.0000020265579223632812,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_BrushedMetal",
@@ -6490,20 +6490,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.598170518875122,
           0,
           0,
           0,
           0,
-          1,
+          6.598170518875122,
           0,
           0,
           0,
           0,
-          1,
+          6.598170518875122,
           0,
-          0,
-          0,
+          -2.0010526180267334,
+          0.7421073019504547,
           0,
           1
         ],
@@ -6518,21 +6518,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.145139694213867,
           0,
           0,
           0,
           0,
-          1,
+          5.145139694213867,
           0,
           0,
           0,
           0,
-          1,
+          5.145139694213867,
           0,
-          0,
-          0,
-          0,
+          -3.0058341324329376,
+          1.1779236793518066,
+          -4.76837158203125e-7,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_sodium",
@@ -6546,20 +6546,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
-          0,
-          0,
+          3.3499999046325684,
+          2.25,
           0,
           1
         ],
@@ -6574,21 +6574,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.787109375,
           0,
           0,
           0,
           0,
-          1,
+          6.787109375,
           0,
           0,
           0,
           0,
-          1,
+          6.787109375,
           0,
-          0,
-          0,
-          0,
+          -1.7942047119140625,
+          0.911045677959919,
+          0.04829573631286621,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Livery",
@@ -6602,21 +6602,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.959578037261963,
           0,
           0,
           0,
           0,
-          1,
+          8.959578037261963,
           0,
           0,
           0,
           0,
-          1,
+          8.959578037261963,
           0,
-          0,
-          0,
-          0,
+          -1.96110200881958,
+          0.9284662008285522,
+          -0.0000026226043701171875,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Mechanical",
@@ -6630,21 +6630,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.057884454727173,
           0,
           0,
           0,
           0,
-          1,
+          9.057884454727173,
           0,
           0,
           0,
           0,
-          1,
+          9.057884454727173,
           0,
-          0,
-          0,
-          0,
+          -1.8627955913543701,
+          0.900807648897171,
+          -0.00019788742065429688,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_MechanicalDark",
@@ -6658,21 +6658,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.010093420743942,
           0,
           0,
           0,
           0,
-          1,
+          5.010093420743942,
           0,
           0,
           0,
           0,
-          1,
+          5.010093420743942,
           0,
-          0,
-          0,
-          0,
+          4.4103138744831085,
+          0.7500018551945686,
+          -0.13726258277893066,
           1
         ],
         "name": "LOD2_MOTION_HULL_CORE_Warning",
@@ -6688,20 +6688,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode_vael.glb"
   },
-  "runtimeHash": "6733f1ac22cf201d609017a60f15e7ec434a188381b6b9dd04745843a0c8bf66",
+  "runtimeHash": "41520ca16d1ae33ea5cc59275b121c42bf520851c8cbe9ceddccc33bf97478ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.199649810791016,
-          3.0756101608276367,
-          5.5101799964904785
+          3.0756101805833738,
+          5.51017983212158
         ],
         "min": [
           -10.920680046081543,
-          -0.950449526309967,
-          -5.5101799964904785
+          -0.9504495460657041,
+          -5.51017983212158
         ]
       },
       "id": "sf.render.ashline-lode-vael.body",

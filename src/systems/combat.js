@@ -20,7 +20,7 @@ import { makeShipEntitySpec, fittingsFromWeapons } from './ships.js';
 import { removeCargo } from './cargo.js';
 import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
+import { friendlyFireRefuses, legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
@@ -1732,7 +1732,12 @@ export const combat = {
       const dx = beam.to.x - ax, dz = beam.to.z - az;
       const len2 = dx * dx + dz * dz || 1e-6;
       const owner = state.entities.get(beam.ownerId);
-      const ownerTeam = owner ? owner.team : null;
+      // Same-team hulls are admitted by the damage authority's own friendly-fire rule (the one a
+      // bolt meets in routeDamage), not a blanket team skip: a beam must hit the neutral team-0
+      // civilian or station a bolt hits, while the shooter's own devices stay protected.
+      const beamOrigin = BEAM_ADMISSION_ORIGIN;
+      beamOrigin.id = beamOrigin.weaponId = beam.weaponId || null;
+      const beamFlags = beam.damagePacket ? beam.damagePacket.flags : null;
       let bestT = Infinity, bestE = null;
       const damageables = beamDamageCandidates(this, state, beam, dx, dz);
       for (const e of damageables) {
@@ -1742,7 +1747,7 @@ export const combat = {
           && !(e.data && e.data.shieldPylonEndpoint === true)) continue;
         if (e.id === beam.ownerId) continue;
         if (e.id === state.playerId && this.playerIsDockProtected()) continue;
-        if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
+        if (friendlyFireRefuses(state, owner, e, beamOrigin, beamFlags)) continue; // no friendly fire
         const hit = opticBeamHit(beam, e);
         if (hit && hit.t < bestT) { bestT = hit.t; bestE = e; }
       }
@@ -1843,6 +1848,9 @@ export const combat = {
     }
   },
 };
+
+// Scratch origin for the beam sweep's friendly-fire admission read (consumed synchronously).
+const BEAM_ADMISSION_ORIGIN = { kind: 'weapon', id: null, weaponId: null };
 
 function beamDamageCandidates(host, state, beam, dx, dz) {
   ensureCombatRuntime(host);

@@ -3760,8 +3760,10 @@ export const traffic = {
       ent.data.ai.spawnContext = 'convoy_civilian';
     }
     if (role === 'express') {
-      ent.data.hitchable = true;
-      ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+      if (massline2Flag('hitchhiking')) {
+        ent.data.hitchable = true;
+        ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+      }
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Express Liner';
     }
     if (role === 'tourist') {
@@ -3945,6 +3947,9 @@ export const traffic = {
 
   _stampExpressRoute(entity, rec, origin, destination, sectorId, seq, preserve = false) {
     if (!entity || !rec || rec.role !== 'express') return;
+    // Flag-off must not leak the hitch affordance onto any express hull (ambient or the named
+    // courier fixture): no hitch itinerary, no hitchable mark, no HITCHABLE label.
+    if (!massline2Flag('hitchhiking')) return;
     const data = entity.data || (entity.data = {});
     let itinerary = preserve && data.itinerary && data.itinerary.kind === 'express_hitch_route'
       ? data.itinerary

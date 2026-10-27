@@ -2206,7 +2206,14 @@ function emitPickupCollected(bus, pk, col) {
   return payload;
 }
 
-function invMass(e) { return (e.type === 'station' || e.type === 'asteroid') ? 0 : 1 / Math.max(0.1, e.mass); }
+// A body that never declared a mass (a spawner or test double that skipped it) reads as 1:
+// Math.max(0.1, undefined) is NaN, and that NaN rode pushApart/impulse into position and velocity.
+// An explicit Infinity still reads as immovable (1/Infinity = 0).
+function invMass(e) {
+  if (e.type === 'station' || e.type === 'asteroid') return 0;
+  const mass = e.mass == null ? NaN : Number(e.mass);
+  return 1 / Math.max(0.1, Number.isNaN(mass) ? 1 : mass);
+}
 
 function materialFor(e) {
   return COLLISION_MATERIALS[e.type] || DEFAULT_MATERIAL;

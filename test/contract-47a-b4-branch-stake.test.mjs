@@ -6,6 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { STORY_BRANCH_INTRO_TAG } from '../src/data/missions.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
+import * as campaign from '../src/story/campaign47a/index.js';
 
 const EXPECTED = Object.freeze({
   custody: Object.freeze({ branch: 'patrol', stationId: 'station_coalition', type: 'patrol_clear' }),
@@ -151,4 +152,21 @@ function exerciseOutcome(outcome) {
 test('47-A B4 makes custody and force distinct completed faction stakes', () => {
   exerciseOutcome('custody');
   exerciseOutcome('force');
+});
+
+test('47-A B4 door operation cannot settle, or even post, before the door intro is accepted', () => {
+  const h = harness('custody');
+  const { buildMissionBoardContract, recordBeatStep } = campaign;
+  // The board still answers with the door, not with an operation the player never unlocked.
+  assert.equal(buildMissionBoardContract(4, { state: h.state, outcome: 'custody' }).kind, 'existing_branch_intro');
+  const before = h.state.story.campaign47a;
+  const stepKeysBefore = JSON.stringify(before.steps || {});
+  // A premature settlement of the door's operation is refused by the ordered recorder and
+  // writes nothing: no bucket gains the step, so no mission/board path can cash it.
+  const premature = recordBeatStep(h.state, 'mission:completed', { storyTag: 'campaign47a:b4:operation' }, h.state.simTime);
+  assert.equal(premature.ok, false, 'a premature door operation does not settle');
+  assert.equal(premature.reason, 'signal_mismatch:mission:completed',
+    'beat 4 is owned by the door intro until it is accepted: a completion cannot address the operation (its requiresPrior:branch_intro_accept check is the unreachable backstop)');
+  assert.equal(JSON.stringify(h.state.story.campaign47a.steps || {}), stepKeysBefore, 'a refused premature step writes no bucket');
+  assert.equal(h.state.story.beatIndex, 4);
 });

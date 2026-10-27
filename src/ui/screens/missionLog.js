@@ -14,6 +14,7 @@
 // Export: missionLogScreen  (id 'missionLog').
 
 import { SECTORS } from '../../data/sectors.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { starterRamSentence } from '../../data/starterJobs.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
@@ -332,8 +333,7 @@ function getManager(ctx) {
 }
 
 function cmdtyName(id) {
-  const c = CMDTY_BY_ID.get(id);
-  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+  return id ? commodityDisplayName(id) : 'cargo';
 }
 
 function prettyType(t) {

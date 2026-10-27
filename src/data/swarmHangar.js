@@ -1,5 +1,6 @@
 // SWARM-01 — the persistent Hangar. Bounty bought between runs never enters the adventure wallet.
 
+import { SHIPS } from './ships.js';
 import { SWARM_BOSS_EVERY, isSwarmBossWave } from './swarmMode.js';
 
 export const HANGAR_TRACKS = Object.freeze([
@@ -57,6 +58,13 @@ export function bossWasCleared(result) {
   return false;
 }
 
+/**
+ * The mid-run banker's cut: at an extraction window a pilot may secure this share of the
+ * purse and keep flying the rest. It is the death law's own fraction — banking half locks
+ * in exactly what a fall would have paid anyway, while the remainder stays fully at risk.
+ */
+export const PARTIAL_BANK_FRACTION = 0.5;
+
 /** Death banks half. A chosen cash-out after a boss banks all. An early cash-out banks half. */
 export function bankFraction(result) {
   if (!result) return 0;
@@ -91,7 +99,10 @@ export function applyBank(hangar, result) {
     };
   }
   const credits = Math.max(0, Math.round(Number(result && result.credits) || 0));
-  const banked = Math.floor(credits * fraction);
+  // Salvage a pilot already banked mid-run is out of the purse before the ending is decided:
+  // it always comes home whole, and only the remainder answers to the ending's fraction.
+  const secured = Math.max(0, Math.round(Number(result && result.securedCredits) || 0));
+  const banked = secured + Math.floor(credits * fraction);
   if (banked > 0 || fraction > 0) bag.settledKeys.push(key);
   bag.bounty += banked;
   return {
@@ -129,6 +140,49 @@ export function buyHull(hangar, hullId, price) {
   bag.bounty -= cost;
   bag.ownedHulls.push(hullId);
   return { ok: true, hangar: bag };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-05 §4.2 — the hull rack. A rack hull is bought ONCE with banked bounty and then rides   */
+/* the manifest of every later swarm run: applyHangarToPlayer pushes it into player.ownedShips,   */
+/* so the armory cradle lists it as a free switch, kit and all, forever. That is the purchase no   */
+/* other door offers — the bare-hull pick owns nothing past its own launch and the armory's hull   */
+/* sale dies with the run that paid for it.                                                        */
+/*                                                                                                 */
+/* The rack is the door's own hull list minus the earn-only rows: a swarmEarned hull (the Saucer)  */
+/* is the crossover ledger's proof, never shop stock — the same law buyHull's refusal keeps.       */
+/* Bounty prices run an order above the armory's per-run ladder for the same tier, because the     */
+/* grant is permanent where that one is one run.                                                   */
+/* ---------------------------------------------------------------------------------------------- */
+export const HANGAR_HULL_PRICES = Object.freeze([400, 800, 1300, 1900, 2600, 3400]);
+
+export function hangarHullPrice(shipDef) {
+  const tier = Math.max(0, Math.min(HANGAR_HULL_PRICES.length - 1,
+    Math.trunc(Number(shipDef && shipDef.tier) || 0)));
+  return HANGAR_HULL_PRICES[tier];
+}
+
+/** Every hull the Hangar sells, cheapest first — the same order the door's own list takes. */
+export function hangarHullRack() {
+  return SHIPS
+    .filter((ship) => ship && typeof ship.id === 'string' && !ship.swarmEarned)
+    .map((ship) => ({
+      hullId: ship.id,
+      name: ship.name,
+      tier: Math.max(0, Math.trunc(Number(ship.tier) || 0)),
+      price: hangarHullPrice(ship),
+    }))
+    .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+}
+
+/** The rack as the door paints it: each row with its live owned/afford state off the hangar bag. */
+export function hangarHullRackView(hangar) {
+  const bag = migrateHangar(hangar);
+  return hangarHullRack().map((row) => ({
+    ...row,
+    owned: bag.ownedHulls.includes(row.hullId),
+    buyable: !bag.ownedHulls.includes(row.hullId) && bag.bounty >= row.price,
+  }));
 }
 
 export function purseBonusFor(hangar) {

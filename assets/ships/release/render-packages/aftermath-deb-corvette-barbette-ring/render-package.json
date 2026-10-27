@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "54c624dea4ed4486a6b77aa2219bb014298350165c888d028b650df4c909dd0b",
+  "contentHash": "83ed077175b19aa8669840f46a33e780136c15d2bc438d6f1211050df522aaca",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -2.27463960647583,
+          -2.274639505431523,
           3.14058780670166,
-          4.7785162925720215
+          4.778516242471887
         ],
         "min": [
-          -5.215820789337158,
+          -5.215820890381465,
           0.09839296340942383,
-          1.8711297512054443
+          1.8711298013055793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dbf6b9c3ef9a3ec9ff8d67c95806ec4a6d28a7cae860b151f7ac8c6c380446d4",
+      "geometryHash": "7927299d3d9ea5328eea9581fe7c43dc6bb756b1187f6bdc710043bb8eb512a1",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
+      "materialHash": "cd93b912e8310a0b79a0ca0bee2e4b597fe400ce69d804018065a30779da4b77",
       "materialPipelineKey": "opaque",
       "meshName": "barbRim_rib0",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0",
@@ -37,22 +37,22 @@
     {
       "bounds": {
         "max": [
-          5.215857982635498,
+          5.215858025966967,
           3.5745973587036133,
-          5.500001907348633
+          5.5000018173241
         ],
         "min": [
-          1.7882026433944702,
+          1.7882026000630011,
           -0.011990070343017578,
-          2.032503843307495
+          2.032503933332028
         ]
       },
       "drawMode": 4,
-      "geometryHash": "617be775db814005bbd27d7f0871679f28738d1fc09613e56b3b31fbabf2bba6",
+      "geometryHash": "c77664eedc25abbe9a57f76f9b2b5b446e10eb255afa27abf1091d59fccb10e3",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
+      "materialHash": "cd93b912e8310a0b79a0ca0bee2e4b597fe400ce69d804018065a30779da4b77",
       "materialPipelineKey": "opaque",
       "meshName": "barbRim_rib1",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1",
@@ -62,22 +62,22 @@
     {
       "bounds": {
         "max": [
-          5.106235504150391,
+          5.106235402705893,
           2.923582077026367,
-          -2.1394271850585938
+          -2.1394272520722084
         ],
         "min": [
-          2.4282121658325195,
+          2.428212267277017,
           0.15358352661132812,
-          -4.786679267883301
+          -4.786679200869687
         ]
       },
       "drawMode": 4,
-      "geometryHash": "927ee4b113bf2f068aa6c4fbfe114367865a4525b19a7d1f2608d3eec65bc10f",
+      "geometryHash": "d2752c2c9700d966b7928df66fcd8e46b265dca8fcf200ec6a6d5c8cc936d361",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
+      "materialHash": "cd93b912e8310a0b79a0ca0bee2e4b597fe400ce69d804018065a30779da4b77",
       "materialPipelineKey": "opaque",
       "meshName": "barbRim_rib2",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2",
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          -1.8271112442016602,
+          -1.8271112985183413,
           3.3575925827026367,
-          -2.295661449432373
+          -2.2956614001508084
         ],
         "min": [
-          -4.994633197784424,
+          -4.994633143467743,
           0.04320049285888672,
-          -5.500001907348633
+          -5.500001956630197
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2218bc28538e15e0fd486bcd5b9d2b139097448118283cd4de596a7b79d860c",
+      "geometryHash": "e72da7d2a70937d9c27e985ea19211b709c8b4169c50f93913571b2c794ba3e6",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
+      "materialHash": "cd93b912e8310a0b79a0ca0bee2e4b597fe400ce69d804018065a30779da4b77",
       "materialPipelineKey": "opaque",
       "meshName": "barbRim_rib3",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           4.850791931152344,
-          0.9868247509002686,
-          3.833479881286621
+          0.9868246606465356,
+          3.833479800340941
         ],
         "min": [
           -3.7163050174713135,
-          -3.5745198726654053,
-          -1.9347411394119263
+          -3.5745197824116723,
+          -1.9347410584662463
         ]
       },
       "drawMode": 4,
-      "geometryHash": "188eb2b5acd1f42522fe931ce1ef99ed8d907f6760338f2f8717a9c623fe31b5",
+      "geometryHash": "bee8cd6c465dd16007482a1edba60849b5cda12ddce2aaf5ee3aaa05972ce309",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "TurretBBarbette_xrib1a",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a",
@@ -137,22 +137,22 @@
     {
       "bounds": {
         "max": [
-          2.4657273292541504,
-          0.8238542079925537,
+          2.4657273241662816,
+          0.8238541659198637,
           4.365145683288574
         ],
         "min": [
-          0.36739397048950195,
-          -1.4852240085601807,
+          0.36739397557737075,
+          -1.4852239664874907,
           0.7230178713798523
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f196fc97b77044546d9a3054eac2cea8094eca90c4c6265795213b73f6d4699",
+      "geometryHash": "82c95783160159faab63f39d3fae90509c14d5dacf0c31c75cccf4b612ee6df5",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "TurretBBarbette_xrib1b",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b",
@@ -162,18 +162,18 @@
     {
       "bounds": {
         "max": [
-          4.80707311630249,
-          0.5243675112724304,
+          4.807073051246167,
+          0.5243675350646284,
           4.692580223083496
         ],
         "min": [
-          -3.3479251861572266,
-          -3.1068475246429443,
+          -3.3479251211009036,
+          -3.1068475484351423,
           -4.862067222595215
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1fdfa063c1f8ef5728e36291067d60b607963be0c3d964835f19e3723b2986a",
+      "geometryHash": "07dd4076eb0b394e64ed5732fa10afc87623c0d3f1ffdd0abc173761df616abb",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -188,17 +188,17 @@
       "bounds": {
         "max": [
           3.9330244064331055,
-          1.7185702323913574,
-          3.8183298110961914
+          1.718570187009825,
+          3.818329930305481
         ],
         "min": [
           -3.873122453689575,
-          1.4317388534545898,
-          -3.98781681060791
+          1.4317388988361224,
+          -3.9878169298171997
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fda4a0269f94505d256329db618c6f134e2379ed3a10bc0bcfbcc647d9aa593f",
+      "geometryHash": "9cd1534486ff0d6cda73fc53aecf1e0a4f0df4423cc48d240e9fa315b58d750c",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -213,17 +213,17 @@
       "bounds": {
         "max": [
           4.568408012390137,
-          1.3958992958068848,
+          1.3958992798142966,
           4.453713893890381
         ],
         "min": [
           -4.508506774902344,
-          0.2734389007091522,
+          0.27343891670174036,
           -4.6232008934021
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fd151da489d2fdd6f5327d18e3abc9cf6383b57d63ce48527e03ad3612f389c",
+      "geometryHash": "2bb0eed0645764274bec4b7513e509158121ad7ff486f4b2d844f44aa95a492d",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -237,18 +237,18 @@
     {
       "bounds": {
         "max": [
-          4.558989524841309,
-          1.4319111108779907,
-          4.444295406341553
+          4.558989539451877,
+          1.4319110881076411,
+          4.4442954209521215
         ],
         "min": [
-          -4.499088287353516,
-          0.23742708563804626,
-          -4.6137824058532715
+          -4.499088301964084,
+          0.23742710840839576,
+          -4.61378242046384
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0efd11c2b27e0002b7b2f40f8984ba587c80c03d016fa3e8cb51df86a8a6d84",
+      "geometryHash": "832b27a99946e9e6f7baff26b253a4e82fc4469e74851c97b56353784ae43535",
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring.primitive.1",
       "indexCount": 1188,
       "indexed": true,
@@ -297,42 +297,10 @@
       ]
     },
     {
-      "hash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
-      "id": "material:6e405ab1041812afcb8616f6",
+      "hash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
+      "id": "material:11ed44a130019ebcdc096ccd",
       "name": "Forge_bastion_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "73beef5ea93f63ee6d21898890dbe3ede3aac5e1f94ed867428a7616f8dc377c",
-      "id": "material:73beef5ea93f63ee6d218988",
-      "name": "Forge_bastion_wk_frame__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -393,6 +361,38 @@
       ]
     },
     {
+      "hash": "cd93b912e8310a0b79a0ca0bee2e4b597fe400ce69d804018065a30779da4b77",
+      "id": "material:cd93b912e8310a0b79a0ca0b",
+      "name": "Forge_bastion_wk_frame__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "dc87b98e7d29b084c8950e1a475bdecbf32d49ad7aeaa125b71ee1f234246acf",
       "id": "material:dc87b98e7d29b084c8950e1a",
       "name": "Forge_bastion_dark__dead",
@@ -429,21 +429,21 @@
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib0",
       "localTransform": [
-        1,
+        1.5210974216461182,
         0,
         0,
         0,
         0,
-        1,
+        1.5210974216461182,
         0,
         0,
         0,
         0,
-        1,
+        1.5210974216461182,
         0,
-        0,
-        0,
-        0,
+        -3.745230197906494,
+        1.619490385055542,
+        3.324823021888733,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -457,42 +457,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        1.5210974216461182,
         0,
         0,
         0,
         0,
-        1,
+        1.5210974216461182,
         0,
         0,
         0,
         0,
-        1,
+        1.5210974216461182,
         0,
-        0,
-        0,
-        0,
+        -3.745230197906494,
+        1.619490385055542,
+        3.324823021888733,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib1",
       "localTransform": [
-        1,
+        1.7932937145233154,
         0,
         0,
         0,
         0,
-        1,
+        1.7932937145233154,
         0,
         0,
         0,
         0,
-        1,
+        1.7932937145233154,
         0,
-        0,
-        0,
-        0,
+        3.502030313014984,
+        1.7813036441802979,
+        3.766252875328064,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -506,42 +506,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        1.7932937145233154,
         0,
         0,
         0,
         0,
-        1,
+        1.7932937145233154,
         0,
         0,
         0,
         0,
-        1,
+        1.7932937145233154,
         0,
-        0,
-        0,
-        0,
+        3.502030313014984,
+        1.7813036441802979,
+        3.766252875328064,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib2",
       "localTransform": [
-        1,
+        1.3849992752075195,
         0,
         0,
         0,
         0,
-        1,
+        1.3849992752075195,
         0,
         0,
         0,
         0,
-        1,
+        1.3849992752075195,
         0,
-        0,
-        0,
-        0,
+        3.767223834991455,
+        1.5385828018188477,
+        -3.4630532264709473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -555,42 +555,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        1.3849992752075195,
         0,
         0,
         0,
         0,
-        1,
+        1.3849992752075195,
         0,
         0,
         0,
         0,
-        1,
+        1.3849992752075195,
         0,
-        0,
-        0,
-        0,
+        3.767223834991455,
+        1.5385828018188477,
+        -3.4630532264709473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.barbrim-rib3",
       "localTransform": [
-        1,
+        1.657196044921875,
         0,
         0,
         0,
         0,
-        1,
+        1.657196044921875,
         0,
         0,
         0,
         0,
-        1,
+        1.657196044921875,
         0,
-        0,
-        0,
-        0,
+        -3.410872220993042,
+        1.7003965377807617,
+        -3.897831678390503,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -604,42 +604,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        1.657196044921875,
         0,
         0,
         0,
         0,
-        1,
+        1.657196044921875,
         0,
         0,
         0,
         0,
-        1,
+        1.657196044921875,
         0,
-        0,
-        0,
-        0,
+        -3.410872220993042,
+        1.7003965377807617,
+        -3.897831678390503,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette",
       "localTransform": [
-        1,
+        4.7773237228393555,
         0,
         0,
         0,
         0,
-        1,
+        4.7773237228393555,
         0,
         0,
         0,
         0,
-        1,
+        4.7773237228393555,
         0,
-        0,
-        0,
-        0,
+        0.7295739650726318,
+        -1.291240006685257,
+        -0.08474349975585938,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -653,42 +653,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        4.7773237228393555,
         0,
         0,
         0,
         0,
-        1,
+        4.7773237228393555,
         0,
         0,
         0,
         0,
-        1,
+        4.7773237228393555,
         0,
-        0,
-        0,
-        0,
+        0.7295739650726318,
+        -1.291240006685257,
+        -0.08474349975585938,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1a",
       "localTransform": [
-        1,
+        4.283548474311829,
         0,
         0,
         0,
         0,
-        1,
+        4.283548474311829,
         0,
         0,
         0,
         0,
-        1,
+        4.283548474311829,
         0,
-        0,
-        0,
-        0,
+        0.5672434568405151,
+        -1.2938475608825684,
+        0.9493693709373474,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -702,42 +702,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        4.283548474311829,
         0,
         0,
         0,
         0,
-        1,
+        4.283548474311829,
         0,
         0,
         0,
         0,
-        1,
+        4.283548474311829,
         0,
-        0,
-        0,
-        0,
+        0.5672434568405151,
+        -1.2938475608825684,
+        0.9493693709373474,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette-xrib1b",
       "localTransform": [
-        1,
+        1.821063905954361,
         0,
         0,
         0,
         0,
-        1,
+        1.821063905954361,
         0,
         0,
         0,
         0,
-        1,
+        1.821063905954361,
         0,
-        0,
-        0,
-        0,
+        1.4165606498718262,
+        -0.3306849002838135,
+        2.5440817773342133,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -751,42 +751,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        1.821063905954361,
         0,
         0,
         0,
         0,
-        1,
+        1.821063905954361,
         0,
         0,
         0,
         0,
-        1,
+        1.821063905954361,
         0,
-        0,
-        0,
-        0,
+        1.4165606498718262,
+        -0.3306849002838135,
+        2.5440817773342133,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbrace",
       "localTransform": [
-        1,
+        3.9030734300613403,
         0,
         0,
         0,
         0,
-        1,
+        3.9030734300613403,
         0,
         0,
         0,
         0,
-        1,
+        3.9030734300613403,
         0,
-        0,
-        0,
-        0,
+        0.029950976371765137,
+        1.5751545429229736,
+        -0.08474349975585938,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -800,42 +800,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        3.9030734300613403,
         0,
         0,
         0,
         0,
-        1,
+        3.9030734300613403,
         0,
         0,
         0,
         0,
-        1,
+        3.9030734300613403,
         0,
-        0,
-        0,
-        0,
+        0.029950976371765137,
+        1.5751545429229736,
+        -0.08474349975585938,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbring",
       "localTransform": [
-        1,
+        4.53845739364624,
         0,
         0,
         0,
         0,
-        1,
+        4.53845739364624,
         0,
         0,
         0,
         0,
-        1,
+        4.53845739364624,
         0,
-        0,
-        0,
-        0,
+        0.029950618743896484,
+        0.8346690982580185,
+        -0.08474349975585938,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -849,21 +849,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-barbette-ring.body",
       "worldTransform": [
-        1,
+        4.53845739364624,
         0,
         0,
         0,
         0,
-        1,
+        4.53845739364624,
         0,
         0,
         0,
         0,
-        1,
+        4.53845739364624,
         0,
-        0,
-        0,
-        0,
+        0.029950618743896484,
+        0.8346690982580185,
+        -0.08474349975585938,
         1
       ]
     },
@@ -926,37 +926,37 @@
       "uri": "place_aftermath_deb_corvette_barbette_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 162528,
-    "sha256": "234eab09e5e6ed05d07f216937c093348b1511a34c5ad5bb39289af0552adbd3",
+    "bytes": 148820,
+    "sha256": "b8d45b249e3b7cc0e729498edc80738864dd3e090c8fbfced335a1277e063e61",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000018596649169921875,
-        0.000038743019104003906,
-        0
+        0.000018567792750889822,
+        0.000038788145970469756,
+        -6.965304866213273e-8
       ],
       "max": [
-        5.215857982635498,
+        5.215858025966967,
         3.5745973587036133,
-        5.500001907348633
+        5.5000018173241
       ],
       "min": [
-        -5.215820789337158,
-        -3.5745198726654053,
-        -5.500001907348633
+        -5.215820890381465,
+        -3.5745197824116723,
+        -5.500001956630197
       ],
       "size": [
-        10.431678771972656,
-        7.1491172313690186,
-        11.000003814697266
+        10.431678916348432,
+        7.149117141115285,
+        11.000003773954298
       ]
     },
     "hidden": [],
@@ -1023,21 +1023,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5210974216461182,
           0,
           0,
           0,
           0,
-          1,
+          1.5210974216461182,
           0,
           0,
           0,
           0,
-          1,
+          1.5210974216461182,
           0,
-          0,
-          0,
-          0,
+          -3.745230197906494,
+          1.619490385055542,
+          3.324823021888733,
           1
         ],
         "name": "barbRim_rib0",
@@ -1050,21 +1050,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7932937145233154,
           0,
           0,
           0,
           0,
-          1,
+          1.7932937145233154,
           0,
           0,
           0,
           0,
-          1,
+          1.7932937145233154,
           0,
-          0,
-          0,
-          0,
+          3.502030313014984,
+          1.7813036441802979,
+          3.766252875328064,
           1
         ],
         "name": "barbRim_rib1",
@@ -1077,21 +1077,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3849992752075195,
           0,
           0,
           0,
           0,
-          1,
+          1.3849992752075195,
           0,
           0,
           0,
           0,
-          1,
+          1.3849992752075195,
           0,
-          0,
-          0,
-          0,
+          3.767223834991455,
+          1.5385828018188477,
+          -3.4630532264709473,
           1
         ],
         "name": "barbRim_rib2",
@@ -1104,21 +1104,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.657196044921875,
           0,
           0,
           0,
           0,
-          1,
+          1.657196044921875,
           0,
           0,
           0,
           0,
-          1,
+          1.657196044921875,
           0,
-          0,
-          0,
-          0,
+          -3.410872220993042,
+          1.7003965377807617,
+          -3.897831678390503,
           1
         ],
         "name": "barbRim_rib3",
@@ -1131,21 +1131,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.7773237228393555,
           0,
           0,
           0,
           0,
-          1,
+          4.7773237228393555,
           0,
           0,
           0,
           0,
-          1,
+          4.7773237228393555,
           0,
-          0,
-          0,
-          0,
+          0.7295739650726318,
+          -1.291240006685257,
+          -0.08474349975585938,
           1
         ],
         "name": "TurretBBarbette",
@@ -1158,21 +1158,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.283548474311829,
           0,
           0,
           0,
           0,
-          1,
+          4.283548474311829,
           0,
           0,
           0,
           0,
-          1,
+          4.283548474311829,
           0,
-          0,
-          0,
-          0,
+          0.5672434568405151,
+          -1.2938475608825684,
+          0.9493693709373474,
           1
         ],
         "name": "TurretBBarbette_xrib1a",
@@ -1185,21 +1185,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.821063905954361,
           0,
           0,
           0,
           0,
-          1,
+          1.821063905954361,
           0,
           0,
           0,
           0,
-          1,
+          1.821063905954361,
           0,
-          0,
-          0,
-          0,
+          1.4165606498718262,
+          -0.3306849002838135,
+          2.5440817773342133,
           1
         ],
         "name": "TurretBBarbette_xrib1b",
@@ -1212,21 +1212,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9030734300613403,
           0,
           0,
           0,
           0,
-          1,
+          3.9030734300613403,
           0,
           0,
           0,
           0,
-          1,
+          3.9030734300613403,
           0,
-          0,
-          0,
-          0,
+          0.029950976371765137,
+          1.5751545429229736,
+          -0.08474349975585938,
           1
         ],
         "name": "TurretBRace",
@@ -1239,21 +1239,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.53845739364624,
           0,
           0,
           0,
           0,
-          1,
+          4.53845739364624,
           0,
           0,
           0,
           0,
-          1,
+          4.53845739364624,
           0,
-          0,
-          0,
-          0,
+          0.029950618743896484,
+          0.8346690982580185,
+          -0.08474349975585938,
           1
         ],
         "name": "TurretBRing_1",
@@ -1266,21 +1266,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.53845739364624,
           0,
           0,
           0,
           0,
-          1,
+          4.53845739364624,
           0,
           0,
           0,
           0,
-          1,
+          4.53845739364624,
           0,
-          0,
-          0,
-          0,
+          0.029950618743896484,
+          0.8346690982580185,
+          -0.08474349975585938,
           1
         ],
         "name": "TurretBRing_2",
@@ -1295,20 +1295,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-  "runtimeHash": "d4ae29edcd05ca1883f548ec2f977c21fdeb8f226a4380f780d2c89a0a6148e5",
+  "runtimeHash": "7d0aa40e6184ba4bcc5411e5706ea4d6aead87f66ea944de2b017ff55cb2e0ac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          5.215857982635498,
+          5.215858025966967,
           3.5745973587036133,
-          5.500001907348633
+          5.5000018173241
         ],
         "min": [
-          -5.215820789337158,
-          -3.5745198726654053,
-          -5.500001907348633
+          -5.215820890381465,
+          -3.5745197824116723,
+          -5.500001956630197
         ]
       },
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.body",

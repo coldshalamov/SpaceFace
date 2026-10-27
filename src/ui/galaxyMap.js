@@ -1,4 +1,5 @@
 import { getSalvageTenderMapMarkers, filterSalvageTenderMapContacts } from '../features/salvageTender/readModel.js';
+import { commodityDisplayName } from './commodityNames.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { stationServiceGaps } from './dockArrival.js';
 import { factionBerthStatusLine } from './dockArrival.js';
@@ -3350,7 +3351,7 @@ const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 export function commodityMapLabel(commodityId) {
   const id = String(commodityId || '');
-  return String(COMMODITY_NAME_BY_ID.get(id) || id.replace(/^cmdty_/, '').replace(/_/g, ' ')).toUpperCase();
+  return (id ? commodityDisplayName(id) : '').toUpperCase();
 }
 const REGIONAL_ECONOMY_PROFILE_BY_SECTOR = new Map(
   REGIONAL_ECONOMY_PROFILES.map((profile) => [profile && profile.sectorId, profile]),

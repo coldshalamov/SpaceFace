@@ -1,3 +1,4 @@
+import { SWEEP_WINDOW_ID, SWEEP_WINDOW_LANE, sweepWindowAdmission } from './sweepWindowRuntime.js';
 // Asks the campaign director for one externalOnly lived vignette when the player
 // is actually standing in that vignette's kind of place. Never enters planEncounters.
 // Occupies dir.live only while the phase machine is unresolved, and refuses to
@@ -190,9 +191,11 @@ export function tickLivedVignettes(runtime) {
   const authoredZone = zoneAt(sectorId, local.x, local.z);
   const bellAnchor = struckBellAnchor(state, player);
   const bellNearby = !!bellAnchor;
+  const sweepNearby = sweepWindowAdmission(state, runtime.registry, player);
   // Only this placed practice scene can use the site outside an authored zone.
   const zone = authoredZone || (bellNearby
-    ? { id: 'struck_bell_practice', type: 'mining_belt', name: 'The practice bell' } : null);
+    ? { id: 'struck_bell_practice', type: 'mining_belt', name: 'The practice bell' }
+    : sweepNearby ? { id: 'metronome_crossing', type: 'anomaly_deep', name: 'The Metronome crossing' } : null);
   if (!zone || !zone.type) return;
   const seen = seenMap(dir);
   const started = startedMap(dir);
@@ -203,9 +206,11 @@ export function tickLivedVignettes(runtime) {
   const candidates = [];
   for (const enc of Object.values(ENCOUNTERS)) {
     if (!enc || enc.livedVignette !== true) continue;
-    if (!authoredZone && enc.id !== STRUCK_BELL_ID) continue;
+    if (!authoredZone && enc.id !== STRUCK_BELL_ID && enc.id !== SWEEP_WINDOW_ID) continue;
     if (enc.id === STRUCK_BELL_ID) {
       if (!bellNearby) continue;
+    } else if (enc.id === SWEEP_WINDOW_ID) {
+      if (!sweepNearby) continue;
     } else if (enc.livedRotation !== true) continue;
     // `!= null`: a stamp of exactly 0 (a fire inside the first sim frame, or a
     // round-tripped save) still means consumed — presence, not truthiness, is the check.
@@ -223,16 +228,18 @@ export function tickLivedVignettes(runtime) {
   // After the hour the full eligible curated pool shares the picker's seeded hash.
   let pool = candidates;
   if (now < 3600) {
-    const withProp = candidates.filter((enc) => enc.id === STRUCK_BELL_ID
+    const withProp = candidates.filter((enc) => enc.id === STRUCK_BELL_ID || enc.id === SWEEP_WINDOW_ID
       || enc.livedPhysical && enc.livedPhysical.hasProp === true);
     if (withProp.length) pool = withProp;
   }
   const pick = pool.find((enc) => enc.id === STRUCK_BELL_ID)
+    || pool.find((enc) => enc.id === SWEEP_WINDOW_ID)
     || pickLivedVignette({ candidates: pool, overlay, seed, sectorId, zoneKey, day, now, ambientLastAt });
   if (!pick) return;
   const ambient = pick.ambientScene === true;
   const placement = pick.id === STRUCK_BELL_ID
     ? { anchor: { ...bellAnchor }, axis: null }
+    : pick.id === SWEEP_WINDOW_ID ? { anchor: { ...SWEEP_WINDOW_LANE.start }, axis: null }
     : ambient ? livedScenePlacement(player, seed, sectorId, zoneKey, day, pick.id) : null;
   const ang = ambient ? 0 : (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
   const data = livedSceneRequestData({

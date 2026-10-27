@@ -732,7 +732,7 @@ test('a catalog intent never substitutes a used hull, and a stale listing never 
 // CRT-03 second slice: the bought lot hull keeps a nemesis. While the player flies
 // the marked hull the grudge finds it again — hailing the dead owner's callsign
 // before it opens fire — and the papers remember how often it has died to this hull.
-import { activeImpoundShadow, mintImpoundShadow, tickImpoundGrudge } from '../src/systems/impoundGrudge.js';
+import { activeImpoundShadow, mintImpoundShadow, noteImpoundGrudgeKill, tickImpoundGrudge } from '../src/systems/impoundGrudge.js';
 
 function grudgeCtx(state, captures) {
   let nextId = 9000;
@@ -824,8 +824,11 @@ test('the lot hull keeps a nemesis that hails the dead owner, and the papers rem
   tickImpoundGrudge(h.state, ctx);
   assert.equal(shadow.liveId, grudgeId);
 
-  // Kill the nemesis: the papers remember, and the refind window is scheduled.
-  hunter.alive = false;
+  // Kill the nemesis the way production does: entity:killed while the id still
+  // names the body, then the sweep deletes it. The papers remember, and the
+  // refind window is scheduled.
+  noteImpoundGrudgeKill(h.state, { id: grudgeId, killerId: 1 });
+  h.state.entities.delete(grudgeId);
   h.state.simTime += 1;
   tickImpoundGrudge(h.state, ctx);
   assert.equal(shadow.deaths, 1);

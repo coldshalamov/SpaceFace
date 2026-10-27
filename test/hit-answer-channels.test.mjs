@@ -8,9 +8,11 @@
 // projectile:hit (physics) and combat:damage (router) — inside one synchronous emit. "Within
 // 100 ms" is proven structurally: every channel answers in the same tick because each handler is
 // a synchronous bus subscriber:
-//   beat       — feel's combat:damage handler -> _applyKineticCrunch -> _trigger -> the
-//                camera punch/window (a 4/s repeater's authored answer is the rhythmic
-//                tick: FOV punch; the concussion cannon's mass earns the 1–2 frame window).
+//   beat       — feel's combat:damage handler. The PLAYER'S OWN shot answers through ONE camera
+//                channel: the bounded directional weapon kick (_applyWeaponKick -> camera
+//                impactKick + the 1–2 frame hold), with no FOV punch, no trauma and no beat
+//                window (commit 8cad9e30298, player-caused camera silence). A hit ON the player
+//                keeps the full _applyKineticCrunch -> _trigger response (FOV punch/window).
 //                Presentation only — the beat channel never writes the world clock.
 //   light      — vfx's projectile:hit handler -> _onProjectileHit -> WeaponVfxPresenter.handleHit
 //                -> WeaponLightPool.spawn.
@@ -29,7 +31,9 @@ import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { applyFeatureConfigToMaps } from '../src/data/featureFlags.js';
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
-import { feel } from '../src/render/feel.js';
+import {
+  feel, WEAPON_KICK_WU_MAX, HS_CAMERA_HOLD_MAX, IMPACT_KICK_MOMENTUM_FLOOR,
+} from '../src/render/feel.js';
 import { vfx } from '../src/render/vfx.js';
 import { audio, AUDIO_RECIPE_BY_ID } from '../src/audio/audioSystem.js';
 
@@ -123,6 +127,16 @@ function wireLiveChannels(state, bus) {
   const originalPlay = audio.play;
   audio.play = (cueId, opts) => { played.push({ cueId, opts }); return { id: cueId }; };
 
+  // The camera controller is the beat channel's observable sink: the directional kick, its
+  // bounded hold, and (which a player-caused hit must never reach) trauma.
+  const camera = { kicks: [], holds: [], traumas: [] };
+  const priorCameraCtrl = state.render.cameraCtrl;
+  state.render.cameraCtrl = {
+    impactKick: (dirX, dirZ, magnitude) => camera.kicks.push({ dirX, dirZ, magnitude }),
+    hold: (seconds) => { camera.holds.push(seconds); return true; },
+    addTrauma: (value) => camera.traumas.push(value),
+  };
+
   const hitStopWrites = [];
   const timeEffects = feel.timeEffects;
   const originalSet = timeEffects.set.bind(timeEffects);
@@ -134,7 +148,9 @@ function wireLiveChannels(state, bus) {
   return {
     played,
     hitStopWrites,
+    camera,
     restore() {
+      state.render.cameraCtrl = priorCameraCtrl;
       audio.play = originalPlay;
       timeEffects.set = originalSet;
       audio.state = null;
@@ -214,18 +230,44 @@ for (const { id, expectHold } of DEFAULT_KIT) {
       assert.ok(contactTick - stun.tick <= MAX_ANSWER_TICKS,
         `${id}: hitstun receipt ${contactTick - stun.tick} ticks after contact`);
 
-      // Beat: feel's own combat:damage subscription ran the crunch through the modal/motion
-      // gates and landed the channel — the concussion cannon arms its authored 1–2 frame
-      // window, the repeater answers with its authored FOV tick. Either way the channel is
+      // Beat: feel's own combat:damage subscription answered the PLAYER-CAUSED contact through
+      // the one camera channel a player's own shot owns — the bounded directional kick plus its
+      // 1–2 frame hold (a repeater tick below the momentum floor earns neither) — and through
+      // nothing else: no FOV punch, no beat window, no trauma
+      // (the old crunch would stack a zoom punch onto the player's own aim). The channel is
       // presentation only: no automatic beat may ever write a time-effects request.
       assert.ok(!live.hitStopWrites.includes('feel:hit-stop'),
         `${id}: feel must never write the retired 'feel:hit-stop' request`);
+      // Whatever the camera did, a player-caused contact never shakes, punches or arms a window.
+      assert.deepEqual(live.camera.traumas, [],
+        `${id}: a player-caused contact must add no screen shake`);
+      assert.equal(feel._fovPunch, 0,
+        `${id}: a player-caused contact must not punch the FOV envelope`);
+      assert.equal(beatWindow(feel), 0,
+        `${id}: a player-caused contact must not arm an automatic beat window`);
       if (expectHold) {
-        assert.ok(feel._fovPunch > 0, `${id}: a heavy single-shot must punch the FOV envelope`);
-        assert.ok(beatWindow(feel) > 0, `${id}: a heavy single-shot arms its authored window`);
+        // The heavy single-shot clears the momentum floor, so it earns exactly one bounded
+        // directional kick riding a bounded 1-2 frame camera hold.
+        assert.equal(live.camera.kicks.length, 1,
+          `${id}: a heavy single-shot must answer with exactly one directional camera kick`);
+        const kick = live.camera.kicks[0];
+        assert.ok(kick.magnitude > 0 && kick.magnitude <= WEAPON_KICK_WU_MAX,
+          `${id}: the kick must be a positive, bounded displacement (got ${kick.magnitude})`);
+        assert.ok(Math.abs(kick.dirX - 1) < 1e-6 && Math.abs(kick.dirZ) < 1e-6,
+          `${id}: the kick follows the shot into the target (+X from the player at the origin)`);
+        assert.ok(live.camera.holds.length >= 1
+          && live.camera.holds.every((s) => s > 0 && s <= HS_CAMERA_HOLD_MAX),
+        `${id}: the kick rides a bounded camera hold (got ${live.camera.holds.join(', ') || 'none'})`);
       } else {
-        assert.ok(feel._fovPunch > 0 || beatWindow(feel) > 0,
-          `${id}: a repeater's authored tick still punches the beat channel`);
+        // The repeater's authored tick sits below the kick's momentum floor on purpose (a touch,
+        // not a kick): its camera answer is silence. Prove the silence is the floor doing its
+        // job, not a dead kick path — the heavy single-shot above proves the path is alive.
+        assert.ok(def.impulsePerHit * 1.25 < IMPACT_KICK_MOMENTUM_FLOOR,
+          `${id}: a repeater tick must sit below the kick floor for its camera silence to be authored`);
+        assert.deepEqual(live.camera.kicks, [],
+          `${id}: a below-floor repeater tick answers the camera with nothing`);
+        assert.deepEqual(live.camera.holds, [],
+          `${id}: a below-floor repeater tick holds nothing`);
       }
 
       // Light: vfx's own projectile:hit subscription admitted an event light.
@@ -243,6 +285,31 @@ for (const { id, expectHold } of DEFAULT_KIT) {
         `${id}: the requested cue ${wanted} must exist in the recipe map real play() consults`);
       assert.ok(live.played.some((entry) => entry.cueId === wanted),
         `${id}: combat:damage must request the layer-matched cue ${wanted} (got ${live.played.map((e) => e.cueId).join(', ') || 'nothing'})`);
+    } finally {
+      live.restore();
+    }
+  });
+}
+
+for (const { id } of DEFAULT_KIT) {
+  test(`${id}: a hit ON the player keeps the full FOV/beat response and no player-shot kick`, () => {
+    const { state, bus, router, player, target } = boot();
+    const def = weaponDef(id);
+    const live = wireLiveChannels(state, bus);
+    try {
+      const result = router({
+        attackerId: target.id,
+        targetId: player.id,
+        packet: buildWeaponDamagePacket({ defId: id }, def, def.dmg, def.damageType, { x: 0, z: 0 }),
+        origin: { kind: 'weapon', id, weaponId: id },
+      });
+      assert.equal(result.ok, true, `${id}: the real router must accept the hit on the player`);
+      assert.ok(feel._fovPunch > 0 || beatWindow(feel) > 0,
+        `${id}: getting hit keeps the kinetic-crunch beat (FOV punch or authored window)`);
+      assert.deepEqual(live.camera.kicks, [],
+        `${id}: the directional weapon kick belongs to the player's own shot, not to getting hit`);
+      assert.ok(!live.hitStopWrites.includes('feel:hit-stop'),
+        `${id}: feel must never write the retired 'feel:hit-stop' request`);
     } finally {
       live.restore();
     }

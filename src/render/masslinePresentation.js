@@ -448,6 +448,15 @@ export function resolveMasslineWhipGlow(tether = null) {
 }
 
 // ---------------------------------------------------------------------------
+// Row 492 "The Line you can see": the Line's OWN colour. The neutral cyan the swing trace, the
+// release annulus and the release wake already share (0.49, 0.89, 1) — the one value every
+// "this body is bound to the Line" read wears, so a glance down the rope names the latched body.
+// This is an effect-family colour, not a stage look value: moods (lookMoods.js) own the sector's
+// light rig and grade; the Line's signal colour is the same in every mood, like its physics.
+// ---------------------------------------------------------------------------
+export const MASSLINE_LINE_COLOR = Object.freeze({ r: 0.49, g: 0.89, b: 1.0 });
+
+// ---------------------------------------------------------------------------
 // Cable surface profile (VFX_TECHNIQUE_STANDARD §3 "Loaded Massline").
 //
 // The pure tension -> SHAPE mapping for the drawn line. Everything here is a geometric channel:
@@ -542,9 +551,15 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
   );
 
   // Cross-section. The authored relation is unchanged: a taut line reads THINNER than a slack one,
-  // and load swells both draws slightly so a heavy pull is legible in silhouette alone.
-  const coreHalfWidth = (taut ? 0.26 : 0.34) + load * 0.08 + whip * 0.08;
-  const sheathHalfWidth = 0.62 + 0.55 * load + whip * 0.45 + reel * 0.30;
+  // and load swells both draws so a heavy pull is legible in silhouette alone. The load terms are
+  // sized for the shipping chase camera (~144 WU, 50° vFOV, 60° tilt ≈ 6.4 px per in-plane world
+  // unit at 1600×1000): the ribbon shader's pow 9–18 cross-section concentrates the core into its
+  // middle ~15%, and at the old 0.08 load term that filament stayed under a pixel wide at FULL
+  // strain — the hairline the 2026-10-21 tape measured at play distance (frames 0042/0379). At
+  // load 1 the core filament now spans ≈2 px and the sheath ≈22 px (before the line-class width
+  // multiplier), while a quiet line keeps exactly the widths it always had.
+  const coreHalfWidth = (taut ? 0.26 : 0.34) + load * 0.80 + whip * 0.08;
+  const sheathHalfWidth = 0.62 + 1.10 * load + whip * 0.45 + reel * 0.30;
 
   // Load ferrules. Length is deliberately keyed off the CHORD against a fixed reference, never off
   // the live span count — otherwise adaptive tessellation would silently resize the hardware.
@@ -595,6 +610,35 @@ export function resolveMasslineCableProfile(input = {}, out = {}) {
   out.grip = grip;
   out.load = load;
   out.taut = taut;
+  return out;
+}
+
+/**
+ * Row 492: the strain → EMISSIVE law for the drawn cable, in one pure place.
+ *
+ * The cross-section widths above made strain readable in silhouette; this makes it read in light.
+ * The core (the white-hot filament) and the sheath (the coloured halo) both scale their intensity
+ * with the same working load read the widths use, multiplied by the force-neon energy so a taut
+ * line sits strictly above hull-neutral. vfx.js applies its own radiance/accessibility scales on
+ * top; `motionReduce`/`flashReduce` damp the neon energy exactly as resolveForceNeonScale does.
+ * `heat` is the sustained over-class winch warning read (lineProgression), halo only.
+ */
+export function resolveMasslineCableRadiance(input = {}, out = {}) {
+  const load = clamp01(finite(input.load, 0));
+  const whip = clamp01(finite(input.whip, 0));
+  const reel = clamp01(finite(input.reel, 0));
+  const heat = clamp01(finite(input.heat, 0));
+  const neon = resolveForceNeonScale('taut', {
+    load,
+    motionReduce: input.motionReduce === true,
+    flashReduce: input.flashReduce === true,
+  });
+  const energy = input.taut === true ? neon.energy : 1 + (neon.energy - 1) * 0.35;
+  // Core filament: hotter than the old 1.7·load law so a heavy swing's bright centre keeps a
+  // multi-pixel read through the chase camera's AA, not a sub-pixel shimmer (tape 2026-10-21).
+  out.core = (2.2 + load * 2.6 + reel * 1.5 + whip * 2.1) * energy;
+  out.sheath = (1.5 + load * 2.2 + reel * 1.2 + whip * 1.7 + heat * 0.6) * energy;
+  out.energy = energy;
   return out;
 }
 

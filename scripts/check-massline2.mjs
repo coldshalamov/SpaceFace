@@ -174,7 +174,7 @@ section('registry order: cloak<aiSlot, aiPorts<tumbleStates<weapons, masslineImp
   const names = registry.updateOrder.map((s) => s.name);
   // Live registry order must match the authoritative production update-order IDs.
   assert.deepEqual(
-    names.map((n) => (n === 'tacticalAI' || n === 'ai' ? 'aiSlot' : n === 'flight' ? 'flightSlot' : n)),
+    names.map((n) => (n === 'tacticalAI' || n === 'ai' ? 'aiSlot' : n === 'flight' ? 'flightSlot' : n === 'moralTrap' ? 'moralTrapSystem' : n)),
     [...PRODUCTION_UPDATE_ORDER],
     'createRegistry updateOrder must match PRODUCTION_UPDATE_ORDER (slot names normalized)',
   );
@@ -899,12 +899,12 @@ withFlags(true, () => {
     assert.equal(loopRate.value, 1, 'muted treatment must not alter loop rate');
 
     const audioSrc = readFileSync(new URL('../src/audio/audioSystem.js', import.meta.url), 'utf8');
-    const startLoopAt = audioSrc.indexOf('_startLoopVoice(recipeId, position, gain)');
+    const startLoopAt = audioSrc.indexOf('_startLoopVoice(recipeId,');
     const startLoop = audioSrc.slice(
       startLoopAt,
       audioSrc.indexOf('_endLoopVoice(v)', startLoopAt),
     );
-    assert.match(startLoop, /rate:\s*isPhysicalAudioBus\(busName\)/,
+    assert.match(startLoop, /isPhysicalAudioBus\(busName\)\s*\?\s*\(rt\._bulletTimePitch \|\| 1\)/,
       'continuous loops created after slow-time starts must inherit the active pitch');
   });
 

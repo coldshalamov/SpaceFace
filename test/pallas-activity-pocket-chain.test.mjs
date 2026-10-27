@@ -73,7 +73,7 @@ test('the activity-pocket registry includes Pallas Drift, and the older sectors 
   // sectors registering the same pocket id, which makes activityPocketById ambiguous.
   assert.equal(new Set(ACTIVITY_POCKETS.map((pocket) => pocket.id)).size, ACTIVITY_POCKETS.length,
     'every registered activity pocket id is unique across sectors');
-  assert.equal(activityPocketsForSector('sector_pallas_drift').length, 4);
+  assert.equal(activityPocketsForSector('sector_pallas_drift').length, 5);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
   // The discovery readers Ceres uses resolve Pallas pockets and slots too.
@@ -85,7 +85,7 @@ test('the activity-pocket registry includes Pallas Drift, and the older sectors 
     assert.ok(slot, `Pallas slot readable through the shared reader: ${slotId}`);
     assert.equal(slot.worldRecordSlotId, `pallas:activity:${slotId}`, 'Pallas durable slot namespace');
   }
-  assert.equal(activityRouteTopologyForSector(PALLAS_ACTIVITY_SECTOR_ID).length, 8);
+  assert.equal(activityRouteTopologyForSector(PALLAS_ACTIVITY_SECTOR_ID).length, 10);
   assert.ok(ACTIVITY_POCKETS_BY_ID.pallas_working_seam, 'Pallas joins the all-sector pocket index');
   assert.ok(ACTIVITY_POCKETS_BY_ID.pallas_hub_pocket, 'the hub is indexed');
   assert.ok(ACTIVITY_POCKETS_BY_ID.pallas_ambush_run, 'the ambush is indexed');
@@ -105,12 +105,12 @@ test('the activity-pocket registry includes Pallas Drift, and the older sectors 
   assert.equal(CERES_POCKET_ACTOR_SLOT_ORDER.length, 8);
   assert.equal(HELIOS_POCKET_ACTOR_SLOT_ORDER.length, 4);
   assert.equal(VESTA_POCKET_ACTOR_SLOT_ORDER.length, 8);
-  assert.equal(PALLAS_POCKET_ACTOR_SLOT_ORDER.length, 8);
+  assert.equal(PALLAS_POCKET_ACTOR_SLOT_ORDER.length, 10);
   assert.equal(CERES_ROUTE_TOPOLOGY.length, 8);
 });
 
 test('Pallas pockets obey the same band, shape and topology laws Ceres does', () => {
-  assert.equal(PALLAS_ACTIVITY_POCKETS.length, 4, 'seam, hub, ambush, grave');
+  assert.equal(PALLAS_ACTIVITY_POCKETS.length, 5, 'seam, hub, ambush, grave, den shoal');
   assert.equal(PALLAS_POCKET_ACTOR_SLOT_ORDER.length, PALLAS_AUTHORED_ACTIVITY_CAPACITY);
   assert.equal(new Set(PALLAS_POCKET_ACTOR_SLOT_ORDER).size, PALLAS_POCKET_ACTOR_SLOT_ORDER.length);
 
@@ -120,8 +120,8 @@ test('Pallas pockets obey the same band, shape and topology laws Ceres does', ()
     assert.equal(pocket.sectorId, PALLAS_ACTIVITY_SECTOR_ID);
     assert.equal(pocket.actorSlots.length, 2, `${pocket.id} declares exactly two pocket actors`);
 
-    // The anchor is authored geography, not a free-floating point: a zone centre or an asteroid
-    // field centre inside the sector the pocket claims.
+    // The anchor is authored geography, not a free-floating point: a zone centre, an asteroid
+    // field centre, or a station's own position inside the sector the pocket claims.
     const anchor = pocket.activityAnchor.localPos;
     if (pocket.activityAnchor.kind === 'zone') {
       const zone = pallasZones.find((z) => z.id === pocket.activityAnchor.zoneId);
@@ -133,6 +133,11 @@ test('Pallas pockets obey the same band, shape and topology laws Ceres does', ()
       assert.ok(field, `${pocket.id} anchor field exists`);
       assert.equal(anchor.x, field.center.x);
       assert.equal(anchor.z, field.center.z);
+    } else if (pocket.activityAnchor.kind === 'station') {
+      const station = pallasAnchors.stations.find((s) => s.id === pocket.activityAnchor.id);
+      assert.ok(station, `${pocket.id} anchor station exists`);
+      assert.equal(anchor.x, station.pos.x);
+      assert.equal(anchor.z, station.pos.z);
     } else {
       assert.fail(`${pocket.id} anchors on an unexpected kind: ${pocket.activityAnchor.kind}`);
     }
@@ -332,12 +337,12 @@ test('seed 4242: the shift is already under way when you arrive in Pallas Drift'
   const total = (state.traffic.freighters || []).length;
   assert.ok(total >= PALLAS_AUTHORED_ACTIVITY_CAPACITY, `chain plus ambient: ${total} bodies`);
 
-  // Deterministic: the same seed produces the same eight authored identities.
+  // Deterministic: the same seed produces the same ten authored identities.
   const ids = PALLAS_POCKET_ACTOR_SLOT_ORDER.map((slotId) => {
     const entity = bySlot.get(slotId).entity;
     return `${slotId}#${entity.data.worldRecordId}`;
   });
-  assert.equal(new Set(ids).size, 8, 'eight distinct durable identities');
+  assert.equal(new Set(ids).size, 10, 'ten distinct durable identities');
 });
 
 test('the marks sit on the authored marks: the flying jobs are the authored routes', () => {

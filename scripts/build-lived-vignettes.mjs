@@ -1465,6 +1465,23 @@ function emitAmbient(row) {
     writeFileSync(join(DIR, row.file), bellText);
     return;
   }
+  // Sweep Window alone uses the canonical machinery clock and arrival-earned settlement.
+  // Keep this separate from other scenes' emitter/runtime specializations.
+  if (row.id === 'sweep_window') {
+    const receipt = 'The runner reached the far marker on your count. Crossing filed.';
+    phases.find((phase) => phase.id === 'say_a').line = receipt;
+    body.receipts.a = receipt;
+    const sweepText = `// ${title} — lived vignette. External-only: ambient world scene.\n`
+      + `import { deepFreeze, defineEncounter } from './catalog.js';\n`
+      + `import { createSweepWindowRuntime } from '../../systems/sweepWindowRuntime.js';\n\n`
+      + `export const spec = ${JSON.stringify(spec, null, 2)};\n\n`
+      + `export const encounterOrder = ${row.order};\n`
+      + `export const trigger = deepFreeze(${JSON.stringify(trigger, null, 2)});\n`
+      + `export const runtime = createSweepWindowRuntime(spec);\n`
+      + `export default defineEncounter(trigger, ${JSON.stringify(body, null, 2)});\n\n`;
+    writeFileSync(join(DIR, row.file), sweepText);
+    return;
+  }
   writeFileSync(join(DIR, row.file), text);
 }
 

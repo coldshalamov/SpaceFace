@@ -410,8 +410,7 @@ export class FieldForcePresentation {
       }
       const r=out[at];
       this._position(s);
-      const reach=(kind==='cone'||kind==='sheet')?s.radius*0.42:0;
-      r.active=true;r.score=score;r.x=this.local.x+Math.cos(s.angle)*reach;r.z=this.local.z+Math.sin(s.angle)*reach;r.radius=s.radius;r.level=level;
+      r.active=true;r.score=score;r.x=this.local.x;r.z=this.local.z;r.radius=s.radius;r.level=level;
       r.color.copy(COLORS.get((BURST_STYLE[s.kind]||sig).color)||COLORS.get(sig.color));
     }
     return out;

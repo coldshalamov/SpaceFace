@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e1e6eff0e4482426d35ea716dc016f42aeee8237e789fe9938de2b6d0e868d1f",
+  "contentHash": "0f8b8e7eb8011bf0d93c13db942f8fabc0d9214ae91a3eec1135e2704bd114a4",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           2.9445669651031494,
-          0.24179381132125854,
-          0.9000912308692932
+          0.24179381519536947,
+          0.900091149875409
         ],
         "min": [
           -1,
-          -0.08179381489753723,
-          -1.500091314315796
+          -0.08179381877164815,
+          -1.5000912333219116
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f58fd8a567c37e94b68e01632d5d37d8b3971bcb7dbba35e6c06dd1936c9b86c",
+      "geometryHash": "53aad8ecba52201b55b52e3b2742fe69ea9f3b34dd2dced4e60c268212f34262",
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-hull-merged.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           2.7661311626434326,
-          0.28991058468818665,
-          0.339153915643692
+          0.28991058310448065,
+          0.3391539411789898
         ],
         "min": [
           -0.7411310076713562,
-          0.11008940637111664,
-          -1.0391539335250854
+          0.11008940795482262,
+          -1.0391539590603833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d77ee46ba99e4272db87744179d69b729bbb31c2ae842f8854460c8cc1a4bab3",
+      "geometryHash": "d2216008bb3a00cb8b44e6dd4befdfd607957a08d7b3af55ca92fe3bfede2b96",
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-mechanical-merged.primitive.0",
       "indexCount": 9504,
       "indexed": true,
@@ -108,21 +108,21 @@
     {
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-hull-merged",
       "localTransform": [
-        1,
+        1.9722834825515747,
         0,
         0,
         0,
         0,
-        1,
+        1.9722834825515747,
         0,
         0,
         0,
         0,
-        1,
+        1.9722834825515747,
         0,
-        0,
-        0,
-        0,
+        0.9722834825515747,
+        0.07999999821186066,
+        -0.30000004172325134,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -136,42 +136,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-armor-plates.body",
       "worldTransform": [
-        1,
+        1.9722834825515747,
         0,
         0,
         0,
         0,
-        1,
+        1.9722834825515747,
         0,
         0,
         0,
         0,
-        1,
+        1.9722834825515747,
         0,
-        0,
-        0,
-        0,
+        0.9722834825515747,
+        0.07999999821186066,
+        -0.30000004172325134,
         1
       ]
     },
     {
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-mechanical-merged",
       "localTransform": [
-        1,
+        1.7536310851573944,
         0,
         0,
         0,
         0,
-        1,
+        1.7536310851573944,
         0,
         0,
         0,
         0,
-        1,
+        1.7536310851573944,
         0,
-        0,
-        0,
-        0,
+        1.0125000774860382,
+        0.19999999552965164,
+        -0.3500000089406967,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -185,21 +185,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-armor-plates.body",
       "worldTransform": [
-        1,
+        1.7536310851573944,
         0,
         0,
         0,
         0,
-        1,
+        1.7536310851573944,
         0,
         0,
         0,
         0,
-        1,
+        1.7536310851573944,
         0,
-        0,
-        0,
-        0,
+        1.0125000774860382,
+        0.19999999552965164,
+        -0.3500000089406967,
         1
       ]
     },
@@ -262,37 +262,37 @@
       "uri": "greeble_armor_plates.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 296148,
-    "sha256": "509cee83fbeb5b529d312d67a331d98cf50ba94d583288a1e39e185e80e6842e",
+    "bytes": 261080,
+    "sha256": "56036c4a86a2d4770ac0efef3ae415c029ce43a6c7933df46231aa8edd5ddf77",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.9722834825515747,
-        0.10405838489532471,
+        0.10405838216641625,
         -0.30000004172325134
       ],
       "max": [
         2.9445669651031494,
-        0.28991058468818665,
-        0.9000912308692932
+        0.28991058310448065,
+        0.900091149875409
       ],
       "min": [
         -1,
-        -0.08179381489753723,
-        -1.500091314315796
+        -0.08179381877164815,
+        -1.5000912333219116
       ],
       "size": [
         3.9445669651031494,
-        0.3717043995857239,
-        2.400182545185089
+        0.3717044018761288,
+        2.4001823831973206
       ]
     },
     "hidden": [],
@@ -319,21 +319,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9722834825515747,
           0,
           0,
           0,
           0,
-          1,
+          1.9722834825515747,
           0,
           0,
           0,
           0,
-          1,
+          1.9722834825515747,
           0,
-          0,
-          0,
-          0,
+          0.9722834825515747,
+          0.07999999821186066,
+          -0.30000004172325134,
           1
         ],
         "name": "greeble_armor_plates_Material_Hull_Merged",
@@ -345,21 +345,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7536310851573944,
           0,
           0,
           0,
           0,
-          1,
+          1.7536310851573944,
           0,
           0,
           0,
           0,
-          1,
+          1.7536310851573944,
           0,
-          0,
-          0,
-          0,
+          1.0125000774860382,
+          0.19999999552965164,
+          -0.3500000089406967,
           1
         ],
         "name": "greeble_armor_plates_Material_Mechanical_Merged",
@@ -373,20 +373,20 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
   },
-  "runtimeHash": "49366f5ff7b397442d45c601c2cf134e9d96314f260c4b175f15cde16f1742d8",
+  "runtimeHash": "77e5e6b01d6af115611f54b1bc320915a1027dd0265c1c2e87c1270bc403d3db",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           2.9445669651031494,
-          0.28991058468818665,
-          0.9000912308692932
+          0.28991058310448065,
+          0.900091149875409
         ],
         "min": [
           -1,
-          -0.08179381489753723,
-          -1.500091314315796
+          -0.08179381877164815,
+          -1.5000912333219116
         ]
       },
       "id": "sf.render.greeble-armor-plates.body",

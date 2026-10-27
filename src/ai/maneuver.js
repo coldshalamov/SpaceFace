@@ -166,9 +166,15 @@ function queuedGapSlot(self, anchor, ships, obstacles) {
 }
 
 export const MANEUVER_SPEED_CAPS = Object.freeze({
-  interceptSpeed: 72,
-  approachSpeed: 62,
-  orbitSpeed: 68,
+  // Row 491 (build_map §33.2): everyday enemies must cruise ≥70% of the player's average
+  // (~124 WU/s for a baseline Hitch, measured 2026-10-21 at ~50 vs the player's ~117). Light
+  // hulls (motion scale 1.0) reach interceptSpeed × temperament (0.88+0.24·verve ≈ 0.97–1.12),
+  // so 100 keeps the everyday pass at ~97–112 — a pass is possible while the player's own
+  // cruise (124) and boost ceiling (172) still outrun it. Heavier hulls scale down through
+  // deriveEnemyMotionScale (drifter/bastion ≈ 0.57 → ~57): proportionally lower, still closing.
+  interceptSpeed: 100,
+  approachSpeed: 84,
+  orbitSpeed: 92,
   retreatSpeed: 120,
   escapeSpeed: 140,
 });
@@ -211,14 +217,16 @@ const DEFAULTS = Object.freeze({
   holdSpeed: 12,
   patrolSpeed: 32,
   formationSpeed: 48,
-  screenSpeed: 58,
+  screenSpeed: 76,
   orbitSpeed: MANEUVER_SPEED_CAPS.orbitSpeed,
   approachSpeed: MANEUVER_SPEED_CAPS.approachSpeed,
-  // STRICT overnight: calmer intercept so hostiles read as intentional pilots, not zip-delete.
+  // Row 491: the intercept budget is the everyday cruise floor (see MANEUVER_SPEED_CAPS above).
+  // The old 72 "calm intercept" read as ships that could never make a pass; readability is now
+  // owned by the reversal governor + telegraphed doctrine cycle, not by slowness.
   interceptSpeed: MANEUVER_SPEED_CAPS.interceptSpeed,
   retreatSpeed: MANEUVER_SPEED_CAPS.retreatSpeed,
   escapeSpeed: MANEUVER_SPEED_CAPS.escapeSpeed,
-  clearDeadlockSpeed: 82,
+  clearDeadlockSpeed: 104,
   maxOrbitClosingSpeed: 24,
   // SF-2b (#4): the 24 WU/s orbit closing cap is a ring-keeping brake. Applied to a hull far
   // outside its ring it parked strikers at ~290 WU for the whole strike window, so beyond
@@ -267,6 +275,12 @@ const EMPTY_TRAJECTORY = Object.freeze([]);
 // A direction change sharper than REVERSAL_DOT (≈120°) counts as a reversal.
 export const REVERSAL_WINDOW_TICKS = 150;
 export const REVERSAL_DOT = -0.5;
+// Row 491 wind-up tell: while a doctrine holds its telegraph cue the hull settles onto the
+// attack line at this fraction of its yaw-rate authority, and its input slew calms by the
+// inverse of WINDUP_SLEW_CALM. Reduced turn + brief straightening — the readable pre-attack
+// posture that pairs with the engine_flare telegraph glow.
+export const WINDUP_TURN_SCALE = 0.65;
+export const WINDUP_SLEW_CALM = 1.5;
 
 export class ManeuverPlanner {
   constructor({ seed = 1, trace = null, config = {} } = {}) {
@@ -709,11 +723,17 @@ export class ManeuverPlanner {
     }
 
     const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+    // Row 491 wind-up tell: during the doctrine's telegraph cue the hull settles onto the
+    // attack line — reduced turn authority and calmer inputs (straightening), never an
+    // emergency lane (choreographed hulls fly authored beats, not the tell).
+    const windupTell = !choreo && intent.windup === true;
     const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance
       ? 0
-      : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale);
-    // Poise scales control slew: a calm pilot leans into inputs, a twitchy one snaps.
-    const poiseSlew = 1.18 - 0.7 * temperament.poise;
+      : yawRateTorqueFor(angleError, measuredWy, headingRate, kind, this.config, hullScale,
+        windupTell ? WINDUP_TURN_SCALE : 1);
+    // Poise scales control slew: a calm pilot leans into inputs, a twitchy one snaps. A wind-up
+    // leans further — the tell is a steadying, not a twitch.
+    const poiseSlew = (1.18 - 0.7 * temperament.poise) / (windupTell ? WINDUP_SLEW_CALM : 1);
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
@@ -1499,15 +1519,18 @@ function strafeAuthorityForKind(kind) {
   }
 }
 
-function yawRateTorqueFor(angleError, measuredWy, headingRate, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {
+function yawRateTorqueFor(angleError, measuredWy, headingRate, kind, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE, turnScale = 1) {
   if (Math.abs(angleError) < config.yawDeadband && Math.abs(measuredWy) < 0.08) return 0;
   const yaw = hullScale && hullScale.yaw > 0 ? hullScale.yaw : 1;
   const limit = yawLimitForKind(kind) * yaw;
+  // turnScale < 1 is the row-491 wind-up tell: the whole rate budget settles by that fraction,
+  // so the nose eases onto the attack bearing instead of snapping onto it.
+  const rateTarget = config.yawRateTarget * (turnScale > 0 ? turnScale : 1);
   // Feedforward is capped at the same slew bound as the proportional channel: tracking a racing
   // bearing may spend the full rate budget, but it cannot re-pump a whirlpool — the commanded
   // rate still collapses to the proportional term the moment the heading stops moving.
-  const track = clamp(Number.isFinite(headingRate) ? headingRate : 0, -config.yawRateTarget, config.yawRateTarget);
-  const desiredWy = track + clamp(angleError / config.yawSoftAngle, -1, 1) * config.yawRateTarget;
+  const track = clamp(Number.isFinite(headingRate) ? headingRate : 0, -rateTarget, rateTarget);
+  const desiredWy = track + clamp(angleError / config.yawSoftAngle, -1, 1) * rateTarget;
   return clamp((desiredWy - measuredWy) * config.yawRateGain, -limit, limit);
 }
 

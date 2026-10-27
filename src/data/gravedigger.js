@@ -27,11 +27,15 @@ export const GRAVEDIGGER = Object.freeze({
   gardenMax: 10,
   teachAfter: 3,
   compostFee: 120,
-  // story flags: the garden ledger, the serial, the lesson, the durability.
+  // story flags: the garden ledger, the serial, the lesson, the durability —
+  // and the memorial ledger itself, which rides the flags bag because the save
+  // envelope serializes state.story (the missions slot) and never names
+  // state.gravedigger.
   gardensFlag: 'gravedigger_gardens',
   serialFlag: 'gravedigger_serial',
   taughtFlag: 'gravedigger_taught',
   goneFlag: 'gravedigger_gone',
+  ledgerFlag: 'gravedigger_ledger',
   sender: 'GRAVEDIGGER / UG-4',
   callsign: 'UG-4',
   announce: 'UG-4 on the gulf floor. The wrecks belong to the ground. I only do the digging.',

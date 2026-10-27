@@ -914,6 +914,28 @@ export const save = {
       // The Verge border record (paid permits, incident ledger, receipt dedupe keys,
       // court, live marks) rides the same boundary — additive slot, absent owner → {}.
       ['vergeCourt', () => this._callSerialize('vergeCourt') || {}],
+      // The Frontier board (homestead recs, leads, debts, disputes, calls,
+      // vendettas, paid stamps, planted sites) rides the same boundary. The plan
+      // key IS the envelope key — 'frontier', matching _serializeDataSteps and
+      // the data.frontier the restore lane reads.
+      ['frontier', () => this._callSerialize('frontierHomesteads') || {}],
+      // The Helix docket (deeds, standing, desk ledger, notices, fines, warrants,
+      // precedents, paid stamps, manifest) rides the same boundary — without it a
+      // Continue launders every open instrument and re-pays every precedent.
+      // Same slot as _serializeDataSteps; absent key restores a fresh bag.
+      ['helix', () => this._callSerialize('faction_helix') || {}],
+      // The Vael ledger (lien book, invoices, writs, clauses, debtors, stains,
+      // paid stamps) rides the same boundary — without it a Continue launders
+      // every unsettled lien and re-pays every once-only dividend.
+      // Same slot as _serializeDataSteps; absent key restores a fresh ledger.
+      ['vael', () => this._callSerialize('vaelLiens') || {}],
+      // Meridian's open obligations, the Archive's marks and errands, and Tallyho's
+      // hunts and bets ride the same boundary — a Continue must not wipe a warrant,
+      // launder a black-file mark, or keep a bet's charge while dropping the bet.
+      // Same slots as _serializeDataSteps; an absent key restores a fresh bag.
+      ['meridian', () => this._callSerialize('faction_meridian') || {}],
+      ['archive', () => this._callSerialize('archiveRedaction') || {}],
+      ['tallyho', () => this._callSerialize('tallyho') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
@@ -1095,6 +1117,21 @@ export const save = {
     // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
     data.vergeCourt = this._callSerialize('vergeCourt') || {};
     yield 'serialize:vergeCourt';
+    data.frontier = this._callSerialize('frontierHomesteads') || {};
+    yield 'serialize:frontierHomesteads';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.helix = this._callSerialize('faction_helix') || {};
+    yield 'serialize:helix';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.vael = this._callSerialize('vaelLiens') || {};
+    yield 'serialize:vaelLiens';
+    // Same slots as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.meridian = this._callSerialize('faction_meridian') || {};
+    yield 'serialize:meridian';
+    data.archive = this._callSerialize('archiveRedaction') || {};
+    yield 'serialize:archive';
+    data.tallyho = this._callSerialize('tallyho') || {};
+    yield 'serialize:tallyho';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
     data.reactiveMatter = this._callSerialize('reactiveMatter');
@@ -6798,6 +6835,16 @@ export const save = {
       this._callDeserialize('factions', data.factions);
       // Absent on older saves — the verge deserialize heals a missing bag to fresh state.
       this._callDeserialize('vergeCourt', data.vergeCourt);
+      // Absent on older saves — the frontier deserialize heals a missing bag to fresh state.
+      this._callDeserialize('frontierHomesteads', data.frontier);
+      // Absent on older saves — the helix deserialize heals a missing bag to a fresh docket.
+      this._callDeserialize('faction_helix', data.helix);
+      // Absent on older saves — the vael deserialize heals a missing bag to a fresh ledger.
+      this._callDeserialize('vaelLiens', data.vael);
+      // Absent on older saves — each deserialize heals a missing bag to a fresh book.
+      this._callDeserialize('faction_meridian', data.meridian);
+      this._callDeserialize('archiveRedaction', data.archive);
+      this._callDeserialize('tallyho', data.tallyho);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';

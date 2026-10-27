@@ -589,9 +589,11 @@ export const trafficJobOps = {
     const status = this._passengerLinerStatusLabel(itinerary);
     entity.data.passengerLinerService = PASSENGER_LINER_SERVICE.id;
     entity.data.passengerLinerState = itinerary.state;
-    entity.data.hitchable = true;
+    entity.data.hitchable = massline2Flag('hitchhiking') === true;
     entity.data.trafficLabel = `HELIOS CIVIC LINER · ${status} · ${route}`;
-    entity.data.scanLabel = `${entity.data.trafficLabel} · HITCHABLE`;
+    entity.data.scanLabel = entity.data.hitchable
+      ? `${entity.data.trafficLabel} · HITCHABLE`
+      : entity.data.trafficLabel;
     if (!entity.data.name) entity.data.name = 'Helios Civic Liner';
     if (!entity.data.callsign) entity.data.callsign = 'HELIOS-LINE';
     rec.passengerLinerService = PASSENGER_LINER_SERVICE.id;
@@ -626,9 +628,14 @@ export const trafficJobOps = {
       delete rec.itinerary;
       rec.nextTradeT = Number.isFinite(rec.nextTradeT) ? rec.nextTradeT : TRADE_INTERVAL_S;
     }
-    data.hitchable = true;
+    if (massline2Flag('hitchhiking')) {
+      data.hitchable = true;
+      data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+    } else {
+      delete data.hitchable;
+      data.scanLabel = 'EXPRESS LINER';
+    }
     data.trafficLabel = TRAFFIC_ROLES.express.label;
-    data.scanLabel = 'EXPRESS LINER · HITCHABLE';
   },
 
   _isPassengerLinerServiceCandidate(rec, entity) {
@@ -1117,6 +1124,12 @@ export const trafficJobOps = {
     ent.data.gimmick = contact.gimmick;
     ent.data.trafficLabel = contact.callsign;
     ent.data.scanLabel = contact.callsign;
+    // A hitchable express keeps teaching the affordance under her callsign — the contact stamp
+    // otherwise rewrites 'EXPRESS LINER · … · HITCHABLE' down to a bare name and the first-hour
+    // hitch read disappears with it.
+    if (ent.data.hitchable === true && !/HITCHABLE/i.test(ent.data.scanLabel)) {
+      ent.data.scanLabel = `${contact.callsign} · HITCHABLE`;
+    }
     if (contact.hail) ent.data.hail = contact.hail;
     if (contact.memoryHook) ent.data.memoryHook = contact.memoryHook;
     if (!ent.data.ai) ent.data.ai = {};

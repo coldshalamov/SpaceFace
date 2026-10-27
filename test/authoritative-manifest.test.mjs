@@ -175,8 +175,11 @@ test('production init + update order lengths match the live browser baseline', (
   // 259 -> 260 init / 202 -> 203 update: packet 06 also registers pylonHud — the DOM-guarded
   // next-operation label and wall-state pill (massSeedHud / gyreHud sibling).
   // Current master also registers the furnaceIntake owner; preserve it through integration.
+  // 204 -> 205 update (init unchanged 261): the tallyho hunt board's expanded
+  // quarry/rival census joins the 2 Hz calendar cohort between mop and tare —
+  // it was init-only when the system had no update(); the hunt layer ticks now.
   assert.equal(PRODUCTION_INIT_ORDER.length, 261);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 204);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 205);
   assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {

@@ -229,11 +229,12 @@ test('NXI-073 — a collected supply stays spent through the refit interval', ()
   const supply = Object.create(swarmSupply);
   supply.init({ state: h.state, bus: h.bus, helpers: h.helpers });
   try {
-    // A cohort kill drops one cell; the player scoops it — index 0 enters the spent ledger.
-    const victim = h.helpers.spawnEntity({
-      type: 'fighter', pos: { x: 30, z: 10 }, data: { runCohort: 'survival' },
-    });
+    // Cohort kills drop a cell; the player scoops it — index 0 enters the spent ledger.
+    // One authoritative death per body (INF-034), so each kill needs its own hull.
     for (let i = 0; i < 14; i++) {
+      const victim = h.helpers.spawnEntity({
+        type: 'fighter', pos: { x: 30 + i, z: 10 }, data: { runCohort: 'survival' },
+      });
       h.bus.emit('entity:killed', { id: victim.id, pos: victim.pos });
     }
     const cell = h.state.entityList.find((e) => e && e.type === 'pickup' && e.data && e.data.kind === SWARM_REPAIR_KIND);

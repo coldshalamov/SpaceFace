@@ -570,7 +570,7 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
       });
       if (text) {
         layer.appendChild(rise(circularText(hx, hy, R + 38, text, {
-          startDeg: bottom ? 270 : 90, size: 10, className: 'orr-micro', anchor: 'middle', upright: bottom,
+          startDeg: bottom ? 270 : 90, size: 12, className: 'orr-micro', anchor: 'middle', upright: bottom,
         }), 200));
       }
     }

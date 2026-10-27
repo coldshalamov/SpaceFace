@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d1c169dd2aa0e41131cca9eea87c75317675e96f86f6e9025a73ac7fa252e9d",
+  "contentHash": "60a843dd393401d14b24aa11de4acecaa2747bec546ef28e312ed47395ca7b25",
   "dynamicGroups": [
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port.dynamic",
@@ -511,17 +511,17 @@
       "bounds": {
         "max": [
           72.29350280761719,
-          11.097285270690918,
-          8.298559188842773
+          11.097285223597892,
+          8.298559386463813
         ],
         "min": [
           -1,
-          0.0027152150869369507,
-          -8.298559188842773
+          0.002715262179963318,
+          -8.298559386463813
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e53cd6b636c92924cc566090b77c1ccdf7404d9797a91c94ef8c6d010d710da0",
+      "geometryHash": "18d5d52daae3651b4b4400f2b3743f6e492235a13739c1c9ba46e875243b9260",
       "id": "sf.render.charon-colony-service-barge.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -536,17 +536,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.093689918518066,
-          8.301018714904785
+          11.093690189754508,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0affbda1fe060ab872b29332a46b567403999463fc8105b5e3349bc68cec367",
+      "geometryHash": "8c576d50fd4cea9dc4ed353d2eda96c9d5b25df4b0e8abc7961f7ca808e0e4c8",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-armor.primitive.0",
       "indexCount": 12456,
       "indexed": true,
@@ -561,17 +561,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.756001472473145,
-          5.60039758682251
+          10.756001140926742,
+          5.600397505947773
         ],
         "min": [
           1.7519989013671875,
-          5.861499786376953,
-          -4.2483978271484375
+          5.861500117923356,
+          -4.2483977462737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6fcb704a5d4e5af515e49b908f9f8ffef898abfe138bab6ac01b1a74cd587daa",
+      "geometryHash": "8f246833c3a944b3c41c5679e8585ed3264b6f259fbffee35a6df85acd147a62",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -586,17 +586,17 @@
       "bounds": {
         "max": [
           1.720001220703125,
-          7.9449944496154785,
-          4.4400315284729
+          7.944994293257654,
+          4.440031587027956
         ],
         "min": [
           -0.8800010681152344,
-          6.730887413024902,
-          2.4999682903289795
+          6.730887569382727,
+          2.4999682317739236
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6033235186aa54b665a312d96868c5e3798f47db74fa51dbc19656cacbeddf77",
+      "geometryHash": "d5b9cc6afcb2b10934bbae1ed87ba7022b3fdffeced99182ed21da60ee367132",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 2364,
       "indexed": true,
@@ -610,18 +610,18 @@
     {
       "bounds": {
         "max": [
-          3.899733543395996,
-          8.389938354492188,
+          3.8997335758436646,
+          8.389938551807628,
           5.987500190734863
         ],
         "min": [
-          0.10026457905769348,
-          6.750061988830566,
+          0.10026454661002493,
+          6.750061791515126,
           -1.6800000667572021
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a95b2be1ed7e43fc65f6d6187179083f53b3774f95e3ead425173ab4aa1a6eca",
+      "geometryHash": "a770590194074909795cc4c019bb870d606900838eb1b0e7fa31da3fc5e65fbd",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-canopy.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -685,18 +685,18 @@
     {
       "bounds": {
         "max": [
-          70.00000762939453,
-          3.0994138717651367,
+          70.00000922619581,
+          3.0994139580533515,
           8.100000381469727
         ],
         "min": [
-          66.99999237060547,
-          0.7005858421325684,
+          66.99999077380419,
+          0.7005857558443536,
           -8.100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fb8c8768fea50cbdd3294e4d3acfad7538371614ed76b902458c6f628145d8d",
+      "geometryHash": "0ace2ce909a89dbd5d45f8e228a2ec4a93c6ea7a78e541ca27acd96c4c9a1b76",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -711,17 +711,17 @@
       "bounds": {
         "max": [
           72.17097473144531,
-          11.098254203796387,
-          5.951364040374756
+          11.098254127985872,
+          5.951363712335472
         ],
         "min": [
           -0.48614501953125,
-          4.401745319366455,
-          -6.2886128425598145
+          4.40174539517697,
+          -6.288612514520531
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b780cad00b3e5b032a9db7b96caf68e16f7da79c94e2e7f9a5d1c1f7c9a0b08f",
+      "geometryHash": "98301b2a6921aafa3e9906bb1e7f4207dbec766904c8625845c3569f461f5952",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull.primitive.0",
       "indexCount": 2604,
       "indexed": true,
@@ -735,18 +735,18 @@
     {
       "bounds": {
         "max": [
-          4.125085353851318,
-          8.839998245239258,
+          4.125085291523563,
+          8.83999824435884,
           5.944999694824219
         ],
         "min": [
-          -0.6500868797302246,
-          4.1500020027160645,
+          -0.6500868174024697,
+          4.150002003596482,
           -4.315874099731445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1855a5bc26cfa7979775cc17a23153d07e8cd5a9aae042e8f93b9b8b5a428c0d",
+      "geometryHash": "78af34b205e8edd28a529fb9ee6dd972b2cfdc7556b955174dd1edf8786cc5a6",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanical.primitive.0",
       "indexCount": 5580,
       "indexed": true,
@@ -761,17 +761,17 @@
       "bounds": {
         "max": [
           72.30000305175781,
-          9.69937515258789,
-          6.99832820892334
+          9.699374935230214,
+          6.998327834258296
         ],
         "min": [
           -0.7299995422363281,
-          1.8006250858306885,
-          -6.99832820892334
+          1.8006253031883652,
+          -6.998327834258296
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55d6cbe8017a4bc2df767f6393432ae2b172a8dd27287066b6787fb734bcb421",
+      "geometryHash": "81130f1dbcf0afc84f0b1c47bf7eed5bf19d6fa12de847792b6a5fb6a3946ca5",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 7512,
       "indexed": true,
@@ -786,17 +786,17 @@
       "bounds": {
         "max": [
           56.5,
-          5.999031066894531,
-          4.999298095703125
+          5.999031037324137,
+          4.999298074282052
         ],
         "min": [
           5.5,
-          5.500968933105469,
-          -4.999298095703125
+          5.500968962675863,
+          -4.999298074282052
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b1d552cdd1cb696c041fddef3085497f0cab06971a28ca76b488f7eeb96bc7d",
+      "geometryHash": "1e50606e815a4f9dc421aa8b7e48a540d47ad588e601467ff8d82ae9e2dddf38",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-stone.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -811,17 +811,17 @@
       "bounds": {
         "max": [
           68,
-          7.544286251068115,
-          7.201147556304932
+          7.544286319889861,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.750713586807251,
-          -7.201147556304932
+          3.7507135179855053,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33875112656d2d75eb532026f6b99bf987493efd1b14d8ec1ae1d2e3bf23fad6",
+      "geometryHash": "f244d8a17de5a19f654590064c7e8058ac322704b2e893a8da17667f30cc710b",
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-warning.primitive.0",
       "indexCount": 924,
       "indexed": true,
@@ -836,17 +836,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.093689918518066,
-          8.301018714904785
+          11.093690189754508,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c83479efc7810eec9d98a0361ad3a37df6a5ea6e976f7684a1e105818ee758b",
+      "geometryHash": "98c07757f22d97ac34164a9117e91e2a15f82338c3d0838d93d1c0a1dd069e1a",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-armor.primitive.0",
       "indexCount": 6246,
       "indexed": true,
@@ -861,17 +861,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.75601577758789,
-          5.600278854370117
+          10.756015740101013,
+          5.600278830533353
         ],
         "min": [
           1.7515678405761719,
-          5.861484527587891,
-          -4.248577117919922
+          5.861484565074768,
+          -4.248577094083157
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74a7816fa9e9ff022ad146af45a3c1235ae5a45db7209d684e97f06dd613b346",
+      "geometryHash": "e5781784b0c6315027cf1ef1d9f696acebe8922a5fbdd315d7c5a6f00c54e90c",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -886,17 +886,17 @@
       "bounds": {
         "max": [
           1.7175178527832031,
-          7.9400739669799805,
-          4.435196876525879
+          7.940074137431766,
+          4.435196902410889
         ],
         "min": [
           -0.8752479553222656,
-          6.733461380004883,
-          2.503065347671509
+          6.733461209553098,
+          2.5030653217864995
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3893241e28b3c44f5a53573d533c4cdb28527cd351d98cfe7ac359d390a27653",
+      "geometryHash": "30a8e473dfed4a575d549937b7251adb18d78506ea04fe6ff5a04c43c84d462c",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -910,18 +910,18 @@
     {
       "bounds": {
         "max": [
-          3.899733543395996,
-          8.389938354492188,
+          3.8997335758436646,
+          8.389938551807628,
           5.987500190734863
         ],
         "min": [
-          0.10026457905769348,
-          6.750061988830566,
+          0.10026454661002493,
+          6.750061791515126,
           -1.6800000667572021
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbecee03f323e183c699d4dd23725904420da7c19a71ca8eca20e0997e844917",
+      "geometryHash": "5497b4613c813ae1bb2e9c71c88c9afad61a565195187ec420d902e0f8047d62",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-canopy.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -985,18 +985,18 @@
     {
       "bounds": {
         "max": [
-          69.99514770507812,
-          3.0957183837890625,
+          69.99514586793008,
+          3.095718280341797,
           8.094786643981934
         ],
         "min": [
-          67.0048599243164,
-          0.7042814493179321,
+          67.00486176146445,
+          0.7042815527651975,
           -8.095338821411133
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc4a238026bb2e3c2757c21ee30ccda5a37adc60b95de1beb82c79a1ecf7d972",
+      "geometryHash": "3d43bb33c2d5724b3270ee21c4b913a78f64a46d6e77c0d552dd0ae8cb18e4f6",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1011,17 +1011,17 @@
       "bounds": {
         "max": [
           72.17097473144531,
-          11.098254203796387,
-          5.951364040374756
+          11.098254127985872,
+          5.951363712335472
         ],
         "min": [
           -0.48614501953125,
-          4.401745319366455,
-          -6.2886128425598145
+          4.40174539517697,
+          -6.288612514520531
         ]
       },
       "drawMode": 4,
-      "geometryHash": "601f4aa5f0fbadd71c7924e104ac7b8a2cea5d1d45b6ce7391ee259b23de4870",
+      "geometryHash": "0d00f7187248dc7d503d4968e0b3fd6ab3b2a25a512c9e31d3cad6daf16c76fd",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull.primitive.0",
       "indexCount": 1830,
       "indexed": true,
@@ -1035,18 +1035,18 @@
     {
       "bounds": {
         "max": [
-          4.12033224105835,
-          8.838188171386719,
+          4.120332200608248,
+          8.838188041979864,
           5.9424357414245605
         ],
         "min": [
-          -0.6497834920883179,
-          4.153224945068359,
+          -0.6497834516382159,
+          4.153225074475214,
           -4.315645217895508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfb42464524454ae45fef1934472d26e513cbe52e2b7f76e7c17ffdbbc8dae56",
+      "geometryHash": "75beb34c9f7dcdc8090d3511b259da072cc0b26bd4cfc59e4e1a13a1252d4a81",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanical.primitive.0",
       "indexCount": 2004,
       "indexed": true,
@@ -1061,17 +1061,17 @@
       "bounds": {
         "max": [
           72.29763793945312,
-          9.695143699645996,
-          6.998101234436035
+          9.695143814304036,
+          6.99810118999313
         ],
         "min": [
           -0.7299995422363281,
-          1.8055648803710938,
-          -6.998101234436035
+          1.8055647657130547,
+          -6.99810118999313
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7037fbdfbed6dcfb21560536cd4d3b960a9e39311ca1f5ae9568eda97fa2a2b7",
+      "geometryHash": "366a6ce485a1616febb41e309dbb002c4476b73177caf29b34efe031264043c4",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 1752,
       "indexed": true,
@@ -1086,17 +1086,17 @@
       "bounds": {
         "max": [
           56.49488067626953,
-          5.995869159698486,
-          4.99602746963501
+          5.995869008594063,
+          4.996027885468678
         ],
         "min": [
           5.505121231079102,
-          5.504131317138672,
-          -4.994335651397705
+          5.504131468243095,
+          -4.994336067231373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb580d17cb6d685004e81b1f5108988d08d4b54077384abb8872d722dcc95924",
+      "geometryHash": "958b470f63e034257f4ffb659d5119653d6b09945fa452e514412b3e87170978",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-stone.primitive.0",
       "indexCount": 558,
       "indexed": true,
@@ -1111,17 +1111,17 @@
       "bounds": {
         "max": [
           68,
-          7.542667388916016,
-          7.201147556304932
+          7.542667457737761,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.7490947246551514,
-          -7.201147556304932
+          3.7490946558334057,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2db3378201458392f9ba72157441ffa1674e9dcde92f5df8b94d2f6d2736bdb8",
+      "geometryHash": "a26b886bd638677c992a7e7163e7ecd6905330ffe1709e423651c85f852b735f",
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-warning.primitive.0",
       "indexCount": 396,
       "indexed": true,
@@ -1136,17 +1136,17 @@
       "bounds": {
         "max": [
           70.39094543457031,
-          11.092205047607422,
-          8.281222343444824
+          11.092205359805781,
+          8.281222706991866
         ],
         "min": [
           -0.9796028137207031,
-          0.018629595637321472,
-          -8.281222343444824
+          0.01862928343896275,
+          -8.281222706991866
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5bae9443e95e76585f4983d0cfd0d1a858d67ae1198ff41b647792b4cf8108be",
+      "geometryHash": "bd25a7be40f82bbe4d24028de6d77c29a086cc919c4c6eb6730c5e369b920ced",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-armor.primitive.0",
       "indexCount": 2166,
       "indexed": true,
@@ -1161,17 +1161,17 @@
       "bounds": {
         "max": [
           71.7249984741211,
-          10.756082534790039,
-          5.598442554473877
+          10.756082391289222,
+          5.5984422280208
         ],
         "min": [
           1.7496757507324219,
-          5.861418724060059,
-          -4.259222507476807
+          5.861418867560874,
+          -4.25922218102373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "286babec5158b2ddd50d16cc04b6b64aaf4935618d1d064020e426c81bc8b086",
+      "geometryHash": "45139b5fe4a11f63de01f8c01bde081581fba694ce9f41c05b936fdf631c91ba",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 246,
       "indexed": true,
@@ -1186,17 +1186,17 @@
       "bounds": {
         "max": [
           1.7175178527832031,
-          7.261327266693115,
-          2.9142684936523438
+          7.26132730447104,
+          2.9142685840807045
         ],
         "min": [
           0.582489013671875,
-          6.733388423919678,
-          2.503133773803711
+          6.733388386141753,
+          2.50313368337535
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f98d1462b5e0131138b31e2d1244ca6bb620456069725b6c41aaf78607c47b51",
+      "geometryHash": "49b40769d6ff176faf86616b811a1d75f7be57d51ffee78fc055163640ef6d2d",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -1260,18 +1260,18 @@
     {
       "bounds": {
         "max": [
-          69.98930358886719,
-          3.089628219604492,
+          69.989302370078,
+          3.0896282422943493,
           8.08474349975586
         ],
         "min": [
-          67.0157241821289,
-          0.7103717923164368,
+          67.0157254009181,
+          0.7103717696265799,
           -8.089757919311523
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6678a7da5fa82d65adc5ef18632fbb1eb0436e279cd988c35eb1aa1effd993d5",
+      "geometryHash": "8b84640b2ad586f3ea18a57f624139bfb5124e86122e15bf067d6cc4889ce383",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1286,17 +1286,17 @@
       "bounds": {
         "max": [
           72.1607894897461,
-          11.088691711425781,
-          5.949565410614014
+          11.088691709381175,
+          5.949565225129642
         ],
         "min": [
           -0.4728202819824219,
-          4.412083148956299,
-          -6.268717288970947
+          4.412083151000905,
+          -6.268717103486575
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f38132371faac65142b1eef30f147ffed1c577b21e46594fd806d532448824e0",
+      "geometryHash": "6beb0c3f80799bc0eaea1f7ab6dbec9583df568542a63685b6fcf7659b019b6d",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull.primitive.0",
       "indexCount": 690,
       "indexed": true,
@@ -1310,18 +1310,18 @@
     {
       "bounds": {
         "max": [
-          4.106023788452148,
-          8.838204383850098,
+          4.106023730591968,
+          8.838204396030422,
           5.735569477081299
         ],
         "min": [
-          -0.6500339508056641,
-          4.169261932373047,
+          -0.6500338929454834,
+          4.169261920192723,
           -4.315494060516357
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cee84c1a339acf6c5aa180a04142527c6be0501322f613f9b0a05246c8392514",
+      "geometryHash": "8131472cb892f17b7e35841395ce3cd9a2923775664f77bf47491def4c08ad2b",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanical.primitive.0",
       "indexCount": 444,
       "indexed": true,
@@ -1336,17 +1336,17 @@
       "bounds": {
         "max": [
           72.2841567993164,
-          9.683341026306152,
-          5.949187278747559
+          9.683340973597506,
+          5.9491869559180195
         ],
         "min": [
           -0.7300033569335938,
-          4.950467109680176,
-          -5.299187660217285
+          4.950467162388821,
+          -5.299187337387746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c896390f17cb58f5903715f78aaffe11cd02bf1ce3722f5aba046a8ca4aee978",
+      "geometryHash": "47ed7c2d19b9188abd8d76cac071d902450c5fc6bfdc7d09f8003a43a5756907",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 486,
       "indexed": true,
@@ -1361,17 +1361,17 @@
       "bounds": {
         "max": [
           56.48415756225586,
-          5.983321666717529,
-          4.983748435974121
+          5.983321551215453,
+          4.983748333962082
         ],
         "min": [
           5.515842437744141,
-          5.516678333282471,
-          -4.983748435974121
+          5.516678448784547,
+          -4.983748333962082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4cc677ce40fd8d0f178b306f044f8909c043a3bde05503477b1499c425753cf0",
+      "geometryHash": "a426c5a77e2e81899e9391c1b370caf38b5df24fc7132a5a05b36d849e7bbc5d",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-stone.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1386,17 +1386,17 @@
       "bounds": {
         "max": [
           68,
-          7.5286455154418945,
-          7.201147556304932
+          7.528645450145458,
+          7.201147495956298
         ],
         "min": [
           0,
-          3.7516746520996094,
-          -7.201147556304932
+          3.7516747173960456,
+          -7.201147495956298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fcd50e80de04f20755b6d3ca164690a7b0d80d46d50d9a224c599c3d2ab60eea",
+      "geometryHash": "b5ccc59b5d52c75f373947968e7ba2b3a28222533b027617a37409058ad9c371",
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-warning.primitive.0",
       "indexCount": 372,
       "indexed": true,
@@ -1676,20 +1676,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.collision-hull",
       "localTransform": [
-        1,
+        36.646751403808594,
         0,
         0,
         0,
         0,
-        1,
+        36.646751403808594,
         0,
         0,
         0,
         0,
-        1,
+        36.646751403808594,
         0,
-        0,
-        0,
+        35.646751403808594,
+        5.5500002428889275,
         0,
         1
       ],
@@ -1704,20 +1704,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.646751403808594,
         0,
         0,
         0,
         0,
-        1,
+        36.646751403808594,
         0,
         0,
         0,
         0,
-        1,
+        36.646751403808594,
         0,
-        0,
-        0,
+        35.646751403808594,
+        5.5500002428889275,
         0,
         1
       ]
@@ -1725,20 +1725,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-armor",
       "localTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ],
@@ -1753,20 +1753,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ]
@@ -1774,21 +1774,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
-        0,
-        0,
-        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1802,42 +1802,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
         0,
         0,
         0,
-        1,
+        34.98649978637695,
         0,
-        0,
-        0,
-        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal",
       "localTransform": [
-        1,
+        1.3000011444091797,
         0,
         0,
         0,
         0,
-        1,
+        1.3000011444091797,
         0,
         0,
         0,
         0,
-        1,
+        1.3000011444091797,
         0,
-        0,
-        0,
-        0,
+        0.4200000762939453,
+        7.33794093132019,
+        3.46999990940094,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1851,42 +1851,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        1.3000011444091797,
         0,
         0,
         0,
         0,
-        1,
+        1.3000011444091797,
         0,
         0,
         0,
         0,
-        1,
+        1.3000011444091797,
         0,
-        0,
-        0,
-        0,
+        0.4200000762939453,
+        7.33794093132019,
+        3.46999990940094,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-canopy",
       "localTransform": [
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
-        0,
-        0,
-        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
         1
       ],
       "materialPipelineKey": "blend",
@@ -1900,21 +1900,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
-        0,
-        0,
-        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
         1
       ]
     },
@@ -2019,21 +2019,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull",
       "localTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2047,41 +2047,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged",
       "localTransform": [
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
-        0,
-        0,
+        68.5,
+        1.8999998569488525,
         0,
         1
       ],
@@ -2096,20 +2096,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.100000381469727,
         0,
-        0,
-        0,
+        68.5,
+        1.8999998569488525,
         0,
         1
       ]
@@ -2117,21 +2117,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        5.130436897277832,
         0,
         0,
         0,
         0,
-        1,
+        5.130436897277832,
         0,
         0,
         0,
         0,
-        1,
+        5.130436897277832,
         0,
-        0,
-        0,
-        0,
+        1.7374992370605469,
+        6.495000123977661,
+        0.8145627975463867,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2145,41 +2145,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        5.130436897277832,
         0,
         0,
         0,
         0,
-        1,
+        5.130436897277832,
         0,
         0,
         0,
         0,
-        1,
+        5.130436897277832,
         0,
-        0,
-        0,
-        0,
+        1.7374992370605469,
+        6.495000123977661,
+        0.8145627975463867,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        36.51500129699707,
         0,
         0,
         0,
         0,
-        1,
+        36.51500129699707,
         0,
         0,
         0,
         0,
-        1,
+        36.51500129699707,
         0,
-        0,
-        0,
+        35.78500175476074,
+        5.7500001192092896,
         0,
         1
       ],
@@ -2194,20 +2194,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.51500129699707,
         0,
         0,
         0,
         0,
-        1,
+        36.51500129699707,
         0,
         0,
         0,
         0,
-        1,
+        36.51500129699707,
         0,
-        0,
-        0,
+        35.78500175476074,
+        5.7500001192092896,
         0,
         1
       ]
@@ -2215,20 +2215,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-stone",
       "localTransform": [
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ],
@@ -2243,20 +2243,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
         0,
         0,
         0,
-        1,
+        25.5,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ]
@@ -2264,20 +2264,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod0-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.647499918937683,
         0,
         1
       ],
@@ -2292,20 +2292,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.647499918937683,
         0,
         1
       ]
@@ -2313,20 +2313,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-armor",
       "localTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ],
@@ -2341,20 +2341,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
         0,
         0,
         0,
-        1,
+        35.695472717285156,
         0,
-        0,
-        0,
+        34.695472717285156,
+        5.5466047966328915,
         0,
         1
       ]
@@ -2362,21 +2362,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
-        0,
-        0,
-        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2390,42 +2390,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
         0,
         0,
         0,
-        1,
+        34.98671531677246,
         0,
-        0,
-        0,
-        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal",
       "localTransform": [
-        1,
+        1.2963829040527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2963829040527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2963829040527344,
         0,
-        0,
-        0,
-        0,
+        0.42113494873046875,
+        7.336767673492432,
+        3.469131112098694,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2439,42 +2439,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        1.2963829040527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2963829040527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2963829040527344,
         0,
-        0,
-        0,
-        0,
+        0.42113494873046875,
+        7.336767673492432,
+        3.469131112098694,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-canopy",
       "localTransform": [
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
-        0,
-        0,
-        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
         1
       ],
       "materialPipelineKey": "blend",
@@ -2488,21 +2488,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
         0,
         0,
         0,
-        1,
+        3.8337501287460327,
         0,
-        0,
-        0,
-        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
         1
       ]
     },
@@ -2607,21 +2607,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull",
       "localTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2635,42 +2635,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
         0,
         0,
         0,
-        1,
+        36.32855987548828,
         0,
-        0,
-        0,
-        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged",
       "localTransform": [
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2684,42 +2684,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
         0,
         0,
         0,
-        1,
+        8.095062732696533,
         0,
-        0,
-        0,
-        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        5.129040479660034,
         0,
         0,
         0,
         0,
-        1,
+        5.129040479660034,
         0,
         0,
         0,
         0,
-        1,
+        5.129040479660034,
         0,
-        0,
-        0,
-        0,
+        1.7352743744850159,
+        6.495706558227539,
+        0.8133952617645264,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2733,41 +2733,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        5.129040479660034,
         0,
         0,
         0,
         0,
-        1,
+        5.129040479660034,
         0,
         0,
         0,
         0,
-        1,
+        5.129040479660034,
         0,
-        0,
-        0,
-        0,
+        1.7352743744850159,
+        6.495706558227539,
+        0.8133952617645264,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        36.51381874084473,
         0,
         0,
         0,
         0,
-        1,
+        36.51381874084473,
         0,
         0,
         0,
         0,
-        1,
+        36.51381874084473,
         0,
-        0,
-        0,
+        35.7838191986084,
+        5.750354290008545,
         0,
         1
       ],
@@ -2782,20 +2782,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.51381874084473,
         0,
         0,
         0,
         0,
-        1,
+        36.51381874084473,
         0,
         0,
         0,
         0,
-        1,
+        36.51381874084473,
         0,
-        0,
-        0,
+        35.7838191986084,
+        5.750354290008545,
         0,
         1
       ]
@@ -2803,21 +2803,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-stone",
       "localTransform": [
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
-        0,
-        0,
-        0,
+        31.000000953674316,
+        5.750000238418579,
+        0.0008459091186523438,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2831,41 +2831,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
         0,
         0,
         0,
-        1,
+        25.494879722595215,
         0,
-        0,
-        0,
-        0,
+        31.000000953674316,
+        5.750000238418579,
+        0.0008459091186523438,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod1-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.6458810567855835,
         0,
         1
       ],
@@ -2880,20 +2880,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.6458810567855835,
         0,
         1
       ]
@@ -2901,20 +2901,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-armor",
       "localTransform": [
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
-        0,
-        0,
+        34.705671310424805,
+        5.555417321622372,
         0,
         1
       ],
@@ -2929,20 +2929,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
         0,
         0,
         0,
-        1,
+        35.68527412414551,
         0,
-        0,
-        0,
+        34.705671310424805,
+        5.555417321622372,
         0,
         1
       ]
@@ -2950,21 +2950,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
-        0,
-        0,
-        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2978,42 +2978,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
         0,
         0,
         0,
-        1,
+        34.987661361694336,
         0,
-        0,
-        0,
-        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal",
       "localTransform": [
-        1,
+        0.5675144195556641,
         0,
         0,
         0,
         0,
-        1,
+        0.5675144195556641,
         0,
         0,
         0,
         0,
-        1,
+        0.5675144195556641,
         0,
-        0,
-        0,
-        0,
+        1.150003433227539,
+        6.9973578453063965,
+        2.7087011337280273,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3027,21 +3027,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        0.5675144195556641,
         0,
         0,
         0,
         0,
-        1,
+        0.5675144195556641,
         0,
         0,
         0,
         0,
-        1,
+        0.5675144195556641,
         0,
-        0,
-        0,
-        0,
+        1.150003433227539,
+        6.9973578453063965,
+        2.7087011337280273,
         1
       ]
     },
@@ -3146,21 +3146,21 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull",
       "localTransform": [
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
-        0,
-        0,
-        0,
+        35.843984603881836,
+        7.75038743019104,
+        -0.1595759391784668,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3174,42 +3174,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
         0,
         0,
         0,
-        1,
+        36.31680488586426,
         0,
-        0,
-        0,
-        0,
+        35.843984603881836,
+        7.75038743019104,
+        -0.1595759391784668,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged",
       "localTransform": [
-        1,
+        8.087250709533691,
         0,
         0,
         0,
         0,
-        1,
+        8.087250709533691,
         0,
         0,
         0,
         0,
-        1,
+        8.087250709533691,
         0,
-        0,
-        0,
-        0,
+        68.50251388549805,
+        1.9000000059604645,
+        -0.0025072097778320312,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3223,42 +3223,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        8.087250709533691,
         0,
         0,
         0,
         0,
-        1,
+        8.087250709533691,
         0,
         0,
         0,
         0,
-        1,
+        8.087250709533691,
         0,
-        0,
-        0,
-        0,
+        68.50251388549805,
+        1.9000000059604645,
+        -0.0025072097778320312,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        5.025531768798828,
         0,
         0,
         0,
         0,
-        1,
+        5.025531768798828,
         0,
         0,
         0,
         0,
-        1,
+        5.025531768798828,
         0,
-        0,
-        0,
-        0,
+        1.7279949188232422,
+        6.503733158111572,
+        0.7100377082824707,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3272,42 +3272,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        5.025531768798828,
         0,
         0,
         0,
         0,
-        1,
+        5.025531768798828,
         0,
         0,
         0,
         0,
-        1,
+        5.025531768798828,
         0,
-        0,
-        0,
-        0,
+        1.7279949188232422,
+        6.503733158111572,
+        0.7100377082824707,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        36.507080078125,
         0,
         0,
         0,
         0,
-        1,
+        36.507080078125,
         0,
         0,
         0,
         0,
-        1,
+        36.507080078125,
         0,
-        0,
-        0,
-        0,
+        35.777076721191406,
+        7.316904067993164,
+        0.3249998092651367,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3321,41 +3321,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        36.507080078125,
         0,
         0,
         0,
         0,
-        1,
+        36.507080078125,
         0,
         0,
         0,
         0,
-        1,
+        36.507080078125,
         0,
-        0,
-        0,
-        0,
+        35.777076721191406,
+        7.316904067993164,
+        0.3249998092651367,
         1
       ]
     },
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-stone",
       "localTransform": [
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ],
@@ -3370,20 +3370,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
         0,
         0,
         0,
-        1,
+        25.48415756225586,
         0,
-        0,
-        0,
+        31,
+        5.75,
         0,
         1
       ]
@@ -3391,20 +3391,20 @@
     {
       "id": "sf.render.charon-colony-service-barge.mesh.lod2-warning",
       "localTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.640160083770752,
         0,
         1
       ],
@@ -3419,20 +3419,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.charon-colony-service-barge.body",
       "worldTransform": [
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
         0,
         0,
         0,
-        1,
+        34,
         0,
-        0,
-        0,
+        34,
+        5.640160083770752,
         0,
         1
       ]
@@ -3496,37 +3496,37 @@
       "uri": "place_charon_colony_service_barge.glb"
     },
     "sourceManifest": {
-      "bytes": 274177,
-      "sha256": "e0e97f63caa4be678dd565a4732171e46716aa783023d5da79f3322b8ae603dc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 875632,
-    "sha256": "acc27d37e7ac58ad10ba466ec8eb96c5e037af357d4d1c57214e1c2d3ebd4a97",
+    "bytes": 507968,
+    "sha256": "464463f23ff6dd82686a40468c1f28a91c03a05fe7a608e00f09d242f20d9274",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         35.650001525878906,
-        5.548886939272052,
+        5.548886765748573,
         0
       ],
       "max": [
         72.30000305175781,
-        11.098254203796387,
-        8.301018714904785
+        11.098254127985872,
+        8.301019382479717
       ],
       "min": [
         -1,
-        -0.00048032525228336453,
-        -8.301018714904785
+        -0.00048059648872467164,
+        -8.301019382479717
       ],
       "size": [
         73.30000305175781,
-        11.09873452904867,
-        16.60203742980957
+        11.098734724474596,
+        16.602038764959435
       ]
     },
     "hidden": [
@@ -4165,20 +4165,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
-          0,
-          0,
+          34.695472717285156,
+          5.5466047966328915,
           0,
           1
         ],
@@ -4192,21 +4192,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.98649978637695,
           0,
           0,
           0,
           0,
-          1,
+          34.98649978637695,
           0,
           0,
           0,
           0,
-          1,
+          34.98649978637695,
           0,
-          0,
-          0,
-          0,
+          36.73849868774414,
+          8.308750629425049,
+          0.6759998798370361,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -4219,21 +4219,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3000011444091797,
           0,
           0,
           0,
           0,
-          1,
+          1.3000011444091797,
           0,
           0,
           0,
           0,
-          1,
+          1.3000011444091797,
           0,
-          0,
-          0,
-          0,
+          0.4200000762939453,
+          7.33794093132019,
+          3.46999990940094,
           1
         ],
         "name": "LOD0_BrushedMetal",
@@ -4246,21 +4246,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          3.8337501287460327,
           0,
           0,
           0,
           0,
-          1,
+          3.8337501287460327,
           0,
           0,
           0,
           0,
-          1,
+          3.8337501287460327,
           0,
-          0,
-          0,
-          0,
+          1.9999990612268448,
+          7.570000171661377,
+          2.1537500619888306,
           1
         ],
         "name": "LOD0_CANOPY",
@@ -4329,21 +4329,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
-          0,
-          0,
-          0,
+          35.84241485595703,
+          7.749999761581421,
+          -0.1686244010925293,
           1
         ],
         "name": "LOD0_Hull",
@@ -4356,20 +4356,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.100000381469727,
           0,
-          0,
-          0,
+          68.5,
+          1.8999998569488525,
           0,
           1
         ],
@@ -4383,21 +4383,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.130436897277832,
           0,
           0,
           0,
           0,
-          1,
+          5.130436897277832,
           0,
           0,
           0,
           0,
-          1,
+          5.130436897277832,
           0,
-          0,
-          0,
-          0,
+          1.7374992370605469,
+          6.495000123977661,
+          0.8145627975463867,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -4410,20 +4410,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.51500129699707,
           0,
           0,
           0,
           0,
-          1,
+          36.51500129699707,
           0,
           0,
           0,
           0,
-          1,
+          36.51500129699707,
           0,
-          0,
-          0,
+          35.78500175476074,
+          5.7500001192092896,
           0,
           1
         ],
@@ -4437,20 +4437,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.5,
           0,
           0,
           0,
           0,
-          1,
+          25.5,
           0,
           0,
           0,
           0,
-          1,
+          25.5,
           0,
-          0,
-          0,
+          31,
+          5.75,
           0,
           1
         ],
@@ -4464,20 +4464,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          5.647499918937683,
           0,
           1
         ],
@@ -4491,20 +4491,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
           0,
           0,
           0,
-          1,
+          35.695472717285156,
           0,
-          0,
-          0,
+          34.695472717285156,
+          5.5466047966328915,
           0,
           1
         ],
@@ -4518,21 +4518,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.98671531677246,
           0,
           0,
           0,
           0,
-          1,
+          34.98671531677246,
           0,
           0,
           0,
           0,
-          1,
+          34.98671531677246,
           0,
-          0,
-          0,
-          0,
+          36.73828315734863,
+          8.30875015258789,
+          0.6758508682250977,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -4545,21 +4545,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2963829040527344,
           0,
           0,
           0,
           0,
-          1,
+          1.2963829040527344,
           0,
           0,
           0,
           0,
-          1,
+          1.2963829040527344,
           0,
-          0,
-          0,
-          0,
+          0.42113494873046875,
+          7.336767673492432,
+          3.469131112098694,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -4572,21 +4572,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          3.8337501287460327,
           0,
           0,
           0,
           0,
-          1,
+          3.8337501287460327,
           0,
           0,
           0,
           0,
-          1,
+          3.8337501287460327,
           0,
-          0,
-          0,
-          0,
+          1.9999990612268448,
+          7.570000171661377,
+          2.1537500619888306,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -4655,21 +4655,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
           0,
           0,
           0,
-          1,
+          36.32855987548828,
           0,
-          0,
-          0,
-          0,
+          35.84241485595703,
+          7.749999761581421,
+          -0.1686244010925293,
           1
         ],
         "name": "LOD1_Hull",
@@ -4682,21 +4682,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.095062732696533,
           0,
           0,
           0,
           0,
-          1,
+          8.095062732696533,
           0,
           0,
           0,
           0,
-          1,
+          8.095062732696533,
           0,
-          0,
-          0,
-          0,
+          68.50000381469727,
+          1.8999999165534973,
+          -0.0002760887145996094,
           1
         ],
         "name": "LOD1_Hull_aged",
@@ -4709,21 +4709,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.129040479660034,
           0,
           0,
           0,
           0,
-          1,
+          5.129040479660034,
           0,
           0,
           0,
           0,
-          1,
+          5.129040479660034,
           0,
-          0,
-          0,
-          0,
+          1.7352743744850159,
+          6.495706558227539,
+          0.8133952617645264,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -4736,20 +4736,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.51381874084473,
           0,
           0,
           0,
           0,
-          1,
+          36.51381874084473,
           0,
           0,
           0,
           0,
-          1,
+          36.51381874084473,
           0,
-          0,
-          0,
+          35.7838191986084,
+          5.750354290008545,
           0,
           1
         ],
@@ -4763,21 +4763,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.494879722595215,
           0,
           0,
           0,
           0,
-          1,
+          25.494879722595215,
           0,
           0,
           0,
           0,
-          1,
+          25.494879722595215,
           0,
-          0,
-          0,
-          0,
+          31.000000953674316,
+          5.750000238418579,
+          0.0008459091186523438,
           1
         ],
         "name": "LOD1_Stone",
@@ -4790,20 +4790,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          5.6458810567855835,
           0,
           1
         ],
@@ -4817,20 +4817,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          35.68527412414551,
           0,
           0,
           0,
           0,
-          1,
+          35.68527412414551,
           0,
           0,
           0,
           0,
-          1,
+          35.68527412414551,
           0,
-          0,
-          0,
+          34.705671310424805,
+          5.555417321622372,
           0,
           1
         ],
@@ -4844,21 +4844,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34.987661361694336,
           0,
           0,
           0,
           0,
-          1,
+          34.987661361694336,
           0,
           0,
           0,
           0,
-          1,
+          34.987661361694336,
           0,
-          0,
-          0,
-          0,
+          36.73733711242676,
+          8.308750629425049,
+          0.6696100234985352,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -4871,21 +4871,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5675144195556641,
           0,
           0,
           0,
           0,
-          1,
+          0.5675144195556641,
           0,
           0,
           0,
           0,
-          1,
+          0.5675144195556641,
           0,
-          0,
-          0,
-          0,
+          1.150003433227539,
+          6.9973578453063965,
+          2.7087011337280273,
           1
         ],
         "name": "LOD2_BrushedMetal",
@@ -4954,21 +4954,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.31680488586426,
           0,
           0,
           0,
           0,
-          1,
+          36.31680488586426,
           0,
           0,
           0,
           0,
-          1,
+          36.31680488586426,
           0,
-          0,
-          0,
-          0,
+          35.843984603881836,
+          7.75038743019104,
+          -0.1595759391784668,
           1
         ],
         "name": "LOD2_Hull",
@@ -4981,21 +4981,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.087250709533691,
           0,
           0,
           0,
           0,
-          1,
+          8.087250709533691,
           0,
           0,
           0,
           0,
-          1,
+          8.087250709533691,
           0,
-          0,
-          0,
-          0,
+          68.50251388549805,
+          1.9000000059604645,
+          -0.0025072097778320312,
           1
         ],
         "name": "LOD2_Hull_aged",
@@ -5008,21 +5008,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.025531768798828,
           0,
           0,
           0,
           0,
-          1,
+          5.025531768798828,
           0,
           0,
           0,
           0,
-          1,
+          5.025531768798828,
           0,
-          0,
-          0,
-          0,
+          1.7279949188232422,
+          6.503733158111572,
+          0.7100377082824707,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -5035,21 +5035,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.507080078125,
           0,
           0,
           0,
           0,
-          1,
+          36.507080078125,
           0,
           0,
           0,
           0,
-          1,
+          36.507080078125,
           0,
-          0,
-          0,
-          0,
+          35.777076721191406,
+          7.316904067993164,
+          0.3249998092651367,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -5062,20 +5062,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.48415756225586,
           0,
           0,
           0,
           0,
-          1,
+          25.48415756225586,
           0,
           0,
           0,
           0,
-          1,
+          25.48415756225586,
           0,
-          0,
-          0,
+          31,
+          5.75,
           0,
           1
         ],
@@ -5089,20 +5089,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
           0,
           0,
           0,
-          1,
+          34,
           0,
-          0,
-          0,
+          34,
+          5.640160083770752,
           0,
           1
         ],
@@ -5118,20 +5118,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb"
   },
-  "runtimeHash": "d08368ea4cd3d9728d2357d22d266c2d05a9da8ded347b89b5e9a1a474a6741c",
+  "runtimeHash": "c0fdbb02d39a221fbb00cc4335c8e318cad7a44ae4a7502b6ba5dd1c046a6de8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           72.30000305175781,
-          11.098254203796387,
-          8.301018714904785
+          11.098254127985872,
+          8.301019382479717
         ],
         "min": [
           -1,
-          -0.00048032525228336453,
-          -8.301018714904785
+          -0.00048059648872467164,
+          -8.301019382479717
         ]
       },
       "id": "sf.render.charon-colony-service-barge.body",
