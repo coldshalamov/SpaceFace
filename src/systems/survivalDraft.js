@@ -499,10 +499,11 @@ export const survivalDraft = {
       this._finish({ picked: null, applied: false, reason: 'draftless' });
       return;
     }
-    // A swarm run passes THROUGH `draft` between every wave, because cleanup has no legal edge
-    // straight back to wave_intro. On the four waves in five that are not upgrade waves, that
-    // pass-through must be invisible: resolve it here rather than opening a surface for one frame.
-    // Without this the player would see a menu flash on every single wave boundary.
+    // Dormant while SWARM_DRAFT_EVERY is 1: every swarm wave is a draft wave, so this never
+    // fires. It stays written because a swarm run still passes THROUGH `draft` between waves —
+    // cleanup has no legal edge straight back to wave_intro — so if the armory cadence ever
+    // thins again, the off-wave pass-through resolves here instead of opening a surface for
+    // one frame. Without it that cadence would flash a menu on every wave boundary.
     if (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave)) {
       this._offers = null;
       this._wave = run.wave;
@@ -1028,6 +1029,15 @@ export const survivalDraft = {
       return;
     }
     if (kind === 'salvage') {
+      // The purse was charged before this echo fired; an armory that already resolved
+      // (overtime, a queued second echo) must not bolt the part on — the purse comes back.
+      if (this._resolved) {
+        this._emit('run:awardRequested', {
+          credits: CIRCUIT_EVENT.salvageCost,
+          reason: 'circuit_derelict_refund',
+        });
+        return;
+      }
       const applied = this._applyCircuitSalvage(payload && payload.salvage);
       if (!applied.ok) {
         this._emit('run:awardRequested', {

@@ -21,8 +21,9 @@
 //   * It lapses on a CLOCK, not on damage. Breaking a chain because you took a hit sounds
 //     disciplined and plays terribly when thirty hulls are shooting at you — it would punish the
 //     density the mode exists to create. The only way to lose a chain is to stop killing.
-//   * It carries ACROSS waves. Waves already run into each other without a lull, so a chain that
-//     reset at a wave boundary would be resetting at a moment the player cannot even see.
+//   * It carries ACROSS waves. Every wave ends in the armory now, and the chain pins through
+//     that stop instead of resetting at a boundary the player is standing inside — a wipe
+//     there would kill a number the player was still spending on.
 //   * It pays SCORE, and the payment is the chain itself. No tuned curve: a kill at chain 30 is
 //     worth thirty more points than the same kill at chain zero. A player can read that off the
 //     screen and do the arithmetic, which is worth more than a better-shaped formula they cannot.
