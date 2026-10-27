@@ -774,7 +774,13 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     const onLogEvent = (eventName) => (payload) => {
       if (destroyed) return;
       const st = getState();
-      if (!calloutScope(st) || physicsLogSilent(st)) return;
+      const scope = calloutScope(st);
+      if (!scope || physicsLogSilent(st)) return;
+      // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
+      // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
+      if (eventName === 'swarm:killPopup'
+        && (scope.adventure || !payload || payload.friendlyFire === true
+          || !SWARM_TEACHING_CAUSES.has(payload.cause))) return;
       const line = physicsLogLine(eventName, payload || {});
       if (line) speak({ key: `log:${eventName}`, name: line, detail: '' });
     };
