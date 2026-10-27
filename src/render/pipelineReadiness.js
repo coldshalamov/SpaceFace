@@ -303,7 +303,7 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
 function openingPresentBudgetMs(state, timeoutMs, options = {}) {
   return Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
     ? options.presentBudgetMs
-    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, 120000);
+    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, openingGateBudgetMs(120000));
 }
 
 /** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */
