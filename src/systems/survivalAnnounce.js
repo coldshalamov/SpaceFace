@@ -31,6 +31,7 @@
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
+import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
 import {
@@ -535,7 +536,25 @@ export const survivalAnnounce = {
       const arenaId = this.state && this.state.run ? this.state.run.arenaId : null;
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
+      this._speakChampionApproach(wave);
     }
+  },
+
+  /**
+   * The next champion is a named goal, not a rumor. At exactly the authored lead the net
+   * speaks the rotation row the ladder will field — its label, the wave it waits on, and
+   * its authored line — once, then stays quiet: no countdown, and nothing on the boss wave
+   * itself, which names itself on arrival. A Circuit round carries its own boss contract,
+   * so the cadence preview would lie there; mutator runs keep it because the cadence
+   * champion still lands.
+   */
+  _speakChampionApproach(wave) {
+    const swarm = this._plan && this._plan.swarm;
+    if (!swarm || swarm.circuit) return;
+    const next = swarmNextBossFor(wave);
+    if (!next || next.distance !== SWARM_CHAMPION_LEAD_WAVES) return;
+    const line = typeof next.line === 'string' && next.line ? ` ${next.line}` : '';
+    this._say('objective', `survival:w${wave}:champion`, `${next.label} waits at wave ${next.wave}.${line}`, 6);
   },
 
   /**

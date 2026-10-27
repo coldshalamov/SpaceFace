@@ -603,6 +603,29 @@ export function swarmBossFor(wave) {
 }
 
 /**
+ * How far out the combat net names the champion a run is sailing toward. One fixed lead,
+ * never a countdown: the warning lands once, on the wave exactly this many rounds before
+ * the boss wave, so "Iron Maw II waits at wave 150" is a named goal and not a chorus.
+ */
+export const SWARM_CHAMPION_LEAD_WAVES = 3;
+
+/**
+ * The champion a run is sailing toward: the boss wave AT-OR-AFTER `wave` (asking on a boss
+ * wave names the fight on the field). Returns the rotation row exactly as swarmBossFor
+ * resolves it — the cycle numeral and wrap escort ride along — plus the `wave` it lands on
+ * and the `distance` out, so a preview speaks without redoing the wrap math. Null past the
+ * last legal boss wave: there is no champion beyond wave 990 to promise.
+ */
+export function swarmNextBossFor(wave) {
+  const w = swarmWaveOf(wave);
+  const at = Math.ceil(w / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY;
+  if (at > SWARM_WAVE_MAX) return null;
+  const boss = swarmBossFor(at);
+  if (!boss) return null;
+  return { ...boss, wave: at, distance: at - w };
+}
+
+/**
  * The room rotation. Never `idle` — see rule 3. Ordered so the first four waves teach the four
  * things a room can do (drag you, shove you, give you geometry, rake you) before repeating.
  * Boss waves override this with the arc's own `boss` room.
