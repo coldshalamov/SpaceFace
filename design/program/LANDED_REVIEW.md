@@ -178,3 +178,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | 111d43c11ba | EXP-25: faction_frontier — seeded homestead sites/disputes/vendettas + save envelope (281→1830+, ~6.5×) | Re-check: _tickSiteSeeding plant/restock cadence vs parked-ring generation rebinds |
 
 | 2026-10-27 | da984d0e387 | EXP-25: impoundGrudge — hull nemesis w/ lessons + endings (256→1050+, ~4×) | Re-check: killedLiveId===liveId invariant across save/continue + bind-fault bookkeeping order |
+
+| 2026-10-27 | 0ef64050303 | EXP-25: borrowedSun — lender w/ sails/charters/collectors (269→1450+, ~5.4×) | Re-check: corpse-reference kill receipts (p.entity fallback) vs deferred destroy delivery |
