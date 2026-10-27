@@ -1,6 +1,8 @@
 // Pure read model for exploration trophies and per-sector completion.
 // World remains the sole writer of state.world.discovery; Codex and the map only project it.
 
+import { RINGWORLD_GRID_READING, validateLandmarkQuestOffer } from '../data/landmarkMissions.js';
+
 import { SECTORS } from '../data/sectors.js';
 import { UNIQUE_WRECKS } from '../data/uniqueWrecks.js';
 import { shardSphereSongProgress, SHARD_SPHERE_SONG } from '../data/landmarkMissions.js';
@@ -95,6 +97,55 @@ function plateBody(sector, poi, record) {
   }
   const verb = record.investigated ? 'Investigated' : (record.defeated ? 'Resolved' : 'Identified');
   return `${verb} by close approach in ${sector.name}. Classification: ${poi.type || 'unknown'}.`;
+}
+
+
+// Sedna's earned filing is not a procedural desk. Project existing owners only; no saved flags.
+function applySednaGridReadingGuidance(state, plates) {
+  const def = RINGWORLD_GRID_READING;
+  const plate = plates.find(row => row.sectorId === def.sectorId && row.poiId === def.poiId);
+  if (!plate) return;
+  const record = discoveryFor(state, def.sectorId)?.pois?.[def.poiId];
+  const artifact = record?.landmarkArtifact;
+  const filed = artifact?.id === def.artifact.id
+    && (artifact.sourceRef == null || artifact.sourceRef === def.targetRef);
+  if (filed) {
+    plate.body = def.artifact.title + ' — ' + def.artifact.body
+      + '\nGrid Reading filed for Sedna Survey Post. The reading remains in your archive.';
+    return;
+  }
+  // Never display an unrelated artifact as this landmark's filed record.
+  const sector = SECTOR_BY_ID.get(def.sectorId);
+  const poi = sector.pois.find(row => row.id === def.poiId);
+  plate.body = plateBody(sector, poi, { ...record, landmarkArtifact: null });
+  if (artifact) {
+    const progress = sectorExplorationProgress(state, sector);
+    plate.note = progress.total > 0
+      ? progress.found + '/' + progress.total + ' authored sites found · ' + progress.percent + '% sector exploration'
+      : 'No additional authored sites are charted in this sector.';
+  }
+  const active = Array.isArray(state?.missions?.active) ? state.missions.active : [];
+  const receipts = Array.isArray(state?.missions?.receipts) ? state.missions.receipts : [];
+  const matches = row => row && (row.sourceOfferId === def.id
+    || row.causeFingerprint === def.causeFingerprint);
+  const canonical = row => {
+    if (!row || row.sourceOfferId !== def.id || row.sourceRef !== def.targetRef) return false;
+    const probe = row.params?.landmarkProbe;
+    return validateLandmarkQuestOffer({ ...row, id: row.sourceOfferId, minRep: def.minRep })
+      && probe.maxRangeWu === def.maxRangeWu
+      && probe.targetLocalPos.x === def.targetLocalPos.x
+      && probe.targetLocalPos.z === def.targetLocalPos.z;
+  };
+  let text;
+  if (receipts.some(matches) || active.some(row => canonical(row)
+    && (row.status !== 'active' || row.params.landmarkProbe.returned))) {
+    text = 'The Grid Reading contract is no longer active. No Ringworld grid reading is filed.';
+  } else if (active.some(row => row.status === 'active' && canonical(row))) {
+    text = 'Grid Reading accepted at Sedna Survey Post. Return to the Ringworld Arc and fire a close scanner pulse within 300 WU.';
+  } else {
+    text = 'For Grid Reading work, check Sedna Survey Post’s Jobs board. The post keeps earned filings, not a regular contracts desk.';
+  }
+  plate.body += '\n' + text + ' Sedna Survey Post has no fuel pump; plan your fuel before the trip.';
 }
 
 function uniqueWreckPlateBody(def, sector, record) {
@@ -197,6 +248,8 @@ export function explorationDiscoveryPlates(state) {
       });
     }
   }
+
+  applySednaGridReadingGuidance(state, plates);
 
   const retainedVoice = borrowedVoiceJournalPlate(state);
   if (retainedVoice) plates.push(retainedVoice);
