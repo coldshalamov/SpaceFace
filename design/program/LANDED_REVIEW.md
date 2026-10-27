@@ -208,3 +208,5 @@ The oldest OPEN row is the next second look.
 
 
 | 2026-10-27 | bf5b5c26dbf | EXP-25: faction_vael — patrols/writs/paper tiers (283→1900+, ~6.7×) | Re-check: telegraph wind-up lifecycle (arm→fire→prune) vs orphaned writ rows |
+
+| 2026-10-27 | deb976aea12 | EXP-25: scavengerOccupationSwitch — bonded career arc (330→859+) | Re-check: releaseToOrdinaryBookkeeping clears persistenceOwner/persistent vs hulls still mid-arc |
