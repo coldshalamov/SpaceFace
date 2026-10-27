@@ -1478,16 +1478,11 @@ export const claims = {
         && ent.data.claimConvoy && ent.data.claimConvoy.convoyId === convoy.convoyId);
       if (hullFlying) {
         // still en route — the physical arrival is the arrival
+      } else if (convoy.manifested === true) {
+        // A launched hauler ends by docking or by freight loss. Being off the map
+        // is not an arrival, so the transit clock does not pay the sale or retire the leg.
       } else {
         spec.convoy = null;
-        if (convoy.manifested === true) {
-          // Leg is done on paper; retire any carrier record so nothing ownerless lingers.
-          this.bus.emit('claim:convoyAbandoned', {
-            bodyId: body.id, convoyId: convoy.convoyId,
-            worldRecordId: convoy.worldRecordId, entityId: convoy.entityId,
-            reason: 'leg_settled',
-          });
-        }
         if (convoy.convoyId) {
           // No unseen dice deleting player property: a convoy that never manifested (nobody
           // there to witness it) cannot be killed — it simply completes its transit.
