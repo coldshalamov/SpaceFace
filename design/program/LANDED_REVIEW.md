@@ -210,3 +210,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | bf5b5c26dbf | EXP-25: faction_vael — patrols/writs/paper tiers (283→1900+, ~6.7×) | Re-check: telegraph wind-up lifecycle (arm→fire→prune) vs orphaned writ rows |
 
 | 2026-10-27 | deb976aea12 | EXP-25: scavengerOccupationSwitch — bonded career arc (330→859+) | Re-check: releaseToOrdinaryBookkeeping clears persistenceOwner/persistent vs hulls still mid-arc |
+
+| R-5e1d558 | 5e1d5581fcd | racingOpponents: gate-miss rejoin no longer 1-tick attach/release churns; a timed-out anchor now burns for the race, not the lap | Re-check the burn-scope claim: a lap-scoped burn let rook re-select cold_wake_anchor on lap 1 and re-pay the full 7s hold; confirm race-scope cannot starve a legit retry-and-pay path (deterministic rival lines make the second attempt identical, and the test contract requires <=1 timeout per rival). The three remaining contested-line reds are the file's documented open tuning clause — verify they predate this fix and trace to the 7fcda9f4144 scatter shift, not to the burn gate |

@@ -232,10 +232,11 @@ export function createRacingOpponents({ state, bus, helpers }) {
     if (qualified) bus?.emit?.('race:rivalAnchorUsed', { missionId: heat.missionId, rivalId: row.id,
       lap: anchor.lapAtAttach | 0, anchorId: anchor.anchorId, attachmentId: anchor.attachmentId });
     if (reason === 'timeout') {
-      // A held-out anchor that never paid its gate is burned for this lap — without this the
-      // rival re-selects the same apex on the same approach and loops the full hold window.
+      // A held-out anchor that never paid its gate is dead for this rival's approach — a lap
+      // later the same deterministic line re-selects the same apex and loops the full hold
+      // window again, so the burn holds for the rest of the race, not just the lap.
       const burned = driver.burnedAnchors || (driver.burnedAnchors = new Set());
-      burned.add(`${anchor.anchorId}:${anchor.lapAtAttach | 0}`);
+      burned.add(anchor.anchorId);
     }
     driver.anchor = null;
     releaseReservation(row);
@@ -254,7 +255,10 @@ export function createRacingOpponents({ state, bus, helpers }) {
       return;
     }
     row.anchorCandidate = null;
-    if (!kernel || driver.contactRecovery || row.status !== 'racing') { releaseReservation(row); return; }
+    // `recovering` (gate-miss rejoin) must gate attachment the same way `contactRecovery` does —
+    // the release check cuts the rope for either flag, so latching during a rejoin only churns
+    // attach/release every tick until the rejoin clears.
+    if (!kernel || driver.contactRecovery || driver.recovering || row.status !== 'racing') { releaseReservation(row); return; }
     candidateScratch.length = 0;
     const prefs = heat.anchorPrefs[row.id];
     if (!prefs || !prefs.length) return;
@@ -263,7 +267,7 @@ export function createRacingOpponents({ state, bus, helpers }) {
       if (!anchor || !anchor.pos) continue;
       const reserved = heat.anchorReservations.get(anchorId);
       if (reserved != null && reserved !== row.id) continue;
-      if (driver.burnedAnchors && driver.burnedAnchors.has(`${anchorId}:${row.params.lap | 0}`)) continue;
+      if (driver.burnedAnchors && driver.burnedAnchors.has(anchorId)) continue;
       candidateScratch.push(anchor);
     }
     const selection = selectRacingAnchor(driver, { entity, params: row.params, gates: heat.gates,
