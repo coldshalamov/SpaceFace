@@ -27,7 +27,7 @@ async function snapshot() {
       return !el.hidden && r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
     });
     const journal = window.__SF_STARTUP__?.snapshot?.() || null;
-    return { at: Date.now(), timeOrigin: performance.timeOrigin, readyState: document.readyState,
+    return { url: location.href, hasBody: !!document.body, at: Date.now(), timeOrigin: performance.timeOrigin, readyState: document.readyState,
       userAgent: navigator.userAgent, touchPoints: navigator.maxTouchPoints,
       menu: visible('[data-screen="mainMenu"] button[data-action="newGame"]'),
       cinematicBegin: visible('#cinematic-splash .cine-begin'),
@@ -35,7 +35,7 @@ async function snapshot() {
         .some(el => /^Play$/i.test(el.textContent.trim()) && el.getBoundingClientRect().width > 0),
       motionAsk: visible('[data-screen="motionAsk"]'), pauseScreen: visible('[data-screen="pause"]'),
       launch: visible('.sf-ng-launch'), gun: visible('.mf-gun'), pause: visible('.mf-pause'),
-      journal, inputEvents: window.__SF_IOS_PROBE_INPUT__ || [], body: document.body?.innerText?.slice(-1800) || '' };
+      journal, inputEvents: window.__SF_IOS_PROBE_INPUT__ || [], console: window.__SF_IOS_PROBE_CONSOLE__ || [], body: document.body?.innerText?.slice(-1800) || '' };
   `);
 }
 async function click(selector, text = null) {
@@ -86,14 +86,33 @@ try {
     catch (error) { if (Date.now() >= driverDeadline) throw error; await pause(500); }
   }
   const created = await command('POST', '/session', { capabilities: { alwaysMatch: {
-    browserName: 'Safari', platformName: 'iOS', pageLoadStrategy: 'eager',
+    browserName: 'Safari', platformName: 'iOS', pageLoadStrategy: 'none',
     'safari:useSimulator': true, 'safari:deviceUDID': process.env.SF_IOS_SIM_UDID,
   } } }, 120000);
   session = created.sessionId; report.capabilities = created.capabilities;
   if (!session) throw new Error('SafariDriver created no session');
   report.phase = 'navigate'; await persist();
-  await command('POST', `/session/${session}/url`, { url: target.href }, 180000);
+  try {
+    await command('POST', `/session/${session}/url`, { url: target.href }, 30000);
+  } catch (error) {
+    if (error.name !== 'TimeoutError') throw error;
+    report.navigationWarning = String(error);
+    // SafariDriver can keep navigation pending after the document is interactive.
+    // The URL/body check below still requires this deployment before any tap.
+  }
+  report.phase = 'document';
+  await waitFor('document', state => state.url === target.href && state.hasBody, 60000);
   await execute(`
+    window.__SF_IOS_PROBE_CONSOLE__ = [];
+    for (const level of ['warn', 'error', 'log']) {
+      const original = console[level].bind(console);
+      console[level] = (...args) => {
+        window.__SF_IOS_PROBE_CONSOLE__.push({ at: Date.now(), level,
+          text: args.map(value => value?.stack || String(value)).join(' ').slice(0, 900) });
+        if (window.__SF_IOS_PROBE_CONSOLE__.length > 60) window.__SF_IOS_PROBE_CONSOLE__.shift();
+        original(...args);
+      };
+    }
     window.__SF_IOS_PROBE_INPUT__ = [];
     for (const type of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click']) {
       window.addEventListener(type, event => {
@@ -101,7 +120,7 @@ try {
           text: event.target?.textContent?.trim()?.slice(0, 60), prevented: event.defaultPrevented };
         window.__SF_IOS_PROBE_INPUT__.push(item);
         if (window.__SF_IOS_PROBE_INPUT__.length > 12) window.__SF_IOS_PROBE_INPUT__.shift();
-      });
+      }, { capture: true });
     }
   `);
   report.phase = 'menu';
@@ -119,7 +138,9 @@ try {
   if (!(await click('.sf-ng-launch'))) throw new Error('Launch was not clickable');
   report.launchAt = Date.now();
   report.flight = await waitFor('flight', state => state.gun && state.pause
-    && state.journal?.current?.status === 'playing', 240000, state => {
+    && state.journal?.current?.status === 'playing'
+    && state.journal.current.sample?.contextLost === false
+    && state.journal.current.sample?.firstPlayableFrameAt > 0, 240000, state => {
       if (state.timeOrigin !== setup.timeOrigin) throw new Error('Safari restarted the document during New Game');
       if (['failed', 'returned-to-menu'].includes(state.journal?.current?.status)) throw new Error('New Game returned to the menu; see startup journal');
     });
