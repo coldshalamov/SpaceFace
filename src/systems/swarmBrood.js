@@ -121,8 +121,10 @@ import {
 import { circleHitRadius, corridorHalfWidth } from '../combat/telegraphFootprint.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
+  SWARM_BROOD_RESERVE_DELAY_S,
   foldBroodLatePlan,
   swarmBroodLateFamily,
+  swarmBroodLateReserve,
 } from '../data/swarmBroodLate.js';
 
 const DT = 1 / 60;
@@ -377,6 +379,20 @@ export function createBroodEngine(deps = {}) {
   const birthTold = new Uint8Array(CAP);
   let immediateQuota = Infinity;
 
+  // --- B5: the late reserve — every non-Hive room's pressure axis --------------------
+  //
+  // From wave 25 the roster clock has stopped and the population sits at its ceiling, so
+  // a late room fields the same solved cohort at the open and then runs dry. Non-Hive
+  // arenas get the Hive's axis in miniature: prepareWave holds one small specialist
+  // group back out of the SAME mite share the late fold spends (src/data/swarmBroodLate.js),
+  // and step() drops it once on the wave's own clock through the same gate ring —
+  // alive plus held never exceeds the planned population. Champion waves keep no
+  // reserve (the picker returns null): the boss is that room's pressure story.
+  let reserveFamily = null;
+  let reserveBudget = 0;
+  let reserveReleaseAt = Infinity;
+  let reserveTold = false;
+
   const view = {
     schema: 'spaceface.swarmBrood.v4',
     cap: CAP,
@@ -401,6 +417,9 @@ export function createBroodEngine(deps = {}) {
     // aliveCount + sacBudget stays inside the wave's planned population.
     hive: false,
     sacBudget: 0,
+    // B5 — the late reserve: the specialist family still held and how many bodies.
+    reserveFamily: null,
+    reserveBudget: 0,
   };
 
   // --- family table mirror (numeric fields the hot loop reads, rebuilt on demand) ----------
@@ -484,6 +503,10 @@ export function createBroodEngine(deps = {}) {
     birthLeft.fill(0);
     birthTold.fill(0);
     immediateQuota = Infinity;
+    reserveFamily = null;
+    reserveBudget = 0;
+    reserveReleaseAt = Infinity;
+    reserveTold = false;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
     publish();
@@ -541,6 +564,29 @@ export function createBroodEngine(deps = {}) {
       motherReserve = take;
       pendingPlan = pendingPlan.filter((part) => part.count > 0);
     }
+    // B5 — a late non-Hive wave holds back one small specialist group for a mid-wave
+    // drop. The Hive keeps its own sac tide instead (hiveMode), and champion waves are
+    // exempt inside the picker — so this never touches the Hive's or a boss's plan.
+    // The spend is the same law foldBroodLatePlan uses: out of the mite share, at
+    // least one mite left standing, the plan total unchanged.
+    reserveFamily = null;
+    reserveBudget = 0;
+    reserveReleaseAt = Infinity;
+    reserveTold = false;
+    if (!hiveMode) {
+      const pick = swarmBroodLateReserve(w, rng);
+      if (pick) {
+        const miteRow = pendingPlan.find((part) => part.id === 'mite');
+        const room = miteRow ? Math.max(0, miteRow.count - 1) : 0;
+        const take = Math.min(pick.count, room);
+        if (miteRow && take > 0) {
+          miteRow.count -= take;
+          pendingPlan = pendingPlan.filter((part) => part.count > 0);
+          reserveFamily = pick.familyId;
+          reserveBudget = take;
+        }
+      }
+    }
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -582,6 +628,11 @@ export function createBroodEngine(deps = {}) {
       if (owed > 0) deferred.push({ ...part, count: owed });
     }
     pendingPlan = deferred.length ? deferred : null;
+    // B5 — the reserve drops on the wave's own clock: first spawn starts the timer,
+    // so a held-back group always lands mid-wave rather than at the open.
+    if (reserveBudget > 0 && !Number.isFinite(reserveReleaseAt)) {
+      reserveReleaseAt = now + SWARM_BROOD_RESERVE_DELAY_S;
+    }
     assignMotherShares();
     publish();
     return spawned;
@@ -779,13 +830,17 @@ export function createBroodEngine(deps = {}) {
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
     const tendrilWatching = tendrilMode && !tendrilDone;
     // B4 — the sac reserve keeps the step alive too: the Hive's tide may still be held.
+    // B5 — so does an armed late reserve whose drop clock has already been set.
+    const reservePending = reserveBudget > 0 && Number.isFinite(reserveReleaseAt);
     if (aliveCount <= 0 && lobCount <= 0 && poolCount <= 0 && segAliveCount <= 0
-      && !tendrilWatching && sacBudget <= 0) { publish(); return false; }
+      && !tendrilWatching && sacBudget <= 0 && !reservePending) { publish(); return false; }
 
     cachePlayer(state);
     cacheRocks(state);
     cacheMovers(state);
     rebuildGrid();
+    // B5 — the held specialist group drops once, mid-wave, through the same gate ring.
+    if (reservePending && finite(state.simTime) >= reserveReleaseAt) releaseReserve(state);
     killCount.fill(0);
     creditedCount.fill(0);
     killCredits.fill(0);
@@ -2044,6 +2099,54 @@ export function createBroodEngine(deps = {}) {
     }
   }
 
+  // --- B5: the late reserve drop -------------------------------------------------------
+  //
+  // One seeded gate clump, the same 165wu arrival ring and clearance law the wave's own
+  // spawn used — mid-wave pressure reads as a late gate group, not a new mechanism.
+  // The draw is bounded by `reserveBudget`, which was spent out of the mite share at
+  // prepareWave, so the room never exceeds its planned population. A full cap or a
+  // blocked gate just defers the rest to the next tick (the sac pulse's own patience).
+  // The family's authored {bark,line,cue} speaks once on the first landing through the
+  // ordinary telegraph seam — a reserve arrival is never silent.
+  function releaseReserve(state) {
+    if (reserveBudget <= 0 || !reserveFamily) return 0;
+    const famIdx = buildFamilyIndex().get(reserveFamily);
+    if (famIdx == null || famIdx < 0) return 0;
+    const player = state?.entities?.get?.(state.playerId);
+    const ax = finite(player?.pos?.x), az = finite(player?.pos?.z);
+    const bearing = gateBearing(GATE_RING[Math.floor(rng() * GATE_RING.length)]);
+    const cx = ax + bearing.x * 165, cz = az + bearing.z * 165;
+    let born = 0;
+    let firstSlot = -1;
+    while (reserveBudget > 0) {
+      const slot = findFreeSlot();
+      if (slot < 0) break;
+      const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 30;
+      const open = findSwarmArrival(state, { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r },
+        liveFamilyRadius[famIdx], { clearance: BROOD_SPAWN_ROCK_CLEARANCE });
+      if (!open) break;
+      spawnAt(slot, famIdx, open.x, open.z);
+      if (liveFamilyDef[famIdx] && liveFamilyDef[famIdx].burrows) parkBurrower(slot);
+      if (firstSlot < 0) firstSlot = slot;
+      reserveBudget -= 1;
+      born += 1;
+    }
+    if (born > 0) {
+      if (!reserveTold) {
+        reserveTold = true;
+        emitTelegraph(firstSlot, liveFamilyDef[famIdx]);
+      }
+      if (bus) {
+        bus.emit('swarm:broodReserve', {
+          familyId: reserveFamily, count: born, wave: liveWave,
+          pos: { x: px[firstSlot], z: pz[firstSlot] },
+        });
+      }
+      publish();
+    }
+    return born;
+  }
+
   function flushKills(state) {
     flushKillsFrom(state);
   }
@@ -2175,6 +2278,8 @@ export function createBroodEngine(deps = {}) {
     view.segAliveCount = segAliveCount;
     view.hive = hiveMode;
     view.sacBudget = sacBudget;
+    view.reserveFamily = reserveFamily;
+    view.reserveBudget = reserveBudget;
     // The radius the damage queries add the victim's reach to, so the drawn footprints can use the
     // SAME number (telegraphFootprint.js). Runtime mirror, never serialized.
     view.victimRadius = playerRad;
@@ -2203,7 +2308,7 @@ export function createBroodEngine(deps = {}) {
     applyLegendaryShove,
     /** Live population figures, for tests and the lab overlay. */
     census() {
-      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget };
+      return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
     _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId },
@@ -2222,6 +2327,9 @@ export function createBroodEngine(deps = {}) {
     },
     _mother() {
       return { reserve: motherReserve };
+    },
+    _reserve() {
+      return { family: reserveFamily, left: reserveBudget, releaseAt: reserveReleaseAt };
     },
     _setFamilyMirrorForTest: setFamilyMirror,
     _killDirectForTest(i, cause) {
