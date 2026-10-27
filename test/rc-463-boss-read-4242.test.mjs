@@ -366,7 +366,7 @@ test('damage generated one tick before fireAt stamps the warning tick, not fireA
 });
 
 // ── 2 · Adventure name, act, health are real readouts ─────────────────────────────────
-test('Adventure shows boss name, act title, and a hull instrument on the live entity', () => {
+test('Adventure shows boss name, act title, and a parts instrument on the live entity', () => {
   const env = installDom(1280, 720);
   try {
     const h = bootScoreFight(TOLLMAN);
@@ -386,26 +386,35 @@ test('Adventure shows boss name, act title, and a hull instrument on the live en
     const actTitles = score.acts.map((a) => a.title);
     assert.deepEqual(actsSeen, score.acts.map((a) => a.id), 'all three authored acts ran');
     assert.equal(g.children[1].textContent, actTitles[2], 'the readout names the current act');
-    // Hull instrument reads the entity directly: full -> half.
+    // W-COLOSSI (row 547): a plated score boss's instrument reads the fight's own
+    // attached-parts fraction, not the entity hull — the Tollman's two authored plates
+    // shed with their authored acts above, so re-joining the ledger reads full, half of
+    // it reads half, and the accessible name says what the bar is actually counting.
     const gauge = findAll(g, (n) => n.attributes && n.attributes.role === 'progressbar')[0];
-    h.boss.hull = h.boss.hullMax;
+    const liveFight = h.state.capitalBossEncounters.fights[h.fightId];
+    for (const rec of liveFight.plates) rec.attached = true;
     tick(h, 1, mount);
-    assert.equal(gauge.getAttribute('aria-valuenow'), '100', 'full hull reads 100');
-    h.boss.hull = h.boss.hullMax / 2;
+    assert.equal(gauge.getAttribute('aria-valuenow'), '100',
+      'all parts attached reads 100');
+    assert.equal(gauge.getAttribute('aria-label'), `${g.children[0].textContent} parts remaining`,
+      'a plated score boss names its instrument parts, not hull');
+    liveFight.plates[1].attached = false;
     tick(h, 1, mount);
-    assert.equal(gauge.getAttribute('aria-valuenow'), '50', 'half hull reads 50');
+    assert.equal(gauge.getAttribute('aria-valuenow'), '50',
+      'one of two parts attached reads 50');
     // A boss whose hull field was never stamped (or dropped by a partial restore) used to
-    // divide undefined into the fraction and print aria-valuenow="NaN" — the readout
-    // clamps the sanitized hull to zero instead. The sim itself rejects non-finite hull
-    // bounds, so the projection is probed at the mount's draw seam, not through a tick.
+    // divide undefined into the fraction and print aria-valuenow="NaN" — the projection
+    // still clamps its published hull to zero, and the parts-backed gauge answers the
+    // plate ledger, so a missing hull can surface nothing but the live fraction. The
+    // sim itself rejects non-finite hull bounds, so this is probed at the draw seam.
     delete h.boss.hull;
     mount.draw(h.state);
     const r = capitalBossReadouts(h.state)[0];
     assert.ok(Number.isFinite(r.hull) && Number.isFinite(r.hullFraction),
       'a missing hull projects finite readout numbers');
     assert.equal(r.hullFraction, 0, 'a missing hull reads as an empty fraction');
-    assert.equal(gauge.getAttribute('aria-valuenow'), '0',
-      'a missing hull reads 0, never NaN');
+    assert.equal(gauge.getAttribute('aria-valuenow'), '50',
+      'a missing hull still answers the live parts fraction, never NaN');
     // Presentation emits nothing of its own — it only reads. Two separate claims, both
     // load-bearing: the swarm family is a hard ZERO in this Adventure fight (a fabricated
     // swarm:* payload with no origin used to satisfy the old predicate), and every damage
@@ -607,8 +616,8 @@ test('readout placement stays inside the viewport at 1280 and 1920; survival add
       assert.ok(svgNode, 'the scale node exists in the pool');
       assert.ok(gauge, 'the semantic gauge node exists in the pool');
       assert.notEqual(gauge.style.display, 'none', 'adventure exposes the semantic gauge');
-      assert.equal(gauge.getAttribute('aria-label'), `${g.children[0].textContent} hull`,
-        'the live gauge names the boss');
+      assert.equal(gauge.getAttribute('aria-label'), `${g.children[0].textContent} parts remaining`,
+        'the live gauge names the boss and its instrument — a plated score boss counts parts');
       // Survival: Swarm owns its champion bar — the SVG and the progressbar both hide, and
       // the hidden node answers no stale hull claim.
       const prevRun = h.state.run;
@@ -624,10 +633,10 @@ test('readout placement stays inside the viewport at 1280 and 1920; survival add
       h.state.run = prevRun;
       mount.draw(h.state);
       assert.notEqual(gauge.style.display, 'none', 'adventure restores the semantic gauge');
-      assert.equal(gauge.getAttribute('aria-label'), `${g.children[0].textContent} hull`,
+      assert.equal(gauge.getAttribute('aria-label'), `${g.children[0].textContent} parts remaining`,
         'the restored gauge names the live boss');
       assert.ok(Number.isFinite(Number(gauge.getAttribute('aria-valuenow'))),
-        'the restored gauge carries a live hull value');
+        'the restored gauge carries a live instrument value');
       mount.destroy();
       h.capSys.destroy();
     } finally { env.restore(); }
@@ -651,13 +660,13 @@ test('readouts sort by fightId regardless of store insertion order', () => {
 });
 
 // ── 7 · simultaneous fights: disjoint readouts, per-boss accessible names ─────────────
-test('simultaneous fights resolve to non-overlapping readouts; equal hull % keeps its own name', () => {
+test('simultaneous fights resolve to non-overlapping readouts; equal instrument % keeps its own name', () => {
   const env = installDom(1280, 720);
   try {
     const h = bootScoreFight(TOLLMAN);
     const score = requireCapitalBossEncounter(TOLLMAN).score;
     // A second boss on the SAME projected position — identical anchors are the worst case —
-    // and the same hull fraction, which is the pool-reuse trap for the gauge's name.
+    // and the same instrument fraction, which is the pool-reuse trap for the gauge's name.
     const boss2 = {
       id: h.state.nextEntityId++, alive: true, pos: { x: 300, z: 0 }, rot: 0,
       hull: 100, hullMax: 100, radius: 20, type: 'ship', team: 1,
@@ -671,6 +680,12 @@ test('simultaneous fights resolve to non-overlapping readouts; equal hull % keep
     clone.fightId = 'zz-ala-fight';
     clone.encounterId = 'capital_boss_ala';
     clone.bossId = boss2.id;
+    // The copied plate ledger carries Tollman ids, which mean nothing to ALA's spec —
+    // a real ALA fight records its own authored plates. Rebuild the ledger so both
+    // readouts sit on the same full attached-parts fraction: equal instrument %,
+    // different bosses — the exact state that once kept a reused gauge's old name.
+    clone.plates = requireCapitalBossEncounter('capital_boss_ala').plates
+      .map((p) => ({ id: p.id, attached: true, strainTicks: 0 }));
     fights[clone.fightId] = clone;
     mount.draw(h.state);
     const visible = groupNodes(env.root).filter((g) => g.style.display === 'block');
@@ -693,16 +708,18 @@ test('simultaneous fights resolve to non-overlapping readouts; equal hull % keep
     }
     assert.ok(!boxOverlap(boxes[0], boxes[1]),
       `same-anchor readouts cannot share pixels (${JSON.stringify(boxes)})`);
-    // Equal hull percentages, different bosses: each pooled gauge names its own boss.
+    // Equal instrument percentages, different bosses: each pooled gauge names its own
+    // boss — under W-COLOSSI both read attached parts, so the accessible name is the
+    // parts claim, not hull.
     const gauges = visible.map(
       (g) => findAll(g, (n) => n.attributes && n.attributes.role === 'progressbar')[0]);
-    assert.equal(gauges.length, 2, 'each readout carries a hull gauge');
+    assert.equal(gauges.length, 2, 'each readout carries an instrument gauge');
     const labels = gauges.map((g) => g.attributes['aria-label']);
     const names = visible.map((g) => g.children[0].textContent);
-    assert.equal(labels[0], `${names[0]} hull`);
-    assert.equal(labels[1], `${names[1]} hull`);
+    assert.equal(labels[0], `${names[0]} parts remaining`);
+    assert.equal(labels[1], `${names[1]} parts remaining`);
     assert.notEqual(labels[0], labels[1],
-      'an unchanged hull percentage must not retain the previous boss name');
+      'an unchanged instrument percentage must not retain the previous boss name');
     mount.destroy();
     h.capSys.destroy();
   } finally { env.restore(); }
