@@ -174,3 +174,5 @@ The oldest OPEN row is the next second look.
 | R-3a9d5dc | 3a9d5dc5260 | EXP-25 moralMemory: moral ledger expanded ~5x into a reactive debt economy — settlement offers with credit/ransom/favor options, witness testimony propagating headlines, bounded hauler-rescue index, tone ladders, proto-pollution-safe map writes; 3x OPTIMAL consensus | Re-check the hasOwn/defineProperty audit is complete: reviewers hardened debts/witnesses/haulerOrder/lastTrapRefusal reads, but confirm no remaining arbitrary-key bracket write survives anywhere in the file's map surface | OPEN |
 
 | 2026-10-27 | c4557492f17 | EXP-25: faction_choir — chorus rites → processions/relics/heresy/bells (228→1540, ~6.8×) | Re-check: pilgrim spawn/arrival latch order under a re-entrant update listener stepping mid-emit |
+
+| 2026-10-27 | 111d43c11ba | EXP-25: faction_frontier — seeded homestead sites/disputes/vendettas + save envelope (281→1830+, ~6.5×) | Re-check: _tickSiteSeeding plant/restock cadence vs parked-ring generation rebinds |
