@@ -47,7 +47,7 @@ const DEED_OUTCOME_LINES = Object.freeze({
   casualty_lost: 'A lane casualty broke up under watch; the spilled lot is still disputed.',
   scene_lost: 'The salvage watch lost everything — casualty, tug, and the habit of answering.',
   grandee_lost: 'The Grandee of Helion did not clear this pocket.',
-  transit_harried: 'The Grandee made her run angry — her escort logged fire in this pocket.',
+  transit_harried: 'The Grandee cleared the pocket after taking damage.',
   defended: 'A hauler under attack was defended on the lane.',
   robbed: 'A freighter was robbed on the lane; the thief left with the hold.',
   hauler_destroyed: 'A freighter went down on the lane under watch.',
