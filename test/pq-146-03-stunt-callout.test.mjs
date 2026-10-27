@@ -25,6 +25,8 @@ import {
   releaseStuntCallout,
   SPEED_DIAL_CLEARANCE_PX,
   SPEED_DIAL_SELECTOR,
+  PROMPT_DECK_CLEARANCE_PX,
+  PROMPT_DECK_SELECTOR,
   STABLE_LOAD_CLEARANCE_PX,
   STABLE_LOAD_SELECTOR,
   trickCalloutName,
@@ -390,4 +392,23 @@ test('the callout column seats itself above the HUD speed dial it shares the lef
   assert.equal(seat({ left: 18, right: 225, top: 607, bottom: 815, height: 208 }, { left: 22, right: 160, top: 540, bottom: 556, height: 16 }),
     `max(32vh, ${1080 - (540 - STABLE_LOAD_CLEARANCE_PX)}px)`,
     'a showing STABLE LOAD line above the dial stacks the column above it too');
+});
+
+test('a bottom-sheet decision card that rises under a showing column lifts it on the next line', () => {
+  const doc = fakeDocument();
+  doc.defaultView = { innerHeight: 844 };
+  let deckRect = null;
+  doc.querySelector = (selector) => (selector === PROMPT_DECK_SELECTOR && deckRect
+    ? { getBoundingClientRect: () => deckRect } : null);
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  owner.root.getBoundingClientRect = () => ({ left: 16, right: 134, top: 0, bottom: 0, height: 14 });
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0);
+  assert.equal(owner.root.style.bottom, '', 'no card, authored seat');
+  deckRect = { left: 12, right: 588, top: 420, bottom: 726, height: 306 };
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bolas', episodeId: 'ep2' }));
+  assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
+    'the column sits above the card instead of printing over its choices');
+  owner.destroy();
 });
