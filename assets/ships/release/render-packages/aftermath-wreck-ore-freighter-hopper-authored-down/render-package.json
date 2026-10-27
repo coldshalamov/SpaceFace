@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6848ac51f2816ec4cc9c01c40b11b6d665755ded279428bf1c177676d61a69f0",
+  "contentHash": "057020127970883ae3f78fa48e2e61299f7df04177e181809753d711f8a48476",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           22.852001190185547,
-          12.73122501373291,
-          15.10925579071045
+          12.731225333273617,
+          15.10925522888751
         ],
         "min": [
           -24.499996185302734,
-          -12.71142292022705,
-          -16.414426803588867
+          -12.711423239767758,
+          -16.41442624176593
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beb4466f75670ce195f131b102d078ce62964ee56763fc15cb6e5cd2b617c2f8",
+      "geometryHash": "9be5b06fa174d076210a9e88a910bbc9a2c683140c4627aa7279e7479c371ed6",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 3072,
       "indexed": true,
@@ -85,17 +85,17 @@
       "bounds": {
         "max": [
           24.499996185302734,
-          8.638439178466797,
-          23.566137313842773
+          8.638439280988168,
+          23.566137349292323
         ],
         "min": [
           -22.672588348388672,
-          -11.074509620666504,
-          -23.566137313842773
+          -11.074509723187875,
+          -23.566137349292323
         ]
       },
       "drawMode": 4,
-      "geometryHash": "986d57a35224b302a5e36325f825b5dd1965d95e0ade07b2ebfab6e1813a8ca2",
+      "geometryHash": "9de29b551c473323f22eb545829a42d28bc75785b418585d5ee3eb1397fe9ac7",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 14160,
       "indexed": true,
@@ -110,17 +110,17 @@
       "bounds": {
         "max": [
           22.852001190185547,
-          12.729994773864746,
-          15.10925579071045
+          12.729995437641513,
+          15.10925522888751
         ],
         "min": [
           -24.499996185302734,
-          -12.72999382019043,
-          -16.414426803588867
+          -12.729994483967197,
+          -16.41442624176593
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5c7fe36c24aa64b0a32b6bcae0165831fe6de1e322816edecfedf2304ff31ce",
+      "geometryHash": "15847941f67d2f16ccef9dd1152bf046fb61214ca814ec169c32126727c57827",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 1473,
       "indexed": true,
@@ -135,17 +135,17 @@
       "bounds": {
         "max": [
           24.499996185302734,
-          8.638439178466797,
-          23.566137313842773
+          8.638439280988168,
+          23.566137349292323
         ],
         "min": [
           -22.672588348388672,
-          -11.074509620666504,
-          -23.566137313842773
+          -11.074509723187875,
+          -23.566137349292323
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4e6721541531bc875b28269579506a4c5f99903ef540e6e0b54be832e38cb34",
+      "geometryHash": "58b45273467b6c0860ca379d8389dfd5a6be5cf51710a993c4b7d8be422d79bd",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 6795,
       "indexed": true,
@@ -160,17 +160,17 @@
       "bounds": {
         "max": [
           22.852001190185547,
-          12.677084922790527,
-          14.565274238586426
+          12.677086002226332,
+          14.565274334792072
         ],
         "min": [
           -24.499996185302734,
-          -12.707756996154785,
-          -16.4150447845459
+          -12.70775807559059,
+          -16.415044880751545
         ]
       },
       "drawMode": 4,
-      "geometryHash": "adf7f54fd2dbe2a34e9d3d22e91dfa2a6c4ddb11c1dcbe3f85ce7e4c94cc4734",
+      "geometryHash": "b04af426cd1382756f16de6bb0edf775d1c0e724025fb7a5aa8474dd752d8b0b",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-heat.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -185,17 +185,17 @@
       "bounds": {
         "max": [
           24.499996185302734,
-          8.639904022216797,
-          23.566137313842773
+          8.639903874801398,
+          23.566137349292323
         ],
         "min": [
           -22.672588348388672,
-          -11.124872207641602,
-          -23.566137313842773
+          -11.124872060226203,
+          -23.566137349292323
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24372f0cac9a83b994a33375ef1cdbccb0b68cf6bdd5234c7a64d481dfbf2a93",
+      "geometryHash": "22e9af1aaa8bfbd8917c0668447f2d99ed4dc917a1dcd3bc54352c95ae29cb01",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-insulation.primitive.0",
       "indexCount": 2832,
       "indexed": true,
@@ -329,21 +329,21 @@
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-heat",
       "localTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
+        -0.8239974975585938,
         0,
-        0,
-        0,
+        -0.652585506439209,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -358,41 +358,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
-        0,
+        -0.8239974975585938,
         0.009901046752929688,
-        0,
+        -0.652585506439209,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod0-wreck-ore-freighter-hopper-material-insulation",
       "localTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0,
+        0.9137039184570312,
+        -1.2279362678527832,
         0,
         1
       ],
@@ -408,20 +408,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0.009901046752929688,
+        0.9137039184570312,
+        -1.2180352210998535,
         0,
         1
       ]
@@ -478,21 +478,21 @@
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-heat",
       "localTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
-        0,
-        0,
-        0,
+        -0.8239974975585938,
+        -0.009900569915771484,
+        -0.652585506439209,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -507,41 +507,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
-        0,
-        0.009901046752929688,
-        0,
+        -0.8239974975585938,
+        4.76837158203125e-7,
+        -0.652585506439209,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod1-wreck-ore-freighter-hopper-material-insulation",
       "localTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0,
+        0.9137039184570312,
+        -1.2279362678527832,
         0,
         1
       ],
@@ -557,20 +557,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0.009901046752929688,
+        0.9137039184570312,
+        -1.2180352210998535,
         0,
         1
       ]
@@ -627,21 +627,21 @@
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-heat",
       "localTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
-        0,
-        0,
-        0,
+        -0.8239974975585938,
+        -0.025237083435058594,
+        -0.9248852729797363,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -656,41 +656,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
         0,
         0,
         0,
-        1,
+        23.67599868774414,
         0,
-        0,
-        0.009901046752929688,
-        0,
+        -0.8239974975585938,
+        -0.015336036682128906,
+        -0.9248852729797363,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.node.lod2-wreck-ore-freighter-hopper-material-insulation",
       "localTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0,
+        0.9137039184570312,
+        -1.252385139465332,
         0,
         1
       ],
@@ -706,20 +706,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",
       "worldTransform": [
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
         0,
         0,
         0,
-        1,
+        23.586292266845703,
         0,
-        0,
-        0.009901046752929688,
+        0.9137039184570312,
+        -1.2424840927124023,
         0,
         1
       ]
@@ -880,37 +880,37 @@
       "uri": "place_aftermath_wreck_ore_freighter_hopper_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 676796,
-    "sha256": "b8b47a41e36c2545fa6a94a375158c7781cbf5895000a8a48cfe0fb2088f8d52",
+    "bytes": 482112,
+    "sha256": "a30d8b3ad347a5fbff316b2dce1a6c8a5e3698235b1a67a03d93ddf6c95fba2e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.0006155967712402344,
+        0.0006154246532101837,
         0
       ],
       "max": [
         24.499996185302734,
-        12.73122501373291,
-        23.566137313842773
+        12.731225333273617,
+        23.566137349292323
       ],
       "min": [
         -24.499996185302734,
-        -12.72999382019043,
-        -23.566137313842773
+        -12.729994483967197,
+        -23.566137349292323
       ],
       "size": [
         48.99999237060547,
-        25.46121883392334,
-        47.13227462768555
+        25.461219817240814,
+        47.132274698584645
       ]
     },
     "hidden": [],
@@ -995,21 +995,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
-          0,
+          -0.8239974975585938,
           0.009901046752929688,
-          0,
+          -0.652585506439209,
           1
         ],
         "name": "LOD0_wreck_ore_freighter_hopper_Material_Heat",
@@ -1022,20 +1022,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
-          0,
-          0.009901046752929688,
+          0.9137039184570312,
+          -1.2180352210998535,
           0,
           1
         ],
@@ -1049,21 +1049,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
-          0,
-          0.009901046752929688,
-          0,
+          -0.8239974975585938,
+          4.76837158203125e-7,
+          -0.652585506439209,
           1
         ],
         "name": "LOD1_wreck_ore_freighter_hopper_Material_Heat",
@@ -1076,20 +1076,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
-          0,
-          0.009901046752929688,
+          0.9137039184570312,
+          -1.2180352210998535,
           0,
           1
         ],
@@ -1103,21 +1103,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
           0,
           0,
           0,
-          1,
+          23.67599868774414,
           0,
-          0,
-          0.009901046752929688,
-          0,
+          -0.8239974975585938,
+          -0.015336036682128906,
+          -0.9248852729797363,
           1
         ],
         "name": "LOD2_wreck_ore_freighter_hopper_Material_Heat",
@@ -1130,20 +1130,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
           0,
           0,
           0,
-          1,
+          23.586292266845703,
           0,
-          0,
-          0.009901046752929688,
+          0.9137039184570312,
+          -1.2424840927124023,
           0,
           1
         ],
@@ -1159,20 +1159,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper_authored_down.glb"
   },
-  "runtimeHash": "df29d23b4ef73f4409dd9cd8949d31741b2ee57f9351cf6bc31120b22d6022cc",
+  "runtimeHash": "6dfc14835007b5302c125295575867c53df127de418bf4667d5435a6bc02530f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           24.499996185302734,
-          12.73122501373291,
-          23.566137313842773
+          12.731225333273617,
+          23.566137349292323
         ],
         "min": [
           -24.499996185302734,
-          -12.72999382019043,
-          -23.566137313842773
+          -12.729994483967197,
+          -23.566137349292323
         ]
       },
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper-authored-down.body",

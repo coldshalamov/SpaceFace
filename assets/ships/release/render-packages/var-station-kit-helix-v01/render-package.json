@@ -559,7 +559,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "bcd783a1ae6c08bdaaac12c68007545f8ede3e4086c7d2689cba5e8d726de367",
+  "contentHash": "5eb55881b394bedaa9995c0ba69b29902344aa360f1759e7f340ae8f815348f5",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hook-nav-port-helix.dynamic",
@@ -577,17 +577,17 @@
       "bounds": {
         "max": [
           53,
-          38.69184875488281,
+          38.69184928326443,
           53
         ],
         "min": [
           -53,
-          10.000971794128418,
+          10.000971265746802,
           -53
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d974591008e09f0aec8be9274f450136d3fe71790385478a908f75f8ede00a8a",
+      "geometryHash": "781f2bc13be34e73b6da1bd5d80c07df711df83c0013cb7b3b328bb97493e06a",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-armor.primitive.0",
       "indexCount": 8736,
       "indexed": true,
@@ -602,17 +602,17 @@
       "bounds": {
         "max": [
           54.94999694824219,
-          22.299293518066406,
+          22.299293774449872,
           54.94999694824219
         ],
         "min": [
           -54.94999694824219,
-          11.700704574584961,
+          11.700704318201494,
           -54.94999694824219
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ae2f4a1a7562c780ec7a561f3e7f4fdf6bca9dd0111894ccfe199d5b5d74c23",
+      "geometryHash": "0ed3cca8c97023ccd392cb5e2c94c23079fb20e5a9b387eb24f38b1a82f00e94",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-canopy.primitive.0",
       "indexCount": 4512,
       "indexed": true,
@@ -637,7 +637,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff45d5260b5d0404f8ffd3a740b5b3b098fac509db8dd0e321134d37c6f574a6",
+      "geometryHash": "d90f5637fe752d894d6ac7f77d439f4be98fe6bb77be91337a6245442ffd9b91",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hook-nav-port-helix.primitive.0",
       "indexCount": 4512,
       "indexed": true,
@@ -652,17 +652,17 @@
       "bounds": {
         "max": [
           52.79999923706055,
-          40.00031280517578,
+          40.00031202572231,
           52.79999923706055
         ],
         "min": [
           -52.79999923706055,
-          9.999689102172852,
+          9.999689881626324,
           -52.79999923706055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "551dc345b7d90b8ce42554383d35de7aaf8b8c68291ccb10bce0cb0e61c37207",
+      "geometryHash": "c97e118916343704cb4ce24ab4910454d9be3004ce855e730f67b144a8787875",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hull.primitive.0",
       "indexCount": 8676,
       "indexed": true,
@@ -677,17 +677,17 @@
       "bounds": {
         "max": [
           53.900001525878906,
-          40.84551239013672,
+          40.84551218701489,
           53.900001525878906
         ],
         "min": [
           -53.900001525878906,
-          26.659482955932617,
+          26.65948315905445,
           -53.900001525878906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbba4f2fd7badbd247e57620405cceda62b863918f55ff78dc27614d345705b5",
+      "geometryHash": "a198c51c4d816504a4b7ce31936fd60055ded0bc77e1835556b48550d419d986",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-lights-cyan-helix.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -702,17 +702,17 @@
       "bounds": {
         "max": [
           55.900001525878906,
-          39.398719787597656,
+          39.39871873944942,
           55.900001525878906
         ],
         "min": [
           -55.900001525878906,
-          15.501283645629883,
+          15.501284693778116,
           -55.900001525878906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef197ed538be2c1c147a2aaeba9008b9f58b48806e9446c914f60faccad19725",
+      "geometryHash": "3ff3ca956dba043b901fb7b11b20921130345e5ebe77924e1bc37df38645a5ba",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-livery.primitive.0",
       "indexCount": 15504,
       "indexed": true,
@@ -727,17 +727,17 @@
       "bounds": {
         "max": [
           8.662057876586914,
-          38.249549865722656,
+          38.24954932204651,
           8.662057876586914
         ],
         "min": [
           -8.662057876586914,
-          37.750450134277344,
+          37.75045067795349,
           -8.662057876586914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be5f928978776a959ca55a78eecbcb0c396408abd35a3517a5a92befa79030ed",
+      "geometryHash": "f70fa5a38596523668a4a89f24b144b311de880255b119a02aa42aa9a87e740b",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-mechanical.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -752,17 +752,17 @@
       "bounds": {
         "max": [
           53,
-          38.83047103881836,
+          38.830470401250395,
           53
         ],
         "min": [
           -53,
-          9.99725341796875,
+          9.997254055536718,
           -53
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15ae4353611be3baf03dfbf5481bf7cbed3fc901b2038fe685b02b686c4aa3ad",
+      "geometryHash": "9738fe46ff921f6fae270c8b502f028f019fca4a0ff7496ac876f644f8e85d42",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-armor.primitive.0",
       "indexCount": 7824,
       "indexed": true,
@@ -777,17 +777,17 @@
       "bounds": {
         "max": [
           54.607444763183594,
-          24.547595977783203,
+          24.547596257101187,
           54.607444763183594
         ],
         "min": [
           -54.607444763183594,
-          11.628595352172852,
+          11.628595072854868,
           -54.607444763183594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f019097cf5256e6ecd8bdd2a361f523c366ca485e27de15bd46f7bb1f0aee715",
+      "geometryHash": "9277e36447c42c29e45bdffa33c934bc6549752b036f56c9cac322085cbe3769",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-canopy.primitive.0",
       "indexCount": 24,
       "indexed": true,
@@ -827,17 +827,17 @@
       "bounds": {
         "max": [
           52.79999923706055,
-          40.565765380859375,
+          40.56576619497656,
           52.79999923706055
         ],
         "min": [
           -52.79999923706055,
-          9.997940063476562,
+          9.997939249359373,
           -52.79999923706055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23ec3edd5e1b42b34d79911ecf5b18750b98f335418cde7548e149b44b7d75b0",
+      "geometryHash": "88004dd84f2707ecc7180289245b921e9c09d7c20a0bd66802d834a446edd774",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-hull.primitive.0",
       "indexCount": 7731,
       "indexed": true,
@@ -852,17 +852,17 @@
       "bounds": {
         "max": [
           53.90000534057617,
-          40.67892074584961,
+          40.6789198767245,
           53.90000534057617
         ],
         "min": [
           -53.90000534057617,
-          26.756080627441406,
+          26.756081496566516,
           -53.90000534057617
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfca9997331df21903bb51786472088ee5dbb0fdb976dc1e52efafd5f81b9c2d",
+      "geometryHash": "141c6b13cb5d2121f5f89117a8da0544a99690cb4ceb14d89ec45a2175a4b26b",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-lights-cyan-helix.primitive.0",
       "indexCount": 39,
       "indexed": true,
@@ -876,18 +876,18 @@
     {
       "bounds": {
         "max": [
-          55.55393981933594,
-          39.339534759521484,
+          55.55393981665831,
+          39.33953436529807,
           55.56705856323242
         ],
         "min": [
-          -55.51234436035156,
-          15.503034591674805,
+          -55.51234435767393,
+          15.503034985898218,
           -55.56705856323242
         ]
       },
       "drawMode": 4,
-      "geometryHash": "430d34b2ec1f62e0e713fc3e580fd95e5a8f36ddd4a69eb4f88878fdf8b2fff6",
+      "geometryHash": "faa5fdafe2566dff1ad670e745e4fd170d7eb2f10883fd6b10144bf1327e2f1a",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-livery.primitive.0",
       "indexCount": 7806,
       "indexed": true,
@@ -902,17 +902,17 @@
       "bounds": {
         "max": [
           8.662057876586914,
-          38.083534240722656,
+          38.08353557814269,
           8.662057876586914
         ],
         "min": [
           -8.662057876586914,
-          37.916465759277344,
+          37.91646442185731,
           -8.662057876586914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b320c0029f63f290d4236c00a0f19c78042d0ca2b844ff9a3c331a84744428f3",
+      "geometryHash": "5c297e4b6770405255ff39f0ce99cd146b1eb747e211974ebc2460cc68f52703",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-mechanical.primitive.0",
       "indexCount": 12,
       "indexed": true,
@@ -927,17 +927,17 @@
       "bounds": {
         "max": [
           53,
-          38.83047103881836,
+          38.830470401250395,
           53
         ],
         "min": [
           -53,
-          9.99725341796875,
+          9.997254055536718,
           -53
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15ae4353611be3baf03dfbf5481bf7cbed3fc901b2038fe685b02b686c4aa3ad",
+      "geometryHash": "9738fe46ff921f6fae270c8b502f028f019fca4a0ff7496ac876f644f8e85d42",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-armor.primitive.0",
       "indexCount": 7824,
       "indexed": true,
@@ -952,17 +952,17 @@
       "bounds": {
         "max": [
           54.607444763183594,
-          24.547595977783203,
+          24.547596257101187,
           54.607444763183594
         ],
         "min": [
           -54.607444763183594,
-          11.628595352172852,
+          11.628595072854868,
           -54.607444763183594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f019097cf5256e6ecd8bdd2a361f523c366ca485e27de15bd46f7bb1f0aee715",
+      "geometryHash": "9277e36447c42c29e45bdffa33c934bc6549752b036f56c9cac322085cbe3769",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-canopy.primitive.0",
       "indexCount": 24,
       "indexed": true,
@@ -977,17 +977,17 @@
       "bounds": {
         "max": [
           52.79999923706055,
-          40.565765380859375,
+          40.56576619497656,
           52.79999923706055
         ],
         "min": [
           -52.79999923706055,
-          9.997940063476562,
+          9.997939249359373,
           -52.79999923706055
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23ec3edd5e1b42b34d79911ecf5b18750b98f335418cde7548e149b44b7d75b0",
+      "geometryHash": "88004dd84f2707ecc7180289245b921e9c09d7c20a0bd66802d834a446edd774",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-hull.primitive.0",
       "indexCount": 7731,
       "indexed": true,
@@ -1001,18 +1001,18 @@
     {
       "bounds": {
         "max": [
-          55.55393981933594,
-          39.339534759521484,
+          55.55393981665831,
+          39.33953436529807,
           55.56705856323242
         ],
         "min": [
-          -55.51234436035156,
-          15.503034591674805,
+          -55.51234435767393,
+          15.503034985898218,
           -55.56705856323242
         ]
       },
       "drawMode": 4,
-      "geometryHash": "430d34b2ec1f62e0e713fc3e580fd95e5a8f36ddd4a69eb4f88878fdf8b2fff6",
+      "geometryHash": "faa5fdafe2566dff1ad670e745e4fd170d7eb2f10883fd6b10144bf1327e2f1a",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-livery.primitive.0",
       "indexCount": 7806,
       "indexed": true,
@@ -1027,17 +1027,17 @@
       "bounds": {
         "max": [
           8.662057876586914,
-          38.083534240722656,
-          8.484847068786621
+          38.08353557814269,
+          8.484846793543296
         ],
         "min": [
           -8.662057876586914,
-          37.916465759277344,
-          -8.66162395477295
+          37.91646442185731,
+          -8.661623679529624
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf3fc15db62bae1d135ef2cdfd51dd3adf2f67d7f1cd116a1372fedf4cf72865",
+      "geometryHash": "98ec6439630f72824d1f60c127ec7bef93203a198ec69807e61de48efb30ab97",
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-mechanical.primitive.0",
       "indexCount": 12,
       "indexed": true,
@@ -1207,20 +1207,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-armor",
       "localTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.346410274505615,
         0,
         1
       ],
@@ -1235,20 +1235,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.346410274505615,
         0,
         1
       ]
@@ -1256,20 +1256,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-canopy",
       "localTransform": [
-        1,
+        54.94999694824219,
         0,
         0,
         0,
         0,
-        1,
+        54.94999694824219,
         0,
         0,
         0,
         0,
-        1,
+        54.94999694824219,
         0,
         0,
-        0,
+        16.999999046325684,
         0,
         1
       ],
@@ -1284,20 +1284,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        54.94999694824219,
         0,
         0,
         0,
         0,
-        1,
+        54.94999694824219,
         0,
         0,
         0,
         0,
-        1,
+        54.94999694824219,
         0,
         0,
-        0,
+        16.999999046325684,
         0,
         1
       ]
@@ -1354,20 +1354,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hull",
       "localTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.000000953674316,
         0,
         1
       ],
@@ -1382,20 +1382,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.000000953674316,
         0,
         1
       ]
@@ -1403,20 +1403,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-lights-cyan-helix",
       "localTransform": [
-        1,
+        53.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        53.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        53.900001525878906,
         0,
         0,
-        0,
+        33.75249767303467,
         0,
         1
       ],
@@ -1431,20 +1431,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        53.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        53.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        53.900001525878906,
         0,
         0,
-        0,
+        33.75249767303467,
         0,
         1
       ]
@@ -1452,20 +1452,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-livery",
       "localTransform": [
-        1,
+        55.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        55.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        55.900001525878906,
         0,
         0,
-        0,
+        27.45000171661377,
         0,
         1
       ],
@@ -1480,20 +1480,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        55.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        55.900001525878906,
         0,
         0,
         0,
         0,
-        1,
+        55.900001525878906,
         0,
         0,
-        0,
+        27.45000171661377,
         0,
         1
       ]
@@ -1501,20 +1501,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
+        38,
         0,
         1
       ],
@@ -1529,20 +1529,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
+        38,
         0,
         1
       ]
@@ -1550,20 +1550,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-armor",
       "localTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.413862228393555,
         0,
         1
       ],
@@ -1578,20 +1578,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.413862228393555,
         0,
         1
       ]
@@ -1599,20 +1599,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-canopy",
       "localTransform": [
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
-        0,
+        18.088095664978027,
         0,
         1
       ],
@@ -1627,20 +1627,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
-        0,
+        18.088095664978027,
         0,
         1
       ]
@@ -1697,20 +1697,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-hull",
       "localTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.28185272216797,
         0,
         1
       ],
@@ -1725,20 +1725,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.28185272216797,
         0,
         1
       ]
@@ -1746,20 +1746,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-lights-cyan-helix",
       "localTransform": [
-        1,
+        53.90000534057617,
         0,
         0,
         0,
         0,
-        1,
+        53.90000534057617,
         0,
         0,
         0,
         0,
-        1,
+        53.90000534057617,
         0,
         0,
-        0,
+        33.71750068664551,
         0,
         1
       ],
@@ -1774,20 +1774,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        53.90000534057617,
         0,
         0,
         0,
         0,
-        1,
+        53.90000534057617,
         0,
         0,
         0,
         0,
-        1,
+        53.90000534057617,
         0,
         0,
-        0,
+        33.71750068664551,
         0,
         1
       ]
@@ -1795,20 +1795,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-livery",
       "localTransform": [
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
-        0,
-        0,
+        0.0207977294921875,
+        27.421284675598145,
         0,
         1
       ],
@@ -1823,20 +1823,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
-        0,
-        0,
+        0.0207977294921875,
+        27.421284675598145,
         0,
         1
       ]
@@ -1844,20 +1844,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
+        38,
         0,
         1
       ],
@@ -1872,20 +1872,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
+        38,
         0,
         1
       ]
@@ -1893,20 +1893,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-armor",
       "localTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.413862228393555,
         0,
         1
       ],
@@ -1921,20 +1921,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
         0,
         0,
-        1,
+        53,
         0,
         0,
-        0,
+        24.413862228393555,
         0,
         1
       ]
@@ -1942,20 +1942,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-canopy",
       "localTransform": [
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
-        0,
+        18.088095664978027,
         0,
         1
       ],
@@ -1970,20 +1970,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
         0,
         0,
-        1,
+        54.607444763183594,
         0,
         0,
-        0,
+        18.088095664978027,
         0,
         1
       ]
@@ -1991,20 +1991,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-hull",
       "localTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.28185272216797,
         0,
         1
       ],
@@ -2019,20 +2019,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
         0,
         0,
-        1,
+        52.79999923706055,
         0,
         0,
-        0,
+        25.28185272216797,
         0,
         1
       ]
@@ -2040,20 +2040,20 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-livery",
       "localTransform": [
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
-        0,
-        0,
+        0.0207977294921875,
+        27.421284675598145,
         0,
         1
       ],
@@ -2068,20 +2068,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
         0,
         0,
         0,
-        1,
+        55.56705856323242,
         0,
-        0,
-        0,
+        0.0207977294921875,
+        27.421284675598145,
         0,
         1
       ]
@@ -2089,21 +2089,21 @@
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
-        0,
+        38,
+        -0.08838844299316406,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2117,21 +2117,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-helix-v01.body",
       "worldTransform": [
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
         0,
         0,
-        1,
+        8.662057876586914,
         0,
         0,
-        0,
-        0,
+        38,
+        -0.08838844299316406,
         1
       ]
     },
@@ -2194,36 +2194,36 @@
       "uri": "var_station_kit_helix_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1304176,
-    "sha256": "854b438e93875f41271d824e688405c3f0894875e5d6aa1ba0cd397552a1c8ba",
+    "bytes": 584196,
+    "sha256": "cb8e0f28ae018d1cc4f23f3a9c0ed1ac8fad13215f5a48e4e3cb34b5b1274ead",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        25.421382904052734,
+        25.421383121275802,
         0
       ],
       "max": [
         55.900001525878906,
-        40.84551239013672,
+        40.84551218701489,
         55.900001525878906
       ],
       "min": [
         -55.900001525878906,
-        9.99725341796875,
+        9.997254055536718,
         -55.900001525878906
       ],
       "size": [
         111.80000305175781,
-        30.84825897216797,
+        30.848258131478172,
         111.80000305175781
       ]
     },
@@ -2952,20 +2952,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
-          0,
+          24.346410274505615,
           0,
           1
         ],
@@ -2979,20 +2979,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          54.94999694824219,
           0,
           0,
           0,
           0,
-          1,
+          54.94999694824219,
           0,
           0,
           0,
           0,
-          1,
+          54.94999694824219,
           0,
           0,
-          0,
+          16.999999046325684,
           0,
           1
         ],
@@ -3034,20 +3034,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
-          0,
+          25.000000953674316,
           0,
           1
         ],
@@ -3061,20 +3061,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          53.900001525878906,
           0,
           0,
           0,
           0,
-          1,
+          53.900001525878906,
           0,
           0,
           0,
           0,
-          1,
+          53.900001525878906,
           0,
           0,
-          0,
+          33.75249767303467,
           0,
           1
         ],
@@ -3088,20 +3088,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.900001525878906,
           0,
           0,
           0,
           0,
-          1,
+          55.900001525878906,
           0,
           0,
           0,
           0,
-          1,
+          55.900001525878906,
           0,
           0,
-          0,
+          27.45000171661377,
           0,
           1
         ],
@@ -3115,20 +3115,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
-          0,
+          38,
           0,
           1
         ],
@@ -3142,20 +3142,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
-          0,
+          24.413862228393555,
           0,
           1
         ],
@@ -3169,20 +3169,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          54.607444763183594,
           0,
           0,
           0,
           0,
-          1,
+          54.607444763183594,
           0,
           0,
           0,
           0,
-          1,
+          54.607444763183594,
           0,
           0,
-          0,
+          18.088095664978027,
           0,
           1
         ],
@@ -3224,20 +3224,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
-          0,
+          25.28185272216797,
           0,
           1
         ],
@@ -3251,20 +3251,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          53.90000534057617,
           0,
           0,
           0,
           0,
-          1,
+          53.90000534057617,
           0,
           0,
           0,
           0,
-          1,
+          53.90000534057617,
           0,
           0,
-          0,
+          33.71750068664551,
           0,
           1
         ],
@@ -3278,20 +3278,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.56705856323242,
           0,
           0,
           0,
           0,
-          1,
+          55.56705856323242,
           0,
           0,
           0,
           0,
-          1,
+          55.56705856323242,
           0,
-          0,
-          0,
+          0.0207977294921875,
+          27.421284675598145,
           0,
           1
         ],
@@ -3305,20 +3305,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
-          0,
+          38,
           0,
           1
         ],
@@ -3332,20 +3332,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
           0,
           0,
-          1,
+          53,
           0,
           0,
-          0,
+          24.413862228393555,
           0,
           1
         ],
@@ -3359,20 +3359,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          54.607444763183594,
           0,
           0,
           0,
           0,
-          1,
+          54.607444763183594,
           0,
           0,
           0,
           0,
-          1,
+          54.607444763183594,
           0,
           0,
-          0,
+          18.088095664978027,
           0,
           1
         ],
@@ -3386,20 +3386,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
           0,
           0,
-          1,
+          52.79999923706055,
           0,
           0,
-          0,
+          25.28185272216797,
           0,
           1
         ],
@@ -3413,20 +3413,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          55.56705856323242,
           0,
           0,
           0,
           0,
-          1,
+          55.56705856323242,
           0,
           0,
           0,
           0,
-          1,
+          55.56705856323242,
           0,
-          0,
-          0,
+          0.0207977294921875,
+          27.421284675598145,
           0,
           1
         ],
@@ -3440,21 +3440,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
           0,
           0,
-          1,
+          8.662057876586914,
           0,
           0,
-          0,
-          0,
+          38,
+          -0.08838844299316406,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -3469,19 +3469,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_kit_helix_v01.glb"
   },
-  "runtimeHash": "5fa75e113091d05378b4d5d28dec249a1f4f93b0d7c1a5745da1ed13fe6c47f6",
+  "runtimeHash": "e02f5a22b78f107808262d8b91bcab6951c7f722b0a041d1e73e579059edcbed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           55.900001525878906,
-          40.84551239013672,
+          40.84551218701489,
           55.900001525878906
         ],
         "min": [
           -55.900001525878906,
-          9.99725341796875,
+          9.997254055536718,
           -55.900001525878906
         ]
       },

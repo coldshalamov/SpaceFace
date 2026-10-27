@@ -611,7 +611,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6a641430ab291aa935cb950c504be58cf83d69bdfe9266d7cda3520b4abbb8aa",
+  "contentHash": "d41d4ab68605fd4b44bef9eda4a5c5212d4cae0df39c7399556b4f674912c129",
   "dynamicGroups": [
     {
       "id": "sf.render.hornet-production-v1.node.lod0-hook-drive-core.dynamic",
@@ -659,17 +659,17 @@
       "bounds": {
         "max": [
           4.619999885559082,
-          0.9654422998428345,
-          4.399921417236328
+          0.9654422998473822,
+          4.399921335153746
         ],
         "min": [
           -5.220099925994873,
-          -0.49043720960617065,
-          -4.399921417236328
+          -0.49043720961071835,
+          -4.399921335153746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4900441ef4bda586ed16b945d4e9a9999f493b76f0bbefe0bdddae3e2166505f",
+      "geometryHash": "ab6792a46b6c4907d70b87aa8d15264875d6c3c30e8da8d24bd8c343944b70f6",
       "id": "sf.render.hornet-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -684,17 +684,17 @@
       "bounds": {
         "max": [
           4.619999885559082,
-          0.5597208142280579,
-          4.0998430252075195
+          0.5597207913417442,
+          4.099843112405257
         ],
         "min": [
           -4.693936347961426,
-          -0.48972082138061523,
-          -4.0998430252075195
+          -0.4897207984943016,
+          -4.099843112405257
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07d3aa5274070d8cff9969bf7b3108de3943b49e4c2435cdbfca498924b69e98",
+      "geometryHash": "ceedec4d7fb0160c21c948b61425ddce26d8598aa79ac458889e9d61163fba49",
       "id": "sf.render.hornet-production-v1.node.lod0-armor.primitive.0",
       "indexCount": 6576,
       "indexed": true,
@@ -709,17 +709,17 @@
       "bounds": {
         "max": [
           3,
-          0.9372085928916931,
-          0.41860178112983704
+          0.9372085791792778,
+          0.4186017924515726
         ],
         "min": [
           0.550000011920929,
-          0.49995157122612,
-          -0.41860178112983704
+          0.4999515849385353,
+          -0.4186017924515726
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbf736cb84fe9ed2150ecea024ce403f8472269c4f70c45e1787769bccc07ade",
+      "geometryHash": "141f36ee970c6194d847dcfe4228888305888645f08dfeeeda2a7fd0e0d4bd5f",
       "id": "sf.render.hornet-production-v1.node.lod0-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -744,7 +744,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c9b321273c377c4c63e7dec9037bbf95b50c2a7ec9ef1be50808237231c13a6",
+      "geometryHash": "e8001b65a2db5c56e39f4638e4a267951f37a94bb9f2bd7dc63ad970e16f9a55",
       "id": "sf.render.hornet-production-v1.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -834,17 +834,17 @@
       "bounds": {
         "max": [
           4.535755157470703,
-          0.7011389136314392,
-          4.09993839263916
+          0.7011388867614172,
+          4.099938373510084
         ],
         "min": [
           -4.685060977935791,
-          -0.2410069704055786,
-          -4.09993839263916
+          -0.24100694353555663,
+          -4.099938373510084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e7234e3ecb5573f6264ea972a3cbc5683f90bef9dcafed59b7e94d4a22202c1",
+      "geometryHash": "c8fe59f67366c5a9797d6d09788b2398ae6ccbbd0da6355794fbe4085d717715",
       "id": "sf.render.hornet-production-v1.node.lod0-hull.primitive.0",
       "indexCount": 4281,
       "indexed": true,
@@ -858,18 +858,18 @@
     {
       "bounds": {
         "max": [
-          1.0314337015151978,
-          0.11983393877744675,
+          1.0314336702003395,
+          0.11983393699128675,
           4.099865436553955
         ],
         "min": [
-          -2.8095550537109375,
-          -0.026308314874768257,
+          -2.8095550223960792,
+          -0.02630831308860826,
           -4.099865913391113
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f46d67567dd6ce4411e1b0479e14077ec051899bc4b09627064f6d6be702f31f",
+      "geometryHash": "28256f761a63bb5297236049ad405aae98a01a39c9482ee05116deaf0f884846",
       "id": "sf.render.hornet-production-v1.node.lod0-lights-cyan-jacket.primitive.0",
       "indexCount": 1968,
       "indexed": true,
@@ -884,17 +884,17 @@
       "bounds": {
         "max": [
           4.535747528076172,
-          0.709938645362854,
-          4.099935054779053
+          0.7099386552249197,
+          4.099935193201095
         ],
         "min": [
           -4.685061454772949,
-          -0.032971449196338654,
-          -4.099935054779053
+          -0.03297145905840437,
+          -4.099935193201095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be2dcd7e8d42c369f97e3c017fb4c0a8716535788f27743186d4440d11532791",
+      "geometryHash": "a41f0b3625f76af2a4bea5ac865c7b99148e45793962cc712dd59863fa1aca64",
       "id": "sf.render.hornet-production-v1.node.lod0-livery.primitive.0",
       "indexCount": 1338,
       "indexed": true,
@@ -909,17 +909,17 @@
       "bounds": {
         "max": [
           2.8612780570983887,
-          0.965111255645752,
-          2.9129297733306885
+          0.9651112335188895,
+          2.9129298579162772
         ],
         "min": [
           -5.21999979019165,
-          -0.4347524642944336,
-          -2.9129297733306885
+          -0.43475244216757114,
+          -2.9129298579162772
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25bf8e535339253921ca6517fbced3094af4080a1629d20c3f7e1a7a53c7e170",
+      "geometryHash": "f525b3317b5067729722a1f7e92070bc195f836ef54580ab71177abb4e097b54",
       "id": "sf.render.hornet-production-v1.node.lod0-mechanical.primitive.0",
       "indexCount": 13212,
       "indexed": true,
@@ -934,17 +934,17 @@
       "bounds": {
         "max": [
           4.550000190734863,
-          0.7172524333000183,
-          3.8867406845092773
+          0.7172524455208168,
+          3.88674076819262
         ],
         "min": [
           -5.21999979019165,
-          -0.4467869699001312,
-          -3.8867406845092773
+          -0.4467869821209297,
+          -3.88674076819262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f65a6fa85b7a77fce760fc5f2e03b5922fa303585e89159e40f1a579ec0ad2c",
+      "geometryHash": "2a3577ffb081fb4b54223d99c6e764d6a6ff0441afe0aba48939f0fd2584d7f3",
       "id": "sf.render.hornet-production-v1.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 6948,
       "indexed": true,
@@ -959,17 +959,17 @@
       "bounds": {
         "max": [
           2.8918261528015137,
-          0.06001386046409607,
-          -0.38001173734664917
+          0.06001386110362213,
+          -0.3800117493632599
         ],
         "min": [
           1.5572950839996338,
-          -0.0400138583709122,
-          -1.4999882578849792
+          -0.04001385901043827,
+          -1.4999882458683684
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a0f1835f175ec23b19984d2dbfcf84b55a6d6ef9b33f2a43e5a9a1305564761",
+      "geometryHash": "681586b13d5db0a80be9df93c5e915039f5db718aa1fa5a463792e18c1a7f51e",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-p-armor.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -984,17 +984,17 @@
       "bounds": {
         "max": [
           2.891826629638672,
-          0.06001388281583786,
-          1.499988466501236
+          0.060013881214459594,
+          1.4999884608571943
         ],
         "min": [
           1.5572950839996338,
-          -0.0400138762415736,
-          0.38001155853271484
+          -0.04001387464019533,
+          0.3800115641767564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c4d6c0bf92437da7e1bb8af483c1fec90d44207ba7df28cd7b9ef78d2a3e21d",
+      "geometryHash": "385d779310d4a088ac8ad06356476fe244dc969d9f229d5e67398abddd957a0a",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-s-armor.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -1008,18 +1008,18 @@
     {
       "bounds": {
         "max": [
-          -3.3464007675647736,
-          0.05999283492565155,
+          -3.346400784173563,
+          0.05999282966964853,
           -1.1807348728179932
         ],
         "min": [
-          -4.295874327421188,
-          -0.08999282955619492,
+          -4.2958743108123985,
+          -0.0899928243001919,
           -2.278719663619995
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d84104ff9f9a3b7250b345bbf84de5f086429eb936a15ff8b3966b6eef219ed",
+      "geometryHash": "ed9e4d1e9b945188caa5d24174d693ffccf4016964cf8444a76254d35bc04ec0",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-armor.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -1044,7 +1044,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6d946e693f3a11d7b2e86b0ffa0b622554099c78ad87985b62bc31fd22c90e6",
+      "geometryHash": "e7d18b8d4a252e244b05d51cfc3d193f271db1e2537a8aac94d455e09b5038e7",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor.primitive.0",
       "indexCount": 1020,
       "indexed": true,
@@ -1058,18 +1058,18 @@
     {
       "bounds": {
         "max": [
-          -3.5360050201416016,
-          0.1049872636795044,
+          -3.5360050216149426,
+          0.10498726569477879,
           -1.3519999980926514
         ],
         "min": [
-          -3.7839949186891317,
-          0.02501167356967926,
+          -3.7839949172157907,
+          0.025011671554404875,
           -2.068000078201294
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5c5fff70b61d4b5a2eb59a8d85cb8cd2c860eef4ef6fec8f9878476b586abe5",
+      "geometryHash": "974ee15ee9ee1dab8e51effbdb64abd286ea76cca45aac4697326a3b9a2ed12b",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-mechanical.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1083,18 +1083,18 @@
     {
       "bounds": {
         "max": [
-          -3.346470683813095,
-          0.06005661189556122,
+          -3.3464706997210976,
+          0.060056611306170515,
           4.007608413696289
         ],
         "min": [
-          -4.615445077419281,
-          -0.0900566117670678,
+          -4.615445061511278,
+          -0.0900566111776771,
           1.1807348728179932
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a91a2488c5289f16abd2c5d2574493aa1d777d20b80606db1147ec029007f139",
+      "geometryHash": "319251375c79c0cc41042a442f675df770646b265f2a67fcbbf69e12fa9bbc1c",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-armor.primitive.0",
       "indexCount": 1968,
       "indexed": true,
@@ -1108,18 +1108,18 @@
     {
       "bounds": {
         "max": [
-          -3.5360050201416016,
-          0.1049872636795044,
+          -3.5360050216149426,
+          0.10498726569477879,
           2.068000078201294
         ],
         "min": [
-          -3.7839949186891317,
-          0.02501167356967926,
+          -3.7839949172157907,
+          0.025011671554404875,
           1.3519999980926514
         ]
       },
       "drawMode": 4,
-      "geometryHash": "326018cd8c52c8071fc7368f789905a7bacf4d66dee1c2f4e76f5ad98a04bb8b",
+      "geometryHash": "65e0c62a76057654fbe1b77861f94e181d799ec61e20ca510f60099e4cb0fc7d",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-mechanical.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1144,7 +1144,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abfbdad98e3258d153247ce250f05bf9ce764927e0b36f8851614423b78a4bbb",
+      "geometryHash": "d88857b52f5223a9a03b49fda40e1e5361aea45bd34f610b74417b4df299a80a",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-armor.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -1169,7 +1169,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc73081a020c2c1b7a6098a72b7c205decd6ca5b9f25efcea8e8162441ec2e08",
+      "geometryHash": "7c986d1a426fe9cd23fa200e81d9b0756e67e6d490c6dd951f2fe60bff7e46bb",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanical.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -1194,7 +1194,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfd625ea93b4e8affad07aecff316b31f4c8367e3afda3a6abbb6b572c073857",
+      "geometryHash": "6c1ee862597efde990a37306a9fc0152668b46563841ce7c7d606e7bd4b4daf6",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanicaldark.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -1209,17 +1209,17 @@
       "bounds": {
         "max": [
           -2.4000000953674316,
-          0.16983549296855927,
-          4.319835469126701
+          0.16983549752117394,
+          4.319835473679316
         ],
         "min": [
           -4.5,
-          -0.16983549296855927,
-          3.980164483189583
+          -0.16983549752117394,
+          3.980164478636968
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4217c381cde9e7eac9acd014db3ffd7602529ee91f64e878749a65944eef7b50",
+      "geometryHash": "4ce8e6428a700e364491ab9733ca51bdfee3558b87fa3367754b4bc73ba41957",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-armor.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -1234,17 +1234,17 @@
       "bounds": {
         "max": [
           -1.1075000762939453,
-          0.06502456963062286,
-          4.2150246649980545
+          0.06502456925817342,
+          4.215024664625605
         ],
         "min": [
           -2.442500114440918,
-          -0.06502456963062286,
-          4.084975525736809
+          -0.06502456925817342,
+          4.084975526109258
         ]
       },
       "drawMode": 4,
-      "geometryHash": "235d8762cbec335bea17037ab427be13664ce98a39339c39d5074a4a1e4a0902",
+      "geometryHash": "203e02dca6295c618cdc2d75894832bcc300721069b9c8e7ab6603d496eddc36",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanical.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -1259,17 +1259,17 @@
       "bounds": {
         "max": [
           -1.0999999046325684,
-          0.06295358389616013,
-          4.212953679263592
+          0.06295358801788853,
+          4.2129536833853205
         ],
         "min": [
           -2.450000047683716,
-          -0.06295358389616013,
-          4.0870465114712715
+          -0.06295358801788853,
+          4.087046507349543
         ]
       },
       "drawMode": 4,
-      "geometryHash": "872f9aef07b3c3c362aa10fe253e693b4d7f30f23d9d1ff0fcdbec54191bcce9",
+      "geometryHash": "c79e32d3230a936bf1c95dda8a8c0e204b9938a7ef26dd77ef19aad9d5f83855",
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanicaldark.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -1492,20 +1492,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.collision-hull",
       "localTransform": [
-        1,
+        4.9200499057769775,
         0,
         0,
         0,
         0,
-        1,
+        4.9200499057769775,
         0,
         0,
         0,
         0,
-        1,
+        4.9200499057769775,
         0,
-        0,
-        0,
+        -0.3000500202178955,
+        0.2375025451183319,
         0,
         1
       ],
@@ -1520,20 +1520,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.9200499057769775,
         0,
         0,
         0,
         0,
-        1,
+        4.9200499057769775,
         0,
         0,
         0,
         0,
-        1,
+        4.9200499057769775,
         0,
-        0,
-        0,
+        -0.3000500202178955,
+        0.2375025451183319,
         0,
         1
       ]
@@ -1589,20 +1589,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-armor",
       "localTransform": [
-        1,
+        4.656968116760254,
         0,
         0,
         0,
         0,
-        1,
+        4.656968116760254,
         0,
         0,
         0,
         0,
-        1,
+        4.656968116760254,
         0,
-        0,
-        0,
+        -0.036968231201171875,
+        0.034999996423721313,
         0,
         1
       ],
@@ -1617,20 +1617,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.656968116760254,
         0,
         0,
         0,
         0,
-        1,
+        4.656968116760254,
         0,
         0,
         0,
         0,
-        1,
+        4.656968116760254,
         0,
-        0,
-        0,
+        -0.036968231201171875,
+        0.034999996423721313,
         0,
         1
       ]
@@ -1638,20 +1638,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-canopy",
       "localTransform": [
-        1,
+        1.2249999940395355,
         0,
         0,
         0,
         0,
-        1,
+        1.2249999940395355,
         0,
         0,
         0,
         0,
-        1,
+        1.2249999940395355,
         0,
-        0,
-        0,
+        1.7750000059604645,
+        0.7185800820589066,
         0,
         1
       ],
@@ -1666,20 +1666,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        1.2249999940395355,
         0,
         0,
         0,
         0,
-        1,
+        1.2249999940395355,
         0,
         0,
         0,
         0,
-        1,
+        1.2249999940395355,
         0,
-        0,
-        0,
+        1.7750000059604645,
+        0.7185800820589066,
         0,
         1
       ]
@@ -1883,20 +1883,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-hull",
       "localTransform": [
-        1,
+        4.610408067703247,
         0,
         0,
         0,
         0,
-        1,
+        4.610408067703247,
         0,
         0,
         0,
         0,
-        1,
+        4.610408067703247,
         0,
-        0,
-        0,
+        -0.07465291023254395,
+        0.2300659716129303,
         0,
         1
       ],
@@ -1911,20 +1911,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.610408067703247,
         0,
         0,
         0,
         0,
-        1,
+        4.610408067703247,
         0,
         0,
         0,
         0,
-        1,
+        4.610408067703247,
         0,
-        0,
-        0,
+        -0.07465291023254395,
+        0.2300659716129303,
         0,
         1
       ]
@@ -1932,21 +1932,21 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-lights-cyan-jacket",
       "localTransform": [
-        1,
+        4.099865674972534,
         0,
         0,
         0,
         0,
-        1,
+        4.099865674972534,
         0,
         0,
         0,
         0,
-        1,
+        4.099865674972534,
         0,
-        0,
-        0,
-        0,
+        -0.8890606760978699,
+        0.046762811951339245,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1960,41 +1960,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.099865674972534,
         0,
         0,
         0,
         0,
-        1,
+        4.099865674972534,
         0,
         0,
         0,
         0,
-        1,
+        4.099865674972534,
         0,
-        0,
-        0,
-        0,
+        -0.8890606760978699,
+        0.046762811951339245,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-livery",
       "localTransform": [
-        1,
+        4.6104044914245605,
         0,
         0,
         0,
         0,
-        1,
+        4.6104044914245605,
         0,
         0,
         0,
         0,
-        1,
+        4.6104044914245605,
         0,
-        0,
-        0,
+        -0.07465696334838867,
+        0.3384835980832577,
         0,
         1
       ],
@@ -2009,20 +2009,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.6104044914245605,
         0,
         0,
         0,
         0,
-        1,
+        4.6104044914245605,
         0,
         0,
         0,
         0,
-        1,
+        4.6104044914245605,
         0,
-        0,
-        0,
+        -0.07465696334838867,
+        0.3384835980832577,
         0,
         1
       ]
@@ -2030,20 +2030,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-mechanical",
       "localTransform": [
-        1,
+        4.0406389236450195,
         0,
         0,
         0,
         0,
-        1,
+        4.0406389236450195,
         0,
         0,
         0,
         0,
-        1,
+        4.0406389236450195,
         0,
-        0,
-        0,
+        -1.1793608665466309,
+        0.2651793956756592,
         0,
         1
       ],
@@ -2058,20 +2058,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.0406389236450195,
         0,
         0,
         0,
         0,
-        1,
+        4.0406389236450195,
         0,
         0,
         0,
         0,
-        1,
+        4.0406389236450195,
         0,
-        0,
-        0,
+        -1.1793608665466309,
+        0.2651793956756592,
         0,
         1
       ]
@@ -2079,20 +2079,20 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        4.884999990463257,
         0,
         0,
         0,
         0,
-        1,
+        4.884999990463257,
         0,
         0,
         0,
         0,
-        1,
+        4.884999990463257,
         0,
-        0,
-        0,
+        -0.33499979972839355,
+        0.13523273169994354,
         0,
         1
       ],
@@ -2107,20 +2107,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        4.884999990463257,
         0,
         0,
         0,
         0,
-        1,
+        4.884999990463257,
         0,
         0,
         0,
         0,
-        1,
+        4.884999990463257,
         0,
-        0,
-        0,
+        -0.33499979972839355,
+        0.13523273169994354,
         0,
         1
       ]
@@ -2128,21 +2128,21 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-p-armor",
       "localTransform": [
-        1,
+        0.6672655344009399,
         0,
         0,
         0,
         0,
-        1,
+        0.6672655344009399,
         0,
         0,
         0,
         0,
-        1,
+        0.6672655344009399,
         0,
-        0,
-        0,
-        0,
+        -0.1754394769668579,
+        0.05000000015252226,
+        0.06000000238418579,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2157,42 +2157,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.6672655344009399,
         0,
         0,
         0,
         0,
-        1,
+        0.6672655344009399,
         0,
         0,
         0,
         0,
-        1,
+        0.6672655344009399,
         0,
-        2.4000000953674316,
-        -0.03999999910593033,
-        -1,
+        2.2245606184005737,
+        0.010000001046591933,
+        -0.9399999976158142,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-s-armor",
       "localTransform": [
-        1,
+        0.667265772819519,
         0,
         0,
         0,
         0,
-        1,
+        0.667265772819519,
         0,
         0,
         0,
         0,
-        1,
+        0.667265772819519,
         0,
-        0,
-        0,
-        0,
+        -0.1754392385482788,
+        0.05000000239306246,
+        -0.0599999874830246,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2207,42 +2207,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.667265772819519,
         0,
         0,
         0,
         0,
-        1,
+        0.667265772819519,
         0,
         0,
         0,
         0,
-        1,
+        0.667265772819519,
         0,
-        2.4000000953674316,
-        -0.03999999910593033,
-        1,
+        2.224560856819153,
+        0.010000003287132131,
+        0.9400000125169754,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-armor",
       "localTransform": [
-        1,
+        0.548992395401001,
         0,
         0,
         0,
         0,
-        1,
+        0.548992395401001,
         0,
         0,
         0,
         0,
-        1,
+        0.548992395401001,
         0,
-        0,
-        0,
-        0,
+        -0.021137595176696777,
+        0.075000006261007,
+        0.6702728271484375,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2257,21 +2257,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.548992395401001,
         0,
         0,
         0,
         0,
-        1,
+        0.548992395401001,
         0,
         0,
         0,
         0,
-        1,
+        0.548992395401001,
         0,
-        -3.799999952316284,
-        -0.09000000357627869,
-        -2.4000000953674316,
+        -3.821137547492981,
+        -0.014999997315271685,
+        -1.7297272682189941,
         1
       ]
     },
@@ -2328,21 +2328,21 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-mechanical",
       "localTransform": [
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
-        0,
-        0,
-        0,
+        0.13999998290091753,
+        0.15499947220087051,
+        0.690000057220459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2357,42 +2357,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
-        -3.799999952316284,
-        -0.09000000357627869,
-        -2.4000000953674316,
+        -3.6599999694153666,
+        0.06499946862459183,
+        -1.7100000381469727,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-armor",
       "localTransform": [
-        1,
+        1.413436770439148,
         0,
         0,
         0,
         0,
-        1,
+        1.413436770439148,
         0,
         0,
         0,
         0,
-        1,
+        1.413436770439148,
         0,
-        0,
-        0,
-        0,
+        -0.18095792829990387,
+        0.07500000364052539,
+        0.19417154788970947,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2407,42 +2407,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        1.413436770439148,
         0,
         0,
         0,
         0,
-        1,
+        1.413436770439148,
         0,
         0,
         0,
         0,
-        1,
+        1.413436770439148,
         0,
-        -3.799999952316284,
-        -0.09000000357627869,
-        2.4000000953674316,
+        -3.980957880616188,
+        -0.014999999935753294,
+        2.594171643257141,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-mechanical",
       "localTransform": [
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
-        0,
-        0,
-        0,
+        0.13999998290091753,
+        0.15499947220087051,
+        -0.690000057220459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2457,21 +2457,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
         0,
         0,
         0,
-        1,
+        0.3580000400543213,
         0,
-        -3.799999952316284,
-        -0.09000000357627869,
-        2.4000000953674316,
+        -3.6599999694153666,
+        0.06499946862459183,
+        1.7100000381469727,
         1
       ]
     },
@@ -2628,21 +2628,21 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-armor",
       "localTransform": [
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
+        -0.04999995231628418,
         0,
-        0,
-        0,
+        -1.1920928955078125e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2657,40 +2657,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
-        -3.4000000953674316,
+        -3.450000047683716,
         0,
-        4.150000095367432,
+        4.149999976158142,
         1
       ]
     },
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanical",
       "localTransform": [
-        1,
+        0.6675000190734863,
         0,
         0,
         0,
         0,
-        1,
+        0.6675000190734863,
         0,
         0,
         0,
         0,
-        1,
+        0.6675000190734863,
         0,
-        0,
+        1.625,
         0,
         0,
         1
@@ -2707,19 +2707,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.6675000190734863,
         0,
         0,
         0,
         0,
-        1,
+        0.6675000190734863,
         0,
         0,
         0,
         0,
-        1,
+        0.6675000190734863,
         0,
-        -3.4000000953674316,
+        -1.7750000953674316,
         0,
         4.150000095367432,
         1
@@ -2728,19 +2728,19 @@
     {
       "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanicaldark",
       "localTransform": [
-        1,
+        0.6750000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.6750000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.6750000715255737,
         0,
-        0,
+        1.6250001192092896,
         0,
         0,
         1
@@ -2757,19 +2757,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1.body",
       "worldTransform": [
-        1,
+        0.6750000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.6750000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.6750000715255737,
         0,
-        -3.4000000953674316,
+        -1.774999976158142,
         0,
         4.150000095367432,
         1
@@ -3717,14 +3717,14 @@
       "uri": "hornet_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 841728,
-    "sha256": "29bf982d273c1f218ab0e3eed14532494fdbe7f0c3e3b590d6c2197795a83bce",
+    "bytes": 589908,
+    "sha256": "88f5026565614076010d0834ef9216b66c6a584bd70fc262bbd53312bbed56d2",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3736,17 +3736,17 @@
       ],
       "max": [
         4.619999885559082,
-        0.9654422998428345,
+        0.9654422998473822,
         4.400000095367432
       ],
       "min": [
         -5.220099925994873,
-        -0.49043720960617065,
+        -0.49043720961071835,
         -4.400000095367432
       ],
       "size": [
         9.840099811553955,
-        1.4558795094490051,
+        1.4558795094581005,
         8.800000190734863
       ]
     },
@@ -4963,20 +4963,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.656968116760254,
           0,
           0,
           0,
           0,
-          1,
+          4.656968116760254,
           0,
           0,
           0,
           0,
-          1,
+          4.656968116760254,
           0,
-          0,
-          0,
+          -0.036968231201171875,
+          0.034999996423721313,
           0,
           1
         ],
@@ -4990,20 +4990,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.2249999940395355,
           0,
           0,
           0,
           0,
-          1,
+          1.2249999940395355,
           0,
           0,
           0,
           0,
-          1,
+          1.2249999940395355,
           0,
-          0,
-          0,
+          1.7750000059604645,
+          0.7185800820589066,
           0,
           1
         ],
@@ -5147,20 +5147,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.610408067703247,
           0,
           0,
           0,
           0,
-          1,
+          4.610408067703247,
           0,
           0,
           0,
           0,
-          1,
+          4.610408067703247,
           0,
-          0,
-          0,
+          -0.07465291023254395,
+          0.2300659716129303,
           0,
           1
         ],
@@ -5174,21 +5174,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.099865674972534,
           0,
           0,
           0,
           0,
-          1,
+          4.099865674972534,
           0,
           0,
           0,
           0,
-          1,
+          4.099865674972534,
           0,
-          0,
-          0,
-          0,
+          -0.8890606760978699,
+          0.046762811951339245,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD0_Lights_Cyan_jacket",
@@ -5201,20 +5201,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.6104044914245605,
           0,
           0,
           0,
           0,
-          1,
+          4.6104044914245605,
           0,
           0,
           0,
           0,
-          1,
+          4.6104044914245605,
           0,
-          0,
-          0,
+          -0.07465696334838867,
+          0.3384835980832577,
           0,
           1
         ],
@@ -5228,20 +5228,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.0406389236450195,
           0,
           0,
           0,
           0,
-          1,
+          4.0406389236450195,
           0,
           0,
           0,
           0,
-          1,
+          4.0406389236450195,
           0,
-          0,
-          0,
+          -1.1793608665466309,
+          0.2651793956756592,
           0,
           1
         ],
@@ -5255,20 +5255,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.884999990463257,
           0,
           0,
           0,
           0,
-          1,
+          4.884999990463257,
           0,
           0,
           0,
           0,
-          1,
+          4.884999990463257,
           0,
-          0,
-          0,
+          -0.33499979972839355,
+          0.13523273169994354,
           0,
           1
         ],
@@ -5282,21 +5282,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6672655344009399,
           0,
           0,
           0,
           0,
-          1,
+          0.6672655344009399,
           0,
           0,
           0,
           0,
-          1,
+          0.6672655344009399,
           0,
-          2.4000000953674316,
-          -0.03999999910593033,
-          -1,
+          2.2245606184005737,
+          0.010000001046591933,
+          -0.9399999976158142,
           1
         ],
         "name": "LOD0_MOTION_HORNET_CANARD_P_Armor",
@@ -5310,21 +5310,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.667265772819519,
           0,
           0,
           0,
           0,
-          1,
+          0.667265772819519,
           0,
           0,
           0,
           0,
-          1,
+          0.667265772819519,
           0,
-          2.4000000953674316,
-          -0.03999999910593033,
-          1,
+          2.224560856819153,
+          0.010000003287132131,
+          0.9400000125169754,
           1
         ],
         "name": "LOD0_MOTION_HORNET_CANARD_S_Armor",
@@ -5338,21 +5338,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.548992395401001,
           0,
           0,
           0,
           0,
-          1,
+          0.548992395401001,
           0,
           0,
           0,
           0,
-          1,
+          0.548992395401001,
           0,
-          -3.799999952316284,
-          -0.09000000357627869,
-          -2.4000000953674316,
+          -3.821137547492981,
+          -0.014999997315271685,
+          -1.7297272682189941,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_P_Armor",
@@ -5395,21 +5395,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3580000400543213,
           0,
           0,
           0,
           0,
-          1,
+          0.3580000400543213,
           0,
           0,
           0,
           0,
-          1,
+          0.3580000400543213,
           0,
-          -3.799999952316284,
-          -0.09000000357627869,
-          -2.4000000953674316,
+          -3.6599999694153666,
+          0.06499946862459183,
+          -1.7100000381469727,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_P_Mechanical",
@@ -5423,21 +5423,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.413436770439148,
           0,
           0,
           0,
           0,
-          1,
+          1.413436770439148,
           0,
           0,
           0,
           0,
-          1,
+          1.413436770439148,
           0,
-          -3.799999952316284,
-          -0.09000000357627869,
-          2.4000000953674316,
+          -3.980957880616188,
+          -0.014999999935753294,
+          2.594171643257141,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_S_Armor",
@@ -5451,21 +5451,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3580000400543213,
           0,
           0,
           0,
           0,
-          1,
+          0.3580000400543213,
           0,
           0,
           0,
           0,
-          1,
+          0.3580000400543213,
           0,
-          -3.799999952316284,
-          -0.09000000357627869,
-          2.4000000953674316,
+          -3.6599999694153666,
+          0.06499946862459183,
+          1.7100000381469727,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_S_Mechanical",
@@ -5566,21 +5566,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0499999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.0499999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.0499999523162842,
           0,
-          -3.4000000953674316,
+          -3.450000047683716,
           0,
-          4.150000095367432,
+          4.149999976158142,
           1
         ],
         "name": "LOD0_MOTION_HORNET_TIPPOD_S_Armor",
@@ -5594,19 +5594,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6675000190734863,
           0,
           0,
           0,
           0,
-          1,
+          0.6675000190734863,
           0,
           0,
           0,
           0,
-          1,
+          0.6675000190734863,
           0,
-          -3.4000000953674316,
+          -1.7750000953674316,
           0,
           4.150000095367432,
           1
@@ -5622,19 +5622,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6750000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.6750000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.6750000715255737,
           0,
-          -3.4000000953674316,
+          -1.774999976158142,
           0,
           4.150000095367432,
           1
@@ -5652,19 +5652,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
   },
-  "runtimeHash": "a7210fe9bb34f52b59caa7739b7d56ea941c7c9f5939cf4f9d2c09c41b1b8833",
+  "runtimeHash": "c2305fa0630da57a5fdd1683a262edaf55020c2adb2bd023c842ff4621f06639",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4.619999885559082,
-          0.9654422998428345,
+          0.9654422998473822,
           4.400000095367432
         ],
         "min": [
           -5.220099925994873,
-          -0.49043720960617065,
+          -0.49043720961071835,
           -4.400000095367432
         ]
       },

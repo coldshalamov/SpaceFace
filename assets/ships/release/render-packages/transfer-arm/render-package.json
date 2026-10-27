@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "222baa97f6141cb0d252d14a7685b87177c4f1a8239c15acc3e7c16565f4af8e",
+  "contentHash": "58c86a432a984feea71d5c26653686f83646144a7ebc991ad16b58326b9dec72",
   "dynamicGroups": [
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.dynamic",
@@ -128,17 +128,17 @@
       "bounds": {
         "max": [
           17.642303466796875,
-          10.215299606323242,
-          2.2975010871887207
+          10.215299494222524,
+          2.2975010734076364
         ],
         "min": [
           -5.550000190734863,
-          -0.00029919843655079603,
-          -2.2975010871887207
+          -0.0002990863358318663,
+          -2.2975010734076364
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7ebc851d3615ff0e7b18badbe963a00e4aeab4a69b6be325c474b14e3a9f9c9",
+      "geometryHash": "365927f57fefdfd75723e96a0dcd52b9b724b4a97595853264fd2dbffa1a6c5b",
       "id": "sf.render.transfer-arm.mesh.collision-hull.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -153,17 +153,17 @@
       "bounds": {
         "max": [
           17.19999885559082,
-          10.122576713562012,
-          2.1999998092651367
+          10.122576746354547,
+          2.1999998839769495
         ],
         "min": [
           -4.5,
-          0.00006075669443816878,
-          -2.1999998092651367
+          0.000060723901904147226,
+          -2.1999998839769495
         ]
       },
       "drawMode": 4,
-      "geometryHash": "906c9c59d58c933672c45da5cf906f1c000ce3e46ef8a9ae3a0ffdc2c34b764c",
+      "geometryHash": "2cd4ec69298691182a4367a9fee9244117c8c05814ed220171b8a06c5f7fd70a",
       "id": "sf.render.transfer-arm.mesh.lod0-armor.primitive.0",
       "indexCount": 5850,
       "indexed": true,
@@ -178,17 +178,17 @@
       "bounds": {
         "max": [
           15.796204566955566,
-          8.57593059539795,
-          2.055126428604126
+          8.575930455098653,
+          2.0551263046580432
         ],
         "min": [
           -4.499252796173096,
-          1.779395580291748,
-          -2.055126667022705
+          1.7793957205910447,
+          -2.0551265430766223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c570e05e37511417d6b66ed4482f5d6a030e9d2b0887c3dc259c594e624515e7",
+      "geometryHash": "1ccc06229c3f096e8b4b61e0f2e49e09760b25f02e6e7f6677ce5f9d567f234e",
       "id": "sf.render.transfer-arm.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 3186,
       "indexed": true,
@@ -213,7 +213,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f39d29946b806c97c624d3ca875d31537421b685432b2c90ad5feed1d7315bb",
+      "geometryHash": "8fdac0b2d47e6c4339f5f166aec10ffcb1a80685910453b41dd22b99a668e325",
       "id": "sf.render.transfer-arm.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -227,18 +227,18 @@
     {
       "bounds": {
         "max": [
-          0.5385035872459412,
+          0.5385036375379855,
           6.599999904632568,
-          2.297219753265381
+          2.297219730592805
         ],
         "min": [
-          -5.400025844573975,
+          -5.400025894866019,
           0,
-          -2.297219753265381
+          -2.297219730592805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2176a9863e85ac7d7c996973f31fe7ad0b5e1d8b243d851abff0e3a5dfb15058",
+      "geometryHash": "99e533fccb473e23c5ef4864a7d58eb8c370c7b68e9a08dc9db38fe4428a9be4",
       "id": "sf.render.transfer-arm.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -254,16 +254,16 @@
         "max": [
           0.30000007152557373,
           6.800000190734863,
-          2.1000213623046875
+          2.1000213702439092
         ],
         "min": [
           -1.5000001192092896,
           5,
-          0.4999784827232361
+          0.49997847478401447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf3e92a5b455cdbcdda50874ada0d3485dbb1cf24c7b174df94a343062d3dba9",
+      "geometryHash": "a678d584132d318c8f5dbfead3f9ad31fb39ee326a0134fa744d923542dea4f8",
       "id": "sf.render.transfer-arm.mesh.lod0-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -278,17 +278,17 @@
       "bounds": {
         "max": [
           0,
-          6.500024318695068,
-          2.209987163543701
+          6.5000243353356915,
+          2.209987279977128
         ],
         "min": [
           -1.2000000476837158,
-          5.699975490570068,
-          2.090013027191162
+          5.699975473929445,
+          2.090012910757735
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f79764368f2acff457089348c9f6d8d79c996d5042f40829b112af8624dbed0",
+      "geometryHash": "86542602057ee8e0b50adc3c55ea79c32ca46cc651c2fc0b50367cb8b609bbbb",
       "id": "sf.render.transfer-arm.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -303,17 +303,17 @@
       "bounds": {
         "max": [
           17.642303466796875,
-          10.022514343261719,
-          1.2419934272766113
+          10.022514193758056,
+          1.2419934002255946
         ],
         "min": [
           -2,
-          5.152551174163818,
-          -1.299690842628479
+          5.152551323667482,
+          -1.2996908155774622
         ]
       },
       "drawMode": 4,
-      "geometryHash": "979d8f0f286d4a25e31648bfdc0df7116dabc72815eb5ca391adfd93cbdabe92",
+      "geometryHash": "98454d2d56e681df0edd6fe8108bae25cd36e6f1ad33e25beb4ad9be9dc679df",
       "id": "sf.render.transfer-arm.mesh.lod0-mechanical.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -328,17 +328,17 @@
       "bounds": {
         "max": [
           16.517227172851562,
-          9.249074935913086,
-          1.1023757457733154
+          9.249075107332603,
+          1.1023757259620972
         ],
         "min": [
           -1.608744502067566,
-          6.750925064086914,
-          -0.6500910520553589
+          6.750924892667397,
+          -0.6500910322441407
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3934f8372a341786c435a4d9d9185f4e1fc91bf40e38f43bac44b6de1e01b455",
+      "geometryHash": "4823c9ef5f430c3c9f201006aaf6495ae06865c8a059bf25377f89863e9e39fa",
       "id": "sf.render.transfer-arm.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1416,
       "indexed": true,
@@ -353,17 +353,17 @@
       "bounds": {
         "max": [
           17.299999237060547,
-          7.049262046813965,
-          1.8493667840957642
+          7.04926207398322,
+          1.8493666946169447
         ],
         "min": [
           -5.550000190734863,
-          3.400737762451172,
-          -1.8493667840957642
+          3.4007377352819166,
+          -1.8493666946169447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11f7268ed3ccad62815fded8ed5be1aabb7df724028238148077c1766ea92c73",
+      "geometryHash": "049a11102cc4aaa132afffb95b77e529709c38345baba8ead20ff9add322d243",
       "id": "sf.render.transfer-arm.mesh.lod0-warning.primitive.0",
       "indexCount": 1548,
       "indexed": true,
@@ -378,17 +378,17 @@
       "bounds": {
         "max": [
           17.19533920288086,
-          10.122685432434082,
-          2.1966779232025146
+          10.122685192390453,
+          2.196677884951638
         ],
         "min": [
           -4.498013496398926,
-          0.00062100327340886,
-          -2.1966779232025146
+          0.0006212433170373899,
+          -2.196677884951638
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0abd7e5d3d47f1ca327502a952abe23b64f983452a3df1b4b4c5cf885237ddb2",
+      "geometryHash": "445a5896b5c9b7ad5cafa3b7b9fb0d488c18c7cbb733dd58ab23f602517fe45e",
       "id": "sf.render.transfer-arm.mesh.lod1-armor.primitive.0",
       "indexCount": 2838,
       "indexed": true,
@@ -403,17 +403,17 @@
       "bounds": {
         "max": [
           15.796204566955566,
-          8.575586318969727,
-          2.0487678050994873
+          8.575586338298898,
+          2.048767742302419
         ],
         "min": [
           -4.498013496398926,
-          1.7819440364837646,
-          -2.048847198486328
+          1.7819440171545935,
+          -2.0488471356892597
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b0b0bc9660ba8f0591cfef0e2a1081bd3fcb1b96b87a1741e409d604ae6a5cf",
+      "geometryHash": "fbffaefbbfe6d93b6fc807cbf30a26aa0eda9c504fc955f610fd20c0c77d23a7",
       "id": "sf.render.transfer-arm.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 1218,
       "indexed": true,
@@ -438,7 +438,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c482b216dbfdc328ae2a2ffec5670de09d2af71ba54afb471ad36523e06efb34",
+      "geometryHash": "007a1afa353cc27089a17a8153b8289b11d4855f5ab7f78bf6a87af035076743",
       "id": "sf.render.transfer-arm.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -452,18 +452,18 @@
     {
       "bounds": {
         "max": [
-          0.5358045697212219,
+          0.5358044199476182,
           6.594819068908691,
-          2.294112205505371
+          2.2941121748860773
         ],
         "min": [
-          -5.394927978515625,
+          -5.394927828742022,
           0.002590581076219678,
-          -2.2941126823425293
+          -2.2941126517232355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08892c4a3e6ad6964806a78b65840d958cfb2181e53d97b8e94fa1473d4da3b3",
+      "geometryHash": "820bb5a6f44d405589498ec6aca83347a7237cfc2ff9603dd5e0e2d9b1582e27",
       "id": "sf.render.transfer-arm.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -479,16 +479,16 @@
         "max": [
           0.30000007152557373,
           6.800000190734863,
-          2.1000213623046875
+          2.1000213702439092
         ],
         "min": [
           -1.5000001192092896,
           5,
-          0.4999784827232361
+          0.49997847478401447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "225ba7b87f108d4728e442c8e329c00c65172f44d11b1f802ab761d3ea070baf",
+      "geometryHash": "74a740cee08f69cb92cee2beae15d36cb8f176696dc0a38261b7bf33ea0cee8a",
       "id": "sf.render.transfer-arm.mesh.lod1-hull.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -503,17 +503,17 @@
       "bounds": {
         "max": [
           0,
-          6.500024318695068,
-          2.209987163543701
+          6.5000243353356915,
+          2.209987279977128
         ],
         "min": [
           -1.2000000476837158,
-          5.699975490570068,
-          2.090013027191162
+          5.699975473929445,
+          2.090012910757735
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fcc066eda3a2eb5a29e7b58e8cb2bc3349a2231808f61a1c315258f0b146317",
+      "geometryHash": "1cd16d1e2ab126f156ecfc4e64585a2ea8b4725d760d8e4cdaa87523c6d7823f",
       "id": "sf.render.transfer-arm.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -528,17 +528,17 @@
       "bounds": {
         "max": [
           17.642303466796875,
-          10.020061492919922,
-          1.2418196201324463
+          10.020061334619356,
+          1.2418196379099722
         ],
         "min": [
           -1.9971590042114258,
-          5.153200149536133,
-          -1.2970994710922241
+          5.1532003078366975,
+          -1.29709948886975
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a721e1baf8ed3c51116f6afc4b64f9e6bb05cb7f04d7bbba10d9cb48d8f06d03",
+      "geometryHash": "eab67340260ef72f2215ce708ae4e956f16b2bed6f6b9f0dae0d345770c96fe1",
       "id": "sf.render.transfer-arm.mesh.lod1-mechanical.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -553,17 +553,17 @@
       "bounds": {
         "max": [
           16.515888214111328,
-          9.248983383178711,
-          1.1023110151290894
+          9.248983315459308,
+          1.1023109989304944
         ],
         "min": [
           -1.608744502067566,
-          6.7510175704956055,
-          -0.6500263214111328
+          6.75101763821501,
+          -0.6500263052125378
         ]
       },
       "drawMode": 4,
-      "geometryHash": "843e699e7d2118a831809a3bf58440a5841c3ae641082424f269fb7852788380",
+      "geometryHash": "d9d2a9871b0e89d9910c4524a0880463a925b658466db7790be7fb01546b7001",
       "id": "sf.render.transfer-arm.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -578,17 +578,17 @@
       "bounds": {
         "max": [
           17.295854568481445,
-          7.044982433319092,
-          1.8463718891143799
+          7.044982386351352,
+          1.846371940262285
         ],
         "min": [
           -5.550000190734863,
-          3.4026975631713867,
-          -1.8461127281188965
+          3.4026976101391266,
+          -1.8461127792668015
         ]
       },
       "drawMode": 4,
-      "geometryHash": "267c5e7d7a106471525264cb3eebacec2472d23e87011fbf205156fa87ef5178",
+      "geometryHash": "88050a9bb13f04489129079015127ccd47aa62ede3c786a65188d18c86c15da5",
       "id": "sf.render.transfer-arm.mesh.lod1-warning.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -603,17 +603,17 @@
       "bounds": {
         "max": [
           17.168315887451172,
-          10.122661590576172,
-          2.1965863704681396
+          10.122661910984899,
+          2.196586389146093
         ],
         "min": [
           -4.498013496398926,
-          0.002627708250656724,
-          -2.1965863704681396
+          0.00262738784192873,
+          -2.196586389146093
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d7b47ecd816b8a4b3e0c6a24bc4c62429b1ed613232c208fe6ef3390f132609",
+      "geometryHash": "d2183b256218b794f52dad3028527d29ddb442a42bfd51b450a63586b3dd6908",
       "id": "sf.render.transfer-arm.mesh.lod2-armor.primitive.0",
       "indexCount": 1710,
       "indexed": true,
@@ -628,17 +628,17 @@
       "bounds": {
         "max": [
           15.791922569274902,
-          8.564711570739746,
-          2.0478129386901855
+          8.564711732825742,
+          2.047812866816083
         ],
         "min": [
           -4.498013496398926,
-          1.7824105024337769,
-          -2.0464606285095215
+          1.7824103403477798,
+          -2.046460556635419
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87d8e427ceb6428ee2d0a6847d20b182117b88c757909c3e09d203d98b914dcb",
+      "geometryHash": "5f0ac45c8f8249f08a7568174cd3470ddc0f895c54598047011bbb925e346f59",
       "id": "sf.render.transfer-arm.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 444,
       "indexed": true,
@@ -663,7 +663,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6155776023c7d516ea2903b9cf0480c00914efafdcd47244c8e4640d9118c15",
+      "geometryHash": "4e1f7e9664bf80e3bd27846d5357213aafeb15bd2a8fcade46c075c0023aadae",
       "id": "sf.render.transfer-arm.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -677,18 +677,18 @@
     {
       "bounds": {
         "max": [
-          0.5225704312324524,
+          0.5225704391024366,
           6.567614555358887,
-          2.2807111740112305
+          2.2807113497871323
         ],
         "min": [
-          -5.368250846862793,
+          -5.368250854732777,
           0.016192726790905,
-          -2.2807111740112305
+          -2.2807113497871323
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a983740f8d0450192a73062aea67aa7ca6d1faa23cb78eec5bdf9f1cd6c3bed",
+      "geometryHash": "82b780e0aeed2e06f7b555b4206818979fcf9535dfae386725b69c3d80ca00ea",
       "id": "sf.render.transfer-arm.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -703,17 +703,17 @@
       "bounds": {
         "max": [
           0.2524733543395996,
-          6.751432418823242,
-          2.0514261722564697
+          6.751432526923624,
+          2.0514262022279635
         ],
         "min": [
           -1.4524732828140259,
-          5.048567295074463,
-          0.5485735535621643
+          5.048567186974081,
+          0.5485735235906707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26b7ea54c7ee1de9baed6fb93fbe86da4346ed7665c9833fc6e7d1fa7a93c135",
+      "geometryHash": "07f5c65a20a486103f063cc29ad5fce9c67e228c0666bda2e36a05e3a86f13d2",
       "id": "sf.render.transfer-arm.mesh.lod2-hull.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -728,17 +728,17 @@
       "bounds": {
         "max": [
           17.642303466796875,
-          10.021615028381348,
-          1.2421821355819702
+          10.021615021265244,
+          1.2421821656762495
         ],
         "min": [
           -1.9954084157943726,
-          5.152790546417236,
-          -1.2989078760147095
+          5.15279055353334,
+          -1.2989079061089888
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b297d720b0c71566b15a87faa03ca35fe8c99716492ec36b3259b4c34fcea0ed",
+      "geometryHash": "80a8860829fb7755b7adb14fcfbd57330e69a80f87a666dcf6f85647b23ada0d",
       "id": "sf.render.transfer-arm.mesh.lod2-mechanical.primitive.0",
       "indexCount": 312,
       "indexed": true,
@@ -752,18 +752,18 @@
     {
       "bounds": {
         "max": [
-          16.513904571533203,
+          16.513904733428202,
           8.933747291564941,
-          1.1024924516677856
+          1.1024924139813814
         ],
         "min": [
-          15.108013153076172,
+          15.108012991181175,
           7.003194332122803,
-          -0.11392036825418472
+          -0.11392033056778061
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5dec850e4b080e5f3185104df6377f5b22d9b7dcce41e7044b2a31bf7e24f91a",
+      "geometryHash": "57b9a7d12cafc50260f1e755ecd7111d0681cfbac5dbf954b19f81e4ca589da0",
       "id": "sf.render.transfer-arm.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -778,17 +778,17 @@
       "bounds": {
         "max": [
           17.274654388427734,
-          7.02423095703125,
-          1.8474451303482056
+          7.024230924586766,
+          1.8474449875822845
         ],
         "min": [
           -5.550000190734863,
-          3.4020438194274902,
-          -1.8471859693527222
+          3.402043851871975,
+          -1.847185826586801
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5cf79f0cc36c55e9c050601aa123bc74ee778eb062c5e6f99cd3dc1346bd6ce",
+      "geometryHash": "3c61d2dbb9c3db8c7bd1268d4f59089d0c2318b4951e8d6e7fa4de411cc6a044",
       "id": "sf.render.transfer-arm.mesh.lod2-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -1022,20 +1022,20 @@
     {
       "id": "sf.render.transfer-arm.mesh.collision-hull",
       "localTransform": [
-        1,
+        11.59615182876587,
         0,
         0,
         0,
         0,
-        1,
+        11.59615182876587,
         0,
         0,
         0,
         0,
-        1,
+        11.59615182876587,
         0,
-        0,
-        0,
+        6.046151638031006,
+        5.107500203943346,
         0,
         1
       ],
@@ -1050,20 +1050,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        11.59615182876587,
         0,
         0,
         0,
         0,
-        1,
+        11.59615182876587,
         0,
         0,
         0,
         0,
-        1,
+        11.59615182876587,
         0,
-        0,
-        0,
+        6.046151638031006,
+        5.107500203943346,
         0,
         1
       ]
@@ -1071,20 +1071,20 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod0-armor",
       "localTransform": [
-        1,
+        10.84999942779541,
         0,
         0,
         0,
         0,
-        1,
+        10.84999942779541,
         0,
         0,
         0,
         0,
-        1,
+        10.84999942779541,
         0,
-        0,
-        0,
+        6.34999942779541,
+        5.061318735128225,
         0,
         1
       ],
@@ -1099,20 +1099,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.84999942779541,
         0,
         0,
         0,
         0,
-        1,
+        10.84999942779541,
         0,
         0,
         0,
         0,
-        1,
+        10.84999942779541,
         0,
-        0,
-        0,
+        6.34999942779541,
+        5.061318735128225,
         0,
         1
       ]
@@ -1120,21 +1120,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        10.147728681564331,
         0,
         0,
         0,
         0,
-        1,
+        10.147728681564331,
         0,
         0,
         0,
         0,
-        1,
+        10.147728681564331,
         0,
-        0,
-        0,
-        0,
+        5.648475885391235,
+        5.177663087844849,
+        -1.1920928955078125e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1148,21 +1148,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.147728681564331,
         0,
         0,
         0,
         0,
-        1,
+        10.147728681564331,
         0,
         0,
         0,
         0,
-        1,
+        10.147728681564331,
         0,
-        0,
-        0,
-        0,
+        5.648475885391235,
+        5.177663087844849,
+        -1.1920928955078125e-7,
         1
       ]
     },
@@ -1218,21 +1218,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hull",
       "localTransform": [
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        5.900000095367432,
+        1.2999999225139618,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1246,41 +1246,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        5.900000095367432,
+        1.2999999225139618,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod0-hull-aged",
       "localTransform": [
-        1,
+        3.299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.299999952316284,
         0,
-        0,
-        0,
+        -2.4307611286640167,
+        3.299999952316284,
         0,
         1
       ],
@@ -1295,20 +1295,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        3.299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        3.299999952316284,
         0,
-        0,
-        0,
+        -2.4307611286640167,
+        3.299999952316284,
         0,
         1
       ]
@@ -1316,21 +1316,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod0-lights-warm",
       "localTransform": [
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        6.099999904632568,
+        2.1500000953674316,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1344,42 +1344,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        6.099999904632568,
+        2.1500000953674316,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        9.821151733398438,
         0,
         0,
         0,
         0,
-        1,
+        9.821151733398438,
         0,
         0,
         0,
         0,
-        1,
+        9.821151733398438,
         0,
-        0,
-        0,
-        0,
+        7.8211517333984375,
+        7.5875327587127686,
+        -0.028848707675933838,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1393,42 +1393,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        9.821151733398438,
         0,
         0,
         0,
         0,
-        1,
+        9.821151733398438,
         0,
         0,
         0,
         0,
-        1,
+        9.821151733398438,
         0,
-        0,
-        0,
-        0,
+        7.8211517333984375,
+        7.5875327587127686,
+        -0.028848707675933838,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        9.062985837459564,
         0,
         0,
         0,
         0,
-        1,
+        9.062985837459564,
         0,
         0,
         0,
         0,
-        1,
+        9.062985837459564,
         0,
-        0,
-        0,
-        0,
+        7.454241335391998,
+        8,
+        0.22614234685897827,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1442,41 +1442,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        9.062985837459564,
         0,
         0,
         0,
         0,
-        1,
+        9.062985837459564,
         0,
         0,
         0,
         0,
-        1,
+        9.062985837459564,
         0,
-        0,
-        0,
-        0,
+        7.454241335391998,
+        8,
+        0.22614234685897827,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod0-warning",
       "localTransform": [
-        1,
+        11.424999713897705,
         0,
         0,
         0,
         0,
-        1,
+        11.424999713897705,
         0,
         0,
         0,
         0,
-        1,
+        11.424999713897705,
         0,
-        0,
-        0,
+        5.874999523162842,
+        5.224999904632568,
         0,
         1
       ],
@@ -1491,20 +1491,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        11.424999713897705,
         0,
         0,
         0,
         0,
-        1,
+        11.424999713897705,
         0,
         0,
         0,
         0,
-        1,
+        11.424999713897705,
         0,
-        0,
-        0,
+        5.874999523162842,
+        5.224999904632568,
         0,
         1
       ]
@@ -1512,20 +1512,20 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod1-armor",
       "localTransform": [
-        1,
+        10.846676349639893,
         0,
         0,
         0,
         0,
-        1,
+        10.846676349639893,
         0,
         0,
         0,
         0,
-        1,
+        10.846676349639893,
         0,
-        0,
-        0,
+        6.348662853240967,
+        5.0616532178537454,
         0,
         1
       ],
@@ -1540,20 +1540,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.846676349639893,
         0,
         0,
         0,
         0,
-        1,
+        10.846676349639893,
         0,
         0,
         0,
         0,
-        1,
+        10.846676349639893,
         0,
-        0,
-        0,
+        6.348662853240967,
+        5.0616532178537454,
         0,
         1
       ]
@@ -1561,21 +1561,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        10.147109031677246,
         0,
         0,
         0,
         0,
-        1,
+        10.147109031677246,
         0,
         0,
         0,
         0,
-        1,
+        10.147109031677246,
         0,
-        0,
-        0,
-        0,
+        5.64909553527832,
+        5.178765177726746,
+        -0.000039696693420410156,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1589,21 +1589,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.147109031677246,
         0,
         0,
         0,
         0,
-        1,
+        10.147109031677246,
         0,
         0,
         0,
         0,
-        1,
+        10.147109031677246,
         0,
-        0,
-        0,
-        0,
+        5.64909553527832,
+        5.178765177726746,
+        -0.000039696693420410156,
         1
       ]
     },
@@ -1659,21 +1659,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod1-hull",
       "localTransform": [
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        5.900000095367432,
+        1.2999999225139618,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1687,42 +1687,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.9000000953674316,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        5.900000095367432,
+        1.2999999225139618,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod1-hull-aged",
       "localTransform": [
-        1,
+        3.296114243916236,
         0,
         0,
         0,
         0,
-        1,
+        3.296114243916236,
         0,
         0,
         0,
         0,
-        1,
+        3.296114243916236,
         0,
-        0,
-        0,
-        0,
+        -2.4295617043972015,
+        3.2987048249924555,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1736,42 +1736,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        3.296114243916236,
         0,
         0,
         0,
         0,
-        1,
+        3.296114243916236,
         0,
         0,
         0,
         0,
-        1,
+        3.296114243916236,
         0,
-        0,
-        0,
-        0,
+        -2.4295617043972015,
+        3.2987048249924555,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod1-lights-warm",
       "localTransform": [
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        6.099999904632568,
+        2.1500000953674316,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1785,42 +1785,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.6000000238418579,
         0,
-        0,
-        0,
-        0,
+        -0.6000000238418579,
+        6.099999904632568,
+        2.1500000953674316,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        9.81973123550415,
         0,
         0,
         0,
         0,
-        1,
+        9.81973123550415,
         0,
         0,
         0,
         0,
-        1,
+        9.81973123550415,
         0,
-        0,
-        0,
-        0,
+        7.822572231292725,
+        7.586630821228027,
+        -0.027639925479888916,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1834,42 +1834,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        9.81973123550415,
         0,
         0,
         0,
         0,
-        1,
+        9.81973123550415,
         0,
         0,
         0,
         0,
-        1,
+        9.81973123550415,
         0,
-        0,
-        0,
-        0,
+        7.822572231292725,
+        7.586630821228027,
+        -0.027639925479888916,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        9.062316358089447,
         0,
         0,
         0,
         0,
-        1,
+        9.062316358089447,
         0,
         0,
         0,
         0,
-        1,
+        9.062316358089447,
         0,
-        0,
-        0,
-        0,
+        7.453571856021881,
+        8.000000476837158,
+        0.22614234685897827,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1883,42 +1883,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        9.062316358089447,
         0,
         0,
         0,
         0,
-        1,
+        9.062316358089447,
         0,
         0,
         0,
         0,
-        1,
+        9.062316358089447,
         0,
-        0,
-        0,
-        0,
+        7.453571856021881,
+        8.000000476837158,
+        0.22614234685897827,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod1-warning",
       "localTransform": [
-        1,
+        11.422927379608154,
         0,
         0,
         0,
         0,
-        1,
+        11.422927379608154,
         0,
         0,
         0,
         0,
-        1,
+        11.422927379608154,
         0,
-        0,
-        0,
-        0,
+        5.872927188873291,
+        5.223839998245239,
+        0.00012958049774169922,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1932,41 +1932,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        11.422927379608154,
         0,
         0,
         0,
         0,
-        1,
+        11.422927379608154,
         0,
         0,
         0,
         0,
-        1,
+        11.422927379608154,
         0,
-        0,
-        0,
-        0,
+        5.872927188873291,
+        5.223839998245239,
+        0.00012958049774169922,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod2-armor",
       "localTransform": [
-        1,
+        10.833164691925049,
         0,
         0,
         0,
         0,
-        1,
+        10.833164691925049,
         0,
         0,
         0,
         0,
-        1,
+        10.833164691925049,
         0,
-        0,
-        0,
+        6.335151195526123,
+        5.062644649413414,
         0,
         1
       ],
@@ -1981,20 +1981,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.833164691925049,
         0,
         0,
         0,
         0,
-        1,
+        10.833164691925049,
         0,
         0,
         0,
         0,
-        1,
+        10.833164691925049,
         0,
-        0,
-        0,
+        6.335151195526123,
+        5.062644649413414,
         0,
         1
       ]
@@ -2002,21 +2002,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        10.144968032836914,
         0,
         0,
         0,
         0,
-        1,
+        10.144968032836914,
         0,
         0,
         0,
         0,
-        1,
+        10.144968032836914,
         0,
-        0,
-        0,
-        0,
+        5.646954536437988,
+        5.1735610365867615,
+        0.0006761550903320312,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2030,21 +2030,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        10.144968032836914,
         0,
         0,
         0,
         0,
-        1,
+        10.144968032836914,
         0,
         0,
         0,
         0,
-        1,
+        10.144968032836914,
         0,
-        0,
-        0,
-        0,
+        5.646954536437988,
+        5.1735610365867615,
+        0.0006761550903320312,
         1
       ]
     },
@@ -2100,21 +2100,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod2-hull",
       "localTransform": [
-        1,
+        0.8524733185768127,
         0,
         0,
         0,
         0,
-        1,
+        0.8524733185768127,
         0,
         0,
         0,
         0,
-        1,
+        0.8524733185768127,
         0,
-        0,
-        0,
-        0,
+        -0.5999999642372131,
+        5.8999998569488525,
+        1.299999862909317,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2128,41 +2128,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.8524733185768127,
         0,
         0,
         0,
         0,
-        1,
+        0.8524733185768127,
         0,
         0,
         0,
         0,
-        1,
+        0.8524733185768127,
         0,
-        0,
-        0,
-        0,
+        -0.5999999642372131,
+        5.8999998569488525,
+        1.299999862909317,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod2-hull-aged",
       "localTransform": [
-        1,
+        3.275710914283991,
         0,
         0,
         0,
         0,
-        1,
+        3.275710914283991,
         0,
         0,
         0,
         0,
-        1,
+        3.275710914283991,
         0,
-        0,
-        0,
+        -2.4228402078151703,
+        3.291903641074896,
         0,
         1
       ],
@@ -2177,20 +2177,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        3.275710914283991,
         0,
         0,
         0,
         0,
-        1,
+        3.275710914283991,
         0,
         0,
         0,
         0,
-        1,
+        3.275710914283991,
         0,
-        0,
-        0,
+        -2.4228402078151703,
+        3.291903641074896,
         0,
         1
       ]
@@ -2198,21 +2198,21 @@
     {
       "id": "sf.render.transfer-arm.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        9.818855941295624,
         0,
         0,
         0,
         0,
-        1,
+        9.818855941295624,
         0,
         0,
         0,
         0,
-        1,
+        9.818855941295624,
         0,
-        0,
-        0,
-        0,
+        7.823447525501251,
+        7.587202787399292,
+        -0.02836287021636963,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2226,42 +2226,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        9.818855941295624,
         0,
         0,
         0,
         0,
-        1,
+        9.818855941295624,
         0,
         0,
         0,
         0,
-        1,
+        9.818855941295624,
         0,
-        0,
-        0,
-        0,
+        7.823447525501251,
+        7.587202787399292,
+        -0.02836287021636963,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        0.9652764797210693,
         0,
         0,
         0,
         0,
-        1,
+        0.9652764797210693,
         0,
         0,
         0,
         0,
-        1,
+        0.9652764797210693,
         0,
-        0,
-        0,
-        0,
+        15.810958862304688,
+        7.968470811843872,
+        0.49428604170680046,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2275,42 +2275,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        0.9652764797210693,
         0,
         0,
         0,
         0,
-        1,
+        0.9652764797210693,
         0,
         0,
         0,
         0,
-        1,
+        0.9652764797210693,
         0,
-        0,
-        0,
-        0,
+        15.810958862304688,
+        7.968470811843872,
+        0.49428604170680046,
         1
       ]
     },
     {
       "id": "sf.render.transfer-arm.mesh.lod2-warning",
       "localTransform": [
-        1,
+        11.412327289581299,
         0,
         0,
         0,
         0,
-        1,
+        11.412327289581299,
         0,
         0,
         0,
         0,
-        1,
+        11.412327289581299,
         0,
-        0,
-        0,
-        0,
+        5.8623270988464355,
+        5.21313738822937,
+        0.00012958049774169922,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2324,21 +2324,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.transfer-arm.body",
       "worldTransform": [
-        1,
+        11.412327289581299,
         0,
         0,
         0,
         0,
-        1,
+        11.412327289581299,
         0,
         0,
         0,
         0,
-        1,
+        11.412327289581299,
         0,
-        0,
-        0,
-        0,
+        5.8623270988464355,
+        5.21313738822937,
+        0.00012958049774169922,
         1
       ]
     },
@@ -2401,37 +2401,37 @@
       "uri": "place_transfer_arm.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 552528,
-    "sha256": "a7c97e3f985a541062c6cf8184cd82b6caf5f9c9e7254a4947b00b7c728353cc",
+    "bytes": 361148,
+    "sha256": "16f47bd5e7b15671e116742c41219ef82fc2171dd4c8a02804c4c7001954f04f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         6.046151638031006,
-        5.110966713783244,
+        5.110966769833604,
         0
       ],
       "max": [
         17.642303466796875,
         10.22223262600304,
-        2.2975010871887207
+        2.2975010734076364
       ],
       "min": [
         -5.550000190734863,
-        -0.00029919843655079603,
-        -2.2975010871887207
+        -0.0002990863358318663,
+        -2.2975010734076364
       ],
       "size": [
         23.19230365753174,
-        10.22253182443959,
-        4.595002174377441
+        10.22253171233887,
+        4.595002146815273
       ]
     },
     "hidden": [
@@ -2670,20 +2670,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.84999942779541,
           0,
           0,
           0,
           0,
-          1,
+          10.84999942779541,
           0,
           0,
           0,
           0,
-          1,
+          10.84999942779541,
           0,
-          0,
-          0,
+          6.34999942779541,
+          5.061318735128225,
           0,
           1
         ],
@@ -2697,21 +2697,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.147728681564331,
           0,
           0,
           0,
           0,
-          1,
+          10.147728681564331,
           0,
           0,
           0,
           0,
-          1,
+          10.147728681564331,
           0,
-          0,
-          0,
-          0,
+          5.648475885391235,
+          5.177663087844849,
+          -1.1920928955078125e-7,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -2752,21 +2752,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000953674316,
           0,
-          0,
-          0,
-          0,
+          -0.6000000238418579,
+          5.900000095367432,
+          1.2999999225139618,
           1
         ],
         "name": "LOD0_Hull",
@@ -2779,20 +2779,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          3.299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          3.299999952316284,
           0,
-          0,
-          0,
+          -2.4307611286640167,
+          3.299999952316284,
           0,
           1
         ],
@@ -2806,21 +2806,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.6000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.6000000238418579,
           0,
-          0,
-          0,
-          0,
+          -0.6000000238418579,
+          6.099999904632568,
+          2.1500000953674316,
           1
         ],
         "name": "LOD0_Lights_Warm",
@@ -2833,21 +2833,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.821151733398438,
           0,
           0,
           0,
           0,
-          1,
+          9.821151733398438,
           0,
           0,
           0,
           0,
-          1,
+          9.821151733398438,
           0,
-          0,
-          0,
-          0,
+          7.8211517333984375,
+          7.5875327587127686,
+          -0.028848707675933838,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -2860,21 +2860,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.062985837459564,
           0,
           0,
           0,
           0,
-          1,
+          9.062985837459564,
           0,
           0,
           0,
           0,
-          1,
+          9.062985837459564,
           0,
-          0,
-          0,
-          0,
+          7.454241335391998,
+          8,
+          0.22614234685897827,
           1
         ],
         "name": "LOD0_MechanicalDark",
@@ -2887,20 +2887,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.424999713897705,
           0,
           0,
           0,
           0,
-          1,
+          11.424999713897705,
           0,
           0,
           0,
           0,
-          1,
+          11.424999713897705,
           0,
-          0,
-          0,
+          5.874999523162842,
+          5.224999904632568,
           0,
           1
         ],
@@ -2914,20 +2914,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.846676349639893,
           0,
           0,
           0,
           0,
-          1,
+          10.846676349639893,
           0,
           0,
           0,
           0,
-          1,
+          10.846676349639893,
           0,
-          0,
-          0,
+          6.348662853240967,
+          5.0616532178537454,
           0,
           1
         ],
@@ -2941,21 +2941,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.147109031677246,
           0,
           0,
           0,
           0,
-          1,
+          10.147109031677246,
           0,
           0,
           0,
           0,
-          1,
+          10.147109031677246,
           0,
-          0,
-          0,
-          0,
+          5.64909553527832,
+          5.178765177726746,
+          -0.000039696693420410156,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -2996,21 +2996,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.9000000953674316,
           0,
-          0,
-          0,
-          0,
+          -0.6000000238418579,
+          5.900000095367432,
+          1.2999999225139618,
           1
         ],
         "name": "LOD1_Hull",
@@ -3023,21 +3023,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.296114243916236,
           0,
           0,
           0,
           0,
-          1,
+          3.296114243916236,
           0,
           0,
           0,
           0,
-          1,
+          3.296114243916236,
           0,
-          0,
-          0,
-          0,
+          -2.4295617043972015,
+          3.2987048249924555,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD1_Hull_aged",
@@ -3050,21 +3050,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.6000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.6000000238418579,
           0,
-          0,
-          0,
-          0,
+          -0.6000000238418579,
+          6.099999904632568,
+          2.1500000953674316,
           1
         ],
         "name": "LOD1_Lights_Warm",
@@ -3077,21 +3077,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.81973123550415,
           0,
           0,
           0,
           0,
-          1,
+          9.81973123550415,
           0,
           0,
           0,
           0,
-          1,
+          9.81973123550415,
           0,
-          0,
-          0,
-          0,
+          7.822572231292725,
+          7.586630821228027,
+          -0.027639925479888916,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -3104,21 +3104,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.062316358089447,
           0,
           0,
           0,
           0,
-          1,
+          9.062316358089447,
           0,
           0,
           0,
           0,
-          1,
+          9.062316358089447,
           0,
-          0,
-          0,
-          0,
+          7.453571856021881,
+          8.000000476837158,
+          0.22614234685897827,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -3131,21 +3131,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.422927379608154,
           0,
           0,
           0,
           0,
-          1,
+          11.422927379608154,
           0,
           0,
           0,
           0,
-          1,
+          11.422927379608154,
           0,
-          0,
-          0,
-          0,
+          5.872927188873291,
+          5.223839998245239,
+          0.00012958049774169922,
           1
         ],
         "name": "LOD1_Warning",
@@ -3158,20 +3158,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.833164691925049,
           0,
           0,
           0,
           0,
-          1,
+          10.833164691925049,
           0,
           0,
           0,
           0,
-          1,
+          10.833164691925049,
           0,
-          0,
-          0,
+          6.335151195526123,
+          5.062644649413414,
           0,
           1
         ],
@@ -3185,21 +3185,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.144968032836914,
           0,
           0,
           0,
           0,
-          1,
+          10.144968032836914,
           0,
           0,
           0,
           0,
-          1,
+          10.144968032836914,
           0,
-          0,
-          0,
-          0,
+          5.646954536437988,
+          5.1735610365867615,
+          0.0006761550903320312,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -3240,21 +3240,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8524733185768127,
           0,
           0,
           0,
           0,
-          1,
+          0.8524733185768127,
           0,
           0,
           0,
           0,
-          1,
+          0.8524733185768127,
           0,
-          0,
-          0,
-          0,
+          -0.5999999642372131,
+          5.8999998569488525,
+          1.299999862909317,
           1
         ],
         "name": "LOD2_Hull",
@@ -3267,20 +3267,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.275710914283991,
           0,
           0,
           0,
           0,
-          1,
+          3.275710914283991,
           0,
           0,
           0,
           0,
-          1,
+          3.275710914283991,
           0,
-          0,
-          0,
+          -2.4228402078151703,
+          3.291903641074896,
           0,
           1
         ],
@@ -3294,21 +3294,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.818855941295624,
           0,
           0,
           0,
           0,
-          1,
+          9.818855941295624,
           0,
           0,
           0,
           0,
-          1,
+          9.818855941295624,
           0,
-          0,
-          0,
-          0,
+          7.823447525501251,
+          7.587202787399292,
+          -0.02836287021636963,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -3321,21 +3321,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9652764797210693,
           0,
           0,
           0,
           0,
-          1,
+          0.9652764797210693,
           0,
           0,
           0,
           0,
-          1,
+          0.9652764797210693,
           0,
-          0,
-          0,
-          0,
+          15.810958862304688,
+          7.968470811843872,
+          0.49428604170680046,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -3348,21 +3348,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.412327289581299,
           0,
           0,
           0,
           0,
-          1,
+          11.412327289581299,
           0,
           0,
           0,
           0,
-          1,
+          11.412327289581299,
           0,
-          0,
-          0,
-          0,
+          5.8623270988464355,
+          5.21313738822937,
+          0.00012958049774169922,
           1
         ],
         "name": "LOD2_Warning",
@@ -3377,7 +3377,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
   },
-  "runtimeHash": "5d29ee9724fd93a5ec13b8302da27c89f1013fa43302bd1356980fddcb23fe7a",
+  "runtimeHash": "8f9d00cb2329976e0d7e3159fef38b6988dd72a9fa2f1d085717c86d5e83c505",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3385,12 +3385,12 @@
         "max": [
           17.642303466796875,
           10.22223262600304,
-          2.2975010871887207
+          2.2975010734076364
         ],
         "min": [
           -5.550000190734863,
-          -0.00029919843655079603,
-          -2.2975010871887207
+          -0.0002990863358318663,
+          -2.2975010734076364
         ]
       },
       "id": "sf.render.transfer-arm.body",

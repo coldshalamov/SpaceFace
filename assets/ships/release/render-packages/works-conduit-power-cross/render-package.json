@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1f0fe69529b922ac238a6231ec13cf1be193b7e709e5673b4e6b8e463f0d92a9",
+  "contentHash": "bfa3386ed64d60a57d085530df4b93090ff6f951095e14697f1f782dce6c9654",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1.100000023841858,
-          0.20003968477249146,
+          0.20003967924504956,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.000039678743632975966,
+          -0.00003967321619109676,
           -1.100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3eee12058a90eae95fc809f49e2559fb5062fd9461be43eeaa107086872c3f91",
+      "geometryHash": "5c90831753e5833615b333c19f5581b87eda52a878d6e223149c5adf4dc3c801",
       "id": "sf.render.works-conduit-power-cross.mesh.lod0-merged-material-atlas.primitive.0",
       "indexCount": 3792,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           0.023000000044703484,
-          0.15500052273273468,
-          0.010998474434018135
+          0.15500051733426412,
+          0.010998474095903162
         ],
         "min": [
           -0.023000000044703484,
-          0.14499947428703308,
-          -0.010998474434018135
+          0.14499947968550364,
+          -0.010998474095903162
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bfc0a2405dbcdfc2c474816d2f9086e1420bd9dce0466e302161726013df0a0",
+      "geometryHash": "417d15a6b92cf3a3e7b2dd815b449b942131641acca2c1c975226193d55bb104",
       "id": "sf.render.works-conduit-power-cross.mesh.lod0-powered.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           1.100000023841858,
-          0.20003968477249146,
+          0.20003967924504956,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.000039678743632975966,
+          -0.00003967321619109676,
           -1.100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5ee8f48f70d6d767edf8a8f545af65effbd545fd643ca9275585ca5bfdcca78",
+      "geometryHash": "9d927f864c3c0432eb4c79511e2b270429b384ff51be1a133e14b8d5d4e5cdd8",
       "id": "sf.render.works-conduit-power-cross.mesh.lod1-merged-material-atlas.primitive.0",
       "indexCount": 2184,
       "indexed": true,
@@ -88,17 +88,17 @@
       "bounds": {
         "max": [
           0.023000000044703484,
-          0.15500052273273468,
-          0.010998474434018135
+          0.15500051733426412,
+          0.010998474095903162
         ],
         "min": [
           -0.023000000044703484,
-          0.14499947428703308,
-          -0.010998474434018135
+          0.14499947968550364,
+          -0.010998474095903162
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc010b413f1c6e8e90593b973f86caf6c8f0b0b49c8a04a2f6ec298c933d2c89",
+      "geometryHash": "cd9e96cce928b8a75700bf7af37117d453b2820fa4938ecc71d0cdceeca51436",
       "id": "sf.render.works-conduit-power-cross.mesh.lod1-powered.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -151,20 +151,20 @@
     {
       "id": "sf.render.works-conduit-power-cross.mesh.lod0-merged-material-atlas",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.10000000301442924,
         0,
         1
       ],
@@ -180,20 +180,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-cross.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.10000000301442924,
         0,
         1
       ]
@@ -201,20 +201,20 @@
     {
       "id": "sf.render.works-conduit-power-cross.mesh.lod0-powered",
       "localTransform": [
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
-        0,
+        0.14999999850988388,
         0,
         1
       ],
@@ -231,20 +231,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-cross.body",
       "worldTransform": [
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
-        0,
+        0.14999999850988388,
         0,
         1
       ]
@@ -252,20 +252,20 @@
     {
       "id": "sf.render.works-conduit-power-cross.mesh.lod1-merged-material-atlas",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.10000000301442924,
         0,
         1
       ],
@@ -281,20 +281,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-cross.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.10000000301442924,
         0,
         1
       ]
@@ -302,20 +302,20 @@
     {
       "id": "sf.render.works-conduit-power-cross.mesh.lod1-powered",
       "localTransform": [
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
-        0,
+        0.14999999850988388,
         0,
         1
       ],
@@ -332,20 +332,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-cross.body",
       "worldTransform": [
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
         0,
         0,
-        1,
+        0.023000000044703484,
         0,
         0,
-        0,
+        0.14999999850988388,
         0,
         1
       ]
@@ -409,14 +409,14 @@
       "uri": "place_works_conduit_power_cross.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 548392,
-    "sha256": "a15482ab61ea38d90787113629ada12f804cdaf8e5d14d791c19546723c1f4bc",
+    "bytes": 517832,
+    "sha256": "f6322e4b527a61853166cef3ae880a2b9b4c74c20c6ede84e017f63187ba4a25",
     "uri": "render.glb"
   },
   "runtime": {
@@ -428,17 +428,17 @@
       ],
       "max": [
         1.100000023841858,
-        0.20003968477249146,
+        0.20003967924504956,
         1.100000023841858
       ],
       "min": [
         -1.100000023841858,
-        -0.000039678743632975966,
+        -0.00003967321619109676,
         -1.100000023841858
       ],
       "size": [
         2.200000047683716,
-        0.20007936351612443,
+        0.20007935246124064,
         2.200000047683716
       ]
     },
@@ -512,20 +512,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
-          0,
+          0.10000000301442924,
           0,
           1
         ],
@@ -539,20 +539,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
-          0,
+          0.10000000301442924,
           0,
           1
         ],
@@ -566,20 +566,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.023000000044703484,
           0,
           0,
           0,
           0,
-          1,
+          0.023000000044703484,
           0,
           0,
           0,
           0,
-          1,
+          0.023000000044703484,
           0,
           0,
-          0,
+          0.14999999850988388,
           0,
           1
         ],
@@ -593,20 +593,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.023000000044703484,
           0,
           0,
           0,
           0,
-          1,
+          0.023000000044703484,
           0,
           0,
           0,
           0,
-          1,
+          0.023000000044703484,
           0,
           0,
-          0,
+          0.14999999850988388,
           0,
           1
         ],
@@ -622,19 +622,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb"
   },
-  "runtimeHash": "b689beb34a2d4092f42fa7f7d059cce9c64b8cb9f4dec5fe47035bbc55c49979",
+  "runtimeHash": "dabb2f26b524b2928ba8ee99bcd5e8226a4b2369a95e71175f08c32bc7876c05",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.100000023841858,
-          0.20003968477249146,
+          0.20003967924504956,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.000039678743632975966,
+          -0.00003967321619109676,
           -1.100000023841858
         ]
       },

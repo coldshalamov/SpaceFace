@@ -457,7 +457,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1d4c57f7af62b0e194ddea9417c3b820fab4c1a611464cbfce2219e9e145996b",
+  "contentHash": "d684c5d23c434295afe0fce41b363cdb294dfb95565c0a526db96f617a996ff0",
   "dynamicGroups": [
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-1-armor.dynamic",
@@ -615,17 +615,17 @@
       "bounds": {
         "max": [
           20.997953414916992,
-          3.393127679824829,
-          3.7987759113311768
+          3.3931276819039975,
+          3.798775681789537
         ],
         "min": [
           -20.997486114501953,
-          -1.8974748849868774,
-          -3.7987759113311768
+          -1.8974748870660458,
+          -3.798775681789537
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef95fda9fdf7f10ca629a4bd1aaa0e05a3ed783484059597ce074188537ec138",
+      "geometryHash": "4a1f82909b8b9a02c581b50804f147b4119a6fee956f6c79a18a60838cd7146f",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -640,17 +640,17 @@
       "bounds": {
         "max": [
           -7.499199390411377,
-          1.8998074531555176,
-          -7.499766826629639
+          1.8998074680152954,
+          -7.499766620750135
         ],
         "min": [
           -16.500972747802734,
-          -1.5443660020828247,
-          -12.500232696533203
+          -1.5443660169426026,
+          -12.500232902412707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "32861db7f9598d99b69ff217731d0de43831ed7a33fb2e8a8a03a260f17af43c",
+      "geometryHash": "c9216bc5321dbcacd34f685fe6e719c7e8592ccd2557e7310634f740930716cf",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -665,17 +665,17 @@
       "bounds": {
         "max": [
           -7.499199390411377,
-          1.8998074531555176,
-          12.500232696533203
+          1.8998074680152954,
+          12.500232902412707
         ],
         "min": [
           -16.500972747802734,
-          -1.5443660020828247,
-          7.499766826629639
+          -1.5443660169426026,
+          7.499766620750135
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82ebab015bb1256bda0b95364984a3da6681458dd5bc975686664b391456dc44",
+      "geometryHash": "d205ad0fa70d67c19a678e190710bbeb5bbceeed888ee52a2f63a64a1ad70da3",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -690,17 +690,17 @@
       "bounds": {
         "max": [
           4.500800609588623,
-          1.8998075723648071,
-          -7.499766826629639
+          1.899807587224585,
+          -7.499766620750135
         ],
         "min": [
           -4.500972747802734,
-          -1.5443658828735352,
-          -12.500232696533203
+          -1.544365897733313,
+          -12.500232902412707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a87d85564fd5ef79fd1cd7c140877ec32b1fe1a857c7c095fdb3a0e465f930c8",
+      "geometryHash": "d8f88aaebff40095c2b9b589ce2f7ad189689ab22646d90fa504e9e5dad81192",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -715,17 +715,17 @@
       "bounds": {
         "max": [
           4.500800609588623,
-          1.8998075723648071,
-          12.500232696533203
+          1.8998074960031206,
+          12.500233008390264
         ],
         "min": [
           -4.500972270965576,
-          -1.5443658828735352,
-          7.499767303466797
+          -1.5443658065118486,
+          7.499766991609737
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d88ab996b6961ce3f014bd727adc5ec6adb96ecdb5e9bd2598747b271be6075",
+      "geometryHash": "2b5499895578aa610ef5777350a9cda47ee0848ef20a08dfd2b0c5c5f450e18e",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -740,17 +740,17 @@
       "bounds": {
         "max": [
           16.50080108642578,
-          1.8998074531555176,
-          -7.499766826629639
+          1.8998074680152954,
+          -7.499766620750135
         ],
         "min": [
           7.499027729034424,
-          -1.5443660020828247,
-          -12.500232696533203
+          -1.5443660169426026,
+          -12.500232902412707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e48d0f9becdcd64d9dd1871ad405582bfd744de9666de9918199187a5b0dabbc",
+      "geometryHash": "f768514ee07831aae76d3e2ba17c55fc85a3ab90c92fcc7c7ead72b2f98000ff",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -765,17 +765,17 @@
       "bounds": {
         "max": [
           16.50080108642578,
-          1.8998074531555176,
-          12.500232696533203
+          1.8998074680152954,
+          12.500232902412707
         ],
         "min": [
           7.499027729034424,
-          -1.5443660020828247,
-          7.499766826629639
+          -1.5443660169426026,
+          7.499766620750135
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52fd603697e71847fae2ffbf512e675de30362dcc473ee5c226a17722d6f6b6e",
+      "geometryHash": "3ffec6b3adcd9f13b19060fa1b92a44f88310dfc1563c52558f66a6bdf661634",
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-6.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -790,17 +790,17 @@
       "bounds": {
         "max": [
           12.995269775390625,
-          3.559283971786499,
-          0.34934085607528687
+          3.559283993575019,
+          0.349340867976843
         ],
         "min": [
           -13.998668670654297,
-          3.5263314247131348,
-          -0.3492540419101715
+          3.526331402924615,
+          -0.34925405381172764
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4e6be38fd50bc0e891fb3fccf369743f9478f94f7601a5082e5ca28109b7fe7",
+      "geometryHash": "bc056fda16b054aacc0e68ea7ce12bbf101aa77e1c392f9f9eeda17642ab6161",
       "id": "sf.render.ilex-ark-lod1.node.lod1-armor.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -815,17 +815,17 @@
       "bounds": {
         "max": [
           18.419252395629883,
-          2.9250454902648926,
-          1.0447190999984741
+          2.9250454260344165,
+          1.044719155444782
         ],
         "min": [
           16.180747985839844,
-          2.678835153579712,
-          -1.045403242111206
+          2.678835217810188,
+          -1.045403297557514
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28ba3c67512f67785fbc0c8bd6b8afe9f6d85c4511896f7a746a3064d9920a5a",
+      "geometryHash": "4c9532eb0a45c39bd122201d01838c1548319b41064d07fa91306cf79d4d1b09",
       "id": "sf.render.ilex-ark-lod1.node.lod1-canopy.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -839,18 +839,18 @@
     {
       "bounds": {
         "max": [
-          -20.987524032592773,
-          2.0225744247436523,
+          -20.987523841200144,
+          2.0225743609879467,
           2.372499942779541
         ],
         "min": [
-          -21.30031394958496,
-          -1.672261118888855,
+          -21.30031414097759,
+          -1.6722610551331496,
           -2.372499942779541
         ]
       },
       "drawMode": 4,
-      "geometryHash": "817f5c99447fc5366acccb1dd2476e1bebf3a339185349f10c00fad16cc80711",
+      "geometryHash": "c69e1bc423fe2745db1c0767c1f8808f399efbb5c35fc4aa8620790804efffaa",
       "id": "sf.render.ilex-ark-lod1.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 1143,
       "indexed": true,
@@ -865,17 +865,17 @@
       "bounds": {
         "max": [
           21.000043869018555,
-          3.67612361907959,
-          3.7990660667419434
+          3.6761236347743096,
+          3.7990658819124272
         ],
         "min": [
           -20.99860382080078,
-          -1.6969141960144043,
-          -3.7990660667419434
+          -1.696914211709124,
+          -3.7990658819124272
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca915f2a4d876a491f9330c85a06ca19fed72ec8966d9d9b406d302e0104b522",
+      "geometryHash": "37ebf9cf3696a526de870c74c8402833bce8428e17fb3282ddc1843a5729c2e9",
       "id": "sf.render.ilex-ark-lod1.node.lod1-hull.primitive.0",
       "indexCount": 2250,
       "indexed": true,
@@ -889,18 +889,18 @@
     {
       "bounds": {
         "max": [
-          18.206315994262695,
-          2.97241473197937,
+          18.206315708039615,
+          2.9724147347515943,
           0.8734635710716248
         ],
         "min": [
-          17.89368438720703,
-          2.907585382461548,
+          17.893684673430112,
+          2.9075853796893236,
           -0.8734636306762695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64fd411ff1782e5bb53af78981a79818a57c4b6b4de80d02b6e57ffb6ae92266",
+      "geometryHash": "e29be28924e3a853b517aa232b996e36edf7991dd5e045ff40f7e432afcf03e6",
       "id": "sf.render.ilex-ark-lod1.node.lod1-lights-warm.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -915,17 +915,17 @@
       "bounds": {
         "max": [
           20.975311279296875,
-          3.715561866760254,
-          8.195950508117676
+          3.715561921557163,
+          8.195950097188154
         ],
         "min": [
           -21.300437927246094,
-          -1.8993573188781738,
-          -8.195950508117676
+          -1.899357373675083,
+          -8.195950097188154
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d80a4cd8b6a61be916f96a33f982caf1dbac82bb9d92d6a10a470351c940180",
+      "geometryHash": "727a69d0923f3bf9f1f99ff8096f5fec8ca180b44c4353eb4e1e2f1664678a42",
       "id": "sf.render.ilex-ark-lod1.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5469,
       "indexed": true,
@@ -950,7 +950,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42a815988522e4936026016f9bfb9446375c59f86238ad96b796ffaf7cdd877d",
+      "geometryHash": "ac842c12925efa974f3ffa14640ef3b359f7cfa81a50d261aa7b491a3d58e03d",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-1-armor.primitive.0",
       "indexCount": 3726,
       "indexed": true,
@@ -975,7 +975,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6667bbdf348bc4fd2266181f475df9dd5692e934fec86ac2ee5fe32808a1df15",
+      "geometryHash": "e59fde127e22ad8f884ee28a4b766fe81eeb9cfa12cf0d1ba539ada3ca97970a",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-1-canopy.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1000,7 +1000,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fea8b7f986d6208d797e16ef32be4d05490b184e5ef0cc8ee948a5e892bfd9e",
+      "geometryHash": "d1b48a75ace6a4cb83e6a42a088fb5d2ef587a73ed47b72f3605f2ec19626e04",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-1-lights-warm.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1025,7 +1025,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c44e87a58cf8d9dc9702af54cf32c5fc7f585b0acf92e6acbc8e89337742b9b4",
+      "geometryHash": "be389a35f598781533b9948eec209c1f4465798bafa941c94b9a9e93b463366e",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-1-mechanicaldark.primitive.0",
       "indexCount": 3012,
       "indexed": true,
@@ -1050,7 +1050,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82fc139f817ddb6db8c214bdb0fe6d757f026325b81a881d36d3121a054e68e8",
+      "geometryHash": "4262cbfe7f8db86647dd6903303968c93322d3248aeb1b77b053ae5ebc6dd492",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-2-armor.primitive.0",
       "indexCount": 3738,
       "indexed": true,
@@ -1075,7 +1075,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "491918b426e0624541a46eab231e64b45defe423a0d4f1113a417b09772b60c6",
+      "geometryHash": "3103f0f9a2aa353979a6667114989e7331c074a1da81e49eb6127e05cfb30d91",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-2-canopy.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1100,7 +1100,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9e76fa512a68502258b3de8326676e27dabbdebb66180a4c4bcb417764083f8",
+      "geometryHash": "7313b4063d12f39ae6159273a4eabd7f83efc9ace45186cdbf345bc396a57da8",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-2-lights-warm.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1125,7 +1125,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "078c7b4341cc63a4236e733631d0b7f0ee953ea8864e23195ad222d9014a8293",
+      "geometryHash": "d82d929d0d110674f6993f9f1f85fdd0da40a30f3dc6200fb46278769d279683",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-2-mechanicaldark.primitive.0",
       "indexCount": 3006,
       "indexed": true,
@@ -1150,7 +1150,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b60001ea4b91aa6d62c5617f8ffa5ec27210ce08badd439f79e045ab967bfa5c",
+      "geometryHash": "abccefb08f2d03a4b778e730cd381a44753cf8b0a70b6bb65dc4626d68e60fa8",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-3-armor.primitive.0",
       "indexCount": 3750,
       "indexed": true,
@@ -1175,7 +1175,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d1c1943bc75ed4a62c84fb91655be708ce8028cfc4ae4f6a97315f4fa5a45fb",
+      "geometryHash": "4b893e47e2c120f85e58a38ab9befa5cdec2db7011cef736b461938e92f3c78c",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-3-canopy.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1200,7 +1200,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b336a020796710465a104f6a793bd4e576538f77b96f002459b2484326e945b",
+      "geometryHash": "132cb01c94493882dc0c2ef15dad842ed6a16d411b228db523299d226d4f39e8",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-3-lights-warm.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1225,7 +1225,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b27d306640b2318b2ead98c0c173374287db07819bbb2c1a91e0b03ded3e8ab",
+      "geometryHash": "5357b3ea0a474c8329bb2d97bcbc885316f3af8035a2b40262bf79bd69689948",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-3-mechanicaldark.primitive.0",
       "indexCount": 2994,
       "indexed": true,
@@ -1250,7 +1250,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b96227403a989bd05e2f40c17269a043aa4fb672c6ae526405a26770ed44f14e",
+      "geometryHash": "dd06ece95f4c4e25854705965da6059c31cf23572137e3aba187c487aae130f5",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-4-armor.primitive.0",
       "indexCount": 3738,
       "indexed": true,
@@ -1275,7 +1275,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1c9a3e4fdc132f5c1133ec43179971ca1ed39581b347facd839d013918c42d7",
+      "geometryHash": "b227c378e8ab1321697816ecdf1fbc9778939428f5be5c0d8b39a2b062f774aa",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-4-canopy.primitive.0",
       "indexCount": 456,
       "indexed": true,
@@ -1300,7 +1300,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca3d19052130649ba90b9a83e7b4bfd9ad99de88144cad0f3431d58f2adaa4c4",
+      "geometryHash": "dc961acdba651cc50edff07e89ec730e95c2257631d42efaf325600e913ffd98",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-4-lights-warm.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1325,7 +1325,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03aa26bee7b98969535ae4282cb1eb6fe802e7a0b0f4a2615ea41d5057cf21c1",
+      "geometryHash": "365889de68ed0ccfe35d154af47748bb6e473547fe55d158f0af28d68d65f6ae",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-4-mechanicaldark.primitive.0",
       "indexCount": 3012,
       "indexed": true,
@@ -1350,7 +1350,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf2329deab5ff558372cae2421af83c3067e5679d0652de61c58f4abbe172308",
+      "geometryHash": "30e3e5a531b1b225081d97d6135b637e0f90a8a46d5c4728da8a78803c482ce8",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-5-armor.primitive.0",
       "indexCount": 3738,
       "indexed": true,
@@ -1375,7 +1375,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4fc471b7909e00f771bead9bb81e3850bedc1252f5304aebe3539000b05ea72",
+      "geometryHash": "abb3dfbb4a494a045e638e2c440ba7ac1ca9db81743fc0307e54df7b7d033efa",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-5-canopy.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1400,7 +1400,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7fbc3fd407bfdfdea744e19a8171a3091f278b1e51bcc90aa89c96d10857b4dc",
+      "geometryHash": "a554d7b0c169a1e0d316da8fd31f12b7a49a3202ff69ec556d2e325631d7a5b9",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-5-lights-warm.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1425,7 +1425,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f110b6b40ea5bb5cf4a68a955b3353cc9d5755d80137c8f04868510cc4982cd",
+      "geometryHash": "ba2c9b1a7df437b64de9f898874aca6e709d9828d9429ddb1bbb9fcdd1b1f859",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-5-mechanicaldark.primitive.0",
       "indexCount": 3006,
       "indexed": true,
@@ -1450,7 +1450,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5bad89de6fe933430b1aaae30d4b0dbb7168c01504bb21a109b0702eb215254",
+      "geometryHash": "dcb6767ce40f1abf8af60392a680a8a2a1d59399a9bc932971d50ab86556ffe2",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-6-armor.primitive.0",
       "indexCount": 3726,
       "indexed": true,
@@ -1475,7 +1475,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a34806af01f700e79289020bc025114220415929381b2a753cf4af8c0d422d3",
+      "geometryHash": "9e816b00d3164a42bc5a08bae256543c6506cf8c6fe6a12a07bcfed089b72611",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-6-canopy.primitive.0",
       "indexCount": 462,
       "indexed": true,
@@ -1500,7 +1500,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bec156c4a0494241372ffe4d8b5273ecc1e6ec4ac6772a6ccee7c66467b54bf0",
+      "geometryHash": "3f03494ddb7b652f40f9c4643acaad7ca5803cbe487d13129d8145bc740e4c40",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-6-lights-warm.primitive.0",
       "indexCount": 186,
       "indexed": true,
@@ -1525,7 +1525,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ec7c53552a49a84af3909530e61a23e76c53cef0e71ae43de17008201bfaffb",
+      "geometryHash": "bcd630f4b12d0ce64ff020797f0f0720fff811d2227f05b7b80d113cf25b9038",
       "id": "sf.render.ilex-ark-lod1.node.lod1-motion-ilex-vault-6-mechanicaldark.primitive.0",
       "indexCount": 3018,
       "indexed": true,
@@ -1663,20 +1663,20 @@
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-core",
       "localTransform": [
-        1,
+        20.997719764709473,
         0,
         0,
         0,
         0,
-        1,
+        20.997719764709473,
         0,
         0,
         0,
         0,
-        1,
+        20.997719764709473,
         0,
-        0,
-        0,
+        0.00023365020751953125,
+        0.7478263974189758,
         0,
         1
       ],
@@ -1691,20 +1691,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        20.997719764709473,
         0,
         0,
         0,
         0,
-        1,
+        20.997719764709473,
         0,
         0,
         0,
         0,
-        1,
+        20.997719764709473,
         0,
-        0,
-        0,
+        0.00023365020751953125,
+        0.7478263974189758,
         0,
         1
       ]
@@ -1712,21 +1712,21 @@
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-1",
       "localTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -12.000086069107056,
+        0.17772072553634644,
+        -9.999999761581421,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1740,42 +1740,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -12.000086069107056,
+        0.17772072553634644,
+        -9.999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-2",
       "localTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -12.000086069107056,
+        0.17772072553634644,
+        9.999999761581421,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1789,42 +1789,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -12.000086069107056,
+        0.17772072553634644,
+        9.999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-3",
       "localTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -0.00008606910705566406,
+        0.177720844745636,
+        -9.999999761581421,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1838,42 +1838,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        -0.00008606910705566406,
+        0.177720844745636,
+        -9.999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-4",
       "localTransform": [
-        1,
+        4.5008864402771,
         0,
         0,
         0,
         0,
-        1,
+        4.5008864402771,
         0,
         0,
         0,
         0,
-        1,
+        4.5008864402771,
         0,
-        0,
-        0,
-        0,
+        -0.0000858306884765625,
+        0.177720844745636,
+        10,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1887,42 +1887,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.5008864402771,
         0,
         0,
         0,
         0,
-        1,
+        4.5008864402771,
         0,
         0,
         0,
         0,
-        1,
+        4.5008864402771,
         0,
-        0,
-        0,
-        0,
+        -0.0000858306884765625,
+        0.177720844745636,
+        10,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-5",
       "localTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        11.999914407730103,
+        0.17772072553634644,
+        -9.999999761581421,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1936,42 +1936,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        11.999914407730103,
+        0.17772072553634644,
+        -9.999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.collision-ilex-ark-vault-6",
       "localTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        11.999914407730103,
+        0.17772072553634644,
+        9.999999761581421,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1985,42 +1985,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
         0,
         0,
         0,
-        1,
+        4.500886678695679,
         0,
-        0,
-        0,
-        0,
+        11.999914407730103,
+        0.17772072553634644,
+        9.999999761581421,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-armor",
       "localTransform": [
-        1,
+        13.496969223022461,
         0,
         0,
         0,
         0,
-        1,
+        13.496969223022461,
         0,
         0,
         0,
         0,
-        1,
+        13.496969223022461,
         0,
-        0,
-        0,
-        0,
+        -0.5016994476318359,
+        3.542807698249817,
+        0.00004340708255767822,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2034,42 +2034,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        13.496969223022461,
         0,
         0,
         0,
         0,
-        1,
+        13.496969223022461,
         0,
         0,
         0,
         0,
-        1,
+        13.496969223022461,
         0,
-        0,
-        0,
-        0,
+        -0.5016994476318359,
+        3.542807698249817,
+        0.00004340708255767822,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-canopy",
       "localTransform": [
-        1,
+        1.1192522048950195,
         0,
         0,
         0,
         0,
-        1,
+        1.1192522048950195,
         0,
         0,
         0,
         0,
-        1,
+        1.1192522048950195,
         0,
-        0,
-        0,
-        0,
+        17.300000190734863,
+        2.8019403219223022,
+        -0.0003420710563659668,
         1
       ],
       "materialPipelineKey": "blend",
@@ -2083,41 +2083,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        1.1192522048950195,
         0,
         0,
         0,
         0,
-        1,
+        1.1192522048950195,
         0,
         0,
         0,
         0,
-        1,
+        1.1192522048950195,
         0,
-        0,
-        0,
-        0,
+        17.300000190734863,
+        2.8019403219223022,
+        -0.0003420710563659668,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-hook-drive-core",
       "localTransform": [
-        1,
+        2.372499942779541,
         0,
         0,
         0,
         0,
-        1,
+        2.372499942779541,
         0,
         0,
         0,
         0,
-        1,
+        2.372499942779541,
         0,
-        0,
-        0,
+        -21.143918991088867,
+        0.17515665292739868,
         0,
         1
       ],
@@ -2132,20 +2132,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        2.372499942779541,
         0,
         0,
         0,
         0,
-        1,
+        2.372499942779541,
         0,
         0,
         0,
         0,
-        1,
+        2.372499942779541,
         0,
-        0,
-        0,
+        -21.143918991088867,
+        0.17515665292739868,
         0,
         1
       ]
@@ -2153,20 +2153,20 @@
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-hull",
       "localTransform": [
-        1,
+        20.999323844909668,
         0,
         0,
         0,
         0,
-        1,
+        20.999323844909668,
         0,
         0,
         0,
         0,
-        1,
+        20.999323844909668,
         0,
-        0,
-        0,
+        0.0007200241088867188,
+        0.9896047115325928,
         0,
         1
       ],
@@ -2181,20 +2181,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        20.999323844909668,
         0,
         0,
         0,
         0,
-        1,
+        20.999323844909668,
         0,
         0,
         0,
         0,
-        1,
+        20.999323844909668,
         0,
-        0,
-        0,
+        0.0007200241088867188,
+        0.9896047115325928,
         0,
         1
       ]
@@ -2202,21 +2202,21 @@
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-lights-warm",
       "localTransform": [
-        1,
+        0.8734636008739471,
         0,
         0,
         0,
         0,
-        1,
+        0.8734636008739471,
         0,
         0,
         0,
         0,
-        1,
+        0.8734636008739471,
         0,
-        0,
-        0,
-        0,
+        18.050000190734863,
+        2.940000057220459,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2230,41 +2230,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        0.8734636008739471,
         0,
         0,
         0,
         0,
-        1,
+        0.8734636008739471,
         0,
         0,
         0,
         0,
-        1,
+        0.8734636008739471,
         0,
-        0,
-        0,
-        0,
+        18.050000190734863,
+        2.940000057220459,
+        -2.9802322387695312e-8,
         1
       ]
     },
     {
       "id": "sf.render.ilex-ark-lod1.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        21.137874603271484,
         0,
         0,
         0,
         0,
-        1,
+        21.137874603271484,
         0,
         0,
         0,
         0,
-        1,
+        21.137874603271484,
         0,
-        0,
-        0,
+        -0.16256332397460938,
+        0.90810227394104,
         0,
         1
       ],
@@ -2279,20 +2279,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ilex-ark-lod1.body",
       "worldTransform": [
-        1,
+        21.137874603271484,
         0,
         0,
         0,
         0,
-        1,
+        21.137874603271484,
         0,
         0,
         0,
         0,
-        1,
+        21.137874603271484,
         0,
-        0,
-        0,
+        -0.16256332397460938,
+        0.90810227394104,
         0,
         1
       ]
@@ -4291,14 +4291,14 @@
       "uri": "ilex_ark_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 851604,
-    "sha256": "1daca275f58d13752b70afa222da054cc09a4bf54ee15c8191d5bc0271b437da",
+    "bytes": 711044,
+    "sha256": "fa6572673805478c15c1f413052e0bddd5c6c28261864c48d1e664311edcb183",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4310,17 +4310,17 @@
       ],
       "max": [
         21.000043869018555,
-        3.715561866760254,
+        3.715561921557163,
         12.500298536398276
       ],
       "min": [
         -21.300437927246094,
-        -1.8993573188781738,
+        -1.899357373675083,
         -12.500298403928149
       ],
       "size": [
         42.30048179626465,
-        5.614919185638428,
+        5.614919295232246,
         25.000596940326425
       ]
     },
@@ -5429,21 +5429,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.496969223022461,
           0,
           0,
           0,
           0,
-          1,
+          13.496969223022461,
           0,
           0,
           0,
           0,
-          1,
+          13.496969223022461,
           0,
-          0,
-          0,
-          0,
+          -0.5016994476318359,
+          3.542807698249817,
+          0.00004340708255767822,
           1
         ],
         "name": "LOD1_Armor",
@@ -5456,21 +5456,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.1192522048950195,
           0,
           0,
           0,
           0,
-          1,
+          1.1192522048950195,
           0,
           0,
           0,
           0,
-          1,
+          1.1192522048950195,
           0,
-          0,
-          0,
-          0,
+          17.300000190734863,
+          2.8019403219223022,
+          -0.0003420710563659668,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -5483,20 +5483,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.372499942779541,
           0,
           0,
           0,
           0,
-          1,
+          2.372499942779541,
           0,
           0,
           0,
           0,
-          1,
+          2.372499942779541,
           0,
-          0,
-          0,
+          -21.143918991088867,
+          0.17515665292739868,
           0,
           1
         ],
@@ -5506,20 +5506,20 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            2.372499942779541,
             0,
             0,
             0,
             0,
-            1,
+            2.372499942779541,
             0,
             0,
             0,
             0,
-            1,
+            2.372499942779541,
             0,
-            0,
-            0,
+            -21.143918991088867,
+            0.17515665292739868,
             0,
             1
           ],
@@ -5529,20 +5529,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.999323844909668,
           0,
           0,
           0,
           0,
-          1,
+          20.999323844909668,
           0,
           0,
           0,
           0,
-          1,
+          20.999323844909668,
           0,
-          0,
-          0,
+          0.0007200241088867188,
+          0.9896047115325928,
           0,
           1
         ],
@@ -5556,21 +5556,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8734636008739471,
           0,
           0,
           0,
           0,
-          1,
+          0.8734636008739471,
           0,
           0,
           0,
           0,
-          1,
+          0.8734636008739471,
           0,
-          0,
-          0,
-          0,
+          18.050000190734863,
+          2.940000057220459,
+          -2.9802322387695312e-8,
           1
         ],
         "name": "LOD1_Lights_Warm",
@@ -5583,20 +5583,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.137874603271484,
           0,
           0,
           0,
           0,
-          1,
+          21.137874603271484,
           0,
           0,
           0,
           0,
-          1,
+          21.137874603271484,
           0,
-          0,
-          0,
+          -0.16256332397460938,
+          0.90810227394104,
           0,
           1
         ],
@@ -6308,19 +6308,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ilex_ark_lod1.glb"
   },
-  "runtimeHash": "b7dd43f9bef2940c7da895fb1775b41c3b5dd934bcfbe3387e7c1705f7d2dea8",
+  "runtimeHash": "e431e2f75e5c9e682b04248058900246099f9f6c832b83b281ef9306931aa817",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           21.000043869018555,
-          3.715561866760254,
+          3.715561921557163,
           12.500298536398276
         ],
         "min": [
           -21.300437927246094,
-          -1.8993573188781738,
+          -1.899357373675083,
           -12.500298403928149
         ]
       },

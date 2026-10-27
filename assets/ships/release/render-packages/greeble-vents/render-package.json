@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d2277ac9dd5946bef926556e2012296ae75162f43f89a2388a9fc8e9613a1053",
+  "contentHash": "658d4bf89981c6f1c5f0ee13c43122868e452565fe1e53751cce1aa6f4d912b2",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           3.799999952316284,
-          1.1000133752822876,
-          1.2999664545059204
+          1.1000134074314052,
+          1.2999664151113193
         ],
         "min": [
           -0.20000000298023224,
-          -0.2600134015083313,
-          -1.2999664545059204
+          -0.260013433657449,
+          -1.2999664151113193
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10dcce51e3903b4f311d3e0d9d0c7a97f0b4293149f768bc720078ada8aabb40",
+      "geometryHash": "f3d6b8d5bd2c38fd028166358c57a3dd74a177aa74afd424d6578f95d1faa78f",
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           3.1965887546539307,
-          0.45963558554649353,
-          0.9349625110626221
+          0.4596355806287624,
+          0.9349624770757006
         ],
         "min": [
           0.05999999865889549,
-          0.04036439582705498,
-          -1.188004732131958
+          0.04036440074478606,
+          -1.1880046981450365
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11937a9aa7ff1de22ad5754e59feeaee043304b3d8d8bb1debd91572b027e0cb",
+      "geometryHash": "a1a9b7d1a62f53217f8d719529f6bf23554d0f412a3b16291035e785ded683bf",
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -108,20 +108,20 @@
     {
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
       "localTransform": [
-        1,
+        1.9999999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.9999999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.9999999776482582,
         0,
-        0,
-        0,
+        1.799999974668026,
+        0.41999998688697815,
         0,
         1
       ],
@@ -136,20 +136,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-vents.body",
       "worldTransform": [
-        1,
+        1.9999999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.9999999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.9999999776482582,
         0,
-        0,
-        0,
+        1.799999974668026,
+        0.41999998688697815,
         0,
         1
       ]
@@ -157,21 +157,21 @@
     {
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged",
       "localTransform": [
-        1,
+        1.5682943779975176,
         0,
         0,
         0,
         0,
-        1,
+        1.5682943779975176,
         0,
         0,
         0,
         0,
-        1,
+        1.5682943779975176,
         0,
-        0,
-        0,
-        0,
+        1.628294376656413,
+        0.24999999068677425,
+        -0.12652111053466797,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -185,21 +185,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.greeble-vents.body",
       "worldTransform": [
-        1,
+        1.5682943779975176,
         0,
         0,
         0,
         0,
-        1,
+        1.5682943779975176,
         0,
         0,
         0,
         0,
-        1,
+        1.5682943779975176,
         0,
-        0,
-        0,
-        0,
+        1.628294376656413,
+        0.24999999068677425,
+        -0.12652111053466797,
         1
       ]
     },
@@ -262,37 +262,37 @@
       "uri": "greeble_vents.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 426736,
-    "sha256": "1e7233a2ecba4bd73cd2cf7165f071c12bd26514bfdbfb5e6b479a07bfe01592",
+    "bytes": 415400,
+    "sha256": "a023ac1c0c5e5633910b3fd7a4d938ecc6e3f5fa227b8675ed1e9c343c94be08",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.799999974668026,
-        0.41999998688697815,
+        0.4199999868869781,
         0
       ],
       "max": [
         3.799999952316284,
-        1.1000133752822876,
-        1.2999664545059204
+        1.1000134074314052,
+        1.2999664151113193
       ],
       "min": [
         -0.20000000298023224,
-        -0.2600134015083313,
-        -1.2999664545059204
+        -0.260013433657449,
+        -1.2999664151113193
       ],
       "size": [
         3.9999999552965164,
-        1.360026776790619,
-        2.599932909011841
+        1.360026841088854,
+        2.5999328302226385
       ]
     },
     "hidden": [],
@@ -319,20 +319,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9999999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.9999999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.9999999776482582,
           0,
-          0,
-          0,
+          1.799999974668026,
+          0.41999998688697815,
           0,
           1
         ],
@@ -345,21 +345,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5682943779975176,
           0,
           0,
           0,
           0,
-          1,
+          1.5682943779975176,
           0,
           0,
           0,
           0,
-          1,
+          1.5682943779975176,
           0,
-          0,
-          0,
-          0,
+          1.628294376656413,
+          0.24999999068677425,
+          -0.12652111053466797,
           1
         ],
         "name": "greeble_vents_Material_Mechanical_Merged",
@@ -373,20 +373,20 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
-  "runtimeHash": "77da18b4397ad210ec49c205fea6aad8cda2f8ab8a242d100ca4c4ed3f6d417b",
+  "runtimeHash": "c0d5d8d4c0e3d739843d45524a0ada6a7d3903ff13897de8ed97f1d97ca933ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           3.799999952316284,
-          1.1000133752822876,
-          1.2999664545059204
+          1.1000134074314052,
+          1.2999664151113193
         ],
         "min": [
           -0.20000000298023224,
-          -0.2600134015083313,
-          -1.2999664545059204
+          -0.260013433657449,
+          -1.2999664151113193
         ]
       },
       "id": "sf.render.greeble-vents.body",

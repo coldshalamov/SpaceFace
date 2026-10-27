@@ -391,7 +391,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a406e2b84730b5946a9f1382a46e58611f672eca4f12b364c46f1f421be7246e",
+  "contentHash": "1c5f6bb533599585bb775135eb19b7b6775f77b338b2a7631f1b59cc4604cbb5",
   "dynamicGroups": [
     {
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-armor.dynamic",
@@ -579,17 +579,17 @@
       "bounds": {
         "max": [
           2.500286340713501,
-          1.5178555250167847,
-          -8.481718063354492
+          1.5178554737706513,
+          -8.481717708964524
         ],
         "min": [
           -4.50028657913208,
-          -1.5178555250167847,
-          -11.518282890319824
+          -1.5178554737706513,
+          -11.518283244709792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ef64278926e9dc5e78573ec3e5842e362d05dde6bffbbd62c80ff40ee20678e",
+      "geometryHash": "718836229195372449aaa82a297adb1c6c777a48a34284d28a94a994a80e743a",
       "id": "sf.render.kilnback.node.collision-kilnback-cask-port.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -604,17 +604,17 @@
       "bounds": {
         "max": [
           2.500286340713501,
-          1.5178555250167847,
-          11.518282890319824
+          1.5178554737706513,
+          11.518283244709792
         ],
         "min": [
           -4.50028657913208,
-          -1.5178555250167847,
-          8.481718063354492
+          -1.5178554737706513,
+          8.481717708964524
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a66558ad27390b7e5addc95f5ccc1c52e77b8d55ccba8e2f5dd326d2ce36b1bc",
+      "geometryHash": "386e48e36b774d728a506e07d756b9be822b2458ab60913fffa64ed1dcd37ad8",
       "id": "sf.render.kilnback.node.collision-kilnback-cask-starboard.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -629,17 +629,17 @@
       "bounds": {
         "max": [
           13.995122909545898,
-          3.394089937210083,
-          6.799490451812744
+          3.3940899174843597,
+          6.79949068265682
         ],
         "min": [
           -13.721355438232422,
-          -3.3457672595977783,
-          -6.799490451812744
+          -3.345767239872055,
+          -6.79949068265682
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be798b316005de4bcc9a456f42df63997ce36f192694df2b79c79ba54d4ed88d",
+      "geometryHash": "104233926e05bb0a74aaf7c9e012db9ff98178a103466c6f3b6c3fc136b969a8",
       "id": "sf.render.kilnback.node.collision-kilnback-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -654,17 +654,17 @@
       "bounds": {
         "max": [
           12.550000190734863,
-          3.2900331020355225,
-          4.849493026733398
+          3.2900331191218117,
+          4.849492704224011
         ],
         "min": [
           -12.300000190734863,
-          -1.600033164024353,
-          -4.849493026733398
+          -1.6000331811106423,
+          -4.849492704224011
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f2cc1164383f0e95c54c0d39dcbf73af7b90824f8510f488fd01905737b642b",
+      "geometryHash": "94cde7e75ab7d90a99af7cc9817c8a448087a365faf31260712cfdd161c71eaa",
       "id": "sf.render.kilnback.node.lod0-armor.primitive.0",
       "indexCount": 2076,
       "indexed": true,
@@ -678,18 +678,18 @@
     {
       "bounds": {
         "max": [
-          13.077588081359863,
-          2.437488555908203,
+          13.077587638386046,
+          2.437488574575242,
           1.7100000381469727
         ],
         "min": [
-          11.989912986755371,
-          -0.5499885082244873,
+          11.989913429729189,
+          -0.5499885268915263,
           -1.7100000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be9d6e4b32cc8b32c8fe4b7926c8945bd380e1c233455bf3f666813bc08a28e2",
+      "geometryHash": "f3d638db13fff4306a4c78d89683b456eeb101b476ccb239e45a380ba4c7e5a3",
       "id": "sf.render.kilnback.node.lod0-beacon-amber.primitive.0",
       "indexCount": 5640,
       "indexed": true,
@@ -704,17 +704,17 @@
       "bounds": {
         "max": [
           6.699999809265137,
-          4.329929828643799,
-          1.3498138189315796
+          4.329929928472984,
+          1.349813770508604
         ],
         "min": [
           3.799999952316284,
-          3.7599663734436035,
-          -1.3498138189315796
+          3.7599662736144186,
+          -1.349813770508604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a123ef3cf7aaf1d09e7113b0b03da9e9e6ef55fcb1cd70088ed4e9853811f7c8",
+      "geometryHash": "7a22e55d8fadada4e9dff38a2f10eeeb11642bde821e6daf53c6980ced8dfda4",
       "id": "sf.render.kilnback.node.lod0-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -728,18 +728,18 @@
     {
       "bounds": {
         "max": [
-          13.999953269958496,
-          1.6100940704345703,
+          13.999953023092273,
+          1.6100940958448087,
           2.870000123977661
         ],
         "min": [
-          13.000046730041504,
-          -1.3100939989089966,
+          13.000046976907727,
+          -1.310094024319235,
           -2.870000123977661
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12cb7c28352dfed1abaa1891e254271a088b01b285d86e46dc0d6035bc1ab513",
+      "geometryHash": "c82d2721fbb6af66b0a75d5bef650dbe7cb97f2354cf81d6de59e1d3432c5a04",
       "id": "sf.render.kilnback.node.lod0-ceramic.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -753,18 +753,18 @@
     {
       "bounds": {
         "max": [
-          -13.349006652832031,
-          1.076950192451477,
+          -13.34900709254612,
+          1.0769501383167004,
           3.53374981880188
         ],
         "min": [
-          -13.719993591308594,
-          -1.3769501447677612,
+          -13.719993151594505,
+          -1.3769500906329846,
           -3.533750295639038
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3793c77e46b2635112a1971fcfe2d75a1335fac370f301f18cd097a1df27a18",
+      "geometryHash": "0cbf6249249568a048f1401750bc59dc0d67f21962e6486f799e3cb9f8d4f8e4",
       "id": "sf.render.kilnback.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 888,
       "indexed": true,
@@ -779,17 +779,17 @@
       "bounds": {
         "max": [
           4.054999828338623,
-          0.8385018110275269,
-          -6.49500036239624
+          0.8385018215725303,
+          -6.495000243186951
         ],
         "min": [
           3.944999933242798,
-          0.761498212814331,
-          -6.605000019073486
+          0.7614982022693276,
+          -6.605000138282776
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba012092790c8aa9ac13f3bb13b7bfb2060920fcc0bbbe2eb7981bba69ffa55c",
+      "geometryHash": "171433ff1c92df437f3e582e7909dea4f071e0a3429ea65370ce2e474fb7f24d",
       "id": "sf.render.kilnback.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -804,17 +804,17 @@
       "bounds": {
         "max": [
           4.054999828338623,
-          0.8385018110275269,
-          6.605000019073486
+          0.8385018215725303,
+          6.605000138282776
         ],
         "min": [
           3.944999933242798,
-          0.761498212814331,
-          6.49500036239624
+          0.7614982022693276,
+          6.495000243186951
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b391d9163f6d241a761542a8ab92c1e91334e0961683e32914f5fe5ae968f2bb",
+      "geometryHash": "8a0a371ebda9a8334dff4afb39dfeca5a1bbd2672edced0a4b40ff5f89cd599f",
       "id": "sf.render.kilnback.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -829,17 +829,17 @@
       "bounds": {
         "max": [
           12.75,
-          3.3992254734039307,
-          6.800591468811035
+          3.3992254440663743,
+          6.800591391596217
         ],
         "min": [
           -13.624124526977539,
-          -2.325216054916382,
-          -6.800591468811035
+          -2.3252160255788255,
+          -6.800591391596217
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d760ac4f84c124448e3436ee9bc7d53d8458fe831998b448ada5f1b5b43dd6f5",
+      "geometryHash": "7f73522c8f76ab6d6334069c3adf6ec036172db59ba33398b0a62854a8a3265c",
       "id": "sf.render.kilnback.node.lod0-hull.primitive.0",
       "indexCount": 1788,
       "indexed": true,
@@ -853,18 +853,18 @@
     {
       "bounds": {
         "max": [
-          6.652487277984619,
-          4.075046062469482,
+          6.652487371192481,
+          4.075046110423145,
           1.0899999141693115
         ],
         "min": [
-          6.607512950897217,
-          3.9249536991119385,
+          6.607512857689355,
+          3.9249536511582765,
           -1.0899999141693115
         ]
       },
       "drawMode": 4,
-      "geometryHash": "005724c914676d27e3d94e584f2faa28895889666d2242e9816c12502c67d2f3",
+      "geometryHash": "b40e0e336114ef8f719584590536481452f57979d85193bfe50c3705e0f9298e",
       "id": "sf.render.kilnback.node.lod0-lights-warm.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -878,18 +878,18 @@
     {
       "bounds": {
         "max": [
-          8.024561882019043,
-          3.3994905948638916,
+          8.024562232570826,
+          3.399490583796822,
           8.725000381469727
         ],
         "min": [
-          -2.5145626068115234,
-          -3.3494904041290283,
+          -2.5145629573633075,
+          -3.349490393061959,
           -8.725000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aa04e0fc49f4f90d735d8241046e1d44e4a14e37ee6435bc8ac779725735fbe",
+      "geometryHash": "a1be8bc0b6314a5425f90a5a05b049c5c6e08b4428f90d46252d72cc4fbf1c8f",
       "id": "sf.render.kilnback.node.lod0-livery.primitive.0",
       "indexCount": 2688,
       "indexed": true,
@@ -903,18 +903,18 @@
     {
       "bounds": {
         "max": [
-          0.40019795298576355,
-          2.19999623298645,
+          0.4001978900572689,
+          2.1999962410157146,
           8.650128364562988
         ],
         "min": [
-          -2.400197744369507,
-          0.9265131950378418,
+          -2.4001976814410124,
+          0.9265131870085775,
           -8.650128364562988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "425bfbc6cfbd835630dc6fc004d9fbbc709da2bb5bdb398c8f1e4f8d5bd601cc",
+      "geometryHash": "cd12771fc96f282503e74ff1e6243271950fa4e29d49ddf4b6a319f05aa41c02",
       "id": "sf.render.kilnback.node.lod0-mechanical.primitive.0",
       "indexCount": 3984,
       "indexed": true,
@@ -929,17 +929,17 @@
       "bounds": {
         "max": [
           13.024999618530273,
-          3.795713424682617,
-          9.500524520874023
+          3.7957136796908864,
+          9.500525159489762
         ],
         "min": [
           -13.739999771118164,
-          -3.3507132530212402,
-          -9.500524520874023
+          -3.3507135080295094,
+          -9.500525159489762
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85d14971e047fb5824e55aa8bc1d724c1e51eddb5e7fc29ad4ae8c352a2363fc",
+      "geometryHash": "96b27977e3a0e5983fda3bf3b8dc7d0d7baa10bfc74b3172c5cf052ec9144763",
       "id": "sf.render.kilnback.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 15708,
       "indexed": true,
@@ -964,7 +964,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f32101eeae3bdad89c729266ef0f759a5a426aaecb5cb9fe171aa1d028b26332",
+      "geometryHash": "0b9ac4f2c748d6e030fa70e3667ccceea3c9e4cfaf39908698e309891a88641e",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-armor.primitive.0",
       "indexCount": 3432,
       "indexed": true,
@@ -989,7 +989,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6ab2b10112260f026be78be7fb8ad5229e7465b466ca601f1946dd8409a789d",
+      "geometryHash": "07e666c6dfc55f286a82d61908ee1190c904ba3f74e35ef6d9529b87055f8536",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-ceramic.primitive.0",
       "indexCount": 2580,
       "indexed": true,
@@ -1014,7 +1014,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "877cd7055f9d788418d50857ecabe8f5ec1ea650bfc98497f33c71f99c2b5cc6",
+      "geometryHash": "6a2d33a752db1ed44b3ba964f7a4980f3d20626ee987f4544d46c5a42204ba13",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-lights-cyan.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1039,7 +1039,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f828a6676140b9ea791a2097601b1c7564431dd88ac71777b49021060e05198",
+      "geometryHash": "617cb3d6178a8fc2e8e7c459255534fd73e45a0a443ffe866f9b47b4db7b0e28",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-livery.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -1064,7 +1064,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b995bea8a4a2d199779daff954b806e8aff5cc544ff969a5beebd5cc3310fee",
+      "geometryHash": "fbef0ffc8b15045778cad0f5c9eed678b72ef8a0d5525978d4bd9a69cdc0af3c",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-port-mechanicaldark.primitive.0",
       "indexCount": 1512,
       "indexed": true,
@@ -1089,7 +1089,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1fc8119fed903c9cfbb1f6667406181a36d710fb549b5084c3585bb63a8846e",
+      "geometryHash": "cd718aa9455050ef62a386cfd778e4be3427208ca6cdb50b8117655de592b503",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-starboard-armor.primitive.0",
       "indexCount": 3432,
       "indexed": true,
@@ -1114,7 +1114,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "480db75d2c57402c12e80aea522b6187a04dd6ca71941c75b725f760ea07359d",
+      "geometryHash": "05a0ec0a7d0563c3f608809cc06507c61a48f42f9ece8bf3a93b0c572152dc2e",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-starboard-ceramic.primitive.0",
       "indexCount": 2580,
       "indexed": true,
@@ -1139,7 +1139,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0319465cc9ded169acf2d53a17d0f53a293def3e6782157197f3a5ed9fd32fc",
+      "geometryHash": "5da8f4f3581e03071797d77ab4184be9dc04511affce9a97c0c8ec3a4532aa93",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-starboard-lights-cyan.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1164,7 +1164,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16e5e8555c0d2fed9be21a06b6b8825fbb21e1eafbb4506a206b5a090f4a8f06",
+      "geometryHash": "66aa3317b2cb0df54dc1e156e34c2e5e57d68689359038cec5d9c886d5f7d53a",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-starboard-livery.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -1189,7 +1189,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "072e4c300feccfd847f6a5446ca4381e10102f3ff8b080ba91b97ceeabb5351e",
+      "geometryHash": "e6d0856afd088e9a1926be5a77ef6f24f4d3b9075bd43928ce61223ee99f160e",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-cask-starboard-mechanicaldark.primitive.0",
       "indexCount": 1512,
       "indexed": true,
@@ -1214,7 +1214,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "951f4ea12e5d7f5a75bd55cd9b724d828f97839fc0ebe372c79ab2ff555245ad",
+      "geometryHash": "bbd177b77c419b2c903d6692b09eded405c433c30b40955ccfa2ae43ffad02e3",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-1-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1239,7 +1239,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9cc6b2f4c019a8df19bd6062238a0007a2c8a089c712d70f34e8287dc9f8f8c",
+      "geometryHash": "1bb49baaa065c383fe43d7f197462a768a0f7b7bb295ee12372d00703de85ad0",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-1-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1264,7 +1264,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81bb1be1e07e01fbf6b83f7af7172c3df81d10a741f15cae6129174219684928",
+      "geometryHash": "c2ebeecd24852a7d99d315da2d31450753bfa65ebca0d100d1f14ea005e03246",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-1-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1289,7 +1289,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85f29c4d32ff3c6b46b5e00c284c3549d3d7750e9c4630c252e13f2ac04efcb0",
+      "geometryHash": "fa3cac78829d2c6eb08d2923edf15442a0bf510862d7f1437fc090a805b7ef95",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-2-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1314,7 +1314,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "770db33e79a0c48179549037f4ed052d13bcfc6fedf9b0363fae848a9c0e0f0d",
+      "geometryHash": "c8cfc1a345fef2d979f7e9d60399c9c34564129873c9c57b079b6cb6ae7e31b1",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-2-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1339,7 +1339,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa1cf05f7cf36ceff8487fe61fda5530c31ddb13cc53ef0e2203a9ac6a0f1a28",
+      "geometryHash": "d67587f581079cc0940b016ead23b3120b9ae8983f1a9ea4443ee76cc1542c82",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-2-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1364,7 +1364,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ad4ea110ca9f36c4f5a565a2cc33b481fe61c94264e1ad96b4e98ae42c212ee",
+      "geometryHash": "d2eed2eac8914aaf7b1b20cf1787e70235eeb3fcb71fdf45559c339ae58cf561",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-3-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1389,7 +1389,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6316e7842dd02e88af25080af7c0137341eccec4790d8e62c9aa84f9d963680",
+      "geometryHash": "a9621783053f088240a9a86371b335f5f4eaa382291df7942348c2674a27760e",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-3-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1414,7 +1414,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7d92459715addb4cb7c99adb8199832fca06482ff2f7b6eecb7afb61c9647ee",
+      "geometryHash": "e816e844a37a43ecea4c9ad983946f3e87da1b697651c94bbd43d9c45a327e9e",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-3-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1439,7 +1439,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75ce6bf2508972f3b78b377899e1ec3fbff04d8143e6a26683f8cbf5b8d4406a",
+      "geometryHash": "d53c7b2cb654cba3de6e7356e956a8a6bd320caa7a26ef8067aedc433414f7b6",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-4-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1464,7 +1464,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "216d10893b0814ed666a8445b684a0dd08834ec74a90dfab5657c7d113ae4348",
+      "geometryHash": "1a5e2ac2c3ee0a073fd98543afe7e7ab926414b1e6ae56fceb5241558c447f70",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-4-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1489,7 +1489,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc96e3f7c2478580ab854bf22f2a9a4a5950dff7d630f439eed4a69a5f61c76a",
+      "geometryHash": "548bc36d0dcd2224405901987cfd17dc10b7298f4e8f7a29a2c3fc4ccf9e5c74",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-4-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1514,7 +1514,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbf8fececc15c0960783362d1d90465742041b12905f5e334b6da981934f2e17",
+      "geometryHash": "cabb96b7c310ab6c3b88995d71df067a60af003d56a61ee0ba61f53a32712815",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-5-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1539,7 +1539,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef460e3270e1324eda2855fd2e07aac6b8af3870b062f59f54f23ef74c8267e4",
+      "geometryHash": "20dc6f530f6b3b3201c87733692480eb02febb3d366d0763c4268920c7a891ac",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-5-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1564,7 +1564,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba80df6f3c392b16fe29b2cb0619a60289989f1283ef2076d51ac7062f734fee",
+      "geometryHash": "db48439fbc2926a4c5e61401eb624092cca0fa56e2f0f24ea7df677cb539c8f0",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-5-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1589,7 +1589,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae7f20cf44d35eb68e2ff930135908ec916d79999552c88654b836951baa3a5e",
+      "geometryHash": "5133d9c7f9c182a83436cfe07b170998f875d26b179c86703ec4728fa3ac1f17",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-6-armor.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1614,7 +1614,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16ed3c65f80c73fbc5cfe27e49f706b878ad49cf66200da628743d337ec4ff62",
+      "geometryHash": "96f80a60df3d71841fe5f4b951dd56995b978484c2b47510053bf985a73f20db",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-6-beacon-amber.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1639,7 +1639,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99dc60b40cc8437af50b73640c72b0af57f53a12a1d6a7633d59e7046fa041a2",
+      "geometryHash": "4e486585e6461df1fc3f0701e05ad1396f28f3f91d8f240853d30634e97e4f13",
       "id": "sf.render.kilnback.node.lod0-motion-kilnback-slat-6-mechanicaldark.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1653,18 +1653,18 @@
     {
       "bounds": {
         "max": [
-          1.7003754377365112,
-          -0.6503783464431763,
+          1.7003754253651868,
+          -0.650378365954252,
           9.600000381469727
         ],
         "min": [
-          -3.700375556945801,
-          -1.449621558189392,
+          -3.7003755445744764,
+          -1.4496215386783162,
           -9.600000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0e1af11e4b2db65e3ba369c649af23d26004cc6de153d51288673ffdd28eac3",
+      "geometryHash": "2463f810271d32a832632133c1a492705c2866e6117b3a11f9e37430a08a89a4",
       "id": "sf.render.kilnback.node.lod0-warning.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1958,21 +1958,21 @@
     {
       "id": "sf.render.kilnback.node.collision-kilnback-cask-port",
       "localTransform": [
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
+        -1.0000001192092896,
         0,
-        0,
-        0,
+        -10.000000476837158,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1986,42 +1986,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
+        -1.0000001192092896,
         0,
-        0,
-        0,
+        -10.000000476837158,
         1
       ]
     },
     {
       "id": "sf.render.kilnback.node.collision-kilnback-cask-starboard",
       "localTransform": [
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
+        -1.0000001192092896,
         0,
-        0,
-        0,
+        10.000000476837158,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2035,41 +2035,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
         0,
         0,
         0,
-        1,
+        3.5002864599227905,
         0,
+        -1.0000001192092896,
         0,
-        0,
-        0,
+        10.000000476837158,
         1
       ]
     },
     {
       "id": "sf.render.kilnback.node.collision-kilnback-core",
       "localTransform": [
-        1,
+        13.85823917388916,
         0,
         0,
         0,
         0,
-        1,
+        13.85823917388916,
         0,
         0,
         0,
         0,
-        1,
+        13.85823917388916,
         0,
-        0,
-        0,
+        0.13688373565673828,
+        0.024161338806152344,
         0,
         1
       ],
@@ -2084,20 +2084,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        13.85823917388916,
         0,
         0,
         0,
         0,
-        1,
+        13.85823917388916,
         0,
         0,
         0,
         0,
-        1,
+        13.85823917388916,
         0,
-        0,
-        0,
+        0.13688373565673828,
+        0.024161338806152344,
         0,
         1
       ]
@@ -2105,20 +2105,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-armor",
       "localTransform": [
-        1,
+        12.425000190734863,
         0,
         0,
         0,
         0,
-        1,
+        12.425000190734863,
         0,
         0,
         0,
         0,
-        1,
+        12.425000190734863,
         0,
-        0,
-        0,
+        0.125,
+        0.8449999690055847,
         0,
         1
       ],
@@ -2133,20 +2133,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        12.425000190734863,
         0,
         0,
         0,
         0,
-        1,
+        12.425000190734863,
         0,
         0,
         0,
         0,
-        1,
+        12.425000190734863,
         0,
-        0,
-        0,
+        0.125,
+        0.8449999690055847,
         0,
         1
       ]
@@ -2154,20 +2154,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        1.7100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.7100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.7100000381469727,
         0,
-        0,
-        0,
+        12.533750534057617,
+        0.9437500238418579,
         0,
         1
       ],
@@ -2182,20 +2182,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        1.7100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.7100000381469727,
         0,
         0,
         0,
         0,
-        1,
+        1.7100000381469727,
         0,
-        0,
-        0,
+        12.533750534057617,
+        0.9437500238418579,
         0,
         1
       ]
@@ -2203,20 +2203,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-canopy",
       "localTransform": [
-        1,
+        1.4499999284744263,
         0,
         0,
         0,
         0,
-        1,
+        1.4499999284744263,
         0,
         0,
         0,
         0,
-        1,
+        1.4499999284744263,
         0,
-        0,
-        0,
+        5.2499998807907104,
+        4.044948101043701,
         0,
         1
       ],
@@ -2231,20 +2231,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        1.4499999284744263,
         0,
         0,
         0,
         0,
-        1,
+        1.4499999284744263,
         0,
         0,
         0,
         0,
-        1,
+        1.4499999284744263,
         0,
-        0,
-        0,
+        5.2499998807907104,
+        4.044948101043701,
         0,
         1
       ]
@@ -2252,20 +2252,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-ceramic",
       "localTransform": [
-        1,
+        2.870000123977661,
         0,
         0,
         0,
         0,
-        1,
+        2.870000123977661,
         0,
         0,
         0,
         0,
-        1,
+        2.870000123977661,
         0,
-        0,
-        0,
+        13.5,
+        0.15000003576278687,
         0,
         1
       ],
@@ -2280,20 +2280,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        2.870000123977661,
         0,
         0,
         0,
         0,
-        1,
+        2.870000123977661,
         0,
         0,
         0,
         0,
-        1,
+        2.870000123977661,
         0,
-        0,
-        0,
+        13.5,
+        0.15000003576278687,
         0,
         1
       ]
@@ -2301,21 +2301,21 @@
     {
       "id": "sf.render.kilnback.node.lod0-hook-drive-core",
       "localTransform": [
-        1,
+        3.533750057220459,
         0,
         0,
         0,
         0,
-        1,
+        3.533750057220459,
         0,
         0,
         0,
         0,
-        1,
+        3.533750057220459,
         0,
-        0,
-        0,
-        0,
+        -13.534500122070312,
+        -0.1499999761581421,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2329,42 +2329,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        3.533750057220459,
         0,
         0,
         0,
         0,
-        1,
+        3.533750057220459,
         0,
         0,
         0,
         0,
-        1,
+        3.533750057220459,
         0,
-        0,
-        0,
-        0,
+        -13.534500122070312,
+        -0.1499999761581421,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.kilnback.node.lod0-hook-nav-port",
       "localTransform": [
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
-        0,
-        0,
-        0,
+        3.9999998807907104,
+        0.800000011920929,
+        -6.550000190734863,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2378,42 +2378,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
-        0,
-        0,
-        0,
+        3.9999998807907104,
+        0.800000011920929,
+        -6.550000190734863,
         1
       ]
     },
     {
       "id": "sf.render.kilnback.node.lod0-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
-        0,
-        0,
-        0,
+        3.9999998807907104,
+        0.800000011920929,
+        6.550000190734863,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2427,41 +2427,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
         0,
         0,
         0,
-        1,
+        0.0549999475479126,
         0,
-        0,
-        0,
-        0,
+        3.9999998807907104,
+        0.800000011920929,
+        6.550000190734863,
         1
       ]
     },
     {
       "id": "sf.render.kilnback.node.lod0-hull",
       "localTransform": [
-        1,
+        13.18706226348877,
         0,
         0,
         0,
         0,
-        1,
+        13.18706226348877,
         0,
         0,
         0,
         0,
-        1,
+        13.18706226348877,
         0,
-        0,
-        0,
+        -0.43706226348876953,
+        0.5370047092437744,
         0,
         1
       ],
@@ -2476,20 +2476,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        13.18706226348877,
         0,
         0,
         0,
         0,
-        1,
+        13.18706226348877,
         0,
         0,
         0,
         0,
-        1,
+        13.18706226348877,
         0,
-        0,
-        0,
+        -0.43706226348876953,
+        0.5370047092437744,
         0,
         1
       ]
@@ -2497,20 +2497,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        1.0899999141693115,
         0,
         0,
         0,
         0,
-        1,
+        1.0899999141693115,
         0,
         0,
         0,
         0,
-        1,
+        1.0899999141693115,
         0,
-        0,
-        0,
+        6.630000114440918,
+        3.9999998807907104,
         0,
         1
       ],
@@ -2525,20 +2525,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        1.0899999141693115,
         0,
         0,
         0,
         0,
-        1,
+        1.0899999141693115,
         0,
         0,
         0,
         0,
-        1,
+        1.0899999141693115,
         0,
-        0,
-        0,
+        6.630000114440918,
+        3.9999998807907104,
         0,
         1
       ]
@@ -2546,20 +2546,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-livery",
       "localTransform": [
-        1,
+        8.725000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.725000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.725000381469727,
         0,
-        0,
-        0,
+        2.7549996376037598,
+        0.02500009536743164,
         0,
         1
       ],
@@ -2574,20 +2574,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        8.725000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.725000381469727,
         0,
         0,
         0,
         0,
-        1,
+        8.725000381469727,
         0,
-        0,
-        0,
+        2.7549996376037598,
+        0.02500009536743164,
         0,
         1
       ]
@@ -2595,20 +2595,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-mechanical",
       "localTransform": [
-        1,
+        8.650128364562988,
         0,
         0,
         0,
         0,
-        1,
+        8.650128364562988,
         0,
         0,
         0,
         0,
-        1,
+        8.650128364562988,
         0,
-        0,
-        0,
+        -0.9999998956918716,
+        1.563254714012146,
         0,
         1
       ],
@@ -2623,20 +2623,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        8.650128364562988,
         0,
         0,
         0,
         0,
-        1,
+        8.650128364562988,
         0,
         0,
         0,
         0,
-        1,
+        8.650128364562988,
         0,
-        0,
-        0,
+        -0.9999998956918716,
+        1.563254714012146,
         0,
         1
       ]
@@ -2644,20 +2644,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        13.382499694824219,
         0,
         0,
         0,
         0,
-        1,
+        13.382499694824219,
         0,
         0,
         0,
         0,
-        1,
+        13.382499694824219,
         0,
-        0,
-        0,
+        -0.3575000762939453,
+        0.22250008583068848,
         0,
         1
       ],
@@ -2672,20 +2672,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        13.382499694824219,
         0,
         0,
         0,
         0,
-        1,
+        13.382499694824219,
         0,
         0,
         0,
         0,
-        1,
+        13.382499694824219,
         0,
-        0,
-        0,
+        -0.3575000762939453,
+        0.22250008583068848,
         0,
         1
       ]
@@ -4093,20 +4093,20 @@
     {
       "id": "sf.render.kilnback.node.lod0-warning",
       "localTransform": [
-        1,
+        9.600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        9.600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        9.600000381469727,
         0,
-        0,
-        0,
+        -1.0000000596046448,
+        -1.0499999523162842,
         0,
         1
       ],
@@ -4121,20 +4121,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.kilnback.body",
       "worldTransform": [
-        1,
+        9.600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        9.600000381469727,
         0,
         0,
         0,
         0,
-        1,
+        9.600000381469727,
         0,
-        0,
-        0,
+        -1.0000000596046448,
+        -1.0499999523162842,
         0,
         1
       ]
@@ -4982,36 +4982,36 @@
       "uri": "kilnback.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1048084,
-    "sha256": "b87d053614761cd59a26694a6c7ee2194501bfdcd3de76bf64bc157fa36c659c",
+    "bytes": 708360,
+    "sha256": "31fe9a32d9cc1400e352a09fe1c9b577fd750b8a80176de87131d402115e06bf",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.12997674942016602,
-        0.4896082878112793,
+        0.12997662598705428,
+        0.4896082102217372,
         0
       ],
       "max": [
-        13.999953269958496,
-        4.329929828643799,
+        13.999953023092273,
+        4.329929928472984,
         11.520189199113801
       ],
       "min": [
         -13.739999771118164,
-        -3.3507132530212402,
+        -3.3507135080295094,
         -11.520189199113801
       ],
       "size": [
-        27.73995304107666,
-        7.680643081665039,
+        27.73995279421044,
+        7.680643436502493,
         23.040378398227602
       ]
     },
@@ -6234,20 +6234,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.425000190734863,
           0,
           0,
           0,
           0,
-          1,
+          12.425000190734863,
           0,
           0,
           0,
           0,
-          1,
+          12.425000190734863,
           0,
-          0,
-          0,
+          0.125,
+          0.8449999690055847,
           0,
           1
         ],
@@ -6261,20 +6261,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.7100000381469727,
           0,
           0,
           0,
           0,
-          1,
+          1.7100000381469727,
           0,
-          0,
-          0,
+          12.533750534057617,
+          0.9437500238418579,
           0,
           1
         ],
@@ -6288,20 +6288,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.4499999284744263,
           0,
           0,
           0,
           0,
-          1,
+          1.4499999284744263,
           0,
           0,
           0,
           0,
-          1,
+          1.4499999284744263,
           0,
-          0,
-          0,
+          5.2499998807907104,
+          4.044948101043701,
           0,
           1
         ],
@@ -6315,20 +6315,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.870000123977661,
           0,
           0,
           0,
           0,
-          1,
+          2.870000123977661,
           0,
           0,
           0,
           0,
-          1,
+          2.870000123977661,
           0,
-          0,
-          0,
+          13.5,
+          0.15000003576278687,
           0,
           1
         ],
@@ -6342,21 +6342,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.533750057220459,
           0,
           0,
           0,
           0,
-          1,
+          3.533750057220459,
           0,
           0,
           0,
           0,
-          1,
+          3.533750057220459,
           0,
-          0,
-          0,
-          0,
+          -13.534500122070312,
+          -0.1499999761581421,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD0_HOOK_DRIVE_CORE",
@@ -6365,21 +6365,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            3.533750057220459,
             0,
             0,
             0,
             0,
-            1,
+            3.533750057220459,
             0,
             0,
             0,
             0,
-            1,
+            3.533750057220459,
             0,
-            0,
-            0,
-            0,
+            -13.534500122070312,
+            -0.1499999761581421,
+            -2.384185791015625e-7,
             1
           ],
           "lod": "lod0"
@@ -6388,21 +6388,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.0549999475479126,
           0,
           0,
           0,
           0,
-          1,
+          0.0549999475479126,
           0,
           0,
           0,
           0,
-          1,
+          0.0549999475479126,
           0,
-          0,
-          0,
-          0,
+          3.9999998807907104,
+          0.800000011920929,
+          -6.550000190734863,
           1
         ],
         "name": "LOD0_HOOK_NAV_PORT",
@@ -6416,21 +6416,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.0549999475479126,
           0,
           0,
           0,
           0,
-          1,
+          0.0549999475479126,
           0,
           0,
           0,
           0,
-          1,
+          0.0549999475479126,
           0,
-          0,
-          0,
-          0,
+          3.9999998807907104,
+          0.800000011920929,
+          6.550000190734863,
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
@@ -6444,20 +6444,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.18706226348877,
           0,
           0,
           0,
           0,
-          1,
+          13.18706226348877,
           0,
           0,
           0,
           0,
-          1,
+          13.18706226348877,
           0,
-          0,
-          0,
+          -0.43706226348876953,
+          0.5370047092437744,
           0,
           1
         ],
@@ -6471,20 +6471,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0899999141693115,
           0,
           0,
           0,
           0,
-          1,
+          1.0899999141693115,
           0,
           0,
           0,
           0,
-          1,
+          1.0899999141693115,
           0,
-          0,
-          0,
+          6.630000114440918,
+          3.9999998807907104,
           0,
           1
         ],
@@ -6498,20 +6498,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.725000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.725000381469727,
           0,
           0,
           0,
           0,
-          1,
+          8.725000381469727,
           0,
-          0,
-          0,
+          2.7549996376037598,
+          0.02500009536743164,
           0,
           1
         ],
@@ -6525,20 +6525,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.650128364562988,
           0,
           0,
           0,
           0,
-          1,
+          8.650128364562988,
           0,
           0,
           0,
           0,
-          1,
+          8.650128364562988,
           0,
-          0,
-          0,
+          -0.9999998956918716,
+          1.563254714012146,
           0,
           1
         ],
@@ -6552,20 +6552,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.382499694824219,
           0,
           0,
           0,
           0,
-          1,
+          13.382499694824219,
           0,
           0,
           0,
           0,
-          1,
+          13.382499694824219,
           0,
-          0,
-          0,
+          -0.3575000762939453,
+          0.22250008583068848,
           0,
           1
         ],
@@ -6579,20 +6579,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          9.600000381469727,
           0,
           0,
           0,
           0,
-          1,
+          9.600000381469727,
           0,
-          0,
-          0,
+          -1.0000000596046448,
+          -1.0499999523162842,
           0,
           1
         ],
@@ -7420,19 +7420,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/kilnback.glb"
   },
-  "runtimeHash": "13f4030f75244806ffd85e04f877874b8aeb8d5a6a5875c7e31ba9ce813ba870",
+  "runtimeHash": "0d9e7d331d97cec35e5a1ccda40c34193d538a0ac74b5350f75d6d35b398eb39",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          13.999953269958496,
-          4.329929828643799,
+          13.999953023092273,
+          4.329929928472984,
           11.520189199113801
         ],
         "min": [
           -13.739999771118164,
-          -3.3507132530212402,
+          -3.3507135080295094,
           -11.520189199113801
         ]
       },

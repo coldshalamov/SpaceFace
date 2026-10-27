@@ -99,24 +99,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "14393019f927793472d9225f0f43a9d95f9724e5d6941867bb43c1bf11e6414b",
+  "contentHash": "face18ea0e9f95613e693e05baca94cbf1db8cd913184591d9f4fdf72d8c14b9",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          19.697359085083008,
-          21.856290817260742,
+          19.6973597407341,
+          21.8562904903238,
           0.5049826502799988
         ],
         "min": [
-          18.687395095825195,
-          21.149280548095703,
+          18.687394440174103,
+          21.149280875032645,
           -0.5049826502799988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f44666b3e0da250b0ff1222755b66edf2de90dc03a6507b755f78224331bc316",
+      "geometryHash": "ef80973b6e6c63a427d6fffc2d25a4b69bae8a4621d14bee703f9e433c3c00b1",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -130,18 +130,18 @@
     {
       "bounds": {
         "max": [
-          12.087525367736816,
-          -3.934929370880127,
-          24.52677345275879
+          12.087525366165162,
+          -3.9349293592564303,
+          24.526773229030816
         ],
         "min": [
           1.8955802917480469,
-          -10.86990737915039,
-          18.84675407409668
+          -10.869907728352443,
+          18.846754105034996
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b63caa484b798d2007b030eb614bd8d982d126879d102f999a3d37932ffdf8c",
+      "geometryHash": "9c4599dc442d11910842078070bce42ab1767de1395b34a984a6bdb54b2b47b8",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1-m.primitive.0",
       "indexCount": 906,
       "indexed": true,
@@ -155,18 +155,18 @@
     {
       "bounds": {
         "max": [
-          14.098730087280273,
-          -3.8640739917755127,
-          24.465456008911133
+          14.098730410429965,
+          -3.864073896992358,
+          24.465456002071523
         ],
         "min": [
-          12.022120475769043,
-          -10.917598724365234,
-          20.662084579467773
+          12.02212032407525,
+          -10.917598904876337,
+          20.66208467429095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa199686b76c334a3c6cad0af92ca67fa0ec1e901196785d293ef42d0d3e3bc4",
+      "geometryHash": "fc0e08d87d19269852027525bb76e5b392bb5daa49064f6959f312c9f4e46949",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1-m.primitive.1",
       "indexCount": 591,
       "indexed": true,
@@ -181,17 +181,17 @@
       "bounds": {
         "max": [
           24.219820022583008,
-          -3.8545358180999756,
-          24.37518310546875
+          -3.8545356616875797,
+          24.37518341793701
         ],
         "min": [
-          12.022120475769043,
-          -10.92441177368164,
-          18.79224967956543
+          12.02212032407525,
+          -10.924411930094037,
+          18.792249903293403
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcceb8ace09a8ab80130c9793c8bc0b18b0177d968a8552738a9efcbab27c9f8",
+      "geometryHash": "99360bf32919dc0eb979e38221adb41917704bb42294848f4a9ea58c643fb9f1",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1-m.primitive.2",
       "indexCount": 1851,
       "indexed": true,
@@ -205,18 +205,18 @@
     {
       "bounds": {
         "max": [
-          12.087525367736816,
-          -3.934929370880127,
-          -18.853567123413086
+          12.087525366165162,
+          -3.9349293592564303,
+          -18.853567130252696
         ],
         "min": [
           1.8955802917480469,
-          -10.86990737915039,
-          -24.52677345275879
+          -10.869907728352443,
+          -24.526773229030816
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e4b29d0a09b30cb5d5fe81852c0b807cc27b5fb0892f0aeb28b77aad742556b",
+      "geometryHash": "7c5c665c291755fc38af140bedbf285524ff3779b9257fae1381836afdba0506",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1.primitive.0",
       "indexCount": 894,
       "indexed": true,
@@ -230,18 +230,18 @@
     {
       "bounds": {
         "max": [
-          14.098730087280273,
-          -3.862711191177368,
-          -20.64845848083496
+          14.098730410429965,
+          -3.8627112919488185,
+          -20.648458623855547
         ],
         "min": [
-          12.022120475769043,
-          -10.917598724365234,
-          -24.465456008911133
+          12.02212032407525,
+          -10.917598904876337,
+          -24.465456002071523
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05fbcee5d655bfd191b6c25dd5cbe6d5e6b94dfe2266687a801746b3539cc683",
+      "geometryHash": "2f8accd71c5304953c416666ddfe30b9597ac53b208b698ed1013e5f938062d0",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1.primitive.1",
       "indexCount": 612,
       "indexed": true,
@@ -256,17 +256,17 @@
       "bounds": {
         "max": [
           24.219820022583008,
-          -3.8545358180999756,
-          -18.79224967956543
+          -3.8545356616875797,
+          -18.792249903293403
         ],
         "min": [
-          12.022120475769043,
-          -10.92441177368164,
-          -24.349294662475586
+          12.02212032407525,
+          -10.924411930094037,
+          -24.34929392210975
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31d16c17632b160fd5c22930f0bd79543ca0fc905f0722e5ce51fb413cae16a6",
+      "geometryHash": "7024235e3364f7dc28c13d4510799975ad9f110336bb16a5f0cc5a2dce45f353",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1.primitive.2",
       "indexCount": 1842,
       "indexed": true,
@@ -281,17 +281,17 @@
       "bounds": {
         "max": [
           -0.3079032897949219,
-          -3.9344840049743652,
-          24.52639389038086
+          -3.934484374637035,
+          24.526394073158492
         ],
         "min": [
           -21.910743713378906,
-          -10.869518280029297,
-          18.846641540527344
+          -10.869518964794203,
+          18.846640960295673
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e49dedbcb7ac77cd3781cdc6d0bb44164aa03bfaeed30d1e50796103a642e973",
+      "geometryHash": "960093bebf5bcd64df90844ade5bd1c736e7781dc3bea682e91c7523b2ef4ce7",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -305,18 +305,18 @@
     {
       "bounds": {
         "max": [
-          -10.0689697265625,
-          -3.854051351547241,
-          24.465740203857422
+          -10.068969420089813,
+          -3.854051422835611,
+          24.465739716062338
         ],
         "min": [
-          -12.144403457641602,
-          -10.924899101257324,
-          18.792579650878906
+          -12.144403291162611,
+          -10.924899029968955,
+          18.792579468101273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2676dc17e9dc7c55b8c4501f6cc52a7bef1ecee37bf6016b624748035caed373",
+      "geometryHash": "4176289e4e69380a51f6d477a85c691258cabef6830ebf7ee1dafb8694bbdf8b",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2-m.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -331,17 +331,17 @@
       "bounds": {
         "max": [
           -0.3079032897949219,
-          -3.9344840049743652,
-          -18.846641540527344
+          -3.934484374637035,
+          -18.846640960295673
         ],
         "min": [
           -21.910743713378906,
-          -10.870837211608887,
-          -24.52639389038086
+          -10.870837537774555,
+          -24.526394073158492
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27a32c9ea45a817849794656a30beeaae84b797c85bfe9b06e034328edebf160",
+      "geometryHash": "0245fbffa7958a2c1d5c170eb3df2c9bc49ba1cdea761c8c6d49df2ea0c0c2dd",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -355,18 +355,18 @@
     {
       "bounds": {
         "max": [
-          -10.0689697265625,
-          -3.854051351547241,
-          -18.792579650878906
+          -10.068969420089813,
+          -3.854051422835611,
+          -18.792579468101273
         ],
         "min": [
-          -12.144403457641602,
-          -10.924899101257324,
-          -24.465740203857422
+          -12.144403291162611,
+          -10.924899029968955,
+          -24.465739716062338
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5520847b4618afc6dc9136c0bf22508995054fb610cee2f170f89878fe77bf8",
+      "geometryHash": "9d08880381fe69692cb35b6768f2dd0a2c4a81a94646cf04c0b6e4e3c60f184d",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -380,18 +380,18 @@
     {
       "bounds": {
         "max": [
-          25.37664031982422,
-          9.559223175048828,
-          8.02742862701416
+          25.37664080863797,
+          9.559223154766478,
+          8.027428391498777
         ],
         "min": [
-          10.627349853515625,
-          3.2511985301971436,
-          -8.073687553405762
+          10.627350022439412,
+          3.2511984327218024,
+          -8.073687622354841
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5eb4aaf425c48aaff51fe76e9a67c6b37ec983d541f8f814046ded2371780bcd",
+      "geometryHash": "b0a21761a1c4cb093bd0d494c6f6533596ea04bf289a5a84360e6d0498ed7a06",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.bridge1.primitive.0",
       "indexCount": 207,
       "indexed": true,
@@ -405,18 +405,18 @@
     {
       "bounds": {
         "max": [
-          25.348047256469727,
-          9.57992935180664,
+          25.348046401926084,
+          9.579929449281982,
           8.068840980529785
         ],
         "min": [
-          10.535651206970215,
-          3.275848865509033,
+          10.535650718156464,
+          3.275848783335498,
           -8.085519790649414
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c651436a0d8fc74ee908bafba7c2fde1a3e41deb9b4b090d6c31e097934ef905",
+      "geometryHash": "114f2397d5832a9509f24055fe4417d38ade369d7645a4a91dc4eb034f81af81",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.bridge1.primitive.1",
       "indexCount": 507,
       "indexed": true,
@@ -431,17 +431,17 @@
       "bounds": {
         "max": [
           25.16098976135254,
-          13.602499008178711,
-          5.39970588684082
+          13.602499134900656,
+          5.399705573768638
         ],
         "min": [
           14.142549514770508,
-          8.661737442016602,
-          -5.398144245147705
+          8.661737315294657,
+          -5.398143932075523
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b83a1069e1d174a964c739b8286604224c5d8abc2be72ce2a9a68ef0121d7c6d",
+      "geometryHash": "39504cf8b0d200af0ae05c37197813937ee4ba5c45067c3b1e8a9c62906d2126",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.bridge2.primitive.0",
       "indexCount": 1110,
       "indexed": true,
@@ -455,18 +455,18 @@
     {
       "bounds": {
         "max": [
-          0.9488880038261414,
-          3.6115968227386475,
-          11.167937278747559
+          0.9488880200429266,
+          3.6115966688765524,
+          11.167937633796022
         ],
         "min": [
-          -11.093169212341309,
-          -1.7985541820526123,
-          -11.167937278747559
+          -11.09316904420335,
+          -1.798554281736274,
+          -11.167937633796022
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcb0c6c9e759f62bd73b198c003328e1d64b969eac1915c689c0dc8563c7e79a",
+      "geometryHash": "2b0b5d0baf85b613ad17577da1e8b9e7fddddd3c2d01854bdfd01ad2e0c9dd3a",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -480,18 +480,18 @@
     {
       "bounds": {
         "max": [
-          0.6515530347824097,
-          0.6874324083328247,
-          11.181351661682129
+          0.6515532777158581,
+          0.6874324360659835,
+          11.181351231194235
         ],
         "min": [
           -11.106582641601562,
-          -1.7739628553390503,
-          -11.181351661682129
+          -1.7739626865062155,
+          -11.181351231194235
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8249b3a4bc4f7bf2a7cecdc4839190703f9adefe428733d2aa8463b2beec89da",
+      "geometryHash": "502d9f8a602a294abd0eec6ebb2ed3626a8603c8f04c98855b7a9e6908eeb35c",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel.primitive.1",
       "indexCount": 564,
       "indexed": true,
@@ -505,18 +505,18 @@
     {
       "bounds": {
         "max": [
-          0.038998883217573166,
-          3.6115968227386475,
-          6.311656475067139
+          0.038998996530770214,
+          3.6115966688765524,
+          6.311656475751099
         ],
         "min": [
-          -7.4647908210754395,
-          3.2516653537750244,
-          -6.311656475067139
+          -7.464790947986565,
+          3.2516651386911537,
+          -6.311656475751099
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27ca636af86efe62064ced805d4bff9c27dc49515fdb795b17b5c8d5a7a7943c",
+      "geometryHash": "e96c8062d038e2ae1e944b39b88d1a098d96632556fe7f36d0fff0a0ef673a99",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel.primitive.2",
       "indexCount": 2040,
       "indexed": true,
@@ -531,17 +531,17 @@
       "bounds": {
         "max": [
           25.520362854003906,
-          4.087779521942139,
-          10.631393432617188
+          4.0877793765131365,
+          10.631393737867478
         ],
         "min": [
-          7.7948527336120605,
-          -2.4044017791748047,
-          -10.640336036682129
+          7.7948527921562025,
+          -2.4044017642222557,
+          -10.640336136132953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b71e3de5a16fdb28045764655ae3f31903089eca8b8c231f88e313b891906549",
+      "geometryHash": "6241fb5487a4df0970ba637b55bddd197f70598a89c037a4d56a81ef1a95cd75",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel.primitive.3",
       "indexCount": 246,
       "indexed": true,
@@ -555,18 +555,18 @@
     {
       "bounds": {
         "max": [
-          24.88768768310547,
-          4.123548984527588,
-          11.011445999145508
+          24.887688176721497,
+          4.1235489695750385,
+          11.011445664150196
         ],
         "min": [
-          -0.14208461344242096,
-          -2.4044017791748047,
-          -11.011445999145508
+          -0.14208456834511374,
+          -2.4044017642222557,
+          -11.011445664150196
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4cda09334879e288c8220161a4d7340a4f98708c7014a5cfa0bde94d35e2097",
+      "geometryHash": "749731d8c836d91f9493d710e2efcab4d4fe4e02d5e2d5d0d6768e529981b416",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel.primitive.4",
       "indexCount": 3474,
       "indexed": true,
@@ -580,18 +580,18 @@
     {
       "bounds": {
         "max": [
-          -6.740628242492676,
-          -0.5691738724708557,
-          19.83811378479004
+          -6.740628469422168,
+          -0.5691739001289786,
+          19.83811364243886
         ],
         "min": [
           -25.534652709960938,
-          -7.2109880447387695,
-          -19.839548110961914
+          -7.210987996926538,
+          -19.839546933472313
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bcf1271de4712ef11d8b5a853ff0fc4a47b8ce7e00a6e06516e7dd38e72d5c1b",
+      "geometryHash": "4735a917e5124ea8e202a4ec0f9c07ec85a88249f3aac93e916f86beb7e761a4",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deck.primitive.0",
       "indexCount": 4155,
       "indexed": true,
@@ -606,17 +606,17 @@
       "bounds": {
         "max": [
           25.60076141357422,
-          -0.49426621198654175,
-          19.850597381591797
+          -0.4942662223455474,
+          19.850598255402765
         ],
         "min": [
-          22.950902938842773,
-          -7.754068851470947,
-          -20.017452239990234
+          22.95090231198534,
+          -7.754068660856413,
+          -20.017452668207962
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c643edf7d312fa4be113c8a46c93466547523c4f06b6d3473233c51fbe8e07a4",
+      "geometryHash": "dae053689654f8da6943ac2bbab0b8dd03f1614552d41db982a8a48fa34d57b7",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deck.primitive.1",
       "indexCount": 459,
       "indexed": true,
@@ -631,17 +631,17 @@
       "bounds": {
         "max": [
           25.60076141357422,
-          -0.49114516377449036,
-          19.859960556030273
+          -0.49114506910457134,
+          19.859961715125696
         ],
         "min": [
-          -6.85299015045166,
-          -7.763432025909424,
-          -20.020572662353516
+          -6.852989986097314,
+          -7.763432120579343,
+          -20.020573821448938
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8908740527f5aaa0d531991bf080d1e41eedd3bfb0bb0cd8a198befada9b4452",
+      "geometryHash": "2006a6b9249cc9f5351e017922990c1e3ed34805ee8ed237fd9db58fe1f5cb63",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deck.primitive.2",
       "indexCount": 1248,
       "indexed": true,
@@ -655,18 +655,18 @@
     {
       "bounds": {
         "max": [
-          -14.159869194030762,
-          -0.6984274387359619,
+          -14.159869097039287,
+          -0.6984274176641456,
           5.238316535949707
         ],
         "min": [
-          -21.03856658935547,
-          -0.8787558078765869,
+          -21.038566686346943,
+          -0.8787558289484032,
           -5.238316535949707
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af5ad3d0e4d5bfae71f0f01444ee954acd82f7b0643e18dd6105b6155e751e3b",
+      "geometryHash": "ca2295aec39d926d88a98b23cdfdeeb6d510f1231a18e66f98623ba1c27775c7",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-frame.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -681,17 +681,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          4.58672571182251
+          -0.644476481329792,
+          4.586725756207206
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          3.829651355743408
+          -0.8605660716182061,
+          3.8296513113587123
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e581fa58a20c7e719e322ca40c3aea4d11f2d0bfcc6f4da5b7d7d1001497098",
+      "geometryHash": "b334bdb40f1f75b371e1f8c15720741b38ce93f9152ae8fe3d79052dda559c02",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -706,17 +706,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          2.9034504890441895
+          -0.644476481329792,
+          2.903450414219596
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          2.146375894546509
+          -0.8605660716182061,
+          2.1463759693711024
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a37a96b0c2f30118354d395a39040b039674f7e351c3115a1a4470b21e240881",
+      "geometryHash": "56528276e4afd3ba7fc8e49a677b2ee4f886cd6c39caabf0d2753010827f8c8f",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -731,17 +731,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          1.2201749086380005
+          -0.644476481329792,
+          1.220174923220374
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          0.46310049295425415
+          -0.8605660716182061,
+          0.46310047837188056
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2f169e0adc6495b1a879bc19a974ae7c8dce4de7797359500c47b6f9a4b7aaa",
+      "geometryHash": "c22a5f708d3107352ca7f702c809bd860a31090ea099e11b22cc9c41c8c31116",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -756,17 +756,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          -0.46310049295425415
+          -0.644476481329792,
+          -0.46310047837188056
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          -1.2201749086380005
+          -0.8605660716182061,
+          -1.220174923220374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0f608a4042b7f545e1cc24a52f98192e5b3f59fb7e182b4d9af4bebb298f007",
+      "geometryHash": "507aa862a68e7721544c30a1fec50e75da69df3d7c5bc531205562f3824d2369",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -781,17 +781,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          -2.146375894546509
+          -0.644476481329792,
+          -2.1463759693711024
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          -2.9034504890441895
+          -0.8605660716182061,
+          -2.903450414219596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b9440ea6abe57413621f9285e2e31697d735b1b37e53b5aac2d932757b44668",
+      "geometryHash": "bd27d9957c3dfc352bef40999db6f75501d83a6cd3cf9dfde51e5c88b37444f7",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -806,17 +806,17 @@
       "bounds": {
         "max": [
           -14.48275375366211,
-          -0.6444764733314514,
-          -3.829651355743408
+          -0.644476481329792,
+          -3.8296513113587123
         ],
         "min": [
           -20.715682983398438,
-          -0.8605660796165466,
-          -4.58672571182251
+          -0.8605660716182061,
+          -4.586725756207206
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd4a76c360f6e2139d53d1dba62ef87382ce1c7d3bb2b20645e9b6604bb817de",
+      "geometryHash": "c0a25a19a0a3518f3f34f6c83a8956ab6f0c38f184192117947267f088f3ae5e",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -830,18 +830,18 @@
     {
       "bounds": {
         "max": [
-          -14.352669715881348,
-          -0.7886378169059753,
+          -14.352669607771869,
+          -0.788637813834518,
           5.049826622009277
         ],
         "min": [
-          -20.845766067504883,
-          -1.2213876247406006,
+          -20.84576617561436,
+          -1.221387627812058,
           -5.049826622009277
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7b691c60edeaffe8da0f95c3686ecd4b13c5e8aa29b8eae3c4971ec822d9736",
+      "geometryHash": "1375b2eb83ca092135cf393a3bbd90024afc6bb362baf58f251d0b2ca3a909b0",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-well.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -855,18 +855,18 @@
     {
       "bounds": {
         "max": [
-          -22.649505615234375,
-          -2.159952402114868,
+          -22.649506376380977,
+          -2.1599524709511657,
           15.149478912353516
         ],
         "min": [
-          -31.30542755126953,
-          -12.979621887207031,
+          -31.30542679012293,
+          -12.979621818370735,
           -15.149478912353516
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1fb7cd8c3a3b4e87135ee98c1b4eb99383203c0c680b8fbd8bb28f3b70faf52",
+      "geometryHash": "4eec33713e2e3939ee8bbecfb7f48eb0d6954a9576fb1b819dda232437eb895b",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.driveblock.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -881,17 +881,17 @@
       "bounds": {
         "max": [
           25.53895378112793,
-          -6.489264965057373,
-          22.36404037475586
+          -6.4892648084958156,
+          22.364039579178375
         ],
         "min": [
           -29.141677856445312,
-          -15.40717887878418,
-          -22.36404037475586
+          -15.407179035345738,
+          -22.364039579178375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d01223b317653091f6511aab0a7e5d339323a9fcd8d2450efdc976333a2d84b",
+      "geometryHash": "8b5797a4d20d76db517fede684a8dc98bfc6b94d92b22880e9a78a396b15d32f",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.lowerhull.primitive.0",
       "indexCount": 1074,
       "indexed": true,
@@ -906,17 +906,17 @@
       "bounds": {
         "max": [
           25.53895378112793,
-          -6.90979528427124,
-          21.426189422607422
+          -6.909795194941583,
+          21.426190066549324
         ],
         "min": [
-          23.26274871826172,
-          -15.383816719055176,
-          -21.526315689086914
+          23.262749625921476,
+          -15.38381623609875,
+          -21.52631634903641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "683e98e9212061d1d13bfe06bc658a7b63bc47ea40266a06cecabc7cece0f129",
+      "geometryHash": "1336d3bff4d69c348128151912ca05dcfcdb887707a254789b881603ecceff8a",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.lowerhull.primitive.1",
       "indexCount": 156,
       "indexed": true,
@@ -930,18 +930,18 @@
     {
       "bounds": {
         "max": [
-          19.454456329345703,
+          19.454456593703863,
           21.286365509033203,
-          0.26472243666648865
+          0.26472244171752163
         ],
         "min": [
-          18.930295944213867,
-          21.239337921142578,
-          -0.2647223472595215
+          18.930295679855707,
+          21.239338975431906,
+          -0.26472235231055447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efd4749b3245ae6561a9dacf45df7425f0cbbdb88ff85540675fc1fa4aad0a4d",
+      "geometryHash": "b95a221ba3103906b44e1c5803f448ccf8d91833ae01551f7e3f1cff7356987f",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mast.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -955,18 +955,18 @@
     {
       "bounds": {
         "max": [
-          19.67056655883789,
-          21.273155212402344,
-          0.48453187942504883
+          19.67056729306263,
+          21.2731558085834,
+          0.48453185720223185
         ],
         "min": [
-          18.71418571472168,
+          18.714184980496942,
           12.629520416259766,
-          -0.48453179001808167
+          -0.4845317677952647
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebdbf473a96928b2da3e7d45cf16f058b3955b89b92ba7930b87d5fa0ab743af",
+      "geometryHash": "7c942191efbbcd3e15a305e927df1036efdfb5e873519672e2ec9001dae7d188",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mast.primitive.1",
       "indexCount": 1164,
       "indexed": true,
@@ -980,18 +980,18 @@
     {
       "bounds": {
         "max": [
-          19.841501235961914,
-          17.46276092529297,
+          19.84150081688307,
+          17.462760925016475,
           3.246316909790039
         ],
         "min": [
-          18.543251037597656,
-          15.010313987731934,
+          18.5432514566765,
+          15.010313988008429,
           -3.246316909790039
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dcdb0a4512f2c06c4c8c284fe228264b6217ffd4786db14140db7947534e84cd",
+      "geometryHash": "0e60b78648f9f82a3e2e22ec104d617dcfdee97aef34d87026b7309a5548a552",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mastradar.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1005,18 +1005,18 @@
     {
       "bounds": {
         "max": [
-          19.625125885009766,
-          18.328548431396484,
+          19.625125938184087,
+          18.328548466846033,
           4.689124584197998
         ],
         "min": [
-          18.759626388549805,
-          17.751548767089844,
+          18.759626335375483,
+          17.751548731640295,
           -4.689124584197998
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f6344d6723544ea955d0ad27f5e7767381777d59ae52a10e41caf03d574e110",
+      "geometryHash": "59e692cb025bb682c2534e50e43d617657b49100a4ae6a2bbd6e20d60812470c",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mastyard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1030,18 +1030,18 @@
     {
       "bounds": {
         "max": [
-          -29.502336502075195,
+          -29.502335616767862,
           -1.077153205871582,
-          16.231584548950195
+          16.231584906578064
         ],
         "min": [
-          -36.50004196166992,
+          -36.50004284697725,
           -14.062421798706055,
-          3.24631667137146
+          3.2463163137435913
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c3aa2d625ce26f730f49348d6753827f3a3833cbdb3efa1e1f5b6501101514f",
+      "geometryHash": "72167765efff77b20692eaf30b4498e304dd7f05b9221b813228bd8bf99952ba",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle-1-35.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -1055,18 +1055,18 @@
     {
       "bounds": {
         "max": [
-          -33.271461486816406,
-          -1.4663110971450806,
-          15.842427253723145
+          -33.27145972292493,
+          -1.466311009703591,
+          15.842427102746054
         ],
         "min": [
-          -36.50004196166992,
-          -13.673263549804688,
-          3.635474681854248
+          -36.50004284697725,
+          -13.673263994874045,
+          3.6354741175756002
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3909e62535bb4f5b3161b67aa2a51085bc20df5eaf28c600f8924af499388b4b",
+      "geometryHash": "5ea067e378b818bbd95c30189e8d2d0a0aa419a7623141a2b52432e02b3fea57",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle-1-35.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -1080,18 +1080,18 @@
     {
       "bounds": {
         "max": [
-          -33.271461486816406,
-          -4.34932804107666,
-          12.959409713745117
+          -33.27145972292493,
+          -4.349328344609772,
+          12.959409767839874
         ],
         "min": [
-          -33.271461486816406,
-          -10.79024600982666,
-          6.518491744995117
+          -33.27145972292493,
+          -10.790246659967865,
+          6.518491452481781
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e06411020b1243327116d4578ebdd1f7fb4d7b3df683cb1fa108ce6873f6d9a4",
+      "geometryHash": "a5289d1abb830f79d512f7e94e15e4655f90032d74570457d4d1ec9a50dfb041",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle-1-35.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -1105,18 +1105,18 @@
     {
       "bounds": {
         "max": [
-          -29.502628326416016,
+          -29.502628261323313,
           -0.08522272109985352,
-          4.959650993347168
+          4.959651231765747
         ],
         "min": [
-          -36.499752044677734,
+          -36.49975210977044,
           -10.004525184631348,
-          -4.959650993347168
+          -4.959651231765747
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84b9aab1d903ce87f7f13e9d7788c66c167c0b94c8ab528a17e606065d943c4d",
+      "geometryHash": "381062248480baaf2ec2abb1304d4b19bc00c9989a1776fdfb64c81c8d7d2448",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle0-0.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -1130,18 +1130,18 @@
     {
       "bounds": {
         "max": [
-          -33.27182388305664,
-          -0.3824961185455322,
-          4.662377834320068
+          -33.271823945195216,
+          -0.3824960454563069,
+          4.662377907409294
         ],
         "min": [
-          -36.499752044677734,
-          -9.70725154876709,
-          -4.662377834320068
+          -36.49975210977044,
+          -9.707251860274894,
+          -4.662377907409294
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8525523fd7b340455228cc60af55b7c759d48a070929fa71e00d2ac8904bdc42",
+      "geometryHash": "434bfe979dcc106b03ff83d7154c69392d9290da1bca52c5ec66aac11bd794d1",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle0-0.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -1155,18 +1155,18 @@
     {
       "bounds": {
         "max": [
-          -33.27182388305664,
-          -2.584800958633423,
-          2.4600729942321777
+          -33.271823945195216,
+          -2.584800968769141,
+          2.4600729840964597
         ],
         "min": [
-          -33.27182388305664,
-          -7.504946708679199,
-          -2.4600729942321777
+          -33.271823945195216,
+          -7.50494693696206,
+          -2.4600729840964597
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1d37f3828bfc87b334a2de97e1ed4e5d975402a8ea3da4cd5923cf90a208c7e",
+      "geometryHash": "edc5f5029405fab99a63a8b7921cf8b01e48e7dc216b52c65deaa2bc587fba49",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle0-0.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -1180,18 +1180,18 @@
     {
       "bounds": {
         "max": [
-          -29.502336502075195,
+          -29.502335616767862,
           -1.077153205871582,
-          -3.24631667137146
+          -3.2463163137435913
         ],
         "min": [
-          -36.50004196166992,
+          -36.50004284697725,
           -14.062421798706055,
-          -16.231584548950195
+          -16.231584906578064
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31cc5400ead831d5b8dd280014ea26eca8df18f4d6785d0c8db000a1b0d95825",
+      "geometryHash": "30fdd10fa648019dc91add8bb4eda494d6869acf928ae9896b6c546b2ddb51aa",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle1-35.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -1205,18 +1205,18 @@
     {
       "bounds": {
         "max": [
-          -33.271461486816406,
-          -1.4663110971450806,
-          -3.635474681854248
+          -33.27145972292493,
+          -1.466311009703591,
+          -3.6354741175756002
         ],
         "min": [
-          -36.50004196166992,
-          -13.673263549804688,
-          -15.842427253723145
+          -36.50004284697725,
+          -13.673263994874045,
+          -15.842427102746054
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ac1d54434a91fb78cca9aa0ad47b91dee32b6c456ad34822b2e75b789751ff6",
+      "geometryHash": "83dcdad563c54e67e612fcf3245b64c6ceaf44aa790ec42b1e16905b5f360f5e",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle1-35.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -1230,18 +1230,18 @@
     {
       "bounds": {
         "max": [
-          -33.271461486816406,
-          -4.34932804107666,
-          -6.518491744995117
+          -33.27145972292493,
+          -4.349328344609772,
+          -6.518491452481781
         ],
         "min": [
-          -33.271461486816406,
-          -10.79024600982666,
-          -12.959409713745117
+          -33.27145972292493,
+          -10.790246659967865,
+          -12.959409767839874
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4671c58735505e3367dec77f03ce1a9ad34d50b192cd4621af490e461bfb6856",
+      "geometryHash": "13d6d4b0543f8c007e63ffe62035e991486fe2ee722575461e15437603896ed8",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle1-35.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -1256,17 +1256,17 @@
       "bounds": {
         "max": [
           10.66177749633789,
-          0.16187068819999695,
-          14.085409164428711
+          0.16187103458889657,
+          14.08540964126587
         ],
         "min": [
           9.904302597045898,
-          -0.36838647723197937,
-          13.327935218811035
+          -0.368386823620879,
+          13.327934741973877
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29c6c87c4d0a8ddca65714d9c99a9485406c6c81f7cfafee1f8e19153f84b243",
+      "geometryHash": "bd6851c180bc1dfd088fa85cacc369bec67e1b42331e27515d5281fa1eb921a0",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome-1-9-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1281,17 +1281,17 @@
       "bounds": {
         "max": [
           11.256935119628906,
-          0.48099759221076965,
-          15.87088394165039
+          0.4809976899739744,
+          15.87088418006897
         ],
         "min": [
           6.928511142730713,
-          -1.1492118835449219,
-          11.542460441589355
+          -1.1492119813081265,
+          11.542460203170776
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e29bca561d5da77fb9f35908bd467462d520bb814e8531a0fdd396922e8395b",
+      "geometryHash": "395da381ad05311b647d14f82f0b28f53b96d43bad7202d5776aa1b95ac61394",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome-1-9.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -1306,17 +1306,17 @@
       "bounds": {
         "max": [
           10.66177749633789,
-          0.16187068819999695,
-          -13.327935218811035
+          0.16187103458889657,
+          -13.327934741973877
         ],
         "min": [
           9.904302597045898,
-          -0.36838647723197937,
-          -14.085409164428711
+          -0.368386823620879,
+          -14.08540964126587
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8db40fbae68ff48f47b30963977f1665ec9f3d63611be0732b896d217cd25eb7",
+      "geometryHash": "887740d589b382efb0c178239591c860e26c4759ce6fb242b5a9a186b2e63218",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome1-9-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1331,17 +1331,17 @@
       "bounds": {
         "max": [
           11.256935119628906,
-          0.48099759221076965,
-          -11.542460441589355
+          0.4809976899739744,
+          -11.542460203170776
         ],
         "min": [
           6.928511142730713,
-          -1.1492118835449219,
-          -15.87088394165039
+          -1.1492119813081265,
+          -15.87088418006897
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d1a347135183f61d5541ad49e8aa33615fc257605120937bb4bbdeefd531778",
+      "geometryHash": "641d12173718fd2ff365bbed1c65a9d8023de68f399b4bb625d3c8051e24d28a",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome1-9.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -1356,17 +1356,17 @@
       "bounds": {
         "max": [
           -19.97985076904297,
-          -2.0221505165100098,
-          23.222028732299805
+          -2.022150473460493,
+          23.222028894558612
         ],
         "min": [
           -22.43262481689453,
-          -3.7391746044158936,
-          21.5050048828125
+          -3.7391746474654104,
+          21.505004720553693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4eb12c0133f44b47ffe449d945cae797ecda0e306da0230ae4fe06eaeefb79d7",
+      "geometryHash": "22a9fa864ad013dc69930d067e3d517a71c28a1409420e0cb54f6f7fdcad7e01",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1381,17 +1381,17 @@
       "bounds": {
         "max": [
           -21.549625396728516,
-          -3.0864932537078857,
-          23.418224334716797
+          -3.0864931917694065,
+          23.418223603111485
         ],
         "min": [
           -21.942062377929688,
-          -3.459719657897949,
-          23.17291831970215
+          -3.4597197198364285,
+          23.17291905130746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d001b13a4860ffb095c214400e76f8dfab77f0afe74043020f9fbde83cf3fb6",
+      "geometryHash": "64380fff977f0bc6f1577fc9a590800b7fc8e2ede29cc5bcd4bb0966572a2af4",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-07-0-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1406,17 +1406,17 @@
       "bounds": {
         "max": [
           -21.549625396728516,
-          -3.0864932537078857,
-          -23.17291831970215
+          -3.0864931917694065,
+          -23.17291905130746
         ],
         "min": [
           -21.942062377929688,
-          -3.459719657897949,
-          -23.418224334716797
+          -3.4597197198364285,
+          -23.418223603111485
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a87ca6cef8f7412737f5cefc623797b62c062637e75ed90de2f8fda6bf8c04ee",
+      "geometryHash": "d27221a6fcc16500ff69a9d641753aea10ace4c24c0f685f744a54b7e62c2bcc",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-07-0-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1431,17 +1431,17 @@
       "bounds": {
         "max": [
           -21.549625396728516,
-          -2.3016059398651123,
-          23.418224334716797
+          -2.3016059971359226,
+          23.418223603111485
         ],
         "min": [
           -21.942062377929688,
-          -2.674832582473755,
-          23.17291831970215
+          -2.6748325252029446,
+          23.17291905130746
         ]
       },
       "drawMode": 4,
-      "geometryHash": "646e0240956d9a1f172a61f13a153765256148cf9f39f4c5da4ea842572647db",
+      "geometryHash": "57ae1f3339e06ffb9d9d9dc6fca6a1baa5bad833a82d56dad0484f624eb7fc83",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-070-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1456,17 +1456,17 @@
       "bounds": {
         "max": [
           -21.549625396728516,
-          -2.3016059398651123,
-          -23.17291831970215
+          -2.3016059971359226,
+          -23.17291905130746
         ],
         "min": [
           -21.942062377929688,
-          -2.674832582473755,
-          -23.418224334716797
+          -2.6748325252029446,
+          -23.418223603111485
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70d7d38952c60473c5675f271abe3e0b4f0d889f3dca517b5490ab1da40262b0",
+      "geometryHash": "e1918726e2fe63f59dc8ff895032c365d8f152f072a655f4526ef4fea1e83d2d",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-070-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1481,17 +1481,17 @@
       "bounds": {
         "max": [
           -20.470401763916016,
-          -3.086491346359253,
-          23.418201446533203
+          -3.086491377788711,
+          23.418200841940884
         ],
         "min": [
           -20.862842559814453,
-          -3.459721565246582,
-          23.172941207885742
+          -3.459721533817124,
+          23.17294181247806
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b195fe9d78d6d67f6c773ca56dfb8e991bd504e1cfde5987a72861bc1bcbf326",
+      "geometryHash": "a2f3a625b2b944f9c2826fbd6aff688ace11b11c90a7d23428a8ba5a8268aaa2",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-07-0-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1506,17 +1506,17 @@
       "bounds": {
         "max": [
           -20.470401763916016,
-          -3.086491346359253,
-          -23.172941207885742
+          -3.086491377788711,
+          -23.17294181247806
         ],
         "min": [
           -20.862842559814453,
-          -3.459721565246582,
-          -23.418201446533203
+          -3.459721533817124,
+          -23.418200841940884
         ]
       },
       "drawMode": 4,
-      "geometryHash": "215be970a2ff4e3230edf95fe206aff6769c3f59dddc4161bbe9ffbdef70d9c7",
+      "geometryHash": "e97d7788a01aa39151c5ffbfd1aca508cdd4d3eb9068c94578cdf30182707f91",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-07-0-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1531,17 +1531,17 @@
       "bounds": {
         "max": [
           -20.470401763916016,
-          -2.3016042709350586,
-          23.418201446533203
+          -2.301604183155227,
+          23.418200841940884
         ],
         "min": [
           -20.862842559814453,
-          -2.6748342514038086,
-          23.172941207885742
+          -2.67483433918364,
+          23.17294181247806
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1147bf9294cac2ab1831745956382910ebda24836990447c721d8e97e957e2a3",
+      "geometryHash": "e87f72f57a2614a9341a0ebf71fa676873869f0ce5dc5d4e1669ea8909b57eba",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-070-05-m.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1556,17 +1556,17 @@
       "bounds": {
         "max": [
           -20.470401763916016,
-          -2.3016042709350586,
-          -23.172941207885742
+          -2.301604183155227,
+          -23.17294181247806
         ],
         "min": [
           -20.862842559814453,
-          -2.6748342514038086,
-          -23.418201446533203
+          -2.67483433918364,
+          -23.418200841940884
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9513db03ec06fc2db6b24a6edff07d8e09237b8392d0c215c1a86162426b8545",
+      "geometryHash": "9856c812425a2e51ba9d7c39db93257a7179c4ce3315b0629a0c922e5e72d458",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-070-05.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1581,17 +1581,17 @@
       "bounds": {
         "max": [
           -19.97985076904297,
-          -2.0221505165100098,
-          -21.5050048828125
+          -2.022150473460493,
+          -21.505004720553693
         ],
         "min": [
           -22.43262481689453,
-          -3.7391746044158936,
-          -23.222028732299805
+          -3.7391746474654104,
+          -23.222028894558612
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f11f1280d91006cfffa7ab64f3918eca2198e85f5e1099d09e080531b9a5918",
+      "geometryHash": "bf2c158d0327500aa08b3cb9dccb21ed43add29ddc2ff83020b927e17bf86614",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1606,17 +1606,17 @@
       "bounds": {
         "max": [
           17.028165817260742,
-          7.002494812011719,
-          7.610771656036377
+          7.002494947566946,
+          7.6107715925735375
         ],
         "min": [
           14.86395263671875,
-          5.992678642272949,
-          7.250146389007568
+          5.992678506717722,
+          7.250146452470408
         ]
       },
       "drawMode": 4,
-      "geometryHash": "482c324e3dd4e734db8ce4b233d27958eb503845d87504833313d3b26c1479b7",
+      "geometryHash": "401fd8e5cb9526ebb343747950be9b50456ae80631cec182a8a4e64933ece6c3",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1631,17 +1631,17 @@
       "bounds": {
         "max": [
           17.028165817260742,
-          7.002494812011719,
-          -7.250146389007568
+          7.002494947566946,
+          -7.250146452470408
         ],
         "min": [
           14.86395263671875,
-          5.992678642272949,
-          -7.610771656036377
+          5.992678506717722,
+          -7.6107715925735375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2812acb6752e28772bee69c27d7e8e383511041fd89d54ac0166e6bc1378b3d9",
+      "geometryHash": "f59a9168bec5e4764b5446a1dd12ff47f6cb372eae87642e583fdbad36998afe",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1656,17 +1656,17 @@
       "bounds": {
         "max": [
           20.63518524169922,
-          7.002494812011719,
-          7.610771656036377
+          7.002494947566946,
+          7.6107715925735375
         ],
         "min": [
           18.470972061157227,
-          5.992678642272949,
-          7.250146389007568
+          5.992678506717722,
+          7.250146452470408
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fffec8c8fca8e6a55befd6eb5b815f4d7ea929a14afe64d23835b34db8ff7474",
+      "geometryHash": "19257908864afb2a5758c5e67cac084d628cab928fe086fb294d67dff55d890e",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1681,17 +1681,17 @@
       "bounds": {
         "max": [
           20.63518524169922,
-          7.002494812011719,
-          -7.250146389007568
+          7.002494947566946,
+          -7.250146452470408
         ],
         "min": [
           18.470972061157227,
-          5.992678642272949,
-          -7.610771656036377
+          5.992678506717722,
+          -7.6107715925735375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7767a88a3561cf63d615e7219ea02e4fa88997d4f31b36f9702afb9cd8d9b4a6",
+      "geometryHash": "dc2e18bcee43f24ba966937acc8b43dfa384f5feac54cdd3d5925125ae7a3df8",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1706,17 +1706,17 @@
       "bounds": {
         "max": [
           24.242202758789062,
-          7.002494812011719,
-          7.610771656036377
+          7.002494947566946,
+          7.6107715925735375
         ],
         "min": [
           22.07798957824707,
-          5.992678642272949,
-          7.250146389007568
+          5.992678506717722,
+          7.250146452470408
         ]
       },
       "drawMode": 4,
-      "geometryHash": "887693a555c35556ecd5c7b7ae32fe893779a6cb600c02db007fdeabbe86665b",
+      "geometryHash": "b403b138393a1be04e10810995e60db75832a37b147a3b036853884fd3b6110a",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1731,17 +1731,17 @@
       "bounds": {
         "max": [
           24.242202758789062,
-          7.002494812011719,
-          -7.250146389007568
+          7.002494947566946,
+          -7.250146452470408
         ],
         "min": [
           22.07798957824707,
-          5.992678642272949,
-          -7.610771656036377
+          5.992678506717722,
+          -7.6107715925735375
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c85ac1c506130c352c8a219df4ed1c1ef1fc3b97d7821edebf3af336b9ff5774",
+      "geometryHash": "5df0a716749f2a91e102694cc0dae68b2b9086eef8d3f8dcfd6f014bd2966360",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1755,18 +1755,18 @@
     {
       "bounds": {
         "max": [
-          -6.201037406921387,
-          4.0448384284973145,
+          -6.201037168502808,
+          4.044838416990037,
           -5.194107532501221
         ],
         "min": [
-          -7.355282783508301,
-          3.611947774887085,
+          -7.35528302192688,
+          3.611947786394363,
           -6.348353385925293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2618310939424711bd79e87f0c6824ee51af685ce3034385d52b333e51c4543",
+      "geometryHash": "cf6b34bee4ead4b3286611e975c5cf3194519e23950d9fe2ec7f8daaf027729c",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-foot.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1780,18 +1780,18 @@
     {
       "bounds": {
         "max": [
-          -6.5381855964660645,
+          -6.538185783012759,
           10.826009750366211,
-          -5.518924713134766
+          -5.518924947762455
         ],
         "min": [
-          -7.018138408660889,
+          -7.018138222114194,
           3.6119723320007324,
-          -6.02353572845459
+          -6.0235354938269
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f527d4583757ad60de943ec7b37015d573751acdf0ef0725550d98e41634f43d",
+      "geometryHash": "f723a65b4b60380066db81faa97eb7333da7d4f9c94115748ccf861515647178",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-mast.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -1806,17 +1806,17 @@
       "bounds": {
         "max": [
           -6.525668621063232,
-          11.002762794494629,
+          11.002762735339289,
           -5.518738746643066
         ],
         "min": [
           -7.030651569366455,
-          10.64925765991211,
+          10.64925771906745,
           -6.023721694946289
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33882aa515eb37fd8ead5290af8cdc1bedc086f8044dbada02e45efa4c0f0eda",
+      "geometryHash": "840341d246068d58c61b4859512ee0e3ec4841b1d1a9fab4fc339efe0f7cbe9a",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-tip.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1831,17 +1831,17 @@
       "bounds": {
         "max": [
           28.167007446289062,
-          -10.522468566894531,
-          -16.315950393676758
+          -10.522468573122941,
+          -16.315950138806738
         ],
         "min": [
           23.29285430908203,
-          -14.62430191040039,
-          -20.906879425048828
+          -14.62430190417198,
+          -20.90687967991885
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c34a4b21bf0263132ee1a3811cbc340753a53834fa586863c4e9e6001acad0ad",
+      "geometryHash": "e82cce6839b7204573f2da1c6d8d1f20f0789219289a6e6e462f9ace20c32744",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1856,17 +1856,17 @@
       "bounds": {
         "max": [
           28.787935256958008,
-          -0.2909974157810211,
-          -18.869169235229492
+          -0.2909972990697347,
+          -18.869168904890934
         ],
         "min": [
           23.010343551635742,
-          -4.370064735412598,
-          -24.506406784057617
+          -4.370064852123884,
+          -24.506407114396175
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9bdc13677d490526bbd17fcaa0ce2068ee8d150b065af1da117e8653b0f88a6",
+      "geometryHash": "c339dfb1de0b53d20be045fee4b01b60475793089681548310d48105bd7c1542",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1881,17 +1881,17 @@
       "bounds": {
         "max": [
           27.811729431152344,
-          8.937938690185547,
-          -12.280664443969727
+          8.937938334089313,
+          -12.28066532558076
         ],
         "min": [
           23.364803314208984,
-          4.980123519897461,
-          -16.277023315429688
+          4.980123875993693,
+          -16.277022433818654
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a3bb771b5010d7056b25ca157e7013b0ed5400f056bdfff3dd389bd751f626e",
+      "geometryHash": "22a4cde96b04b8abe39199b435cffae229e5ecb524be5a26205e63c422c98af2",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1906,17 +1906,17 @@
       "bounds": {
         "max": [
           28.37061309814453,
-          13.585424423217773,
-          1.4090358018875122
+          13.585424844624995,
+          1.4090361848892383
         ],
         "min": [
           23.083187103271484,
-          8.54714584350586,
-          -2.566819906234741
+          8.547145422098637,
+          -2.5668202892364675
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a5cf21bb8eec356ceaeb8b7b0d13792506ec6a4824dd099ca0a5418e3cb7276",
+      "geometryHash": "ddf19a8e15923c9c89ba2275940bf4926ee3b7c47045e8a57f70bb4df22f95f6",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1931,17 +1931,17 @@
       "bounds": {
         "max": [
           27.46734619140625,
-          9.251285552978516,
-          15.084941864013672
+          9.251285705654594,
+          15.084942071704944
         ],
         "min": [
           23.4733943939209,
-          5.645430088043213,
-          11.528329849243164
+          5.645429935367135,
+          11.528329641551892
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3bf525c8f35c31965006f58fdc2c33d0de925d5dba2db184dbb61bf7620ff112",
+      "geometryHash": "24b262c9301d686884a14100a3d673e6ffbdbeb19433af40f221fed7379874c0",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1956,17 +1956,17 @@
       "bounds": {
         "max": [
           28.08018684387207,
-          0.20065821707248688,
-          23.700666427612305
+          0.20065823083378898,
+          23.70066643547058
         ],
         "min": [
           23.18893051147461,
-          -3.281303644180298,
-          18.928829193115234
+          -3.2813036579416,
+          18.92882918525696
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e19a47b9c54e6aaf0019a8b38268defb7ad8d2bb26e4ff97d49d424985691c1",
+      "geometryHash": "671366afdc789b943a0d1254bb976d5666868aea60e78ba83f0b521da0f2d0dc",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1981,17 +1981,17 @@
       "bounds": {
         "max": [
           28.8760986328125,
-          -9.466470718383789,
-          22.09510612487793
+          -9.466470433157546,
+          22.095106406233246
         ],
         "min": [
           23.153030395507812,
-          -14.213541030883789,
-          16.641014099121094
+          -14.213541316110032,
+          16.641013817765778
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36a28c8979b39fe81f3cf192e07f819b9ff7e85edc4b642d137f5a24cfbd3eb3",
+      "geometryHash": "f1f85133355fd9fcf0702774ebe5f5ae9425f4a4b2942cf9411405519c32e551",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2006,17 +2006,17 @@
       "bounds": {
         "max": [
           27.75037384033203,
-          -16.803062438964844,
-          9.736234664916992
+          -16.803062975976008,
+          9.736235180543463
         ],
         "min": [
           23.289386749267578,
-          -21.009191513061523,
-          6.155274868011475
+          -21.00919097605036,
+          6.155274352385002
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf6178d1720e2d581c63b1f4d512d14ac580c588e4df4b4882c6e75a30a14652",
+      "geometryHash": "f30c1749b8e4a2f8690d3f4ca64bf8ed0f60df32dbd6624e8a4711558c98b66e",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2031,17 +2031,17 @@
       "bounds": {
         "max": [
           28.463607788085938,
-          -16.802549362182617,
-          -4.726563453674316
+          -16.802549357729596,
+          -4.726563733734472
         ],
         "min": [
           23.11802864074707,
-          -21.856435775756836,
-          -8.921686172485352
+          -21.856435780209857,
+          -8.921685892425195
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95bd24f10cfabfc4a6d54afe04c13cb327de3d0e0d0002954fe48f62bb0fc473",
+      "geometryHash": "3c360d935cfd3b5ab38e84f50aae35adcce707a9a9aae3d06abc241f4014a1ac",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2056,17 +2056,17 @@
       "bounds": {
         "max": [
           32.42677307128906,
-          9.39702320098877,
-          12.896053314208984
+          9.397022603588953,
+          12.89605308954966
         ],
         "min": [
           23.651851654052734,
-          3.886284589767456,
-          9.290159225463867
+          3.8862851871672732,
+          9.290159450123191
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f72f36f4242ccef73ccb7c51aff0859e6fe7aec9992a0c24b2483e5180c09163",
+      "geometryHash": "9272459312c4bca872431c4bd91b4f4b22d5301f92a306cb96dc4bb42cc40bd6",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2080,18 +2080,18 @@
     {
       "bounds": {
         "max": [
-          28.413333892822266,
-          -2.647336721420288,
+          28.413333708647606,
+          -2.647336706318577,
           23.32779312133789
         ],
         "min": [
-          23.52298927307129,
-          -4.270501613616943,
+          23.52298945724595,
+          -4.270501628718654,
           17.990488052368164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "490915b7167801ed0b23b42359776e1944dba4e2e698afd4943cfc829df6eae9",
+      "geometryHash": "19f37baeb4c50ef81190125f35422a171b0e34802151fc9eba085a87393f064c",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2106,17 +2106,17 @@
       "bounds": {
         "max": [
           33.450653076171875,
-          -11.459592819213867,
-          16.946128845214844
+          -11.459592474905046,
+          16.946129452950473
         ],
         "min": [
           24.00874137878418,
-          -17.308523178100586,
-          10.25694465637207
+          -17.30852352240941,
+          10.25694404863644
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d03ff0dd934fd91b147da97061c0bef547b7402baa956c908cecd834e6663e8",
+      "geometryHash": "57887467d1652429257c8c9456a65ce1ecdd97d49b17b84012ef4cebcc02e8f9",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2131,17 +2131,17 @@
       "bounds": {
         "max": [
           29.61796760559082,
-          -15.92147445678711,
-          -0.06368041038513184
+          -15.92147407228467,
+          -0.06368042756783021
         ],
         "min": [
           23.699121475219727,
-          -21.35910987854004,
-          -5.607529640197754
+          -21.359110263042478,
+          -5.607529623015056
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da2cd77465793c8f51eb4c793294ca559f0ee30a709873217fc8d86961c32dd7",
+      "geometryHash": "7acc750f394dbaac9e217342f12ac6948daccd62f3404d152ba26424c58f643e",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2156,17 +2156,17 @@
       "bounds": {
         "max": [
           35.18887710571289,
-          -9.703313827514648,
-          -13.530182838439941
+          -9.703313927533014,
+          -13.530183249907902
         ],
         "min": [
           23.651281356811523,
-          -13.034628868103027,
-          -20.0787296295166
+          -13.034628768084662,
+          -20.078729218048643
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a78f62836eda9b75f5446d5e2f5d1ae16960b7d4d9b76045bbed17097592487",
+      "geometryHash": "9db4136401f58cc743d726081fdf861c53635050e3bad7dfc1a398a558bd5e14",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2181,17 +2181,17 @@
       "bounds": {
         "max": [
           30.683879852294922,
-          2.6760542392730713,
-          -16.566665649414062
+          2.676053705252417,
+          -16.56666637042526
         ],
         "min": [
           24.01397705078125,
-          -2.203171968460083,
-          -21.29444694519043
+          -2.2031714344394286,
+          -21.294446224179232
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e63dbfd0e5d2144ddf751594181a902fcdfdde646acc5c213606c86b97756762",
+      "geometryHash": "2bc465154c9b079cf17048baaef506991563dbb4351a9e0c6d36406ae598231b",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2206,17 +2206,17 @@
       "bounds": {
         "max": [
           36.5,
-          10.334949493408203,
-          -2.6925039291381836
+          10.334948869577662,
+          -2.6925045092679882
         ],
         "min": [
           23.720922470092773,
-          4.835580825805664,
-          -9.07326889038086
+          4.835581449636204,
+          -9.073268310251056
         ]
       },
       "drawMode": 4,
-      "geometryHash": "94e18b015afd5dbeec9db6837aae8954844648a8cd1d01f5372453bcc291804e",
+      "geometryHash": "7ee2c4b32ad4899d4fd6ccef648b7cdc55ec2a719b7df1b461734106ae42873d",
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2521,20 +2521,20 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.beacon",
       "localTransform": [
-        1,
+        0.5049826502799988,
         0,
         0,
         0,
         0,
-        1,
+        0.5049826502799988,
         0,
         0,
         0,
         0,
-        1,
+        0.5049826502799988,
         0,
-        0,
-        0,
+        19.1923770904541,
+        21.502785682678223,
         0,
         1
       ],
@@ -2549,20 +2549,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.5049826502799988,
         0,
         0,
         0,
         0,
-        1,
+        0.5049826502799988,
         0,
         0,
         0,
         0,
-        1,
+        0.5049826502799988,
         0,
-        0,
-        0,
+        19.1923770904541,
+        21.502785682678223,
         0,
         1
       ]
@@ -2570,21 +2570,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1",
       "localTransform": [
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
-        0,
-        0,
-        0,
+        13.057700157165527,
+        -7.389473795890808,
+        -21.65951156616211,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2598,42 +2598,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
-        0,
-        0,
-        0,
+        13.057700157165527,
+        -7.389473795890808,
+        -21.65951156616211,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt1-m",
       "localTransform": [
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
-        0,
-        0,
-        0,
+        13.057700157165527,
+        -7.389473795890808,
+        21.65951156616211,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2647,42 +2647,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
         0,
         0,
         0,
-        1,
+        11.16211986541748,
         0,
-        0,
-        0,
-        0,
+        13.057700157165527,
+        -7.389473795890808,
+        21.65951156616211,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2",
       "localTransform": [
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
-        0,
-        0,
-        0,
+        -11.109323501586914,
+        -7.389475226402283,
+        -21.659486770629883,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2696,42 +2696,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
-        0,
-        0,
-        0,
+        -11.109323501586914,
+        -7.389475226402283,
+        -21.659486770629883,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.belt2-m",
       "localTransform": [
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
-        0,
-        0,
-        0,
+        -11.109323501586914,
+        -7.389475226402283,
+        21.659486770629883,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2745,42 +2745,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
         0,
         0,
         0,
-        1,
+        10.801420211791992,
         0,
-        0,
-        0,
-        0,
+        -11.109323501586914,
+        -7.389475226402283,
+        21.659486770629883,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.bridge1",
       "localTransform": [
-        1,
+        8.0771803855896,
         0,
         0,
         0,
         0,
-        1,
+        8.0771803855896,
         0,
         0,
         0,
         0,
-        1,
+        8.0771803855896,
         0,
-        0,
-        0,
-        0,
+        17.956145763397217,
+        6.415563941001892,
+        -0.008339405059814453,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2794,42 +2794,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        8.0771803855896,
         0,
         0,
         0,
         0,
-        1,
+        8.0771803855896,
         0,
         0,
         0,
         0,
-        1,
+        8.0771803855896,
         0,
-        0,
-        0,
-        0,
+        17.956145763397217,
+        6.415563941001892,
+        -0.008339405059814453,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.bridge2",
       "localTransform": [
-        1,
+        5.509220123291016,
         0,
         0,
         0,
         0,
-        1,
+        5.509220123291016,
         0,
         0,
         0,
         0,
-        1,
+        5.509220123291016,
         0,
-        0,
-        0,
-        0,
+        19.651769638061523,
+        11.132118225097656,
+        0.0007808208465576172,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2843,41 +2843,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        5.509220123291016,
         0,
         0,
         0,
         0,
-        1,
+        5.509220123291016,
         0,
         0,
         0,
         0,
-        1,
+        5.509220123291016,
         0,
-        0,
-        0,
-        0,
+        19.651769638061523,
+        11.132118225097656,
+        0.0007808208465576172,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.citadel",
       "localTransform": [
-        1,
+        18.313472747802734,
         0,
         0,
         0,
         0,
-        1,
+        18.313472747802734,
         0,
         0,
         0,
         0,
-        1,
+        18.313472747802734,
         0,
-        0,
-        0,
+        7.206890106201172,
+        0.8595736026763916,
         0,
         1
       ],
@@ -2892,20 +2892,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        18.313472747802734,
         0,
         0,
         0,
         0,
-        1,
+        18.313472747802734,
         0,
         0,
         0,
         0,
-        1,
+        18.313472747802734,
         0,
-        0,
-        0,
+        7.206890106201172,
+        0.8595736026763916,
         0,
         1
       ]
@@ -2913,21 +2913,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deck",
       "localTransform": [
-        1,
+        25.567707061767578,
         0,
         0,
         0,
         0,
-        1,
+        25.567707061767578,
         0,
         0,
         0,
         0,
-        1,
+        25.567707061767578,
         0,
-        0,
-        0,
-        0,
+        0.033054351806640625,
+        -4.127288594841957,
+        -0.0803060531616211,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2941,41 +2941,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        25.567707061767578,
         0,
         0,
         0,
         0,
-        1,
+        25.567707061767578,
         0,
         0,
         0,
         0,
-        1,
+        25.567707061767578,
         0,
-        0,
-        0,
-        0,
+        0.033054351806640625,
+        -4.127288594841957,
+        -0.0803060531616211,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-frame",
       "localTransform": [
-        1,
+        5.238316535949707,
         0,
         0,
         0,
         0,
-        1,
+        5.238316535949707,
         0,
         0,
         0,
         0,
-        1,
+        5.238316535949707,
         0,
-        0,
-        0,
+        -17.599217891693115,
+        -0.7885916233062744,
         0,
         1
       ],
@@ -2990,20 +2990,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        5.238316535949707,
         0,
         0,
         0,
         0,
-        1,
+        5.238316535949707,
         0,
         0,
         0,
         0,
-        1,
+        5.238316535949707,
         0,
-        0,
-        0,
+        -17.599217891693115,
+        -0.7885916233062744,
         0,
         1
       ]
@@ -3011,21 +3011,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat0",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        4.208188533782959,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3039,42 +3039,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        4.208188533782959,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat1",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        2.524913191795349,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3088,42 +3088,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        2.524913191795349,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat2",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        0.8416377007961273,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3137,42 +3137,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        0.8416377007961273,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat3",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -0.8416377007961273,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3186,42 +3186,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -0.8416377007961273,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat4",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -2.524913191795349,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3235,42 +3235,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -2.524913191795349,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-slat5",
       "localTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -4.208188533782959,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3284,41 +3284,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
         0,
         0,
         0,
-        1,
+        3.116464614868164,
         0,
-        0,
-        0,
-        0,
+        -17.599218368530273,
+        -0.752521276473999,
+        -4.208188533782959,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.deckvent-well",
       "localTransform": [
-        1,
+        5.049826622009277,
         0,
         0,
         0,
         0,
-        1,
+        5.049826622009277,
         0,
         0,
         0,
         0,
-        1,
+        5.049826622009277,
         0,
-        0,
-        0,
+        -17.599217891693115,
+        -1.005012720823288,
         0,
         1
       ],
@@ -3333,20 +3333,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        5.049826622009277,
         0,
         0,
         0,
         0,
-        1,
+        5.049826622009277,
         0,
         0,
         0,
         0,
-        1,
+        5.049826622009277,
         0,
-        0,
-        0,
+        -17.599217891693115,
+        -1.005012720823288,
         0,
         1
       ]
@@ -3354,20 +3354,20 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.driveblock",
       "localTransform": [
-        1,
+        15.149478912353516,
         0,
         0,
         0,
         0,
-        1,
+        15.149478912353516,
         0,
         0,
         0,
         0,
-        1,
+        15.149478912353516,
         0,
-        0,
-        0,
+        -26.977466583251953,
+        -7.56978714466095,
         0,
         1
       ],
@@ -3382,20 +3382,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        15.149478912353516,
         0,
         0,
         0,
         0,
-        1,
+        15.149478912353516,
         0,
         0,
         0,
         0,
-        1,
+        15.149478912353516,
         0,
-        0,
-        0,
+        -26.977466583251953,
+        -7.56978714466095,
         0,
         1
       ]
@@ -3403,20 +3403,20 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.lowerhull",
       "localTransform": [
-        1,
+        27.34031581878662,
         0,
         0,
         0,
         0,
-        1,
+        27.34031581878662,
         0,
         0,
         0,
         0,
-        1,
+        27.34031581878662,
         0,
-        0,
-        0,
+        -1.8013620376586914,
+        -10.948221921920776,
         0,
         1
       ],
@@ -3431,20 +3431,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        27.34031581878662,
         0,
         0,
         0,
         0,
-        1,
+        27.34031581878662,
         0,
         0,
         0,
         0,
-        1,
+        27.34031581878662,
         0,
-        0,
-        0,
+        -1.8013620376586914,
+        -10.948221921920776,
         0,
         1
       ]
@@ -3452,21 +3452,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mast",
       "localTransform": [
-        1,
+        4.328422546386719,
         0,
         0,
         0,
         0,
-        1,
+        4.328422546386719,
         0,
         0,
         0,
         0,
-        1,
+        4.328422546386719,
         0,
-        0,
-        0,
-        0,
+        19.192376136779785,
+        16.957942962646484,
+        4.470348358154297e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3480,41 +3480,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        4.328422546386719,
         0,
         0,
         0,
         0,
-        1,
+        4.328422546386719,
         0,
         0,
         0,
         0,
-        1,
+        4.328422546386719,
         0,
-        0,
-        0,
-        0,
+        19.192376136779785,
+        16.957942962646484,
+        4.470348358154297e-8,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mastradar",
       "localTransform": [
-        1,
+        3.246316909790039,
         0,
         0,
         0,
         0,
-        1,
+        3.246316909790039,
         0,
         0,
         0,
         0,
-        1,
+        3.246316909790039,
         0,
-        0,
-        0,
+        19.192376136779785,
+        16.23653745651245,
         0,
         1
       ],
@@ -3529,20 +3529,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.246316909790039,
         0,
         0,
         0,
         0,
-        1,
+        3.246316909790039,
         0,
         0,
         0,
         0,
-        1,
+        3.246316909790039,
         0,
-        0,
-        0,
+        19.192376136779785,
+        16.23653745651245,
         0,
         1
       ]
@@ -3550,20 +3550,20 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.mastyard",
       "localTransform": [
-        1,
+        4.689124584197998,
         0,
         0,
         0,
         0,
-        1,
+        4.689124584197998,
         0,
         0,
         0,
         0,
-        1,
+        4.689124584197998,
         0,
-        0,
-        0,
+        19.192376136779785,
+        18.040048599243164,
         0,
         1
       ],
@@ -3578,20 +3578,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        4.689124584197998,
         0,
         0,
         0,
         0,
-        1,
+        4.689124584197998,
         0,
         0,
         0,
         0,
-        1,
+        4.689124584197998,
         0,
-        0,
-        0,
+        19.192376136779785,
+        18.040048599243164,
         0,
         1
       ]
@@ -3599,21 +3599,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle-1-35",
       "localTransform": [
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
-        0,
-        0,
-        0,
+        -33.00118923187256,
+        -7.569787502288818,
+        9.738950610160828,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3627,41 +3627,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
-        0,
-        0,
-        0,
+        -33.00118923187256,
+        -7.569787502288818,
+        9.738950610160828,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle0-0",
       "localTransform": [
-        1,
+        4.959651231765747,
         0,
         0,
         0,
         0,
-        1,
+        4.959651231765747,
         0,
         0,
         0,
         0,
-        1,
+        4.959651231765747,
         0,
-        0,
-        0,
+        -33.001190185546875,
+        -5.044873952865601,
         0,
         1
       ],
@@ -3676,20 +3676,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        4.959651231765747,
         0,
         0,
         0,
         0,
-        1,
+        4.959651231765747,
         0,
         0,
         0,
         0,
-        1,
+        4.959651231765747,
         0,
-        0,
-        0,
+        -33.001190185546875,
+        -5.044873952865601,
         0,
         1
       ]
@@ -3697,21 +3697,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.nozzle1-35",
       "localTransform": [
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
-        0,
-        0,
-        0,
+        -33.00118923187256,
+        -7.569787502288818,
+        -9.738950610160828,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3725,42 +3725,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
         0,
         0,
         0,
-        1,
+        6.492634296417236,
         0,
-        0,
-        0,
-        0,
+        -33.00118923187256,
+        -7.569787502288818,
+        -9.738950610160828,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome-1-9",
       "localTransform": [
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
-        0,
-        0,
-        0,
+        9.09272313117981,
+        -0.3341071456670761,
+        13.706672191619873,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3774,42 +3774,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
-        0,
-        0,
-        0,
+        9.09272313117981,
+        -0.3341071456670761,
+        13.706672191619873,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome-1-9-lens",
       "localTransform": [
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
-        0,
-        0,
-        0,
+        10.283040046691895,
+        -0.10325789451599121,
+        13.706672191619873,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3823,42 +3823,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
-        0,
-        0,
-        0,
+        10.283040046691895,
+        -0.10325789451599121,
+        13.706672191619873,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome1-9",
       "localTransform": [
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
-        0,
-        0,
-        0,
+        9.09272313117981,
+        -0.3341071456670761,
+        -13.706672191619873,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3872,42 +3872,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
         0,
         0,
         0,
-        1,
+        2.1642119884490967,
         0,
-        0,
-        0,
-        0,
+        9.09272313117981,
+        -0.3341071456670761,
+        -13.706672191619873,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.pddome1-9-lens",
       "localTransform": [
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
-        0,
-        0,
-        0,
+        10.283040046691895,
+        -0.10325789451599121,
+        -13.706672191619873,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3921,42 +3921,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
         0,
         0,
         0,
-        1,
+        0.3787374496459961,
         0,
-        0,
-        0,
-        0,
+        10.283040046691895,
+        -0.10325789451599121,
+        -13.706672191619873,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft",
       "localTransform": [
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
-        0,
-        0,
-        0,
+        -21.20623779296875,
+        -2.8806625604629517,
+        -22.363516807556152,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3970,42 +3970,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
-        0,
-        0,
-        0,
+        -21.20623779296875,
+        -2.8806625604629517,
+        -22.363516807556152,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-m",
       "localTransform": [
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
-        0,
-        0,
-        0,
+        -21.20623779296875,
+        -2.8806625604629517,
+        22.363516807556152,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4019,42 +4019,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
         0,
         0,
         0,
-        1,
+        1.2263870239257812,
         0,
-        0,
-        0,
-        0,
+        -21.20623779296875,
+        -2.8806625604629517,
+        22.363516807556152,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-07-0-05",
       "localTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -3.2731064558029175,
+        -23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4068,42 +4068,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -3.2731064558029175,
+        -23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-07-0-05-m",
       "localTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -3.2731064558029175,
+        23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4117,42 +4117,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -3.2731064558029175,
+        23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-070-05",
       "localTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -2.4882192611694336,
+        -23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4166,42 +4166,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -2.4882192611694336,
+        -23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n-0-070-05-m",
       "localTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -2.4882192611694336,
+        23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4215,42 +4215,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
         0,
         0,
         0,
-        1,
+        0.19621849060058594,
         0,
-        0,
-        0,
-        0,
+        -21.7458438873291,
+        -2.4882192611694336,
+        23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-07-0-05",
       "localTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -3.2731064558029175,
+        -23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4264,42 +4264,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -3.2731064558029175,
+        -23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-07-0-05-m",
       "localTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -3.2731064558029175,
+        23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4313,42 +4313,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -3.2731064558029175,
+        23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-070-05",
       "localTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -2.4882192611694336,
+        -23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4362,42 +4362,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -2.4882192611694336,
+        -23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.rcsaft-n0-070-05-m",
       "localTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -2.4882192611694336,
+        23.295571327209473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4411,42 +4411,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
         0,
         0,
         0,
-        1,
+        0.19622039794921875,
         0,
-        0,
-        0,
-        0,
+        -20.666622161865234,
+        -2.4882192611694336,
+        23.295571327209473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-0",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        15.946059226989746,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4460,42 +4460,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        15.946059226989746,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-0-m",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        15.946059226989746,
+        6.497586727142334,
+        7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4509,42 +4509,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        15.946059226989746,
+        6.497586727142334,
+        7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-1",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        19.553078651428223,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4558,42 +4558,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        19.553078651428223,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-1-m",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        19.553078651428223,
+        6.497586727142334,
+        7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4607,42 +4607,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        19.553078651428223,
+        6.497586727142334,
+        7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-2",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        23.160096168518066,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4656,42 +4656,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        23.160096168518066,
+        6.497586727142334,
+        -7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.towerwin-2-m",
       "localTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        23.160096168518066,
+        6.497586727142334,
+        7.430459022521973,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4705,42 +4705,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
         0,
         0,
         0,
-        1,
+        1.082106590270996,
         0,
-        0,
-        0,
-        0,
+        23.160096168518066,
+        6.497586727142334,
+        7.430459022521973,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-foot",
       "localTransform": [
-        1,
+        0.5771229267120361,
         0,
         0,
         0,
         0,
-        1,
+        0.5771229267120361,
         0,
         0,
         0,
         0,
-        1,
+        0.5771229267120361,
         0,
-        0,
-        0,
-        0,
+        -6.778160095214844,
+        3.8283931016921997,
+        -5.771230459213257,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4754,42 +4754,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.5771229267120361,
         0,
         0,
         0,
         0,
-        1,
+        0.5771229267120361,
         0,
         0,
         0,
         0,
-        1,
+        0.5771229267120361,
         0,
-        0,
-        0,
-        0,
+        -6.778160095214844,
+        3.8283931016921997,
+        -5.771230459213257,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-mast",
       "localTransform": [
-        1,
+        3.6070187091827393,
         0,
         0,
         0,
         0,
-        1,
+        3.6070187091827393,
         0,
         0,
         0,
         0,
-        1,
+        3.6070187091827393,
         0,
-        0,
-        0,
-        0,
+        -6.778162002563477,
+        7.218991041183472,
+        -5.771230220794678,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4803,42 +4803,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.6070187091827393,
         0,
         0,
         0,
         0,
-        1,
+        3.6070187091827393,
         0,
         0,
         0,
         0,
-        1,
+        3.6070187091827393,
         0,
-        0,
-        0,
-        0,
+        -6.778162002563477,
+        7.218991041183472,
+        -5.771230220794678,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.whip-tip",
       "localTransform": [
-        1,
+        0.25249147415161133,
         0,
         0,
         0,
         0,
-        1,
+        0.25249147415161133,
         0,
         0,
         0,
         0,
-        1,
+        0.25249147415161133,
         0,
-        0,
-        0,
-        0,
+        -6.778160095214844,
+        10.82601022720337,
+        -5.771230220794678,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4852,42 +4852,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        0.25249147415161133,
         0,
         0,
         0,
         0,
-        1,
+        0.25249147415161133,
         0,
         0,
         0,
         0,
-        1,
+        0.25249147415161133,
         0,
-        0,
-        0,
-        0,
+        -6.778160095214844,
+        10.82601022720337,
+        -5.771230220794678,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib0",
       "localTransform": [
-        1,
+        2.4370765686035156,
         0,
         0,
         0,
         0,
-        1,
+        2.4370765686035156,
         0,
         0,
         0,
         0,
-        1,
+        2.4370765686035156,
         0,
-        0,
-        0,
-        0,
+        25.729930877685547,
+        -12.573385238647461,
+        -18.611414909362793,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4901,42 +4901,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.4370765686035156,
         0,
         0,
         0,
         0,
-        1,
+        2.4370765686035156,
         0,
         0,
         0,
         0,
-        1,
+        2.4370765686035156,
         0,
-        0,
-        0,
-        0,
+        25.729930877685547,
+        -12.573385238647461,
+        -18.611414909362793,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib1",
       "localTransform": [
-        1,
+        2.888795852661133,
         0,
         0,
         0,
         0,
-        1,
+        2.888795852661133,
         0,
         0,
         0,
         0,
-        1,
+        2.888795852661133,
         0,
-        0,
-        0,
-        0,
+        25.899139404296875,
+        -2.3305310755968094,
+        -21.687788009643555,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4950,42 +4950,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.888795852661133,
         0,
         0,
         0,
         0,
-        1,
+        2.888795852661133,
         0,
         0,
         0,
         0,
-        1,
+        2.888795852661133,
         0,
-        0,
-        0,
-        0,
+        25.899139404296875,
+        -2.3305310755968094,
+        -21.687788009643555,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib2",
       "localTransform": [
-        1,
+        2.2234630584716797,
         0,
         0,
         0,
         0,
-        1,
+        2.2234630584716797,
         0,
         0,
         0,
         0,
-        1,
+        2.2234630584716797,
         0,
-        0,
-        0,
-        0,
+        25.588266372680664,
+        6.959031105041504,
+        -14.278843879699707,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4999,42 +4999,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.2234630584716797,
         0,
         0,
         0,
         0,
-        1,
+        2.2234630584716797,
         0,
         0,
         0,
         0,
-        1,
+        2.2234630584716797,
         0,
-        0,
-        0,
-        0,
+        25.588266372680664,
+        6.959031105041504,
+        -14.278843879699707,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib3",
       "localTransform": [
-        1,
+        2.6437129974365234,
         0,
         0,
         0,
         0,
-        1,
+        2.6437129974365234,
         0,
         0,
         0,
         0,
-        1,
+        2.6437129974365234,
         0,
-        0,
-        0,
-        0,
+        25.726900100708008,
+        11.066285133361816,
+        -0.5788920521736145,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5048,42 +5048,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.6437129974365234,
         0,
         0,
         0,
         0,
-        1,
+        2.6437129974365234,
         0,
         0,
         0,
         0,
-        1,
+        2.6437129974365234,
         0,
-        0,
-        0,
-        0,
+        25.726900100708008,
+        11.066285133361816,
+        -0.5788920521736145,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib4",
       "localTransform": [
-        1,
+        1.9969758987426758,
         0,
         0,
         0,
         0,
-        1,
+        1.9969758987426758,
         0,
         0,
         0,
         0,
-        1,
+        1.9969758987426758,
         0,
-        0,
-        0,
-        0,
+        25.470370292663574,
+        7.448357820510864,
+        13.306635856628418,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5097,42 +5097,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        1.9969758987426758,
         0,
         0,
         0,
         0,
-        1,
+        1.9969758987426758,
         0,
         0,
         0,
         0,
-        1,
+        1.9969758987426758,
         0,
-        0,
-        0,
-        0,
+        25.470370292663574,
+        7.448357820510864,
+        13.306635856628418,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib5",
       "localTransform": [
-        1,
+        2.4456281661987305,
         0,
         0,
         0,
         0,
-        1,
+        2.4456281661987305,
         0,
         0,
         0,
         0,
-        1,
+        2.4456281661987305,
         0,
-        0,
-        0,
-        0,
+        25.63455867767334,
+        -1.5403227135539055,
+        21.31474781036377,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5146,42 +5146,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.4456281661987305,
         0,
         0,
         0,
         0,
-        1,
+        2.4456281661987305,
         0,
         0,
         0,
         0,
-        1,
+        2.4456281661987305,
         0,
-        0,
-        0,
-        0,
+        25.63455867767334,
+        -1.5403227135539055,
+        21.31474781036377,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib6",
       "localTransform": [
-        1,
+        2.8615341186523438,
         0,
         0,
         0,
         0,
-        1,
+        2.8615341186523438,
         0,
         0,
         0,
         0,
-        1,
+        2.8615341186523438,
         0,
-        0,
-        0,
-        0,
+        26.014564514160156,
+        -11.840005874633789,
+        19.36806011199951,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5195,42 +5195,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.8615341186523438,
         0,
         0,
         0,
         0,
-        1,
+        2.8615341186523438,
         0,
         0,
         0,
         0,
-        1,
+        2.8615341186523438,
         0,
-        0,
-        0,
-        0,
+        26.014564514160156,
+        -11.840005874633789,
+        19.36806011199951,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib7",
       "localTransform": [
-        1,
+        2.2304935455322266,
         0,
         0,
         0,
         0,
-        1,
+        2.2304935455322266,
         0,
         0,
         0,
         0,
-        1,
+        2.2304935455322266,
         0,
-        0,
-        0,
-        0,
+        25.519880294799805,
+        -18.906126976013184,
+        7.945754766464233,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5244,42 +5244,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.2304935455322266,
         0,
         0,
         0,
         0,
-        1,
+        2.2304935455322266,
         0,
         0,
         0,
         0,
-        1,
+        2.2304935455322266,
         0,
-        0,
-        0,
-        0,
+        25.519880294799805,
+        -18.906126976013184,
+        7.945754766464233,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-f-rib8",
       "localTransform": [
-        1,
+        2.6727895736694336,
         0,
         0,
         0,
         0,
-        1,
+        2.6727895736694336,
         0,
         0,
         0,
         0,
-        1,
+        2.6727895736694336,
         0,
-        0,
-        0,
-        0,
+        25.790818214416504,
+        -19.329492568969727,
+        -6.824124813079834,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5293,42 +5293,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.6727895736694336,
         0,
         0,
         0,
         0,
-        1,
+        2.6727895736694336,
         0,
         0,
         0,
         0,
-        1,
+        2.6727895736694336,
         0,
-        0,
-        0,
-        0,
+        25.790818214416504,
+        -19.329492568969727,
+        -6.824124813079834,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear0",
       "localTransform": [
-        1,
+        4.387460708618164,
         0,
         0,
         0,
         0,
-        1,
+        4.387460708618164,
         0,
         0,
         0,
         0,
-        1,
+        4.387460708618164,
         0,
-        0,
-        0,
-        0,
+        28.0393123626709,
+        6.641653895378113,
+        11.093106269836426,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5342,42 +5342,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        4.387460708618164,
         0,
         0,
         0,
         0,
-        1,
+        4.387460708618164,
         0,
         0,
         0,
         0,
-        1,
+        4.387460708618164,
         0,
-        0,
-        0,
-        0,
+        28.0393123626709,
+        6.641653895378113,
+        11.093106269836426,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear1",
       "localTransform": [
-        1,
+        2.6686525344848633,
         0,
         0,
         0,
         0,
-        1,
+        2.6686525344848633,
         0,
         0,
         0,
         0,
-        1,
+        2.6686525344848633,
         0,
-        0,
-        0,
-        0,
+        25.968161582946777,
+        -3.4589191675186157,
+        20.659140586853027,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5391,42 +5391,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.6686525344848633,
         0,
         0,
         0,
         0,
-        1,
+        2.6686525344848633,
         0,
         0,
         0,
         0,
-        1,
+        2.6686525344848633,
         0,
-        0,
-        0,
-        0,
+        25.968161582946777,
+        -3.4589191675186157,
+        20.659140586853027,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear2",
       "localTransform": [
-        1,
+        4.720955848693848,
         0,
         0,
         0,
         0,
-        1,
+        4.720955848693848,
         0,
         0,
         0,
         0,
-        1,
+        4.720955848693848,
         0,
-        0,
-        0,
-        0,
+        28.729697227478027,
+        -14.384057998657227,
+        13.601536750793457,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5440,42 +5440,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        4.720955848693848,
         0,
         0,
         0,
         0,
-        1,
+        4.720955848693848,
         0,
         0,
         0,
         0,
-        1,
+        4.720955848693848,
         0,
-        0,
-        0,
-        0,
+        28.729697227478027,
+        -14.384057998657227,
+        13.601536750793457,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear3",
       "localTransform": [
-        1,
+        2.959423065185547,
         0,
         0,
         0,
         0,
-        1,
+        2.959423065185547,
         0,
         0,
         0,
         0,
-        1,
+        2.959423065185547,
         0,
-        0,
-        0,
-        0,
+        26.658544540405273,
+        -18.640292167663574,
+        -2.835605025291443,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5489,42 +5489,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        2.959423065185547,
         0,
         0,
         0,
         0,
-        1,
+        2.959423065185547,
         0,
         0,
         0,
         0,
-        1,
+        2.959423065185547,
         0,
-        0,
-        0,
-        0,
+        26.658544540405273,
+        -18.640292167663574,
+        -2.835605025291443,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear4",
       "localTransform": [
-        1,
+        5.768797874450684,
         0,
         0,
         0,
         0,
-        1,
+        5.768797874450684,
         0,
         0,
         0,
         0,
-        1,
+        5.768797874450684,
         0,
-        0,
-        0,
-        0,
+        29.420079231262207,
+        -11.368971347808838,
+        -16.80445623397827,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5538,42 +5538,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        5.768797874450684,
         0,
         0,
         0,
         0,
-        1,
+        5.768797874450684,
         0,
         0,
         0,
         0,
-        1,
+        5.768797874450684,
         0,
-        0,
-        0,
-        0,
+        29.420079231262207,
+        -11.368971347808838,
+        -16.80445623397827,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear5",
       "localTransform": [
-        1,
+        3.334951400756836,
         0,
         0,
         0,
         0,
-        1,
+        3.334951400756836,
         0,
         0,
         0,
         0,
-        1,
+        3.334951400756836,
         0,
-        0,
-        0,
-        0,
+        27.348928451538086,
+        0.23644113540649414,
+        -18.930556297302246,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5587,42 +5587,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        3.334951400756836,
         0,
         0,
         0,
         0,
-        1,
+        3.334951400756836,
         0,
         0,
         0,
         0,
-        1,
+        3.334951400756836,
         0,
-        0,
-        0,
-        0,
+        27.348928451538086,
+        0.23644113540649414,
+        -18.930556297302246,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-engine.mesh.woundfwd-t-tear6",
       "localTransform": [
-        1,
+        6.389538764953613,
         0,
         0,
         0,
         0,
-        1,
+        6.389538764953613,
         0,
         0,
         0,
         0,
-        1,
+        6.389538764953613,
         0,
-        0,
-        0,
-        0,
+        30.110461235046387,
+        7.585265159606934,
+        -5.8828864097595215,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5636,21 +5636,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-engine.body",
       "worldTransform": [
-        1,
+        6.389538764953613,
         0,
         0,
         0,
         0,
-        1,
+        6.389538764953613,
         0,
         0,
         0,
         0,
-        1,
+        6.389538764953613,
         0,
-        0,
-        0,
-        0,
+        30.110461235046387,
+        7.585265159606934,
+        -5.8828864097595215,
         1
       ]
     },
@@ -5713,37 +5713,37 @@
       "uri": "place_aftermath_wreck_corvette_engine.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 597012,
-    "sha256": "fb08a67bef8f887597e6081df36605142499a226a26ea20259b1b7cfd62a35fd",
+    "bytes": 419464,
+    "sha256": "157510f79e07283b52459fe880d42c621501a2ed5744fbd76558de8698c330a2",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.0000209808349609375,
-        -0.000072479248046875,
+        -0.00002142348862577137,
+        -0.00007264494302816615,
         0
       ],
       "max": [
         36.5,
-        21.856290817260742,
-        24.52677345275879
+        21.8562904903238,
+        24.526773229030816
       ],
       "min": [
-        -36.50004196166992,
-        -21.856435775756836,
-        -24.52677345275879
+        -36.50004284697725,
+        -21.856435780209857,
+        -24.526773229030816
       ],
       "size": [
-        73.00004196166992,
-        43.71272659301758,
-        49.05354690551758
+        73.00004284697725,
+        43.71272627053366,
+        49.05354645806163
       ]
     },
     "hidden": [],
@@ -6264,20 +6264,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5049826502799988,
           0,
           0,
           0,
           0,
-          1,
+          0.5049826502799988,
           0,
           0,
           0,
           0,
-          1,
+          0.5049826502799988,
           0,
-          0,
-          0,
+          19.1923770904541,
+          21.502785682678223,
           0,
           1
         ],
@@ -6291,21 +6291,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          -21.65951156616211,
           1
         ],
         "name": "Belt1_1",
@@ -6318,21 +6318,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          -21.65951156616211,
           1
         ],
         "name": "Belt1_2",
@@ -6345,21 +6345,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          -21.65951156616211,
           1
         ],
         "name": "Belt1_3",
@@ -6372,21 +6372,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          21.65951156616211,
           1
         ],
         "name": "Belt1_M_1",
@@ -6399,21 +6399,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          21.65951156616211,
           1
         ],
         "name": "Belt1_M_2",
@@ -6426,21 +6426,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
           0,
           0,
           0,
-          1,
+          11.16211986541748,
           0,
-          0,
-          0,
-          0,
+          13.057700157165527,
+          -7.389473795890808,
+          21.65951156616211,
           1
         ],
         "name": "Belt1_M_3",
@@ -6453,21 +6453,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
-          0,
-          0,
-          0,
+          -11.109323501586914,
+          -7.389475226402283,
+          -21.659486770629883,
           1
         ],
         "name": "Belt2_1",
@@ -6480,21 +6480,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
-          0,
-          0,
-          0,
+          -11.109323501586914,
+          -7.389475226402283,
+          -21.659486770629883,
           1
         ],
         "name": "Belt2_2",
@@ -6507,21 +6507,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
-          0,
-          0,
-          0,
+          -11.109323501586914,
+          -7.389475226402283,
+          21.659486770629883,
           1
         ],
         "name": "Belt2_M_1",
@@ -6534,21 +6534,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
           0,
           0,
           0,
-          1,
+          10.801420211791992,
           0,
-          0,
-          0,
-          0,
+          -11.109323501586914,
+          -7.389475226402283,
+          21.659486770629883,
           1
         ],
         "name": "Belt2_M_2",
@@ -6561,21 +6561,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.0771803855896,
           0,
           0,
           0,
           0,
-          1,
+          8.0771803855896,
           0,
           0,
           0,
           0,
-          1,
+          8.0771803855896,
           0,
-          0,
-          0,
-          0,
+          17.956145763397217,
+          6.415563941001892,
+          -0.008339405059814453,
           1
         ],
         "name": "Bridge1_1",
@@ -6588,21 +6588,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.0771803855896,
           0,
           0,
           0,
           0,
-          1,
+          8.0771803855896,
           0,
           0,
           0,
           0,
-          1,
+          8.0771803855896,
           0,
-          0,
-          0,
-          0,
+          17.956145763397217,
+          6.415563941001892,
+          -0.008339405059814453,
           1
         ],
         "name": "Bridge1_2",
@@ -6615,21 +6615,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.509220123291016,
           0,
           0,
           0,
           0,
-          1,
+          5.509220123291016,
           0,
           0,
           0,
           0,
-          1,
+          5.509220123291016,
           0,
-          0,
-          0,
-          0,
+          19.651769638061523,
+          11.132118225097656,
+          0.0007808208465576172,
           1
         ],
         "name": "Bridge2",
@@ -6642,20 +6642,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
-          0,
-          0,
+          7.206890106201172,
+          0.8595736026763916,
           0,
           1
         ],
@@ -6669,20 +6669,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
-          0,
-          0,
+          7.206890106201172,
+          0.8595736026763916,
           0,
           1
         ],
@@ -6696,20 +6696,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
-          0,
-          0,
+          7.206890106201172,
+          0.8595736026763916,
           0,
           1
         ],
@@ -6723,20 +6723,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
-          0,
-          0,
+          7.206890106201172,
+          0.8595736026763916,
           0,
           1
         ],
@@ -6750,20 +6750,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
           0,
           0,
           0,
-          1,
+          18.313472747802734,
           0,
-          0,
-          0,
+          7.206890106201172,
+          0.8595736026763916,
           0,
           1
         ],
@@ -6777,21 +6777,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
-          0,
-          0,
-          0,
+          0.033054351806640625,
+          -4.127288594841957,
+          -0.0803060531616211,
           1
         ],
         "name": "Deck_1",
@@ -6804,21 +6804,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
-          0,
-          0,
-          0,
+          0.033054351806640625,
+          -4.127288594841957,
+          -0.0803060531616211,
           1
         ],
         "name": "Deck_2",
@@ -6831,21 +6831,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
           0,
           0,
           0,
-          1,
+          25.567707061767578,
           0,
-          0,
-          0,
-          0,
+          0.033054351806640625,
+          -4.127288594841957,
+          -0.0803060531616211,
           1
         ],
         "name": "Deck_3",
@@ -6858,20 +6858,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.238316535949707,
           0,
           0,
           0,
           0,
-          1,
+          5.238316535949707,
           0,
           0,
           0,
           0,
-          1,
+          5.238316535949707,
           0,
-          0,
-          0,
+          -17.599217891693115,
+          -0.7885916233062744,
           0,
           1
         ],
@@ -6885,21 +6885,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          4.208188533782959,
           1
         ],
         "name": "DeckVent_Slat0",
@@ -6912,21 +6912,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          2.524913191795349,
           1
         ],
         "name": "DeckVent_Slat1",
@@ -6939,21 +6939,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          0.8416377007961273,
           1
         ],
         "name": "DeckVent_Slat2",
@@ -6966,21 +6966,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          -0.8416377007961273,
           1
         ],
         "name": "DeckVent_Slat3",
@@ -6993,21 +6993,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          -2.524913191795349,
           1
         ],
         "name": "DeckVent_Slat4",
@@ -7020,21 +7020,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
           0,
           0,
           0,
-          1,
+          3.116464614868164,
           0,
-          0,
-          0,
-          0,
+          -17.599218368530273,
+          -0.752521276473999,
+          -4.208188533782959,
           1
         ],
         "name": "DeckVent_Slat5",
@@ -7047,20 +7047,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.049826622009277,
           0,
           0,
           0,
           0,
-          1,
+          5.049826622009277,
           0,
           0,
           0,
           0,
-          1,
+          5.049826622009277,
           0,
-          0,
-          0,
+          -17.599217891693115,
+          -1.005012720823288,
           0,
           1
         ],
@@ -7074,20 +7074,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.149478912353516,
           0,
           0,
           0,
           0,
-          1,
+          15.149478912353516,
           0,
           0,
           0,
           0,
-          1,
+          15.149478912353516,
           0,
-          0,
-          0,
+          -26.977466583251953,
+          -7.56978714466095,
           0,
           1
         ],
@@ -7101,20 +7101,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.34031581878662,
           0,
           0,
           0,
           0,
-          1,
+          27.34031581878662,
           0,
           0,
           0,
           0,
-          1,
+          27.34031581878662,
           0,
-          0,
-          0,
+          -1.8013620376586914,
+          -10.948221921920776,
           0,
           1
         ],
@@ -7128,20 +7128,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.34031581878662,
           0,
           0,
           0,
           0,
-          1,
+          27.34031581878662,
           0,
           0,
           0,
           0,
-          1,
+          27.34031581878662,
           0,
-          0,
-          0,
+          -1.8013620376586914,
+          -10.948221921920776,
           0,
           1
         ],
@@ -7155,21 +7155,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.328422546386719,
           0,
           0,
           0,
           0,
-          1,
+          4.328422546386719,
           0,
           0,
           0,
           0,
-          1,
+          4.328422546386719,
           0,
-          0,
-          0,
-          0,
+          19.192376136779785,
+          16.957942962646484,
+          4.470348358154297e-8,
           1
         ],
         "name": "Mast_1",
@@ -7182,21 +7182,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.328422546386719,
           0,
           0,
           0,
           0,
-          1,
+          4.328422546386719,
           0,
           0,
           0,
           0,
-          1,
+          4.328422546386719,
           0,
-          0,
-          0,
-          0,
+          19.192376136779785,
+          16.957942962646484,
+          4.470348358154297e-8,
           1
         ],
         "name": "Mast_2",
@@ -7209,20 +7209,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.246316909790039,
           0,
           0,
           0,
           0,
-          1,
+          3.246316909790039,
           0,
           0,
           0,
           0,
-          1,
+          3.246316909790039,
           0,
-          0,
-          0,
+          19.192376136779785,
+          16.23653745651245,
           0,
           1
         ],
@@ -7236,20 +7236,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.689124584197998,
           0,
           0,
           0,
           0,
-          1,
+          4.689124584197998,
           0,
           0,
           0,
           0,
-          1,
+          4.689124584197998,
           0,
-          0,
-          0,
+          19.192376136779785,
+          18.040048599243164,
           0,
           1
         ],
@@ -7263,21 +7263,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          9.738950610160828,
           1
         ],
         "name": "Nozzle-135_1",
@@ -7290,21 +7290,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          9.738950610160828,
           1
         ],
         "name": "Nozzle-135_2",
@@ -7317,21 +7317,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          9.738950610160828,
           1
         ],
         "name": "Nozzle-135_3",
@@ -7344,20 +7344,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
-          0,
-          0,
+          -33.001190185546875,
+          -5.044873952865601,
           0,
           1
         ],
@@ -7371,20 +7371,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
-          0,
-          0,
+          -33.001190185546875,
+          -5.044873952865601,
           0,
           1
         ],
@@ -7398,20 +7398,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
           0,
           0,
           0,
-          1,
+          4.959651231765747,
           0,
-          0,
-          0,
+          -33.001190185546875,
+          -5.044873952865601,
           0,
           1
         ],
@@ -7425,21 +7425,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          -9.738950610160828,
           1
         ],
         "name": "Nozzle135_1",
@@ -7452,21 +7452,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          -9.738950610160828,
           1
         ],
         "name": "Nozzle135_2",
@@ -7479,21 +7479,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
           0,
           0,
           0,
-          1,
+          6.492634296417236,
           0,
-          0,
-          0,
-          0,
+          -33.00118923187256,
+          -7.569787502288818,
+          -9.738950610160828,
           1
         ],
         "name": "Nozzle135_3",
@@ -7506,21 +7506,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1642119884490967,
           0,
           0,
           0,
           0,
-          1,
+          2.1642119884490967,
           0,
           0,
           0,
           0,
-          1,
+          2.1642119884490967,
           0,
-          0,
-          0,
-          0,
+          9.09272313117981,
+          -0.3341071456670761,
+          13.706672191619873,
           1
         ],
         "name": "PDDome-19",
@@ -7533,21 +7533,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3787374496459961,
           0,
           0,
           0,
           0,
-          1,
+          0.3787374496459961,
           0,
           0,
           0,
           0,
-          1,
+          0.3787374496459961,
           0,
-          0,
-          0,
-          0,
+          10.283040046691895,
+          -0.10325789451599121,
+          13.706672191619873,
           1
         ],
         "name": "PDDome-19_Lens",
@@ -7560,21 +7560,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1642119884490967,
           0,
           0,
           0,
           0,
-          1,
+          2.1642119884490967,
           0,
           0,
           0,
           0,
-          1,
+          2.1642119884490967,
           0,
-          0,
-          0,
-          0,
+          9.09272313117981,
+          -0.3341071456670761,
+          -13.706672191619873,
           1
         ],
         "name": "PDDome19",
@@ -7587,21 +7587,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3787374496459961,
           0,
           0,
           0,
           0,
-          1,
+          0.3787374496459961,
           0,
           0,
           0,
           0,
-          1,
+          0.3787374496459961,
           0,
-          0,
-          0,
-          0,
+          10.283040046691895,
+          -0.10325789451599121,
+          -13.706672191619873,
           1
         ],
         "name": "PDDome19_Lens",
@@ -7614,21 +7614,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2263870239257812,
           0,
           0,
           0,
           0,
-          1,
+          1.2263870239257812,
           0,
           0,
           0,
           0,
-          1,
+          1.2263870239257812,
           0,
-          0,
-          0,
-          0,
+          -21.20623779296875,
+          -2.8806625604629517,
+          -22.363516807556152,
           1
         ],
         "name": "RCSAft",
@@ -7641,21 +7641,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2263870239257812,
           0,
           0,
           0,
           0,
-          1,
+          1.2263870239257812,
           0,
           0,
           0,
           0,
-          1,
+          1.2263870239257812,
           0,
-          0,
-          0,
-          0,
+          -21.20623779296875,
+          -2.8806625604629517,
+          22.363516807556152,
           1
         ],
         "name": "RCSAft_M",
@@ -7668,21 +7668,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
-          0,
-          0,
-          0,
+          -21.7458438873291,
+          -3.2731064558029175,
+          -23.295571327209473,
           1
         ],
         "name": "RCSAft_N-007-005",
@@ -7695,21 +7695,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
-          0,
-          0,
-          0,
+          -21.7458438873291,
+          -3.2731064558029175,
+          23.295571327209473,
           1
         ],
         "name": "RCSAft_N-007-005_M",
@@ -7722,21 +7722,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
-          0,
-          0,
-          0,
+          -21.7458438873291,
+          -2.4882192611694336,
+          -23.295571327209473,
           1
         ],
         "name": "RCSAft_N-007005",
@@ -7749,21 +7749,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
           0,
           0,
           0,
-          1,
+          0.19621849060058594,
           0,
-          0,
-          0,
-          0,
+          -21.7458438873291,
+          -2.4882192611694336,
+          23.295571327209473,
           1
         ],
         "name": "RCSAft_N-007005_M",
@@ -7776,21 +7776,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
-          0,
-          0,
-          0,
+          -20.666622161865234,
+          -3.2731064558029175,
+          -23.295571327209473,
           1
         ],
         "name": "RCSAft_N007-005",
@@ -7803,21 +7803,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
-          0,
-          0,
-          0,
+          -20.666622161865234,
+          -3.2731064558029175,
+          23.295571327209473,
           1
         ],
         "name": "RCSAft_N007-005_M",
@@ -7830,21 +7830,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
-          0,
-          0,
-          0,
+          -20.666622161865234,
+          -2.4882192611694336,
+          -23.295571327209473,
           1
         ],
         "name": "RCSAft_N007005",
@@ -7857,21 +7857,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
           0,
           0,
           0,
-          1,
+          0.19622039794921875,
           0,
-          0,
-          0,
-          0,
+          -20.666622161865234,
+          -2.4882192611694336,
+          23.295571327209473,
           1
         ],
         "name": "RCSAft_N007005_M",
@@ -7884,21 +7884,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          15.946059226989746,
+          6.497586727142334,
+          -7.430459022521973,
           1
         ],
         "name": "TowerWin_0",
@@ -7911,21 +7911,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          15.946059226989746,
+          6.497586727142334,
+          7.430459022521973,
           1
         ],
         "name": "TowerWin_0_M",
@@ -7938,21 +7938,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          19.553078651428223,
+          6.497586727142334,
+          -7.430459022521973,
           1
         ],
         "name": "TowerWin_1",
@@ -7965,21 +7965,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          19.553078651428223,
+          6.497586727142334,
+          7.430459022521973,
           1
         ],
         "name": "TowerWin_1_M",
@@ -7992,21 +7992,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          23.160096168518066,
+          6.497586727142334,
+          -7.430459022521973,
           1
         ],
         "name": "TowerWin_2",
@@ -8019,21 +8019,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
           0,
           0,
           0,
-          1,
+          1.082106590270996,
           0,
-          0,
-          0,
-          0,
+          23.160096168518066,
+          6.497586727142334,
+          7.430459022521973,
           1
         ],
         "name": "TowerWin_2_M",
@@ -8046,21 +8046,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5771229267120361,
           0,
           0,
           0,
           0,
-          1,
+          0.5771229267120361,
           0,
           0,
           0,
           0,
-          1,
+          0.5771229267120361,
           0,
-          0,
-          0,
-          0,
+          -6.778160095214844,
+          3.8283931016921997,
+          -5.771230459213257,
           1
         ],
         "name": "Whip_Foot",
@@ -8073,21 +8073,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6070187091827393,
           0,
           0,
           0,
           0,
-          1,
+          3.6070187091827393,
           0,
           0,
           0,
           0,
-          1,
+          3.6070187091827393,
           0,
-          0,
-          0,
-          0,
+          -6.778162002563477,
+          7.218991041183472,
+          -5.771230220794678,
           1
         ],
         "name": "Whip_Mast",
@@ -8100,21 +8100,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25249147415161133,
           0,
           0,
           0,
           0,
-          1,
+          0.25249147415161133,
           0,
           0,
           0,
           0,
-          1,
+          0.25249147415161133,
           0,
-          0,
-          0,
-          0,
+          -6.778160095214844,
+          10.82601022720337,
+          -5.771230220794678,
           1
         ],
         "name": "Whip_Tip",
@@ -8127,21 +8127,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4370765686035156,
           0,
           0,
           0,
           0,
-          1,
+          2.4370765686035156,
           0,
           0,
           0,
           0,
-          1,
+          2.4370765686035156,
           0,
-          0,
-          0,
-          0,
+          25.729930877685547,
+          -12.573385238647461,
+          -18.611414909362793,
           1
         ],
         "name": "woundFwd_f_rib0",
@@ -8154,21 +8154,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.888795852661133,
           0,
           0,
           0,
           0,
-          1,
+          2.888795852661133,
           0,
           0,
           0,
           0,
-          1,
+          2.888795852661133,
           0,
-          0,
-          0,
-          0,
+          25.899139404296875,
+          -2.3305310755968094,
+          -21.687788009643555,
           1
         ],
         "name": "woundFwd_f_rib1",
@@ -8181,21 +8181,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2234630584716797,
           0,
           0,
           0,
           0,
-          1,
+          2.2234630584716797,
           0,
           0,
           0,
           0,
-          1,
+          2.2234630584716797,
           0,
-          0,
-          0,
-          0,
+          25.588266372680664,
+          6.959031105041504,
+          -14.278843879699707,
           1
         ],
         "name": "woundFwd_f_rib2",
@@ -8208,21 +8208,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.6437129974365234,
           0,
           0,
           0,
           0,
-          1,
+          2.6437129974365234,
           0,
           0,
           0,
           0,
-          1,
+          2.6437129974365234,
           0,
-          0,
-          0,
-          0,
+          25.726900100708008,
+          11.066285133361816,
+          -0.5788920521736145,
           1
         ],
         "name": "woundFwd_f_rib3",
@@ -8235,21 +8235,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9969758987426758,
           0,
           0,
           0,
           0,
-          1,
+          1.9969758987426758,
           0,
           0,
           0,
           0,
-          1,
+          1.9969758987426758,
           0,
-          0,
-          0,
-          0,
+          25.470370292663574,
+          7.448357820510864,
+          13.306635856628418,
           1
         ],
         "name": "woundFwd_f_rib4",
@@ -8262,21 +8262,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4456281661987305,
           0,
           0,
           0,
           0,
-          1,
+          2.4456281661987305,
           0,
           0,
           0,
           0,
-          1,
+          2.4456281661987305,
           0,
-          0,
-          0,
-          0,
+          25.63455867767334,
+          -1.5403227135539055,
+          21.31474781036377,
           1
         ],
         "name": "woundFwd_f_rib5",
@@ -8289,21 +8289,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8615341186523438,
           0,
           0,
           0,
           0,
-          1,
+          2.8615341186523438,
           0,
           0,
           0,
           0,
-          1,
+          2.8615341186523438,
           0,
-          0,
-          0,
-          0,
+          26.014564514160156,
+          -11.840005874633789,
+          19.36806011199951,
           1
         ],
         "name": "woundFwd_f_rib6",
@@ -8316,21 +8316,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2304935455322266,
           0,
           0,
           0,
           0,
-          1,
+          2.2304935455322266,
           0,
           0,
           0,
           0,
-          1,
+          2.2304935455322266,
           0,
-          0,
-          0,
-          0,
+          25.519880294799805,
+          -18.906126976013184,
+          7.945754766464233,
           1
         ],
         "name": "woundFwd_f_rib7",
@@ -8343,21 +8343,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.6727895736694336,
           0,
           0,
           0,
           0,
-          1,
+          2.6727895736694336,
           0,
           0,
           0,
           0,
-          1,
+          2.6727895736694336,
           0,
-          0,
-          0,
-          0,
+          25.790818214416504,
+          -19.329492568969727,
+          -6.824124813079834,
           1
         ],
         "name": "woundFwd_f_rib8",
@@ -8370,21 +8370,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.387460708618164,
           0,
           0,
           0,
           0,
-          1,
+          4.387460708618164,
           0,
           0,
           0,
           0,
-          1,
+          4.387460708618164,
           0,
-          0,
-          0,
-          0,
+          28.0393123626709,
+          6.641653895378113,
+          11.093106269836426,
           1
         ],
         "name": "woundFwd_t_tear0",
@@ -8397,21 +8397,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.6686525344848633,
           0,
           0,
           0,
           0,
-          1,
+          2.6686525344848633,
           0,
           0,
           0,
           0,
-          1,
+          2.6686525344848633,
           0,
-          0,
-          0,
-          0,
+          25.968161582946777,
+          -3.4589191675186157,
+          20.659140586853027,
           1
         ],
         "name": "woundFwd_t_tear1",
@@ -8424,21 +8424,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.720955848693848,
           0,
           0,
           0,
           0,
-          1,
+          4.720955848693848,
           0,
           0,
           0,
           0,
-          1,
+          4.720955848693848,
           0,
-          0,
-          0,
-          0,
+          28.729697227478027,
+          -14.384057998657227,
+          13.601536750793457,
           1
         ],
         "name": "woundFwd_t_tear2",
@@ -8451,21 +8451,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.959423065185547,
           0,
           0,
           0,
           0,
-          1,
+          2.959423065185547,
           0,
           0,
           0,
           0,
-          1,
+          2.959423065185547,
           0,
-          0,
-          0,
-          0,
+          26.658544540405273,
+          -18.640292167663574,
+          -2.835605025291443,
           1
         ],
         "name": "woundFwd_t_tear3",
@@ -8478,21 +8478,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.768797874450684,
           0,
           0,
           0,
           0,
-          1,
+          5.768797874450684,
           0,
           0,
           0,
           0,
-          1,
+          5.768797874450684,
           0,
-          0,
-          0,
-          0,
+          29.420079231262207,
+          -11.368971347808838,
+          -16.80445623397827,
           1
         ],
         "name": "woundFwd_t_tear4",
@@ -8505,21 +8505,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.334951400756836,
           0,
           0,
           0,
           0,
-          1,
+          3.334951400756836,
           0,
           0,
           0,
           0,
-          1,
+          3.334951400756836,
           0,
-          0,
-          0,
-          0,
+          27.348928451538086,
+          0.23644113540649414,
+          -18.930556297302246,
           1
         ],
         "name": "woundFwd_t_tear5",
@@ -8532,21 +8532,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.389538764953613,
           0,
           0,
           0,
           0,
-          1,
+          6.389538764953613,
           0,
           0,
           0,
           0,
-          1,
+          6.389538764953613,
           0,
-          0,
-          0,
-          0,
+          30.110461235046387,
+          7.585265159606934,
+          -5.8828864097595215,
           1
         ],
         "name": "woundFwd_t_tear6",
@@ -8561,20 +8561,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_engine.glb"
   },
-  "runtimeHash": "bf8c01614c6e9ae4220fb7a78b21dced30f49f06a08c5eaf8380c0451c295128",
+  "runtimeHash": "0015d2ee99cd6833f3f9d4acb2c52356461d205ca6f711891d38483591b3991c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           36.5,
-          21.856290817260742,
-          24.52677345275879
+          21.8562904903238,
+          24.526773229030816
         ],
         "min": [
-          -36.50004196166992,
-          -21.856435775756836,
-          -24.52677345275879
+          -36.50004284697725,
+          -21.856435780209857,
+          -24.526773229030816
         ]
       },
       "id": "sf.render.aftermath-wreck-corvette-engine.body",

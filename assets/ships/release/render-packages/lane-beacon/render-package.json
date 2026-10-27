@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9213b9e0a319ad266b240323d017cf63801993751a5c385ae21b36f64ff7917d",
+  "contentHash": "436e62dacdb468bb3cab7e954f6681e6d5695cfc043832eb2d4d3b149d9602c8",
   "dynamicGroups": [
     {
       "id": "sf.render.lane-beacon.node.lod0-hook-nav-port.dynamic",
@@ -141,18 +141,18 @@
     {
       "bounds": {
         "max": [
-          9.151985168457031,
+          9.151985399741317,
           9.224499702453613,
-          1.600014328956604
+          1.6000142998118665
         ],
         "min": [
-          -1.6000230312347412,
+          -1.6000232625190263,
           -5.099999904632568,
-          -1.600014328956604
+          -1.6000142998118665
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4edf44332ff29afd65e24838129c1e656df9ecc1bdffffacf1928ebad1c0a0e1",
+      "geometryHash": "99f2091bc0b3693399df0c63502d8567047f49f8372a89f7e144a71ebe75c3c6",
       "id": "sf.render.lane-beacon.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -166,18 +166,18 @@
     {
       "bounds": {
         "max": [
-          8.269726753234863,
+          8.269726586843186,
           8.90000057220459,
-          1.4432814121246338
+          1.443281399296729
         ],
         "min": [
-          -1.4897270202636719,
+          -1.4897268538719945,
           -5.099999904632568,
-          -1.4432814121246338
+          -1.443281399296729
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b6c79366edd4895beae3046d6ef13ded5843610a56535bf75ed66fad7d74ca5",
+      "geometryHash": "9052dfea464caeb21436a9a52c496603533184a1f948ce06dc27f70cabc9d0e1",
       "id": "sf.render.lane-beacon.node.lod0-armor.primitive.0",
       "indexCount": 6090,
       "indexed": true,
@@ -192,17 +192,17 @@
       "bounds": {
         "max": [
           1.0799999237060547,
-          8.642057418823242,
+          8.6420573260374,
           1.0799999237060547
         ],
         "min": [
           -1.0799999237060547,
-          8.557943344116211,
+          8.557943436902054,
           -1.0799999237060547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "596e51ee39028bdfacfc639bb08e6f1c407624c0e17018c498815745912d9af8",
+      "geometryHash": "34e231934a7a0020cd7142655401bf2a31b308fc3be43a90fdb330fd16bae218",
       "id": "sf.render.lane-beacon.node.lod0-beacon-amber.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -266,18 +266,18 @@
     {
       "bounds": {
         "max": [
-          8.199640274047852,
+          8.199640334645695,
           8.90000057220459,
-          1.1000568866729736
+          1.1000568089997556
         ],
         "min": [
-          -1.099640965461731,
+          -1.0996410260595741,
           -3.809999942779541,
-          -1.1000568866729736
+          -1.1000568089997556
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7bd4eb2dd95410ec7dc1c32749f6d22236046f46396975a6d157f7569f4fccac",
+      "geometryHash": "aca3a0d50dc04d288748133b6e86395e006d6b79f0609b192c0aead04d9becc3",
       "id": "sf.render.lane-beacon.node.lod0-hull.primitive.0",
       "indexCount": 10494,
       "indexed": true,
@@ -291,18 +291,18 @@
     {
       "bounds": {
         "max": [
-          8.050278663635254,
+          8.050278814379507,
           8.715773582458496,
-          1.0483213663101196
+          1.0483213982561865
         ],
         "min": [
-          -1.0489389896392822,
+          -1.048939140383534,
           -2.8499999046325684,
-          -1.0483213663101196
+          -1.0483213982561865
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23c174b823c0416f8b24dcc1442850ea57d5fcf6a2afed8c3fd0b3fbd54f897a",
+      "geometryHash": "778dcdd68b12e8c8cb83bcf56012c49b6ce73cb7e3b12ebf9d1ae8667e3d3ca5",
       "id": "sf.render.lane-beacon.node.lod0-livery.primitive.0",
       "indexCount": 2868,
       "indexed": true,
@@ -316,18 +316,18 @@
     {
       "bounds": {
         "max": [
-          7.910946846008301,
+          7.910946755197941,
           9.199999809265137,
-          1.5998961925506592
+          1.599896205058412
         ],
         "min": [
-          -1.6002748012542725,
+          -1.6002747104439123,
           -5.099999904632568,
-          -1.5998961925506592
+          -1.599896205058412
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d7ea9798f164f40a0bd5bd09187a0b84f0ec66f74fa407307064395d9c10183",
+      "geometryHash": "e1214fcab052aaed647c8a0e984f0bfe3ec52ee2f51b9aa742c0dd60bfb7c92a",
       "id": "sf.render.lane-beacon.node.lod0-mechanical.primitive.0",
       "indexCount": 8352,
       "indexed": true,
@@ -341,18 +341,18 @@
     {
       "bounds": {
         "max": [
-          7.499912261962891,
+          7.499912165490753,
           8.880000114440918,
-          0.6250264048576355
+          0.6250264065657187
         ],
         "min": [
-          -0.6999122500419617,
+          -0.6999121535698238,
           -3.700000047683716,
-          -0.6250264048576355
+          -0.6250264065657187
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df0c9c24e9fce249048a7328507d3b3c45caca308a9ebad66626608b14dee956",
+      "geometryHash": "f2371f8086a9c7da11393e0f34ec7459ecd5374d84cc11c05467d0f89f6db077",
       "id": "sf.render.lane-beacon.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 582,
       "indexed": true,
@@ -377,7 +377,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fcb760c18181b7a77395a2e3f55de5b0420bca3ebd10b29858f01b0aafa62de9",
+      "geometryHash": "a759e3456e21ac6a8067b17db2894e0ab2734cca3dd42426890b59288081c80a",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-avi-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -391,18 +391,18 @@
     {
       "bounds": {
         "max": [
-          0.8111708760261536,
-          9.018982082605362,
+          0.811170884750293,
+          9.018982081153748,
           0.26787447929382324
         ],
         "min": [
-          0.28882914781570435,
-          8.900017590347488,
+          0.28882913909156493,
+          8.900017591799102,
           -0.26787447929382324
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c424410ad9d9d3f4a845600fd8228cf5c461b8d777f72f007f619154afef8161",
+      "geometryHash": "d8893f040b000f96fc8def51f682b5f0d36ce78af57a4940d6242b57aeb7b545",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-avi-mechanical.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -417,17 +417,17 @@
       "bounds": {
         "max": [
           8.660400390625,
-          6.777984976768494,
+          6.777984933435206,
           0.26040029525756836
         ],
         "min": [
           8.139599800109863,
-          6.537015080451965,
+          6.537015123785253,
           -0.26040029525756836
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5e19f878cc230966e12507dc20506457413220530c1f6b5e4a36c758e26e2cb",
+      "geometryHash": "9d3ddaa7361f972b794c9f571f7834738302279761e09baa427f57002e853881",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -491,18 +491,18 @@
     {
       "bounds": {
         "max": [
-          9.04996806383133,
+          9.04996808668763,
           6.300000190734863,
           0.8000001907348633
         ],
         "min": [
-          7.950031936168671,
+          7.950031913312372,
           4.699999809265137,
           -0.8000001907348633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2068e0ae3c8310f6de33323bafd44615340b69923f72e46f66b9e417a899295",
+      "geometryHash": "05c52e766e27d1dd6fddd33d633fe5742d877f59f0ac7f584a91e63e010890dc",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-hull.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -516,18 +516,18 @@
     {
       "bounds": {
         "max": [
-          9.120042264461517,
-          6.049973428249359,
+          9.120042297999703,
+          6.049973462150899,
           0.8349999785423279
         ],
         "min": [
-          8.149957209825516,
-          4.8550267815589905,
+          8.14995717628733,
+          4.85502674765745,
           -0.8349999785423279
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58dadf76a722745a6db5de872316dae782768f3663af5a3693a140708dc732b6",
+      "geometryHash": "ddc0efb84b63110c73215432496a88489b04cb7c4a31b163f59b634aa96ac3ed",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-lights-cyan.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -541,18 +541,18 @@
     {
       "bounds": {
         "max": [
-          8.29572506248951,
+          8.295725069116518,
           6.298534870147705,
           0.7985348701477051
         ],
         "min": [
-          8.104273617267609,
+          8.1042736106406,
           4.701465129852295,
           -0.7985348701477051
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e750936fcbcd9219c83a5eda4101289fccaebc3607ed711fc57b4f1dac6246e",
+      "geometryHash": "2d628f28e45eea6d35d1fde5a65a58ad39177709d05b1b3f8df3028a5d163c1f",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-livery.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -566,18 +566,18 @@
     {
       "bounds": {
         "max": [
-          9.152005195617676,
+          9.152005171810016,
           6.546999931335449,
-          0.6399797201156616
+          0.6399797069184907
         ],
         "min": [
-          8.072576522827148,
+          8.072576546634808,
           4.860000133514404,
-          -0.6773598194122314
+          -0.6773598062150605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05ebb7f0049ee0784ccd7097f28eed1379fa3bfe36a53318410c417f891a8c17",
+      "geometryHash": "83975bdc4ce3e9cc5ab2796ef499e9ddda2ea98624f55b55f7dd81624c97d12a",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-mechanical.primitive.0",
       "indexCount": 2196,
       "indexed": true,
@@ -591,18 +591,18 @@
     {
       "bounds": {
         "max": [
-          9.070005297660828,
+          9.070005305035236,
           6.400000095367432,
-          0.6500236988067627
+          0.6500237318333422
         ],
         "min": [
-          8.099995732307434,
+          8.099995724933025,
           4.849999904632568,
-          -0.6500236988067627
+          -0.6500237318333422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70878ea189ae139eff6dbec9e4532dd5dcf8c8f116394dc7785481d78b2106af",
+      "geometryHash": "b96b99988d87d1b61b7693a88371c72a8ea94401147d976233a2b70cc84fcd90",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-mechanicaldark.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -616,18 +616,18 @@
     {
       "bounds": {
         "max": [
-          2.64996936917305,
-          4.624994546175003,
+          2.6499693698106253,
+          4.6249945455415205,
           0.4749999940395355
         ],
         "min": [
-          1.9500304162502289,
-          4.075005233287811,
+          1.9500304156126536,
+          4.075005233921294,
           -0.4749999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "915184da87fc94848968d091671a38f735ec4fedbad781481146fb12903f7475",
+      "geometryHash": "83b500afbcb3f1c2908dd650cac3fe848c9209d364a1edf14c15472ee7de30d5",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -641,18 +641,18 @@
     {
       "bounds": {
         "max": [
-          2.5499128103256226,
+          2.5499128111296403,
           6.50600004196167,
-          0.5149456858634949
+          0.514945671818649
         ],
         "min": [
-          2.050087094306946,
+          2.050087093502928,
           4.034999847412109,
-          -0.5149456858634949
+          -0.514945671818649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f81183ae41b324d94f74bca4996fef963da0ce1f0e232c4f8d3e13bc94d8197d",
+      "geometryHash": "9ac6386a61467bcdcbf3f339456d640b2f89ff413b1ebc6e4650a684b711c2aa",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-beacon-amber.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -666,18 +666,18 @@
     {
       "bounds": {
         "max": [
-          2.6499826312065125,
+          2.6499826202413095,
           6.318999767303467,
-          0.34998273849487305
+          0.3499827275296703
         ],
         "min": [
-          1.9500171542167664,
+          1.950017165181969,
           4.5,
-          -0.34998273849487305
+          -0.3499827275296703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3299e68f57edaf00297e227d0d67207697e342048a4ca2a3a47fff52d8a4234a",
+      "geometryHash": "aa5d81ad4ca5034ab9c344e9105e8d7911ebcc9ef382f30b4a097b421b16b778",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-mechanical.primitive.0",
       "indexCount": 1272,
       "indexed": true,
@@ -691,18 +691,18 @@
     {
       "bounds": {
         "max": [
-          4.249969571828842,
-          4.624994546175003,
+          4.2499695724664175,
+          4.6249945455415205,
           0.4749999940395355
         ],
         "min": [
-          3.550030618906021,
-          4.075005233287811,
+          3.550030618268446,
+          4.075005233921294,
           -0.4749999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53ccaea7d0a0b69fdc873d90d4e1de959e2ecea0e45f4a5ff9e208caf9a62c6a",
+      "geometryHash": "2f980caad990237e91671174b376522ee7664f1745c10553ecd80b364966e38a",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -716,18 +716,18 @@
     {
       "bounds": {
         "max": [
-          4.14991295337677,
+          4.149912954180788,
           6.50600004196167,
-          0.5149456858634949
+          0.514945671818649
         ],
         "min": [
-          3.6500872373580933,
+          3.6500872365540755,
           4.034999847412109,
-          -0.5149456858634949
+          -0.514945671818649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a40b7d6b63ae796481b5b1273bed4226650bb9fdba087acf9a88901eb3bfbb6",
+      "geometryHash": "113160f81309cf7722b9d472f5cb7e19331d6d7fd340b6ff43b5aceba8760c1c",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-lights-cyan.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -741,18 +741,18 @@
     {
       "bounds": {
         "max": [
-          4.249982833862305,
+          4.249982822897102,
           6.318999767303467,
-          0.34998273849487305
+          0.3499827275296703
         ],
         "min": [
-          3.5500173568725586,
+          3.5500173678377616,
           4.5,
-          -0.34998273849487305
+          -0.3499827275296703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f1e6ab14205a9f7deeeff020931cadd6ba783e48071ab743d6bf5ca3a77c4c4",
+      "geometryHash": "d62d57fe48fb26173fac892604d50b3999f5eec963dbbc62dcfe1d91fec6abe2",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-mechanical.primitive.0",
       "indexCount": 1272,
       "indexed": true,
@@ -766,18 +766,18 @@
     {
       "bounds": {
         "max": [
-          5.8499694764614105,
-          4.624994546175003,
+          5.849969477098986,
+          4.6249945455415205,
           0.4749999940395355
         ],
         "min": [
-          5.1500305235385895,
-          4.075005233287811,
+          5.150030522901014,
+          4.075005233921294,
           -0.4749999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b06e7dc90089df6ea35ff60894ddfc10a83240796bf495cbd6a7b53827a02a37",
+      "geometryHash": "0a5874a39e296c005961b99f0d805a5021181fa06bc4a5137b2f99088fad10e4",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -791,18 +791,18 @@
     {
       "bounds": {
         "max": [
-          5.749912858009338,
+          5.749912858813357,
           6.50600004196167,
-          0.5149456858634949
+          0.514945671818649
         ],
         "min": [
-          5.250087141990662,
+          5.250087141186643,
           4.034999847412109,
-          -0.5149456858634949
+          -0.514945671818649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1727468c5d6a409dad4148e734ac56b73f49ea10d5285e203631553873181523",
+      "geometryHash": "2b75e245a4921900a02f3b7bbd9b8cec596e082060ee1a98db2e85e451bb56b8",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-beacon-amber.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -816,18 +816,18 @@
     {
       "bounds": {
         "max": [
-          5.849982738494873,
+          5.84998272752967,
           6.318999767303467,
-          0.34998273849487305
+          0.3499827275296703
         ],
         "min": [
-          5.150017261505127,
+          5.15001727247033,
           4.5,
-          -0.34998273849487305
+          -0.3499827275296703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4bf1de196aad13f588ba81682eb4d9c730ce6b8652a426a4241e36a3ea51ae6",
+      "geometryHash": "3c4a95b8878d144955c56d58f44031323515c58d06843148e1d3699bea8bebf7",
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-mechanical.primitive.0",
       "indexCount": 1272,
       "indexed": true,
@@ -841,18 +841,18 @@
     {
       "bounds": {
         "max": [
-          1.3747848272323608,
+          1.3747847893380172,
           6.25,
-          1.3749741315841675
+          1.3749740841252855
         ],
         "min": [
-          -1.489784836769104,
+          -1.4897847988747603,
           -4.300000190734863,
-          -1.3749741315841675
+          -1.3749740841252855
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12b74d66607adb2d5f57d482f7e449b994ed9e91eee39d59b69277da249891a2",
+      "geometryHash": "2e902d81d877616ea1ea997db2bf1b7b334fcb51a4430c15ca16b13cb0defec6",
       "id": "sf.render.lane-beacon.node.lod0-warning.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -866,18 +866,18 @@
     {
       "bounds": {
         "max": [
-          8.26972770690918,
+          8.269727838540726,
           8.90000057220459,
-          1.4432814121246338
+          1.443281399296729
         ],
         "min": [
-          -1.4897254705429077,
+          -1.4897256021744543,
           -5.099999904632568,
-          -1.4432814121246338
+          -1.443281399296729
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9782ea09c05136c1931d2fc18b72bbcbdd9f48951dc5bd1d225c89dc0883c9de",
+      "geometryHash": "c98dcc91bf38e35616de005330aa86bca33174604027e5bd3f8ec4bf7e71a207",
       "id": "sf.render.lane-beacon.node.lod1-armor.primitive.0",
       "indexCount": 4758,
       "indexed": true,
@@ -892,17 +892,17 @@
       "bounds": {
         "max": [
           1.0799999237060547,
-          8.642057418823242,
+          8.6420573260374,
           1.0799999237060547
         ],
         "min": [
           -1.0799999237060547,
-          8.557943344116211,
+          8.557943436902054,
           -1.0799999237060547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5172fc6ebc62c76ffac96473a0ce688060db1a13f80620f75bf0896c5edd58b",
+      "geometryHash": "75de0700cb601f8cca65ee9992e8b72cbb5d703cbd523ed176b53abc9bf832e9",
       "id": "sf.render.lane-beacon.node.lod1-beacon-amber.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -966,18 +966,18 @@
     {
       "bounds": {
         "max": [
-          8.198467254638672,
+          8.198467318985568,
           8.90000057220459,
-          1.0992690324783325
+          1.0992690272140164
         ],
         "min": [
-          -1.09916090965271,
+          -1.0991609739996049,
           -3.809861183166504,
-          -1.0992690324783325
+          -1.0992690272140164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76a783b12ba9282e475dcf496d89280760682c53b4b0024195ed3d2c22bb428f",
+      "geometryHash": "904b03e36e946f1400b88dfb2b5aeb4b9a84a96eb1f55dc328d8108b1eaff83d",
       "id": "sf.render.lane-beacon.node.lod1-hull.primitive.0",
       "indexCount": 2850,
       "indexed": true,
@@ -991,18 +991,18 @@
     {
       "bounds": {
         "max": [
-          1.2675563097000122,
+          1.2675563150152616,
           8.715675354003906,
-          1.0496118068695068
+          1.0496118003791546
         ],
         "min": [
-          -1.0482922792434692,
+          -1.0482922845587186,
           -3.781592607498169,
-          -1.049602746963501
+          -1.0496027404731487
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73b41d9b8a3078aec475f0f57080e16a3ccc68a9784cd58ae9eb096043e94549",
+      "geometryHash": "8cbcc45c358df767f1d9a9b523dd9447e71d98ec1649da02f440b57cd1ec2664",
       "id": "sf.render.lane-beacon.node.lod1-livery.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -1016,18 +1016,18 @@
     {
       "bounds": {
         "max": [
-          7.910515308380127,
+          7.91051532852423,
           8.348963737487793,
-          1.598096251487732
+          1.598096263722628
         ],
         "min": [
-          -1.5984447002410889,
+          -1.5984447203851921,
           -5.098601818084717,
-          -1.598096251487732
+          -1.598096263722628
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e802ec1202c6c423db364c5d5947d04c0d3af66781a641b337752d9088307214",
+      "geometryHash": "7d3816cbb9a3eaa0f087828e5ebb63669474fedb3acc2524f1189206a8515768",
       "id": "sf.render.lane-beacon.node.lod1-mechanical.primitive.0",
       "indexCount": 1884,
       "indexed": true,
@@ -1041,18 +1041,18 @@
     {
       "bounds": {
         "max": [
-          7.499927520751953,
+          7.499927426341703,
           5.010000228881836,
-          0.597460925579071
+          0.5974609549511893
         ],
         "min": [
-          -0.59742271900177,
+          -0.5974226245915197,
           -3.6986310482025146,
-          -0.597460925579071
+          -0.5974609549511893
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bac6e9f5fa899c8c820361357e94cd75a92956759d4aa9c6b291964009349b44",
+      "geometryHash": "b909e8d482b718ef52400bc5e9e4817f515b802b1e6a250fc35235b1e7505be9",
       "id": "sf.render.lane-beacon.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 126,
       "indexed": true,
@@ -1077,7 +1077,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "500f99bec5d4517c0e174074ed1a568c4bd8ae574379a9ce10a310d56cf14655",
+      "geometryHash": "9bb6313626064066ae0c0cda0ef34d5b74e25cf78ee7f9a8c07d1b8ae30fccdf",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-avi-hook-nav-port.primitive.0",
       "indexCount": 210,
       "indexed": true,
@@ -1091,18 +1091,18 @@
     {
       "bounds": {
         "max": [
-          0.811711311340332,
-          9.018575452268124,
+          0.8117113035157103,
+          9.018575451131897,
           0.2678799033164978
         ],
         "min": [
-          0.28816142678260803,
-          8.900517680100165,
+          0.28816143460722976,
+          8.900517681236392,
           -0.26850375533103943
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82c22ac23038a7c3914e8e742a0411ec1180c2207dab5351b1aee1c5b92b232d",
+      "geometryHash": "128516d248586c6445e90b479a4bf74405aad935794cdfdd6620bb2a57d9d251",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-avi-mechanical.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -1117,17 +1117,17 @@
       "bounds": {
         "max": [
           8.660783767700195,
-          6.777987837791443,
-          0.2605586051940918
+          6.777987792944709,
+          0.26055860545830806
         ],
         "min": [
           8.139169692993164,
-          6.538106083869934,
-          -0.2607370913028717
+          6.5381061287166675,
+          -0.26073709156708796
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a8e9ba4b6c1d83bb521c3dbc673bae0486c4d5a4dc46a8bafd799f495d59817",
+      "geometryHash": "b6cfb38d2c2ccd441d8c0611f9064fc1260f452acf92717a9daa2f14eef09766",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-beacon-amber.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1191,18 +1191,18 @@
     {
       "bounds": {
         "max": [
-          9.0454843044281,
+          9.045484277826388,
           6.296165466308594,
-          0.7960549592971802
+          0.7960549786854704
         ],
         "min": [
-          7.954519987106323,
+          7.954520013708036,
           4.703843593597412,
-          -0.7958781123161316
+          -0.7958781317044218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01c16cee6b08b65cfc1c4377d75bc221c22680f69ed659a01b1be93388529aec",
+      "geometryHash": "ef637fca6cef22065f25800ce8b6e01bd2a1568dd6db6d6316c3e7e8a0fc5c5f",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-hull.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1216,18 +1216,18 @@
     {
       "bounds": {
         "max": [
-          9.120042264461517,
-          6.049973428249359,
+          9.120042297999703,
+          6.049973462150899,
           0.8349999785423279
         ],
         "min": [
-          8.149957209825516,
-          4.8550267815589905,
+          8.14995717628733,
+          4.85502674765745,
           -0.8349999785423279
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c294a6ca91f2392a5d72fa80eb0bc2cef6dbd2911f2dc53131cc21ba8cf5e12c",
+      "geometryHash": "dce74a8e17650bfdae151eb3a3895cf513d8c9678cdfa7b5544e6d5b85238cec",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-lights-cyan.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -1241,18 +1241,18 @@
     {
       "bounds": {
         "max": [
-          8.297181501984596,
+          8.297181505531961,
           6.296165466308594,
-          0.7960549592971802
+          0.7960549786854704
         ],
         "min": [
-          8.10318911075592,
+          8.103189107208555,
           4.703843593597412,
-          -0.7958781123161316
+          -0.7958781317044218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11f9146e8e7986125cc1f6412e5dc6c2ae48759f91800b2ef6d5260de2adbb13",
+      "geometryHash": "df32790c4be612d719b4a837e2cd80eca465bb25f18af978a8a8ffae04f1ea36",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-livery.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1266,18 +1266,18 @@
     {
       "bounds": {
         "max": [
-          9.152060866355896,
+          9.152060857809568,
           6.544907093048096,
-          0.6400610208511353
+          0.6400610180607204
         ],
         "min": [
-          8.076439529657364,
+          8.076439538203692,
           4.860000133514404,
-          -0.6400610208511353
+          -0.6400610180607204
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a339c23e28300970b84287357ac051aa9bda698fb3dfacf308c9e595605437e",
+      "geometryHash": "a3f0ecbf29965abfd30866dd8a5049642d5c27e2b33a9d055cd045112b3bdf1a",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-mechanical.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -1291,18 +1291,18 @@
     {
       "bounds": {
         "max": [
-          9.06507956981659,
-          6.146923065185547,
+          9.06507957643473,
+          6.146923060249568,
           0.6479513049125671
         ],
         "min": [
-          8.972060292959213,
-          4.853076934814453,
+          8.972060286341073,
+          4.853076939750432,
           -0.6479513645172119
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6658e187bde2266d7062fc7a16c28bd114e24ef410cde4b678d1cd01d3fd9818",
+      "geometryHash": "58d97f9fe302bf8f345a40de441f1a0320752ae91bb1f804e1d6ba28bcfe2b95",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-mechanicaldark.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1316,18 +1316,18 @@
     {
       "bounds": {
         "max": [
-          2.6464119255542755,
-          4.621515303850174,
+          2.6464119310168672,
+          4.6215152885633755,
           0.47063571214675903
         ],
         "min": [
-          1.9540863931179047,
-          4.079068124294281,
+          1.9540863876553127,
+          4.0790681395810795,
           -0.4709028899669647
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43178ad046d55fa87b9b30b827e5892f462723b561dd895de51100a5adc07a7a",
+      "geometryHash": "66c232835beb24f1098b0295d902eed8120085684848c680afae8059895e2f3f",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -1341,18 +1341,18 @@
     {
       "bounds": {
         "max": [
-          2.549999549984932,
+          2.5499995407755622,
           6.503877639770508,
-          0.514955461025238
+          0.5149554512733383
         ],
         "min": [
-          2.0500003546476364,
+          2.050000363857006,
           4.034999847412109,
-          -0.514955461025238
+          -0.5149554512733383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9870606aa3afe5eb557f58d3d06b56b95bea0a6bc83f8b1b4fa30298aae3929",
+      "geometryHash": "b39ce1f19086f282841f95e9d0aeb56829c7baded711d0d39af8b11c0c31b6cd",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-beacon-amber.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1366,18 +1366,18 @@
     {
       "bounds": {
         "max": [
-          2.6499629616737366,
+          2.649962969950391,
           6.317168235778809,
-          0.34996306896209717
+          0.34996307723875153
         ],
         "min": [
-          1.9500368237495422,
+          1.9500368154728878,
           4.5,
-          -0.34996306896209717
+          -0.34996307723875153
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7aaa12e1fdc46e3d51726fce16905f32e8cd5f88b55c87d44cdaa145eb0f2f53",
+      "geometryHash": "ea76de53f583c78871473f63c219516ba55ee3f9f6ae7117598ea9f8dbf13a95",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-mechanical.primitive.0",
       "indexCount": 606,
       "indexed": true,
@@ -1391,18 +1391,18 @@
     {
       "bounds": {
         "max": [
-          4.245598137378693,
-          4.621415466070175,
+          4.245598123442989,
+          4.621415479959038,
           0.4709030091762543
         ],
         "min": [
-          3.5541107058525085,
-          4.078584372997284,
+          3.554110719788212,
+          4.078584359108421,
           -0.4709029495716095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c347ef56b60d18196aa16b43ccaa664e0998c71b524757fcda8b8c4ba44caa3e",
+      "geometryHash": "21d5193be039d090cb359513db4da63d021b5dddd52c7ed8558d112492d0d17c",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -1416,18 +1416,18 @@
     {
       "bounds": {
         "max": [
-          4.149999693036079,
+          4.14999968382671,
           6.503877639770508,
-          0.514955461025238
+          0.5149554512733383
         ],
         "min": [
-          3.650000497698784,
+          3.6500005069081536,
           4.034999847412109,
-          -0.514955461025238
+          -0.5149554512733383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "296c07982f285dfe1414639740d708a3415f15cea2555e8cdfc9a64d93b0ae60",
+      "geometryHash": "ada075ba8bd4070f1b46a05e62017f58cdaa3d773c8b09a1042b8bda8a496329",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-lights-cyan.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1441,18 +1441,18 @@
     {
       "bounds": {
         "max": [
-          4.250048458576202,
+          4.25004845770488,
           6.31703519821167,
-          0.35004836320877075
+          0.35004836233744824
         ],
         "min": [
-          3.549951732158661,
+          3.5499517330299835,
           4.5,
-          -0.35004836320877075
+          -0.35004836233744824
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f7c472900b288cf28bcbbf12650511fbf0d8b466c2b64a7a33610c38ffb8902",
+      "geometryHash": "24d1158015030fae2357cf63f4fdbaca986e117060d67114a1b2a08f616f8015",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-mechanical.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -1466,18 +1466,18 @@
     {
       "bounds": {
         "max": [
-          5.8463954627513885,
-          4.6214185655117035,
+          5.846395482858202,
+          4.621418579400566,
           0.4709029793739319
         ],
         "min": [
-          5.154103308916092,
-          4.078587472438812,
+          5.154103288809279,
+          4.07858745854995,
           -0.4709029793739319
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f040393a598ded94f3d61137896200ea5befbf3b85a4ba5e497b10986ecc5d99",
+      "geometryHash": "d881c4b4105b6d6733362ae294cbf6f36f0770798e8f499dd18b58ee5ed56084",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -1491,18 +1491,18 @@
     {
       "bounds": {
         "max": [
-          5.749999597668648,
+          5.7499995884592785,
           6.503877639770508,
-          0.514955461025238
+          0.5149554512733383
         ],
         "min": [
-          5.250000402331352,
+          5.2500004115407215,
           4.034999847412109,
-          -0.514955461025238
+          -0.5149554512733383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37e7f522f1595f37c87be0fe52a2bd23ad0f1abbcb080aad4183cd1f6a522f7f",
+      "geometryHash": "93d06e83a4055e39f3bcd5d48588894e9711fbe57f02b6558a535144ec08a2a5",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-beacon-amber.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1516,18 +1516,18 @@
     {
       "bounds": {
         "max": [
-          5.849968314170837,
+          5.849968311700574,
           6.317195415496826,
-          0.3499683141708374
+          0.3499683117005744
         ],
         "min": [
-          5.150031685829163,
+          5.150031688299426,
           4.5,
-          -0.3499683141708374
+          -0.3499683117005744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "879ebbbfef9b063952dc8a461eeb03d57a1dbbd7f18f06602ca6361dd2ce9494",
+      "geometryHash": "6811cfd7f59ba2a3729b34d1d04f61fbabb67a353e8808ef674532b468612af5",
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-mechanical.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -1541,18 +1541,18 @@
     {
       "bounds": {
         "max": [
-          1.3743473291397095,
+          1.3743473555868035,
           6.249996662139893,
-          1.3748563528060913
+          1.3748563166452974
         ],
         "min": [
-          -1.490171194076538,
+          -1.4901712205236322,
           -4.299815654754639,
-          -1.3711793422698975
+          -1.3711793061091035
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8dafc4a174253a513712cc364e46dd705cb87c301efa7e10f4ca24c851951cb",
+      "geometryHash": "3840548a0487812db6c0cc127396d4b7f62b904ecbe0a846a9ce2935ef8dd793",
       "id": "sf.render.lane-beacon.node.lod1-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -1566,18 +1566,18 @@
     {
       "bounds": {
         "max": [
-          8.270243644714355,
+          8.27024368409122,
           8.90000057220459,
-          1.4392032623291016
+          1.4392032772307175
         ],
         "min": [
-          -1.4881523847579956,
+          -1.488152424134861,
           -5.0935821533203125,
-          -1.4392032623291016
+          -1.4392032772307175
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79fd4fc57c5e2bb611c650fbf436fe1329a559df8ba678dd9eec4fc84b468596",
+      "geometryHash": "8018b31e3b1aa6dc0fdc719bf6670aba6e0de4077cbf4ac74981f45c4c3eba0c",
       "id": "sf.render.lane-beacon.node.lod2-armor.primitive.0",
       "indexCount": 2463,
       "indexed": true,
@@ -1592,17 +1592,17 @@
       "bounds": {
         "max": [
           1.0799999237060547,
-          8.642057418823242,
+          8.6420573260374,
           1.0799999237060547
         ],
         "min": [
           -1.0799999237060547,
-          8.557943344116211,
+          8.557943436902054,
           -1.0799999237060547
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5172fc6ebc62c76ffac96473a0ce688060db1a13f80620f75bf0896c5edd58b",
+      "geometryHash": "75de0700cb601f8cca65ee9992e8b72cbb5d703cbd523ed176b53abc9bf832e9",
       "id": "sf.render.lane-beacon.node.lod2-beacon-amber.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -1666,18 +1666,18 @@
     {
       "bounds": {
         "max": [
-          8.192378044128418,
+          8.192378190021277,
           8.90000057220459,
-          1.097670078277588
+          1.0976701018233053
         ],
         "min": [
-          -1.093988299369812,
+          -1.0939884452626716,
           -3.809312582015991,
-          -1.097670078277588
+          -1.0976701018233053
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bd3acf2c0aabbdf26177b281e2696dceb1f16ad3dc593057ec636dd2f6333e0",
+      "geometryHash": "a9d163e833baa46c3f853726b4b952e1a040b23a50f0a57e269b16bb84fbabd8",
       "id": "sf.render.lane-beacon.node.lod2-hull.primitive.0",
       "indexCount": 606,
       "indexed": true,
@@ -1691,18 +1691,18 @@
     {
       "bounds": {
         "max": [
-          1.2652043104171753,
+          1.265204244638692,
           8.717615127563477,
-          1.0474584102630615
+          1.0474584134081903
         ],
         "min": [
-          -1.0465383529663086,
+          -1.0465382871878253,
           -3.790454149246216,
-          -1.047462821006775
+          -1.0474628241519037
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a9fc0e316869935a7eec47e3cf3c342939541e5efe9b2f1235a8c5d14ed64f5",
+      "geometryHash": "247ab96608d9dcf1ef10513df3efe1a1c4378f814be1a52a415730a1497a003e",
       "id": "sf.render.lane-beacon.node.lod2-livery.primitive.0",
       "indexCount": 558,
       "indexed": true,
@@ -1716,18 +1716,18 @@
     {
       "bounds": {
         "max": [
-          7.910524845123291,
+          7.910524857585568,
           8.343523979187012,
-          1.5899016857147217
+          1.5899016904515146
         ],
         "min": [
-          -1.590347170829773,
+          -1.5903471832920495,
           -5.09028434753418,
-          -1.5899016857147217
+          -1.5899016904515146
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37c08c4f3eff384025cb83ff4013025d3d34371d367118c4e744316a33d52156",
+      "geometryHash": "c217d1bc5172e5cad445045822cd709934778fcb0ccfa5d8dc7e1fd0897511a6",
       "id": "sf.render.lane-beacon.node.lod2-mechanical.primitive.0",
       "indexCount": 492,
       "indexed": true,
@@ -1741,18 +1741,18 @@
     {
       "bounds": {
         "max": [
-          7.499948501586914,
+          7.499948434065786,
           5.010000228881836,
-          0.5927504301071167
+          0.5927504049570017
         ],
         "min": [
-          -0.59327232837677,
+          -0.5932722608556418,
           -3.6919050216674805,
-          -0.5927504301071167
+          -0.5927504049570017
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1db42499816a97d3d702b080b2322f07c6ed9d3c319e03e9e313a1f941783cbf",
+      "geometryHash": "fb3356ae3cc4554d3e57fc7433c215087588d275a75b52a29621d0611f2d55bf",
       "id": "sf.render.lane-beacon.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -1791,18 +1791,18 @@
     {
       "bounds": {
         "max": [
-          0.8113861978054047,
-          9.017246767878532,
+          0.8113861864027216,
+          9.017246765118562,
           0.2678799033164978
         ],
         "min": [
-          0.2887689471244812,
-          8.902297453721985,
+          0.2887689585271643,
+          8.902297456481955,
           -0.26774922013282776
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b160809ba140cff4c187f5bfb0e14080eca8fa2111a256d89375a1567f25ff2d",
+      "geometryHash": "698d7ac1fe8ba37f8a2e1243f031eba0979e11aa2705462217480e200e474dec",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-avi-mechanical.primitive.0",
       "indexCount": 126,
       "indexed": true,
@@ -1817,17 +1817,17 @@
       "bounds": {
         "max": [
           8.662689208984375,
-          6.786672949790955,
-          0.2444620281457901
+          6.786672999883813,
+          0.24446203220294244
         ],
         "min": [
           8.137283325195312,
-          6.537799954414368,
-          -0.2738244831562042
+          6.537799904321509,
+          -0.27382448721335656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be778bd957eaf3af90c76059664db2bb7af0ca2add194540db87cfeeba6cbec8",
+      "geometryHash": "28d135463055f98c8c86c7a0d5f35cd73e652e973c2960533b9712a7eb4b6aa1",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-beacon-amber.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -1891,18 +1891,18 @@
     {
       "bounds": {
         "max": [
-          9.0454843044281,
+          9.045484277826388,
           6.296165466308594,
-          0.7960549592971802
+          0.7960549786854704
         ],
         "min": [
-          7.954519987106323,
+          7.954520013708036,
           4.703843593597412,
-          -0.7958781123161316
+          -0.7958781317044218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01c16cee6b08b65cfc1c4377d75bc221c22680f69ed659a01b1be93388529aec",
+      "geometryHash": "ef637fca6cef22065f25800ce8b6e01bd2a1568dd6db6d6316c3e7e8a0fc5c5f",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-hull.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1916,18 +1916,18 @@
     {
       "bounds": {
         "max": [
-          9.120051324367523,
-          6.055950462818146,
+          9.12005134408779,
+          6.055950461346538,
           0.8183333277702332
         ],
         "min": [
-          8.149949133396149,
-          4.871668517589569,
+          8.149949113675882,
+          4.871668519061177,
           -0.8183333277702332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb647e2e9478c6e5fb833c0a75a6a999584af62236e01647df47826450e97b44",
+      "geometryHash": "5677c42611bbda71fd938e4c6c4965fea648170363baa3a4891211c4a1244782",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-lights-cyan.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1941,18 +1941,18 @@
     {
       "bounds": {
         "max": [
-          8.297181501984596,
+          8.297181505531961,
           6.296165466308594,
-          0.7960549592971802
+          0.7960549786854704
         ],
         "min": [
-          8.10318911075592,
+          8.103189107208555,
           4.703843593597412,
-          -0.7958781123161316
+          -0.7958781317044218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5055614ca8cb655eaaa1b67609e6f764be87fb2e0e9a1ac80662098d51170a54",
+      "geometryHash": "e393ad097731dc9c052af8c227aba0d679ec6a19edf78dd3793dd48335c518f4",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-livery.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1966,18 +1966,18 @@
     {
       "bounds": {
         "max": [
-          9.161864936351776,
+          9.161864952204752,
           6.546608924865723,
-          0.6270516514778137
+          0.6270516417877615
         ],
         "min": [
-          8.056573212146759,
+          8.056573196293783,
           4.892709255218506,
-          -0.631733238697052
+          -0.6317332290069998
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb96c9fd967e16f02667f05ffcfbcaeb7433d70d70609775aa34fb34c6fd6818",
+      "geometryHash": "1bda4aa1bb06e4c70a7908823e22dcfea6c611415a7f92dd698bc45262d4c298",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-mechanical.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1991,18 +1991,18 @@
     {
       "bounds": {
         "max": [
-          9.063678920269012,
+          9.063678906987711,
           6.143523216247559,
           0.6435232162475586
         ],
         "min": [
-          8.97632297873497,
+          8.976322992016271,
           4.856476783752441,
           -0.6435232162475586
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d72ade74f75d6775e674583c41d4b61bb5b8c0e53a83d09c572a59fffacc317",
+      "geometryHash": "1097be2184b869f15c55e1cf6b3875999ba6206824a03b08c5da98b9b3d79c6a",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-mechanicaldark.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2016,18 +2016,18 @@
     {
       "bounds": {
         "max": [
-          2.637323170900345,
-          4.612023800611496,
+          2.6373231745466206,
+          4.612023817418106,
           0.46204590797424316
         ],
         "min": [
-          1.9626772105693817,
-          4.087976038455963,
+          1.9626772069231062,
+          4.087976021649353,
           -0.46204590797424316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ff129bd069e991b31b67c6347aef063193c06e33e9e63d851b196d3920dc7ab",
+      "geometryHash": "89c73d99e870a5932f7b39f8d278bce75d0396a9606ce844797f93ead5a8a6b2",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2041,18 +2041,18 @@
     {
       "bounds": {
         "max": [
-          2.5499889701604843,
+          2.5499889698253253,
           6.513021945953369,
-          0.49836304783821106
+          0.49836302183405445
         ],
         "min": [
-          2.050010934472084,
+          2.050010934807243,
           4.051666736602783,
-          -0.49836304783821106
+          -0.49836302183405445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f177c8796400c24a11ad31ad4822d428c13ad4c1fc9cabb6186ea9466ec25dfa",
+      "geometryHash": "f55b87a8dd53288be847fa510f78df5238388376703695b7c82b29aedb58d59b",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-beacon-amber.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -2066,18 +2066,18 @@
     {
       "bounds": {
         "max": [
-          2.6513506174087524,
+          2.6513506063616927,
           6.317265033721924,
-          0.3455449044704437
+          0.3455449016572908
         ],
         "min": [
-          1.9580423831939697,
+          1.9580423942410294,
           4.5,
-          -0.3455449044704437
+          -0.3455449016572908
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f81e6d2383a4416b8ae3f01bf7832508dd04796c437ca774860d9a8dc12b319",
+      "geometryHash": "92c5551011bd68552437f2c0478ddfb252b68a1bf742f426df6fc6869d862690",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-mechanical.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -2091,18 +2091,18 @@
     {
       "bounds": {
         "max": [
-          4.237323105335236,
-          4.612023800611496,
+          4.237323090057987,
+          4.612023796066158,
           0.46204590797424316
         ],
         "min": [
-          3.5626770853996277,
-          4.087975978851318,
+          3.5626771006768765,
+          4.087975983396657,
           -0.46204593777656555
         ]
       },
       "drawMode": 4,
-      "geometryHash": "489b59e6354beff520161f1b5eb62e6e0da7ea040ebcb192a81f3beca324c481",
+      "geometryHash": "f6aad14ea37ae95c3fc19b98db0924051eb54889d53485c788b2124f029bc724",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2116,18 +2116,18 @@
     {
       "bounds": {
         "max": [
-          4.149989426136017,
+          4.149989422074089,
           6.513021469116211,
-          0.4983629286289215
+          0.49836292528642645
         ],
         "min": [
-          3.6500114798545837,
+          3.650011483916511,
           4.051666736602783,
-          -0.4983629286289215
+          -0.49836292528642645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2cf4a3c6d534e02a0fef3fc4b3f211613eaa8c2f02313ff7c96b36677b7ec8a4",
+      "geometryHash": "f6171622adf23b8c1605a0a7f07860294ad7344f1b0600dd5a95b486b6ea9c17",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-lights-cyan.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -2141,18 +2141,18 @@
     {
       "bounds": {
         "max": [
-          4.251320868730545,
+          4.251320861447999,
           6.31702995300293,
-          0.34555453062057495
+          0.34555453336051134
         ],
         "min": [
-          3.5485644042491913,
+          3.5485644115317374,
           4.5,
-          -0.3514347970485687
+          -0.3514347997885051
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c656fae42664101e9b2691a6501ea19ebf77a7831a83bd7b371e87d8e75160d5",
+      "geometryHash": "ad13dddddc10d98d133acd09f117f1275af4541ee54bb01726257612d09234cc",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-mechanical.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -2166,18 +2166,18 @@
     {
       "bounds": {
         "max": [
-          5.837323218584061,
-          4.612023770809174,
+          5.8373232113515385,
+          4.612023794066572,
           0.4620458781719208
         ],
         "min": [
-          5.1626772582530975,
-          4.087976038455963,
+          5.16267726548562,
+          4.0879760151985645,
           -0.46204590797424316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e375dad165feb4800d161289ad0980769528fe685a99593e7fea390ac53495ba",
+      "geometryHash": "29867b9edb39746fa26275459fac1ab4b70d30dd7c6aa8f17c438bafee9c8bf3",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-armor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2191,18 +2191,18 @@
     {
       "bounds": {
         "max": [
-          5.7499890178442,
+          5.749989017509041,
           6.513021945953369,
-          0.49836304783821106
+          0.49836302183405445
         ],
         "min": [
-          5.2500109821558,
+          5.250010982490959,
           4.051666736602783,
-          -0.49836304783821106
+          -0.49836302183405445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75cacfd7c97d05a75633a325c2f6c5933cb1d51a4badfe4af8ee6ad9bd362549",
+      "geometryHash": "f2d4934d8487e4d2f1be007339a8d5e4a7a8c5412692f8140b235787e877eb44",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-beacon-amber.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -2216,18 +2216,18 @@
     {
       "bounds": {
         "max": [
-          5.850524306297302,
+          5.850524303041212,
           6.316927909851074,
-          0.3492196500301361
+          0.34921964404638783
         ],
         "min": [
-          5.153574109077454,
+          5.153574112333544,
           4.5,
-          -0.3463997542858124
+          -0.3463997483020641
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37dbd25da87b9534f199c61c2e176037659c1c6090844bfc049fe346f72b30f8",
+      "geometryHash": "08e90129dbee58853b1b16d606606f590f0813bedc6d9ef3be5f05da8a1948e7",
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-mechanical.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -2241,18 +2241,18 @@
     {
       "bounds": {
         "max": [
-          1.3677204847335815,
+          1.3677204752618148,
           6.246864318847656,
-          1.3719385862350464
+          1.3719386368554283
         ],
         "min": [
-          -1.4876773357391357,
+          -1.487677326267369,
           -4.297801494598389,
-          -1.3688956499099731
+          -1.368895700530355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38e06acfb22b91686e9aae11343dde6aac98cb79c3fe411e4520db6779e3f836",
+      "geometryHash": "78d77b3cd8078f3f62bb9fac9e79dcf8a4cddc9c80d78a5bd89b8939f6be70d5",
       "id": "sf.render.lane-beacon.node.lod2-warning.primitive.0",
       "indexCount": 63,
       "indexed": true,
@@ -2493,20 +2493,20 @@
     {
       "id": "sf.render.lane-beacon.node.collision-hull",
       "localTransform": [
-        1,
+        7.162249803543091,
         0,
         0,
         0,
         0,
-        1,
+        7.162249803543091,
         0,
         0,
         0,
         0,
-        1,
+        7.162249803543091,
         0,
-        0,
-        0,
+        3.775981068611145,
+        2.0622498989105225,
         0,
         1
       ],
@@ -2521,20 +2521,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        7.162249803543091,
         0,
         0,
         0,
         0,
-        1,
+        7.162249803543091,
         0,
         0,
         0,
         0,
-        1,
+        7.162249803543091,
         0,
-        0,
-        0,
+        3.775981068611145,
+        2.0622498989105225,
         0,
         1
       ]
@@ -2542,20 +2542,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-armor",
       "localTransform": [
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
-        0,
-        0,
+        3.3899998664855957,
+        1.9000003337860107,
         0,
         1
       ],
@@ -2570,20 +2570,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
-        0,
-        0,
+        3.3899998664855957,
+        1.9000003337860107,
         0,
         1
       ]
@@ -2591,20 +2591,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ],
@@ -2619,20 +2619,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ]
@@ -2738,20 +2738,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-hull",
       "localTransform": [
-        1,
+        6.355000257492065,
         0,
         0,
         0,
         0,
-        1,
+        6.355000257492065,
         0,
         0,
         0,
         0,
-        1,
+        6.355000257492065,
         0,
-        0,
-        0,
+        3.5499996542930603,
+        2.5450003147125244,
         0,
         1
       ],
@@ -2766,20 +2766,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.355000257492065,
         0,
         0,
         0,
         0,
-        1,
+        6.355000257492065,
         0,
         0,
         0,
         0,
-        1,
+        6.355000257492065,
         0,
-        0,
-        0,
+        3.5499996542930603,
+        2.5450003147125244,
         0,
         1
       ]
@@ -2787,20 +2787,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-livery",
       "localTransform": [
-        1,
+        5.782886743545532,
         0,
         0,
         0,
         0,
-        1,
+        5.782886743545532,
         0,
         0,
         0,
         0,
-        1,
+        5.782886743545532,
         0,
-        0,
-        0,
+        3.500669836997986,
+        2.932886838912964,
         0,
         1
       ],
@@ -2815,20 +2815,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        5.782886743545532,
         0,
         0,
         0,
         0,
-        1,
+        5.782886743545532,
         0,
         0,
         0,
         0,
-        1,
+        5.782886743545532,
         0,
-        0,
-        0,
+        3.500669836997986,
+        2.932886838912964,
         0,
         1
       ]
@@ -2836,20 +2836,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-mechanical",
       "localTransform": [
-        1,
+        7.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        7.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        7.1499998569488525,
         0,
-        0,
-        0,
+        3.155336022377014,
+        2.049999952316284,
         0,
         1
       ],
@@ -2864,20 +2864,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        7.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        7.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        7.1499998569488525,
         0,
-        0,
-        0,
+        3.155336022377014,
+        2.049999952316284,
         0,
         1
       ]
@@ -2885,20 +2885,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        6.290000081062317,
         0,
         0,
         0,
         0,
-        1,
+        6.290000081062317,
         0,
         0,
         0,
         0,
-        1,
+        6.290000081062317,
         0,
-        0,
-        0,
+        3.4000000059604645,
+        2.590000033378601,
         0,
         1
       ],
@@ -2913,20 +2913,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.290000081062317,
         0,
         0,
         0,
         0,
-        1,
+        6.290000081062317,
         0,
         0,
         0,
         0,
-        1,
+        6.290000081062317,
         0,
-        0,
-        0,
+        3.4000000059604645,
+        2.590000033378601,
         0,
         1
       ]
@@ -2984,20 +2984,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-avi-mechanical",
       "localTransform": [
-        1,
+        0.26787447929382324,
         0,
         0,
         0,
         0,
-        1,
+        0.26787447929382324,
         0,
         0,
         0,
         0,
-        1,
+        0.26787447929382324,
         0,
         0,
-        0,
+        0.05950021794615168,
         0,
         1
       ],
@@ -3013,20 +3013,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.26787447929382324,
         0,
         0,
         0,
         0,
-        1,
+        0.26787447929382324,
         0,
         0,
         0,
         0,
-        1,
+        0.26787447929382324,
         0,
         0.550000011920929,
-        8.899999618530273,
+        8.959499836476425,
         0,
         1
       ]
@@ -3034,20 +3034,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-beacon-amber",
       "localTransform": [
-        1,
+        0.26040029525756836,
         0,
         0,
         0,
         0,
-        1,
+        0.26040029525756836,
         0,
         0,
         0,
         0,
-        1,
+        0.26040029525756836,
         0,
-        0,
-        0,
+        -0.09999990463256836,
+        1.1575000286102295,
         0,
         1
       ],
@@ -3063,20 +3063,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.26040029525756836,
         0,
         0,
         0,
         0,
-        1,
+        0.26040029525756836,
         0,
         0,
         0,
         0,
-        1,
+        0.26040029525756836,
         0,
-        8.5,
-        5.5,
+        8.400000095367432,
+        6.6575000286102295,
         0,
         1
       ]
@@ -3184,17 +3184,17 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-hull",
       "localTransform": [
-        1,
+        0.8000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.8000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.8000001907348633,
         0,
         0,
         0,
@@ -3213,17 +3213,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.8000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.8000001907348633,
         0,
         8.5,
         5.5,
@@ -3234,20 +3234,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-lights-cyan",
       "localTransform": [
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
-        0,
-        0,
+        0.13499973714351654,
+        -0.047499895095825195,
         0,
         1
       ],
@@ -3263,20 +3263,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
-        8.5,
-        5.5,
+        8.634999737143517,
+        5.452500104904175,
         0,
         1
       ]
@@ -3284,19 +3284,19 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-livery",
       "localTransform": [
-        1,
+        0.7985348701477051,
         0,
         0,
         0,
         0,
-        1,
+        0.7985348701477051,
         0,
         0,
         0,
         0,
-        1,
+        0.7985348701477051,
         0,
-        0,
+        -0.3000006601214409,
         0,
         0,
         1
@@ -3313,19 +3313,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7985348701477051,
         0,
         0,
         0,
         0,
-        1,
+        0.7985348701477051,
         0,
         0,
         0,
         0,
-        1,
+        0.7985348701477051,
         0,
-        8.5,
+        8.19999933987856,
         5.5,
         0,
         1
@@ -3334,21 +3334,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-mechanical",
       "localTransform": [
-        1,
+        0.8434998989105225,
         0,
         0,
         0,
         0,
-        1,
+        0.8434998989105225,
         0,
         0,
         0,
         0,
-        1,
+        0.8434998989105225,
         0,
-        0,
-        0,
-        0,
+        0.11229085922241211,
+        0.20350003242492676,
+        -0.018690049648284912,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3363,41 +3363,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8434998989105225,
         0,
         0,
         0,
         0,
-        1,
+        0.8434998989105225,
         0,
         0,
         0,
         0,
-        1,
+        0.8434998989105225,
         0,
-        8.5,
-        5.5,
-        0,
+        8.612290859222412,
+        5.703500032424927,
+        -0.018690049648284912,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-lamp-mechanicaldark",
       "localTransform": [
-        1,
+        0.7750000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.7750000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.7750000953674316,
         0,
-        0,
-        0,
+        0.08500051498413086,
+        0.125,
         0,
         1
       ],
@@ -3413,20 +3413,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7750000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.7750000953674316,
         0,
         0,
         0,
         0,
-        1,
+        0.7750000953674316,
         0,
-        8.5,
-        5.5,
+        8.58500051498413,
+        5.625,
         0,
         1
       ]
@@ -3434,20 +3434,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-armor",
       "localTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
-        0,
-        0,
+        -5.960464477539063e-8,
+        -0.5500002056360245,
         0,
         1
       ],
@@ -3463,20 +3463,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
-        2.299999952316284,
-        4.900000095367432,
+        2.2999998927116394,
+        4.349999889731407,
         0,
         1
       ]
@@ -3484,20 +3484,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-beacon-amber",
       "localTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
-        0,
+        0.370499849319458,
         0,
         1
       ],
@@ -3513,20 +3513,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         2.299999952316284,
-        4.900000095367432,
+        5.27049994468689,
         0,
         1
       ]
@@ -3534,20 +3534,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod0-mechanical",
       "localTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
-        0,
-        0,
+        -5.960464477539063e-8,
+        0.5094997882843018,
         0,
         1
       ],
@@ -3563,20 +3563,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
-        2.299999952316284,
-        4.900000095367432,
+        2.2999998927116394,
+        5.409499883651733,
         0,
         1
       ]
@@ -3584,20 +3584,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-armor",
       "localTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
-        0,
+        -0.5500002056360245,
         0,
         1
       ],
@@ -3613,20 +3613,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         3.9000000953674316,
-        4.900000095367432,
+        4.349999889731407,
         0,
         1
       ]
@@ -3634,20 +3634,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-lights-cyan",
       "localTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
-        0,
+        0.370499849319458,
         0,
         1
       ],
@@ -3663,20 +3663,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         3.9000000953674316,
-        4.900000095367432,
+        5.27049994468689,
         0,
         1
       ]
@@ -3684,20 +3684,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod1-mechanical",
       "localTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
-        0,
+        0.5094997882843018,
         0,
         1
       ],
@@ -3713,20 +3713,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         3.9000000953674316,
-        4.900000095367432,
+        5.409499883651733,
         0,
         1
       ]
@@ -3734,20 +3734,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-armor",
       "localTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
-        0,
+        -0.5500002056360245,
         0,
         1
       ],
@@ -3763,20 +3763,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.4749999940395355,
         0,
         5.5,
-        4.900000095367432,
+        4.349999889731407,
         0,
         1
       ]
@@ -3784,20 +3784,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-beacon-amber",
       "localTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
-        0,
+        0.370499849319458,
         0,
         1
       ],
@@ -3813,20 +3813,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         0,
         0,
         0,
-        1,
+        1.2355000972747803,
         0,
         5.5,
-        4.900000095367432,
+        5.27049994468689,
         0,
         1
       ]
@@ -3834,20 +3834,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-motion-lane-pod2-mechanical",
       "localTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
-        0,
+        0.5094997882843018,
         0,
         1
       ],
@@ -3863,20 +3863,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         0,
         0,
         0,
-        1,
+        0.9094998836517334,
         0,
         5.5,
-        4.900000095367432,
+        5.409499883651733,
         0,
         1
       ]
@@ -3884,20 +3884,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod0-warning",
       "localTransform": [
-        1,
+        5.275000095367432,
         0,
         0,
         0,
         0,
-        1,
+        5.275000095367432,
         0,
         0,
         0,
         0,
-        1,
+        5.275000095367432,
         0,
-        0,
-        0,
+        -0.05750000476837158,
+        0.9749999046325684,
         0,
         1
       ],
@@ -3912,20 +3912,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        5.275000095367432,
         0,
         0,
         0,
         0,
-        1,
+        5.275000095367432,
         0,
         0,
         0,
         0,
-        1,
+        5.275000095367432,
         0,
-        0,
-        0,
+        -0.05750000476837158,
+        0.9749999046325684,
         0,
         1
       ]
@@ -3933,20 +3933,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-armor",
       "localTransform": [
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
-        0,
-        0,
+        3.390001118183136,
+        1.9000003337860107,
         0,
         1
       ],
@@ -3961,20 +3961,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
         0,
         0,
         0,
-        1,
+        7.000000238418579,
         0,
-        0,
-        0,
+        3.390001118183136,
+        1.9000003337860107,
         0,
         1
       ]
@@ -3982,20 +3982,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ],
@@ -4010,20 +4010,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ]
@@ -4129,20 +4129,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-hull",
       "localTransform": [
-        1,
+        6.354930877685547,
         0,
         0,
         0,
         0,
-        1,
+        6.354930877685547,
         0,
         0,
         0,
         0,
-        1,
+        6.354930877685547,
         0,
-        0,
-        0,
+        3.549653172492981,
+        2.545069694519043,
         0,
         1
       ],
@@ -4157,20 +4157,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.354930877685547,
         0,
         0,
         0,
         0,
-        1,
+        6.354930877685547,
         0,
         0,
         0,
         0,
-        1,
+        6.354930877685547,
         0,
-        0,
-        0,
+        3.549653172492981,
+        2.545069694519043,
         0,
         1
       ]
@@ -4178,21 +4178,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-livery",
       "localTransform": [
-        1,
+        6.248633980751038,
         0,
         0,
         0,
         0,
-        1,
+        6.248633980751038,
         0,
         0,
         0,
         0,
-        1,
+        6.248633980751038,
         0,
-        0,
-        0,
-        0,
+        0.10963201522827148,
+        2.4670413732528687,
+        0.0000045299530029296875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4206,41 +4206,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.248633980751038,
         0,
         0,
         0,
         0,
-        1,
+        6.248633980751038,
         0,
         0,
         0,
         0,
-        1,
+        6.248633980751038,
         0,
-        0,
-        0,
-        0,
+        0.10963201522827148,
+        2.4670413732528687,
+        0.0000045299530029296875,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-mechanical",
       "localTransform": [
-        1,
+        6.723782777786255,
         0,
         0,
         0,
         0,
-        1,
+        6.723782777786255,
         0,
         0,
         0,
         0,
-        1,
+        6.723782777786255,
         0,
-        0,
-        0,
+        3.156035304069519,
+        1.625180959701538,
         0,
         1
       ],
@@ -4255,20 +4255,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.723782777786255,
         0,
         0,
         0,
         0,
-        1,
+        6.723782777786255,
         0,
         0,
         0,
         0,
-        1,
+        6.723782777786255,
         0,
-        0,
-        0,
+        3.156035304069519,
+        1.625180959701538,
         0,
         1
       ]
@@ -4276,20 +4276,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        4.354315638542175,
         0,
         0,
         0,
         0,
-        1,
+        4.354315638542175,
         0,
         0,
         0,
         0,
-        1,
+        4.354315638542175,
         0,
-        0,
-        0,
+        3.4512524008750916,
+        0.6556845903396606,
         0,
         1
       ],
@@ -4304,20 +4304,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        4.354315638542175,
         0,
         0,
         0,
         0,
-        1,
+        4.354315638542175,
         0,
         0,
         0,
         0,
-        1,
+        4.354315638542175,
         0,
-        0,
-        0,
+        3.4512524008750916,
+        0.6556845903396606,
         0,
         1
       ]
@@ -4375,21 +4375,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-avi-mechanical",
       "localTransform": [
-        1,
+        0.2681918293237686,
         0,
         0,
         0,
         0,
-        1,
+        0.2681918293237686,
         0,
         0,
         0,
         0,
-        1,
+        0.2681918293237686,
         0,
-        0,
-        0,
-        0,
+        -0.00006364285945892334,
+        0.05954694765387103,
+        -0.000311926007270813,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4404,42 +4404,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.2681918293237686,
         0,
         0,
         0,
         0,
-        1,
+        0.2681918293237686,
         0,
         0,
         0,
         0,
-        1,
+        0.2681918293237686,
         0,
-        0.550000011920929,
-        8.899999618530273,
-        0,
+        0.54993636906147,
+        8.959546566184144,
+        -0.000311926007270813,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-beacon-amber",
       "localTransform": [
-        1,
+        0.2608070373535156,
         0,
         0,
         0,
         0,
-        1,
+        0.2608070373535156,
         0,
         0,
         0,
         0,
-        1,
+        0.2608070373535156,
         0,
-        0,
-        0,
-        0,
+        -0.10002326965332031,
+        1.1580469608306885,
+        -0.00008924305438995361,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4454,21 +4454,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.2608070373535156,
         0,
         0,
         0,
         0,
-        1,
+        0.2608070373535156,
         0,
         0,
         0,
         0,
-        1,
+        0.2608070373535156,
         0,
-        8.5,
-        5.5,
-        0,
+        8.39997673034668,
+        6.6580469608306885,
+        -0.00008924305438995361,
         1
       ]
     },
@@ -4575,21 +4575,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-hull",
       "localTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        0,
-        0,
-        0,
+        0.0000021457672119140625,
+        0.0000045299530029296875,
+        0.00008842349052429199,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4604,41 +4604,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        8.5,
-        5.5,
-        0,
+        8.500002145767212,
+        5.500004529953003,
+        0.00008842349052429199,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-lights-cyan",
       "localTransform": [
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
-        0,
-        0,
+        0.13499973714351654,
+        -0.047499895095825195,
         0,
         1
       ],
@@ -4654,20 +4654,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
         0,
         0,
         0,
-        1,
+        0.8349999785423279,
         0,
-        8.5,
-        5.5,
+        8.634999737143517,
+        5.452500104904175,
         0,
         1
       ]
@@ -4675,21 +4675,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-livery",
       "localTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        0,
-        0,
-        0,
+        -0.29981469362974167,
+        0.0000045299530029296875,
+        0.00008842349052429199,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4704,41 +4704,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        8.5,
-        5.5,
-        0,
+        8.200185306370258,
+        5.500004529953003,
+        0.00008842349052429199,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-mechanical",
       "localTransform": [
-        1,
+        0.8424534797668457,
         0,
         0,
         0,
         0,
-        1,
+        0.8424534797668457,
         0,
         0,
         0,
         0,
-        1,
+        0.8424534797668457,
         0,
-        0,
-        0,
+        0.11425019800662994,
+        0.20245361328125,
         0,
         1
       ],
@@ -4754,20 +4754,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8424534797668457,
         0,
         0,
         0,
         0,
-        1,
+        0.8424534797668457,
         0,
         0,
         0,
         0,
-        1,
+        0.8424534797668457,
         0,
-        8.5,
-        5.5,
+        8.61425019800663,
+        5.70245361328125,
         0,
         1
       ]
@@ -4775,21 +4775,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-lamp-mechanicaldark",
       "localTransform": [
-        1,
+        0.6479513347148895,
         0,
         0,
         0,
         0,
-        1,
+        0.6479513347148895,
         0,
         0,
         0,
         0,
-        1,
+        0.6479513347148895,
         0,
+        0.5185699313879013,
         0,
-        0,
-        0,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4804,42 +4804,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.6479513347148895,
         0,
         0,
         0,
         0,
-        1,
+        0.6479513347148895,
         0,
         0,
         0,
         0,
-        1,
+        0.6479513347148895,
         0,
-        8.5,
+        9.018569931387901,
         5.5,
-        0,
+        -2.9802322387695312e-8,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-armor",
       "localTransform": [
-        1,
+        0.4707693010568619,
         0,
         0,
         0,
         0,
-        1,
+        0.4707693010568619,
         0,
         0,
         0,
         0,
-        1,
+        0.4707693010568619,
         0,
-        0,
-        0,
-        0,
+        0.0002492070198059082,
+        -0.5497083812952042,
+        -0.00013358891010284424,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4854,41 +4854,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4707693010568619,
         0,
         0,
         0,
         0,
-        1,
+        0.4707693010568619,
         0,
         0,
         0,
         0,
-        1,
+        0.4707693010568619,
         0,
-        2.299999952316284,
-        4.900000095367432,
-        0,
+        2.30024915933609,
+        4.3502917140722275,
+        -0.00013358891010284424,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-beacon-amber",
       "localTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
-        0,
+        0.36943864822387695,
         0,
         1
       ],
@@ -4904,20 +4904,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         2.299999952316284,
-        4.900000095367432,
+        5.269438743591309,
         0,
         1
       ]
@@ -4925,20 +4925,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod0-mechanical",
       "localTransform": [
-        1,
+        0.9085841178894043,
         0,
         0,
         0,
         0,
-        1,
+        0.9085841178894043,
         0,
         0,
         0,
         0,
-        1,
+        0.9085841178894043,
         0,
-        0,
-        0,
+        -5.960464477539063e-8,
+        0.5085840225219727,
         0,
         1
       ],
@@ -4954,20 +4954,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9085841178894043,
         0,
         0,
         0,
         0,
-        1,
+        0.9085841178894043,
         0,
         0,
         0,
         0,
-        1,
+        0.9085841178894043,
         0,
-        2.299999952316284,
-        4.900000095367432,
+        2.2999998927116394,
+        5.408584117889404,
         0,
         1
       ]
@@ -4975,21 +4975,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-armor",
       "localTransform": [
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
-        0,
-        0,
-        0,
+        -0.0001456737518310547,
+        -0.5500001758337021,
+        2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5004,41 +5004,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
-        3.9000000953674316,
-        4.900000095367432,
-        0,
+        3.8998544216156006,
+        4.3499999195337296,
+        2.9802322387695312e-8,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-lights-cyan",
       "localTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
-        0,
+        0.36943864822387695,
         0,
         1
       ],
@@ -5054,20 +5054,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         3.9000000953674316,
-        4.900000095367432,
+        5.269438743591309,
         0,
         1
       ]
@@ -5075,20 +5075,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod1-mechanical",
       "localTransform": [
-        1,
+        0.908517599105835,
         0,
         0,
         0,
         0,
-        1,
+        0.908517599105835,
         0,
         0,
         0,
         0,
-        1,
+        0.908517599105835,
         0,
         0,
-        0,
+        0.5085175037384033,
         0,
         1
       ],
@@ -5104,20 +5104,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.908517599105835,
         0,
         0,
         0,
         0,
-        1,
+        0.908517599105835,
         0,
         0,
         0,
         0,
-        1,
+        0.908517599105835,
         0,
         3.9000000953674316,
-        4.900000095367432,
+        5.408517599105835,
         0,
         1
       ]
@@ -5125,20 +5125,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-armor",
       "localTransform": [
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
-        0,
-        0,
+        0.0002493858337402344,
+        -0.5499970763921738,
         0,
         1
       ],
@@ -5154,20 +5154,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
         0,
         0,
         0,
-        1,
+        0.4709029793739319,
         0,
-        5.5,
-        4.900000095367432,
+        5.50024938583374,
+        4.350003018975258,
         0,
         1
       ]
@@ -5175,20 +5175,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-beacon-amber",
       "localTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
-        0,
+        0.36943864822387695,
         0,
         1
       ],
@@ -5204,20 +5204,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         0,
         0,
         0,
-        1,
+        1.2344388961791992,
         0,
         5.5,
-        4.900000095367432,
+        5.269438743591309,
         0,
         1
       ]
@@ -5225,20 +5225,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-motion-lane-pod2-mechanical",
       "localTransform": [
-        1,
+        0.9085977077484131,
         0,
         0,
         0,
         0,
-        1,
+        0.9085977077484131,
         0,
         0,
         0,
         0,
-        1,
+        0.9085977077484131,
         0,
         0,
-        0,
+        0.5085976123809814,
         0,
         1
       ],
@@ -5254,20 +5254,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9085977077484131,
         0,
         0,
         0,
         0,
-        1,
+        0.9085977077484131,
         0,
         0,
         0,
         0,
-        1,
+        0.9085977077484131,
         0,
         5.5,
-        4.900000095367432,
+        5.408597707748413,
         0,
         1
       ]
@@ -5275,21 +5275,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod1-warning",
       "localTransform": [
-        1,
+        5.274906158447266,
         0,
         0,
         0,
         0,
-        1,
+        5.274906158447266,
         0,
         0,
         0,
         0,
-        1,
+        5.274906158447266,
         0,
-        0,
-        0,
-        0,
+        -0.05791193246841431,
+        0.975090503692627,
+        0.0018385052680969238,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5303,41 +5303,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        5.274906158447266,
         0,
         0,
         0,
         0,
-        1,
+        5.274906158447266,
         0,
         0,
         0,
         0,
-        1,
+        5.274906158447266,
         0,
-        0,
-        0,
-        0,
+        -0.05791193246841431,
+        0.975090503692627,
+        0.0018385052680969238,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-armor",
       "localTransform": [
-        1,
+        6.996791362762451,
         0,
         0,
         0,
         0,
-        1,
+        6.996791362762451,
         0,
         0,
         0,
         0,
-        1,
+        6.996791362762451,
         0,
-        0,
-        0,
+        3.39104562997818,
+        1.9032092094421387,
         0,
         1
       ],
@@ -5352,20 +5352,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.996791362762451,
         0,
         0,
         0,
         0,
-        1,
+        6.996791362762451,
         0,
         0,
         0,
         0,
-        1,
+        6.996791362762451,
         0,
-        0,
-        0,
+        3.39104562997818,
+        1.9032092094421387,
         0,
         1
       ]
@@ -5373,20 +5373,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-beacon-amber",
       "localTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ],
@@ -5401,20 +5401,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
         0,
         0,
-        1,
+        1.0799999237060547,
         0,
         0,
-        0,
+        8.600000381469727,
         0,
         1
       ]
@@ -5520,20 +5520,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-hull",
       "localTransform": [
-        1,
+        6.3546565771102905,
         0,
         0,
         0,
         0,
-        1,
+        6.3546565771102905,
         0,
         0,
         0,
         0,
-        1,
+        6.3546565771102905,
         0,
-        0,
-        0,
+        3.549194872379303,
+        2.5453439950942993,
         0,
         1
       ],
@@ -5548,20 +5548,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.3546565771102905,
         0,
         0,
         0,
         0,
-        1,
+        6.3546565771102905,
         0,
         0,
         0,
         0,
-        1,
+        6.3546565771102905,
         0,
-        0,
-        0,
+        3.549194872379303,
+        2.5453439950942993,
         0,
         1
       ]
@@ -5569,21 +5569,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-livery",
       "localTransform": [
-        1,
+        6.254034638404846,
         0,
         0,
         0,
         0,
-        1,
+        6.254034638404846,
         0,
         0,
         0,
         0,
-        1,
+        6.254034638404846,
         0,
-        0,
-        0,
-        0,
+        0.10933297872543335,
+        2.4635804891586304,
+        -0.000002205371856689453,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5597,41 +5597,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.254034638404846,
         0,
         0,
         0,
         0,
-        1,
+        6.254034638404846,
         0,
         0,
         0,
         0,
-        1,
+        6.254034638404846,
         0,
-        0,
-        0,
-        0,
+        0.10933297872543335,
+        2.4635804891586304,
+        -0.000002205371856689453,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-mechanical",
       "localTransform": [
-        1,
+        6.716904163360596,
         0,
         0,
         0,
         0,
-        1,
+        6.716904163360596,
         0,
         0,
         0,
         0,
-        1,
+        6.716904163360596,
         0,
-        0,
-        0,
+        3.160088837146759,
+        1.626619815826416,
         0,
         1
       ],
@@ -5646,20 +5646,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        6.716904163360596,
         0,
         0,
         0,
         0,
-        1,
+        6.716904163360596,
         0,
         0,
         0,
         0,
-        1,
+        6.716904163360596,
         0,
-        0,
-        0,
+        3.160088837146759,
+        1.626619815826416,
         0,
         1
       ]
@@ -5667,20 +5667,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        4.350952625274658,
         0,
         0,
         0,
         0,
-        1,
+        4.350952625274658,
         0,
         0,
         0,
         0,
-        1,
+        4.350952625274658,
         0,
-        0,
-        0,
+        3.453338086605072,
+        0.6590476036071777,
         0,
         1
       ],
@@ -5695,20 +5695,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        4.350952625274658,
         0,
         0,
         0,
         0,
-        1,
+        4.350952625274658,
         0,
         0,
         0,
         0,
-        1,
+        4.350952625274658,
         0,
-        0,
-        0,
+        3.453338086605072,
+        0.6590476036071777,
         0,
         1
       ]
@@ -5766,21 +5766,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-avi-mechanical",
       "localTransform": [
-        1,
+        0.2678145617246628,
         0,
         0,
         0,
         0,
-        1,
+        0.2678145617246628,
         0,
         0,
         0,
         0,
-        1,
+        0.2678145617246628,
         0,
-        0,
-        0,
-        0,
+        0.00007756054401397705,
+        0.05977249226998538,
+        0.00006534159183502197,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5795,42 +5795,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.2678145617246628,
         0,
         0,
         0,
         0,
-        1,
+        0.2678145617246628,
         0,
         0,
         0,
         0,
-        1,
+        0.2678145617246628,
         0,
-        0.550000011920929,
-        8.899999618530273,
-        0,
+        0.5500775724649429,
+        8.959772110800259,
+        0.00006534159183502197,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-beacon-amber",
       "localTransform": [
-        1,
+        0.26270294189453125,
         0,
         0,
         0,
         0,
-        1,
+        0.26270294189453125,
         0,
         0,
         0,
         0,
-        1,
+        0.26270294189453125,
         0,
-        0,
-        0,
-        0,
+        -0.10001373291015625,
+        1.1622364521026611,
+        -0.014681227505207062,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5845,21 +5845,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.26270294189453125,
         0,
         0,
         0,
         0,
-        1,
+        0.26270294189453125,
         0,
         0,
         0,
         0,
-        1,
+        0.26270294189453125,
         0,
-        8.5,
-        5.5,
-        0,
+        8.399986267089844,
+        6.662236452102661,
+        -0.014681227505207062,
         1
       ]
     },
@@ -5966,21 +5966,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-hull",
       "localTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        0,
-        0,
-        0,
+        0.0000021457672119140625,
+        0.0000045299530029296875,
+        0.00008842349052429199,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5995,41 +5995,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        8.5,
-        5.5,
-        0,
+        8.500002145767212,
+        5.500004529953003,
+        0.00008842349052429199,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-lights-cyan",
       "localTransform": [
-        1,
+        0.8183333277702332,
         0,
         0,
         0,
         0,
-        1,
+        0.8183333277702332,
         0,
         0,
         0,
         0,
-        1,
+        0.8183333277702332,
         0,
-        0,
-        0,
+        0.13500022888183594,
+        -0.03619050979614258,
         0,
         1
       ],
@@ -6045,20 +6045,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8183333277702332,
         0,
         0,
         0,
         0,
-        1,
+        0.8183333277702332,
         0,
         0,
         0,
         0,
-        1,
+        0.8183333277702332,
         0,
-        8.5,
-        5.5,
+        8.635000228881836,
+        5.463809490203857,
         0,
         1
       ]
@@ -6066,21 +6066,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-livery",
       "localTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        0,
-        0,
-        0,
+        -0.29981469362974167,
+        0.0000045299530029296875,
+        0.00008842349052429199,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6095,42 +6095,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
         0,
         0,
         0,
-        1,
+        0.7961609363555908,
         0,
-        8.5,
-        5.5,
-        0,
+        8.200185306370258,
+        5.500004529953003,
+        0.00008842349052429199,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-mechanical",
       "localTransform": [
-        1,
+        0.8269498348236084,
         0,
         0,
         0,
         0,
-        1,
+        0.8269498348236084,
         0,
         0,
         0,
         0,
-        1,
+        0.8269498348236084,
         0,
-        0,
-        0,
-        0,
+        0.10921907424926758,
+        0.21965909004211426,
+        -0.0023407936096191406,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6145,40 +6145,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.8269498348236084,
         0,
         0,
         0,
         0,
-        1,
+        0.8269498348236084,
         0,
         0,
         0,
         0,
-        1,
+        0.8269498348236084,
         0,
-        8.5,
-        5.5,
-        0,
+        8.609219074249268,
+        5.719659090042114,
+        -0.0023407936096191406,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-lamp-mechanicaldark",
       "localTransform": [
-        1,
+        0.6435232162475586,
         0,
         0,
         0,
         0,
-        1,
+        0.6435232162475586,
         0,
         0,
         0,
         0,
-        1,
+        0.6435232162475586,
         0,
-        0,
+        0.5200009495019913,
         0,
         0,
         1
@@ -6195,19 +6195,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.6435232162475586,
         0,
         0,
         0,
         0,
-        1,
+        0.6435232162475586,
         0,
         0,
         0,
         0,
-        1,
+        0.6435232162475586,
         0,
-        8.5,
+        9.020000949501991,
         5.5,
         0,
         1
@@ -6216,20 +6216,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-armor",
       "localTransform": [
-        1,
+        0.46204590797424316,
         0,
         0,
         0,
         0,
-        1,
+        0.46204590797424316,
         0,
         0,
         0,
         0,
-        1,
+        0.46204590797424316,
         0,
-        0,
-        0,
+        2.384185791015625e-7,
+        -0.5500001758337021,
         0,
         1
       ],
@@ -6245,20 +6245,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.46204590797424316,
         0,
         0,
         0,
         0,
-        1,
+        0.46204590797424316,
         0,
         0,
         0,
         0,
-        1,
+        0.46204590797424316,
         0,
-        2.299999952316284,
-        4.900000095367432,
+        2.3000001907348633,
+        4.3499999195337296,
         0,
         1
       ]
@@ -6266,20 +6266,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-beacon-amber",
       "localTransform": [
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
-        0,
+        0.38234424591064453,
         0,
         1
       ],
@@ -6295,20 +6295,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         2.299999952316284,
-        4.900000095367432,
+        5.282344341278076,
         0,
         1
       ]
@@ -6316,20 +6316,20 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod0-mechanical",
       "localTransform": [
-        1,
+        0.9086325168609619,
         0,
         0,
         0,
         0,
-        1,
+        0.9086325168609619,
         0,
         0,
         0,
         0,
-        1,
+        0.9086325168609619,
         0,
-        0,
-        0,
+        0.004696547985076904,
+        0.5086324214935303,
         0,
         1
       ],
@@ -6345,20 +6345,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9086325168609619,
         0,
         0,
         0,
         0,
-        1,
+        0.9086325168609619,
         0,
         0,
         0,
         0,
-        1,
+        0.9086325168609619,
         0,
-        2.299999952316284,
-        4.900000095367432,
+        2.304696500301361,
+        5.408632516860962,
         0,
         1
       ]
@@ -6366,21 +6366,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-armor",
       "localTransform": [
-        1,
+        0.46204592287540436,
         0,
         0,
         0,
         0,
-        1,
+        0.46204592287540436,
         0,
         0,
         0,
         0,
-        1,
+        0.46204592287540436,
         0,
         0,
-        0,
-        0,
+        -0.5500002056360245,
+        -1.4901161193847656e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6395,41 +6395,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.46204592287540436,
         0,
         0,
         0,
         0,
-        1,
+        0.46204592287540436,
         0,
         0,
         0,
         0,
-        1,
+        0.46204592287540436,
         0,
         3.9000000953674316,
-        4.900000095367432,
-        0,
+        4.349999889731407,
+        -1.4901161193847656e-8,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-lights-cyan",
       "localTransform": [
-        1,
+        1.2306773662567139,
         0,
         0,
         0,
         0,
-        1,
+        1.2306773662567139,
         0,
         0,
         0,
         0,
-        1,
+        1.2306773662567139,
         0,
-        0,
-        0,
+        3.5762786865234375e-7,
+        0.38234400749206543,
         0,
         1
       ],
@@ -6445,20 +6445,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.2306773662567139,
         0,
         0,
         0,
         0,
-        1,
+        1.2306773662567139,
         0,
         0,
         0,
         0,
-        1,
+        1.2306773662567139,
         0,
-        3.9000000953674316,
-        4.900000095367432,
+        3.9000004529953003,
+        5.282344102859497,
         0,
         1
       ]
@@ -6466,21 +6466,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod1-mechanical",
       "localTransform": [
-        1,
+        0.9085149765014648,
         0,
         0,
         0,
         0,
-        1,
+        0.9085149765014648,
         0,
         0,
         0,
         0,
-        1,
+        0.9085149765014648,
         0,
-        0,
-        0,
-        0,
+        -0.00005745887756347656,
+        0.5085148811340332,
+        -0.002940133213996887,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6495,42 +6495,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9085149765014648,
         0,
         0,
         0,
         0,
-        1,
+        0.9085149765014648,
         0,
         0,
         0,
         0,
-        1,
+        0.9085149765014648,
         0,
-        3.9000000953674316,
-        4.900000095367432,
-        0,
+        3.899942636489868,
+        5.408514976501465,
+        -0.002940133213996887,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-armor",
       "localTransform": [
-        1,
+        0.46204589307308197,
         0,
         0,
         0,
         0,
-        1,
+        0.46204589307308197,
         0,
         0,
         0,
         0,
-        1,
+        0.46204589307308197,
         0,
-        0,
-        0,
-        0,
+        2.384185791015625e-7,
+        -0.5500001907348633,
+        -1.4901161193847656e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6545,41 +6545,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.46204589307308197,
         0,
         0,
         0,
         0,
-        1,
+        0.46204589307308197,
         0,
         0,
         0,
         0,
-        1,
+        0.46204589307308197,
         0,
-        5.5,
-        4.900000095367432,
-        0,
+        5.500000238418579,
+        4.349999904632568,
+        -1.4901161193847656e-8,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-beacon-amber",
       "localTransform": [
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
-        0,
+        0.38234424591064453,
         0,
         1
       ],
@@ -6595,20 +6595,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         0,
         0,
         0,
-        1,
+        1.230677604675293,
         0,
         5.5,
-        4.900000095367432,
+        5.282344341278076,
         0,
         1
       ]
@@ -6616,21 +6616,21 @@
     {
       "id": "sf.render.lane-beacon.node.lod2-motion-lane-pod2-mechanical",
       "localTransform": [
-        1,
+        0.9084639549255371,
         0,
         0,
         0,
         0,
-        1,
+        0.9084639549255371,
         0,
         0,
         0,
         0,
-        1,
+        0.9084639549255371,
         0,
-        0,
-        0,
-        0,
+        0.0020492076873779297,
+        0.5084638595581055,
+        0.0014099478721618652,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6645,42 +6645,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        0.9084639549255371,
         0,
         0,
         0,
         0,
-        1,
+        0.9084639549255371,
         0,
         0,
         0,
         0,
-        1,
+        0.9084639549255371,
         0,
-        5.5,
-        4.900000095367432,
-        0,
+        5.502049207687378,
+        5.408463954925537,
+        0.0014099478721618652,
         1
       ]
     },
     {
       "id": "sf.render.lane-beacon.node.lod2-warning",
       "localTransform": [
-        1,
+        5.2723329067230225,
         0,
         0,
         0,
         0,
-        1,
+        5.2723329067230225,
         0,
         0,
         0,
         0,
-        1,
+        5.2723329067230225,
         0,
-        0,
-        0,
-        0,
+        -0.0599784255027771,
+        0.9745314121246338,
+        0.001521468162536621,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6694,21 +6694,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.lane-beacon.body",
       "worldTransform": [
-        1,
+        5.2723329067230225,
         0,
         0,
         0,
         0,
-        1,
+        5.2723329067230225,
         0,
         0,
         0,
         0,
-        1,
+        5.2723329067230225,
         0,
-        0,
-        0,
-        0,
+        -0.0599784255027771,
+        0.9745314121246338,
+        0.001521468162536621,
         1
       ]
     },
@@ -7065,37 +7065,37 @@
       "uri": "place_lane_beacon.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1157468,
-    "sha256": "b1bab9a1316acea7394e43aab19da26250cbe459f6e9fff1d7a564aab80b0269",
+    "bytes": 694444,
+    "sha256": "ea01fd2dabde5f1b08c2aea214e40d27b982aef5e440d416096e8c3b996fddcd",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        3.780795067548752,
+        3.78079512088042,
         2.0622498989105225,
         0
       ],
       "max": [
-        9.161864936351776,
+        9.161864952204752,
         9.224499702453613,
-        1.600014328956604
+        1.6000142998118665
       ],
       "min": [
-        -1.6002748012542725,
+        -1.6002747104439123,
         -5.099999904632568,
-        -1.600014328956604
+        -1.6000142998118665
       ],
       "size": [
-        10.762139737606049,
+        10.762139662648664,
         14.324499607086182,
-        3.200028657913208
+        3.200028599623733
       ]
     },
     "hidden": [
@@ -7932,20 +7932,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          7.000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          7.000000238418579,
           0,
-          0,
-          0,
+          3.3899998664855957,
+          1.9000003337860107,
           0,
           1
         ],
@@ -7959,20 +7959,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
-          0,
+          8.600000381469727,
           0,
           1
         ],
@@ -8042,20 +8042,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.355000257492065,
           0,
           0,
           0,
           0,
-          1,
+          6.355000257492065,
           0,
           0,
           0,
           0,
-          1,
+          6.355000257492065,
           0,
-          0,
-          0,
+          3.5499996542930603,
+          2.5450003147125244,
           0,
           1
         ],
@@ -8069,20 +8069,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.782886743545532,
           0,
           0,
           0,
           0,
-          1,
+          5.782886743545532,
           0,
           0,
           0,
           0,
-          1,
+          5.782886743545532,
           0,
-          0,
-          0,
+          3.500669836997986,
+          2.932886838912964,
           0,
           1
         ],
@@ -8096,20 +8096,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.1499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          7.1499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          7.1499998569488525,
           0,
-          0,
-          0,
+          3.155336022377014,
+          2.049999952316284,
           0,
           1
         ],
@@ -8123,20 +8123,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.290000081062317,
           0,
           0,
           0,
           0,
-          1,
+          6.290000081062317,
           0,
           0,
           0,
           0,
-          1,
+          6.290000081062317,
           0,
-          0,
-          0,
+          3.4000000059604645,
+          2.590000033378601,
           0,
           1
         ],
@@ -8150,20 +8150,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.275000095367432,
           0,
           0,
           0,
           0,
-          1,
+          5.275000095367432,
           0,
           0,
           0,
           0,
-          1,
+          5.275000095367432,
           0,
-          0,
-          0,
+          -0.05750000476837158,
+          0.9749999046325684,
           0,
           1
         ],
@@ -8177,20 +8177,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          7.000000238418579,
           0,
           0,
           0,
           0,
-          1,
+          7.000000238418579,
           0,
-          0,
-          0,
+          3.390001118183136,
+          1.9000003337860107,
           0,
           1
         ],
@@ -8204,20 +8204,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
-          0,
+          8.600000381469727,
           0,
           1
         ],
@@ -8287,20 +8287,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.354930877685547,
           0,
           0,
           0,
           0,
-          1,
+          6.354930877685547,
           0,
           0,
           0,
           0,
-          1,
+          6.354930877685547,
           0,
-          0,
-          0,
+          3.549653172492981,
+          2.545069694519043,
           0,
           1
         ],
@@ -8314,21 +8314,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.248633980751038,
           0,
           0,
           0,
           0,
-          1,
+          6.248633980751038,
           0,
           0,
           0,
           0,
-          1,
+          6.248633980751038,
           0,
-          0,
-          0,
-          0,
+          0.10963201522827148,
+          2.4670413732528687,
+          0.0000045299530029296875,
           1
         ],
         "name": "LOD1_Livery",
@@ -8341,20 +8341,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.723782777786255,
           0,
           0,
           0,
           0,
-          1,
+          6.723782777786255,
           0,
           0,
           0,
           0,
-          1,
+          6.723782777786255,
           0,
-          0,
-          0,
+          3.156035304069519,
+          1.625180959701538,
           0,
           1
         ],
@@ -8368,20 +8368,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.354315638542175,
           0,
           0,
           0,
           0,
-          1,
+          4.354315638542175,
           0,
           0,
           0,
           0,
-          1,
+          4.354315638542175,
           0,
-          0,
-          0,
+          3.4512524008750916,
+          0.6556845903396606,
           0,
           1
         ],
@@ -8395,21 +8395,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.274906158447266,
           0,
           0,
           0,
           0,
-          1,
+          5.274906158447266,
           0,
           0,
           0,
           0,
-          1,
+          5.274906158447266,
           0,
-          0,
-          0,
-          0,
+          -0.05791193246841431,
+          0.975090503692627,
+          0.0018385052680969238,
           1
         ],
         "name": "LOD1_Warning",
@@ -8422,20 +8422,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.996791362762451,
           0,
           0,
           0,
           0,
-          1,
+          6.996791362762451,
           0,
           0,
           0,
           0,
-          1,
+          6.996791362762451,
           0,
-          0,
-          0,
+          3.39104562997818,
+          1.9032092094421387,
           0,
           1
         ],
@@ -8449,20 +8449,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
           0,
           0,
-          1,
+          1.0799999237060547,
           0,
           0,
-          0,
+          8.600000381469727,
           0,
           1
         ],
@@ -8532,20 +8532,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.3546565771102905,
           0,
           0,
           0,
           0,
-          1,
+          6.3546565771102905,
           0,
           0,
           0,
           0,
-          1,
+          6.3546565771102905,
           0,
-          0,
-          0,
+          3.549194872379303,
+          2.5453439950942993,
           0,
           1
         ],
@@ -8559,21 +8559,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.254034638404846,
           0,
           0,
           0,
           0,
-          1,
+          6.254034638404846,
           0,
           0,
           0,
           0,
-          1,
+          6.254034638404846,
           0,
-          0,
-          0,
-          0,
+          0.10933297872543335,
+          2.4635804891586304,
+          -0.000002205371856689453,
           1
         ],
         "name": "LOD2_Livery",
@@ -8586,20 +8586,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.716904163360596,
           0,
           0,
           0,
           0,
-          1,
+          6.716904163360596,
           0,
           0,
           0,
           0,
-          1,
+          6.716904163360596,
           0,
-          0,
-          0,
+          3.160088837146759,
+          1.626619815826416,
           0,
           1
         ],
@@ -8613,20 +8613,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.350952625274658,
           0,
           0,
           0,
           0,
-          1,
+          4.350952625274658,
           0,
           0,
           0,
           0,
-          1,
+          4.350952625274658,
           0,
-          0,
-          0,
+          3.453338086605072,
+          0.6590476036071777,
           0,
           1
         ],
@@ -8640,21 +8640,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.2723329067230225,
           0,
           0,
           0,
           0,
-          1,
+          5.2723329067230225,
           0,
           0,
           0,
           0,
-          1,
+          5.2723329067230225,
           0,
-          0,
-          0,
-          0,
+          -0.0599784255027771,
+          0.9745314121246338,
+          0.001521468162536621,
           1
         ],
         "name": "LOD2_Warning",
@@ -8696,20 +8696,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.26787447929382324,
           0,
           0,
           0,
           0,
-          1,
+          0.26787447929382324,
           0,
           0,
           0,
           0,
-          1,
+          0.26787447929382324,
           0,
           0.550000011920929,
-          8.899999618530273,
+          8.959499836476425,
           0,
           1
         ],
@@ -8753,21 +8753,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2681918293237686,
           0,
           0,
           0,
           0,
-          1,
+          0.2681918293237686,
           0,
           0,
           0,
           0,
-          1,
+          0.2681918293237686,
           0,
-          0.550000011920929,
-          8.899999618530273,
-          0,
+          0.54993636906147,
+          8.959546566184144,
+          -0.000311926007270813,
           1
         ],
         "name": "LOD1_MOTION_LANE_AVI_Mechanical",
@@ -8810,21 +8810,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2678145617246628,
           0,
           0,
           0,
           0,
-          1,
+          0.2678145617246628,
           0,
           0,
           0,
           0,
-          1,
+          0.2678145617246628,
           0,
-          0.550000011920929,
-          8.899999618530273,
-          0,
+          0.5500775724649429,
+          8.959772110800259,
+          0.00006534159183502197,
           1
         ],
         "name": "LOD2_MOTION_LANE_AVI_Mechanical",
@@ -8838,20 +8838,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.26040029525756836,
           0,
           0,
           0,
           0,
-          1,
+          0.26040029525756836,
           0,
           0,
           0,
           0,
-          1,
+          0.26040029525756836,
           0,
-          8.5,
-          5.5,
+          8.400000095367432,
+          6.6575000286102295,
           0,
           1
         ],
@@ -8924,17 +8924,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.8000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.8000001907348633,
           0,
           8.5,
           5.5,
@@ -8952,20 +8952,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8349999785423279,
           0,
           0,
           0,
           0,
-          1,
+          0.8349999785423279,
           0,
           0,
           0,
           0,
-          1,
+          0.8349999785423279,
           0,
-          8.5,
-          5.5,
+          8.634999737143517,
+          5.452500104904175,
           0,
           1
         ],
@@ -8980,19 +8980,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7985348701477051,
           0,
           0,
           0,
           0,
-          1,
+          0.7985348701477051,
           0,
           0,
           0,
           0,
-          1,
+          0.7985348701477051,
           0,
-          8.5,
+          8.19999933987856,
           5.5,
           0,
           1
@@ -9008,21 +9008,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8434998989105225,
           0,
           0,
           0,
           0,
-          1,
+          0.8434998989105225,
           0,
           0,
           0,
           0,
-          1,
+          0.8434998989105225,
           0,
-          8.5,
-          5.5,
-          0,
+          8.612290859222412,
+          5.703500032424927,
+          -0.018690049648284912,
           1
         ],
         "name": "LOD0_MOTION_LANE_LAMP_Mechanical",
@@ -9036,20 +9036,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7750000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.7750000953674316,
           0,
           0,
           0,
           0,
-          1,
+          0.7750000953674316,
           0,
-          8.5,
-          5.5,
+          8.58500051498413,
+          5.625,
           0,
           1
         ],
@@ -9064,21 +9064,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2608070373535156,
           0,
           0,
           0,
           0,
-          1,
+          0.2608070373535156,
           0,
           0,
           0,
           0,
-          1,
+          0.2608070373535156,
           0,
-          8.5,
-          5.5,
-          0,
+          8.39997673034668,
+          6.6580469608306885,
+          -0.00008924305438995361,
           1
         ],
         "name": "LOD1_MOTION_LANE_LAMP_Beacon_Amber",
@@ -9150,21 +9150,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
-          8.5,
-          5.5,
-          0,
+          8.500002145767212,
+          5.500004529953003,
+          0.00008842349052429199,
           1
         ],
         "name": "LOD1_MOTION_LANE_LAMP_Hull",
@@ -9178,20 +9178,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8349999785423279,
           0,
           0,
           0,
           0,
-          1,
+          0.8349999785423279,
           0,
           0,
           0,
           0,
-          1,
+          0.8349999785423279,
           0,
-          8.5,
-          5.5,
+          8.634999737143517,
+          5.452500104904175,
           0,
           1
         ],
@@ -9206,21 +9206,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
-          8.5,
-          5.5,
-          0,
+          8.200185306370258,
+          5.500004529953003,
+          0.00008842349052429199,
           1
         ],
         "name": "LOD1_MOTION_LANE_LAMP_Livery",
@@ -9234,20 +9234,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8424534797668457,
           0,
           0,
           0,
           0,
-          1,
+          0.8424534797668457,
           0,
           0,
           0,
           0,
-          1,
+          0.8424534797668457,
           0,
-          8.5,
-          5.5,
+          8.61425019800663,
+          5.70245361328125,
           0,
           1
         ],
@@ -9262,21 +9262,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6479513347148895,
           0,
           0,
           0,
           0,
-          1,
+          0.6479513347148895,
           0,
           0,
           0,
           0,
-          1,
+          0.6479513347148895,
           0,
-          8.5,
+          9.018569931387901,
           5.5,
-          0,
+          -2.9802322387695312e-8,
           1
         ],
         "name": "LOD1_MOTION_LANE_LAMP_MechanicalDark",
@@ -9290,21 +9290,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.26270294189453125,
           0,
           0,
           0,
           0,
-          1,
+          0.26270294189453125,
           0,
           0,
           0,
           0,
-          1,
+          0.26270294189453125,
           0,
-          8.5,
-          5.5,
-          0,
+          8.399986267089844,
+          6.662236452102661,
+          -0.014681227505207062,
           1
         ],
         "name": "LOD2_MOTION_LANE_LAMP_Beacon_Amber",
@@ -9376,21 +9376,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
-          8.5,
-          5.5,
-          0,
+          8.500002145767212,
+          5.500004529953003,
+          0.00008842349052429199,
           1
         ],
         "name": "LOD2_MOTION_LANE_LAMP_Hull",
@@ -9404,20 +9404,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8183333277702332,
           0,
           0,
           0,
           0,
-          1,
+          0.8183333277702332,
           0,
           0,
           0,
           0,
-          1,
+          0.8183333277702332,
           0,
-          8.5,
-          5.5,
+          8.635000228881836,
+          5.463809490203857,
           0,
           1
         ],
@@ -9432,21 +9432,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
           0,
           0,
           0,
-          1,
+          0.7961609363555908,
           0,
-          8.5,
-          5.5,
-          0,
+          8.200185306370258,
+          5.500004529953003,
+          0.00008842349052429199,
           1
         ],
         "name": "LOD2_MOTION_LANE_LAMP_Livery",
@@ -9460,21 +9460,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8269498348236084,
           0,
           0,
           0,
           0,
-          1,
+          0.8269498348236084,
           0,
           0,
           0,
           0,
-          1,
+          0.8269498348236084,
           0,
-          8.5,
-          5.5,
-          0,
+          8.609219074249268,
+          5.719659090042114,
+          -0.0023407936096191406,
           1
         ],
         "name": "LOD2_MOTION_LANE_LAMP_Mechanical",
@@ -9488,19 +9488,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6435232162475586,
           0,
           0,
           0,
           0,
-          1,
+          0.6435232162475586,
           0,
           0,
           0,
           0,
-          1,
+          0.6435232162475586,
           0,
-          8.5,
+          9.020000949501991,
           5.5,
           0,
           1
@@ -9516,20 +9516,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
-          2.299999952316284,
-          4.900000095367432,
+          2.2999998927116394,
+          4.349999889731407,
           0,
           1
         ],
@@ -9544,20 +9544,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           2.299999952316284,
-          4.900000095367432,
+          5.27049994468689,
           0,
           1
         ],
@@ -9572,20 +9572,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
-          2.299999952316284,
-          4.900000095367432,
+          2.2999998927116394,
+          5.409499883651733,
           0,
           1
         ],
@@ -9600,21 +9600,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4707693010568619,
           0,
           0,
           0,
           0,
-          1,
+          0.4707693010568619,
           0,
           0,
           0,
           0,
-          1,
+          0.4707693010568619,
           0,
-          2.299999952316284,
-          4.900000095367432,
-          0,
+          2.30024915933609,
+          4.3502917140722275,
+          -0.00013358891010284424,
           1
         ],
         "name": "LOD1_MOTION_LANE_POD0_Armor",
@@ -9628,20 +9628,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           2.299999952316284,
-          4.900000095367432,
+          5.269438743591309,
           0,
           1
         ],
@@ -9656,20 +9656,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9085841178894043,
           0,
           0,
           0,
           0,
-          1,
+          0.9085841178894043,
           0,
           0,
           0,
           0,
-          1,
+          0.9085841178894043,
           0,
-          2.299999952316284,
-          4.900000095367432,
+          2.2999998927116394,
+          5.408584117889404,
           0,
           1
         ],
@@ -9684,20 +9684,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.46204590797424316,
           0,
           0,
           0,
           0,
-          1,
+          0.46204590797424316,
           0,
           0,
           0,
           0,
-          1,
+          0.46204590797424316,
           0,
-          2.299999952316284,
-          4.900000095367432,
+          2.3000001907348633,
+          4.3499999195337296,
           0,
           1
         ],
@@ -9712,20 +9712,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.230677604675293,
           0,
           0,
           0,
           0,
-          1,
+          1.230677604675293,
           0,
           0,
           0,
           0,
-          1,
+          1.230677604675293,
           0,
           2.299999952316284,
-          4.900000095367432,
+          5.282344341278076,
           0,
           1
         ],
@@ -9740,20 +9740,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9086325168609619,
           0,
           0,
           0,
           0,
-          1,
+          0.9086325168609619,
           0,
           0,
           0,
           0,
-          1,
+          0.9086325168609619,
           0,
-          2.299999952316284,
-          4.900000095367432,
+          2.304696500301361,
+          5.408632516860962,
           0,
           1
         ],
@@ -9768,20 +9768,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
           3.9000000953674316,
-          4.900000095367432,
+          4.349999889731407,
           0,
           1
         ],
@@ -9796,20 +9796,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           3.9000000953674316,
-          4.900000095367432,
+          5.27049994468689,
           0,
           1
         ],
@@ -9824,20 +9824,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
           3.9000000953674316,
-          4.900000095367432,
+          5.409499883651733,
           0,
           1
         ],
@@ -9852,21 +9852,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4709029793739319,
           0,
           0,
           0,
           0,
-          1,
+          0.4709029793739319,
           0,
           0,
           0,
           0,
-          1,
+          0.4709029793739319,
           0,
-          3.9000000953674316,
-          4.900000095367432,
-          0,
+          3.8998544216156006,
+          4.3499999195337296,
+          2.9802322387695312e-8,
           1
         ],
         "name": "LOD1_MOTION_LANE_POD1_Armor",
@@ -9880,20 +9880,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           3.9000000953674316,
-          4.900000095367432,
+          5.269438743591309,
           0,
           1
         ],
@@ -9908,20 +9908,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.908517599105835,
           0,
           0,
           0,
           0,
-          1,
+          0.908517599105835,
           0,
           0,
           0,
           0,
-          1,
+          0.908517599105835,
           0,
           3.9000000953674316,
-          4.900000095367432,
+          5.408517599105835,
           0,
           1
         ],
@@ -9936,21 +9936,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.46204592287540436,
           0,
           0,
           0,
           0,
-          1,
+          0.46204592287540436,
           0,
           0,
           0,
           0,
-          1,
+          0.46204592287540436,
           0,
           3.9000000953674316,
-          4.900000095367432,
-          0,
+          4.349999889731407,
+          -1.4901161193847656e-8,
           1
         ],
         "name": "LOD2_MOTION_LANE_POD1_Armor",
@@ -9964,20 +9964,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2306773662567139,
           0,
           0,
           0,
           0,
-          1,
+          1.2306773662567139,
           0,
           0,
           0,
           0,
-          1,
+          1.2306773662567139,
           0,
-          3.9000000953674316,
-          4.900000095367432,
+          3.9000004529953003,
+          5.282344102859497,
           0,
           1
         ],
@@ -9992,21 +9992,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9085149765014648,
           0,
           0,
           0,
           0,
-          1,
+          0.9085149765014648,
           0,
           0,
           0,
           0,
-          1,
+          0.9085149765014648,
           0,
-          3.9000000953674316,
-          4.900000095367432,
-          0,
+          3.899942636489868,
+          5.408514976501465,
+          -0.002940133213996887,
           1
         ],
         "name": "LOD2_MOTION_LANE_POD1_Mechanical",
@@ -10020,20 +10020,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.4749999940395355,
           0,
           5.5,
-          4.900000095367432,
+          4.349999889731407,
           0,
           1
         ],
@@ -10048,20 +10048,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           0,
           0,
           0,
-          1,
+          1.2355000972747803,
           0,
           5.5,
-          4.900000095367432,
+          5.27049994468689,
           0,
           1
         ],
@@ -10076,20 +10076,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
           0,
           0,
           0,
-          1,
+          0.9094998836517334,
           0,
           5.5,
-          4.900000095367432,
+          5.409499883651733,
           0,
           1
         ],
@@ -10104,20 +10104,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4709029793739319,
           0,
           0,
           0,
           0,
-          1,
+          0.4709029793739319,
           0,
           0,
           0,
           0,
-          1,
+          0.4709029793739319,
           0,
-          5.5,
-          4.900000095367432,
+          5.50024938583374,
+          4.350003018975258,
           0,
           1
         ],
@@ -10132,20 +10132,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           0,
           0,
           0,
-          1,
+          1.2344388961791992,
           0,
           5.5,
-          4.900000095367432,
+          5.269438743591309,
           0,
           1
         ],
@@ -10160,20 +10160,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9085977077484131,
           0,
           0,
           0,
           0,
-          1,
+          0.9085977077484131,
           0,
           0,
           0,
           0,
-          1,
+          0.9085977077484131,
           0,
           5.5,
-          4.900000095367432,
+          5.408597707748413,
           0,
           1
         ],
@@ -10188,21 +10188,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.46204589307308197,
           0,
           0,
           0,
           0,
-          1,
+          0.46204589307308197,
           0,
           0,
           0,
           0,
-          1,
+          0.46204589307308197,
           0,
-          5.5,
-          4.900000095367432,
-          0,
+          5.500000238418579,
+          4.349999904632568,
+          -1.4901161193847656e-8,
           1
         ],
         "name": "LOD2_MOTION_LANE_POD2_Armor",
@@ -10216,20 +10216,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.230677604675293,
           0,
           0,
           0,
           0,
-          1,
+          1.230677604675293,
           0,
           0,
           0,
           0,
-          1,
+          1.230677604675293,
           0,
           5.5,
-          4.900000095367432,
+          5.282344341278076,
           0,
           1
         ],
@@ -10244,21 +10244,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9084639549255371,
           0,
           0,
           0,
           0,
-          1,
+          0.9084639549255371,
           0,
           0,
           0,
           0,
-          1,
+          0.9084639549255371,
           0,
-          5.5,
-          4.900000095367432,
-          0,
+          5.502049207687378,
+          5.408463954925537,
+          0.0014099478721618652,
           1
         ],
         "name": "LOD2_MOTION_LANE_POD2_Mechanical",
@@ -10274,20 +10274,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
-  "runtimeHash": "d0b338e868dcb3dc05a0b39bb27a807f34e0b1717c08be729caa7ca6927e08d2",
+  "runtimeHash": "c009b5e0728c049efa2a546beadd7ce2a1888b8b4b45882d0d5e43bbce890b5c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          9.161864936351776,
+          9.161864952204752,
           9.224499702453613,
-          1.600014328956604
+          1.6000142998118665
         ],
         "min": [
-          -1.6002748012542725,
+          -1.6002747104439123,
           -5.099999904632568,
-          -1.600014328956604
+          -1.6000142998118665
         ]
       },
       "id": "sf.render.lane-beacon.body",

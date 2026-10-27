@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b6826fb7760c595048d40373420836977fb3769500f9422c4d42a25c6c45ed43",
+  "contentHash": "53b26bab809e8ec16fa8af6cbdb37e8885bf59d371eb9d341c4b842dda6868b9",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           3.7774438858032227,
-          3.782386302947998,
-          3.5656087398529053
+          3.782386457173902,
+          3.56560885663377
         ],
         "min": [
           -4,
-          -3.782386302947998,
-          -0.49745094776153564
+          -3.782386457173902,
+          -0.4974510645424002
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3206ace75cfa12f520cac942fcef3a991313fbeb337a22da428a3ef8087a6e84",
+      "geometryHash": "084ebed438f7a61eac68e1b76dacba625d334f8cc36cca3529b4cd60d4e69264",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           4,
-          1.0713911056518555,
-          1.8767046928405762
+          1.0713911225632886,
+          1.87670484956221
         ],
         "min": [
           -3.307460308074951,
-          -0.24795256555080414,
-          -3.565253257751465
+          -0.2479525824622374,
+          -3.5652534144730987
         ]
       },
       "drawMode": 4,
-      "geometryHash": "482c59c002dd8778e2b9db0daee66b801783134fb89a16130bbbf48bcdfbc7b2",
+      "geometryHash": "405d6d33e4f24b7bc1a688b7f275502b8d314ef0d907cacf3df2ed6e942684d4",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           3.7774438858032227,
-          3.782386302947998,
-          3.5656087398529053
+          3.782386457173902,
+          3.56560885663377
         ],
         "min": [
           -4,
-          -3.782386302947998,
-          -0.49745094776153564
+          -3.782386457173902,
+          -0.4974510645424002
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa49e98c202db94b861d5b7000a2df48a7763d9a2ec1f8a6decb1f17e992f3c4",
+      "geometryHash": "3826d85bea0399130c3cca9630def3e3a180c937a999d4a38f74aa2fac4de55b",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat.primitive.0",
       "indexCount": 15,
       "indexed": true,
@@ -88,17 +88,17 @@
       "bounds": {
         "max": [
           4,
-          1.0384392738342285,
-          1.8775562047958374
+          1.0384392978588095,
+          1.8775563655539322
         ],
         "min": [
           -3.307460308074951,
-          -0.24789848923683167,
-          -3.565293788909912
+          -0.24789851326141266,
+          -3.565293949668007
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03f58b43167b2a661b758bbccee66fec98762d468f02738a427a1b2430927b1f",
+      "geometryHash": "15971da367329e5a97d4289645a87359cac19cb1f4aab97b9f3ca2b8b18c77d7",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -113,17 +113,17 @@
       "bounds": {
         "max": [
           3.7126989364624023,
-          3.782741069793701,
-          3.27392315864563
+          3.78274106236836,
+          3.2739231255904
         ],
         "min": [
           -4,
-          -3.6748058795928955,
-          -0.4971010982990265
+          -3.6748058721675543,
+          -0.49710106524379705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d9ee816f2aca4b32c0562ba3a08fd807c95c935018ea8024782c29f7a5762e6",
+      "geometryHash": "62a969439201137d686975b16c845f7c1cdc9e78bab93b301b6c935365e40a4d",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -138,17 +138,17 @@
       "bounds": {
         "max": [
           4,
-          1.038275122642517,
-          1.8776496648788452
+          1.0382750936332983,
+          1.8776496503501336
         ],
         "min": [
           -3.3005313873291016,
-          -0.24773424863815308,
-          -3.565387010574341
+          -0.24773421962893427,
+          -3.5653869960456293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9093ea0a0c5e50d3a4f32e06ca961c66439076c484b45e4a02e56dc45508e49c",
+      "geometryHash": "212e887d51284132508ad059861a0b916412d8fa610836455755b497b4a7e896",
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -378,21 +378,21 @@
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-heat",
       "localTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -407,42 +407,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod0-frag-grating-sheet-material-insulation",
       "localTransform": [
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
-        0,
-        0,
-        0,
+        0.3462698459625244,
+        0.41171927005052567,
+        -0.8442742824554443,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -457,21 +457,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
-        0,
-        0,
-        0,
+        0.3462698459625244,
+        0.41171927005052567,
+        -0.8442742824554443,
         1
       ]
     },
@@ -527,21 +527,21 @@
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-heat",
       "localTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -556,42 +556,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
         0,
         0,
         0,
-        1,
+        3.8887219429016113,
         0,
+        -0.11127805709838867,
         0,
-        0,
-        0,
+        1.5340788960456848,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod1-frag-grating-sheet-material-insulation",
       "localTransform": [
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
-        0,
-        0,
-        0,
+        0.3462698459625244,
+        0.3952703922986984,
+        -0.8438687920570374,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -606,21 +606,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
         0,
         0,
         0,
-        1,
+        3.6537301540374756,
         0,
-        0,
-        0,
-        0,
+        0.3462698459625244,
+        0.3952703922986984,
+        -0.8438687920570374,
         1
       ]
     },
@@ -676,21 +676,21 @@
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-heat",
       "localTransform": [
-        1,
+        3.856349468231201,
         0,
         0,
         0,
         0,
-        1,
+        3.856349468231201,
         0,
         0,
         0,
         0,
-        1,
+        3.856349468231201,
         0,
-        0,
-        0,
-        0,
+        -0.14365053176879883,
+        0.05396759510040283,
+        1.3884110301733017,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -705,42 +705,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.856349468231201,
         0,
         0,
         0,
         0,
-        1,
+        3.856349468231201,
         0,
         0,
         0,
         0,
-        1,
+        3.856349468231201,
         0,
-        0,
-        0,
-        0,
+        -0.14365053176879883,
+        0.05396759510040283,
+        1.3884110301733017,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.node.lod2-frag-grating-sheet-material-insulation",
       "localTransform": [
-        1,
+        3.650265693664551,
         0,
         0,
         0,
         0,
-        1,
+        3.650265693664551,
         0,
         0,
         0,
         0,
-        1,
+        3.650265693664551,
         0,
-        0,
-        0,
-        0,
+        0.3497343063354492,
+        0.395270437002182,
+        -0.8438686728477478,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -755,21 +755,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-grating-sheet-authored-down.body",
       "worldTransform": [
-        1,
+        3.650265693664551,
         0,
         0,
         0,
         0,
-        1,
+        3.650265693664551,
         0,
         0,
         0,
         0,
-        1,
+        3.650265693664551,
         0,
-        0,
-        0,
-        0,
+        0.3497343063354492,
+        0.395270437002182,
+        -0.8438686728477478,
         1
       ]
     }
@@ -784,37 +784,37 @@
       "uri": "place_aftermath_frag_grating_sheet_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 258588,
-    "sha256": "fefad506f47f4d5e617cc39c2018909f3d037ce3c30532e24b2cd9352de7092e",
+    "bytes": 256308,
+    "sha256": "93b77cf5219ae1a5dde3c6380a3dde0edb6f53daccaf2cc71430d4f231529ccf",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.0001773834228515625,
-        0.00011086463928222656
+        0.00017730259722892328,
+        0.00011093029407027721
       ],
       "max": [
         4,
-        3.782741069793701,
-        3.5656087398529053
+        3.78274106236836,
+        3.56560885663377
       ],
       "min": [
         -4,
-        -3.782386302947998,
-        -3.565387010574341
+        -3.782386457173902,
+        -3.5653869960456293
       ],
       "size": [
         8,
-        7.565127372741699,
-        7.130995750427246
+        7.565127519542262,
+        7.1309958526793995
       ]
     },
     "hidden": [],
@@ -860,21 +860,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
+          -0.11127805709838867,
           0,
-          0,
-          0,
+          1.5340788960456848,
           1
         ],
         "name": "LOD0_frag_grating_sheet_Material_Heat",
@@ -887,21 +887,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6537301540374756,
           0,
           0,
           0,
           0,
-          1,
+          3.6537301540374756,
           0,
           0,
           0,
           0,
-          1,
+          3.6537301540374756,
           0,
-          0,
-          0,
-          0,
+          0.3462698459625244,
+          0.41171927005052567,
+          -0.8442742824554443,
           1
         ],
         "name": "LOD0_frag_grating_sheet_Material_Insulation",
@@ -914,21 +914,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
           0,
           0,
           0,
-          1,
+          3.8887219429016113,
           0,
+          -0.11127805709838867,
           0,
-          0,
-          0,
+          1.5340788960456848,
           1
         ],
         "name": "LOD1_frag_grating_sheet_Material_Heat",
@@ -941,21 +941,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6537301540374756,
           0,
           0,
           0,
           0,
-          1,
+          3.6537301540374756,
           0,
           0,
           0,
           0,
-          1,
+          3.6537301540374756,
           0,
-          0,
-          0,
-          0,
+          0.3462698459625244,
+          0.3952703922986984,
+          -0.8438687920570374,
           1
         ],
         "name": "LOD1_frag_grating_sheet_Material_Insulation",
@@ -968,21 +968,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.856349468231201,
           0,
           0,
           0,
           0,
-          1,
+          3.856349468231201,
           0,
           0,
           0,
           0,
-          1,
+          3.856349468231201,
           0,
-          0,
-          0,
-          0,
+          -0.14365053176879883,
+          0.05396759510040283,
+          1.3884110301733017,
           1
         ],
         "name": "LOD2_frag_grating_sheet_Material_Heat",
@@ -995,21 +995,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.650265693664551,
           0,
           0,
           0,
           0,
-          1,
+          3.650265693664551,
           0,
           0,
           0,
           0,
-          1,
+          3.650265693664551,
           0,
-          0,
-          0,
-          0,
+          0.3497343063354492,
+          0.395270437002182,
+          -0.8438686728477478,
           1
         ],
         "name": "LOD2_frag_grating_sheet_Material_Insulation",
@@ -1024,20 +1024,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet_authored_down.glb"
   },
-  "runtimeHash": "4a50953d24be589a97d9c721a436e7445634522dd15ba5da3a295268787c6577",
+  "runtimeHash": "16b12bf735a958fb2aa78a01519b903cb57f572bba395cc8fc8c9baa6b1001ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4,
-          3.782741069793701,
-          3.5656087398529053
+          3.78274106236836,
+          3.56560885663377
         ],
         "min": [
           -4,
-          -3.782386302947998,
-          -3.565387010574341
+          -3.782386457173902,
+          -3.5653869960456293
         ]
       },
       "id": "sf.render.aftermath-frag-grating-sheet-authored-down.body",

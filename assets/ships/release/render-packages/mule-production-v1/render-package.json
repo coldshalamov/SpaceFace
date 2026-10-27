@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba45cd492f615b9af6815daa284f8c09f9bdf47b62701b633211d41b3f490e0e",
+  "contentHash": "971b2aad7794d07a11186377518538483af39024d80ac5b93faaffaeb0f43319",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -633,17 +633,17 @@
       "bounds": {
         "max": [
           8.029999732971191,
-          2.27582049369812,
-          3.462188720703125
+          2.2758204782471525,
+          3.4621887064927463
         ],
         "min": [
           -8.12002182006836,
-          -1.0481257438659668,
-          -3.4622063636779785
+          -1.0481257284149994,
+          -3.4622063494676
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba5aeb86e722d2a5fb840a96ba40cbec6c94ef2b1e90f9cac3a7882a36882e20",
+      "geometryHash": "02aefa66c44d740c847b6eb3467516e602b78895fc8c2d479d1feeb98e7428c8",
       "id": "sf.render.mule-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -658,17 +658,17 @@
       "bounds": {
         "max": [
           6.102076053619385,
-          1.8598196506500244,
-          3.2899234294891357
+          1.8598196442770005,
+          3.289923590925734
         ],
         "min": [
           -3.3499999046325684,
-          -0.6581762433052063,
-          -3.2899234294891357
+          -0.6581762369321824,
+          -3.289923590925734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ed2bdcc8b6abb124a32e925d8527762b003213a8f80ef21552709f2bcdf7d64",
+      "geometryHash": "48c54533554df6064a318fe6dbccd37ae42e8168256ca9fa9b63b9befe9476f4",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 13080,
       "indexed": true,
@@ -683,17 +683,17 @@
       "bounds": {
         "max": [
           6.070000171661377,
-          1.6690024137496948,
+          1.6690024748623278,
           0.07000017166137695
         ],
         "min": [
           5.929999828338623,
-          1.5709975957870483,
+          1.5709975346744154,
           -0.07000017166137695
         ]
       },
       "drawMode": 4,
-      "geometryHash": "36c0a06f1a0fd02cc067104f30017de164d8d22cf2e6412d3054f517cc7cf9f6",
+      "geometryHash": "bf4a3fa84c480fce3b09417f6b1ab6cab06e01a47b30f6d6fbe242ddb61f1230",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -707,18 +707,18 @@
     {
       "bounds": {
         "max": [
-          7.3500471115112305,
-          1.4988902807235718,
+          7.350046966562456,
+          1.4988902711081002,
           1.04853093624115
         ],
         "min": [
-          5.8999528884887695,
-          1.10004723072052,
+          5.899953033437544,
+          1.1000472403359915,
           -1.04853093624115
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25914a6103f90f60a8ab345377c01445adef4235e06199cb853c18c40d5a41e0",
+      "geometryHash": "0d18cd9866fb4ee25a09560c1fe9cd1180d4a67cd97fbbc484fc2b371d5c7969",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -743,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7d92e3e4494f1c4c2e27888105fb37722d2cf11b966b3b003cccf2d6ab5a77c",
+      "geometryHash": "0073e52380d62f2835fd3f0a8a86ef53cb0f3e8402bc65ba95f8a3db05a6dcfc",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -793,7 +793,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d99a678e9ac62ff9048f3f76a98001006fe874778b50faa2e6807de4f3c3e83",
+      "geometryHash": "0b7ca6bf23e22946774fdff5d0a0aeb93fe6464be736e880b8a220fa83345b87",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -893,7 +893,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62f7978c2ec4bea322a961ff9bc54a88fb6d363117458f03bbdff3412e7627a4",
+      "geometryHash": "d60ef8c063cc222f5c30d4b08e70fa1df1f7d432de50aa4473a3cf07e764f589",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-secondary-mast-mechanical.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -918,7 +918,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef060b54693f5a7e29108b16f42a52e731376039dcb13b3740c959b793667a87",
+      "geometryHash": "48a7d8579946d06deb643eca1a703987b94180b679cd65e101f86355c8707678",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -943,7 +943,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a3133633a2144f36b92b5312c0bd6ff4a45fb7547e9eaf52afd8755ec03844d",
+      "geometryHash": "fbe5cb94fa29a8e641b8ba46a44768a97baed334d82d1c71cc5fa610923a0379",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 2532,
       "indexed": true,
@@ -968,7 +968,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76c1bc6d861a63944c64af2663bfc08a38fac9dd70fa266b2818b649d418a2cc",
+      "geometryHash": "eb2bfe51373e622e7f0834a9dafe4619fc010d172473401d249c5b05be12744c",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -1018,7 +1018,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42c251a8f344a0428eec33c154593acce4b75988d67e777a5527a474949cdf24",
+      "geometryHash": "d4857ad821deb705cb5c77562d90757c308a438c26eff5553137b3885b986e48",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -1033,17 +1033,17 @@
       "bounds": {
         "max": [
           7.800000190734863,
-          2.030272960662842,
-          3.224921464920044
+          2.030272915110319,
+          3.224921602607192
         ],
         "min": [
           -6.994680404663086,
-          -1.0002729892730713,
-          -3.224921464920044
+          -1.0002729437205486,
+          -3.224921602607192
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ee4289fffdf8867866ce924fba263c8a8dd7482bff10651df27420d239348cf",
+      "geometryHash": "1dc5b3cba01d14a1dff78d8160ab94a761a77ca6d5e40d43f6146d975647d98e",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 12642,
       "indexed": true,
@@ -1058,17 +1058,17 @@
       "bounds": {
         "max": [
           6.064164638519287,
-          1.6633955240249634,
-          0.0645836666226387
+          1.6633955339596773,
+          0.06458366405778537
         ],
         "min": [
           -6.998876571655273,
-          0.8852023482322693,
-          -0.06458365172147751
+          0.8852023382975555,
+          -0.06458364915662418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52cbbba47e63bdfacec9cbd9e51668469bd4fe2ccb6a4afe722c9076dedc4c52",
+      "geometryHash": "f0fbbc41db099ee96771b155cca8afe68a2d6ab33998c5e374978956215de843",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-lights-cyan-cream.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -1083,17 +1083,17 @@
       "bounds": {
         "max": [
           8.029999732971191,
-          1.0499330759048462,
-          1.4649485349655151
+          1.049933077712977,
+          1.4649486082257301
         ],
         "min": [
           5.019999980926514,
-          0.1940668821334839,
-          -1.4649485349655151
+          0.19406688032535319,
+          -1.4649486082257301
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e20dbca9b0391a1ea98cee9ec0815b03840840962061bcbfbae7f94e6f4cc35",
+      "geometryHash": "8eefb9abee6546a37a5b25d2a75d7b9dfe8193d94a899303f58300dc1daa53e3",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1108,17 +1108,17 @@
       "bounds": {
         "max": [
           3.8983497619628906,
-          1.0984078645706177,
-          0.17026729881763458
+          1.0984078741715368,
+          0.17026729445783867
         ],
         "min": [
           -6.998424530029297,
-          0.8935550451278687,
-          -0.17026729881763458
+          0.8935550355269496,
+          -0.17026729445783867
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63cf462c57201f0842c0e10811093a90cceab97a3d946a0700e30b68a6b3828d",
+      "geometryHash": "e9c63d30d3c6dc50a88c9a6d00475ae6c5672fe4316e4adf9a9f4a1a891f0ede",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1133,17 +1133,17 @@
       "bounds": {
         "max": [
           7.7992753982543945,
-          1.5193257331848145,
-          3.4370224475860596
+          1.5193257345381839,
+          3.4370224004436913
         ],
         "min": [
           -8.119999885559082,
-          -1.0303235054016113,
-          -3.4370224475860596
+          -1.0303235067549807,
+          -3.4370224004436913
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4f34748283a48eb1e7e1d08e3fe426ca846e5e24dcc2f9bc7a7e6fdb593acde",
+      "geometryHash": "d85e5e441caaf0c80cd48b5805dde67a8a284ad451aeb5091895f8a1777c3d69",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 25068,
       "indexed": true,
@@ -1158,17 +1158,17 @@
       "bounds": {
         "max": [
           7.3354997634887695,
-          1.1295781135559082,
-          3.4623584747314453
+          1.129578078322827,
+          3.4623583231249655
         ],
         "min": [
           -8.119999885559082,
-          -1.049578070640564,
-          -3.4623584747314453
+          -1.0495780354074828,
+          -3.4623583231249655
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abdc2a5a65661642828a5a5dacb6f070c1fe420066d28099ce2d2595f162e98e",
+      "geometryHash": "a1fae6c5108a7ad7fb14353ed89032be7f102fc5170eee72f9e92043b7273058",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 8166,
       "indexed": true,
@@ -1183,17 +1183,17 @@
       "bounds": {
         "max": [
           3.5,
-          1.0800005197525024,
-          3.3752784729003906
+          1.080000495030545,
+          3.3752784813989685
         ],
         "min": [
           -5,
-          0.16999955475330353,
-          -3.3752784729003906
+          0.16999957947526084,
+          -3.3752784813989685
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c495e3154c421e12f87a200c6ba344f98887965c9a860073256ec7b0462367f8",
+      "geometryHash": "17dca103e54b9ef48910de227f416b7f8111fd59c9ef8d92a8cd61536f7cf5a7",
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 8016,
       "indexed": true,
@@ -1462,21 +1462,21 @@
     {
       "id": "sf.render.mule-production-v1.node.collision-hull",
       "localTransform": [
-        1,
+        8.075010776519775,
         0,
         0,
         0,
         0,
-        1,
+        8.075010776519775,
         0,
         0,
         0,
         0,
-        1,
+        8.075010776519775,
         0,
-        0,
-        0,
-        0,
+        -0.045011043548583984,
+        0.6138473749160767,
+        -0.000008821487426757812,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1490,41 +1490,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        8.075010776519775,
         0,
         0,
         0,
         0,
-        1,
+        8.075010776519775,
         0,
         0,
         0,
         0,
-        1,
+        8.075010776519775,
         0,
-        0,
-        0,
-        0,
+        -0.045011043548583984,
+        0.6138473749160767,
+        -0.000008821487426757812,
         1
       ]
     },
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        4.726037979125977,
         0,
         0,
         0,
         0,
-        1,
+        4.726037979125977,
         0,
         0,
         0,
         0,
-        1,
+        4.726037979125977,
         0,
-        0,
-        0,
+        1.3760380744934082,
+        0.6008217036724091,
         0,
         1
       ],
@@ -1540,20 +1540,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        4.726037979125977,
         0,
         0,
         0,
         0,
-        1,
+        4.726037979125977,
         0,
         0,
         0,
         0,
-        1,
+        4.726037979125977,
         0,
-        0,
-        0,
+        1.3760380744934082,
+        0.6008217036724091,
         0,
         1
       ]
@@ -1561,20 +1561,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-beacon-amber-beacon",
       "localTransform": [
-        1,
+        0.07000017166137695,
         0,
         0,
         0,
         0,
-        1,
+        0.07000017166137695,
         0,
         0,
         0,
         0,
-        1,
+        0.07000017166137695,
         0,
-        0,
-        0,
+        6,
+        1.6200000047683716,
         0,
         1
       ],
@@ -1590,20 +1590,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        0.07000017166137695,
         0,
         0,
         0,
         0,
-        1,
+        0.07000017166137695,
         0,
         0,
         0,
         0,
-        1,
+        0.07000017166137695,
         0,
-        0,
-        0,
+        6,
+        1.6200000047683716,
         0,
         1
       ]
@@ -1611,20 +1611,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        1.04853093624115,
         0,
         0,
         0,
         0,
-        1,
+        1.04853093624115,
         0,
         0,
         0,
         0,
-        1,
+        1.04853093624115,
         0,
-        0,
-        0,
+        6.625,
+        1.299468755722046,
         0,
         1
       ],
@@ -1640,20 +1640,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        1.04853093624115,
         0,
         0,
         0,
         0,
-        1,
+        1.04853093624115,
         0,
         0,
         0,
         0,
-        1,
+        1.04853093624115,
         0,
-        0,
-        0,
+        6.625,
+        1.299468755722046,
         0,
         1
       ]
@@ -2261,20 +2261,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        7.397340297698975,
         0,
         0,
         0,
         0,
-        1,
+        7.397340297698975,
         0,
         0,
         0,
         0,
-        1,
+        7.397340297698975,
         0,
-        0,
-        0,
+        0.40265989303588867,
+        0.5149999856948853,
         0,
         1
       ],
@@ -2290,20 +2290,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        7.397340297698975,
         0,
         0,
         0,
         0,
-        1,
+        7.397340297698975,
         0,
         0,
         0,
         0,
-        1,
+        7.397340297698975,
         0,
-        0,
-        0,
+        0.40265989303588867,
+        0.5149999856948853,
         0,
         1
       ]
@@ -2311,21 +2311,21 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-lights-cyan-cream",
       "localTransform": [
-        1,
+        6.53152060508728,
         0,
         0,
         0,
         0,
-        1,
+        6.53152060508728,
         0,
         0,
         0,
         0,
-        1,
+        6.53152060508728,
         0,
-        0,
-        0,
-        0,
+        -0.46735596656799316,
+        1.2742989361286163,
+        7.450580596923828e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2340,41 +2340,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        6.53152060508728,
         0,
         0,
         0,
         0,
-        1,
+        6.53152060508728,
         0,
         0,
         0,
         0,
-        1,
+        6.53152060508728,
         0,
-        0,
-        0,
-        0,
+        -0.46735596656799316,
+        1.2742989361286163,
+        7.450580596923828e-9,
         1
       ]
     },
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        1.5049998760223389,
         0,
         0,
         0,
         0,
-        1,
+        1.5049998760223389,
         0,
         0,
         0,
         0,
-        1,
+        1.5049998760223389,
         0,
-        0,
-        0,
+        6.5249998569488525,
+        0.621999979019165,
         0,
         1
       ],
@@ -2390,20 +2390,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        1.5049998760223389,
         0,
         0,
         0,
         0,
-        1,
+        1.5049998760223389,
         0,
         0,
         0,
         0,
-        1,
+        1.5049998760223389,
         0,
-        0,
-        0,
+        6.5249998569488525,
+        0.621999979019165,
         0,
         1
       ]
@@ -2411,20 +2411,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-livery",
       "localTransform": [
-        1,
+        5.448387145996094,
         0,
         0,
         0,
         0,
-        1,
+        5.448387145996094,
         0,
         0,
         0,
         0,
-        1,
+        5.448387145996094,
         0,
-        0,
-        0,
+        -1.5500373840332031,
+        0.9959814548492432,
         0,
         1
       ],
@@ -2440,20 +2440,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        5.448387145996094,
         0,
         0,
         0,
         0,
-        1,
+        5.448387145996094,
         0,
         0,
         0,
         0,
-        1,
+        5.448387145996094,
         0,
-        0,
-        0,
+        -1.5500373840332031,
+        0.9959814548492432,
         0,
         1
       ]
@@ -2461,20 +2461,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        7.959637641906738,
         0,
         0,
         0,
         0,
-        1,
+        7.959637641906738,
         0,
         0,
         0,
         0,
-        1,
+        7.959637641906738,
         0,
-        0,
-        0,
+        -0.16036224365234375,
+        0.24450111389160156,
         0,
         1
       ],
@@ -2490,20 +2490,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        7.959637641906738,
         0,
         0,
         0,
         0,
-        1,
+        7.959637641906738,
         0,
         0,
         0,
         0,
-        1,
+        7.959637641906738,
         0,
-        0,
-        0,
+        -0.16036224365234375,
+        0.24450111389160156,
         0,
         1
       ]
@@ -2511,20 +2511,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        7.727749824523926,
         0,
         0,
         0,
         0,
-        1,
+        7.727749824523926,
         0,
         0,
         0,
         0,
-        1,
+        7.727749824523926,
         0,
-        0,
-        0,
+        -0.39225006103515625,
+        0.04000002145767212,
         0,
         1
       ],
@@ -2540,20 +2540,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        7.727749824523926,
         0,
         0,
         0,
         0,
-        1,
+        7.727749824523926,
         0,
         0,
         0,
         0,
-        1,
+        7.727749824523926,
         0,
-        0,
-        0,
+        -0.39225006103515625,
+        0.04000002145767212,
         0,
         1
       ]
@@ -2561,20 +2561,20 @@
     {
       "id": "sf.render.mule-production-v1.node.lod0-motion-hull-core-warning",
       "localTransform": [
-        1,
+        4.25,
         0,
         0,
         0,
         0,
-        1,
+        4.25,
         0,
         0,
         0,
         0,
-        1,
+        4.25,
         0,
-        0,
-        0,
+        -0.75,
+        0.625000037252903,
         0,
         1
       ],
@@ -2590,20 +2590,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.mule-production-v1.body",
       "worldTransform": [
-        1,
+        4.25,
         0,
         0,
         0,
         0,
-        1,
+        4.25,
         0,
         0,
         0,
         0,
-        1,
+        4.25,
         0,
-        0,
-        0,
+        -0.75,
+        0.625000037252903,
         0,
         1
       ]
@@ -3304,37 +3304,37 @@
       "uri": "mule_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1128596,
-    "sha256": "a2a8aeef4b94f0ea14822a4f62e69f2b91ae4cda80c2b18d18a48612b9f16ee0",
+    "bytes": 720860,
+    "sha256": "bccc3e51f48ea4eeb14c6dfc2a7944c297e5144507345aeab6a42d0869aa735e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.045011043548583984,
-        0.6131212115287781,
+        0.6131212214198348,
         0
       ],
       "max": [
         8.029999732971191,
-        2.27582049369812,
-        3.4623584747314453
+        2.2758204782471525,
+        3.4623583231249655
       ],
       "min": [
         -8.12002182006836,
-        -1.049578070640564,
-        -3.4623584747314453
+        -1.0495780354074828,
+        -3.4623583231249655
       ],
       "size": [
         16.15002155303955,
-        3.325398564338684,
-        6.924716949462891
+        3.325398513654635,
+        6.924716646249931
       ]
     },
     "hidden": [
@@ -4164,20 +4164,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.726037979125977,
           0,
           0,
           0,
           0,
-          1,
+          4.726037979125977,
           0,
           0,
           0,
           0,
-          1,
+          4.726037979125977,
           0,
-          0,
-          0,
+          1.3760380744934082,
+          0.6008217036724091,
           0,
           1
         ],
@@ -4192,20 +4192,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.07000017166137695,
           0,
           0,
           0,
           0,
-          1,
+          0.07000017166137695,
           0,
           0,
           0,
           0,
-          1,
+          0.07000017166137695,
           0,
-          0,
-          0,
+          6,
+          1.6200000047683716,
           0,
           1
         ],
@@ -4220,20 +4220,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.04853093624115,
           0,
           0,
           0,
           0,
-          1,
+          1.04853093624115,
           0,
           0,
           0,
           0,
-          1,
+          1.04853093624115,
           0,
-          0,
-          0,
+          6.625,
+          1.299468755722046,
           0,
           1
         ],
@@ -4614,20 +4614,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.397340297698975,
           0,
           0,
           0,
           0,
-          1,
+          7.397340297698975,
           0,
           0,
           0,
           0,
-          1,
+          7.397340297698975,
           0,
-          0,
-          0,
+          0.40265989303588867,
+          0.5149999856948853,
           0,
           1
         ],
@@ -4642,21 +4642,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.53152060508728,
           0,
           0,
           0,
           0,
-          1,
+          6.53152060508728,
           0,
           0,
           0,
           0,
-          1,
+          6.53152060508728,
           0,
-          0,
-          0,
-          0,
+          -0.46735596656799316,
+          1.2742989361286163,
+          7.450580596923828e-9,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_cream",
@@ -4670,20 +4670,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5049998760223389,
           0,
           0,
           0,
           0,
-          1,
+          1.5049998760223389,
           0,
           0,
           0,
           0,
-          1,
+          1.5049998760223389,
           0,
-          0,
-          0,
+          6.5249998569488525,
+          0.621999979019165,
           0,
           1
         ],
@@ -4698,20 +4698,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.448387145996094,
           0,
           0,
           0,
           0,
-          1,
+          5.448387145996094,
           0,
           0,
           0,
           0,
-          1,
+          5.448387145996094,
           0,
-          0,
-          0,
+          -1.5500373840332031,
+          0.9959814548492432,
           0,
           1
         ],
@@ -4726,20 +4726,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.959637641906738,
           0,
           0,
           0,
           0,
-          1,
+          7.959637641906738,
           0,
           0,
           0,
           0,
-          1,
+          7.959637641906738,
           0,
-          0,
-          0,
+          -0.16036224365234375,
+          0.24450111389160156,
           0,
           1
         ],
@@ -4754,20 +4754,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.727749824523926,
           0,
           0,
           0,
           0,
-          1,
+          7.727749824523926,
           0,
           0,
           0,
           0,
-          1,
+          7.727749824523926,
           0,
-          0,
-          0,
+          -0.39225006103515625,
+          0.04000002145767212,
           0,
           1
         ],
@@ -4782,20 +4782,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.25,
           0,
           0,
           0,
           0,
-          1,
+          4.25,
           0,
           0,
           0,
           0,
-          1,
+          4.25,
           0,
-          0,
-          0,
+          -0.75,
+          0.625000037252903,
           0,
           1
         ],
@@ -4812,20 +4812,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
-  "runtimeHash": "2ef5de535eca9970d192f9c0111f65cb259c691db33c799d98099995127bc5d4",
+  "runtimeHash": "1b4376067b1b622674a11e3e5e8f5cef9a5f64ae3c32bdfa79ffe90083507db3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8.029999732971191,
-          2.27582049369812,
-          3.4623584747314453
+          2.2758204782471525,
+          3.4623583231249655
         ],
         "min": [
           -8.12002182006836,
-          -1.049578070640564,
-          -3.4623584747314453
+          -1.0495780354074828,
+          -3.4623583231249655
         ]
       },
       "id": "sf.render.mule-production-v1.body",

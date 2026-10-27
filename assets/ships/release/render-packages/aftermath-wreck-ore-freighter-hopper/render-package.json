@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "997f144b5010b9cb15db93d58f850a0420fc1cc5fbb843738623ced4c4bbb08c",
+  "contentHash": "c0b24eb4b32cdb78f8b2ac688b779f516f3c5265905687cb1a35bb471a85b1fb",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           13.493572235107422,
-          1.9042264223098755,
-          9.781261444091797
+          1.9042263882791834,
+          9.781261503174376
         ],
         "min": [
           -13.460941314697266,
-          -3.4394583702087402,
-          -9.397104263305664
+          -3.4394584171510134,
+          -9.397104807447485
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd9dc810cbe446fe98ca93c7cfc2f199094e523beb6b983bf96e8579c1816941",
+      "geometryHash": "2bf2d897b79489f731559167fbe85faa74ccc8c0b95469c98431f7ba3230b048",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0heap.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -84,18 +84,18 @@
     {
       "bounds": {
         "max": [
-          13.386632919311523,
-          2.6972239017486572,
-          13.274481773376465
+          13.386632730072643,
+          2.6972239486909304,
+          13.274481565714296
         ],
         "min": [
-          -13.354001998901367,
-          -3.4394583702087402,
-          -13.163432121276855
+          -13.354001809662487,
+          -3.4394584171510134,
+          -13.163431913614687
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d3e47a42c07b91e8e76a9ef26b97225861cbfef9dcb5927b3e7134a0ab7cc6fe",
+      "geometryHash": "65bd6e4d7d1bff2381144e59bed9c1d0f12c2f18c3eb98b9fa5bc66b9458e492",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0heap.primitive.1",
       "indexCount": 564,
       "indexed": true,
@@ -109,18 +109,18 @@
     {
       "bounds": {
         "max": [
-          -7.219991207122803,
+          -7.219990965859237,
           2.804849147796631,
-          11.039584159851074
+          11.039584455598673
         ],
         "min": [
-          -13.325700759887695,
+          -13.32570100115126,
           -3.3557605743408203,
-          5.670132160186768
+          5.670131864439169
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f9864edaad5ce774432c4e309785ab6ed70d745400597a1ad05178d8aca51c4",
+      "geometryHash": "97744b92b54735d71fcc771eb0158b3d86b68c198d80fd617e342acba67e4c1a",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore0.primitive.0",
       "indexCount": 51,
       "indexed": true,
@@ -134,18 +134,18 @@
     {
       "bounds": {
         "max": [
-          -7.219991207122803,
+          -7.219990965859237,
           2.804849147796631,
-          11.039584159851074
+          11.039584455598673
         ],
         "min": [
-          -12.243030548095703,
+          -12.243030293276615,
           -3.3557605743408203,
-          5.959671497344971
+          5.959671308760946
         ]
       },
       "drawMode": 4,
-      "geometryHash": "42ec64bfe7ddf306296ce76f65b70507630f92ff7f4835754cf0a264bc810b4f",
+      "geometryHash": "7812c543c48d38406329f551f8cb4bce0ed40882fa88d34a70fab574ae521058",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore0.primitive.1",
       "indexCount": 45,
       "indexed": true,
@@ -159,18 +159,18 @@
     {
       "bounds": {
         "max": [
-          -8.89155101776123,
-          3.358832597732544,
+          -8.891551078699235,
+          3.3588324315227718,
           6.392021179199219
         ],
         "min": [
-          -13.446732521057129,
-          -3.568474292755127,
+          -13.446732460119124,
+          -3.568474126545355,
           -2.3091347217559814
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e2f66e01b1b9ab059d3d47a0a17b0a8f0d3fd117a61d047d391a9a7b2e75e33",
+      "geometryHash": "ef4c78ed121a875775d58d5bf0dc8ff363360e84f831cb990e21806d2b13d259",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore1.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -185,17 +185,17 @@
       "bounds": {
         "max": [
           1.9077339172363281,
-          4.446526527404785,
-          0.5058068633079529
+          4.446526457684431,
+          0.505806815098715
         ],
         "min": [
           -5.307796478271484,
-          1.1837158203125,
-          -3.8600218296051025
+          1.1837158900328535,
+          -3.8600217813958646
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e298700860b7113a3444fc3e2641516c7e373283b6d64105cf3ef0d23add870",
+      "geometryHash": "f81c2229d1dc61d4351aa65aa4a9858721f642f44eb8da3ae63a611c90ebcf9a",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore10.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -209,18 +209,18 @@
     {
       "bounds": {
         "max": [
-          4.0161895751953125,
-          3.6144907474517822,
+          4.016189694846631,
+          3.6144908294179463,
           -5.174769401550293
         ],
         "min": [
-          -1.9543992280960083,
-          -0.6724264621734619,
+          -1.954399347747326,
+          -0.672426544139626,
           -13.235679626464844
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ffe17ee60c9357c871ae587628fbc99f82b0fe97cc6305c2e5ff9421e635b386",
+      "geometryHash": "cd2b111e0279bffba0b5ae27a97cdb808da17b929f47aec3898cebb2dc89a07d",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore11.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -235,17 +235,17 @@
       "bounds": {
         "max": [
           9.279781341552734,
-          3.694509983062744,
-          11.211801528930664
+          3.694510023109018,
+          11.211801375694321
         ],
         "min": [
           1.6076240539550781,
-          -1.1929868459701538,
-          4.224277496337891
+          -1.1929868860164277,
+          4.224277649574234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3224ec274a5660f8e37e85593c55bdde697901665adc67934a46e8b23ec1486",
+      "geometryHash": "6c2a26ddcd0be22826bbe98679a168d34f2e6cee677c0a269942e5aad7800fa3",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore12.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -260,17 +260,17 @@
       "bounds": {
         "max": [
           9.279781341552734,
-          2.555054187774658,
-          8.512251853942871
+          2.555054063146434,
+          8.51225190679704
         ],
         "min": [
-          4.034046173095703,
-          -1.1929868459701538,
-          4.224277496337891
+          4.034045940956467,
+          -1.1929868860164277,
+          4.224277649574234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e960b61f9c8877dcae184c644aea302176fcec228ec6b948cabfead5c541f7f",
+      "geometryHash": "22ba5376ab7045ba98abacb1cd72b9d14d005f323d562e08124e25723af54e24",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore12.primitive.1",
       "indexCount": 12,
       "indexed": true,
@@ -285,17 +285,17 @@
       "bounds": {
         "max": [
           7.602252960205078,
-          4.592740535736084,
-          6.5070481300354
+          4.592740371127697,
+          6.507048239632857
         ],
         "min": [
           1.0577888488769531,
-          -0.05571274086833,
-          0.6272766590118408
+          -0.05571257625994264,
+          0.6272765494143848
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a63052d8ccd9878f56c88eec44eb26134631bb52c70d24046fbeae6f8ff51dc1",
+      "geometryHash": "dd7618cf98fa8e0ab6f391120f00557cae062de08dce1ee67a377f1100fdfe79",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore13.primitive.0",
       "indexCount": 45,
       "indexed": true,
@@ -310,17 +310,17 @@
       "bounds": {
         "max": [
           7.602252960205078,
-          3.522102117538452,
-          6.5070481300354
+          3.5221022330993628,
+          6.507048239632857
         ],
         "min": [
-          4.326426029205322,
-          -0.05571274086833,
-          0.6272766590118408
+          4.326425813321071,
+          -0.05571257625994264,
+          0.6272765494143848
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b97b132812852b4975ca1e12e82eb00a344331ff869a9cc85e608a4a342bade1",
+      "geometryHash": "bd8bb88ebf02be3bf69c5ee2699a8e4fee62f9851b7dac67d6d9ab147ae45fa0",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore13.primitive.1",
       "indexCount": 15,
       "indexed": true,
@@ -334,18 +334,18 @@
     {
       "bounds": {
         "max": [
-          9.292591094970703,
-          3.7939541339874268,
+          9.292591335234704,
+          3.79395411726813,
           0.8331274390220642
         ],
         "min": [
-          4.96333646774292,
-          -0.4942879378795624,
+          4.963336227478919,
+          -0.49428792116026576,
           -4.934577465057373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a69b6d533a7ba64bb94dd1f3ab857f819382a960cc53d1de7ad347de8a582a45",
+      "geometryHash": "319fcbab75833138a1b139c3691e50292a657465165c9ff343a3d9ba5f58de5f",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore14.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -360,17 +360,17 @@
       "bounds": {
         "max": [
           7.615589141845703,
-          3.3505494594573975,
-          -7.32415771484375
+          3.3505493471895833,
+          -7.324157709255644
         ],
         "min": [
           1.6174049377441406,
-          -1.42482328414917,
-          -11.696624755859375
+          -1.4248231718813558,
+          -11.696624761447481
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50145323f64225e4049af5e543f3572985ecd95a56c506183b1cceff09412bb1",
+      "geometryHash": "34f34b246d8c40c253f473e0082e197d81484546869d096cf95ff74f700269fc",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore15.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -384,18 +384,18 @@
     {
       "bounds": {
         "max": [
-          12.294325828552246,
-          2.5548980236053467,
-          8.969416618347168
+          12.294325986772773,
+          2.5548980176352414,
+          8.969416771423436
         ],
         "min": [
-          7.716372013092041,
-          -3.276926040649414,
+          7.716371816671571,
+          -3.2769260346793088,
           4.939318656921387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a8078d5eb796fcb7698462d6d88e2e08189bc8654310b31e10a9f150fa70dd1",
+      "geometryHash": "cbb6c69bae7f186c3344b7bd0433ca1d7713c872933c130131361e65b75a4330",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore16.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -409,18 +409,18 @@
     {
       "bounds": {
         "max": [
-          13.316655158996582,
-          2.5548980236053467,
+          13.316655355417051,
+          2.5548980176352414,
           11.665283203125
         ],
         "min": [
-          7.716372013092041,
-          -3.276926040649414,
+          7.716371816671571,
+          -3.2769260346793088,
           4.939318656921387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e2bea468889ead348be90fddb737257245e930f88e652fc63e37276d2b45255",
+      "geometryHash": "adf12848415cdb2b6eb2450da8738da17517a80423830b1108c449676f316ceb",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore16.primitive.1",
       "indexCount": 66,
       "indexed": true,
@@ -434,18 +434,18 @@
     {
       "bounds": {
         "max": [
-          13.34486198425293,
-          0.897871732711792,
+          13.344862239426732,
+          0.8978717984284279,
           7.911389350891113
         ],
         "min": [
-          9.835306167602539,
-          -2.713949680328369,
+          9.835305912428737,
+          -2.713949746045005,
           0.9879918694496155
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48f14b1fd1f971148fb93044c558255dfbdd9f21f889ea59ba908824316b495f",
+      "geometryHash": "0ebe8b51040932f6ae0ad54211a230781ec266623104c4452f1db73932c3c280",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore17.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -460,17 +460,17 @@
       "bounds": {
         "max": [
           13.23183822631836,
-          3.2430996894836426,
-          0.2570539712905884
+          3.2430996645263463,
+          0.25705407737183084
         ],
         "min": [
           6.479160308837891,
-          -1.9664387702941895,
-          -5.195660591125488
+          -1.9664387453368932,
+          -5.195660697206731
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6feb827c5d5630c319865d319f920063290421605c9fd1582a72cf1f9b2df44f",
+      "geometryHash": "ca7f54d83d4f8b4fb75b6e985dd1b2364e752b1e8e5330cbc80ef322c552cc6c",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore18.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -484,18 +484,18 @@
     {
       "bounds": {
         "max": [
-          12.816864967346191,
-          0.6050209403038025,
+          12.81686513683752,
+          0.605021020234455,
           -6.242377281188965
         ],
         "min": [
-          9.869438171386719,
-          -1.9764436483383179,
-          -9.128429412841797
+          9.869438576742688,
+          -1.9764436204123403,
+          -9.128429410411552
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8cf885375a7aa5f7de301d873a898ac9ae05db5b99641d20573a78a9c32fa17b",
+      "geometryHash": "8fea36f9d450f18621877e2bad92423910cdc60fa5e0366f65d84838c3af2d90",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore19.primitive.0",
       "indexCount": 9,
       "indexed": true,
@@ -509,18 +509,18 @@
     {
       "bounds": {
         "max": [
-          13.263101577758789,
-          1.152613878250122,
+          13.26310190411,
+          1.152613869624211,
           -6.242377281188965
         ],
         "min": [
-          9.855627059936523,
-          -2.9219837188720703,
+          9.855626733585312,
+          -2.921983710246159,
           -13.047981262207031
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd5a60afe45523be6ef823b3bedbe59ea56252adf0c5d685f34f62e841cdd793",
+      "geometryHash": "4f33c533e3e8ef90916cc6e5ed1f06821fac7753ac21957446a1a0f454a30fa4",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore19.primitive.1",
       "indexCount": 87,
       "indexed": true,
@@ -534,18 +534,18 @@
     {
       "bounds": {
         "max": [
-          -9.699885368347168,
-          1.117247223854065,
+          -9.699885503769606,
+          1.117247196237325,
           0.6314864754676819
         ],
         "min": [
-          -12.90657901763916,
-          -3.1569550037384033,
+          -12.906578882216722,
+          -3.1569549761216633,
           -5.574876308441162
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81f533c7fcc1cf037033b7709edb27743a6685e13034487dae526ad89c57098e",
+      "geometryHash": "7fba544b7c0cad8d3f25f48b1502a9fdbfe8571eba555d16a7c52a6fb3dbffbe",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore2.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -560,17 +560,17 @@
       "bounds": {
         "max": [
           -7.605968475341797,
-          2.303574562072754,
-          -5.425471305847168
+          2.303574534288662,
+          -5.425471263761745
         ],
         "min": [
           -13.45211410522461,
-          -2.11881422996521,
-          -10.256074905395508
+          -2.118814202181118,
+          -10.256075009270248
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66e24a13072f522c7af47e08c95bf767e66df9a7c5346dc6ada79432cee4037e",
+      "geometryHash": "db7b2be579d3aeec40256d322ecef5bd0345904ed5cb8ada619645f5a3c3dcaa",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore3.primitive.0",
       "indexCount": 51,
       "indexed": true,
@@ -585,17 +585,17 @@
       "bounds": {
         "max": [
           -7.605968475341797,
-          2.303574562072754,
-          -5.542511940002441
+          2.303574534288662,
+          -5.542511930688931
         ],
         "min": [
           -13.45211410522461,
-          -2.11881422996521,
-          -10.699973106384277
+          -2.118814202181118,
+          -10.6999731484697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51a2b928bc9f3d40b37ae1108821f0f101b554c1825f2e1816d63bdceba5a1eb",
+      "geometryHash": "70a73cd9784bdeaa3c21bb551dc8e1a822b0f74f08ee517fef51b136fc349e5e",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore3.primitive.1",
       "indexCount": 45,
       "indexed": true,
@@ -609,18 +609,18 @@
     {
       "bounds": {
         "max": [
-          -4.615971565246582,
-          3.1873769760131836,
+          -4.615971764977713,
+          3.187377007304394,
           10.732046127319336
         ],
         "min": [
-          -9.066676139831543,
-          -0.7393620014190674,
+          -9.066675940100412,
+          -0.7393620327102781,
           5.115832328796387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa9c73f1768b11490f4090b66a8dcde8e39cc4319ad5e5d7868740de137fed23",
+      "geometryHash": "3a8664946e9262c87091f94d05c3c4e733d7ba10c5da565c70844db4aaa8f7ba",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore4.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -634,18 +634,18 @@
     {
       "bounds": {
         "max": [
-          -5.766912460327148,
-          2.091712236404419,
-          7.734372615814209
+          -5.766912518085462,
+          2.091712262071143,
+          7.734372515781291
         ],
         "min": [
-          -8.746417999267578,
-          0.1465110331773758,
+          -8.746417891376385,
+          0.14651098031092813,
           5.115832328796387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b304b94e5458a3276975553c3d47170c670639745c6ad614853184922a721b0",
+      "geometryHash": "d28117d6f5c07b0c837be3e22b7fab07f6588fc10238138e31e9e21180f45150",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore4.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -660,17 +660,17 @@
       "bounds": {
         "max": [
           -3.272228240966797,
-          4.10162353515625,
-          4.82053804397583
+          4.1016233951519805,
+          4.820537904055804
         ],
         "min": [
-          -6.813842296600342,
-          -0.09289100021123886,
-          -0.5369382500648499
+          -6.8138425252324595,
+          -0.0928908602069689,
+          -0.5369381101448241
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4234e6ecb42184ec375789cb6a6de9abea174330ab876d6c31296857fe49f67e",
+      "geometryHash": "af20adf464cf67bcb2c8070ef53477ce8f098146994d010c5ceed240bebfee28",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore5.primitive.0",
       "indexCount": 24,
       "indexed": true,
@@ -684,18 +684,18 @@
     {
       "bounds": {
         "max": [
-          -4.830187797546387,
-          4.10162353515625,
-          4.82053804397583
+          -4.830187695417929,
+          4.1016233951519805,
+          4.820537904055804
         ],
         "min": [
           -10.114887237548828,
-          -0.09289100021123886,
-          -0.5369382500648499
+          -0.0928908602069689,
+          -0.5369381101448241
         ]
       },
       "drawMode": 4,
-      "geometryHash": "41dfff3143f92faabbcd842c0b37205374884b2fc18f33c8a564576d0b3f869c",
+      "geometryHash": "c4dfd4a1542f908b07ac6e455c020794bfe930db3055def75b8ad6f336c68c17",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore5.primitive.1",
       "indexCount": 36,
       "indexed": true,
@@ -709,18 +709,18 @@
     {
       "bounds": {
         "max": [
-          -1.3940849304199219,
-          4.715670585632324,
+          -1.3940849482720288,
+          4.715670604916928,
           1.7870304584503174
         ],
         "min": [
-          -8.486370086669922,
-          0.4013121724128723,
+          -8.486370068817815,
+          0.40131215312826773,
           -5.876884937286377
         ]
       },
       "drawMode": 4,
-      "geometryHash": "406a3ed656651f0ab8cc62dbfc861f73e132506b732984cb29f51fa15931f070",
+      "geometryHash": "b081e7b541f4a6ab63b95c5c540201f511c1eb109c3e9e73b8ec290e83219de7",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore6.primitive.0",
       "indexCount": 51,
       "indexed": true,
@@ -734,18 +734,18 @@
     {
       "bounds": {
         "max": [
-          -4.5398054122924805,
-          3.803377628326416,
-          -0.07205424457788467
+          -4.5398056463817325,
+          3.8033776882302934,
+          -0.07205433793058758
         ],
         "min": [
-          -8.486370086669922,
-          0.4013121724128723,
-          -5.039554119110107
+          -8.486370068817815,
+          0.40131215312826773,
+          -5.039554174118026
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8af3183bfd09a1177f2386a477bb80e699fea394267a03b47b163d5aa081cf8",
+      "geometryHash": "a88f54532c0d989a12369b4826c1d285722dbb90b4ae8a302d4a1b50cba5ecac",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore6.primitive.1",
       "indexCount": 9,
       "indexed": true,
@@ -759,18 +759,18 @@
     {
       "bounds": {
         "max": [
-          -4.202718257904053,
-          2.785686731338501,
+          -4.202718453269476,
+          2.7856867066631565,
           -4.193322658538818
         ],
         "min": [
-          -11.046465873718262,
-          -0.9883953332901001,
+          -11.046465678352838,
+          -0.9883953086147557,
           -11.910348892211914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8118a9b4e96b4dcb46fff3a837bac9455b60493e28f7f33e3b4895189c65cb00",
+      "geometryHash": "1d6d6e32c37b4fe0db0982bf2047a2e8603da910c5a36ebfdde468814f4a0b47",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -784,18 +784,18 @@
     {
       "bounds": {
         "max": [
-          -5.549023628234863,
-          2.183246612548828,
+          -5.549023591511984,
+          2.183246657048124,
           -4.193322658538818
         ],
         "min": [
-          -11.046465873718262,
-          -0.9883953332901001,
-          -8.377784729003906
+          -11.046465678352838,
+          -0.9883953086147557,
+          -8.377784574697964
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d347b53334e4080df39e580545884ab69e0fa6820042e96d81c02f4128a3de3",
+      "geometryHash": "d85ba4e83b69531e7e355dad6c1ec13562deede98bbb565f2c85163d9fe16df3",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore7.primitive.1",
       "indexCount": 12,
       "indexed": true,
@@ -810,17 +810,17 @@
       "bounds": {
         "max": [
           3.667949676513672,
-          3.4811439514160156,
-          10.47917652130127
+          3.4811439261385675,
+          10.479176365743825
         ],
         "min": [
           -3.3075599670410156,
-          0.4929170608520508,
-          5.384054660797119
+          0.4929170861294989,
+          5.384054816354564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1377b029910bd7aa28b98b64a608edd2b8822caeec7ed180539eade67f243577",
+      "geometryHash": "f5de190d448416435dd45b862eb2abfbfe2eec46de793c96b5c0ec5fc3427336",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore8.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -834,18 +834,18 @@
     {
       "bounds": {
         "max": [
-          2.885010242462158,
-          4.149771213531494,
+          2.8850103144144796,
+          4.149771267060529,
           6.159383296966553
         ],
         "min": [
-          -1.0857969522476196,
-          1.4483981132507324,
+          -1.0857970241999413,
+          1.4483980597216977,
           -0.3106039762496948
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11b67a70e0b5c8f375ef9f69fda0681fd39a93b8d237d00dc6acf71fac1f08a0",
+      "geometryHash": "4d8c4aeb5f03b15058a82197e3992395d32c01140b1b79aa41b37da7af387638",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore9.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -859,18 +859,18 @@
     {
       "bounds": {
         "max": [
-          13.517842292785645,
-          5.624696254730225,
+          13.517843199426736,
+          5.6246965462358105,
           20.67986488342285
         ],
         "min": [
-          -13.456244468688965,
-          -9.179727554321289,
+          -13.45624471703953,
+          -9.179727712469054,
           -20.707096099853516
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1434f6cd549d8b09e74be56d5a6e98d5bd494958d57bb1d54bf8eef00c56bb5",
+      "geometryHash": "2302ab78047b0b1ba764842c704591ab1660afa768de6991e4fa580019b9ac9c",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -884,18 +884,18 @@
     {
       "bounds": {
         "max": [
-          13.290491104125977,
-          4.907273292541504,
-          19.565837860107422
+          13.290490894455584,
+          4.90727371721573,
+          19.565838589064207
         ],
         "min": [
-          -13.238997459411621,
-          -11.084434509277344,
-          -19.76232147216797
+          -13.238996958955983,
+          -11.08443480078293,
+          -19.762320965862283
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aa157a1fa766395059b1d592253e8a0a809cf4724a58bfba2f2db83b25de994",
+      "geometryHash": "b403148ba817e9f409a49cb2ba41613f0035f1f715196fdbbd8f73cef490186e",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.1",
       "indexCount": 2376,
       "indexed": true,
@@ -909,18 +909,18 @@
     {
       "bounds": {
         "max": [
-          12.785263061523438,
-          5.624696254730225,
-          -12.981538772583008
+          12.785263550075246,
+          5.6246965462358105,
+          -12.981538470097666
         ],
         "min": [
-          -12.647880554199219,
-          -2.1614885330200195,
-          -15.556303977966309
+          -12.647880966030987,
+          -2.161488364845679,
+          -15.556303323895966
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beeb1a19ff782d42c1ddc17ae115344965266f6717d3afbc1fe3f5972ed8a152",
+      "geometryHash": "7a09adafaa81e9daab102a7be22254bc6ff7387262d6d1e26ec13bc12bf93d53",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.2",
       "indexCount": 111,
       "indexed": true,
@@ -934,18 +934,18 @@
     {
       "bounds": {
         "max": [
-          13.032824516296387,
-          -2.0276033878326416,
+          13.032824948821611,
+          -2.0276031185848895,
           20.67986488342285
         ],
         "min": [
-          -13.001540184020996,
-          -7.501741409301758,
-          -20.664152145385742
+          -13.001540107097224,
+          -7.501741394945856,
+          -20.664151775581185
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebea0e7505beecde602835cebaa34d36b1b6ad52fd6b81516f13844d4b9266b8",
+      "geometryHash": "df9da759b83fc88ce3408d5615387c08c18eb5e130018bdcb81e0b63bd1eabb4",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.3",
       "indexCount": 138,
       "indexed": true,
@@ -959,18 +959,18 @@
     {
       "bounds": {
         "max": [
-          13.54563045501709,
-          2.696904182434082,
-          20.6343936920166
+          13.545630703367655,
+          2.6969040855517497,
+          20.63439442242862
         ],
         "min": [
-          -13.453718185424805,
-          0.574317455291748,
-          -20.441850662231445
+          -13.453718580317627,
+          0.5743177049738537,
+          -20.44185174405384
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f08cb1f38308abc9997a1ae6e911fdf1eb297040473a4c812dbfab76d07cbb53",
+      "geometryHash": "c25e4516ecded92bbcd9b6c09cfb450b895153b61dfe57d0e4ea0eda27cf3e03",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.4",
       "indexCount": 468,
       "indexed": true,
@@ -984,18 +984,18 @@
     {
       "bounds": {
         "max": [
-          13.54563045501709,
-          5.624696254730225,
+          13.545630703367655,
+          5.6246965462358105,
           20.67986488342285
         ],
         "min": [
-          -13.456244468688965,
-          -11.084434509277344,
-          -20.68941307067871
+          -13.45624471703953,
+          -11.08443480078293,
+          -20.689413142800205
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e456a59701c71eb2a2e0bce76bd9b7bd2a0835dbf722c0bddee09a48197cbb37",
+      "geometryHash": "641dacae59970021ba80fcc8ca8ae684e4f08d837400eb0b4c42fde44a59ae46",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.5",
       "indexCount": 2844,
       "indexed": true,
@@ -1009,18 +1009,18 @@
     {
       "bounds": {
         "max": [
-          13.260177612304688,
-          5.425131797790527,
-          14.149168968200684
+          13.260177253792762,
+          5.425131745205578,
+          14.149169923126502
         ],
         "min": [
-          -13.25415325164795,
-          -11.084434509277344,
-          -13.671174049377441
+          -13.254153779287394,
+          -11.08443480078293,
+          -13.671173795176829
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb2f8434b453c6d86b6f5e22ac8627a42583feea534899d344ceedd7d086bfa3",
+      "geometryHash": "3036119c0742f132b81d82b1b96fb414f72c1f549068b6a06381db65b8378d14",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull.primitive.6",
       "indexCount": 579,
       "indexed": true,
@@ -1034,18 +1034,18 @@
     {
       "bounds": {
         "max": [
-          0.28077206015586853,
-          5.711142539978027,
+          0.2807720536323187,
+          5.71114245647659,
           16.86976432800293
         ],
         "min": [
-          -0.7768887281417847,
-          4.336428642272949,
+          -0.7768887216182349,
+          4.336428725774387,
           14.754765510559082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "950fe2c7e182510c848594def340bc50387cb65bfa0603177c95182783266482",
+      "geometryHash": "b435392f1f271d9ffff67e13783604da375f8d01cae5c0089997d54f88e8a146",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.pipeclamp120-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1059,18 +1059,18 @@
     {
       "bounds": {
         "max": [
-          0.28077206015586853,
-          5.711142539978027,
+          0.2807720536323187,
+          5.71114245647659,
           -14.643715858459473
         ],
         "min": [
-          -0.7768887281417847,
-          4.336428642272949,
+          -0.7768887216182349,
+          4.336428725774387,
           -16.75871467590332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b49e5669494eed53de0e58114577ed9649cb115e445e83bc7aa20ce5672cb9c2",
+      "geometryHash": "b0256ead159d8b64469a84b6a9212e505aa8ceb8b1275433b6a40eeea84e37c0",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.pipeclamp120.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1085,17 +1085,17 @@
       "bounds": {
         "max": [
           13.23043441772461,
-          6.146743297576904,
-          16.892824172973633
+          6.146743426976483,
+          16.892824085834103
         ],
         "min": [
           -13.187004089355469,
-          4.84389066696167,
-          14.490285873413086
+          4.843890537562091,
+          14.490285960552614
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab3abc03774d1b2459ad7a867204b4cbea6632a5513817592f4e958449d3af6c",
+      "geometryHash": "c41258ce81a8706a973b1d27aed3a4b37cd1ff073643f6da0d78c8977a7df4d0",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun-m.primitive.0",
       "indexCount": 1314,
       "indexed": true,
@@ -1110,17 +1110,17 @@
       "bounds": {
         "max": [
           13.23043441772461,
-          6.127394199371338,
-          16.892824172973633
+          6.127394126638646,
+          16.892824085834103
         ],
         "min": [
           -13.187004089355469,
-          4.885814189910889,
-          14.501572608947754
+          4.8858140216274055,
+          14.501573052416353
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac2248518a4114be9922137581688b75ca1ed4ce318186b5f4e5d243bb691d87",
+      "geometryHash": "f56440403538934d5e389d24dc0b327098c1f7a6845d8bb2b3102896fdb81191",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun-m.primitive.1",
       "indexCount": 642,
       "indexed": true,
@@ -1135,17 +1135,17 @@
       "bounds": {
         "max": [
           13.21865463256836,
-          6.018710136413574,
-          -14.365531921386719
+          6.018710011467017,
+          -14.365531558363562
         ],
         "min": [
           -13.192462921142578,
-          4.661358833312988,
-          -17.04154396057129
+          4.661358958259545,
+          -17.041544323594444
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f07ce3e9da0d2df345681ca8a03838695566c6cf8cd04e1ff9200c7893f69b34",
+      "geometryHash": "d760d2453e5322b2d21d3c7586c183bf53e5a70917fb5c611b10f00f63f0910e",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun.primitive.0",
       "indexCount": 1008,
       "indexed": true,
@@ -1160,17 +1160,17 @@
       "bounds": {
         "max": [
           13.21865463256836,
-          6.0170979499816895,
-          -14.365531921386719
+          6.017097955584347,
+          -14.365531558363562
         ],
         "min": [
-          -13.189238548278809,
-          4.661358833312988,
-          -17.01413917541504
+          -13.18923880937724,
+          4.661358958259545,
+          -17.014139373589067
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a557ebc3f095dc05bb318b77dd2eb4abbb9319545809f4e0a17d4630f0115d6e",
+      "geometryHash": "aaef9dbeb16865aa9f0e963a719cb5c0468fd25f6c125831691b12fe6e7d158f",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun.primitive.1",
       "indexCount": 516,
       "indexed": true,
@@ -1185,17 +1185,17 @@
       "bounds": {
         "max": [
           12.835186004638672,
-          -0.6726896166801453,
-          21.653026580810547
+          -0.6726896971428686,
+          21.65302596285916
         ],
         "min": [
-          -12.539674758911133,
-          -2.956326484680176,
-          19.068828582763672
+          -12.53967410853709,
+          -2.956326404217452,
+          19.068829200715058
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c46f37062179fe56f4017a1b1b7523a510e81ff061a199627c23be6fe920e98",
+      "geometryHash": "3892ead806ef2c9dae804100adc073bfee34b3eaa9f83f9fc666b3bb253ddd19",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake-m.primitive.0",
       "indexCount": 339,
       "indexed": true,
@@ -1210,17 +1210,17 @@
       "bounds": {
         "max": [
           12.835186004638672,
-          -0.708323061466217,
-          21.625139236450195
+          -0.7083231057335846,
+          21.625138947440337
         ],
         "min": [
           -12.547420501708984,
-          -2.9160451889038086,
-          19.093618392944336
+          -2.9160451597235997,
+          19.09361765886512
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22fd4fd10dcd85e14b28e4f18f033637cffc4364c023279ded6bf574b66c1dc8",
+      "geometryHash": "680505017689dd2b42b73eba9dcb1ef7240341bcbb9a34fcc98141d41d5a0dda",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake-m.primitive.1",
       "indexCount": 153,
       "indexed": true,
@@ -1234,18 +1234,18 @@
     {
       "bounds": {
         "max": [
-          12.799718856811523,
-          -0.26630452275276184,
-          -18.747102737426758
+          12.799718448937995,
+          -0.26630456538071523,
+          -18.747101837741695
         ],
         "min": [
           -12.71567153930664,
-          -2.5580360889434814,
-          -21.634370803833008
+          -2.558036046315528,
+          -21.63437170351807
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d64b89b823bb581d0ff7c52afaaf76432a11740e0e3727e3c77283b50c23464",
+      "geometryHash": "7bac05ded9e338894d79204998f973e1d541ea099804ae376b17e3f9356ecdc8",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake.primitive.0",
       "indexCount": 384,
       "indexed": true,
@@ -1260,17 +1260,17 @@
       "bounds": {
         "max": [
           12.826221466064453,
-          -0.29748454689979553,
-          -18.77048683166504
+          -0.2974845855294881,
+          -18.770486852853274
         ],
         "min": [
           -12.71567153930664,
-          -2.520620107650757,
-          -21.607868194580078
+          -2.5206200221370008,
+          -21.607868686391615
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca0cd1fbd8705ad4e16fc2e8a9fde37448f11a7a06ab195d6a57266290d32d4a",
+      "geometryHash": "d08a4a2a178aeb2f6742bcc3b5d6cbc3768f9741ac09d808c5fea2db0eff9985",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake.primitive.1",
       "indexCount": 180,
       "indexed": true,
@@ -1285,17 +1285,17 @@
       "bounds": {
         "max": [
           -10.898807525634766,
-          3.156217336654663,
-          23.564842224121094
+          3.1562173474597897,
+          23.564843124417358
         ],
         "min": [
           -14.960563659667969,
-          0.1725304126739502,
-          19.52738380432129
+          0.1725304018688234,
+          19.527382904025025
         ]
       },
       "drawMode": 4,
-      "geometryHash": "363d2b7e057abe9f157bbbd866d3598fbbb0a79a1858f46d173ef2f70ec12ab5",
+      "geometryHash": "9bd22d25fcae34df0e97e91dd105ed6b211be80889ce813160fd6f67cd5b8b2f",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1310,17 +1310,17 @@
       "bounds": {
         "max": [
           -11.192554473876953,
-          9.689537048339844,
-          15.109026908874512
+          9.689536976225627,
+          15.109026622702366
         ],
         "min": [
           -14.316192626953125,
-          6.8019328117370605,
-          12.245063781738281
+          6.801932883851277,
+          12.245064067910427
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dafb94923d838cb42e1ae262418ba78f652dd9565aa1eab931c28373ba4a4426",
+      "geometryHash": "d5641c31474816fe4c679e233554fd792124f7713c8f16460a7abb5834507657",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1335,17 +1335,17 @@
       "bounds": {
         "max": [
           -10.961299896240234,
-          12.721159934997559,
-          1.2222347259521484
+          12.721160335871401,
+          1.2222347596754222
         ],
         "min": [
           -14.672019958496094,
-          9.106925964355469,
-          -1.6921418905258179
+          9.106925563481626,
+          -1.6921419242490916
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a07b4d4366ef41028b12224b64873570ca28e5d6d60920a256147dee1161e723",
+      "geometryHash": "74e90119dd2d8de560b6b737c7a8a9b007c19b1cd3e56caf6b2735765fcb9b67",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1360,17 +1360,17 @@
       "bounds": {
         "max": [
           -11.251724243164062,
-          9.290407180786133,
-          -12.705255508422852
+          9.290407058095191,
+          -12.705255839998358
         ],
         "min": [
           -14.074047088623047,
-          6.6982316970825195,
-          -15.303288459777832
+          6.698231819773461,
+          -15.303288128202325
         ]
       },
       "drawMode": 4,
-      "geometryHash": "26d5aa4bdbe0d7704d4a69bf1a2ee6cc328c31a8c11882355bfc8e49c0555079",
+      "geometryHash": "90a77c1d7c71ded67a6d447f5c0781e927058efe72e55610a315fde9e904c219",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1385,17 +1385,17 @@
       "bounds": {
         "max": [
           -11.051101684570312,
-          2.6163578033447266,
-          -19.722232818603516
+          2.6163578214811727,
+          -19.722232707656328
         ],
         "min": [
           -14.499710083007812,
-          0.08391924947500229,
-          -23.149791717529297
+          0.08391923133855594,
+          -23.149791828476484
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8afbd98f1b479dc16166d0c7f2835369b3b829d5473836601342e9ad3958974e",
+      "geometryHash": "99883c7170468e3f77a68d1a792227bab1a6d3b560aa4c8d926f8b62e9a2081d",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1410,17 +1410,17 @@
       "bounds": {
         "max": [
           -11.00628662109375,
-          -4.311217784881592,
-          -16.871952056884766
+          -4.311217741515561,
+          -16.8719518831587
         ],
         "min": [
           -15.038471221923828,
-          -7.820167064666748,
-          -20.767297744750977
+          -7.820167108032779,
+          -20.76729791847704
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3515995daa2fb0222388e842af444fe34430d91d8ea1795b75230a7954d9d8b3",
+      "geometryHash": "7bb15da3a6d273550e71ebe51e29127e2dfc65ca7a74b53b8a79a0521dbcd2ad",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1435,17 +1435,17 @@
       "bounds": {
         "max": [
           -11.130294799804688,
-          -9.406436920166016,
-          -5.772890090942383
+          -9.406436799323224,
+          -5.772890129215088
         ],
         "min": [
           -14.273612976074219,
-          -12.44039535522461,
-          -8.342166900634766
+          -12.440395476067401,
+          -8.34216686236206
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f23b3020883bad355aafc61f8a6a8a569dde5393ba1d9331aed4225b304e27b3",
+      "geometryHash": "6d11ddc6298bf39e6d2f6f19c5ee6251be94277b26a82ba3b118ed1fe2a64f87",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1460,17 +1460,17 @@
       "bounds": {
         "max": [
           -10.976863861083984,
-          -9.092659950256348,
-          9.328418731689453
+          -9.092659868719478,
+          9.328418917304797
         ],
         "min": [
           -14.734016418457031,
-          -12.717262268066406,
-          6.2243852615356445
+          -12.717262349603276,
+          6.224385075920301
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8bbb766d9d85b139e10a117086ad27a90a2f801f4caea9a2eb726f3e0dcf7f0a",
+      "geometryHash": "f9584bbbf811891e9bab4703d9d6b6d3d6f66f1064fff38463f26f9776de4393",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1485,17 +1485,17 @@
       "bounds": {
         "max": [
           -11.279937744140625,
-          -4.530942916870117,
-          20.37775230407715
+          -4.5309429795180245,
+          20.37775198503122
         ],
         "min": [
           -14.081417083740234,
-          -6.953499794006348,
-          17.655271530151367
+          -6.95349973135844,
+          17.655271849197295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54a1f3698064cfe41c3bb58d6ea7f6daf54662053eeabfcdd27b86b5096c5f91",
+      "geometryHash": "4d51da42ecbf8acbb6e5f4df199c765a33d31736b1e35b6dbcdde274eee106ce",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1510,17 +1510,17 @@
       "bounds": {
         "max": [
           -11.557754516601562,
-          0.6634255051612854,
-          -16.76523208618164
+          0.6634256226070108,
+          -16.765231248838884
         ],
         "min": [
           -22.672588348388672,
-          -2.988150119781494,
-          -22.489028930664062
+          -2.9881502372272193,
+          -22.48902976800682
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4994ad05fc16aa0bf90d67968efbfa36f596150f15ae6c3f13128dac68164aea",
+      "geometryHash": "60c6316863aae0c11c19a060f901560596640d7115985951eeb390dfa652403b",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1535,17 +1535,17 @@
       "bounds": {
         "max": [
           -11.29690933227539,
-          -6.936027526855469,
-          -8.681825637817383
+          -6.93602756269793,
+          -8.681825637657306
         ],
         "min": [
           -18.74573516845703,
-          -10.044270515441895,
-          -14.205418586730957
+          -10.044270479599433,
+          -14.205418586891033
         ]
       },
       "drawMode": 4,
-      "geometryHash": "95505236e662cec2a37609ac5bc073e85930df1e2e95919b6dc733fab9a5fd8a",
+      "geometryHash": "e3c6090fc0dbc7d177fa364a911e5fdde9ec6e3a763bfdaecda861e44dd80a8d",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1560,17 +1560,17 @@
       "bounds": {
         "max": [
           -11.126239776611328,
-          -5.122683048248291,
-          8.619455337524414
+          -5.1226832111255725,
+          8.61945538676596
         ],
         "min": [
           -24.499996185302734,
-          -12.463617324829102,
-          3.0600836277008057
+          -12.46361716195182,
+          3.0600835784592597
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24b42b8c6bb0f79ecda4181b8964e23862820efbe555c6df9995a9bdc94be7df",
+      "geometryHash": "92a567cc6c444e0b3b4393b5f34ae2df966d526b36bfc86227ad724b39c194e8",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear2.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -1585,17 +1585,17 @@
       "bounds": {
         "max": [
           -11.126239776611328,
-          -5.122683048248291,
-          4.624307632446289
+          -5.1226832111255725,
+          4.624307384004773
         ],
         "min": [
-          -23.090255737304688,
-          -9.487000465393066,
-          3.0600836277008057
+          -23.090256061531253,
+          -9.487000276408851,
+          3.0600835784592597
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f55c002da8f32f19df6f3fd53df4296f510a3f0cb7eb924c148eeb01d6b8c76c",
+      "geometryHash": "4334ea4ca09cbdc23c929e9bad8cd2a2cbe8e7120ddf48092134d70d8241821b",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear2.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1610,17 +1610,17 @@
       "bounds": {
         "max": [
           -11.243144989013672,
-          -1.502324104309082,
-          22.687969207763672
+          -1.5023239783947928,
+          22.687969197824412
         ],
         "min": [
           -20.195396423339844,
-          -6.312448024749756,
-          15.11487865447998
+          -6.312448150664045,
+          15.114878664419242
         ]
       },
       "drawMode": 4,
-      "geometryHash": "828127fa38a3a8f9c92b3179d2fbb4e9386e707c864e47d8881017bff2685de6",
+      "geometryHash": "892ae451192931df368d29898e8365689933a679f52b3f5adc16c8169d946fbe",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear3.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -1635,17 +1635,17 @@
       "bounds": {
         "max": [
           -11.243144989013672,
-          -4.905146598815918,
-          17.890003204345703
+          -4.9051466846093525,
+          17.890002842530393
         ],
         "min": [
-          -19.063627243041992,
-          -6.312448024749756,
-          15.11487865447998
+          -19.0636266071621,
+          -6.312448150664045,
+          15.114878664419242
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a94e7286efe12b3f5f746d2e2c9da737430d9701d4a26f958b4fe48fbc0ce22e",
+      "geometryHash": "a60762bed49122e7d4d66900d4fb53abd2c2b854c122af4b91a2c7fa7a31c68a",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear3.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1659,18 +1659,18 @@
     {
       "bounds": {
         "max": [
-          -11.385604858398438,
-          5.591507434844971,
+          -11.385604912256719,
+          5.591507341156881,
           20.436838150024414
         ],
         "min": [
-          -15.865242004394531,
-          3.669349193572998,
+          -15.86524195053625,
+          3.6693492872610873,
           15.9396333694458
         ]
       },
       "drawMode": 4,
-      "geometryHash": "341ddb2ba49783f36a4e7d705ee68cfbbefe8d35ebb984f6aeaef670893f9315",
+      "geometryHash": "f9e70be9fb3b10207e4c854a517c6935585e3e304289d424bdcfc4973ebba529",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear4.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -1684,18 +1684,18 @@
     {
       "bounds": {
         "max": [
-          -11.385604858398438,
-          5.591507434844971,
-          17.0871639251709
+          -11.385604912256719,
+          5.591507341156881,
+          17.08716378634139
         ],
         "min": [
-          -14.9920015335083,
-          4.470946311950684,
+          -14.992001635083769,
+          4.470946153650119,
           15.9396333694458
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8985cc61c069cd08d529b7e0c938edd5ce809b7f04076642444879e1f285095d",
+      "geometryHash": "b0d29ddafd6951a05224c5abf8859d00962974ce3180d784f3ee83aab23378d8",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear4.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -1710,17 +1710,17 @@
       "bounds": {
         "max": [
           -11.255973815917969,
-          12.124345779418945,
-          4.534343242645264
+          12.124346003758117,
+          4.5343432340812
         ],
         "min": [
           -21.578468322753906,
-          5.122552871704102,
-          1.4543228149414062
+          5.12255264736493,
+          1.4543228235054697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f97e424edd7de628af5456f73e7ea4188ff300a7d2d61f465f0cff2cdcd21e9e",
+      "geometryHash": "c9766538fbe284f2e5d81cabe64fcb2aecd385240f8001ace28c732ade6b7372",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1734,18 +1734,18 @@
     {
       "bounds": {
         "max": [
-          -12.283638000488281,
-          7.196337699890137,
-          -15.950590133666992
+          -12.283637622534405,
+          7.196337758208717,
+          -15.950590143620806
         ],
         "min": [
-          -17.314485549926758,
-          5.441700458526611,
+          -17.314485838994823,
+          5.441700425267194,
           -17.18392562866211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f9c0e39119936c2c42cf803214f8b52f2ae9d9dd1106b665320ddb59131fb2d",
+      "geometryHash": "5e6e951ce394ac34ca87ee4a48840f2c67235dba9c94fdafdbb81c13087c66a1",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear6.primitive.0",
       "indexCount": 6,
       "indexed": true,
@@ -1759,18 +1759,18 @@
     {
       "bounds": {
         "max": [
-          -11.33226203918457,
-          8.141244888305664,
+          -11.332261750116505,
+          8.14124492156508,
           -10.94980239868164
         ],
         "min": [
-          -17.314485549926758,
-          5.441700458526611,
+          -17.314485838994823,
+          5.441700425267194,
           -17.18392562866211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d74f344244d73e9cf5507ef1e386903d6228d937dca0474b0da98d4008625cbc",
+      "geometryHash": "2fb175251d81ed33d8846dbc8daad59386ef16bc38da2604dfceb00887330935",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear6.primitive.1",
       "indexCount": 30,
       "indexed": true,
@@ -1785,17 +1785,17 @@
       "bounds": {
         "max": [
           14.745365142822266,
-          12.666744232177734,
-          3.5495200157165527
+          12.66674422005562,
+          3.5495201077274827
         ],
         "min": [
           11.000606536865234,
-          9.055012702941895,
-          0.6426951885223389
+          9.05501271506401,
+          0.6426950965114089
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a2eff0fbb4db2b75385df83d0c3a6a83f430a2c5476907507944bc82c69488d",
+      "geometryHash": "b5cefffc03ef94b0f5289454f5dcb246f4792946d300c70261d43de3adb556bb",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1810,17 +1810,17 @@
       "bounds": {
         "max": [
           14.095935821533203,
-          8.628996849060059,
-          16.76642608642578
+          8.628996640997702,
+          16.766425704324483
         ],
         "min": [
           11.262439727783203,
-          6.076714038848877,
-          14.935769081115723
+          6.0767142469112345,
+          14.93576948603512
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63e589278eb4f9ca2491025ccfa35ada0cce94a424665d32b8c093aca88b731b",
+      "geometryHash": "a62c1dffa2f1c1389d44a0defe6011ae595f39038ee7925c156f6e056d5723c5",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib1.primitive.0",
       "indexCount": 21,
       "indexed": true,
@@ -1835,17 +1835,17 @@
       "bounds": {
         "max": [
           14.095935821533203,
-          8.628996849060059,
-          16.67545509338379
+          8.628996640997702,
+          16.67545497491303
         ],
         "min": [
           11.262439727783203,
-          6.076714038848877,
-          14.12593936920166
+          6.0767142469112345,
+          14.125939751302958
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cac476b238e21c29224963cd42d0f64990555e69cd1ed545a82e219b43441e1",
+      "geometryHash": "cb9efa31e40eba8300ec48c7275d79ed87b2b6b58a3e1fb6e9a7c59b6443a273",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib1.primitive.1",
       "indexCount": 27,
       "indexed": true,
@@ -1860,17 +1860,17 @@
       "bounds": {
         "max": [
           14.55044174194336,
-          1.7424633502960205,
-          23.4929256439209
+          1.7424633399902214,
+          23.492926295430024
         ],
         "min": [
           11.096073150634766,
-          -0.799265444278717,
-          20.059642791748047
+          -0.7992654339729179,
+          20.05964214023892
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c9e8437a65452089b043feaa8829150a0b20e694ab19c0b940e740d50bb0857",
+      "geometryHash": "d8bc354213a84003dd327d669f1a06489a8e480ab372035bf7693ed6c55443b6",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1885,17 +1885,17 @@
       "bounds": {
         "max": [
           15.061092376708984,
-          -5.076268672943115,
-          19.850418090820312
+          -5.0762685425467,
+          19.850418509782738
         ],
         "min": [
           11.005756378173828,
-          -8.669721603393555,
-          16.17800521850586
+          -8.66972173378997,
+          16.178004645695893
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c5a613c38db48615ccce74aa73273f2dd4867d23fc965abadc7057f34a2dbec9",
+      "geometryHash": "a1e5f460abdd7443c5f5c3a684d87a93f522e0066e16700c2920bc76f2432af9",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib3.primitive.0",
       "indexCount": 27,
       "indexed": true,
@@ -1910,17 +1910,17 @@
       "bounds": {
         "max": [
           15.061092376708984,
-          -5.076268672943115,
-          18.939958572387695
+          -5.0762685425467,
+          18.93995739728468
         ],
         "min": [
           11.005756378173828,
-          -8.669721603393555,
-          16.00102424621582
+          -8.66972173378997,
+          16.001023827253395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "588c4ec48deb27cda119ec7355f88675644c59d88513917bebda949cd7f94030",
+      "geometryHash": "23902a72a380026defcebec197a15b2c2d610ec75c0d9dba81c7d1019117f005",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib3.primitive.1",
       "indexCount": 21,
       "indexed": true,
@@ -1935,17 +1935,17 @@
       "bounds": {
         "max": [
           14.327922821044922,
-          -9.67545223236084,
-          6.6509857177734375
+          -9.67545245188318,
+          6.650985920640602
         ],
         "min": [
           11.183231353759766,
-          -12.721101760864258,
-          4.16273832321167
+          -12.721101541341918,
+          4.162738120344505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df7b194893857338726b83164e1854b148f8b1fc81a31d19f484dd164ed4a79d",
+      "geometryHash": "3c0e7951f915ede7ea20d2cbd175e3c5bea83d3baf44ddad153945c384f56307",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1960,17 +1960,17 @@
       "bounds": {
         "max": [
           14.733257293701172,
-          -8.724152565002441,
-          -7.7731733322143555
+          -8.724152338524073,
+          -7.7731733986167715
         ],
         "min": [
           10.997425079345703,
-          -12.327274322509766,
-          -10.962203979492188
+          -12.327274548988134,
+          -10.962203913089771
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a03d979b707aeaf9e6f42eb1cb8867fd590fdae6fd3b4b3a2786f14ab944c04",
+      "geometryHash": "d866b8215e2cb7f0f67202bee99e582ff918f049205ab488b57d93bc55db9e5c",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1985,17 +1985,17 @@
       "bounds": {
         "max": [
           14.116863250732422,
-          -3.726189613342285,
-          -18.347230911254883
+          -3.7261895454337006,
+          -18.347230675332032
         ],
         "min": [
           11.339092254638672,
-          -6.080432415008545,
-          -21.09651756286621
+          -6.0804324829171295,
+          -21.096517798789062
         ]
       },
       "drawMode": 4,
-      "geometryHash": "807556082f1fe3dd081b2b4b7ee60a3e1459c9c71d95f1d42cb146fcb519beaa",
+      "geometryHash": "f24b70a03d7bffc9abd723b2048d67d412d9261fb17d4dc6e48a8b98d14ecbdc",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2010,17 +2010,17 @@
       "bounds": {
         "max": [
           14.503612518310547,
-          3.8829057216644287,
-          -19.1907958984375
+          3.8829057139953354,
+          -19.190796705540453
         ],
         "min": [
           11.073062896728516,
-          1.2442710399627686,
-          -22.602083206176758
+          1.244271047631862,
+          -22.602082399073804
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b74eaed0f6fde55185cbb38a934c9e90b08836059e034eea5a1a51e2464c59d",
+      "geometryHash": "deb200fe77103d14b173faabf5816f72a40e48d24691d0af66e5a53e4bba8cdd",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2035,17 +2035,17 @@
       "bounds": {
         "max": [
           15.075374603271484,
-          10.86793327331543,
-          -10.344673156738281
+          10.867933457337289,
+          -10.34467332634603
         ],
         "min": [
           11.064281463623047,
-          7.084038257598877,
-          -13.982163429260254
+          7.084038073577017,
+          -13.982163259652506
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dba8b025939c47b87960d2c557733b397f0eb7870378ed970f1644b8602cc98a",
+      "geometryHash": "c358cd434e0e04e91c2c48c4a2f451d55cfb6de99ac95166280bead43ed1ea9f",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -2060,17 +2060,17 @@
       "bounds": {
         "max": [
           18.788082122802734,
-          -5.810320854187012,
-          -10.311662673950195
+          -5.810320689236018,
+          -10.311663180401405
         ],
         "min": [
           11.319835662841797,
-          -10.840509414672852,
-          -13.569320678710938
+          -10.840509579623845,
+          -13.569320172259728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74d1c664e860013a8d7429d58607fd05e4bb81f03cc81aece684073156c775fa",
+      "geometryHash": "099e73b67fce155653c85b444e46678ea18cfea1ea12b9e1c49ccc9e11f3de86",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2085,17 +2085,17 @@
       "bounds": {
         "max": [
           24.499996185302734,
-          -0.11836829781532288,
-          -15.273743629455566
+          -0.11836832548163179,
+          -15.273743719287282
         ],
         "min": [
           11.191516876220703,
-          -1.6536340713500977,
-          -23.564990997314453
+          -1.6536340436837889,
+          -23.564990907482738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f4d2876d18c5eb4cc3ffe3f6a5b1f845bd9781370439db65f6fc36f2b5d606c7",
+      "geometryHash": "0355b43fa88588618a5e1f49617e9fed7d1fbf1ed9695d48ed7e40c7594a702a",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear1.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -2109,18 +2109,18 @@
     {
       "bounds": {
         "max": [
-          23.097137451171875,
-          -0.9388013482093811,
-          -15.273743629455566
+          23.097136981421716,
+          -0.9388013283304035,
+          -15.273743719287282
         ],
         "min": [
           11.191516876220703,
-          -1.6536340713500977,
-          -19.513595581054688
+          -1.6536340436837889,
+          -19.513595262227046
         ]
       },
       "drawMode": 4,
-      "geometryHash": "470dbe2b6da17d192ab996314a415d8dc1aaaaf8fafb44dacce98a5327cc1e71",
+      "geometryHash": "24f8c1317cd1aaee0c3dae4f07b8b3b9ec0f0d9fd6a4659f7e60d6f7b8b59552",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear1.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -2135,17 +2135,17 @@
       "bounds": {
         "max": [
           19.761486053466797,
-          9.354620933532715,
-          -10.164090156555176
+          9.354621139121171,
+          -10.164090348544452
         ],
         "min": [
           11.742321014404297,
-          3.8887553215026855,
-          -16.414325714111328
+          3.8887551159142295,
+          -16.414325522122052
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28c63fd03715c491e3b2a43672700e96e2105fafeaab963e3e486e3cdf4111a9",
+      "geometryHash": "5c3aae1a8b1b18da804af9fd2fda20ba71a9c016868a77f09bce35a704999d2b",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2159,18 +2159,18 @@
     {
       "bounds": {
         "max": [
-          15.887676239013672,
-          11.9678316116333,
+          15.887676609986054,
+          11.96783176809663,
           6.491081237792969
         ],
         "min": [
-          11.42844009399414,
-          7.114567279815674,
+          11.428439723021759,
+          7.114567123352344,
           1.0109846591949463
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ab21662777c7ff85fd97f3d0e7e71f855adf49193a000f307485c279b0de033",
+      "geometryHash": "945750bdf3aa652afea160f28527c78c452041ccf57d0545f7c6c38e2112bc69",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2185,17 +2185,17 @@
       "bounds": {
         "max": [
           21.57729721069336,
-          5.313360691070557,
-          20.73305892944336
+          5.313360695159769,
+          20.73305870722883
         ],
         "min": [
           11.32242202758789,
-          2.4913687705993652,
-          14.531999588012695
+          2.4913687665101523,
+          14.531999810227223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ae1bc2bb892cf85e2ff614c0e126439d405bf2b69054522c36af941a72965e4",
+      "geometryHash": "e971e26bbfbe903fd280f8c5b967c0fb0f4c9f8d57efd122cf3996316be0031f",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear4.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -2209,18 +2209,18 @@
     {
       "bounds": {
         "max": [
-          20.437484741210938,
-          4.510765552520752,
-          17.464780807495117
+          20.437484123841646,
+          4.510765785431263,
+          17.464780819806414
         ],
         "min": [
           11.32242202758789,
-          2.4913687705993652,
-          14.531999588012695
+          2.4913687665101523,
+          14.531999810227223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5d5b20c724af814bd1704f75671e05d667e4008e65ea96ca3f83a7c34b3619be",
+      "geometryHash": "ac8817d20e9b387dc63e37d15587fa2d8283d2d39636158c1308ad6307d5581a",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear4.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -2235,17 +2235,17 @@
       "bounds": {
         "max": [
           16.97098159790039,
-          -1.9982486963272095,
-          21.1998291015625
+          -1.9982485846833278,
+          21.19982883644762
         ],
         "min": [
           11.741039276123047,
-          -6.716800212860107,
-          17.050127029418945
+          -6.716800324503989,
+          17.050127294533826
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b13509e8d18118ef4eb7d61994469fbfed18e01728a8475016e79fabe7d11ab7",
+      "geometryHash": "7e17c30c58480931f1b6776e984a9d22a2ef63b321a516e1663d54e0200c0412",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2260,17 +2260,17 @@
       "bounds": {
         "max": [
           22.852001190185547,
-          -6.628540515899658,
-          8.416688919067383
+          -6.628540353982832,
+          8.416688779917724
         ],
         "min": [
           11.443622589111328,
-          -11.574248313903809,
-          2.285472869873047
+          -11.574248475820635,
+          2.2854730090227067
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72587de57e272f7aaa76bde13c547dfd35f4f455a1d9d8b438f3d394afdc4fe8",
+      "geometryHash": "a862706d76c24a013f1ff00a38e93bf886cbe93b204ba1e258090242bc906a90",
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2643,21 +2643,21 @@
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0heap",
       "localTransform": [
-        1,
+        13.477256774902344,
         0,
         0,
         0,
         0,
-        1,
+        13.477256774902344,
         0,
         0,
         0,
         0,
-        1,
+        13.477256774902344,
         0,
-        0,
-        0,
-        0,
+        0.016315460205078125,
+        -0.3711172342300415,
+        0.05552482604980469,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2671,42 +2671,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        13.477256774902344,
         0,
         0,
         0,
         0,
-        1,
+        13.477256774902344,
         0,
         0,
         0,
         0,
-        1,
+        13.477256774902344,
         0,
-        0,
-        0,
-        0,
+        0.016315460205078125,
+        -0.3711172342300415,
+        0.05552482604980469,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore0",
       "localTransform": [
-        1,
+        3.0803048610687256,
         0,
         0,
         0,
         0,
-        1,
+        3.0803048610687256,
         0,
         0,
         0,
         0,
-        1,
+        3.0803048610687256,
         0,
-        0,
-        0,
-        0,
+        -10.272845983505249,
+        -0.2754557132720947,
+        8.354858160018921,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2720,42 +2720,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.0803048610687256,
         0,
         0,
         0,
         0,
-        1,
+        3.0803048610687256,
         0,
         0,
         0,
         0,
-        1,
+        3.0803048610687256,
         0,
-        0,
-        0,
-        0,
+        -10.272845983505249,
+        -0.2754557132720947,
+        8.354858160018921,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore1",
       "localTransform": [
-        1,
+        4.3505779504776,
         0,
         0,
         0,
         0,
-        1,
+        4.3505779504776,
         0,
         0,
         0,
         0,
-        1,
+        4.3505779504776,
         0,
-        0,
-        0,
-        0,
+        -11.16914176940918,
+        -0.1048208475112915,
+        2.0414432287216187,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2769,42 +2769,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        4.3505779504776,
         0,
         0,
         0,
         0,
-        1,
+        4.3505779504776,
         0,
         0,
         0,
         0,
-        1,
+        4.3505779504776,
         0,
-        0,
-        0,
-        0,
+        -11.16914176940918,
+        -0.1048208475112915,
+        2.0414432287216187,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore10",
       "localTransform": [
-        1,
+        3.6077651977539062,
         0,
         0,
         0,
         0,
-        1,
+        3.6077651977539062,
         0,
         0,
         0,
         0,
-        1,
+        3.6077651977539062,
         0,
-        0,
-        0,
-        0,
+        -1.7000312805175781,
+        2.8151211738586426,
+        -1.6771074831485748,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2818,42 +2818,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.6077651977539062,
         0,
         0,
         0,
         0,
-        1,
+        3.6077651977539062,
         0,
         0,
         0,
         0,
-        1,
+        3.6077651977539062,
         0,
-        0,
-        0,
-        0,
+        -1.7000312805175781,
+        2.8151211738586426,
+        -1.6771074831485748,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore11",
       "localTransform": [
-        1,
+        4.030455112457275,
         0,
         0,
         0,
         0,
-        1,
+        4.030455112457275,
         0,
         0,
         0,
         0,
-        1,
+        4.030455112457275,
         0,
-        0,
-        0,
-        0,
+        1.030895173549652,
+        1.4710321426391602,
+        -9.205224514007568,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2867,42 +2867,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        4.030455112457275,
         0,
         0,
         0,
         0,
-        1,
+        4.030455112457275,
         0,
         0,
         0,
         0,
-        1,
+        4.030455112457275,
         0,
-        0,
-        0,
-        0,
+        1.030895173549652,
+        1.4710321426391602,
+        -9.205224514007568,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore12",
       "localTransform": [
-        1,
+        3.836078643798828,
         0,
         0,
         0,
         0,
-        1,
+        3.836078643798828,
         0,
         0,
         0,
         0,
-        1,
+        3.836078643798828,
         0,
-        0,
-        0,
-        0,
+        5.443702697753906,
+        1.2507615685462952,
+        7.718039512634277,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2916,42 +2916,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.836078643798828,
         0,
         0,
         0,
         0,
-        1,
+        3.836078643798828,
         0,
         0,
         0,
         0,
-        1,
+        3.836078643798828,
         0,
-        0,
-        0,
-        0,
+        5.443702697753906,
+        1.2507615685462952,
+        7.718039512634277,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore13",
       "localTransform": [
-        1,
+        3.2722320556640625,
         0,
         0,
         0,
         0,
-        1,
+        3.2722320556640625,
         0,
         0,
         0,
         0,
-        1,
+        3.2722320556640625,
         0,
-        0,
-        0,
-        0,
+        4.330020904541016,
+        2.268513897433877,
+        3.5671623945236206,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2965,42 +2965,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.2722320556640625,
         0,
         0,
         0,
         0,
-        1,
+        3.2722320556640625,
         0,
         0,
         0,
         0,
-        1,
+        3.2722320556640625,
         0,
-        0,
-        0,
-        0,
+        4.330020904541016,
+        2.268513897433877,
+        3.5671623945236206,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore14",
       "localTransform": [
-        1,
+        2.8838524520397186,
         0,
         0,
         0,
         0,
-        1,
+        2.8838524520397186,
         0,
         0,
         0,
         0,
-        1,
+        2.8838524520397186,
         0,
-        0,
-        0,
-        0,
+        7.1279637813568115,
+        1.6498330980539322,
+        -2.0507250130176544,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3014,42 +3014,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.8838524520397186,
         0,
         0,
         0,
         0,
-        1,
+        2.8838524520397186,
         0,
         0,
         0,
         0,
-        1,
+        2.8838524520397186,
         0,
-        0,
-        0,
-        0,
+        7.1279637813568115,
+        1.6498330980539322,
+        -2.0507250130176544,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore15",
       "localTransform": [
-        1,
+        2.9990921020507812,
         0,
         0,
         0,
         0,
-        1,
+        2.9990921020507812,
         0,
         0,
         0,
         0,
-        1,
+        2.9990921020507812,
         0,
-        0,
-        0,
-        0,
+        4.616497039794922,
+        0.9628630876541138,
+        -9.510391235351562,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3063,42 +3063,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.9990921020507812,
         0,
         0,
         0,
         0,
-        1,
+        2.9990921020507812,
         0,
         0,
         0,
         0,
-        1,
+        2.9990921020507812,
         0,
-        0,
-        0,
-        0,
+        4.616497039794922,
+        0.9628630876541138,
+        -9.510391235351562,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore16",
       "localTransform": [
-        1,
+        3.3629822731018066,
         0,
         0,
         0,
         0,
-        1,
+        3.3629822731018066,
         0,
         0,
         0,
         0,
-        1,
+        3.3629822731018066,
         0,
-        0,
-        0,
-        0,
+        10.516513586044312,
+        -0.3610140085220337,
+        8.302300930023193,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3112,42 +3112,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.3629822731018066,
         0,
         0,
         0,
         0,
-        1,
+        3.3629822731018066,
         0,
         0,
         0,
         0,
-        1,
+        3.3629822731018066,
         0,
-        0,
-        0,
-        0,
+        10.516513586044312,
+        -0.3610140085220337,
+        8.302300930023193,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore17",
       "localTransform": [
-        1,
+        3.461698740720749,
         0,
         0,
         0,
         0,
-        1,
+        3.461698740720749,
         0,
         0,
         0,
         0,
-        1,
+        3.461698740720749,
         0,
-        0,
-        0,
-        0,
+        11.590084075927734,
+        -0.9080389738082886,
+        4.449690610170364,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3161,42 +3161,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.461698740720749,
         0,
         0,
         0,
         0,
-        1,
+        3.461698740720749,
         0,
         0,
         0,
         0,
-        1,
+        3.461698740720749,
         0,
-        0,
-        0,
-        0,
+        11.590084075927734,
+        -0.9080389738082886,
+        4.449690610170364,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore18",
       "localTransform": [
-        1,
+        3.3763389587402344,
         0,
         0,
         0,
         0,
-        1,
+        3.3763389587402344,
         0,
         0,
         0,
         0,
-        1,
+        3.3763389587402344,
         0,
-        0,
-        0,
-        0,
+        9.855499267578125,
+        0.6383304595947266,
+        -2.46930330991745,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3210,42 +3210,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.3763389587402344,
         0,
         0,
         0,
         0,
-        1,
+        3.3763389587402344,
         0,
         0,
         0,
         0,
-        1,
+        3.3763389587402344,
         0,
-        0,
-        0,
-        0,
+        9.855499267578125,
+        0.6383304595947266,
+        -2.46930330991745,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore19",
       "localTransform": [
-        1,
+        3.402801990509033,
         0,
         0,
         0,
         0,
-        1,
+        3.402801990509033,
         0,
         0,
         0,
         0,
-        1,
+        3.402801990509033,
         0,
-        0,
-        0,
-        0,
+        11.559364318847656,
+        -0.8846849203109741,
+        -9.645179271697998,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3259,42 +3259,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.402801990509033,
         0,
         0,
         0,
         0,
-        1,
+        3.402801990509033,
         0,
         0,
         0,
         0,
-        1,
+        3.402801990509033,
         0,
-        0,
-        0,
-        0,
+        11.559364318847656,
+        -0.8846849203109741,
+        -9.645179271697998,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore2",
       "localTransform": [
-        1,
+        3.103181391954422,
         0,
         0,
         0,
         0,
-        1,
+        3.103181391954422,
         0,
         0,
         0,
         0,
-        1,
+        3.103181391954422,
         0,
-        0,
-        0,
-        0,
+        -11.303232192993164,
+        -1.0198538899421692,
+        -2.47169491648674,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3308,42 +3308,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.103181391954422,
         0,
         0,
         0,
         0,
-        1,
+        3.103181391954422,
         0,
         0,
         0,
         0,
-        1,
+        3.103181391954422,
         0,
-        0,
-        0,
-        0,
+        -11.303232192993164,
+        -1.0198538899421692,
+        -2.47169491648674,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore3",
       "localTransform": [
-        1,
+        2.9230728149414062,
         0,
         0,
         0,
         0,
-        1,
+        2.9230728149414062,
         0,
         0,
         0,
         0,
-        1,
+        2.9230728149414062,
         0,
-        0,
-        0,
-        0,
+        -10.529041290283203,
+        0.09238016605377197,
+        -8.062722206115723,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3357,42 +3357,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.9230728149414062,
         0,
         0,
         0,
         0,
-        1,
+        2.9230728149414062,
         0,
         0,
         0,
         0,
-        1,
+        2.9230728149414062,
         0,
-        0,
-        0,
-        0,
+        -10.529041290283203,
+        0.09238016605377197,
+        -8.062722206115723,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore4",
       "localTransform": [
-        1,
+        2.8081068992614746,
         0,
         0,
         0,
         0,
-        1,
+        2.8081068992614746,
         0,
         0,
         0,
         0,
-        1,
+        2.8081068992614746,
         0,
-        0,
-        0,
-        0,
+        -6.8413238525390625,
+        1.224007487297058,
+        7.923939228057861,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3406,42 +3406,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.8081068992614746,
         0,
         0,
         0,
         0,
-        1,
+        2.8081068992614746,
         0,
         0,
         0,
         0,
-        1,
+        2.8081068992614746,
         0,
-        0,
-        0,
-        0,
+        -6.8413238525390625,
+        1.224007487297058,
+        7.923939228057861,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore5",
       "localTransform": [
-        1,
+        3.4213294982910156,
         0,
         0,
         0,
         0,
-        1,
+        3.4213294982910156,
         0,
         0,
         0,
         0,
-        1,
+        3.4213294982910156,
         0,
-        0,
-        0,
-        0,
+        -6.6935577392578125,
+        2.0043662674725056,
+        2.14179989695549,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3455,42 +3455,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.4213294982910156,
         0,
         0,
         0,
         0,
-        1,
+        3.4213294982910156,
         0,
         0,
         0,
         0,
-        1,
+        3.4213294982910156,
         0,
-        0,
-        0,
-        0,
+        -6.6935577392578125,
+        2.0043662674725056,
+        2.14179989695549,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore6",
       "localTransform": [
-        1,
+        3.831957697868347,
         0,
         0,
         0,
         0,
-        1,
+        3.831957697868347,
         0,
         0,
         0,
         0,
-        1,
+        3.831957697868347,
         0,
-        0,
-        0,
-        0,
+        -4.940227508544922,
+        2.5584913790225983,
+        -2.04492723941803,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3504,42 +3504,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.831957697868347,
         0,
         0,
         0,
         0,
-        1,
+        3.831957697868347,
         0,
         0,
         0,
         0,
-        1,
+        3.831957697868347,
         0,
-        0,
-        0,
-        0,
+        -4.940227508544922,
+        2.5584913790225983,
+        -2.04492723941803,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore7",
       "localTransform": [
-        1,
+        3.858513116836548,
         0,
         0,
         0,
         0,
-        1,
+        3.858513116836548,
         0,
         0,
         0,
         0,
-        1,
+        3.858513116836548,
         0,
-        0,
-        0,
-        0,
+        -7.624592065811157,
+        0.8986456990242004,
+        -8.051835775375366,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3553,42 +3553,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.858513116836548,
         0,
         0,
         0,
         0,
-        1,
+        3.858513116836548,
         0,
         0,
         0,
         0,
-        1,
+        3.858513116836548,
         0,
-        0,
-        0,
-        0,
+        -7.624592065811157,
+        0.8986456990242004,
+        -8.051835775375366,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore8",
       "localTransform": [
-        1,
+        3.4877548217773438,
         0,
         0,
         0,
         0,
-        1,
+        3.4877548217773438,
         0,
         0,
         0,
         0,
-        1,
+        3.4877548217773438,
         0,
-        0,
-        0,
-        0,
+        0.18019485473632812,
+        1.9870305061340332,
+        7.931615591049194,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3602,42 +3602,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.4877548217773438,
         0,
         0,
         0,
         0,
-        1,
+        3.4877548217773438,
         0,
         0,
         0,
         0,
-        1,
+        3.4877548217773438,
         0,
-        0,
-        0,
-        0,
+        0.18019485473632812,
+        1.9870305061340332,
+        7.931615591049194,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.h0ore9",
       "localTransform": [
-        1,
+        3.234993636608124,
         0,
         0,
         0,
         0,
-        1,
+        3.234993636608124,
         0,
         0,
         0,
         0,
-        1,
+        3.234993636608124,
         0,
-        0,
-        0,
-        0,
+        0.8996066451072693,
+        2.7990846633911133,
+        2.924389660358429,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3651,42 +3651,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.234993636608124,
         0,
         0,
         0,
         0,
-        1,
+        3.234993636608124,
         0,
         0,
         0,
         0,
-        1,
+        3.234993636608124,
         0,
-        0,
-        0,
-        0,
+        0.8996066451072693,
+        2.7990846633911133,
+        2.924389660358429,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.hull",
       "localTransform": [
-        1,
+        20.693480491638184,
         0,
         0,
         0,
         0,
-        1,
+        20.693480491638184,
         0,
         0,
         0,
         0,
-        1,
+        20.693480491638184,
         0,
-        0,
-        0,
-        0,
+        0.0446929931640625,
+        -2.7298691272735596,
+        -0.013615608215332031,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3700,42 +3700,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        20.693480491638184,
         0,
         0,
         0,
         0,
-        1,
+        20.693480491638184,
         0,
         0,
         0,
         0,
-        1,
+        20.693480491638184,
         0,
-        0,
-        0,
-        0,
+        0.0446929931640625,
+        -2.7298691272735596,
+        -0.013615608215332031,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.pipeclamp120",
       "localTransform": [
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
-        0,
-        0,
-        0,
+        -0.24805833399295807,
+        5.023785591125488,
+        -15.701215267181396,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3749,42 +3749,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
-        0,
-        0,
-        0,
+        -0.24805833399295807,
+        5.023785591125488,
+        -15.701215267181396,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.pipeclamp120-m",
       "localTransform": [
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
-        0,
-        0,
-        0,
+        -0.24805833399295807,
+        5.023785591125488,
+        15.812264919281006,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3798,42 +3798,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
         0,
         0,
         0,
-        1,
+        1.0574994087219238,
         0,
-        0,
-        0,
-        0,
+        -0.24805833399295807,
+        5.023785591125488,
+        15.812264919281006,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun",
       "localTransform": [
-        1,
+        13.205558776855469,
         0,
         0,
         0,
         0,
-        1,
+        13.205558776855469,
         0,
         0,
         0,
         0,
-        1,
+        13.205558776855469,
         0,
-        0,
-        0,
-        0,
+        0.013095855712890625,
+        5.340034484863281,
+        -15.703537940979004,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3847,42 +3847,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        13.205558776855469,
         0,
         0,
         0,
         0,
-        1,
+        13.205558776855469,
         0,
         0,
         0,
         0,
-        1,
+        13.205558776855469,
         0,
-        0,
-        0,
-        0,
+        0.013095855712890625,
+        5.340034484863281,
+        -15.703537940979004,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.piperun-m",
       "localTransform": [
-        1,
+        13.208719253540039,
         0,
         0,
         0,
         0,
-        1,
+        13.208719253540039,
         0,
         0,
         0,
         0,
-        1,
+        13.208719253540039,
         0,
-        0,
-        0,
-        0,
+        0.021715164184570312,
+        5.495316982269287,
+        15.69155502319336,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3896,42 +3896,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        13.208719253540039,
         0,
         0,
         0,
         0,
-        1,
+        13.208719253540039,
         0,
         0,
         0,
         0,
-        1,
+        13.208719253540039,
         0,
-        0,
-        0,
-        0,
+        0.021715164184570312,
+        5.495316982269287,
+        15.69155502319336,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake",
       "localTransform": [
-        1,
+        12.770946502685547,
         0,
         0,
         0,
         0,
-        1,
+        12.770946502685547,
         0,
         0,
         0,
         0,
-        1,
+        12.770946502685547,
         0,
-        0,
-        0,
-        0,
+        0.05527496337890625,
+        -1.4121703058481216,
+        -20.190736770629883,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3945,42 +3945,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        12.770946502685547,
         0,
         0,
         0,
         0,
-        1,
+        12.770946502685547,
         0,
         0,
         0,
         0,
-        1,
+        12.770946502685547,
         0,
-        0,
-        0,
-        0,
+        0.05527496337890625,
+        -1.4121703058481216,
+        -20.190736770629883,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.strake-m",
       "localTransform": [
-        1,
+        12.691303253173828,
         0,
         0,
         0,
         0,
-        1,
+        12.691303253173828,
         0,
         0,
         0,
         0,
-        1,
+        12.691303253173828,
         0,
-        0,
-        0,
-        0,
+        0.14388275146484375,
+        -1.8145080506801605,
+        20.36092758178711,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3994,42 +3994,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        12.691303253173828,
         0,
         0,
         0,
         0,
-        1,
+        12.691303253173828,
         0,
         0,
         0,
         0,
-        1,
+        12.691303253173828,
         0,
-        0,
-        0,
-        0,
+        0.14388275146484375,
+        -1.8145080506801605,
+        20.36092758178711,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib0",
       "localTransform": [
-        1,
+        2.0308780670166016,
         0,
         0,
         0,
         0,
-        1,
+        2.0308780670166016,
         0,
         0,
         0,
         0,
-        1,
+        2.0308780670166016,
         0,
-        0,
-        0,
-        0,
+        -12.929685592651367,
+        1.6643738746643066,
+        21.54611301422119,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4043,42 +4043,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.0308780670166016,
         0,
         0,
         0,
         0,
-        1,
+        2.0308780670166016,
         0,
         0,
         0,
         0,
-        1,
+        2.0308780670166016,
         0,
-        0,
-        0,
-        0,
+        -12.929685592651367,
+        1.6643738746643066,
+        21.54611301422119,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib1",
       "localTransform": [
-        1,
+        1.561819076538086,
         0,
         0,
         0,
         0,
-        1,
+        1.561819076538086,
         0,
         0,
         0,
         0,
-        1,
+        1.561819076538086,
         0,
-        0,
-        0,
-        0,
+        -12.754373550415039,
+        8.245734930038452,
+        13.677045345306396,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4092,42 +4092,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.561819076538086,
         0,
         0,
         0,
         0,
-        1,
+        1.561819076538086,
         0,
         0,
         0,
         0,
-        1,
+        1.561819076538086,
         0,
-        0,
-        0,
-        0,
+        -12.754373550415039,
+        8.245734930038452,
+        13.677045345306396,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib2",
       "localTransform": [
-        1,
+        1.8553600311279297,
         0,
         0,
         0,
         0,
-        1,
+        1.8553600311279297,
         0,
         0,
         0,
         0,
-        1,
+        1.8553600311279297,
         0,
-        0,
-        0,
-        0,
+        -12.816659927368164,
+        10.914042949676514,
+        -0.23495358228683472,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4141,42 +4141,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.8553600311279297,
         0,
         0,
         0,
         0,
-        1,
+        1.8553600311279297,
         0,
         0,
         0,
         0,
-        1,
+        1.8553600311279297,
         0,
-        0,
-        0,
-        0,
+        -12.816659927368164,
+        10.914042949676514,
+        -0.23495358228683472,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib3",
       "localTransform": [
-        1,
+        1.4111614227294922,
         0,
         0,
         0,
         0,
-        1,
+        1.4111614227294922,
         0,
         0,
         0,
         0,
-        1,
+        1.4111614227294922,
         0,
-        0,
-        0,
-        0,
+        -12.662885665893555,
+        7.994319438934326,
+        -14.004271984100342,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4190,42 +4190,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.4111614227294922,
         0,
         0,
         0,
         0,
-        1,
+        1.4111614227294922,
         0,
         0,
         0,
         0,
-        1,
+        1.4111614227294922,
         0,
-        0,
-        0,
-        0,
+        -12.662885665893555,
+        7.994319438934326,
+        -14.004271984100342,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib4",
       "localTransform": [
-        1,
+        1.72430419921875,
         0,
         0,
         0,
         0,
-        1,
+        1.72430419921875,
         0,
         0,
         0,
         0,
-        1,
+        1.72430419921875,
         0,
-        0,
-        0,
-        0,
+        -12.775405883789062,
+        1.3501385264098644,
+        -21.436012268066406,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4239,42 +4239,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.72430419921875,
         0,
         0,
         0,
         0,
-        1,
+        1.72430419921875,
         0,
         0,
         0,
         0,
-        1,
+        1.72430419921875,
         0,
-        0,
-        0,
-        0,
+        -12.775405883789062,
+        1.3501385264098644,
+        -21.436012268066406,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib5",
       "localTransform": [
-        1,
+        2.016092300415039,
         0,
         0,
         0,
         0,
-        1,
+        2.016092300415039,
         0,
         0,
         0,
         0,
-        1,
+        2.016092300415039,
         0,
-        0,
-        0,
-        0,
+        -13.022378921508789,
+        -6.06569242477417,
+        -18.81962490081787,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4288,42 +4288,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.016092300415039,
         0,
         0,
         0,
         0,
-        1,
+        2.016092300415039,
         0,
         0,
         0,
         0,
-        1,
+        2.016092300415039,
         0,
-        0,
-        0,
-        0,
+        -13.022378921508789,
+        -6.06569242477417,
+        -18.81962490081787,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib6",
       "localTransform": [
-        1,
+        1.5716590881347656,
         0,
         0,
         0,
         0,
-        1,
+        1.5716590881347656,
         0,
         0,
         0,
         0,
-        1,
+        1.5716590881347656,
         0,
-        0,
-        0,
-        0,
+        -12.701953887939453,
+        -10.923416137695312,
+        -7.057528495788574,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4337,42 +4337,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.5716590881347656,
         0,
         0,
         0,
         0,
-        1,
+        1.5716590881347656,
         0,
         0,
         0,
         0,
-        1,
+        1.5716590881347656,
         0,
-        0,
-        0,
-        0,
+        -12.701953887939453,
+        -10.923416137695312,
+        -7.057528495788574,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib7",
       "localTransform": [
-        1,
+        1.8785762786865234,
         0,
         0,
         0,
         0,
-        1,
+        1.8785762786865234,
         0,
         0,
         0,
         0,
-        1,
+        1.8785762786865234,
         0,
-        0,
-        0,
-        0,
+        -12.855440139770508,
+        -10.904961109161377,
+        7.776401996612549,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4386,42 +4386,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.8785762786865234,
         0,
         0,
         0,
         0,
-        1,
+        1.8785762786865234,
         0,
         0,
         0,
         0,
-        1,
+        1.8785762786865234,
         0,
-        0,
-        0,
-        0,
+        -12.855440139770508,
+        -10.904961109161377,
+        7.776401996612549,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-f-rib8",
       "localTransform": [
-        1,
+        1.4007396697998047,
         0,
         0,
         0,
         0,
-        1,
+        1.4007396697998047,
         0,
         0,
         0,
         0,
-        1,
+        1.4007396697998047,
         0,
-        0,
-        0,
-        0,
+        -12.68067741394043,
+        -5.742221355438232,
+        19.016511917114258,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4435,42 +4435,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.4007396697998047,
         0,
         0,
         0,
         0,
-        1,
+        1.4007396697998047,
         0,
         0,
         0,
         0,
-        1,
+        1.4007396697998047,
         0,
-        0,
-        0,
-        0,
+        -12.68067741394043,
+        -5.742221355438232,
+        19.016511917114258,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear0",
       "localTransform": [
-        1,
+        5.557416915893555,
         0,
         0,
         0,
         0,
-        1,
+        5.557416915893555,
         0,
         0,
         0,
         0,
-        1,
+        5.557416915893555,
         0,
-        0,
-        0,
-        0,
+        -17.115171432495117,
+        -1.1623623073101044,
+        -19.62713050842285,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4484,42 +4484,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        5.557416915893555,
         0,
         0,
         0,
         0,
-        1,
+        5.557416915893555,
         0,
         0,
         0,
         0,
-        1,
+        5.557416915893555,
         0,
-        0,
-        0,
-        0,
+        -17.115171432495117,
+        -1.1623623073101044,
+        -19.62713050842285,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear1",
       "localTransform": [
-        1,
+        3.7244129180908203,
         0,
         0,
         0,
         0,
-        1,
+        3.7244129180908203,
         0,
         0,
         0,
         0,
-        1,
+        3.7244129180908203,
         0,
-        0,
-        0,
-        0,
+        -15.021322250366211,
+        -8.490149021148682,
+        -11.44362211227417,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4533,42 +4533,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.7244129180908203,
         0,
         0,
         0,
         0,
-        1,
+        3.7244129180908203,
         0,
         0,
         0,
         0,
-        1,
+        3.7244129180908203,
         0,
-        0,
-        0,
-        0,
+        -15.021322250366211,
+        -8.490149021148682,
+        -11.44362211227417,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear2",
       "localTransform": [
-        1,
+        6.686878204345703,
         0,
         0,
         0,
         0,
-        1,
+        6.686878204345703,
         0,
         0,
         0,
         0,
-        1,
+        6.686878204345703,
         0,
-        0,
-        0,
-        0,
+        -17.81311798095703,
+        -8.793150186538696,
+        5.83976948261261,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4582,42 +4582,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        6.686878204345703,
         0,
         0,
         0,
         0,
-        1,
+        6.686878204345703,
         0,
         0,
         0,
         0,
-        1,
+        6.686878204345703,
         0,
-        0,
-        0,
-        0,
+        -17.81311798095703,
+        -8.793150186538696,
+        5.83976948261261,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear3",
       "localTransform": [
-        1,
+        4.476125717163086,
         0,
         0,
         0,
         0,
-        1,
+        4.476125717163086,
         0,
         0,
         0,
         0,
-        1,
+        4.476125717163086,
         0,
-        0,
-        0,
-        0,
+        -15.719270706176758,
+        -3.907386064529419,
+        18.901423931121826,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4631,42 +4631,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        4.476125717163086,
         0,
         0,
         0,
         0,
-        1,
+        4.476125717163086,
         0,
         0,
         0,
         0,
-        1,
+        4.476125717163086,
         0,
-        0,
-        0,
-        0,
+        -15.719270706176758,
+        -3.907386064529419,
+        18.901423931121826,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear4",
       "localTransform": [
-        1,
+        2.2486023902893066,
         0,
         0,
         0,
         0,
-        1,
+        2.2486023902893066,
         0,
         0,
         0,
         0,
-        1,
+        2.2486023902893066,
         0,
-        0,
-        0,
-        0,
+        -13.625423431396484,
+        4.630428314208984,
+        18.188235759735107,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4680,42 +4680,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.2486023902893066,
         0,
         0,
         0,
         0,
-        1,
+        2.2486023902893066,
         0,
         0,
         0,
         0,
-        1,
+        2.2486023902893066,
         0,
-        0,
-        0,
-        0,
+        -13.625423431396484,
+        4.630428314208984,
+        18.188235759735107,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear5",
       "localTransform": [
-        1,
+        5.161247253417969,
         0,
         0,
         0,
         0,
-        1,
+        5.161247253417969,
         0,
         0,
         0,
         0,
-        1,
+        5.161247253417969,
         0,
-        0,
-        0,
-        0,
+        -16.417221069335938,
+        8.623449325561523,
+        2.994333028793335,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4729,42 +4729,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        5.161247253417969,
         0,
         0,
         0,
         0,
-        1,
+        5.161247253417969,
         0,
         0,
         0,
         0,
-        1,
+        5.161247253417969,
         0,
-        0,
-        0,
-        0,
+        -16.417221069335938,
+        8.623449325561523,
+        2.994333028793335,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.wounda-t-tear6",
       "localTransform": [
-        1,
+        3.1170616149902344,
         0,
         0,
         0,
         0,
-        1,
+        3.1170616149902344,
         0,
         0,
         0,
         0,
-        1,
+        3.1170616149902344,
         0,
-        0,
-        0,
-        0,
+        -14.323373794555664,
+        6.791472673416138,
+        -14.066864013671875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4778,42 +4778,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.1170616149902344,
         0,
         0,
         0,
         0,
-        1,
+        3.1170616149902344,
         0,
         0,
         0,
         0,
-        1,
+        3.1170616149902344,
         0,
-        0,
-        0,
-        0,
+        -14.323373794555664,
+        6.791472673416138,
+        -14.066864013671875,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib0",
       "localTransform": [
-        1,
+        1.8723793029785156,
         0,
         0,
         0,
         0,
-        1,
+        1.8723793029785156,
         0,
         0,
         0,
         0,
-        1,
+        1.8723793029785156,
         0,
-        0,
-        0,
-        0,
+        12.87298583984375,
+        10.860878467559814,
+        2.096107602119446,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4827,42 +4827,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.8723793029785156,
         0,
         0,
         0,
         0,
-        1,
+        1.8723793029785156,
         0,
         0,
         0,
         0,
-        1,
+        1.8723793029785156,
         0,
-        0,
-        0,
-        0,
+        12.87298583984375,
+        10.860878467559814,
+        2.096107602119446,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib1",
       "localTransform": [
-        1,
+        1.416748046875,
         0,
         0,
         0,
         0,
-        1,
+        1.416748046875,
         0,
         0,
         0,
         0,
-        1,
+        1.416748046875,
         0,
-        0,
-        0,
-        0,
+        12.679187774658203,
+        7.352855443954468,
+        15.44618272781372,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4876,42 +4876,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.416748046875,
         0,
         0,
         0,
         0,
-        1,
+        1.416748046875,
         0,
         0,
         0,
         0,
-        1,
+        1.416748046875,
         0,
-        0,
-        0,
-        0,
+        12.679187774658203,
+        7.352855443954468,
+        15.44618272781372,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib2",
       "localTransform": [
-        1,
+        1.7271842956542969,
         0,
         0,
         0,
         0,
-        1,
+        1.7271842956542969,
         0,
         0,
         0,
         0,
-        1,
+        1.7271842956542969,
         0,
-        0,
-        0,
-        0,
+        12.823257446289062,
+        0.47159895300865173,
+        21.776284217834473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4925,42 +4925,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.7271842956542969,
         0,
         0,
         0,
         0,
-        1,
+        1.7271842956542969,
         0,
         0,
         0,
         0,
-        1,
+        1.7271842956542969,
         0,
-        0,
-        0,
-        0,
+        12.823257446289062,
+        0.47159895300865173,
+        21.776284217834473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib3",
       "localTransform": [
-        1,
+        2.027667999267578,
         0,
         0,
         0,
         0,
-        1,
+        2.027667999267578,
         0,
         0,
         0,
         0,
-        1,
+        2.027667999267578,
         0,
-        0,
-        0,
-        0,
+        13.033424377441406,
+        -6.872995138168335,
+        17.925721168518066,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4974,42 +4974,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.027667999267578,
         0,
         0,
         0,
         0,
-        1,
+        2.027667999267578,
         0,
         0,
         0,
         0,
-        1,
+        2.027667999267578,
         0,
-        0,
-        0,
-        0,
+        13.033424377441406,
+        -6.872995138168335,
+        17.925721168518066,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib4",
       "localTransform": [
-        1,
+        1.5723457336425781,
         0,
         0,
         0,
         0,
-        1,
+        1.5723457336425781,
         0,
         0,
         0,
         0,
-        1,
+        1.5723457336425781,
         0,
-        0,
-        0,
-        0,
+        12.755577087402344,
+        -11.198276996612549,
+        5.406862020492554,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5023,42 +5023,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.5723457336425781,
         0,
         0,
         0,
         0,
-        1,
+        1.5723457336425781,
         0,
         0,
         0,
         0,
-        1,
+        1.5723457336425781,
         0,
-        0,
-        0,
-        0,
+        12.755577087402344,
+        -11.198276996612549,
+        5.406862020492554,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib5",
       "localTransform": [
-        1,
+        1.8679161071777344,
         0,
         0,
         0,
         0,
-        1,
+        1.8679161071777344,
         0,
         0,
         0,
         0,
-        1,
+        1.8679161071777344,
         0,
-        0,
-        0,
-        0,
+        12.865341186523438,
+        -10.525713443756104,
+        -9.367688655853271,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5072,42 +5072,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.8679161071777344,
         0,
         0,
         0,
         0,
-        1,
+        1.8679161071777344,
         0,
         0,
         0,
         0,
-        1,
+        1.8679161071777344,
         0,
-        0,
-        0,
-        0,
+        12.865341186523438,
+        -10.525713443756104,
+        -9.367688655853271,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib6",
       "localTransform": [
-        1,
+        1.388885498046875,
         0,
         0,
         0,
         0,
-        1,
+        1.388885498046875,
         0,
         0,
         0,
         0,
-        1,
+        1.388885498046875,
         0,
-        0,
-        0,
-        0,
+        12.727977752685547,
+        -4.903311014175415,
+        -19.721874237060547,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5121,42 +5121,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.388885498046875,
         0,
         0,
         0,
         0,
-        1,
+        1.388885498046875,
         0,
         0,
         0,
         0,
-        1,
+        1.388885498046875,
         0,
-        0,
-        0,
-        0,
+        12.727977752685547,
+        -4.903311014175415,
+        -19.721874237060547,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib7",
       "localTransform": [
-        1,
+        1.7152748107910156,
         0,
         0,
         0,
         0,
-        1,
+        1.7152748107910156,
         0,
         0,
         0,
         0,
-        1,
+        1.7152748107910156,
         0,
-        0,
-        0,
-        0,
+        12.788337707519531,
+        2.5635883808135986,
+        -20.89643955230713,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5170,42 +5170,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        1.7152748107910156,
         0,
         0,
         0,
         0,
-        1,
+        1.7152748107910156,
         0,
         0,
         0,
         0,
-        1,
+        1.7152748107910156,
         0,
-        0,
-        0,
-        0,
+        12.788337707519531,
+        2.5635883808135986,
+        -20.89643955230713,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-f-rib8",
       "localTransform": [
-        1,
+        2.0055465698242188,
         0,
         0,
         0,
         0,
-        1,
+        2.0055465698242188,
         0,
         0,
         0,
         0,
-        1,
+        2.0055465698242188,
         0,
-        0,
-        0,
-        0,
+        13.069828033447266,
+        8.975985765457153,
+        -12.163418292999268,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5219,42 +5219,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.0055465698242188,
         0,
         0,
         0,
         0,
-        1,
+        2.0055465698242188,
         0,
         0,
         0,
         0,
-        1,
+        2.0055465698242188,
         0,
-        0,
-        0,
-        0,
+        13.069828033447266,
+        8.975985765457153,
+        -12.163418292999268,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear0",
       "localTransform": [
-        1,
+        3.7341232299804688,
         0,
         0,
         0,
         0,
-        1,
+        3.7341232299804688,
         0,
         0,
         0,
         0,
-        1,
+        3.7341232299804688,
         0,
-        0,
-        0,
-        0,
+        15.053958892822266,
+        -8.325415134429932,
+        -11.940491676330566,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5268,42 +5268,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        3.7341232299804688,
         0,
         0,
         0,
         0,
-        1,
+        3.7341232299804688,
         0,
         0,
         0,
         0,
-        1,
+        3.7341232299804688,
         0,
-        0,
-        0,
-        0,
+        15.053958892822266,
+        -8.325415134429932,
+        -11.940491676330566,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear1",
       "localTransform": [
-        1,
+        6.654239654541016,
         0,
         0,
         0,
         0,
-        1,
+        6.654239654541016,
         0,
         0,
         0,
         0,
-        1,
+        6.654239654541016,
         0,
-        0,
-        0,
-        0,
+        17.84575653076172,
+        -0.8860011845827103,
+        -19.41936731338501,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5317,42 +5317,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        6.654239654541016,
         0,
         0,
         0,
         0,
-        1,
+        6.654239654541016,
         0,
         0,
         0,
         0,
-        1,
+        6.654239654541016,
         0,
-        0,
-        0,
-        0,
+        17.84575653076172,
+        -0.8860011845827103,
+        -19.41936731338501,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear2",
       "localTransform": [
-        1,
+        4.00958251953125,
         0,
         0,
         0,
         0,
-        1,
+        4.00958251953125,
         0,
         0,
         0,
         0,
-        1,
+        4.00958251953125,
         0,
-        0,
-        0,
-        0,
+        15.751903533935547,
+        6.6216881275177,
+        -13.289207935333252,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5366,42 +5366,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        4.00958251953125,
         0,
         0,
         0,
         0,
-        1,
+        4.00958251953125,
         0,
         0,
         0,
         0,
-        1,
+        4.00958251953125,
         0,
-        0,
-        0,
-        0,
+        15.751903533935547,
+        6.6216881275177,
+        -13.289207935333252,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear3",
       "localTransform": [
-        1,
+        2.7400482892990112,
         0,
         0,
         0,
         0,
-        1,
+        2.7400482892990112,
         0,
         0,
         0,
         0,
-        1,
+        2.7400482892990112,
         0,
-        0,
-        0,
-        0,
+        13.658058166503906,
+        9.541199445724487,
+        3.7510329484939575,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5415,42 +5415,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.7400482892990112,
         0,
         0,
         0,
         0,
-        1,
+        2.7400482892990112,
         0,
         0,
         0,
         0,
-        1,
+        2.7400482892990112,
         0,
-        0,
-        0,
-        0,
+        13.658058166503906,
+        9.541199445724487,
+        3.7510329484939575,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear4",
       "localTransform": [
-        1,
+        5.127437591552734,
         0,
         0,
         0,
         0,
-        1,
+        5.127437591552734,
         0,
         0,
         0,
         0,
-        1,
+        5.127437591552734,
         0,
-        0,
-        0,
-        0,
+        16.449859619140625,
+        3.902364730834961,
+        17.632529258728027,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5464,42 +5464,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        5.127437591552734,
         0,
         0,
         0,
         0,
-        1,
+        5.127437591552734,
         0,
         0,
         0,
         0,
-        1,
+        5.127437591552734,
         0,
-        0,
-        0,
-        0,
+        16.449859619140625,
+        3.902364730834961,
+        17.632529258728027,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear5",
       "localTransform": [
-        1,
+        2.614971160888672,
         0,
         0,
         0,
         0,
-        1,
+        2.614971160888672,
         0,
         0,
         0,
         0,
-        1,
+        2.614971160888672,
         0,
-        0,
-        0,
-        0,
+        14.356010437011719,
+        -4.3575244545936584,
+        19.124978065490723,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5513,42 +5513,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        2.614971160888672,
         0,
         0,
         0,
         0,
-        1,
+        2.614971160888672,
         0,
         0,
         0,
         0,
-        1,
+        2.614971160888672,
         0,
-        0,
-        0,
-        0,
+        14.356010437011719,
+        -4.3575244545936584,
+        19.124978065490723,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.mesh.woundb-t-tear6",
       "localTransform": [
-        1,
+        5.704189300537109,
         0,
         0,
         0,
         0,
-        1,
+        5.704189300537109,
         0,
         0,
         0,
         0,
-        1,
+        5.704189300537109,
         0,
-        0,
-        0,
-        0,
+        17.147811889648438,
+        -9.101394414901733,
+        5.351080894470215,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5562,21 +5562,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-ore-freighter-hopper.body",
       "worldTransform": [
-        1,
+        5.704189300537109,
         0,
         0,
         0,
         0,
-        1,
+        5.704189300537109,
         0,
         0,
         0,
         0,
-        1,
+        5.704189300537109,
         0,
-        0,
-        0,
-        0,
+        17.147811889648438,
+        -9.101394414901733,
+        5.351080894470215,
         1
       ]
     },
@@ -5639,37 +5639,37 @@
       "uri": "place_aftermath_wreck_ore_freighter_hopper.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 469216,
-    "sha256": "b520dee4b45d2cbbd1cac4880fe7243dacbbff0a8a59890f3118b4762c95fa3d",
+    "bytes": 373740,
+    "sha256": "ce86cde12e98d94515a4c398ee622a980a5e13ffaced041bf8980eca39c52752",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.000029087066650390625,
-        -0.0000743865966796875
+        0.00002939726474160409,
+        -0.0000738915326898848
       ],
       "max": [
         24.499996185302734,
-        12.721159934997559,
-        23.564842224121094
+        12.721160335871401,
+        23.564843124417358
       ],
       "min": [
         -24.499996185302734,
-        -12.721101760864258,
-        -23.564990997314453
+        -12.721101541341918,
+        -23.564990907482738
       ],
       "size": [
         48.99999237060547,
-        25.442261695861816,
-        47.12983322143555
+        25.44226187721332,
+        47.129834031900096
       ]
     },
     "hidden": [],
@@ -6172,21 +6172,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.477256774902344,
           0,
           0,
           0,
           0,
-          1,
+          13.477256774902344,
           0,
           0,
           0,
           0,
-          1,
+          13.477256774902344,
           0,
-          0,
-          0,
-          0,
+          0.016315460205078125,
+          -0.3711172342300415,
+          0.05552482604980469,
           1
         ],
         "name": "H0Heap_1",
@@ -6199,21 +6199,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.477256774902344,
           0,
           0,
           0,
           0,
-          1,
+          13.477256774902344,
           0,
           0,
           0,
           0,
-          1,
+          13.477256774902344,
           0,
-          0,
-          0,
-          0,
+          0.016315460205078125,
+          -0.3711172342300415,
+          0.05552482604980469,
           1
         ],
         "name": "H0Heap_2",
@@ -6226,21 +6226,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.0803048610687256,
           0,
           0,
           0,
           0,
-          1,
+          3.0803048610687256,
           0,
           0,
           0,
           0,
-          1,
+          3.0803048610687256,
           0,
-          0,
-          0,
-          0,
+          -10.272845983505249,
+          -0.2754557132720947,
+          8.354858160018921,
           1
         ],
         "name": "H0Ore0_1",
@@ -6253,21 +6253,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.0803048610687256,
           0,
           0,
           0,
           0,
-          1,
+          3.0803048610687256,
           0,
           0,
           0,
           0,
-          1,
+          3.0803048610687256,
           0,
-          0,
-          0,
-          0,
+          -10.272845983505249,
+          -0.2754557132720947,
+          8.354858160018921,
           1
         ],
         "name": "H0Ore0_2",
@@ -6280,21 +6280,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.3505779504776,
           0,
           0,
           0,
           0,
-          1,
+          4.3505779504776,
           0,
           0,
           0,
           0,
-          1,
+          4.3505779504776,
           0,
-          0,
-          0,
-          0,
+          -11.16914176940918,
+          -0.1048208475112915,
+          2.0414432287216187,
           1
         ],
         "name": "H0Ore1",
@@ -6307,21 +6307,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6077651977539062,
           0,
           0,
           0,
           0,
-          1,
+          3.6077651977539062,
           0,
           0,
           0,
           0,
-          1,
+          3.6077651977539062,
           0,
-          0,
-          0,
-          0,
+          -1.7000312805175781,
+          2.8151211738586426,
+          -1.6771074831485748,
           1
         ],
         "name": "H0Ore10",
@@ -6334,21 +6334,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.030455112457275,
           0,
           0,
           0,
           0,
-          1,
+          4.030455112457275,
           0,
           0,
           0,
           0,
-          1,
+          4.030455112457275,
           0,
-          0,
-          0,
-          0,
+          1.030895173549652,
+          1.4710321426391602,
+          -9.205224514007568,
           1
         ],
         "name": "H0Ore11",
@@ -6361,21 +6361,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.836078643798828,
           0,
           0,
           0,
           0,
-          1,
+          3.836078643798828,
           0,
           0,
           0,
           0,
-          1,
+          3.836078643798828,
           0,
-          0,
-          0,
-          0,
+          5.443702697753906,
+          1.2507615685462952,
+          7.718039512634277,
           1
         ],
         "name": "H0Ore12_1",
@@ -6388,21 +6388,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.836078643798828,
           0,
           0,
           0,
           0,
-          1,
+          3.836078643798828,
           0,
           0,
           0,
           0,
-          1,
+          3.836078643798828,
           0,
-          0,
-          0,
-          0,
+          5.443702697753906,
+          1.2507615685462952,
+          7.718039512634277,
           1
         ],
         "name": "H0Ore12_2",
@@ -6415,21 +6415,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.2722320556640625,
           0,
           0,
           0,
           0,
-          1,
+          3.2722320556640625,
           0,
           0,
           0,
           0,
-          1,
+          3.2722320556640625,
           0,
-          0,
-          0,
-          0,
+          4.330020904541016,
+          2.268513897433877,
+          3.5671623945236206,
           1
         ],
         "name": "H0Ore13_1",
@@ -6442,21 +6442,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.2722320556640625,
           0,
           0,
           0,
           0,
-          1,
+          3.2722320556640625,
           0,
           0,
           0,
           0,
-          1,
+          3.2722320556640625,
           0,
-          0,
-          0,
-          0,
+          4.330020904541016,
+          2.268513897433877,
+          3.5671623945236206,
           1
         ],
         "name": "H0Ore13_2",
@@ -6469,21 +6469,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8838524520397186,
           0,
           0,
           0,
           0,
-          1,
+          2.8838524520397186,
           0,
           0,
           0,
           0,
-          1,
+          2.8838524520397186,
           0,
-          0,
-          0,
-          0,
+          7.1279637813568115,
+          1.6498330980539322,
+          -2.0507250130176544,
           1
         ],
         "name": "H0Ore14",
@@ -6496,21 +6496,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9990921020507812,
           0,
           0,
           0,
           0,
-          1,
+          2.9990921020507812,
           0,
           0,
           0,
           0,
-          1,
+          2.9990921020507812,
           0,
-          0,
-          0,
-          0,
+          4.616497039794922,
+          0.9628630876541138,
+          -9.510391235351562,
           1
         ],
         "name": "H0Ore15",
@@ -6523,21 +6523,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.3629822731018066,
           0,
           0,
           0,
           0,
-          1,
+          3.3629822731018066,
           0,
           0,
           0,
           0,
-          1,
+          3.3629822731018066,
           0,
-          0,
-          0,
-          0,
+          10.516513586044312,
+          -0.3610140085220337,
+          8.302300930023193,
           1
         ],
         "name": "H0Ore16_1",
@@ -6550,21 +6550,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.3629822731018066,
           0,
           0,
           0,
           0,
-          1,
+          3.3629822731018066,
           0,
           0,
           0,
           0,
-          1,
+          3.3629822731018066,
           0,
-          0,
-          0,
-          0,
+          10.516513586044312,
+          -0.3610140085220337,
+          8.302300930023193,
           1
         ],
         "name": "H0Ore16_2",
@@ -6577,21 +6577,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.461698740720749,
           0,
           0,
           0,
           0,
-          1,
+          3.461698740720749,
           0,
           0,
           0,
           0,
-          1,
+          3.461698740720749,
           0,
-          0,
-          0,
-          0,
+          11.590084075927734,
+          -0.9080389738082886,
+          4.449690610170364,
           1
         ],
         "name": "H0Ore17",
@@ -6604,21 +6604,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.3763389587402344,
           0,
           0,
           0,
           0,
-          1,
+          3.3763389587402344,
           0,
           0,
           0,
           0,
-          1,
+          3.3763389587402344,
           0,
-          0,
-          0,
-          0,
+          9.855499267578125,
+          0.6383304595947266,
+          -2.46930330991745,
           1
         ],
         "name": "H0Ore18",
@@ -6631,21 +6631,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.402801990509033,
           0,
           0,
           0,
           0,
-          1,
+          3.402801990509033,
           0,
           0,
           0,
           0,
-          1,
+          3.402801990509033,
           0,
-          0,
-          0,
-          0,
+          11.559364318847656,
+          -0.8846849203109741,
+          -9.645179271697998,
           1
         ],
         "name": "H0Ore19_1",
@@ -6658,21 +6658,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.402801990509033,
           0,
           0,
           0,
           0,
-          1,
+          3.402801990509033,
           0,
           0,
           0,
           0,
-          1,
+          3.402801990509033,
           0,
-          0,
-          0,
-          0,
+          11.559364318847656,
+          -0.8846849203109741,
+          -9.645179271697998,
           1
         ],
         "name": "H0Ore19_2",
@@ -6685,21 +6685,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.103181391954422,
           0,
           0,
           0,
           0,
-          1,
+          3.103181391954422,
           0,
           0,
           0,
           0,
-          1,
+          3.103181391954422,
           0,
-          0,
-          0,
-          0,
+          -11.303232192993164,
+          -1.0198538899421692,
+          -2.47169491648674,
           1
         ],
         "name": "H0Ore2",
@@ -6712,21 +6712,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9230728149414062,
           0,
           0,
           0,
           0,
-          1,
+          2.9230728149414062,
           0,
           0,
           0,
           0,
-          1,
+          2.9230728149414062,
           0,
-          0,
-          0,
-          0,
+          -10.529041290283203,
+          0.09238016605377197,
+          -8.062722206115723,
           1
         ],
         "name": "H0Ore3_1",
@@ -6739,21 +6739,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9230728149414062,
           0,
           0,
           0,
           0,
-          1,
+          2.9230728149414062,
           0,
           0,
           0,
           0,
-          1,
+          2.9230728149414062,
           0,
-          0,
-          0,
-          0,
+          -10.529041290283203,
+          0.09238016605377197,
+          -8.062722206115723,
           1
         ],
         "name": "H0Ore3_2",
@@ -6766,21 +6766,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8081068992614746,
           0,
           0,
           0,
           0,
-          1,
+          2.8081068992614746,
           0,
           0,
           0,
           0,
-          1,
+          2.8081068992614746,
           0,
-          0,
-          0,
-          0,
+          -6.8413238525390625,
+          1.224007487297058,
+          7.923939228057861,
           1
         ],
         "name": "H0Ore4_1",
@@ -6793,21 +6793,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8081068992614746,
           0,
           0,
           0,
           0,
-          1,
+          2.8081068992614746,
           0,
           0,
           0,
           0,
-          1,
+          2.8081068992614746,
           0,
-          0,
-          0,
-          0,
+          -6.8413238525390625,
+          1.224007487297058,
+          7.923939228057861,
           1
         ],
         "name": "H0Ore4_2",
@@ -6820,21 +6820,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4213294982910156,
           0,
           0,
           0,
           0,
-          1,
+          3.4213294982910156,
           0,
           0,
           0,
           0,
-          1,
+          3.4213294982910156,
           0,
-          0,
-          0,
-          0,
+          -6.6935577392578125,
+          2.0043662674725056,
+          2.14179989695549,
           1
         ],
         "name": "H0Ore5_1",
@@ -6847,21 +6847,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4213294982910156,
           0,
           0,
           0,
           0,
-          1,
+          3.4213294982910156,
           0,
           0,
           0,
           0,
-          1,
+          3.4213294982910156,
           0,
-          0,
-          0,
-          0,
+          -6.6935577392578125,
+          2.0043662674725056,
+          2.14179989695549,
           1
         ],
         "name": "H0Ore5_2",
@@ -6874,21 +6874,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.831957697868347,
           0,
           0,
           0,
           0,
-          1,
+          3.831957697868347,
           0,
           0,
           0,
           0,
-          1,
+          3.831957697868347,
           0,
-          0,
-          0,
-          0,
+          -4.940227508544922,
+          2.5584913790225983,
+          -2.04492723941803,
           1
         ],
         "name": "H0Ore6_1",
@@ -6901,21 +6901,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.831957697868347,
           0,
           0,
           0,
           0,
-          1,
+          3.831957697868347,
           0,
           0,
           0,
           0,
-          1,
+          3.831957697868347,
           0,
-          0,
-          0,
-          0,
+          -4.940227508544922,
+          2.5584913790225983,
+          -2.04492723941803,
           1
         ],
         "name": "H0Ore6_2",
@@ -6928,21 +6928,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.858513116836548,
           0,
           0,
           0,
           0,
-          1,
+          3.858513116836548,
           0,
           0,
           0,
           0,
-          1,
+          3.858513116836548,
           0,
-          0,
-          0,
-          0,
+          -7.624592065811157,
+          0.8986456990242004,
+          -8.051835775375366,
           1
         ],
         "name": "H0Ore7_1",
@@ -6955,21 +6955,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.858513116836548,
           0,
           0,
           0,
           0,
-          1,
+          3.858513116836548,
           0,
           0,
           0,
           0,
-          1,
+          3.858513116836548,
           0,
-          0,
-          0,
-          0,
+          -7.624592065811157,
+          0.8986456990242004,
+          -8.051835775375366,
           1
         ],
         "name": "H0Ore7_2",
@@ -6982,21 +6982,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4877548217773438,
           0,
           0,
           0,
           0,
-          1,
+          3.4877548217773438,
           0,
           0,
           0,
           0,
-          1,
+          3.4877548217773438,
           0,
-          0,
-          0,
-          0,
+          0.18019485473632812,
+          1.9870305061340332,
+          7.931615591049194,
           1
         ],
         "name": "H0Ore8",
@@ -7009,21 +7009,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.234993636608124,
           0,
           0,
           0,
           0,
-          1,
+          3.234993636608124,
           0,
           0,
           0,
           0,
-          1,
+          3.234993636608124,
           0,
-          0,
-          0,
-          0,
+          0.8996066451072693,
+          2.7990846633911133,
+          2.924389660358429,
           1
         ],
         "name": "H0Ore9",
@@ -7036,21 +7036,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_1",
@@ -7063,21 +7063,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_2",
@@ -7090,21 +7090,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_3",
@@ -7117,21 +7117,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_4",
@@ -7144,21 +7144,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_5",
@@ -7171,21 +7171,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_6",
@@ -7198,21 +7198,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
           0,
           0,
           0,
-          1,
+          20.693480491638184,
           0,
-          0,
-          0,
-          0,
+          0.0446929931640625,
+          -2.7298691272735596,
+          -0.013615608215332031,
           1
         ],
         "name": "Hull_7",
@@ -7225,21 +7225,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0574994087219238,
           0,
           0,
           0,
           0,
-          1,
+          1.0574994087219238,
           0,
           0,
           0,
           0,
-          1,
+          1.0574994087219238,
           0,
-          0,
-          0,
-          0,
+          -0.24805833399295807,
+          5.023785591125488,
+          -15.701215267181396,
           1
         ],
         "name": "PipeClamp120",
@@ -7252,21 +7252,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0574994087219238,
           0,
           0,
           0,
           0,
-          1,
+          1.0574994087219238,
           0,
           0,
           0,
           0,
-          1,
+          1.0574994087219238,
           0,
-          0,
-          0,
-          0,
+          -0.24805833399295807,
+          5.023785591125488,
+          15.812264919281006,
           1
         ],
         "name": "PipeClamp120_M",
@@ -7279,21 +7279,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.205558776855469,
           0,
           0,
           0,
           0,
-          1,
+          13.205558776855469,
           0,
           0,
           0,
           0,
-          1,
+          13.205558776855469,
           0,
-          0,
-          0,
-          0,
+          0.013095855712890625,
+          5.340034484863281,
+          -15.703537940979004,
           1
         ],
         "name": "PipeRun_1",
@@ -7306,21 +7306,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.205558776855469,
           0,
           0,
           0,
           0,
-          1,
+          13.205558776855469,
           0,
           0,
           0,
           0,
-          1,
+          13.205558776855469,
           0,
-          0,
-          0,
-          0,
+          0.013095855712890625,
+          5.340034484863281,
+          -15.703537940979004,
           1
         ],
         "name": "PipeRun_2",
@@ -7333,21 +7333,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.208719253540039,
           0,
           0,
           0,
           0,
-          1,
+          13.208719253540039,
           0,
           0,
           0,
           0,
-          1,
+          13.208719253540039,
           0,
-          0,
-          0,
-          0,
+          0.021715164184570312,
+          5.495316982269287,
+          15.69155502319336,
           1
         ],
         "name": "PipeRun_M_1",
@@ -7360,21 +7360,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.208719253540039,
           0,
           0,
           0,
           0,
-          1,
+          13.208719253540039,
           0,
           0,
           0,
           0,
-          1,
+          13.208719253540039,
           0,
-          0,
-          0,
-          0,
+          0.021715164184570312,
+          5.495316982269287,
+          15.69155502319336,
           1
         ],
         "name": "PipeRun_M_2",
@@ -7387,21 +7387,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.770946502685547,
           0,
           0,
           0,
           0,
-          1,
+          12.770946502685547,
           0,
           0,
           0,
           0,
-          1,
+          12.770946502685547,
           0,
-          0,
-          0,
-          0,
+          0.05527496337890625,
+          -1.4121703058481216,
+          -20.190736770629883,
           1
         ],
         "name": "Strake_1",
@@ -7414,21 +7414,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.770946502685547,
           0,
           0,
           0,
           0,
-          1,
+          12.770946502685547,
           0,
           0,
           0,
           0,
-          1,
+          12.770946502685547,
           0,
-          0,
-          0,
-          0,
+          0.05527496337890625,
+          -1.4121703058481216,
+          -20.190736770629883,
           1
         ],
         "name": "Strake_2",
@@ -7441,21 +7441,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.691303253173828,
           0,
           0,
           0,
           0,
-          1,
+          12.691303253173828,
           0,
           0,
           0,
           0,
-          1,
+          12.691303253173828,
           0,
-          0,
-          0,
-          0,
+          0.14388275146484375,
+          -1.8145080506801605,
+          20.36092758178711,
           1
         ],
         "name": "Strake_M_1",
@@ -7468,21 +7468,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.691303253173828,
           0,
           0,
           0,
           0,
-          1,
+          12.691303253173828,
           0,
           0,
           0,
           0,
-          1,
+          12.691303253173828,
           0,
-          0,
-          0,
-          0,
+          0.14388275146484375,
+          -1.8145080506801605,
+          20.36092758178711,
           1
         ],
         "name": "Strake_M_2",
@@ -7495,21 +7495,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.0308780670166016,
           0,
           0,
           0,
           0,
-          1,
+          2.0308780670166016,
           0,
           0,
           0,
           0,
-          1,
+          2.0308780670166016,
           0,
-          0,
-          0,
-          0,
+          -12.929685592651367,
+          1.6643738746643066,
+          21.54611301422119,
           1
         ],
         "name": "woundA_f_rib0",
@@ -7522,21 +7522,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.561819076538086,
           0,
           0,
           0,
           0,
-          1,
+          1.561819076538086,
           0,
           0,
           0,
           0,
-          1,
+          1.561819076538086,
           0,
-          0,
-          0,
-          0,
+          -12.754373550415039,
+          8.245734930038452,
+          13.677045345306396,
           1
         ],
         "name": "woundA_f_rib1",
@@ -7549,21 +7549,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8553600311279297,
           0,
           0,
           0,
           0,
-          1,
+          1.8553600311279297,
           0,
           0,
           0,
           0,
-          1,
+          1.8553600311279297,
           0,
-          0,
-          0,
-          0,
+          -12.816659927368164,
+          10.914042949676514,
+          -0.23495358228683472,
           1
         ],
         "name": "woundA_f_rib2",
@@ -7576,21 +7576,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4111614227294922,
           0,
           0,
           0,
           0,
-          1,
+          1.4111614227294922,
           0,
           0,
           0,
           0,
-          1,
+          1.4111614227294922,
           0,
-          0,
-          0,
-          0,
+          -12.662885665893555,
+          7.994319438934326,
+          -14.004271984100342,
           1
         ],
         "name": "woundA_f_rib3",
@@ -7603,21 +7603,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.72430419921875,
           0,
           0,
           0,
           0,
-          1,
+          1.72430419921875,
           0,
           0,
           0,
           0,
-          1,
+          1.72430419921875,
           0,
-          0,
-          0,
-          0,
+          -12.775405883789062,
+          1.3501385264098644,
+          -21.436012268066406,
           1
         ],
         "name": "woundA_f_rib4",
@@ -7630,21 +7630,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.016092300415039,
           0,
           0,
           0,
           0,
-          1,
+          2.016092300415039,
           0,
           0,
           0,
           0,
-          1,
+          2.016092300415039,
           0,
-          0,
-          0,
-          0,
+          -13.022378921508789,
+          -6.06569242477417,
+          -18.81962490081787,
           1
         ],
         "name": "woundA_f_rib5",
@@ -7657,21 +7657,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5716590881347656,
           0,
           0,
           0,
           0,
-          1,
+          1.5716590881347656,
           0,
           0,
           0,
           0,
-          1,
+          1.5716590881347656,
           0,
-          0,
-          0,
-          0,
+          -12.701953887939453,
+          -10.923416137695312,
+          -7.057528495788574,
           1
         ],
         "name": "woundA_f_rib6",
@@ -7684,21 +7684,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8785762786865234,
           0,
           0,
           0,
           0,
-          1,
+          1.8785762786865234,
           0,
           0,
           0,
           0,
-          1,
+          1.8785762786865234,
           0,
-          0,
-          0,
-          0,
+          -12.855440139770508,
+          -10.904961109161377,
+          7.776401996612549,
           1
         ],
         "name": "woundA_f_rib7",
@@ -7711,21 +7711,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4007396697998047,
           0,
           0,
           0,
           0,
-          1,
+          1.4007396697998047,
           0,
           0,
           0,
           0,
-          1,
+          1.4007396697998047,
           0,
-          0,
-          0,
-          0,
+          -12.68067741394043,
+          -5.742221355438232,
+          19.016511917114258,
           1
         ],
         "name": "woundA_f_rib8",
@@ -7738,21 +7738,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.557416915893555,
           0,
           0,
           0,
           0,
-          1,
+          5.557416915893555,
           0,
           0,
           0,
           0,
-          1,
+          5.557416915893555,
           0,
-          0,
-          0,
-          0,
+          -17.115171432495117,
+          -1.1623623073101044,
+          -19.62713050842285,
           1
         ],
         "name": "woundA_t_tear0",
@@ -7765,21 +7765,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.7244129180908203,
           0,
           0,
           0,
           0,
-          1,
+          3.7244129180908203,
           0,
           0,
           0,
           0,
-          1,
+          3.7244129180908203,
           0,
-          0,
-          0,
-          0,
+          -15.021322250366211,
+          -8.490149021148682,
+          -11.44362211227417,
           1
         ],
         "name": "woundA_t_tear1",
@@ -7792,21 +7792,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.686878204345703,
           0,
           0,
           0,
           0,
-          1,
+          6.686878204345703,
           0,
           0,
           0,
           0,
-          1,
+          6.686878204345703,
           0,
-          0,
-          0,
-          0,
+          -17.81311798095703,
+          -8.793150186538696,
+          5.83976948261261,
           1
         ],
         "name": "woundA_t_tear2_1",
@@ -7819,21 +7819,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.686878204345703,
           0,
           0,
           0,
           0,
-          1,
+          6.686878204345703,
           0,
           0,
           0,
           0,
-          1,
+          6.686878204345703,
           0,
-          0,
-          0,
-          0,
+          -17.81311798095703,
+          -8.793150186538696,
+          5.83976948261261,
           1
         ],
         "name": "woundA_t_tear2_2",
@@ -7846,21 +7846,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.476125717163086,
           0,
           0,
           0,
           0,
-          1,
+          4.476125717163086,
           0,
           0,
           0,
           0,
-          1,
+          4.476125717163086,
           0,
-          0,
-          0,
-          0,
+          -15.719270706176758,
+          -3.907386064529419,
+          18.901423931121826,
           1
         ],
         "name": "woundA_t_tear3_1",
@@ -7873,21 +7873,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.476125717163086,
           0,
           0,
           0,
           0,
-          1,
+          4.476125717163086,
           0,
           0,
           0,
           0,
-          1,
+          4.476125717163086,
           0,
-          0,
-          0,
-          0,
+          -15.719270706176758,
+          -3.907386064529419,
+          18.901423931121826,
           1
         ],
         "name": "woundA_t_tear3_2",
@@ -7900,21 +7900,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2486023902893066,
           0,
           0,
           0,
           0,
-          1,
+          2.2486023902893066,
           0,
           0,
           0,
           0,
-          1,
+          2.2486023902893066,
           0,
-          0,
-          0,
-          0,
+          -13.625423431396484,
+          4.630428314208984,
+          18.188235759735107,
           1
         ],
         "name": "woundA_t_tear4_1",
@@ -7927,21 +7927,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2486023902893066,
           0,
           0,
           0,
           0,
-          1,
+          2.2486023902893066,
           0,
           0,
           0,
           0,
-          1,
+          2.2486023902893066,
           0,
-          0,
-          0,
-          0,
+          -13.625423431396484,
+          4.630428314208984,
+          18.188235759735107,
           1
         ],
         "name": "woundA_t_tear4_2",
@@ -7954,21 +7954,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.161247253417969,
           0,
           0,
           0,
           0,
-          1,
+          5.161247253417969,
           0,
           0,
           0,
           0,
-          1,
+          5.161247253417969,
           0,
-          0,
-          0,
-          0,
+          -16.417221069335938,
+          8.623449325561523,
+          2.994333028793335,
           1
         ],
         "name": "woundA_t_tear5",
@@ -7981,21 +7981,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1170616149902344,
           0,
           0,
           0,
           0,
-          1,
+          3.1170616149902344,
           0,
           0,
           0,
           0,
-          1,
+          3.1170616149902344,
           0,
-          0,
-          0,
-          0,
+          -14.323373794555664,
+          6.791472673416138,
+          -14.066864013671875,
           1
         ],
         "name": "woundA_t_tear6_1",
@@ -8008,21 +8008,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1170616149902344,
           0,
           0,
           0,
           0,
-          1,
+          3.1170616149902344,
           0,
           0,
           0,
           0,
-          1,
+          3.1170616149902344,
           0,
-          0,
-          0,
-          0,
+          -14.323373794555664,
+          6.791472673416138,
+          -14.066864013671875,
           1
         ],
         "name": "woundA_t_tear6_2",
@@ -8035,21 +8035,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8723793029785156,
           0,
           0,
           0,
           0,
-          1,
+          1.8723793029785156,
           0,
           0,
           0,
           0,
-          1,
+          1.8723793029785156,
           0,
-          0,
-          0,
-          0,
+          12.87298583984375,
+          10.860878467559814,
+          2.096107602119446,
           1
         ],
         "name": "woundB_f_rib0",
@@ -8062,21 +8062,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.416748046875,
           0,
           0,
           0,
           0,
-          1,
+          1.416748046875,
           0,
           0,
           0,
           0,
-          1,
+          1.416748046875,
           0,
-          0,
-          0,
-          0,
+          12.679187774658203,
+          7.352855443954468,
+          15.44618272781372,
           1
         ],
         "name": "woundB_f_rib1_1",
@@ -8089,21 +8089,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.416748046875,
           0,
           0,
           0,
           0,
-          1,
+          1.416748046875,
           0,
           0,
           0,
           0,
-          1,
+          1.416748046875,
           0,
-          0,
-          0,
-          0,
+          12.679187774658203,
+          7.352855443954468,
+          15.44618272781372,
           1
         ],
         "name": "woundB_f_rib1_2",
@@ -8116,21 +8116,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7271842956542969,
           0,
           0,
           0,
           0,
-          1,
+          1.7271842956542969,
           0,
           0,
           0,
           0,
-          1,
+          1.7271842956542969,
           0,
-          0,
-          0,
-          0,
+          12.823257446289062,
+          0.47159895300865173,
+          21.776284217834473,
           1
         ],
         "name": "woundB_f_rib2",
@@ -8143,21 +8143,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.027667999267578,
           0,
           0,
           0,
           0,
-          1,
+          2.027667999267578,
           0,
           0,
           0,
           0,
-          1,
+          2.027667999267578,
           0,
-          0,
-          0,
-          0,
+          13.033424377441406,
+          -6.872995138168335,
+          17.925721168518066,
           1
         ],
         "name": "woundB_f_rib3_1",
@@ -8170,21 +8170,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.027667999267578,
           0,
           0,
           0,
           0,
-          1,
+          2.027667999267578,
           0,
           0,
           0,
           0,
-          1,
+          2.027667999267578,
           0,
-          0,
-          0,
-          0,
+          13.033424377441406,
+          -6.872995138168335,
+          17.925721168518066,
           1
         ],
         "name": "woundB_f_rib3_2",
@@ -8197,21 +8197,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5723457336425781,
           0,
           0,
           0,
           0,
-          1,
+          1.5723457336425781,
           0,
           0,
           0,
           0,
-          1,
+          1.5723457336425781,
           0,
-          0,
-          0,
-          0,
+          12.755577087402344,
+          -11.198276996612549,
+          5.406862020492554,
           1
         ],
         "name": "woundB_f_rib4",
@@ -8224,21 +8224,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8679161071777344,
           0,
           0,
           0,
           0,
-          1,
+          1.8679161071777344,
           0,
           0,
           0,
           0,
-          1,
+          1.8679161071777344,
           0,
-          0,
-          0,
-          0,
+          12.865341186523438,
+          -10.525713443756104,
+          -9.367688655853271,
           1
         ],
         "name": "woundB_f_rib5",
@@ -8251,21 +8251,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.388885498046875,
           0,
           0,
           0,
           0,
-          1,
+          1.388885498046875,
           0,
           0,
           0,
           0,
-          1,
+          1.388885498046875,
           0,
-          0,
-          0,
-          0,
+          12.727977752685547,
+          -4.903311014175415,
+          -19.721874237060547,
           1
         ],
         "name": "woundB_f_rib6",
@@ -8278,21 +8278,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7152748107910156,
           0,
           0,
           0,
           0,
-          1,
+          1.7152748107910156,
           0,
           0,
           0,
           0,
-          1,
+          1.7152748107910156,
           0,
-          0,
-          0,
-          0,
+          12.788337707519531,
+          2.5635883808135986,
+          -20.89643955230713,
           1
         ],
         "name": "woundB_f_rib7",
@@ -8305,21 +8305,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.0055465698242188,
           0,
           0,
           0,
           0,
-          1,
+          2.0055465698242188,
           0,
           0,
           0,
           0,
-          1,
+          2.0055465698242188,
           0,
-          0,
-          0,
-          0,
+          13.069828033447266,
+          8.975985765457153,
+          -12.163418292999268,
           1
         ],
         "name": "woundB_f_rib8",
@@ -8332,21 +8332,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.7341232299804688,
           0,
           0,
           0,
           0,
-          1,
+          3.7341232299804688,
           0,
           0,
           0,
           0,
-          1,
+          3.7341232299804688,
           0,
-          0,
-          0,
-          0,
+          15.053958892822266,
+          -8.325415134429932,
+          -11.940491676330566,
           1
         ],
         "name": "woundB_t_tear0",
@@ -8359,21 +8359,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.654239654541016,
           0,
           0,
           0,
           0,
-          1,
+          6.654239654541016,
           0,
           0,
           0,
           0,
-          1,
+          6.654239654541016,
           0,
-          0,
-          0,
-          0,
+          17.84575653076172,
+          -0.8860011845827103,
+          -19.41936731338501,
           1
         ],
         "name": "woundB_t_tear1_1",
@@ -8386,21 +8386,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.654239654541016,
           0,
           0,
           0,
           0,
-          1,
+          6.654239654541016,
           0,
           0,
           0,
           0,
-          1,
+          6.654239654541016,
           0,
-          0,
-          0,
-          0,
+          17.84575653076172,
+          -0.8860011845827103,
+          -19.41936731338501,
           1
         ],
         "name": "woundB_t_tear1_2",
@@ -8413,21 +8413,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.00958251953125,
           0,
           0,
           0,
           0,
-          1,
+          4.00958251953125,
           0,
           0,
           0,
           0,
-          1,
+          4.00958251953125,
           0,
-          0,
-          0,
-          0,
+          15.751903533935547,
+          6.6216881275177,
+          -13.289207935333252,
           1
         ],
         "name": "woundB_t_tear2",
@@ -8440,21 +8440,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7400482892990112,
           0,
           0,
           0,
           0,
-          1,
+          2.7400482892990112,
           0,
           0,
           0,
           0,
-          1,
+          2.7400482892990112,
           0,
-          0,
-          0,
-          0,
+          13.658058166503906,
+          9.541199445724487,
+          3.7510329484939575,
           1
         ],
         "name": "woundB_t_tear3",
@@ -8467,21 +8467,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.127437591552734,
           0,
           0,
           0,
           0,
-          1,
+          5.127437591552734,
           0,
           0,
           0,
           0,
-          1,
+          5.127437591552734,
           0,
-          0,
-          0,
-          0,
+          16.449859619140625,
+          3.902364730834961,
+          17.632529258728027,
           1
         ],
         "name": "woundB_t_tear4_1",
@@ -8494,21 +8494,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.127437591552734,
           0,
           0,
           0,
           0,
-          1,
+          5.127437591552734,
           0,
           0,
           0,
           0,
-          1,
+          5.127437591552734,
           0,
-          0,
-          0,
-          0,
+          16.449859619140625,
+          3.902364730834961,
+          17.632529258728027,
           1
         ],
         "name": "woundB_t_tear4_2",
@@ -8521,21 +8521,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.614971160888672,
           0,
           0,
           0,
           0,
-          1,
+          2.614971160888672,
           0,
           0,
           0,
           0,
-          1,
+          2.614971160888672,
           0,
-          0,
-          0,
-          0,
+          14.356010437011719,
+          -4.3575244545936584,
+          19.124978065490723,
           1
         ],
         "name": "woundB_t_tear5",
@@ -8548,21 +8548,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.704189300537109,
           0,
           0,
           0,
           0,
-          1,
+          5.704189300537109,
           0,
           0,
           0,
           0,
-          1,
+          5.704189300537109,
           0,
-          0,
-          0,
-          0,
+          17.147811889648438,
+          -9.101394414901733,
+          5.351080894470215,
           1
         ],
         "name": "woundB_t_tear6",
@@ -8577,20 +8577,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_hopper.glb"
   },
-  "runtimeHash": "64cbf19b31ed43295ecc33ed8f9fb488f1982b762e55bfad9c648d60a7337f4d",
+  "runtimeHash": "a137d01456901d6f427ecc9cec82f6f0d9b4e29ae56c8996f0aa13ac2e5990d0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           24.499996185302734,
-          12.721159934997559,
-          23.564842224121094
+          12.721160335871401,
+          23.564843124417358
         ],
         "min": [
           -24.499996185302734,
-          -12.721101760864258,
-          -23.564990997314453
+          -12.721101541341918,
+          -23.564990907482738
         ]
       },
       "id": "sf.render.aftermath-wreck-ore-freighter-hopper.body",

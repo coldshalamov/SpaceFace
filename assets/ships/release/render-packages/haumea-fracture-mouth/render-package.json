@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1e4e7377e3de26ad4e005ae844629640c536940edb143c99487d5339c067d819",
+  "contentHash": "8befb46f3900bf7d396020994c037402217b078011c9f5744f31b7cfcf4ead8e",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.14000000059604645,
-          -0.029999999329447746,
+          0.14001282237834642,
+          -0.02999541785970008,
           0.7250000238418579
         ],
         "min": [
-          -0.14000000059604645,
-          -0.12999999523162842,
+          -0.14001282237834642,
+          -0.13000457670137608,
           -0.7250000238418579
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1ddaaa1fc566c58cc8cccf3ce2df7a08208345e129265bebc3264f3c6d4fa0c",
+      "geometryHash": "a4822bee0b731a5d403d4cbda1a365d31aba97e541dd0cf37dd42f9c4f9ff769",
       "id": "sf.render.haumea-fracture-mouth.mesh.fracturefloor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           1.0399999618530273,
-          0.1899999976158142,
-          0.8500000238418579
+          0.19001250798339425,
+          0.8500722976869909
         ],
         "min": [
           -1.0399999618530273,
-          0.009999999776482582,
-          -0.8500000238418579
+          0.009987489408902525,
+          -0.8500722976869909
         ]
       },
       "drawMode": 4,
-      "geometryHash": "882f00ad574a97dbb336dbf90bb952c5a94c774b0e818cad1b8bda87ef0e5351",
+      "geometryHash": "e69a0657520a13dcf59da56272e8063d12c7bc3d3e2154b91feb2ce120bc1fe2",
       "id": "sf.render.haumea-fracture-mouth.mesh.icesheets.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -83,20 +83,20 @@
     {
       "id": "sf.render.haumea-fracture-mouth.mesh.fracturefloor",
       "localTransform": [
-        1,
+        0.7250000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.7250000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.7250000238418579,
         0,
         0,
-        0,
+        -0.07999999728053808,
         0,
         1
       ],
@@ -111,20 +111,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.haumea-fracture-mouth.body",
       "worldTransform": [
-        1,
+        0.7250000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.7250000238418579,
         0,
         0,
         0,
         0,
-        1,
+        0.7250000238418579,
         0,
         0,
-        0,
+        -0.07999999728053808,
         0,
         1
       ]
@@ -132,20 +132,20 @@
     {
       "id": "sf.render.haumea-fracture-mouth.mesh.icesheets",
       "localTransform": [
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
-        0,
+        0.0999999986961484,
         0,
         1
       ],
@@ -160,20 +160,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.haumea-fracture-mouth.body",
       "worldTransform": [
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
-        0,
+        0.0999999986961484,
         0,
         1
       ]
@@ -237,37 +237,37 @@
       "uri": "place_haumea_fracture_mouth.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4416,
-    "sha256": "0f5eb23c96c906941a7ae7a244d39719b0b6844be9c47b0836f3b5e9d45f67fd",
+    "bytes": 4256,
+    "sha256": "86097e379f22e9cda16f908cddbf8c3b265f720167e25201766fde354487daef",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.030000001192092896,
+        0.030003965641009087,
         0
       ],
       "max": [
         1.0399999618530273,
-        0.1899999976158142,
-        0.8500000238418579
+        0.19001250798339425,
+        0.8500722976869909
       ],
       "min": [
         -1.0399999618530273,
-        -0.12999999523162842,
-        -0.8500000238418579
+        -0.13000457670137608,
+        -0.8500722976869909
       ],
       "size": [
         2.0799999237060547,
-        0.3199999928474426,
-        1.7000000476837158
+        0.3200170846847703,
+        1.7001445953739818
       ]
     },
     "hidden": [],
@@ -293,20 +293,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          1.0399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          1.0399999618530273,
           0,
           0,
-          0,
+          0.0999999986961484,
           0,
           1
         ],
@@ -319,20 +319,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7250000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.7250000238418579,
           0,
           0,
           0,
           0,
-          1,
+          0.7250000238418579,
           0,
           0,
-          0,
+          -0.07999999728053808,
           0,
           1
         ],
@@ -347,20 +347,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_haumea_fracture_mouth.glb"
   },
-  "runtimeHash": "d1414c162eeb6ab77053999787a436d30ffcda5ec6651df1e166834ee32cd344",
+  "runtimeHash": "b6ba3464edfcf10e5c5726c6eb1f7e85aa3774b322dd59f39c0f4673a536e778",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.0399999618530273,
-          0.1899999976158142,
-          0.8500000238418579
+          0.19001250798339425,
+          0.8500722976869909
         ],
         "min": [
           -1.0399999618530273,
-          -0.12999999523162842,
-          -0.8500000238418579
+          -0.13000457670137608,
+          -0.8500722976869909
         ]
       },
       "id": "sf.render.haumea-fracture-mouth.body",

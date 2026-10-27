@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "efdc0600bfb0c541a2f8059acfe486d509c31596964aa41c484a868cd32f2d0a",
+  "contentHash": "6372d571006d43e100655ca5ae8b2bd142f779760780890d29a092b01ed159a5",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          12.428744316101074,
-          0.23358798027038574,
+          12.428744426720835,
+          0.2335880509330046,
           10.084320068359375
         ],
         "min": [
-          -5.025550365447998,
-          -3.6316347122192383,
+          -5.0255504760677585,
+          -3.631634782881857,
           -8.886883735656738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c9c8714632112db5ed69c7a0868ed17661235a1d4a045d824534cacc1ff46088",
+      "geometryHash": "05d145435d994988da146725218ef0ec65e1790bb5fe60a79105de7322a10b62",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          12.428744316101074,
-          -0.7159274220466614,
+          12.428744426720835,
+          -0.7159274444918566,
           10.084320068359375
         ],
         "min": [
-          -5.025550365447998,
-          -3.6316347122192383,
-          -8.855619430541992
+          -5.0255504760677585,
+          -3.631634782881857,
+          -8.855619201051285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56f619499f68b5b2d88e392c152e6d0a347ecbd8ade412509dddccc147b4c16c",
+      "geometryHash": "17d9e91c35dd4003585bd0a5db6d26d8e73f76554cfccc766dfec9825aa242b6",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap.primitive.1",
       "indexCount": 102,
       "indexed": true,
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          -1.4261335134506226,
+          -1.426133364068835,
           0.5594873428344727,
-          8.45436954498291
+          8.454369709926628
         ],
         "min": [
-          -5.038534641265869,
+          -5.038534790647657,
           -3.486575126647949,
-          4.502645969390869
+          4.502645804447152
         ]
       },
       "drawMode": 4,
-      "geometryHash": "053af74f99c77967611a50498379f27e3166bb6342c62cda8c8492927b05a6ea",
+      "geometryHash": "a9f4c1d8151e3470e026006fe11afef282619d8397c2a517753a634505f153f2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore0.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -87,18 +87,18 @@
     {
       "bounds": {
         "max": [
-          -1.800832986831665,
+          -1.8008328044705932,
           0.5594873428344727,
-          8.45436954498291
+          8.454369709926628
         ],
         "min": [
-          -5.038534641265869,
+          -5.038534790647657,
           -3.486575126647949,
-          4.647364616394043
+          4.647364125142773
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d9eb70cbb5cfcec9249494e6e8668dcde28c79230e0b82c5142079c6322d093",
+      "geometryHash": "7c238243de314d21ee124d3175739e4f74d06e740967d0bc01965e6c292af292",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore0.primitive.1",
       "indexCount": 36,
       "indexed": true,
@@ -112,18 +112,18 @@
     {
       "bounds": {
         "max": [
-          -2.655778169631958,
-          0.5143871903419495,
+          -2.6557780661828736,
+          0.5143872052408367,
           4.709458351135254
         ],
         "min": [
-          -4.78454065322876,
-          -3.4689910411834717,
+          -4.784540756677844,
+          -3.468991056082359,
           -0.9189743995666504
         ]
       },
       "drawMode": 4,
-      "geometryHash": "004c9c299176f167ca38feeb7e9f3e84212642ba252a73d4e4adcd3fc9d009cc",
+      "geometryHash": "b8b6c6ac8d80f86451bfdb81b9e1a8e4082794478ec79b0b081fba5abcb750ee",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore1.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          -3.2426350116729736,
-          0.5143871903419495,
+          -3.24263497993064,
+          0.5143872052408367,
           4.709458351135254
         ],
         "min": [
-          -4.78454065322876,
-          -3.4689910411834717,
+          -4.784540756677844,
+          -3.468991056082359,
           -0.9189743995666504
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ad0195e12b889f37db9ac20d631c9973bc46561cfa20ccfc616e1199086b60b",
+      "geometryHash": "db66cd5c805a46dbd60df28f849da5dfedd214870fc9780a444dc0f1bcd34e7b",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore1.primitive.1",
       "indexCount": 30,
       "indexed": true,
@@ -163,17 +163,17 @@
       "bounds": {
         "max": [
           5.28717041015625,
-          1.5199888944625854,
-          0.49143293499946594
+          1.519988869974603,
+          0.4914328550456204
         ],
         "min": [
           -0.019817352294921875,
-          -0.8797925710678101,
-          -2.7196130752563477
+          -0.8797925465798275,
+          -2.7196129953025023
         ]
       },
       "drawMode": 4,
-      "geometryHash": "723468554386278d4d7105c3389a0f8076e3c48aed73f43e383567a3c37b80c3",
+      "geometryHash": "4b265d9813550547ebeee928b9117bb2255cab22dcd920fc303eb4519bb874dd",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore10.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -187,18 +187,18 @@
     {
       "bounds": {
         "max": [
-          6.837928771972656,
-          0.90803062915802,
+          6.837928912282867,
+          0.9080307309281259,
           -3.686603307723999
         ],
         "min": [
-          2.4465901851654053,
-          -2.2449758052825928,
+          2.4465900448551947,
+          -2.244975907052699,
           -9.615363121032715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2f5fbc124f7219a1b720969b5f6837acf630874b413b79bda606ac70afaf445",
+      "geometryHash": "aa3a0964af2e0b1e1acd9b8568ec03400b2e9e56501d08b2c6e1bb80aca77388",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore11.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -213,17 +213,17 @@
       "bounds": {
         "max": [
           10.709274291992188,
-          0.9668831825256348,
-          8.36563777923584
+          0.9668832209547777,
+          8.36563781689007
         ],
         "min": [
           5.066444396972656,
-          -2.6278440952301025,
-          3.2263522148132324
+          -2.6278441336592455,
+          3.226352177159003
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f352ef0fdfa3f38a713f4a29ea80096b05ce024a5732b18aef9921e723b097d",
+      "geometryHash": "18abc1bf97a55e2749e8f4ce73eb3870e64ed5bc49985ab13edea1d02fc120dc",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore12.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -238,17 +238,17 @@
       "bounds": {
         "max": [
           9.4754638671875,
-          1.6275275945663452,
-          4.90531587600708
+          1.6275275834792664,
+          4.905315792398318
         ],
         "min": [
           4.662044525146484,
-          -1.7913854122161865,
-          0.580774188041687
+          -1.7913854011291077,
+          0.5807742716504487
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2dd305b222b50bc21b93adec64e2c0aac831116e259be59cb3bdf859c661111",
+      "geometryHash": "b5986465d5ea6db6658610468e0bfbc970df0c932a08321b30cf984c1620ba21",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore13.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -262,18 +262,18 @@
     {
       "bounds": {
         "max": [
-          10.71869945526123,
-          1.040025234222412,
+          10.718699697065052,
+          1.0400251410836743,
           0.7321754693984985
         ],
         "min": [
-          7.5345540046691895,
-          -2.1139559745788574,
+          7.534553762865368,
+          -2.11395588144012,
           -3.5099432468414307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ce6d3cc6e8ae80d5cd08c854f7d33d914c031adff70248a4bb73ec762d5073d",
+      "geometryHash": "181aa5b49844e715dd3b3f2864ed682a89d658f84ce140b251b3fd777d11f0dc",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore14.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -288,17 +288,17 @@
       "bounds": {
         "max": [
           9.485267639160156,
-          0.7136726975440979,
-          -5.2674689292907715
+          0.713672704413721,
+          -5.267468660734256
         ],
         "min": [
           5.073635101318359,
-          -3.0269317626953125,
-          -8.483394622802734
+          -3.0269317695649356,
+          -8.48339489135925
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9e419f05b93746a8e7b4d172a204ee81afab792cf519841a02bbf33da1fac62",
+      "geometryHash": "640dce67e01a610b11c20e8595d918635e8ef687362536e93ed8742538e9451b",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -312,18 +312,18 @@
     {
       "bounds": {
         "max": [
-          7.813419342041016,
-          -2.1042680740356445,
-          -6.636317729949951
+          7.813419528602262,
+          -2.1042681817531177,
+          -6.636317441893274
         ],
         "min": [
-          6.742251873016357,
-          -3.0269317626953125,
-          -7.408592224121094
+          6.742251937090396,
+          -3.0269317695649356,
+          -7.408592115713293
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74197ed7e25703ba68b17729e6eda19978d6bdeb872ac9a53218c79f9ddcd540",
+      "geometryHash": "c81b2ca9258b8b0aec4d57ddf51237fbfa9874c9aaf692da7232baf1138bf83a",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15.primitive.1",
       "indexCount": 9,
       "indexed": true,
@@ -337,18 +337,18 @@
     {
       "bounds": {
         "max": [
-          12.465627670288086,
-          -0.5613750219345093,
+          12.465628064184072,
+          -0.5613750562107727,
           8.258621215820312
         ],
         "min": [
-          9.346780776977539,
-          -3.25388765335083,
+          9.346780383081553,
+          -3.2538876190745665,
           3.7522590160369873
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df3825e517b6b3e38c659af16b2fe33ad40533f5870773bfe0d825bcab7a38c4",
+      "geometryHash": "e6f26a103ccbb1119fb78b4b9bb1f1bc1fef0be69124fb92cd228fc600f927ef",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16.primitive.0",
       "indexCount": 57,
       "indexed": true,
@@ -362,18 +362,18 @@
     {
       "bounds": {
         "max": [
-          12.465627670288086,
-          -0.5613750219345093,
+          12.465628064184072,
+          -0.5613750562107727,
           8.258621215820312
         ],
         "min": [
-          9.346780776977539,
-          -3.25388765335083,
-          4.143937110900879
+          9.346780383081553,
+          -3.2538876190745665,
+          4.143937214986629
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5567b73a0c8b3d1fd463deb9e754a1201023d0e205163db45ee4769b966cdb2",
+      "geometryHash": "358c70ba42cf749b4c6c73cebd94bed9e84385cd6aaff1a6af51367e2b68263e",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16.primitive.1",
       "indexCount": 39,
       "indexed": true,
@@ -387,18 +387,18 @@
     {
       "bounds": {
         "max": [
-          12.206843376159668,
-          -1.288025140762329,
+          12.206843116794786,
+          -1.2880250381063483,
           4.96363639831543
         ],
         "min": [
-          10.813443183898926,
-          -3.667668104171753,
+          10.813443443263807,
+          -3.6676682068277335,
           1.5637162923812866
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76773abd2600cabe14cb3d95e24ca8270b7c6bde9e920f500e2173bb1ce798db",
+      "geometryHash": "9e85af7e5f6704185b5c3d66c011486b586c0b0e6c07655d8b65dc76b0a6fd47",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore17.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -412,18 +412,18 @@
     {
       "bounds": {
         "max": [
-          12.206843376159668,
-          -1.288025140762329,
+          12.206843116794786,
+          -1.2880250381063483,
           4.96363639831543
         ],
         "min": [
-          10.813443183898926,
-          -3.667668104171753,
+          10.813443443263807,
+          -3.6676682068277335,
           1.5637162923812866
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ddc02b2d702c4ea2731a05c429f03fb8a85549149cf0d2c21fa87bff3dd821a",
+      "geometryHash": "ee69dcc5fb3e9f5e669d0e8ef747be1f1d88268360cbc3ce775c92a7c090605c",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore17.primitive.1",
       "indexCount": 24,
       "indexed": true,
@@ -437,18 +437,18 @@
     {
       "bounds": {
         "max": [
-          12.468679428100586,
+          12.468679814967782,
           0.6587445735931396,
-          0.3082315921783447
+          0.3082315697349687
         ],
         "min": [
-          8.649511337280273,
+          8.649510950413077,
           -3.508928060531616,
-          -3.701724052429199
+          -3.701724029985823
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d0a61f030403a6bb13d20b14efc89e32469cd45caa28d6ca666d6c7015df1ae",
+      "geometryHash": "383f733b8086875866ef8267163fda81953f0cc19ebf43d88bc0625295293e4f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore18.primitive.0",
       "indexCount": 81,
       "indexed": true,
@@ -462,18 +462,18 @@
     {
       "bounds": {
         "max": [
-          12.468679428100586,
+          12.468679814967782,
           0.6587445735931396,
-          0.15763726830482483
+          0.15763724011053815
         ],
         "min": [
-          9.949786186218262,
+          9.949786146148341,
           -3.508928060531616,
-          -3.64397931098938
+          -3.6439792448088877
         ]
       },
       "drawMode": 4,
-      "geometryHash": "731f651964c406f58af669d60f33be67ebda77f58993a6b3c9ed1a6308799aa2",
+      "geometryHash": "85d91f6f4b4a60e5dfb61d3666be61f445740833072e049d25363ab3dfcb04a7",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore18.primitive.1",
       "indexCount": 39,
       "indexed": true,
@@ -487,18 +487,18 @@
     {
       "bounds": {
         "max": [
-          12.278078079223633,
-          -1.3216063976287842,
+          12.27807827445081,
+          -1.3216063562455123,
           -5.202451229095459
         ],
         "min": [
-          10.906530380249023,
-          -3.366675853729248,
+          10.906530185021847,
+          -3.36667589511252,
           -8.678475379943848
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d4e340a04c0eda8b112419c8e4611e02aef95d5a241cf20fdbacd43a60b8464",
+      "geometryHash": "3b7e9791eb11b8ac95bb15871dbbe0218be8e3ac7eef9fa1f9b0721512b63b4a",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore19.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -512,18 +512,18 @@
     {
       "bounds": {
         "max": [
-          12.278078079223633,
-          -1.3216063976287842,
+          12.27807827445081,
+          -1.3216063562455123,
           -5.202451229095459
         ],
         "min": [
-          10.906530380249023,
-          -3.366675853729248,
-          -8.499195098876953
+          10.906530185021847,
+          -3.36667589511252,
+          -8.499194981526728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f5a6b0cc100797d7d4015d5ce9955a5493fcad60288b250ebc5a8847e3649138",
+      "geometryHash": "21ba91d8cb405bb8ff99238d9e90bc594a48d6a55ca963b74207979f93f043ea",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore19.primitive.1",
       "indexCount": 24,
       "indexed": true,
@@ -537,18 +537,18 @@
     {
       "bounds": {
         "max": [
-          -3.1042850017547607,
-          -1.525580883026123,
+          -3.1042849319307217,
+          -1.5255808039467833,
           -0.1905563473701477
         ],
         "min": [
-          -4.849053382873535,
-          -3.312636613845825,
+          -4.849053452697574,
+          -3.3126366929251647,
           -3.5867087841033936
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dbe9f5a56e1d9b42baf3c5111cd04016cf743768db4b5e03a49f942d72a3bd34",
+      "geometryHash": "103f34bedc49dce9c85e63a6d05799474719850e5b696d84a38ef991904e6740",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore2.primitive.0",
       "indexCount": 21,
       "indexed": true,
@@ -562,18 +562,18 @@
     {
       "bounds": {
         "max": [
-          -3.1042850017547607,
-          -1.525580883026123,
+          -3.1042849319307217,
+          -1.5255808039467833,
           -0.1905563473701477
         ],
         "min": [
-          -4.849053382873535,
-          -3.312636613845825,
+          -4.849053452697574,
+          -3.3126366929251647,
           -3.5867087841033936
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88fa58ea94560e50562fd4e5a72f313ea4c1a3663172e16fd92ccbc0876b9b6b",
+      "geometryHash": "7d95a93a16331c493ed9e618d3f8b84b8ed5eddb2b8d4b8c264b8ff36260021f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore2.primitive.1",
       "indexCount": 15,
       "indexed": true,
@@ -587,18 +587,18 @@
     {
       "bounds": {
         "max": [
-          -1.7100268602371216,
-          -0.05612485855817795,
+          -1.7100269519115283,
+          -0.05612486574602027,
           -3.95717191696167
         ],
         "min": [
-          -5.014357566833496,
-          -3.1514384746551514,
+          -5.014357475159089,
+          -3.151438467467309,
           -7.465807914733887
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b4ecfa2472cc3985b9e115b85813198f8ae33db1d6e813a015095e1b2160b05",
+      "geometryHash": "c6a1c858ba47aea1175cd9a7daaacf916ad77c6d2095e30b86eded4d0e8bc3f2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore3.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -612,18 +612,18 @@
     {
       "bounds": {
         "max": [
-          -2.5689022541046143,
-          -0.29646217823028564,
-          -4.444859981536865
+          -2.568902324638081,
+          -0.2964622019989498,
+          -4.444860220799481
         ],
         "min": [
-          -5.014357566833496,
-          -3.1514384746551514,
+          -5.014357475159089,
+          -3.151438467467309,
           -7.465807914733887
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ec58d246f568da841b56e7b04dc8cbe2b412cf79a62f65273d3d4df8e09b2b1",
+      "geometryHash": "8e9dfb5ae39810ee920048c3d83c2af70d96691a04b0b739723a737a55d59876",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore3.primitive.1",
       "indexCount": 36,
       "indexed": true,
@@ -637,18 +637,18 @@
     {
       "bounds": {
         "max": [
-          0.4890190660953522,
-          0.5938905477523804,
+          0.4890187994583841,
+          0.5938903390369856,
           8.012781143188477
         ],
         "min": [
-          -2.784452199935913,
-          -2.2942068576812744,
+          -2.784451933298945,
+          -2.2942066489658797,
           3.8820838928222656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46b5910c9a72bcb619e4c2ccdb0d8f73bd12fa01f449e65071ad99c0ef98bb60",
+      "geometryHash": "854fa1c1ec45324bd082e53dfa7c63ee6858f0b19f364cf756162ec0831d4383",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore4.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -663,17 +663,17 @@
       "bounds": {
         "max": [
           1.4773368835449219,
-          1.266314148902893,
-          3.664896011352539
+          1.266314108847524,
+          3.6648959960088954
         ],
         "min": [
           -3.5554046630859375,
-          -1.8187302350997925,
-          -0.2755008935928345
+          -1.8187301950444235,
+          -0.27550087824919056
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9e28a0616ad54aa0fd7114c0c2543c0bc6a7fff170733bd66e62bfcdb710f49",
+      "geometryHash": "79922620fedd224036fcde8d28fb56bd3f761ece1e741c7f484e194536298682",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore5.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -687,18 +687,18 @@
     {
       "bounds": {
         "max": [
-          2.858700752258301,
-          1.7179429531097412,
+          2.8587007451622064,
+          1.7179429585250379,
           1.433766484260559
         ],
         "min": [
-          -2.357640266418457,
-          -1.4552465677261353,
+          -2.3576402593223627,
+          -1.455246573141432,
           -4.203005790710449
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd55532e7ce8a6bb0602c3062967179d538b8c963ca97bd79c6b6019ef8418dd",
+      "geometryHash": "487e73b4442b7528442705fee2da7b8e0b1340aa43264239dd81f803eadf831e",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore6.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -712,18 +712,18 @@
     {
       "bounds": {
         "max": [
-          0.793242871761322,
-          0.29844924807548523,
+          0.7932429307374869,
+          0.2984492438730366,
           -2.9647538661956787
         ],
         "min": [
-          -4.687201976776123,
-          -2.477369546890259,
+          -4.687202035752287,
+          -2.47736954268781,
           -8.640588760375977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ee2887f25073432cb72e43821c1bd70957f04229ed001f9c1f626470418b999",
+      "geometryHash": "72acd55ace5f4f47852df16a1c2a37093530e365708a8803ba106699f5f80e01",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore7.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -737,18 +737,18 @@
     {
       "bounds": {
         "max": [
-          -3.112823486328125,
-          -0.13736727833747864,
-          -5.0976738929748535
+          -3.112823442862956,
+          -0.1373672969685914,
+          -5.097673967806723
         ],
         "min": [
-          -4.687201976776123,
-          -0.6415183544158936,
-          -6.4654035568237305
+          -4.687202035752287,
+          -0.6415183470956021,
+          -6.465403461640387
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f25cf2d7263a9a35d36f227caa6805fb91f27e50e4aa124e7b7842b3eab282fd",
+      "geometryHash": "89f473add9dda5d2528fdf4839334a0a6a003cb0ac9a74d5dca8930e566782fe",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore7.primitive.1",
       "indexCount": 9,
       "indexed": true,
@@ -763,17 +763,17 @@
       "bounds": {
         "max": [
           6.5818023681640625,
-          0.8099552392959595,
-          7.826797962188721
+          0.8099551853467253,
+          7.8267978907366365
         ],
         "min": [
           1.4513473510742188,
-          -1.3878718614578247,
-          4.079359531402588
+          -1.3878718075085905,
+          4.079359602854672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd028fe13875a5d41df91e3c10f850fa2ce3242fdbf0b669d55b342333a6afb5",
+      "geometryHash": "17abb98108eea1b972276eddb65faeeb1a6bb70fc55a6efcb015b0ce9df2f517",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore8.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -787,18 +787,18 @@
     {
       "bounds": {
         "max": [
-          6.005954742431641,
-          1.301727056503296,
+          6.0059547309198145,
+          1.3017269944406666,
           4.64961051940918
         ],
         "min": [
-          3.0854454040527344,
-          -0.6851198077201843,
+          3.08544541556456,
+          -0.6851197456575552,
           -0.10903337597846985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "35f067f60913639c44196224ae1a770029eb1ec0f903eabccfde3b5d7e382d2c",
+      "geometryHash": "ff7d5fa7221e6d0136dbee0bc75889a40cc81c6604edba1d5941899c9a63dfc1",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore9.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -812,18 +812,18 @@
     {
       "bounds": {
         "max": [
-          12.24039077758789,
-          2.388043165206909,
+          12.240391523738287,
+          2.388043170096502,
           15.29272174835205
         ],
         "min": [
-          -5.182322025299072,
-          -3.3666703701019287,
-          -14.702409744262695
+          -5.182321985360122,
+          -3.3666704357767263,
+          -14.702409165951934
         ]
       },
       "drawMode": 4,
-      "geometryHash": "492dbf5c4d7dc8144d6edd66aa7e5173f393c185889190489d7645d194ed4f52",
+      "geometryHash": "95c5d77c234a58d5d0cc1d2bb71bb4d0727e2ca32dac2ddd859cce9587878e6f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.0",
       "indexCount": 1182,
       "indexed": true,
@@ -837,18 +837,18 @@
     {
       "bounds": {
         "max": [
-          12.3583984375,
-          1.9657973051071167,
-          14.597582817077637
+          12.358399108094547,
+          1.9657972823217604,
+          14.597583321753458
         ],
         "min": [
-          -5.032968997955322,
-          0.14405523240566254,
-          -14.270943641662598
+          -5.032968636409231,
+          0.14405519882200057,
+          -14.270943935649361
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f530cd1a2ffbf01b55bf08599182d525f4f3e55f55c211df4799a9e9b4ec70f2",
+      "geometryHash": "acf4c79f2fff1fb8bda4cdea2f0c787660978888883dbff3176eeb094d7b1d35",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.1",
       "indexCount": 954,
       "indexed": true,
@@ -862,18 +862,18 @@
     {
       "bounds": {
         "max": [
-          11.937996864318848,
-          2.3843555450439453,
-          11.499423027038574
+          11.937997088825371,
+          2.3843554330853687,
+          11.499423265275249
         ],
         "min": [
-          -4.335986137390137,
-          -2.8301045894622803,
-          -10.494239807128906
+          -4.335986341305071,
+          -2.8301047006568583,
+          -10.494240269122658
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c132c4fe93fb883c6ea08fa625dda1a703b140806e26b6aa4d29f71344555b1",
+      "geometryHash": "8858449f56b23605dca352f63ae3f455154059bff71c084a83e5358d0563c6c7",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.2",
       "indexCount": 201,
       "indexed": true,
@@ -887,18 +887,18 @@
     {
       "bounds": {
         "max": [
-          12.151885032653809,
-          0.06661275029182434,
-          14.914728164672852
+          12.151885835471091,
+          0.06661272158820508,
+          14.914728704710907
         ],
         "min": [
-          -4.710291862487793,
-          -1.1429649591445923,
+          -4.710291647935083,
+          -1.1429650180634572,
           -14.916297912597656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11c9ce9301a531ee12dd6c11ea67bbc7f67e5eb42daaa195adc0275da5efc3f7",
+      "geometryHash": "74f06f39031a8b986194426e4f287f8705885c5aa1fc736df55efa29bdefe847",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.3",
       "indexCount": 435,
       "indexed": true,
@@ -912,18 +912,18 @@
     {
       "bounds": {
         "max": [
-          12.365775108337402,
-          2.3806676864624023,
-          15.290878295898438
+          12.365774582116813,
+          2.380667696074236,
+          15.290877879846484
         ],
         "min": [
-          -5.197073459625244,
-          -3.3685142993927,
-          -14.914454460144043
+          -5.197072933404655,
+          -3.368514304282293,
+          -14.91445404409209
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82b28169bf16942aa091361f65759958c293c93e4ca098ba06c4d6d65d8222dd",
+      "geometryHash": "08e90442b7b0e214c656c160863a982a6a2967811f0de89ab56ec312f168d873",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull.primitive.4",
       "indexCount": 1668,
       "indexed": true,
@@ -938,17 +938,17 @@
       "bounds": {
         "max": [
           -3.3940658569335938,
-          -8.29739761352539,
-          -9.452190399169922
+          -8.297397724370711,
+          -9.452190136718121
         ],
         "min": [
           -5.750236511230469,
-          -10.5425443649292,
-          -11.702513694763184
+          -10.542544254083879,
+          -11.702513957214984
         ]
       },
       "drawMode": 4,
-      "geometryHash": "950917bf36117b91604b440ce5a27853409c3808a35a51979f8d992b840e62d5",
+      "geometryHash": "a0806698c46fc7825e06369993b1d0520680b6939416c0d21fd20888807cec3f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -963,17 +963,17 @@
       "bounds": {
         "max": [
           -3.2595596313476562,
-          -12.55810260772705,
-          4.397912979125977
+          -12.558102596609048,
+          4.3979129251439995
         ],
         "min": [
           -6.041725158691406,
-          -15.287285804748535,
-          2.0868144035339355
+          -15.287285815866538,
+          2.0868144575159127
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29bec1bef977850baf27ba90b1623c3b5676061170de474e2f2eff81c1bdcd64",
+      "geometryHash": "0e6251242c12de4a7d3091bee0924c2a62503b496b98a10794d875df796fd0a8",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -987,18 +987,18 @@
     {
       "bounds": {
         "max": [
-          -3.503213882446289,
-          -3.07995867729187,
+          -3.503213870207755,
+          -3.0799587055634663,
           15.019991874694824
         ],
         "min": [
-          -5.615949630737305,
-          -4.900702476501465,
+          -5.615949642975838,
+          -4.900702448229869,
           12.899490356445312
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4657eace7830637c455bb90ab43fad894ed2c7b414497520cb63125057611cac",
+      "geometryHash": "0d2148bc5fd339cd3ee65d92255814829e5b8cc2698acb619ead15d8ec84cd5f",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1013,17 +1013,17 @@
       "bounds": {
         "max": [
           -3.3059539794921875,
-          11.280278205871582,
-          12.023497581481934
+          11.280278232822551,
+          12.023497215562859
         ],
         "min": [
           -5.878353118896484,
-          8.872113227844238,
-          9.538082122802734
+          8.872113200893269,
+          9.538082488721809
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d3593ee8becd5f4c814a778898ebd573bee842fa6ac62182428530637765c9c",
+      "geometryHash": "159dd7253bb5bea37246e5c3c15cd204e0399b66d66d6919f7780350efb41afa",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1038,17 +1038,17 @@
       "bounds": {
         "max": [
           -3.502765655517578,
-          15.28727912902832,
-          -2.0179083347320557
+          15.28727913840004,
+          -2.017908314828066
         ],
         "min": [
           -5.441291809082031,
-          13.410043716430664,
-          -3.6426448822021484
+          13.410043707058945,
+          -3.642644902106138
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25fdfc28f86b7fbf6d932a9a24b60f946911da319ab3abadbabe10f174a1a583",
+      "geometryHash": "c036694bb298ad5bcc49b369eac3eccc4c1613000a8a501375e45bba46a01b02",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1062,18 +1062,18 @@
     {
       "bounds": {
         "max": [
-          -3.348020553588867,
-          5.610492706298828,
+          -3.348020568403169,
+          5.6104926902184715,
           -12.425168991088867
         ],
         "min": [
-          -5.688020706176758,
-          3.6493749618530273,
+          -5.688020691362456,
+          3.6493749779333844,
           -14.772907257080078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0b4af457397178778c3965337dbf9578acefbea7190ca6ede6624ff6be3dec0",
+      "geometryHash": "4062a8e5ee14a493be3ddc9282311f5910a627ddd31f2909641fa449d2f933db",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1088,17 +1088,17 @@
       "bounds": {
         "max": [
           -3.7198257446289062,
-          -4.251049518585205,
-          13.407795906066895
+          -4.251049534178058,
+          13.407795926251017
         ],
         "min": [
           -11.36275863647461,
-          -7.61849308013916,
-          9.95265007019043
+          -7.618493064546307,
+          9.952650050006307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d1311598394850ba5e71727cdd691b61ef83d43890e6e1a080afb600a797fb6",
+      "geometryHash": "a40bd90632465fe629df727d442b6c4b7c5b99b73d342418e7c28978f17ee291",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1113,17 +1113,17 @@
       "bounds": {
         "max": [
           -3.6352005004882812,
-          10.573827743530273,
-          11.868239402770996
+          10.573827544817807,
+          11.868239631723265
         ],
         "min": [
           -8.675361633300781,
-          8.6650972366333,
-          8.004480361938477
+          8.665097435345768,
+          8.004480132986208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ec5738dac30502c2882e3ced8766806991a1903c0d3b24ac55c8e5a5fe2b7a5",
+      "geometryHash": "ed50ac35df11ac12ebfd2026877a93bdeb5017ff35eac23efe77e2c5ac08ecd2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1138,17 +1138,17 @@
       "bounds": {
         "max": [
           -3.537841796875,
-          14.225229263305664,
-          -3.4399490356445312
+          14.225229151165184,
+          -3.4399490266220685
         ],
         "min": [
           -12.468755722045898,
-          9.47344970703125,
-          -7.487165451049805
+          9.47344981917173,
+          -7.4871654600722675
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e31c31e9f06b9d2e456e69d1636b41d9e78b59db87b0026a6f698f1a28042442",
+      "geometryHash": "1dd2586ab7a341e2fa0dcd68b110ee29cc4e0b65d855d106b70a875c4463b731",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1163,17 +1163,17 @@
       "bounds": {
         "max": [
           -3.465728759765625,
-          -0.17816603183746338,
-          -10.597647666931152
+          -0.17816606153700976,
+          -10.597647968557904
         ],
         "min": [
           -9.768844604492188,
-          -3.0053060054779053,
-          -15.613479614257812
+          -3.005305975778359,
+          -15.61347931263106
         ]
       },
       "drawMode": 4,
-      "geometryHash": "854ce40a41646faec8402b3e52ed6d70179bc68dc339d0221fab7b186e19aaef",
+      "geometryHash": "f62c8fe8e7c934f8e5999256d4a14da3b508e1eaa496a079729939738433ae2a",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1187,18 +1187,18 @@
     {
       "bounds": {
         "max": [
-          -3.9954211711883545,
-          -12.593323707580566,
+          -3.9954212235077247,
+          -12.593323669264205,
           -1.028897762298584
         ],
         "min": [
-          -6.467118740081787,
-          -14.255887985229492,
+          -6.467118687762417,
+          -14.255888023545854,
           -3.5488924980163574
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eb8b349afc466967b97009ebd7d393681c835f0ad3989ac23d6c75e4e02fdaa5",
+      "geometryHash": "ecccc0cf7a4e0b271c15db031fdf50bb87a968dc4d546a039fd6667be06940fe",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1212,18 +1212,18 @@
     {
       "bounds": {
         "max": [
-          4.090549468994141,
-          2.450108051300049,
+          4.090549444924538,
+          2.450107989838159,
           12.527043342590332
         ],
         "min": [
-          3.3126449584960938,
-          1.4390125274658203,
+          3.312644982565696,
+          1.4390125889277101,
           10.971471786499023
         ]
       },
       "drawMode": 4,
-      "geometryHash": "280bcad1c2ecdcda75f91afa87f6c86a07f24f493a62e65452d63f0e4c5be426",
+      "geometryHash": "3e6d0e0de3778d3d867ba79574c9112d5fc8723ee23b7c09425eda0e8f1db4ef",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.pipeclamp120-m.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1237,18 +1237,18 @@
     {
       "bounds": {
         "max": [
-          4.090549468994141,
-          2.450108051300049,
+          4.090549444924538,
+          2.450107989838159,
           -10.65096664428711
         ],
         "min": [
-          3.3126449584960938,
-          1.4390125274658203,
+          3.312644982565696,
+          1.4390125889277101,
           -12.206538200378418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fdf7d9d73d0e34d572041466be3964357ba5708ca8d791dc085c6d2006d5adcf",
+      "geometryHash": "a5c91064463f0ad1b4222a59168e822178d63b2d92eb9a59c848dc60cbb11b9b",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.pipeclamp120.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1263,17 +1263,17 @@
       "bounds": {
         "max": [
           12.333908081054688,
-          2.572469472885132,
-          12.705010414123535
+          2.5724694834719735,
+          12.705010768167885
         ],
         "min": [
           -5.1136016845703125,
-          1.5756819248199463,
-          10.883956909179688
+          1.5756819142331049,
+          10.883956555135338
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44e7473ba0b08fd3009e8fa9bd71318962f97e24d919a666ec787fc514a00587",
+      "geometryHash": "56f6a8e85b879608b507eb63415af5547d56fb1bc31a5aa3d40fff5368875df7",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m.primitive.0",
       "indexCount": 1302,
       "indexed": true,
@@ -1288,17 +1288,17 @@
       "bounds": {
         "max": [
           12.333908081054688,
-          2.5650148391723633,
-          12.705010414123535
+          2.5650148755823663,
+          12.705010768167885
         ],
         "min": [
           -5.1136016845703125,
-          1.581006646156311,
-          10.89034652709961
+          1.5810066341542526,
+          10.890346219040715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68b5be246a3c1ad92004ec5fbed181ab5d8231671a1db621b51b36aa97462595",
+      "geometryHash": "cbf5da01cb2cb5fd1d644e6dbf8d6d4adbb9399709e400bee04c9f523e762823",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m.primitive.1",
       "indexCount": 654,
       "indexed": true,
@@ -1313,17 +1313,17 @@
       "bounds": {
         "max": [
           12.367759704589844,
-          2.7100307941436768,
-          -10.573631286621094
+          2.710030784711929,
+          -10.573631141519519
         ],
         "min": [
           -4.8739776611328125,
-          1.8765424489974976,
-          -12.368998527526855
+          1.8765424584292454,
+          -12.36899867262843
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a323aa11023ad905aaaa187aab747eb7570946d5ebcdca2ef925a4569e255c9",
+      "geometryHash": "c1854e9a895d8b2de9328415aa65360b5ab796d7333cf941037cfa2309a7e72c",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun.primitive.0",
       "indexCount": 1176,
       "indexed": true,
@@ -1338,17 +1338,17 @@
       "bounds": {
         "max": [
           12.367759704589844,
-          2.7100307941436768,
-          -10.592574119567871
+          2.710030784711929,
+          -10.592574058025944
         ],
         "min": [
-          -4.863453388214111,
-          1.8765424489974976,
-          -12.343741416931152
+          -4.863453818629244,
+          1.8765424584292454,
+          -12.343741450619865
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef00ee47213d0954252947c90acbe3512f96c5cd7519a21d5fb74e40bc402a39",
+      "geometryHash": "bcf4d2392b920a275e042869e4f3ad9abe0916bb63e3a93481a23e056d3854f9",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun.primitive.1",
       "indexCount": 588,
       "indexed": true,
@@ -1362,18 +1362,18 @@
     {
       "bounds": {
         "max": [
-          11.638212203979492,
-          -1.7844388484954834,
-          16.109495162963867
+          11.638212667734079,
+          -1.7844387948118299,
+          16.109495591981972
         ],
         "min": [
           -5.017707824707031,
-          -3.664543867111206,
-          14.567158699035645
+          -3.6645439207948596,
+          14.56715827001754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71c27a2de5182d1135f062d31eace26d71ab46ee0299d995e7b8e96b89517864",
+      "geometryHash": "1b3ba2d83ef39c960b9d2e1dd70fbdac9f16631af5c9f76a6a5b676bd73c8b93",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -1388,17 +1388,17 @@
       "bounds": {
         "max": [
           11.650421142578125,
-          -1.7885082960128784,
-          16.109495162963867
+          -1.7885082864265116,
+          16.109495591981972
         ],
         "min": [
           -5.017707824707031,
-          -3.664543867111206,
-          14.573263168334961
+          -3.6645439207948596,
+          14.573262507439562
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4dc1c34cb7fe2433c8a3f51bfb435f6e08c0964b00e87b9e7aadcb0ee3ae78f",
+      "geometryHash": "19aade2bc4dda43f3ac3af5856926136ad84efa1f76eac5fe79ae27f6a0fe706",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m.primitive.1",
       "indexCount": 246,
       "indexed": true,
@@ -1413,17 +1413,17 @@
       "bounds": {
         "max": [
           12.284622192382812,
-          -1.7689905166625977,
-          -13.95396900177002
+          -1.7689905210319434,
+          -13.953969299089273
         ],
         "min": [
           -4.944976806640625,
-          -3.5252349376678467,
-          -16.109838485717773
+          -3.525234933298501,
+          -16.10983818839852
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6e661cfc61917c8ff7e809d66c2dfd567378a1eba86d857d8beca8b3e210648",
+      "geometryHash": "a6d3f92363ab62d50576d20981bfed16ae268cffbdeba82efa8aeabbcdbc445b",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake.primitive.0",
       "indexCount": 321,
       "indexed": true,
@@ -1438,17 +1438,17 @@
       "bounds": {
         "max": [
           12.284622192382812,
-          -1.7710938453674316,
-          -14.00024127960205
+          -1.7710938077532208,
+          -14.000241606957374
         ],
         "min": [
           -4.944976806640625,
-          -3.5252349376678467,
-          -16.109838485717773
+          -3.525234933298501,
+          -16.10983818839852
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c6e8fae73ecab2870160f3d0425c3ce2258ae05b14b9c1987b7de91a00d71e9",
+      "geometryHash": "1814c76a278b84b82fa03e516a83ef52e7826b7c0d491cb950a4fda6eeb5a816",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake.primitive.1",
       "indexCount": 291,
       "indexed": true,
@@ -1853,21 +1853,21 @@
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0heap",
       "localTransform": [
-        1,
+        9.485601902008057,
         0,
         0,
         0,
         0,
-        1,
+        9.485601902008057,
         0,
         0,
         0,
         0,
-        1,
+        9.485601902008057,
         0,
-        0,
-        0,
-        0,
+        3.701596975326538,
+        -1.6990233659744263,
+        0.5987181663513184,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1881,42 +1881,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        9.485601902008057,
         0,
         0,
         0,
         0,
-        1,
+        9.485601902008057,
         0,
         0,
         0,
         0,
-        1,
+        9.485601902008057,
         0,
-        0,
-        0,
-        0,
+        3.701596975326538,
+        -1.6990233659744263,
+        0.5987181663513184,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore0",
       "localTransform": [
-        1,
+        2.023031234741211,
         0,
         0,
         0,
         0,
-        1,
+        2.023031234741211,
         0,
         0,
         0,
         0,
-        1,
+        2.023031234741211,
         0,
-        0,
-        0,
-        0,
+        -3.232334077358246,
+        -1.4635438919067383,
+        6.47850775718689,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1930,42 +1930,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.023031234741211,
         0,
         0,
         0,
         0,
-        1,
+        2.023031234741211,
         0,
         0,
         0,
         0,
-        1,
+        2.023031234741211,
         0,
-        0,
-        0,
-        0,
+        -3.232334077358246,
+        -1.4635438919067383,
+        6.47850775718689,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore1",
       "localTransform": [
-        1,
+        2.814216375350952,
         0,
         0,
         0,
         0,
-        1,
+        2.814216375350952,
         0,
         0,
         0,
         0,
-        1,
+        2.814216375350952,
         0,
-        0,
-        0,
-        0,
+        -3.720159411430359,
+        -1.477301925420761,
+        1.8952419757843018,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1979,42 +1979,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.814216375350952,
         0,
         0,
         0,
         0,
-        1,
+        2.814216375350952,
         0,
         0,
         0,
         0,
-        1,
+        2.814216375350952,
         0,
-        0,
-        0,
-        0,
+        -3.720159411430359,
+        -1.477301925420761,
+        1.8952419757843018,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore10",
       "localTransform": [
-        1,
+        2.653493881225586,
         0,
         0,
         0,
         0,
-        1,
+        2.653493881225586,
         0,
         0,
         0,
         0,
-        1,
+        2.653493881225586,
         0,
-        0,
-        0,
-        0,
+        2.633676528930664,
+        0.3200981616973877,
+        -1.1140900701284409,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2028,42 +2028,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.653493881225586,
         0,
         0,
         0,
         0,
-        1,
+        2.653493881225586,
         0,
         0,
         0,
         0,
-        1,
+        2.653493881225586,
         0,
-        0,
-        0,
-        0,
+        2.633676528930664,
+        0.3200981616973877,
+        -1.1140900701284409,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore11",
       "localTransform": [
-        1,
+        2.964379906654358,
         0,
         0,
         0,
         0,
-        1,
+        2.964379906654358,
         0,
         0,
         0,
         0,
-        1,
+        2.964379906654358,
         0,
-        0,
-        0,
-        0,
+        4.642259478569031,
+        -0.6684725880622864,
+        -6.650983214378357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2077,42 +2077,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.964379906654358,
         0,
         0,
         0,
         0,
-        1,
+        2.964379906654358,
         0,
         0,
         0,
         0,
-        1,
+        2.964379906654358,
         0,
-        0,
-        0,
-        0,
+        4.642259478569031,
+        -0.6684725880622864,
+        -6.650983214378357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore12",
       "localTransform": [
-        1,
+        2.8214149475097656,
         0,
         0,
         0,
         0,
-        1,
+        2.8214149475097656,
         0,
         0,
         0,
         0,
-        1,
+        2.8214149475097656,
         0,
-        0,
-        0,
-        0,
+        7.887859344482422,
+        -0.8304804563522339,
+        5.795994997024536,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2126,42 +2126,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.8214149475097656,
         0,
         0,
         0,
         0,
-        1,
+        2.8214149475097656,
         0,
         0,
         0,
         0,
-        1,
+        2.8214149475097656,
         0,
-        0,
-        0,
-        0,
+        7.887859344482422,
+        -0.8304804563522339,
+        5.795994997024536,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore13",
       "localTransform": [
-        1,
+        2.406709671020508,
         0,
         0,
         0,
         0,
-        1,
+        2.406709671020508,
         0,
         0,
         0,
         0,
-        1,
+        2.406709671020508,
         0,
-        0,
-        0,
-        0,
+        7.068754196166992,
+        -0.08192890882492065,
+        2.7430450320243835,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2175,42 +2175,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.406709671020508,
         0,
         0,
         0,
         0,
-        1,
+        2.406709671020508,
         0,
         0,
         0,
         0,
-        1,
+        2.406709671020508,
         0,
-        0,
-        0,
-        0,
+        7.068754196166992,
+        -0.08192890882492065,
+        2.7430450320243835,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore14",
       "localTransform": [
-        1,
+        2.1210593581199646,
         0,
         0,
         0,
         0,
-        1,
+        2.1210593581199646,
         0,
         0,
         0,
         0,
-        1,
+        2.1210593581199646,
         0,
-        0,
-        0,
-        0,
+        9.12662672996521,
+        -0.5369653701782227,
+        -1.388883888721466,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2224,42 +2224,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.1210593581199646,
         0,
         0,
         0,
         0,
-        1,
+        2.1210593581199646,
         0,
         0,
         0,
         0,
-        1,
+        2.1210593581199646,
         0,
-        0,
-        0,
-        0,
+        9.12662672996521,
+        -0.5369653701782227,
+        -1.388883888721466,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore15",
       "localTransform": [
-        1,
+        2.2058162689208984,
         0,
         0,
         0,
         0,
-        1,
+        2.2058162689208984,
         0,
         0,
         0,
         0,
-        1,
+        2.2058162689208984,
         0,
-        0,
-        0,
-        0,
+        7.279451370239258,
+        -1.1566295325756073,
+        -6.875431776046753,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2273,42 +2273,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.2058162689208984,
         0,
         0,
         0,
         0,
-        1,
+        2.2058162689208984,
         0,
         0,
         0,
         0,
-        1,
+        2.2058162689208984,
         0,
-        0,
-        0,
-        0,
+        7.279451370239258,
+        -1.1566295325756073,
+        -6.875431776046753,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore16",
       "localTransform": [
-        1,
+        2.2531810998916626,
         0,
         0,
         0,
         0,
-        1,
+        2.2531810998916626,
         0,
         0,
         0,
         0,
-        1,
+        2.2531810998916626,
         0,
-        0,
-        0,
-        0,
+        10.906204223632812,
+        -1.9076313376426697,
+        6.00544011592865,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2322,42 +2322,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.2531810998916626,
         0,
         0,
         0,
         0,
-        1,
+        2.2531810998916626,
         0,
         0,
         0,
         0,
-        1,
+        2.2531810998916626,
         0,
-        0,
-        0,
-        0,
+        10.906204223632812,
+        -1.9076313376426697,
+        6.00544011592865,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore17",
       "localTransform": [
-        1,
+        1.6999600529670715,
         0,
         0,
         0,
         0,
-        1,
+        1.6999600529670715,
         0,
         0,
         0,
         0,
-        1,
+        1.6999600529670715,
         0,
-        0,
-        0,
-        0,
+        11.510143280029297,
+        -2.477846622467041,
+        3.263676345348358,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2371,42 +2371,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.6999600529670715,
         0,
         0,
         0,
         0,
-        1,
+        1.6999600529670715,
         0,
         0,
         0,
         0,
-        1,
+        1.6999600529670715,
         0,
-        0,
-        0,
-        0,
+        11.510143280029297,
+        -2.477846622467041,
+        3.263676345348358,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore18",
       "localTransform": [
-        1,
+        2.083836317062378,
         0,
         0,
         0,
         0,
-        1,
+        2.083836317062378,
         0,
         0,
         0,
         0,
-        1,
+        2.083836317062378,
         0,
-        0,
-        0,
-        0,
+        10.55909538269043,
+        -1.4250917434692383,
+        -1.6967462301254272,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2420,42 +2420,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.083836317062378,
         0,
         0,
         0,
         0,
-        1,
+        2.083836317062378,
         0,
         0,
         0,
         0,
-        1,
+        2.083836317062378,
         0,
-        0,
-        0,
-        0,
+        10.55909538269043,
+        -1.4250917434692383,
+        -1.6967462301254272,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore19",
       "localTransform": [
-        1,
+        1.7380120754241943,
         0,
         0,
         0,
         0,
-        1,
+        1.7380120754241943,
         0,
         0,
         0,
         0,
-        1,
+        1.7380120754241943,
         0,
-        0,
-        0,
-        0,
+        11.592304229736328,
+        -2.344141125679016,
+        -6.940463304519653,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2469,42 +2469,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.7380120754241943,
         0,
         0,
         0,
         0,
-        1,
+        1.7380120754241943,
         0,
         0,
         0,
         0,
-        1,
+        1.7380120754241943,
         0,
-        0,
-        0,
-        0,
+        11.592304229736328,
+        -2.344141125679016,
+        -6.940463304519653,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore2",
       "localTransform": [
-        1,
+        1.698076218366623,
         0,
         0,
         0,
         0,
-        1,
+        1.698076218366623,
         0,
         0,
         0,
         0,
-        1,
+        1.698076218366623,
         0,
-        0,
-        0,
-        0,
+        -3.976669192314148,
+        -2.419108748435974,
+        -1.8886325657367706,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2518,42 +2518,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.698076218366623,
         0,
         0,
         0,
         0,
-        1,
+        1.698076218366623,
         0,
         0,
         0,
         0,
-        1,
+        1.698076218366623,
         0,
-        0,
-        0,
-        0,
+        -3.976669192314148,
+        -2.419108748435974,
+        -1.8886325657367706,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore3",
       "localTransform": [
-        1,
+        1.7543179988861084,
         0,
         0,
         0,
         0,
-        1,
+        1.7543179988861084,
         0,
         0,
         0,
         0,
-        1,
+        1.7543179988861084,
         0,
-        0,
-        0,
-        0,
+        -3.362192213535309,
+        -1.6037816666066647,
+        -5.711489915847778,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2567,42 +2567,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.7543179988861084,
         0,
         0,
         0,
         0,
-        1,
+        1.7543179988861084,
         0,
         0,
         0,
         0,
-        1,
+        1.7543179988861084,
         0,
-        0,
-        0,
-        0,
+        -3.362192213535309,
+        -1.6037816666066647,
+        -5.711489915847778,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore4",
       "localTransform": [
-        1,
+        2.0653486251831055,
         0,
         0,
         0,
         0,
-        1,
+        2.0653486251831055,
         0,
         0,
         0,
         0,
-        1,
+        2.0653486251831055,
         0,
-        0,
-        0,
-        0,
+        -1.1477165669202805,
+        -0.850158154964447,
+        5.947432518005371,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2616,42 +2616,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.0653486251831055,
         0,
         0,
         0,
         0,
-        1,
+        2.0653486251831055,
         0,
         0,
         0,
         0,
-        1,
+        2.0653486251831055,
         0,
-        0,
-        0,
-        0,
+        -1.1477165669202805,
+        -0.850158154964447,
+        5.947432518005371,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore5",
       "localTransform": [
-        1,
+        2.5163707733154297,
         0,
         0,
         0,
         0,
-        1,
+        2.5163707733154297,
         0,
         0,
         0,
         0,
-        1,
+        2.5163707733154297,
         0,
-        0,
-        0,
-        0,
+        -1.0390338897705078,
+        -0.2762080430984497,
+        1.6946975588798523,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2665,42 +2665,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.5163707733154297,
         0,
         0,
         0,
         0,
-        1,
+        2.5163707733154297,
         0,
         0,
         0,
         0,
-        1,
+        2.5163707733154297,
         0,
-        0,
-        0,
-        0,
+        -1.0390338897705078,
+        -0.2762080430984497,
+        1.6946975588798523,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore6",
       "localTransform": [
-        1,
+        2.818386137485504,
         0,
         0,
         0,
         0,
-        1,
+        2.818386137485504,
         0,
         0,
         0,
         0,
-        1,
+        2.818386137485504,
         0,
-        0,
-        0,
-        0,
+        0.2505302429199219,
+        0.13134819269180298,
+        -1.384619653224945,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2714,42 +2714,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.818386137485504,
         0,
         0,
         0,
         0,
-        1,
+        2.818386137485504,
         0,
         0,
         0,
         0,
-        1,
+        2.818386137485504,
         0,
-        0,
-        0,
-        0,
+        0.2505302429199219,
+        0.13134819269180298,
+        -1.384619653224945,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore7",
       "localTransform": [
-        1,
+        2.837917447090149,
         0,
         0,
         0,
         0,
-        1,
+        2.837917447090149,
         0,
         0,
         0,
         0,
-        1,
+        2.837917447090149,
         0,
-        0,
-        0,
-        0,
+        -1.9469795525074005,
+        -1.0894601494073868,
+        -5.802671313285828,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2763,42 +2763,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.837917447090149,
         0,
         0,
         0,
         0,
-        1,
+        2.837917447090149,
         0,
         0,
         0,
         0,
-        1,
+        2.837917447090149,
         0,
-        0,
-        0,
-        0,
+        -1.9469795525074005,
+        -1.0894601494073868,
+        -5.802671313285828,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore8",
       "localTransform": [
-        1,
+        2.565227508544922,
         0,
         0,
         0,
         0,
-        1,
+        2.565227508544922,
         0,
         0,
         0,
         0,
-        1,
+        2.565227508544922,
         0,
-        0,
-        0,
-        0,
+        4.016574859619141,
+        -0.2889583110809326,
+        5.953078746795654,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2812,42 +2812,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.565227508544922,
         0,
         0,
         0,
         0,
-        1,
+        2.565227508544922,
         0,
         0,
         0,
         0,
-        1,
+        2.565227508544922,
         0,
-        0,
-        0,
-        0,
+        4.016574859619141,
+        -0.2889583110809326,
+        5.953078746795654,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.h0ore9",
       "localTransform": [
-        1,
+        2.3793219476938248,
         0,
         0,
         0,
         0,
-        1,
+        2.3793219476938248,
         0,
         0,
         0,
         0,
-        1,
+        2.3793219476938248,
         0,
-        0,
-        0,
-        0,
+        4.5457000732421875,
+        0.3083036243915558,
+        2.270288571715355,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2861,42 +2861,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.3793219476938248,
         0,
         0,
         0,
         0,
-        1,
+        2.3793219476938248,
         0,
         0,
         0,
         0,
-        1,
+        2.3793219476938248,
         0,
-        0,
-        0,
-        0,
+        4.5457000732421875,
+        0.3083036243915558,
+        2.270288571715355,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.hull",
       "localTransform": [
-        1,
+        15.104509830474854,
         0,
         0,
         0,
         0,
-        1,
+        15.104509830474854,
         0,
         0,
         0,
         0,
-        1,
+        15.104509830474854,
         0,
-        0,
-        0,
-        0,
+        3.584350824356079,
+        -0.4902355670928955,
+        0.18821191787719727,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2910,42 +2910,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        15.104509830474854,
         0,
         0,
         0,
         0,
-        1,
+        15.104509830474854,
         0,
         0,
         0,
         0,
-        1,
+        15.104509830474854,
         0,
-        0,
-        0,
-        0,
+        3.584350824356079,
+        -0.4902355670928955,
+        0.18821191787719727,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib0",
       "localTransform": [
-        1,
+        1.1780853271484375,
         0,
         0,
         0,
         0,
-        1,
+        1.1780853271484375,
         0,
         0,
         0,
         0,
-        1,
+        1.1780853271484375,
         0,
-        0,
-        0,
-        0,
+        -4.572151184082031,
+        -9.419970989227295,
+        -10.577352046966553,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2959,42 +2959,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.1780853271484375,
         0,
         0,
         0,
         0,
-        1,
+        1.1780853271484375,
         0,
         0,
         0,
         0,
-        1,
+        1.1780853271484375,
         0,
-        0,
-        0,
-        0,
+        -4.572151184082031,
+        -9.419970989227295,
+        -10.577352046966553,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib1",
       "localTransform": [
-        1,
+        1.391082763671875,
         0,
         0,
         0,
         0,
-        1,
+        1.391082763671875,
         0,
         0,
         0,
         0,
-        1,
+        1.391082763671875,
         0,
-        0,
-        0,
-        0,
+        -4.650642395019531,
+        -13.922694206237793,
+        3.242363691329956,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3008,42 +3008,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.391082763671875,
         0,
         0,
         0,
         0,
-        1,
+        1.391082763671875,
         0,
         0,
         0,
         0,
-        1,
+        1.391082763671875,
         0,
-        0,
-        0,
-        0,
+        -4.650642395019531,
+        -13.922694206237793,
+        3.242363691329956,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib2",
       "localTransform": [
-        1,
+        1.0602507591247559,
         0,
         0,
         0,
         0,
-        1,
+        1.0602507591247559,
         0,
         0,
         0,
         0,
-        1,
+        1.0602507591247559,
         0,
-        0,
-        0,
-        0,
+        -4.559581756591797,
+        -3.9903305768966675,
+        13.959741115570068,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3057,42 +3057,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.0602507591247559,
         0,
         0,
         0,
         0,
-        1,
+        1.0602507591247559,
         0,
         0,
         0,
         0,
-        1,
+        1.0602507591247559,
         0,
-        0,
-        0,
-        0,
+        -4.559581756591797,
+        -3.9903305768966675,
+        13.959741115570068,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib3",
       "localTransform": [
-        1,
+        1.2861995697021484,
         0,
         0,
         0,
         0,
-        1,
+        1.2861995697021484,
         0,
         0,
         0,
         0,
-        1,
+        1.2861995697021484,
         0,
-        0,
-        0,
-        0,
+        -4.592153549194336,
+        10.07619571685791,
+        10.780789852142334,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3106,42 +3106,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.2861995697021484,
         0,
         0,
         0,
         0,
-        1,
+        1.2861995697021484,
         0,
         0,
         0,
         0,
-        1,
+        1.2861995697021484,
         0,
-        0,
-        0,
-        0,
+        -4.592153549194336,
+        10.07619571685791,
+        10.780789852142334,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib4",
       "localTransform": [
-        1,
+        0.9692630767822266,
         0,
         0,
         0,
         0,
-        1,
+        0.9692630767822266,
         0,
         0,
         0,
         0,
-        1,
+        0.9692630767822266,
         0,
-        0,
-        0,
-        0,
+        -4.472028732299805,
+        14.348661422729492,
+        -2.830276608467102,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3155,42 +3155,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        0.9692630767822266,
         0,
         0,
         0,
         0,
-        1,
+        0.9692630767822266,
         0,
         0,
         0,
         0,
-        1,
+        0.9692630767822266,
         0,
-        0,
-        0,
-        0,
+        -4.472028732299805,
+        14.348661422729492,
+        -2.830276608467102,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-f-rib5",
       "localTransform": [
-        1,
+        1.1738691329956055,
         0,
         0,
         0,
         0,
-        1,
+        1.1738691329956055,
         0,
         0,
         0,
         0,
-        1,
+        1.1738691329956055,
         0,
-        0,
-        0,
-        0,
+        -4.5180206298828125,
+        4.629933834075928,
+        -13.599038124084473,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3204,42 +3204,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.1738691329956055,
         0,
         0,
         0,
         0,
-        1,
+        1.1738691329956055,
         0,
         0,
         0,
         0,
-        1,
+        1.1738691329956055,
         0,
-        0,
-        0,
-        0,
+        -4.5180206298828125,
+        4.629933834075928,
+        -13.599038124084473,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear0",
       "localTransform": [
-        1,
+        3.8214664459228516,
         0,
         0,
         0,
         0,
-        1,
+        3.8214664459228516,
         0,
         0,
         0,
         0,
-        1,
+        3.8214664459228516,
         0,
-        0,
-        0,
-        0,
+        -7.541292190551758,
+        -5.934771299362183,
+        11.680222988128662,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3253,42 +3253,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        3.8214664459228516,
         0,
         0,
         0,
         0,
-        1,
+        3.8214664459228516,
         0,
         0,
         0,
         0,
-        1,
+        3.8214664459228516,
         0,
-        0,
-        0,
-        0,
+        -7.541292190551758,
+        -5.934771299362183,
+        11.680222988128662,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear1",
       "localTransform": [
-        1,
+        2.52008056640625,
         0,
         0,
         0,
         0,
-        1,
+        2.52008056640625,
         0,
         0,
         0,
         0,
-        1,
+        2.52008056640625,
         0,
-        0,
-        0,
-        0,
+        -6.155281066894531,
+        9.619462490081787,
+        9.936359882354736,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3302,42 +3302,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        2.52008056640625,
         0,
         0,
         0,
         0,
-        1,
+        2.52008056640625,
         0,
         0,
         0,
         0,
-        1,
+        2.52008056640625,
         0,
-        0,
-        0,
-        0,
+        -6.155281066894531,
+        9.619462490081787,
+        9.936359882354736,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear2",
       "localTransform": [
-        1,
+        4.465456962585449,
         0,
         0,
         0,
         0,
-        1,
+        4.465456962585449,
         0,
         0,
         0,
         0,
-        1,
+        4.465456962585449,
         0,
-        0,
-        0,
-        0,
+        -8.00329875946045,
+        11.849339485168457,
+        -5.463557243347168,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3351,42 +3351,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        4.465456962585449,
         0,
         0,
         0,
         0,
-        1,
+        4.465456962585449,
         0,
         0,
         0,
         0,
-        1,
+        4.465456962585449,
         0,
-        0,
-        0,
-        0,
+        -8.00329875946045,
+        11.849339485168457,
+        -5.463557243347168,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear3",
       "localTransform": [
-        1,
+        3.1515579223632812,
         0,
         0,
         0,
         0,
-        1,
+        3.1515579223632812,
         0,
         0,
         0,
         0,
-        1,
+        3.1515579223632812,
         0,
-        0,
-        0,
-        0,
+        -6.617286682128906,
+        -1.5917360186576843,
+        -13.105563640594482,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3400,42 +3400,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        3.1515579223632812,
         0,
         0,
         0,
         0,
-        1,
+        3.1515579223632812,
         0,
         0,
         0,
         0,
-        1,
+        3.1515579223632812,
         0,
-        0,
-        0,
-        0,
+        -6.617286682128906,
+        -1.5917360186576843,
+        -13.105563640594482,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.lida-t-tear4",
       "localTransform": [
-        1,
+        1.2599973678588867,
         0,
         0,
         0,
         0,
-        1,
+        1.2599973678588867,
         0,
         0,
         0,
         0,
-        1,
+        1.2599973678588867,
         0,
-        0,
-        0,
-        0,
+        -5.231269955635071,
+        -13.42460584640503,
+        -2.2888951301574707,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3449,42 +3449,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        1.2599973678588867,
         0,
         0,
         0,
         0,
-        1,
+        1.2599973678588867,
         0,
         0,
         0,
         0,
-        1,
+        1.2599973678588867,
         0,
-        0,
-        0,
-        0,
+        -5.231269955635071,
+        -13.42460584640503,
+        -2.2888951301574707,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.pipeclamp120",
       "localTransform": [
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
-        0,
-        0,
-        0,
+        3.701597213745117,
+        1.9445602893829346,
+        -11.428752422332764,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3498,42 +3498,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
-        0,
-        0,
-        0,
+        3.701597213745117,
+        1.9445602893829346,
+        -11.428752422332764,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.pipeclamp120-m",
       "localTransform": [
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
-        0,
-        0,
-        0,
+        3.701597213745117,
+        1.9445602893829346,
+        11.749257564544678,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3547,42 +3547,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
         0,
         0,
         0,
-        1,
+        0.7777857780456543,
         0,
-        0,
-        0,
-        0,
+        3.701597213745117,
+        1.9445602893829346,
+        11.749257564544678,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun",
       "localTransform": [
-        1,
+        8.620868682861328,
         0,
         0,
         0,
         0,
-        1,
+        8.620868682861328,
         0,
         0,
         0,
         0,
-        1,
+        8.620868682861328,
         0,
-        0,
-        0,
-        0,
+        3.7468910217285156,
+        2.293286621570587,
+        -11.471314907073975,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3596,42 +3596,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        8.620868682861328,
         0,
         0,
         0,
         0,
-        1,
+        8.620868682861328,
         0,
         0,
         0,
         0,
-        1,
+        8.620868682861328,
         0,
-        0,
-        0,
-        0,
+        3.7468910217285156,
+        2.293286621570587,
+        -11.471314907073975,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.piperun-m",
       "localTransform": [
-        1,
+        8.7237548828125,
         0,
         0,
         0,
         0,
-        1,
+        8.7237548828125,
         0,
         0,
         0,
         0,
-        1,
+        8.7237548828125,
         0,
-        0,
-        0,
-        0,
+        3.6101531982421875,
+        2.074075698852539,
+        11.794483661651611,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3645,42 +3645,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        8.7237548828125,
         0,
         0,
         0,
         0,
-        1,
+        8.7237548828125,
         0,
         0,
         0,
         0,
-        1,
+        8.7237548828125,
         0,
-        0,
-        0,
-        0,
+        3.6101531982421875,
+        2.074075698852539,
+        11.794483661651611,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake",
       "localTransform": [
-        1,
+        8.614799499511719,
         0,
         0,
         0,
         0,
-        1,
+        8.614799499511719,
         0,
         0,
         0,
         0,
-        1,
+        8.614799499511719,
         0,
-        0,
-        0,
-        0,
+        3.6698226928710938,
+        -2.647112727165222,
+        -15.031903743743896,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3694,42 +3694,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        8.614799499511719,
         0,
         0,
         0,
         0,
-        1,
+        8.614799499511719,
         0,
         0,
         0,
         0,
-        1,
+        8.614799499511719,
         0,
-        0,
-        0,
-        0,
+        3.6698226928710938,
+        -2.647112727165222,
+        -15.031903743743896,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.mesh.strake-m",
       "localTransform": [
-        1,
+        8.334064483642578,
         0,
         0,
         0,
         0,
-        1,
+        8.334064483642578,
         0,
         0,
         0,
         0,
-        1,
+        8.334064483642578,
         0,
-        0,
-        0,
-        0,
+        3.316356658935547,
+        -2.7244913578033447,
+        15.338326930999756,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3743,21 +3743,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",
       "worldTransform": [
-        1,
+        8.334064483642578,
         0,
         0,
         0,
         0,
-        1,
+        8.334064483642578,
         0,
         0,
         0,
         0,
-        1,
+        8.334064483642578,
         0,
-        0,
-        0,
-        0,
+        3.316356658935547,
+        -2.7244913578033447,
+        15.338326930999756,
         1
       ]
     },
@@ -3820,37 +3820,37 @@
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 362944,
-    "sha256": "26d2ccf628a72d5b0066c470396e0c2538ccf2fd7761de7e789e0082b91b9ff6",
+    "bytes": 290272,
+    "sha256": "7995fe7b51eb854ac99a539caa1fcb82304ede5eac7c940632a443826f435ad3",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.00003814697265625,
-        -0.000003337860107421875,
-        -0.000171661376953125
+        -0.00003795353905822196,
+        -0.0000033387332489809296,
+        -0.00017129820827399556
       ],
       "max": [
-        12.468679428100586,
-        15.28727912902832,
-        16.109495162963867
+        12.468679814967782,
+        15.28727913840004,
+        16.109495591981972
       ],
       "min": [
         -12.468755722045898,
-        -15.287285804748535,
-        -16.109838485717773
+        -15.287285815866538,
+        -16.10983818839852
       ],
       "size": [
-        24.937435150146484,
-        30.574564933776855,
-        32.21933364868164
+        24.93743553701368,
+        30.574564954266577,
+        32.219333780380495
       ]
     },
     "hidden": [],
@@ -4159,21 +4159,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.485601902008057,
           0,
           0,
           0,
           0,
-          1,
+          9.485601902008057,
           0,
           0,
           0,
           0,
-          1,
+          9.485601902008057,
           0,
-          0,
-          0,
-          0,
+          3.701596975326538,
+          -1.6990233659744263,
+          0.5987181663513184,
           1
         ],
         "name": "H0Heap_1",
@@ -4186,21 +4186,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.485601902008057,
           0,
           0,
           0,
           0,
-          1,
+          9.485601902008057,
           0,
           0,
           0,
           0,
-          1,
+          9.485601902008057,
           0,
-          0,
-          0,
-          0,
+          3.701596975326538,
+          -1.6990233659744263,
+          0.5987181663513184,
           1
         ],
         "name": "H0Heap_2",
@@ -4213,21 +4213,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.023031234741211,
           0,
           0,
           0,
           0,
-          1,
+          2.023031234741211,
           0,
           0,
           0,
           0,
-          1,
+          2.023031234741211,
           0,
-          0,
-          0,
-          0,
+          -3.232334077358246,
+          -1.4635438919067383,
+          6.47850775718689,
           1
         ],
         "name": "H0Ore0_1",
@@ -4240,21 +4240,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.023031234741211,
           0,
           0,
           0,
           0,
-          1,
+          2.023031234741211,
           0,
           0,
           0,
           0,
-          1,
+          2.023031234741211,
           0,
-          0,
-          0,
-          0,
+          -3.232334077358246,
+          -1.4635438919067383,
+          6.47850775718689,
           1
         ],
         "name": "H0Ore0_2",
@@ -4267,21 +4267,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.814216375350952,
           0,
           0,
           0,
           0,
-          1,
+          2.814216375350952,
           0,
           0,
           0,
           0,
-          1,
+          2.814216375350952,
           0,
-          0,
-          0,
-          0,
+          -3.720159411430359,
+          -1.477301925420761,
+          1.8952419757843018,
           1
         ],
         "name": "H0Ore1_1",
@@ -4294,21 +4294,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.814216375350952,
           0,
           0,
           0,
           0,
-          1,
+          2.814216375350952,
           0,
           0,
           0,
           0,
-          1,
+          2.814216375350952,
           0,
-          0,
-          0,
-          0,
+          -3.720159411430359,
+          -1.477301925420761,
+          1.8952419757843018,
           1
         ],
         "name": "H0Ore1_2",
@@ -4321,21 +4321,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.653493881225586,
           0,
           0,
           0,
           0,
-          1,
+          2.653493881225586,
           0,
           0,
           0,
           0,
-          1,
+          2.653493881225586,
           0,
-          0,
-          0,
-          0,
+          2.633676528930664,
+          0.3200981616973877,
+          -1.1140900701284409,
           1
         ],
         "name": "H0Ore10",
@@ -4348,21 +4348,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.964379906654358,
           0,
           0,
           0,
           0,
-          1,
+          2.964379906654358,
           0,
           0,
           0,
           0,
-          1,
+          2.964379906654358,
           0,
-          0,
-          0,
-          0,
+          4.642259478569031,
+          -0.6684725880622864,
+          -6.650983214378357,
           1
         ],
         "name": "H0Ore11",
@@ -4375,21 +4375,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8214149475097656,
           0,
           0,
           0,
           0,
-          1,
+          2.8214149475097656,
           0,
           0,
           0,
           0,
-          1,
+          2.8214149475097656,
           0,
-          0,
-          0,
-          0,
+          7.887859344482422,
+          -0.8304804563522339,
+          5.795994997024536,
           1
         ],
         "name": "H0Ore12",
@@ -4402,21 +4402,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.406709671020508,
           0,
           0,
           0,
           0,
-          1,
+          2.406709671020508,
           0,
           0,
           0,
           0,
-          1,
+          2.406709671020508,
           0,
-          0,
-          0,
-          0,
+          7.068754196166992,
+          -0.08192890882492065,
+          2.7430450320243835,
           1
         ],
         "name": "H0Ore13",
@@ -4429,21 +4429,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1210593581199646,
           0,
           0,
           0,
           0,
-          1,
+          2.1210593581199646,
           0,
           0,
           0,
           0,
-          1,
+          2.1210593581199646,
           0,
-          0,
-          0,
-          0,
+          9.12662672996521,
+          -0.5369653701782227,
+          -1.388883888721466,
           1
         ],
         "name": "H0Ore14",
@@ -4456,21 +4456,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2058162689208984,
           0,
           0,
           0,
           0,
-          1,
+          2.2058162689208984,
           0,
           0,
           0,
           0,
-          1,
+          2.2058162689208984,
           0,
-          0,
-          0,
-          0,
+          7.279451370239258,
+          -1.1566295325756073,
+          -6.875431776046753,
           1
         ],
         "name": "H0Ore15_1",
@@ -4483,21 +4483,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2058162689208984,
           0,
           0,
           0,
           0,
-          1,
+          2.2058162689208984,
           0,
           0,
           0,
           0,
-          1,
+          2.2058162689208984,
           0,
-          0,
-          0,
-          0,
+          7.279451370239258,
+          -1.1566295325756073,
+          -6.875431776046753,
           1
         ],
         "name": "H0Ore15_2",
@@ -4510,21 +4510,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2531810998916626,
           0,
           0,
           0,
           0,
-          1,
+          2.2531810998916626,
           0,
           0,
           0,
           0,
-          1,
+          2.2531810998916626,
           0,
-          0,
-          0,
-          0,
+          10.906204223632812,
+          -1.9076313376426697,
+          6.00544011592865,
           1
         ],
         "name": "H0Ore16_1",
@@ -4537,21 +4537,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2531810998916626,
           0,
           0,
           0,
           0,
-          1,
+          2.2531810998916626,
           0,
           0,
           0,
           0,
-          1,
+          2.2531810998916626,
           0,
-          0,
-          0,
-          0,
+          10.906204223632812,
+          -1.9076313376426697,
+          6.00544011592865,
           1
         ],
         "name": "H0Ore16_2",
@@ -4564,21 +4564,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6999600529670715,
           0,
           0,
           0,
           0,
-          1,
+          1.6999600529670715,
           0,
           0,
           0,
           0,
-          1,
+          1.6999600529670715,
           0,
-          0,
-          0,
-          0,
+          11.510143280029297,
+          -2.477846622467041,
+          3.263676345348358,
           1
         ],
         "name": "H0Ore17_1",
@@ -4591,21 +4591,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6999600529670715,
           0,
           0,
           0,
           0,
-          1,
+          1.6999600529670715,
           0,
           0,
           0,
           0,
-          1,
+          1.6999600529670715,
           0,
-          0,
-          0,
-          0,
+          11.510143280029297,
+          -2.477846622467041,
+          3.263676345348358,
           1
         ],
         "name": "H0Ore17_2",
@@ -4618,21 +4618,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.083836317062378,
           0,
           0,
           0,
           0,
-          1,
+          2.083836317062378,
           0,
           0,
           0,
           0,
-          1,
+          2.083836317062378,
           0,
-          0,
-          0,
-          0,
+          10.55909538269043,
+          -1.4250917434692383,
+          -1.6967462301254272,
           1
         ],
         "name": "H0Ore18_1",
@@ -4645,21 +4645,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.083836317062378,
           0,
           0,
           0,
           0,
-          1,
+          2.083836317062378,
           0,
           0,
           0,
           0,
-          1,
+          2.083836317062378,
           0,
-          0,
-          0,
-          0,
+          10.55909538269043,
+          -1.4250917434692383,
+          -1.6967462301254272,
           1
         ],
         "name": "H0Ore18_2",
@@ -4672,21 +4672,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7380120754241943,
           0,
           0,
           0,
           0,
-          1,
+          1.7380120754241943,
           0,
           0,
           0,
           0,
-          1,
+          1.7380120754241943,
           0,
-          0,
-          0,
-          0,
+          11.592304229736328,
+          -2.344141125679016,
+          -6.940463304519653,
           1
         ],
         "name": "H0Ore19_1",
@@ -4699,21 +4699,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7380120754241943,
           0,
           0,
           0,
           0,
-          1,
+          1.7380120754241943,
           0,
           0,
           0,
           0,
-          1,
+          1.7380120754241943,
           0,
-          0,
-          0,
-          0,
+          11.592304229736328,
+          -2.344141125679016,
+          -6.940463304519653,
           1
         ],
         "name": "H0Ore19_2",
@@ -4726,21 +4726,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.698076218366623,
           0,
           0,
           0,
           0,
-          1,
+          1.698076218366623,
           0,
           0,
           0,
           0,
-          1,
+          1.698076218366623,
           0,
-          0,
-          0,
-          0,
+          -3.976669192314148,
+          -2.419108748435974,
+          -1.8886325657367706,
           1
         ],
         "name": "H0Ore2_1",
@@ -4753,21 +4753,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.698076218366623,
           0,
           0,
           0,
           0,
-          1,
+          1.698076218366623,
           0,
           0,
           0,
           0,
-          1,
+          1.698076218366623,
           0,
-          0,
-          0,
-          0,
+          -3.976669192314148,
+          -2.419108748435974,
+          -1.8886325657367706,
           1
         ],
         "name": "H0Ore2_2",
@@ -4780,21 +4780,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7543179988861084,
           0,
           0,
           0,
           0,
-          1,
+          1.7543179988861084,
           0,
           0,
           0,
           0,
-          1,
+          1.7543179988861084,
           0,
-          0,
-          0,
-          0,
+          -3.362192213535309,
+          -1.6037816666066647,
+          -5.711489915847778,
           1
         ],
         "name": "H0Ore3_1",
@@ -4807,21 +4807,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7543179988861084,
           0,
           0,
           0,
           0,
-          1,
+          1.7543179988861084,
           0,
           0,
           0,
           0,
-          1,
+          1.7543179988861084,
           0,
-          0,
-          0,
-          0,
+          -3.362192213535309,
+          -1.6037816666066647,
+          -5.711489915847778,
           1
         ],
         "name": "H0Ore3_2",
@@ -4834,21 +4834,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.0653486251831055,
           0,
           0,
           0,
           0,
-          1,
+          2.0653486251831055,
           0,
           0,
           0,
           0,
-          1,
+          2.0653486251831055,
           0,
-          0,
-          0,
-          0,
+          -1.1477165669202805,
+          -0.850158154964447,
+          5.947432518005371,
           1
         ],
         "name": "H0Ore4",
@@ -4861,21 +4861,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.5163707733154297,
           0,
           0,
           0,
           0,
-          1,
+          2.5163707733154297,
           0,
           0,
           0,
           0,
-          1,
+          2.5163707733154297,
           0,
-          0,
-          0,
-          0,
+          -1.0390338897705078,
+          -0.2762080430984497,
+          1.6946975588798523,
           1
         ],
         "name": "H0Ore5",
@@ -4888,21 +4888,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.818386137485504,
           0,
           0,
           0,
           0,
-          1,
+          2.818386137485504,
           0,
           0,
           0,
           0,
-          1,
+          2.818386137485504,
           0,
-          0,
-          0,
-          0,
+          0.2505302429199219,
+          0.13134819269180298,
+          -1.384619653224945,
           1
         ],
         "name": "H0Ore6",
@@ -4915,21 +4915,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.837917447090149,
           0,
           0,
           0,
           0,
-          1,
+          2.837917447090149,
           0,
           0,
           0,
           0,
-          1,
+          2.837917447090149,
           0,
-          0,
-          0,
-          0,
+          -1.9469795525074005,
+          -1.0894601494073868,
+          -5.802671313285828,
           1
         ],
         "name": "H0Ore7_1",
@@ -4942,21 +4942,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.837917447090149,
           0,
           0,
           0,
           0,
-          1,
+          2.837917447090149,
           0,
           0,
           0,
           0,
-          1,
+          2.837917447090149,
           0,
-          0,
-          0,
-          0,
+          -1.9469795525074005,
+          -1.0894601494073868,
+          -5.802671313285828,
           1
         ],
         "name": "H0Ore7_2",
@@ -4969,21 +4969,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.565227508544922,
           0,
           0,
           0,
           0,
-          1,
+          2.565227508544922,
           0,
           0,
           0,
           0,
-          1,
+          2.565227508544922,
           0,
-          0,
-          0,
-          0,
+          4.016574859619141,
+          -0.2889583110809326,
+          5.953078746795654,
           1
         ],
         "name": "H0Ore8",
@@ -4996,21 +4996,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3793219476938248,
           0,
           0,
           0,
           0,
-          1,
+          2.3793219476938248,
           0,
           0,
           0,
           0,
-          1,
+          2.3793219476938248,
           0,
-          0,
-          0,
-          0,
+          4.5457000732421875,
+          0.3083036243915558,
+          2.270288571715355,
           1
         ],
         "name": "H0Ore9",
@@ -5023,21 +5023,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
-          0,
-          0,
-          0,
+          3.584350824356079,
+          -0.4902355670928955,
+          0.18821191787719727,
           1
         ],
         "name": "Hull_1",
@@ -5050,21 +5050,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
-          0,
-          0,
-          0,
+          3.584350824356079,
+          -0.4902355670928955,
+          0.18821191787719727,
           1
         ],
         "name": "Hull_2",
@@ -5077,21 +5077,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
-          0,
-          0,
-          0,
+          3.584350824356079,
+          -0.4902355670928955,
+          0.18821191787719727,
           1
         ],
         "name": "Hull_3",
@@ -5104,21 +5104,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
-          0,
-          0,
-          0,
+          3.584350824356079,
+          -0.4902355670928955,
+          0.18821191787719727,
           1
         ],
         "name": "Hull_4",
@@ -5131,21 +5131,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
           0,
           0,
           0,
-          1,
+          15.104509830474854,
           0,
-          0,
-          0,
-          0,
+          3.584350824356079,
+          -0.4902355670928955,
+          0.18821191787719727,
           1
         ],
         "name": "Hull_5",
@@ -5158,21 +5158,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1780853271484375,
           0,
           0,
           0,
           0,
-          1,
+          1.1780853271484375,
           0,
           0,
           0,
           0,
-          1,
+          1.1780853271484375,
           0,
-          0,
-          0,
-          0,
+          -4.572151184082031,
+          -9.419970989227295,
+          -10.577352046966553,
           1
         ],
         "name": "lidA_f_rib0",
@@ -5185,21 +5185,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.391082763671875,
           0,
           0,
           0,
           0,
-          1,
+          1.391082763671875,
           0,
           0,
           0,
           0,
-          1,
+          1.391082763671875,
           0,
-          0,
-          0,
-          0,
+          -4.650642395019531,
+          -13.922694206237793,
+          3.242363691329956,
           1
         ],
         "name": "lidA_f_rib1",
@@ -5212,21 +5212,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0602507591247559,
           0,
           0,
           0,
           0,
-          1,
+          1.0602507591247559,
           0,
           0,
           0,
           0,
-          1,
+          1.0602507591247559,
           0,
-          0,
-          0,
-          0,
+          -4.559581756591797,
+          -3.9903305768966675,
+          13.959741115570068,
           1
         ],
         "name": "lidA_f_rib2",
@@ -5239,21 +5239,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2861995697021484,
           0,
           0,
           0,
           0,
-          1,
+          1.2861995697021484,
           0,
           0,
           0,
           0,
-          1,
+          1.2861995697021484,
           0,
-          0,
-          0,
-          0,
+          -4.592153549194336,
+          10.07619571685791,
+          10.780789852142334,
           1
         ],
         "name": "lidA_f_rib3",
@@ -5266,21 +5266,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9692630767822266,
           0,
           0,
           0,
           0,
-          1,
+          0.9692630767822266,
           0,
           0,
           0,
           0,
-          1,
+          0.9692630767822266,
           0,
-          0,
-          0,
-          0,
+          -4.472028732299805,
+          14.348661422729492,
+          -2.830276608467102,
           1
         ],
         "name": "lidA_f_rib4",
@@ -5293,21 +5293,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1738691329956055,
           0,
           0,
           0,
           0,
-          1,
+          1.1738691329956055,
           0,
           0,
           0,
           0,
-          1,
+          1.1738691329956055,
           0,
-          0,
-          0,
-          0,
+          -4.5180206298828125,
+          4.629933834075928,
+          -13.599038124084473,
           1
         ],
         "name": "lidA_f_rib5",
@@ -5320,21 +5320,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.8214664459228516,
           0,
           0,
           0,
           0,
-          1,
+          3.8214664459228516,
           0,
           0,
           0,
           0,
-          1,
+          3.8214664459228516,
           0,
-          0,
-          0,
-          0,
+          -7.541292190551758,
+          -5.934771299362183,
+          11.680222988128662,
           1
         ],
         "name": "lidA_t_tear0",
@@ -5347,21 +5347,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.52008056640625,
           0,
           0,
           0,
           0,
-          1,
+          2.52008056640625,
           0,
           0,
           0,
           0,
-          1,
+          2.52008056640625,
           0,
-          0,
-          0,
-          0,
+          -6.155281066894531,
+          9.619462490081787,
+          9.936359882354736,
           1
         ],
         "name": "lidA_t_tear1",
@@ -5374,21 +5374,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.465456962585449,
           0,
           0,
           0,
           0,
-          1,
+          4.465456962585449,
           0,
           0,
           0,
           0,
-          1,
+          4.465456962585449,
           0,
-          0,
-          0,
-          0,
+          -8.00329875946045,
+          11.849339485168457,
+          -5.463557243347168,
           1
         ],
         "name": "lidA_t_tear2",
@@ -5401,21 +5401,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1515579223632812,
           0,
           0,
           0,
           0,
-          1,
+          3.1515579223632812,
           0,
           0,
           0,
           0,
-          1,
+          3.1515579223632812,
           0,
-          0,
-          0,
-          0,
+          -6.617286682128906,
+          -1.5917360186576843,
+          -13.105563640594482,
           1
         ],
         "name": "lidA_t_tear3",
@@ -5428,21 +5428,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2599973678588867,
           0,
           0,
           0,
           0,
-          1,
+          1.2599973678588867,
           0,
           0,
           0,
           0,
-          1,
+          1.2599973678588867,
           0,
-          0,
-          0,
-          0,
+          -5.231269955635071,
+          -13.42460584640503,
+          -2.2888951301574707,
           1
         ],
         "name": "lidA_t_tear4",
@@ -5455,21 +5455,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7777857780456543,
           0,
           0,
           0,
           0,
-          1,
+          0.7777857780456543,
           0,
           0,
           0,
           0,
-          1,
+          0.7777857780456543,
           0,
-          0,
-          0,
-          0,
+          3.701597213745117,
+          1.9445602893829346,
+          -11.428752422332764,
           1
         ],
         "name": "PipeClamp120",
@@ -5482,21 +5482,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7777857780456543,
           0,
           0,
           0,
           0,
-          1,
+          0.7777857780456543,
           0,
           0,
           0,
           0,
-          1,
+          0.7777857780456543,
           0,
-          0,
-          0,
-          0,
+          3.701597213745117,
+          1.9445602893829346,
+          11.749257564544678,
           1
         ],
         "name": "PipeClamp120_M",
@@ -5509,21 +5509,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.620868682861328,
           0,
           0,
           0,
           0,
-          1,
+          8.620868682861328,
           0,
           0,
           0,
           0,
-          1,
+          8.620868682861328,
           0,
-          0,
-          0,
-          0,
+          3.7468910217285156,
+          2.293286621570587,
+          -11.471314907073975,
           1
         ],
         "name": "PipeRun_1",
@@ -5536,21 +5536,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.620868682861328,
           0,
           0,
           0,
           0,
-          1,
+          8.620868682861328,
           0,
           0,
           0,
           0,
-          1,
+          8.620868682861328,
           0,
-          0,
-          0,
-          0,
+          3.7468910217285156,
+          2.293286621570587,
+          -11.471314907073975,
           1
         ],
         "name": "PipeRun_2",
@@ -5563,21 +5563,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.7237548828125,
           0,
           0,
           0,
           0,
-          1,
+          8.7237548828125,
           0,
           0,
           0,
           0,
-          1,
+          8.7237548828125,
           0,
-          0,
-          0,
-          0,
+          3.6101531982421875,
+          2.074075698852539,
+          11.794483661651611,
           1
         ],
         "name": "PipeRun_M_1",
@@ -5590,21 +5590,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.7237548828125,
           0,
           0,
           0,
           0,
-          1,
+          8.7237548828125,
           0,
           0,
           0,
           0,
-          1,
+          8.7237548828125,
           0,
-          0,
-          0,
-          0,
+          3.6101531982421875,
+          2.074075698852539,
+          11.794483661651611,
           1
         ],
         "name": "PipeRun_M_2",
@@ -5617,21 +5617,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.614799499511719,
           0,
           0,
           0,
           0,
-          1,
+          8.614799499511719,
           0,
           0,
           0,
           0,
-          1,
+          8.614799499511719,
           0,
-          0,
-          0,
-          0,
+          3.6698226928710938,
+          -2.647112727165222,
+          -15.031903743743896,
           1
         ],
         "name": "Strake_1",
@@ -5644,21 +5644,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.614799499511719,
           0,
           0,
           0,
           0,
-          1,
+          8.614799499511719,
           0,
           0,
           0,
           0,
-          1,
+          8.614799499511719,
           0,
-          0,
-          0,
-          0,
+          3.6698226928710938,
+          -2.647112727165222,
+          -15.031903743743896,
           1
         ],
         "name": "Strake_2",
@@ -5671,21 +5671,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.334064483642578,
           0,
           0,
           0,
           0,
-          1,
+          8.334064483642578,
           0,
           0,
           0,
           0,
-          1,
+          8.334064483642578,
           0,
-          0,
-          0,
-          0,
+          3.316356658935547,
+          -2.7244913578033447,
+          15.338326930999756,
           1
         ],
         "name": "Strake_M_1",
@@ -5698,21 +5698,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.334064483642578,
           0,
           0,
           0,
           0,
-          1,
+          8.334064483642578,
           0,
           0,
           0,
           0,
-          1,
+          8.334064483642578,
           0,
-          0,
-          0,
-          0,
+          3.316356658935547,
+          -2.7244913578033447,
+          15.338326930999756,
           1
         ],
         "name": "Strake_M_2",
@@ -5727,20 +5727,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb"
   },
-  "runtimeHash": "ad482a9dd0cb4859116d0b53d979aa772092a912f23504f02a2a64f6bb9ee45e",
+  "runtimeHash": "7c19e238319dcd6cf1ae96fbcf2526fc538f7ca608ac8ead5abc77ea06142737",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          12.468679428100586,
-          15.28727912902832,
-          16.109495162963867
+          12.468679814967782,
+          15.28727913840004,
+          16.109495591981972
         ],
         "min": [
           -12.468755722045898,
-          -15.287285804748535,
-          -16.109838485717773
+          -15.287285815866538,
+          -16.10983818839852
         ]
       },
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid.body",

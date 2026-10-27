@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4e22394a8d6896a6f711d58de9fd9e0352df1b949592fc548e127bd70ed0f218",
+  "contentHash": "380beda98b8f2f130eb55d9b22a3bcadea8f27d73428185eaa661a69500aa220",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -3.732574224472046,
+          -3.7325741713959535,
           -0.19939303398132324,
-          3.6522376537323
+          3.652237672493929
         ],
         "min": [
-          -4.6227874755859375,
+          -4.62278752866203,
           -2.63242506980896,
-          1.8156018257141113
+          1.8156018069524822
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca1e7ec926d33dbb0774da7ca4ddf167542beedd25956341d530a4c66506ce20",
+      "geometryHash": "c007d7d52bc466b3a09f66bee2a63929a1d0f3736e5f63128aaeccaed889971c",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -84,18 +84,18 @@
     {
       "bounds": {
         "max": [
-          -6.113349914550781,
-          -0.2973112463951111,
+          -6.113349990481354,
+          -0.29731120019046064,
           2.2571210861206055
         ],
         "min": [
-          -7.163536071777344,
-          -1.4229276180267334,
+          -7.163535995846771,
+          -1.4229276642313837,
           0.6353167295455933
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e79e964e3cc391d1187723ca8b5c53064cb3e32390eb926acc3612148bcab87a",
+      "geometryHash": "ae6c3913348432bb0c2352e515b901f710cd7803d549ee7ebb07c918f8062697",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -109,18 +109,18 @@
     {
       "bounds": {
         "max": [
-          -5.771854400634766,
+          -5.771854516271451,
           -0.18079209327697754,
-          -0.21012620627880096
+          -0.2101261979046003
         ],
         "min": [
-          -6.950656890869141,
+          -6.9506567752324555,
           -3.021552085876465,
-          -2.3673768043518066
+          -2.3673768127260075
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8987d6e86bc147ea0fa390e5c106dd77b62d92e9f113a61d553b33ecc5a4f05f",
+      "geometryHash": "c80c7e300f0d08d1f62a66618fee766eab51667be5044e92fe74465147588c65",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -135,17 +135,17 @@
       "bounds": {
         "max": [
           -3.164773941040039,
-          -0.1635143905878067,
-          -1.8370732069015503
+          -0.1635143437203418,
+          -1.837073206732379
         ],
         "min": [
           -4.980145454406738,
-          -1.9272507429122925,
-          -3.6522231101989746
+          -1.9272507897797575,
+          -3.652223110368146
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85e0422265b8d460c4254fb3ec2f563b6e106f4a3081c5a65e07a8d15dfa4c9c",
+      "geometryHash": "e00e2abcf158098c285926bec051d48067f0f731e0bcb1413ece11a505a715b4",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -159,18 +159,18 @@
     {
       "bounds": {
         "max": [
-          -0.9666988253593445,
+          -0.9666987947329948,
           -0.29825329780578613,
-          -0.38625043630599976
+          -0.386250496597334
         ],
         "min": [
-          -2.8293445110321045,
+          -2.829344541658454,
           -3.2746169567108154,
-          -1.9549568891525269
+          -1.9549568288611927
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4771b9f525c7cacf59233d2892a50809cf8daa2c46b8200f83bb886fb366eb7",
+      "geometryHash": "7955c530a4c3c6fcebcaf4c584a18f92ec16b3c301adbe6ae821d9ffe4efdef7",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -184,18 +184,18 @@
     {
       "bounds": {
         "max": [
-          -1.0545932054519653,
+          -1.0545931123077703,
           -0.16033172607421875,
-          2.319730520248413
+          2.3197306261986843
         ],
         "min": [
-          -2.506067991256714,
+          -2.506068084400909,
           -2.300960063934326,
-          0.6296097040176392
+          0.629609598067368
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12bab64b8c56266fa1b8f470630b026d149a11401f233d1279fef34b9cf4566f",
+      "geometryHash": "8f5232cd74babc163f9d98d9af099f7404b795b9ea8cb7f1e1bd8fa5fb88d64d",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -210,17 +210,17 @@
       "bounds": {
         "max": [
           7.663156509399414,
-          1.8023232221603394,
-          1.0867112874984741
+          1.802323188729932,
+          1.0867112995769324
         ],
         "min": [
           -0.4210529327392578,
-          1.2437535524368286,
-          0.5143254995346069
+          1.243753585867236,
+          0.5143254874561487
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1f7917f77370b5a070fbab2cc99505c47b516ad7f79ea799955de645f73eb95",
+      "geometryHash": "2f583797baf19ec6141656c2ac5c6c8dbdd1795e4ca37afea2d4a3ed1e47075e",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel-0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -235,17 +235,17 @@
       "bounds": {
         "max": [
           7.663156509399414,
-          1.8023232221603394,
-          -0.3953937292098999
+          1.802323188729932,
+          -0.39539371713144167
         ],
         "min": [
           -0.4210529327392578,
-          1.2437535524368286,
-          -0.9677795171737671
+          1.243753585867236,
+          -0.9677795292522253
         ]
       },
       "drawMode": 4,
-      "geometryHash": "747cbcc924c1e86ccc237fa659f99917be94f7bf04aa4b5903d26ef9787a7f7c",
+      "geometryHash": "e9816ec19c28067de59a450af8bb939fc4ee35d9ba51222014e3e87cfe93d89f",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -260,17 +260,17 @@
       "bounds": {
         "max": [
           8,
-          1.9171054363250732,
-          1.2047114372253418
+          1.9171053824376867,
+          1.2047114209858183
         ],
         "min": [
           7.157896041870117,
-          1.1289708614349365,
-          0.3963255286216736
+          1.128970915322323,
+          0.3963255448611971
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad91d556ed22c55afdab718ac1c2404fddff1c9aae82237dd84e8b221c4fd6ed",
+      "geometryHash": "f69277ffd965f2378ea9f96feee0d0c8338e2d3e4a58ba81a2ab2f65fd6830de",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake-0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -285,17 +285,17 @@
       "bounds": {
         "max": [
           8,
-          1.9171054363250732,
-          -0.27739375829696655
+          1.9171053824376867,
+          -0.27739377453649006
         ],
         "min": [
           7.157896041870117,
-          1.1289708614349365,
-          -1.0857796669006348
+          1.128970915322323,
+          -1.0857796506611113
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a35a22cac5b75b9e46d8da49473123881356eccf474088f4b4894fb9d16a32b3",
+      "geometryHash": "122577ce31c858a64095bf77ef3da9f1e5e89817ab1e4e9867cd5a564fb41fb9",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -309,18 +309,18 @@
     {
       "bounds": {
         "max": [
-          -0.5917352437973022,
-          2.693479537963867,
-          2.776304006576538
+          -0.5917353062378381,
+          2.693479391779051,
+          2.7763041887211437
         ],
         "min": [
-          -7.997737407684326,
-          0.5669140219688416,
-          -2.657372236251831
+          -7.997737464453079,
+          0.5669139569698192,
+          -2.6573724183964367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "faf678bad86719ed86ee3a4111c34ffccf9565ab7bd620b8429c5e5f8a840bb4",
+      "geometryHash": "6a870cb33ddfdf0e7ae1f2cc259f3c901006d1af951cf173a75b765ce3699372",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.0",
       "indexCount": 1299,
       "indexed": true,
@@ -335,17 +335,17 @@
       "bounds": {
         "max": [
           -0.5894737243652344,
-          1.5376980304718018,
-          2.779470443725586
+          1.537697975784945,
+          2.779470403342789
         ],
         "min": [
           -7.999999046325684,
-          0.5750556588172913,
-          -2.660538673400879
+          0.5750556517111922,
+          -2.660538633018082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2260039f16ffd713bff241726280bc96eed56ba77169b2b30ee0f9643b3b069",
+      "geometryHash": "1fa6da1ee91c63e894dabda3313f092dfaf528d60ba01e2565f272207f6726e6",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.1",
       "indexCount": 837,
       "indexed": true,
@@ -359,18 +359,18 @@
     {
       "bounds": {
         "max": [
-          -4.753385066986084,
-          2.718809127807617,
-          2.804800033569336
+          -4.753385189109483,
+          2.718809108752212,
+          2.80480012031595
         ],
         "min": [
-          -5.520627021789551,
-          0.5293716788291931,
-          -2.685868263244629
+          -5.520626839390279,
+          0.5293716978845981,
+          -2.685868349991243
         ]
       },
       "drawMode": 4,
-      "geometryHash": "600d2275596ca78b5c7a4c44196cb5df22e078c9420b79ac5bd2bbf84ef6a9f6",
+      "geometryHash": "97f1abcc47b7897cb94a8fe13183c2fade1863d4bbdd5cdd329a9d65c4146cd4",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse.primitive.2",
       "indexCount": 1404,
       "indexed": true,
@@ -384,18 +384,18 @@
     {
       "bounds": {
         "max": [
-          -0.08415314555168152,
-          2.1294565200805664,
+          -0.08415312610927472,
+          2.129456471442034,
           1.4068341255187988
         ],
         "min": [
-          -1.094792366027832,
-          0.7818825840950012,
+          -1.0947923854702388,
+          0.7818826327335338,
           -1.2879023551940918
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c8071094a59a0860064821920acd3adb5e90da4fd84880cf85a28bbc0fdd1f5",
+      "geometryHash": "e5cf678b8542dbde116ded6aa9112b7fa86118635a9561c5f7fbf2cc8daf00e1",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretamantlet.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -409,18 +409,18 @@
     {
       "bounds": {
         "max": [
-          -1.3743150234222412,
-          0.6473162174224854,
+          -1.3743149042129517,
+          0.6473162283444858,
           2.8114655017852783
         ],
         "min": [
-          -6.878314018249512,
-          0.44507572054862976,
+          -6.878314137458801,
+          0.44507570962662935,
           -2.6925337314605713
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1654a5e1176c2b23ded41abdf2d736037b46bca76a0590f9688e9207ce07067",
+      "geometryHash": "7121ed948363f7f24b89d2c3a9cd3e22a06556fd06edb68d5d0a114d124a8555",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretarace.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -434,18 +434,18 @@
     {
       "bounds": {
         "max": [
-          -0.9263150691986084,
-          0.4198059141635895,
+          -0.9263149499893188,
+          0.41980591510676424,
           3.259465456008911
         ],
         "min": [
-          -7.3263139724731445,
-          -0.3716243803501129,
+          -7.326314091682434,
+          -0.3716243812932877,
           -3.140533685684204
         ]
       },
       "drawMode": 4,
-      "geometryHash": "124afbf46b3588a23f2f6fe3517c26605795bc0740e2f03ae813e45795a70f03",
+      "geometryHash": "dd1f3e8338631d8952baf534cb91466631199b98d662996336c6850d7eb15ee9",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -459,18 +459,18 @@
     {
       "bounds": {
         "max": [
-          -0.9329558610916138,
-          0.44519734382629395,
-          3.252824544906616
+          -0.9329557767606915,
+          0.4451973115855419,
+          3.2528246292375385
         ],
         "min": [
-          -7.319673538208008,
-          -0.3970158100128174,
-          -3.133892774581909
+          -7.319673264911062,
+          -0.3970157777720653,
+          -3.1338928589128314
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f6959bae2dbd9847b98780e32c1f658bff4c67bd43d97fc3e80f8246f48f3cf",
+      "geometryHash": "c77d494d91c9b99fa3e02de7237fb64e56ccf3ba8bd37d3ae5622e44d7514ee2",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring.primitive.1",
       "indexCount": 1188,
       "indexed": true,
@@ -485,17 +485,17 @@
       "bounds": {
         "max": [
           -4.934734344482422,
-          3.274573802947998,
-          -0.9510166645050049
+          3.2745738150846657,
+          -0.9510166766416726
         ],
         "min": [
           -6.3494720458984375,
-          2.668344020843506,
-          -1.7595245838165283
+          2.668344008706838,
+          -1.7595245716798606
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6b0474087f512c83addb79708a6e05e4fa36ae3b5a7d1ef20c4c201039e235b",
+      "geometryHash": "2613d0a5256b2b553a29430e0cbc5113118bb103b97671a97f03ba0866e7f3d3",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasight.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -510,17 +510,17 @@
       "bounds": {
         "max": [
           1.9368419647216797,
-          1.9484983682632446,
-          1.236916422843933
+          1.9484983247043952,
+          1.2369164336845313
         ],
         "min": [
           -0.4210529327392578,
-          1.0975779294967651,
-          0.3641204237937927
+          1.0975779730556146,
+          0.3641204129531945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e4306e58ab345638cb3029ebf54a88eace743e366b0be8497c989d7c160f6f8",
+      "geometryHash": "6a2082a631f8222f3b816454bfa55fe32c8529725cd3a5f9c0dab650d64db63f",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve-0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -535,17 +535,17 @@
       "bounds": {
         "max": [
           1.9368419647216797,
-          1.9484983682632446,
-          -0.2451886534690857
+          1.9484983247043952,
+          -0.2451886426284875
         ],
         "min": [
           -0.4210529327392578,
-          1.0975779294967651,
-          -1.117984652519226
+          1.0975779730556146,
+          -1.1179846633598243
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c954b6bbc5127b088b45a2276a7f27b40f3f78d4d3dbc9bef4e17d842c3ab37f",
+      "geometryHash": "14d46444393e65ee3e4b32a1cd9a7cd6f6438623998d871666b5db215918c1f5",
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve0-22.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -807,21 +807,21 @@
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear0",
       "localTransform": [
-        1,
+        1.2165160179138184,
         0,
         0,
         0,
         0,
-        1,
+        1.2165160179138184,
         0,
         0,
         0,
         0,
-        1,
+        1.2165160179138184,
         0,
-        0,
-        0,
-        0,
+        -4.177680850028992,
+        -1.4159090518951416,
+        2.7339197397232056,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -835,42 +835,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.2165160179138184,
         0,
         0,
         0,
         0,
-        1,
+        1.2165160179138184,
         0,
         0,
         0,
         0,
-        1,
+        1.2165160179138184,
         0,
-        0,
-        0,
-        0,
+        -4.177680850028992,
+        -1.4159090518951416,
+        2.7339197397232056,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear1",
       "localTransform": [
-        1,
+        0.8109021782875061,
         0,
         0,
         0,
         0,
-        1,
+        0.8109021782875061,
         0,
         0,
         0,
         0,
-        1,
+        0.8109021782875061,
         0,
-        0,
-        0,
-        0,
+        -6.6384429931640625,
+        -0.8601194322109222,
+        1.4462189078330994,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -884,42 +884,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        0.8109021782875061,
         0,
         0,
         0,
         0,
-        1,
+        0.8109021782875061,
         0,
         0,
         0,
         0,
-        1,
+        0.8109021782875061,
         0,
-        0,
-        0,
-        0,
+        -6.6384429931640625,
+        -0.8601194322109222,
+        1.4462189078330994,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear2",
       "localTransform": [
-        1,
+        1.4203799962997437,
         0,
         0,
         0,
         0,
-        1,
+        1.4203799962997437,
         0,
         0,
         0,
         0,
-        1,
+        1.4203799962997437,
         0,
-        0,
-        0,
-        0,
+        -6.361255645751953,
+        -1.6011720895767212,
+        -1.2887515053153038,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -933,42 +933,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.4203799962997437,
         0,
         0,
         0,
         0,
-        1,
+        1.4203799962997437,
         0,
         0,
         0,
         0,
-        1,
+        1.4203799962997437,
         0,
-        0,
-        0,
-        0,
+        -6.361255645751953,
+        -1.6011720895767212,
+        -1.2887515053153038,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear3",
       "localTransform": [
-        1,
+        0.9076857566833496,
         0,
         0,
         0,
         0,
-        1,
+        0.9076857566833496,
         0,
         0,
         0,
         0,
-        1,
+        0.9076857566833496,
         0,
-        0,
-        0,
-        0,
+        -4.072459697723389,
+        -1.0453825667500496,
+        -2.7446481585502625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -982,42 +982,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        0.9076857566833496,
         0,
         0,
         0,
         0,
-        1,
+        0.9076857566833496,
         0,
         0,
         0,
         0,
-        1,
+        0.9076857566833496,
         0,
-        0,
-        0,
-        0,
+        -4.072459697723389,
+        -1.0453825667500496,
+        -2.7446481585502625,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear4",
       "localTransform": [
-        1,
+        1.4881818294525146,
         0,
         0,
         0,
         0,
-        1,
+        1.4881818294525146,
         0,
         0,
         0,
         0,
-        1,
+        1.4881818294525146,
         0,
-        0,
-        0,
-        0,
+        -1.8980216681957245,
+        -1.7864351272583008,
+        -1.1706036627292633,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1031,42 +1031,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.4881818294525146,
         0,
         0,
         0,
         0,
-        1,
+        1.4881818294525146,
         0,
         0,
         0,
         0,
-        1,
+        1.4881818294525146,
         0,
-        0,
-        0,
-        0,
+        -1.8980216681957245,
+        -1.7864351272583008,
+        -1.1706036627292633,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.trbase-tear5",
       "localTransform": [
-        1,
+        1.0703141689300537,
         0,
         0,
         0,
         0,
-        1,
+        1.0703141689300537,
         0,
         0,
         0,
         0,
-        1,
+        1.0703141689300537,
         0,
-        0,
-        0,
-        0,
+        -1.7803305983543396,
+        -1.2306458950042725,
+        1.4746701121330261,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1080,42 +1080,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.0703141689300537,
         0,
         0,
         0,
         0,
-        1,
+        1.0703141689300537,
         0,
         0,
         0,
         0,
-        1,
+        1.0703141689300537,
         0,
-        0,
-        0,
-        0,
+        -1.7803305983543396,
+        -1.2306458950042725,
+        1.4746701121330261,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel-0-22",
       "localTransform": [
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
-        0,
-        0,
-        0,
+        3.621051788330078,
+        1.523038387298584,
+        0.8005183935165405,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1129,42 +1129,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
-        0,
-        0,
-        0,
+        3.621051788330078,
+        1.523038387298584,
+        0.8005183935165405,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabarrel0-22",
       "localTransform": [
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
-        0,
-        0,
-        0,
+        3.621051788330078,
+        1.523038387298584,
+        -0.6815866231918335,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1178,42 +1178,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
         0,
         0,
         0,
-        1,
+        4.042104721069336,
         0,
-        0,
-        0,
-        0,
+        3.621051788330078,
+        1.523038387298584,
+        -0.6815866231918335,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake-0-22",
       "localTransform": [
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
-        0,
-        0,
-        0,
+        7.578948020935059,
+        1.5230381488800049,
+        0.8005184829235077,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1227,42 +1227,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
-        0,
-        0,
-        0,
+        7.578948020935059,
+        1.5230381488800049,
+        0.8005184829235077,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretabrake0-22",
       "localTransform": [
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
-        0,
-        0,
-        0,
+        7.578948020935059,
+        1.5230381488800049,
+        -0.6815867125988007,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1276,42 +1276,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
         0,
         0,
         0,
-        1,
+        0.4210519790649414,
         0,
-        0,
-        0,
-        0,
+        7.578948020935059,
+        1.5230381488800049,
+        -0.6815867125988007,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretahouse",
       "localTransform": [
-        1,
+        3.7052626609802246,
         0,
         0,
         0,
         0,
-        1,
+        3.7052626609802246,
         0,
         0,
         0,
         0,
-        1,
+        3.7052626609802246,
         0,
-        0,
-        0,
-        0,
+        -4.294736385345459,
+        1.6240904033184052,
+        0.059465885162353516,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1325,42 +1325,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        3.7052626609802246,
         0,
         0,
         0,
         0,
-        1,
+        3.7052626609802246,
         0,
         0,
         0,
         0,
-        1,
+        3.7052626609802246,
         0,
-        0,
-        0,
-        0,
+        -4.294736385345459,
+        1.6240904033184052,
+        0.059465885162353516,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretamantlet",
       "localTransform": [
-        1,
+        1.3473682403564453,
         0,
         0,
         0,
         0,
-        1,
+        1.3473682403564453,
         0,
         0,
         0,
         0,
-        1,
+        1.3473682403564453,
         0,
-        0,
-        0,
-        0,
+        -0.5894727557897568,
+        1.4556695520877838,
+        0.059465885162353516,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1374,42 +1374,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.3473682403564453,
         0,
         0,
         0,
         0,
-        1,
+        1.3473682403564453,
         0,
         0,
         0,
         0,
-        1,
+        1.3473682403564453,
         0,
-        0,
-        0,
-        0,
+        -0.5894727557897568,
+        1.4556695520877838,
+        0.059465885162353516,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretarace",
       "localTransform": [
-        1,
+        2.751999616622925,
         0,
         0,
         0,
         0,
-        1,
+        2.751999616622925,
         0,
         0,
         0,
         0,
-        1,
+        2.751999616622925,
         0,
-        0,
-        0,
-        0,
+        -4.1263145208358765,
+        0.5461959689855576,
+        0.059465885162353516,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1423,42 +1423,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        2.751999616622925,
         0,
         0,
         0,
         0,
-        1,
+        2.751999616622925,
         0,
         0,
         0,
         0,
-        1,
+        2.751999616622925,
         0,
-        0,
-        0,
-        0,
+        -4.1263145208358765,
+        0.5461959689855576,
+        0.059465885162353516,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretaring",
       "localTransform": [
-        1,
+        3.1999995708465576,
         0,
         0,
         0,
         0,
-        1,
+        3.1999995708465576,
         0,
         0,
         0,
         0,
-        1,
+        3.1999995708465576,
         0,
-        0,
-        0,
-        0,
+        -4.1263145208358765,
+        0.02409076690673828,
+        0.059465885162353516,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1472,42 +1472,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        3.1999995708465576,
         0,
         0,
         0,
         0,
-        1,
+        3.1999995708465576,
         0,
         0,
         0,
         0,
-        1,
+        3.1999995708465576,
         0,
-        0,
-        0,
-        0,
+        -4.1263145208358765,
+        0.02409076690673828,
+        0.059465885162353516,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasight",
       "localTransform": [
-        1,
+        0.7073688507080078,
         0,
         0,
         0,
         0,
-        1,
+        0.7073688507080078,
         0,
         0,
         0,
         0,
-        1,
+        0.7073688507080078,
         0,
-        0,
-        0,
-        0,
+        -5.64210319519043,
+        2.971458911895752,
+        -1.3552706241607666,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1521,42 +1521,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        0.7073688507080078,
         0,
         0,
         0,
         0,
-        1,
+        0.7073688507080078,
         0,
         0,
         0,
         0,
-        1,
+        0.7073688507080078,
         0,
-        0,
-        0,
-        0,
+        -5.64210319519043,
+        2.971458911895752,
+        -1.3552706241607666,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve-0-22",
       "localTransform": [
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
-        0,
-        0,
-        0,
+        0.7578945159912109,
+        1.5230381488800049,
+        0.8005184233188629,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1570,42 +1570,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
-        0,
-        0,
-        0,
+        0.7578945159912109,
+        1.5230381488800049,
+        0.8005184233188629,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-wreck-corvette-turret.node.turretasleeve0-22",
       "localTransform": [
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
-        0,
-        0,
-        0,
+        0.7578945159912109,
+        1.5230381488800049,
+        -0.6815866529941559,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1619,21 +1619,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-wreck-corvette-turret.body",
       "worldTransform": [
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
         0,
         0,
         0,
-        1,
+        1.1789474487304688,
         0,
-        0,
-        0,
-        0,
+        0.7578945159912109,
+        1.5230381488800049,
+        -0.6815866529941559,
         1
       ]
     },
@@ -1696,37 +1696,37 @@
       "uri": "place_aftermath_wreck_corvette_turret.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 251120,
-    "sha256": "e041f0599bf4d89f268c4c02a41d996c3b8c51a9e5299bd045261bd1cd6ee471",
+    "bytes": 203112,
+    "sha256": "0227cc4523733ed519c58d3fbf58d2848b0c86a53dd2867a327c4788d9ebe2ee",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         4.76837158203125e-7,
-        -0.000021576881408691406,
-        0.000007271766662597656
+        -0.000021570813074855977,
+        0.000007281062891495438
       ],
       "max": [
         8,
-        3.274573802947998,
-        3.6522376537323
+        3.2745738150846657,
+        3.652237672493929
       ],
       "min": [
         -7.999999046325684,
         -3.2746169567108154,
-        -3.6522231101989746
+        -3.652223110368146
       ],
       "size": [
         15.999999046325684,
-        6.5491907596588135,
-        7.304460763931274
+        6.549190771795481,
+        7.3044607828620745
       ]
     },
     "hidden": [],
@@ -1883,21 +1883,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2165160179138184,
           0,
           0,
           0,
           0,
-          1,
+          1.2165160179138184,
           0,
           0,
           0,
           0,
-          1,
+          1.2165160179138184,
           0,
-          0,
-          0,
-          0,
+          -4.177680850028992,
+          -1.4159090518951416,
+          2.7339197397232056,
           1
         ],
         "name": "trBase_tear0",
@@ -1910,21 +1910,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8109021782875061,
           0,
           0,
           0,
           0,
-          1,
+          0.8109021782875061,
           0,
           0,
           0,
           0,
-          1,
+          0.8109021782875061,
           0,
-          0,
-          0,
-          0,
+          -6.6384429931640625,
+          -0.8601194322109222,
+          1.4462189078330994,
           1
         ],
         "name": "trBase_tear1",
@@ -1937,21 +1937,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4203799962997437,
           0,
           0,
           0,
           0,
-          1,
+          1.4203799962997437,
           0,
           0,
           0,
           0,
-          1,
+          1.4203799962997437,
           0,
-          0,
-          0,
-          0,
+          -6.361255645751953,
+          -1.6011720895767212,
+          -1.2887515053153038,
           1
         ],
         "name": "trBase_tear2",
@@ -1964,21 +1964,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9076857566833496,
           0,
           0,
           0,
           0,
-          1,
+          0.9076857566833496,
           0,
           0,
           0,
           0,
-          1,
+          0.9076857566833496,
           0,
-          0,
-          0,
-          0,
+          -4.072459697723389,
+          -1.0453825667500496,
+          -2.7446481585502625,
           1
         ],
         "name": "trBase_tear3",
@@ -1991,21 +1991,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4881818294525146,
           0,
           0,
           0,
           0,
-          1,
+          1.4881818294525146,
           0,
           0,
           0,
           0,
-          1,
+          1.4881818294525146,
           0,
-          0,
-          0,
-          0,
+          -1.8980216681957245,
+          -1.7864351272583008,
+          -1.1706036627292633,
           1
         ],
         "name": "trBase_tear4",
@@ -2018,21 +2018,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0703141689300537,
           0,
           0,
           0,
           0,
-          1,
+          1.0703141689300537,
           0,
           0,
           0,
           0,
-          1,
+          1.0703141689300537,
           0,
-          0,
-          0,
-          0,
+          -1.7803305983543396,
+          -1.2306458950042725,
+          1.4746701121330261,
           1
         ],
         "name": "trBase_tear5",
@@ -2045,21 +2045,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.042104721069336,
           0,
           0,
           0,
           0,
-          1,
+          4.042104721069336,
           0,
           0,
           0,
           0,
-          1,
+          4.042104721069336,
           0,
-          0,
-          0,
-          0,
+          3.621051788330078,
+          1.523038387298584,
+          0.8005183935165405,
           1
         ],
         "name": "TurretABarrel-022",
@@ -2072,21 +2072,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.042104721069336,
           0,
           0,
           0,
           0,
-          1,
+          4.042104721069336,
           0,
           0,
           0,
           0,
-          1,
+          4.042104721069336,
           0,
-          0,
-          0,
-          0,
+          3.621051788330078,
+          1.523038387298584,
+          -0.6815866231918335,
           1
         ],
         "name": "TurretABarrel022",
@@ -2099,21 +2099,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4210519790649414,
           0,
           0,
           0,
           0,
-          1,
+          0.4210519790649414,
           0,
           0,
           0,
           0,
-          1,
+          0.4210519790649414,
           0,
-          0,
-          0,
-          0,
+          7.578948020935059,
+          1.5230381488800049,
+          0.8005184829235077,
           1
         ],
         "name": "TurretABrake-022",
@@ -2126,21 +2126,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4210519790649414,
           0,
           0,
           0,
           0,
-          1,
+          0.4210519790649414,
           0,
           0,
           0,
           0,
-          1,
+          0.4210519790649414,
           0,
-          0,
-          0,
-          0,
+          7.578948020935059,
+          1.5230381488800049,
+          -0.6815867125988007,
           1
         ],
         "name": "TurretABrake022",
@@ -2153,21 +2153,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
-          0,
-          0,
-          0,
+          -4.294736385345459,
+          1.6240904033184052,
+          0.059465885162353516,
           1
         ],
         "name": "TurretAHouse_1",
@@ -2180,21 +2180,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
-          0,
-          0,
-          0,
+          -4.294736385345459,
+          1.6240904033184052,
+          0.059465885162353516,
           1
         ],
         "name": "TurretAHouse_2",
@@ -2207,21 +2207,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
           0,
           0,
           0,
-          1,
+          3.7052626609802246,
           0,
-          0,
-          0,
-          0,
+          -4.294736385345459,
+          1.6240904033184052,
+          0.059465885162353516,
           1
         ],
         "name": "TurretAHouse_3",
@@ -2234,21 +2234,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3473682403564453,
           0,
           0,
           0,
           0,
-          1,
+          1.3473682403564453,
           0,
           0,
           0,
           0,
-          1,
+          1.3473682403564453,
           0,
-          0,
-          0,
-          0,
+          -0.5894727557897568,
+          1.4556695520877838,
+          0.059465885162353516,
           1
         ],
         "name": "TurretAMantlet",
@@ -2261,21 +2261,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.751999616622925,
           0,
           0,
           0,
           0,
-          1,
+          2.751999616622925,
           0,
           0,
           0,
           0,
-          1,
+          2.751999616622925,
           0,
-          0,
-          0,
-          0,
+          -4.1263145208358765,
+          0.5461959689855576,
+          0.059465885162353516,
           1
         ],
         "name": "TurretARace",
@@ -2288,21 +2288,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1999995708465576,
           0,
           0,
           0,
           0,
-          1,
+          3.1999995708465576,
           0,
           0,
           0,
           0,
-          1,
+          3.1999995708465576,
           0,
-          0,
-          0,
-          0,
+          -4.1263145208358765,
+          0.02409076690673828,
+          0.059465885162353516,
           1
         ],
         "name": "TurretARing_1",
@@ -2315,21 +2315,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1999995708465576,
           0,
           0,
           0,
           0,
-          1,
+          3.1999995708465576,
           0,
           0,
           0,
           0,
-          1,
+          3.1999995708465576,
           0,
-          0,
-          0,
-          0,
+          -4.1263145208358765,
+          0.02409076690673828,
+          0.059465885162353516,
           1
         ],
         "name": "TurretARing_2",
@@ -2342,21 +2342,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7073688507080078,
           0,
           0,
           0,
           0,
-          1,
+          0.7073688507080078,
           0,
           0,
           0,
           0,
-          1,
+          0.7073688507080078,
           0,
-          0,
-          0,
-          0,
+          -5.64210319519043,
+          2.971458911895752,
+          -1.3552706241607666,
           1
         ],
         "name": "TurretASight",
@@ -2369,21 +2369,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1789474487304688,
           0,
           0,
           0,
           0,
-          1,
+          1.1789474487304688,
           0,
           0,
           0,
           0,
-          1,
+          1.1789474487304688,
           0,
-          0,
-          0,
-          0,
+          0.7578945159912109,
+          1.5230381488800049,
+          0.8005184233188629,
           1
         ],
         "name": "TurretASleeve-022",
@@ -2396,21 +2396,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1789474487304688,
           0,
           0,
           0,
           0,
-          1,
+          1.1789474487304688,
           0,
           0,
           0,
           0,
-          1,
+          1.1789474487304688,
           0,
-          0,
-          0,
-          0,
+          0.7578945159912109,
+          1.5230381488800049,
+          -0.6815866529941559,
           1
         ],
         "name": "TurretASleeve022",
@@ -2425,20 +2425,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_turret.glb"
   },
-  "runtimeHash": "46ddf41d0845dd99afef79289b25fcb78b0f1e0be8a181fbe9f48e52f1098868",
+  "runtimeHash": "5558fa4358c68387404f46b85c7e4d25a5ce1104b82683899b70eb3fdb8b2394",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           8,
-          3.274573802947998,
-          3.6522376537323
+          3.2745738150846657,
+          3.652237672493929
         ],
         "min": [
           -7.999999046325684,
           -3.2746169567108154,
-          -3.6522231101989746
+          -3.652223110368146
         ]
       },
       "id": "sf.render.aftermath-wreck-corvette-turret.body",

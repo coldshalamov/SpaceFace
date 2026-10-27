@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0edf80c1099ad0d3a54e827fca01e57bb6e9daf6a2b2a99093a67611cff6af2a",
+  "contentHash": "8ee000bcf15311527b229814bcbcc8bdb5d07d7eef072e763551974f41696200",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.14000000059604645,
+          0.13994811473048618,
           1.9299999475479126,
-          0.5099999904632568
+          0.5100213490956564
         ],
         "min": [
-          -0.14000000059604645,
+          -0.13994811473048618,
           0,
-          -0.5099999904632568
+          -0.5100213490956564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50795602e6a11213e365413310ac6bd40d2b3f7797ca2bb60968963892f34664",
+      "geometryHash": "3060a4a08208ba0ad578a80f4a0a4dbe4710c901c93abe06c85e91a6738d5f78",
       "id": "sf.render.triton-aperture-monolith.mesh.apertureframe.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          0.23999999463558197,
-          1.8799999952316284,
+          0.23999450279391055,
+          1.8800054870732998,
           0.10000000149011612
         ],
         "min": [
-          0.1599999964237213,
-          1.7599999904632568,
+          0.16000548826539274,
+          1.7599944986215854,
           -0.10000000149011612
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1004ee65d42800d128a3548d5461fc1ba7dcac8bb976295d3b5e56746489b17d",
+      "geometryHash": "ebc011422f442928964a75a083545ba88810e6e16bbc42deaf1c2861bfe20ceb",
       "id": "sf.render.triton-aperture-monolith.mesh.aperturelamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -83,20 +83,20 @@
     {
       "id": "sf.render.triton-aperture-monolith.mesh.apertureframe",
       "localTransform": [
-        1,
+        0.9649999737739563,
         0,
         0,
         0,
         0,
-        1,
+        0.9649999737739563,
         0,
         0,
         0,
         0,
-        1,
+        0.9649999737739563,
         0,
         0,
-        0,
+        0.9649999737739563,
         0,
         1
       ],
@@ -111,20 +111,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.triton-aperture-monolith.body",
       "worldTransform": [
-        1,
+        0.9649999737739563,
         0,
         0,
         0,
         0,
-        1,
+        0.9649999737739563,
         0,
         0,
         0,
         0,
-        1,
+        0.9649999737739563,
         0,
         0,
-        0,
+        0.9649999737739563,
         0,
         1
       ]
@@ -132,20 +132,20 @@
     {
       "id": "sf.render.triton-aperture-monolith.mesh.aperturelamp",
       "localTransform": [
-        1,
+        0.10000000149011612,
         0,
         0,
         0,
         0,
-        1,
+        0.10000000149011612,
         0,
         0,
         0,
         0,
-        1,
+        0.10000000149011612,
         0,
-        0,
-        0,
+        0.19999999552965164,
+        1.8199999928474426,
         0,
         1
       ],
@@ -160,20 +160,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.triton-aperture-monolith.body",
       "worldTransform": [
-        1,
+        0.10000000149011612,
         0,
         0,
         0,
         0,
-        1,
+        0.10000000149011612,
         0,
         0,
         0,
         0,
-        1,
+        0.10000000149011612,
         0,
-        0,
-        0,
+        0.19999999552965164,
+        1.8199999928474426,
         0,
         1
       ]
@@ -237,37 +237,37 @@
       "uri": "place_triton_aperture_monolith.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 5476,
-    "sha256": "58b5de03916a6b6a6d175c0e366ac3595c6d0c4d681dd0e325c7c47f827e2428",
+    "bytes": 4588,
+    "sha256": "6259466d32447c05c93da03adcef3f8e171d70a4cf5d60dfdcfa68077ef4a076",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.04999999701976776,
+        0.05002319403171218,
         0.9649999737739563,
         0
       ],
       "max": [
-        0.23999999463558197,
+        0.23999450279391055,
         1.9299999475479126,
-        0.5099999904632568
+        0.5100213490956564
       ],
       "min": [
-        -0.14000000059604645,
+        -0.13994811473048618,
         0,
-        -0.5099999904632568
+        -0.5100213490956564
       ],
       "size": [
-        0.3799999952316284,
+        0.37994261752439673,
         1.9299999475479126,
-        1.0199999809265137
+        1.0200426981913129
       ]
     },
     "hidden": [],
@@ -293,20 +293,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9649999737739563,
           0,
           0,
           0,
           0,
-          1,
+          0.9649999737739563,
           0,
           0,
           0,
           0,
-          1,
+          0.9649999737739563,
           0,
           0,
-          0,
+          0.9649999737739563,
           0,
           1
         ],
@@ -319,20 +319,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10000000149011612,
           0,
           0,
           0,
           0,
-          1,
+          0.10000000149011612,
           0,
           0,
           0,
           0,
-          1,
+          0.10000000149011612,
           0,
-          0,
-          0,
+          0.19999999552965164,
+          1.8199999928474426,
           0,
           1
         ],
@@ -347,20 +347,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_triton_aperture_monolith.glb"
   },
-  "runtimeHash": "ba1442916e733e2b6af3ad33a6de1301c9e006e9205db6bf9dbb1e8f5e96eac2",
+  "runtimeHash": "2561f89f782f1146744a26349bbb5ccc82dd41b61498fab9de932109d754cb66",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          0.23999999463558197,
+          0.23999450279391055,
           1.9299999475479126,
-          0.5099999904632568
+          0.5100213490956564
         ],
         "min": [
-          -0.14000000059604645,
+          -0.13994811473048618,
           0,
-          -0.5099999904632568
+          -0.5100213490956564
         ]
       },
       "id": "sf.render.triton-aperture-monolith.body",

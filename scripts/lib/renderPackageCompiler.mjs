@@ -7,13 +7,16 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import {
   compactPrimitive,
   joinPrimitives,
+  meshopt,
   prune,
+  quantize,
   reorder,
   transformPrimitive,
   weld,
 } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
+import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
 
 import {
   RENDER_PACKAGE_COMPILER_NAME,
@@ -70,9 +73,25 @@ export async function compileRenderPackage(options = {}) {
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
 
+  // The authored release GLBs ship quantized and meshopt-compressed. Reading one here decodes it
+  // to float, and baking immutable node transforms + welding then wrote it back lossless - so every
+  // render package came out ~2x the size of the source it replaces (retail: 439 MB of packages
+  // standing in for the 269 MB of parts it omits). Re-apply the same release geometry profile the
+  // source used, in glTF-Transform's documented optimize order (quantize -> reorder -> meshopt):
+  // identical triangles, identical materials, identical pixels, roughly half the bytes to fetch,
+  // parse and keep resident.
   await document.transform(
     weld({ overwrite: true }),
+    quantize({
+      quantizePosition: RELEASE_MESHOPT_OPTIONS.quantizePosition,
+      quantizeNormal: RELEASE_MESHOPT_OPTIONS.quantizeNormal,
+      quantizeTexcoord: RELEASE_MESHOPT_OPTIONS.quantizeTexcoord,
+      quantizeColor: RELEASE_MESHOPT_OPTIONS.quantizeColor,
+      quantizeWeight: RELEASE_MESHOPT_OPTIONS.quantizeWeight,
+      quantizeGeneric: RELEASE_MESHOPT_OPTIONS.quantizeGeneric,
+    }),
     reorder({ encoder: MeshoptEncoder, target: 'performance', cleanup: true }),
+    meshopt({ encoder: MeshoptEncoder, ...RELEASE_MESHOPT_OPTIONS }),
   );
   stampSemanticLocators(semanticManifest, resolvedNodes);
 

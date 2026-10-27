@@ -151,24 +151,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "299302dd6b7cd36ed9142173fd95892786a30c0b0c66d0c0efcf5eb913f79a60",
+  "contentHash": "2e033d9e4f47076ff1bc0c44bad2cb2cd91e20a5f24b4809d3539004657b81eb",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           17.869646072387695,
-          8.692479133605957,
-          6.535037040710449
+          8.692478994710964,
+          6.535037277244498
         ],
         "min": [
           -26.149999618530273,
-          -3.8509774208068848,
-          -6.535037040710449
+          -3.8509772819118915,
+          -6.535037277244498
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52648cd0b073e354b98f61ac9db45976d7d204ed12af6c004707b93c151955ae",
+      "geometryHash": "8ce74aa6880b61f410587414eba4bd68a041f78437c98ef4a8955d9f63d24516",
       "id": "sf.render.proteus-funnel.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -183,17 +183,17 @@
       "bounds": {
         "max": [
           17.64237403869629,
-          5.629849433898926,
-          4.150487422943115
+          5.629849379058815,
+          4.150487203038775
         ],
         "min": [
           -18.649999618530273,
-          0.30013033747673035,
-          -3.230487108230591
+          0.3001303923168419,
+          -3.2304868883262507
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fad372daab5f6a46d97db9fc1ee02a31f029d98f64ae5c61732a883ce521f17",
+      "geometryHash": "1c9369dcfb07ad0b70e62dd1c8fcb7bbfd814762416d45b5b26eb3635e10938d",
       "id": "sf.render.proteus-funnel.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -208,17 +208,17 @@
       "bounds": {
         "max": [
           10.399999618530273,
-          5.600031852722168,
-          3.599893093109131
+          5.60003195265322,
+          3.5998932368427843
         ],
         "min": [
           -16.200000762939453,
-          5.099967956542969,
-          -3.599893093109131
+          5.099967856611917,
+          -3.5998932368427843
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6aee9cf90c79a8cb5f789f6acf3e70ceb87bc8682f9486c21938b10dd519145",
+      "geometryHash": "841dc5a13c2321e5f0d6237c2ae6fa000ae5cb92b46159b7ae58327e0c768992",
       "id": "sf.render.proteus-funnel.mesh.lod0-ceramic.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -233,17 +233,17 @@
       "bounds": {
         "max": [
           14.25,
-          5.494383335113525,
-          4.296197414398193
+          5.494383449735183,
+          4.29619752669875
         ],
         "min": [
           -19.814973831176758,
-          -2.094785690307617,
-          -4.296197414398193
+          -2.0947858049292756,
+          -4.29619752669875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd31041a4adc90884a50601846d534329dd06ea0a8b2fc057dd9c00e1c497fb2",
+      "geometryHash": "1b34a1c724d041159a1b044d97fd364b051c6e441b9db5df505e48ba2a505718",
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep.primitive.0",
       "indexCount": 1842,
       "indexed": true,
@@ -258,17 +258,17 @@
       "bounds": {
         "max": [
           14.75,
-          8.692448616027832,
-          6.534649848937988
+          8.69244876436003,
+          6.53464995269631
         ],
         "min": [
           -26,
-          -2.098522186279297,
-          -6.534649848937988
+          -2.098522334611496,
+          -6.53464995269631
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21c171afa80eca88e4e049470d2320e7fcca3fc7b634589ae84b40542aeac37f",
+      "geometryHash": "e6fa0220236f8138deb2c14c80e807d4333775b21d7081be1a6381afa10398ef",
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded.primitive.0",
       "indexCount": 2994,
       "indexed": true,
@@ -283,17 +283,17 @@
       "bounds": {
         "max": [
           17.870521545410156,
-          6.030165195465088,
-          4.1106953620910645
+          6.030165128974449,
+          4.110695257164916
         ],
         "min": [
           12.32947826385498,
-          0.7698350548744202,
-          3.0893046855926514
+          0.7698351213650594,
+          3.0893047905188
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a32cb3594d13b1db210ee9e1f10dd6dd3c8d51218ae5fac0f8bc4b4252df4aac",
+      "geometryHash": "0c879acbb7a7de2d99f8c791b3eb2c399ce944f14b0eba0dd654fc6d8990d8fe",
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -308,17 +308,17 @@
       "bounds": {
         "max": [
           15.199999809265137,
-          3.742609739303589,
-          4.200149059295654
+          3.742609685142436,
+          4.200149182452272
         ],
         "min": [
           -12.98766803741455,
-          -0.5999101996421814,
-          -4.200149059295654
+          -0.5999101454810285,
+          -4.200149182452272
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ca659c39799cf729d03cab559ba88df67c9e61fdcac750dfba808cedbaf178e",
+      "geometryHash": "b18f79290bb81dacf38610441347714704254dc2824aa3112fd8ba8494182067",
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -333,17 +333,17 @@
       "bounds": {
         "max": [
           15,
-          5.498725414276123,
-          3.7988219261169434
+          5.4987254539494925,
+          3.798821985534227
         ],
         "min": [
           -19.5,
-          -3.1991870403289795,
-          -3.7988219261169434
+          -3.199187080002349,
+          -3.798821985534227
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4416fd892fd6b91302c21b594d0f20dd15533792be620106ecf042077d40891c",
+      "geometryHash": "509538c74e988fb4656237b1968039fe8a90892e33a82c34e055198b8a31b3e1",
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal.primitive.0",
       "indexCount": 4236,
       "indexed": true,
@@ -358,17 +358,17 @@
       "bounds": {
         "max": [
           13.649999618530273,
-          3.9496235847473145,
-          2.619594097137451
+          3.9496234775655497,
+          2.6195940956094534
         ],
         "min": [
           -10.680000305175781,
-          0.7003762722015381,
-          -2.619594097137451
+          0.7003763793833027,
+          -2.6195940956094534
         ]
       },
       "drawMode": 4,
-      "geometryHash": "786b2674d95b39c5e424272681e27b8e237454fd7d208d6234bcbbd43524de7f",
+      "geometryHash": "1ca8b8e52d8f61265fea0600124ae64b03a04de1ce82cafc5a83f0cf84dc5819",
       "id": "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet.primitive.0",
       "indexCount": 1512,
       "indexed": true,
@@ -382,18 +382,18 @@
     {
       "bounds": {
         "max": [
-          -22.124576568603516,
+          -22.124576946499182,
           5.849999904632568,
           4.849999904632568
         ],
         "min": [
-          -23.075424194335938,
+          -23.07542381644027,
           -3.8499999046325684,
           -4.849999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ae31aaa85453a69a8c065d97d36794c959634b0bce49c3dec53acb236ebc1e2",
+      "geometryHash": "973688a7fd927a981df137683126ad4288017bb7f863b67ee83659ff656a4363",
       "id": "sf.render.proteus-funnel.mesh.lod0-livery.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -407,18 +407,18 @@
     {
       "bounds": {
         "max": [
-          16.07631492614746,
-          4.458658218383789,
+          16.076314978710585,
+          4.458658289486618,
           3.6500000953674316
         ],
         "min": [
-          15.123685836791992,
-          -2.658658027648926,
+          15.12368578422887,
+          -2.658658098751754,
           -3.6500000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd44cf02d3c7715ec43d7e987f57a73400452bd0aa5bc750ec51129349b6f943",
+      "geometryHash": "fc2d6b1e588747b0648fdc767f50950556707976b8068f7bd0f2a2073a90dd8c",
       "id": "sf.render.proteus-funnel.mesh.lod0-mechanical.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -433,17 +433,17 @@
       "bounds": {
         "max": [
           -14.000000953674316,
-          2.67496919631958,
-          2.3000829219818115
+          2.6749692107837157,
+          2.3000829028272687
         ],
         "min": [
           -26.149999618530273,
-          0.33003097772598267,
-          -2.0000829696655273
+          0.330030963261847,
+          -2.0000829505109845
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a478e1ca1b46fc48b53f908becf55e95f0dc3f7e85dee3797bf5d7a77806bd4b",
+      "geometryHash": "38e5d2afe60069e4f0ed99bedd180bd495f33e7becf9bb7b3e92ce1874697432",
       "id": "sf.render.proteus-funnel.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 744,
       "indexed": true,
@@ -457,18 +457,18 @@
     {
       "bounds": {
         "max": [
-          -11.19544506072998,
+          -11.19544482446697,
           2.5797195434570312,
-          2.392768383026123
+          2.3927684100032414
         ],
         "min": [
-          -13.968029022216797,
+          -13.968029258479808,
           -0.7742611169815063,
-          -0.22750656306743622
+          -0.22750659004455454
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9c21128af44f1e91a1b37c8f55caa97397c8327ef55f4bd0eb058254894ef89",
+      "geometryHash": "c4febc60c4410568c73e6424e20550bf445144fc96b2fc96a1d70afed282cada",
       "id": "sf.render.proteus-funnel.mesh.lod0-stone.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -483,17 +483,17 @@
       "bounds": {
         "max": [
           17.64237403869629,
-          5.629849433898926,
-          4.150487422943115
+          5.629849379058815,
+          4.150487203038775
         ],
         "min": [
           -18.649999618530273,
-          0.30013033747673035,
-          -3.230487108230591
+          0.3001303923168419,
+          -3.2304868883262507
         ]
       },
       "drawMode": 4,
-      "geometryHash": "778e34e877411ef4720580997d7e93da80401fa98d0ebf8bfaa251b9f4ecf66a",
+      "geometryHash": "76fbc149b9b62bd37540ce42839c9370a1dc4dfa8316999292e0515101eaaf30",
       "id": "sf.render.proteus-funnel.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -508,17 +508,17 @@
       "bounds": {
         "max": [
           10.399999618530273,
-          5.600031852722168,
-          3.599893093109131
+          5.60003195265322,
+          3.5998932368427843
         ],
         "min": [
           -16.200000762939453,
-          5.099967956542969,
-          -3.599893093109131
+          5.099967856611917,
+          -3.5998932368427843
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11785d6a7203ac063a3e18909652604b038b7fd5408cb512d992c185591398db",
+      "geometryHash": "8d2fd4d48ecf06556d57a1d51d447afa88c04f365798ccee1794298270de3483",
       "id": "sf.render.proteus-funnel.mesh.lod1-ceramic.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -533,17 +533,17 @@
       "bounds": {
         "max": [
           14.237325668334961,
-          5.489800453186035,
-          4.285399436950684
+          5.489800436690936,
+          4.285399445391052
         ],
         "min": [
           -19.80831527709961,
-          -2.0909056663513184,
-          -4.285494804382324
+          -2.090905649856219,
+          -4.285494812822693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea2c12e764932b88d1c70583e54372c612442303326f55cd62f40f558b567140",
+      "geometryHash": "221d39f18cd65c554135b7442d013dc3112cee0db0db58a48ee6b56c95b269c7",
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep.primitive.0",
       "indexCount": 165,
       "indexed": true,
@@ -558,17 +558,17 @@
       "bounds": {
         "max": [
           14.730988502502441,
-          8.689563751220703,
-          6.53350305557251
+          8.689563637461273,
+          6.533502720206113
         ],
         "min": [
           -25.996356964111328,
-          -2.0904366970062256,
-          -6.533503532409668
+          -2.0904365832467953,
+          -6.533503197043271
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dba9f4b1fe2a6e4d273bddfd7261fef87e1c80decae84625e49dfa19f75ab2da",
+      "geometryHash": "5f674e51d8b0569aed8d75c279d8ffb543dde3e04691475b43c11bed902ee3df",
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded.primitive.0",
       "indexCount": 465,
       "indexed": true,
@@ -583,17 +583,17 @@
       "bounds": {
         "max": [
           17.87136459350586,
-          6.0278520584106445,
-          4.103158950805664
+          6.027852168659319,
+          4.103158949033914
         ],
         "min": [
           12.328348159790039,
-          0.7717390060424805,
-          3.097644567489624
+          0.7717388957938063,
+          3.097644569261374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf335d4403a7865fef504215f260d8a151f8bf1b046739fa410574c324fac247",
+      "geometryHash": "f8cf5d9aef6f7efc13ed8b3763558f3c13fedacca3f6b83fe96b2218b9e44c4f",
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -608,17 +608,17 @@
       "bounds": {
         "max": [
           15.191903114318848,
-          3.742506504058838,
-          4.192062854766846
+          3.742506533103528,
+          4.192062733210988
         ],
         "min": [
           -12.98766803741455,
-          -0.5918859243392944,
-          -4.192062854766846
+          -0.5918859533839846,
+          -4.192062733210988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f9bc371cd98ac7c5f08ee73c33297a8b6531e76544ba1cf444cf4358ea6a84e",
+      "geometryHash": "3a4d402dab5de511398991e8f82835acf966a8815a77545d03d6d9c527436081",
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -633,17 +633,17 @@
       "bounds": {
         "max": [
           14.996133804321289,
-          5.492064476013184,
-          3.793701171875
+          5.492064347061089,
+          3.7937009903197647
         ],
         "min": [
           -19.496932983398438,
-          -3.1872575283050537,
-          -3.793994903564453
+          -3.1872573993529594,
+          -3.793994722009218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d1687de067272df755dba782166c52eae33242df8d82bc543f5396b89a6a168",
+      "geometryHash": "2cd9d4b7364b7a8656f5f56ab2e9ed0dac1f2fa7cdd9c3c74857b5f752322408",
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal.primitive.0",
       "indexCount": 816,
       "indexed": true,
@@ -658,17 +658,17 @@
       "bounds": {
         "max": [
           13.649999618530273,
-          3.9496235847473145,
-          2.619594097137451
+          3.9496234775655497,
+          2.6195940956094534
         ],
         "min": [
           -10.680000305175781,
-          0.7003762722015381,
-          -2.619594097137451
+          0.7003763793833027,
+          -2.6195940956094534
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ec470f74d49707f77b52670aebad9532662938bc4347ae0d9988620c2ebd6c4",
+      "geometryHash": "854926f46cd83ab2928dcd14139154663c3d260da20508191ea55e68ed176e80",
       "id": "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet.primitive.0",
       "indexCount": 1398,
       "indexed": true,
@@ -682,18 +682,18 @@
     {
       "bounds": {
         "max": [
-          -22.124576568603516,
+          -22.124576946499182,
           5.849999904632568,
           4.849999904632568
         ],
         "min": [
-          -23.075424194335938,
+          -23.07542381644027,
           -3.8499999046325684,
           -4.849999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57e8c07632b9a19bad2181165e5960ca16bb248312c49b62ac0dbcefc1c41efe",
+      "geometryHash": "0f017d30d00b5ca5217a494609a3dca3caa03ea4b4699760db5123574d3ce965",
       "id": "sf.render.proteus-funnel.mesh.lod1-livery.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -707,18 +707,18 @@
     {
       "bounds": {
         "max": [
-          16.07631492614746,
-          4.458658218383789,
+          16.076314978710585,
+          4.458658289486618,
           3.6500000953674316
         ],
         "min": [
-          15.123685836791992,
-          -2.658658027648926,
+          15.12368578422887,
+          -2.658658098751754,
           -3.6500000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8788431456259012485cc1ae309e5876b73cc6f9230f656384cace67fd117e85",
+      "geometryHash": "d0a7236ceeff58c1923315b48b67e5f6f74620efd984c717f0ce724912938fc4",
       "id": "sf.render.proteus-funnel.mesh.lod1-mechanical.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -733,17 +733,17 @@
       "bounds": {
         "max": [
           -14.006339073181152,
-          2.674631118774414,
-          2.299976110458374
+          2.67463111384935,
+          2.2999761002462558
         ],
         "min": [
           -26.149999618530273,
-          0.3368458151817322,
-          -1.9934992790222168
+          0.3368458201067963,
+          -1.9934992688100985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d1a37f550836964449ee14e73284f22d2959e83798ae0d035eaa32b96c7890c",
+      "geometryHash": "f78399329345f19f1c81d04a4298117931d5d56bf1a2fa3c6b088f7f5dc69221",
       "id": "sf.render.proteus-funnel.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -757,18 +757,18 @@
     {
       "bounds": {
         "max": [
-          -11.19544506072998,
+          -11.19544482446697,
           2.5797195434570312,
-          2.392768383026123
+          2.3927684100032414
         ],
         "min": [
-          -13.968029022216797,
+          -13.968029258479808,
           -0.7742611169815063,
-          -0.22750656306743622
+          -0.22750659004455454
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9c21128af44f1e91a1b37c8f55caa97397c8327ef55f4bd0eb058254894ef89",
+      "geometryHash": "c4febc60c4410568c73e6424e20550bf445144fc96b2fc96a1d70afed282cada",
       "id": "sf.render.proteus-funnel.mesh.lod1-stone.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -783,17 +783,17 @@
       "bounds": {
         "max": [
           17.64237403869629,
-          5.530294895172119,
-          3.2296674251556396
+          5.5302950635179045,
+          3.2296671967345314
         ],
         "min": [
           -18.55000114440918,
-          0.40082380175590515,
-          -3.2296674251556396
+          0.40082363341011984,
+          -3.2296671967345314
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c583243f2d0c8b298571e70845825adac8178bd81bfe0ce05c4dad23172447d3",
+      "geometryHash": "316a381e7960e83957fa63d613152236e4a8d261d70314a40803d92cb77446b7",
       "id": "sf.render.proteus-funnel.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -808,17 +808,17 @@
       "bounds": {
         "max": [
           14.237325668334961,
-          5.4889397621154785,
-          4.246037483215332
+          5.488939758430094,
+          4.246037348089399
         ],
         "min": [
           -19.807567596435547,
-          -2.0625078678131104,
-          -4.270640850067139
+          -2.0625078641277255,
+          -4.270640714941206
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d415adabd5896a4c51333809be4857e0fdaafa3b911f68295ef8522192e58c54",
+      "geometryHash": "572f48fc2553baca74012e31ea450c07affffdde0c7d6250531eaab27c7d8526",
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep.primitive.0",
       "indexCount": 117,
       "indexed": true,
@@ -833,17 +833,17 @@
       "bounds": {
         "max": [
           14.730988502502441,
-          8.688809394836426,
-          6.533980369567871
+          8.688809511113416,
+          6.533980045741495
         ],
         "min": [
           -25.999332427978516,
-          -2.062145471572876,
-          -6.533980846405029
+          -2.062145587849865,
+          -6.533980522578653
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f49f71ee038e2e036a3178b1962f5276c63e8a7fab82d33ffc9a706ffa2006a",
+      "geometryHash": "6523c6c51cb37c5eabe6939638285f4ebd2a82125cc7de660494b54125649aac",
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded.primitive.0",
       "indexCount": 279,
       "indexed": true,
@@ -858,17 +858,17 @@
       "bounds": {
         "max": [
           17.87136459350586,
-          6.0278520584106445,
-          4.103158950805664
+          6.027852168659319,
+          4.103158949033914
         ],
         "min": [
           12.328348159790039,
-          0.7717390060424805,
-          3.097644567489624
+          0.7717388957938063,
+          3.097644569261374
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf335d4403a7865fef504215f260d8a151f8bf1b046739fa410574c324fac247",
+      "geometryHash": "f8cf5d9aef6f7efc13ed8b3763558f3c13fedacca3f6b83fe96b2218b9e44c4f",
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -883,17 +883,17 @@
       "bounds": {
         "max": [
           15.191903114318848,
-          3.742506504058838,
-          4.192062854766846
+          3.742506533103528,
+          4.192062733210988
         ],
         "min": [
           -12.98766803741455,
-          -0.5918859243392944,
-          -4.192062854766846
+          -0.5918859533839846,
+          -4.192062733210988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e6be59d85942a79cf9f7ccbf75a48d2b93e7e680456286cd5948f71e3d65fbd",
+      "geometryHash": "9e07c99607384739167e0b0ab191ea0a5083069e9e71ce331231c922220f8f73",
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust.primitive.0",
       "indexCount": 234,
       "indexed": true,
@@ -908,17 +908,17 @@
       "bounds": {
         "max": [
           14.995162963867188,
-          5.4918622970581055,
-          3.7942864894866943
+          5.491862108776042,
+          3.7942865192790123
         ],
         "min": [
           -19.494882583618164,
-          -3.216171979904175,
-          -3.805375576019287
+          -3.216171791622111,
+          -3.805375605811605
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c53b9022b11ff4c965b8165fffe44bd56502a63962d97433691f6642bef55e0",
+      "geometryHash": "de273c1676ef818fe76b3c888a80c5c1c0254d1eedee2552e4fe868f301ae21f",
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -933,17 +933,17 @@
       "bounds": {
         "max": [
           13.649999618530273,
-          3.950507402420044,
-          2.579770803451538
+          3.950507470646052,
+          2.57977090501973
         ],
         "min": [
           -10.626667022705078,
-          0.6994923949241638,
-          -2.579770803451538
+          0.6994923266981556,
+          -2.57977090501973
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a050e7630cf975abb5ad93ec19286d872da5081baf655fb78312d073ce4b289",
+      "geometryHash": "be4e88679f7c4faa1a091bb8a6eba2e233d449e800d78c0ee7646635299463a6",
       "id": "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet.primitive.0",
       "indexCount": 126,
       "indexed": true,
@@ -957,18 +957,18 @@
     {
       "bounds": {
         "max": [
-          -22.116289138793945,
+          -22.116289073162804,
           5.849999904632568,
           4.849999904632568
         ],
         "min": [
-          -23.08371353149414,
+          -23.083713597125282,
           -3.8499999046325684,
           -4.849999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4083ab4628f58e4ee04dfe9437802674c71e8c680708a60a9be2038ea6bdaa13",
+      "geometryHash": "056760c4acd0ef55453996a1e0b1e0ea9b6bfbcc8a012e633eb0240c862ee6e3",
       "id": "sf.render.proteus-funnel.mesh.lod2-livery.primitive.0",
       "indexCount": 426,
       "indexed": true,
@@ -982,18 +982,18 @@
     {
       "bounds": {
         "max": [
-          16.080326080322266,
-          4.458658218383789,
+          16.08032606463482,
+          4.458658289486618,
           3.6500000953674316
         ],
         "min": [
-          15.11967658996582,
-          -2.658658027648926,
+          15.119676605653265,
+          -2.658658098751754,
           -3.6500000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1eff20abf92296c6f4e76bfdd567a7d0ede35a8edc3fb51dbb6fb02a1736155",
+      "geometryHash": "c4d5d6c1fd218726ddd0188b8f48c23421cc3d7a41c464dfa486f11f8ed1bf44",
       "id": "sf.render.proteus-funnel.mesh.lod2-mechanical.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1008,17 +1008,17 @@
       "bounds": {
         "max": [
           -14.006339073181152,
-          0.823420524597168,
-          1.9936244487762451
+          0.8234205301525311,
+          1.9936245020451566
         ],
         "min": [
           -18.393665313720703,
-          0.3365795612335205,
-          -1.9936244487762451
+          0.33657955567815734,
+          -1.9936245020451566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15ddd14830d1c3314abdb8d01dd4e27b27cf9e03a93d46568e1ab32699e1c221",
+      "geometryHash": "488a0607fec96cb6d97bdf41f175d529ce405f55b3f4ce6daebc9f4340c69c8c",
       "id": "sf.render.proteus-funnel.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1032,18 +1032,18 @@
     {
       "bounds": {
         "max": [
-          -11.19544506072998,
+          -11.19544482446697,
           2.5797195434570312,
-          2.396510124206543
+          2.3965101052345865
         ],
         "min": [
-          -13.968029022216797,
+          -13.968029258479808,
           -0.7742611169815063,
-          -0.22744981944561005
+          -0.2274498004736536
         ]
       },
       "drawMode": 4,
-      "geometryHash": "015b4b629f932ee8e972f21392e33658c0f22867f2ea8cc2b6ea378b50ba9a05",
+      "geometryHash": "d7605641733ae13e84a1175a6b1dc20dcb2abf0d5bbfc61f9ce3ad83594ff54b",
       "id": "sf.render.proteus-funnel.mesh.lod2-stone.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -1398,20 +1398,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.collision-hull",
       "localTransform": [
-        1,
+        22.009822845458984,
         0,
         0,
         0,
         0,
-        1,
+        22.009822845458984,
         0,
         0,
         0,
         0,
-        1,
+        22.009822845458984,
         0,
-        0,
-        0,
+        -4.140176773071289,
+        2.420750856399536,
         0,
         1
       ],
@@ -1426,20 +1426,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        22.009822845458984,
         0,
         0,
         0,
         0,
-        1,
+        22.009822845458984,
         0,
         0,
         0,
         0,
-        1,
+        22.009822845458984,
         0,
-        0,
-        0,
+        -4.140176773071289,
+        2.420750856399536,
         0,
         1
       ]
@@ -1447,21 +1447,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-brushedmetal",
       "localTransform": [
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
-        0,
-        0,
-        0,
+        -0.5038127899169922,
+        2.964989885687828,
+        0.4600001573562622,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1475,41 +1475,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
-        0,
-        0,
-        0,
+        -0.5038127899169922,
+        2.964989885687828,
+        0.4600001573562622,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-ceramic",
       "localTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
-        0,
+        -2.90000057220459,
+        5.349999904632568,
         0,
         1
       ],
@@ -1524,20 +1524,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
-        0,
+        -2.90000057220459,
+        5.349999904632568,
         0,
         1
       ]
@@ -1545,20 +1545,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal",
       "localTransform": [
-        1,
+        17.25,
         0,
         0,
         0,
         0,
-        1,
+        17.25,
         0,
         0,
         0,
         0,
-        1,
+        17.25,
         0,
-        0,
-        0,
+        -2.25,
+        1.1497691869735718,
         0,
         1
       ],
@@ -1573,20 +1573,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.25,
         0,
         0,
         0,
         0,
-        1,
+        17.25,
         0,
         0,
         0,
         0,
-        1,
+        17.25,
         0,
-        0,
-        0,
+        -2.25,
+        1.1497691869735718,
         0,
         1
       ]
@@ -1594,20 +1594,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-deep",
       "localTransform": [
-        1,
+        17.03248691558838,
         0,
         0,
         0,
         0,
-        1,
+        17.03248691558838,
         0,
         0,
         0,
         0,
-        1,
+        17.03248691558838,
         0,
-        0,
-        0,
+        -2.782486915588379,
+        1.699798822402954,
         0,
         1
       ],
@@ -1622,20 +1622,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.03248691558838,
         0,
         0,
         0,
         0,
-        1,
+        17.03248691558838,
         0,
         0,
         0,
         0,
-        1,
+        17.03248691558838,
         0,
-        0,
-        0,
+        -2.782486915588379,
+        1.699798822402954,
         0,
         1
       ]
@@ -1643,20 +1643,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded",
       "localTransform": [
-        1,
+        20.375,
         0,
         0,
         0,
         0,
-        1,
+        20.375,
         0,
         0,
         0,
         0,
-        1,
+        20.375,
         0,
-        0,
-        0,
+        -5.625,
+        3.2969632148742676,
         0,
         1
       ],
@@ -1671,20 +1671,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        20.375,
         0,
         0,
         0,
         0,
-        1,
+        20.375,
         0,
         0,
         0,
         0,
-        1,
+        20.375,
         0,
-        0,
-        0,
+        -5.625,
+        3.2969632148742676,
         0,
         1
       ]
@@ -1692,21 +1692,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-faded2",
       "localTransform": [
-        1,
+        2.770521640777588,
         0,
         0,
         0,
         0,
-        1,
+        2.770521640777588,
         0,
         0,
         0,
         0,
-        1,
+        2.770521640777588,
         0,
-        0,
-        0,
-        0,
+        15.099999904632568,
+        3.400000125169754,
+        3.600000023841858,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1720,41 +1720,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        2.770521640777588,
         0,
         0,
         0,
         0,
-        1,
+        2.770521640777588,
         0,
         0,
         0,
         0,
-        1,
+        2.770521640777588,
         0,
-        0,
-        0,
-        0,
+        15.099999904632568,
+        3.400000125169754,
+        3.600000023841858,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-deadmetal-rust",
       "localTransform": [
-        1,
+        14.093833923339844,
         0,
         0,
         0,
         0,
-        1,
+        14.093833923339844,
         0,
         0,
         0,
         0,
-        1,
+        14.093833923339844,
         0,
-        0,
-        0,
+        1.106165885925293,
+        1.5713497698307037,
         0,
         1
       ],
@@ -1769,20 +1769,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        14.093833923339844,
         0,
         0,
         0,
         0,
-        1,
+        14.093833923339844,
         0,
         0,
         0,
         0,
-        1,
+        14.093833923339844,
         0,
-        0,
-        0,
+        1.106165885925293,
+        1.5713497698307037,
         0,
         1
       ]
@@ -1790,20 +1790,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-lights-cyan-violet",
       "localTransform": [
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
-        0,
-        0,
+        1.484999656677246,
+        2.3249999284744263,
         0,
         1
       ],
@@ -1818,20 +1818,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
-        0,
-        0,
+        1.484999656677246,
+        2.3249999284744263,
         0,
         1
       ]
@@ -1839,20 +1839,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-livery",
       "localTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600000381469727,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ],
@@ -1867,20 +1867,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600000381469727,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ]
@@ -1888,20 +1888,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600000381469727,
+        0.9000000953674316,
         0,
         1
       ],
@@ -1916,20 +1916,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600000381469727,
+        0.9000000953674316,
         0,
         1
       ]
@@ -1937,21 +1937,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        6.0749993324279785,
         0,
         0,
         0,
         0,
-        1,
+        6.0749993324279785,
         0,
         0,
         0,
         0,
-        1,
+        6.0749993324279785,
         0,
-        0,
-        0,
-        0,
+        -20.075000286102295,
+        1.5025000870227814,
+        0.1499999761581421,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1965,42 +1965,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        6.0749993324279785,
         0,
         0,
         0,
         0,
-        1,
+        6.0749993324279785,
         0,
         0,
         0,
         0,
-        1,
+        6.0749993324279785,
         0,
-        0,
-        0,
-        0,
+        -20.075000286102295,
+        1.5025000870227814,
+        0.1499999761581421,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod0-stone",
       "localTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0826309099793434,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2014,42 +2014,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0826309099793434,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-brushedmetal",
       "localTransform": [
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
-        0,
-        0,
-        0,
+        -0.5038127899169922,
+        2.964989885687828,
+        0.4600001573562622,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2063,41 +2063,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
         0,
         0,
         0,
-        1,
+        18.14618682861328,
         0,
-        0,
-        0,
-        0,
+        -0.5038127899169922,
+        2.964989885687828,
+        0.4600001573562622,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-ceramic",
       "localTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
-        0,
+        -2.90000057220459,
+        5.349999904632568,
         0,
         1
       ],
@@ -2112,20 +2112,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
         0,
         0,
         0,
-        1,
+        13.300000190734863,
         0,
-        0,
-        0,
+        -2.90000057220459,
+        5.349999904632568,
         0,
         1
       ]
@@ -2133,21 +2133,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal",
       "localTransform": [
-        1,
+        17.246533393859863,
         0,
         0,
         0,
         0,
-        1,
+        17.246533393859863,
         0,
         0,
         0,
         0,
-        1,
+        17.246533393859863,
         0,
-        0,
-        0,
-        0,
+        -2.250399589538574,
+        1.152403473854065,
+        -0.0001468658447265625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2161,42 +2161,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.246533393859863,
         0,
         0,
         0,
         0,
-        1,
+        17.246533393859863,
         0,
         0,
         0,
         0,
-        1,
+        17.246533393859863,
         0,
-        0,
-        0,
-        0,
+        -2.250399589538574,
+        1.152403473854065,
+        -0.0001468658447265625,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-deep",
       "localTransform": [
-        1,
+        17.022820472717285,
         0,
         0,
         0,
         0,
-        1,
+        17.022820472717285,
         0,
         0,
         0,
         0,
-        1,
+        17.022820472717285,
         0,
-        0,
-        0,
-        0,
+        -2.785494804382324,
+        1.6994473934173584,
+        -0.0000476837158203125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2210,42 +2210,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.022820472717285,
         0,
         0,
         0,
         0,
-        1,
+        17.022820472717285,
         0,
         0,
         0,
         0,
-        1,
+        17.022820472717285,
         0,
-        0,
-        0,
-        0,
+        -2.785494804382324,
+        1.6994473934173584,
+        -0.0000476837158203125,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded",
       "localTransform": [
-        1,
+        20.363672733306885,
         0,
         0,
         0,
         0,
-        1,
+        20.363672733306885,
         0,
         0,
         0,
         0,
-        1,
+        20.363672733306885,
         0,
-        0,
-        0,
-        0,
+        -5.632684230804443,
+        3.2995635271072388,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2259,42 +2259,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        20.363672733306885,
         0,
         0,
         0,
         0,
-        1,
+        20.363672733306885,
         0,
         0,
         0,
         0,
-        1,
+        20.363672733306885,
         0,
-        0,
-        0,
-        0,
+        -5.632684230804443,
+        3.2995635271072388,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-faded2",
       "localTransform": [
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
-        0,
-        0,
-        0,
+        15.09985637664795,
+        3.3997955322265625,
+        3.600401759147644,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2308,41 +2308,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
-        0,
-        0,
-        0,
+        15.09985637664795,
+        3.3997955322265625,
+        3.600401759147644,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-deadmetal-rust",
       "localTransform": [
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
-        0,
-        0,
+        1.1021175384521484,
+        1.5753102898597717,
         0,
         1
       ],
@@ -2357,20 +2357,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
-        0,
-        0,
+        1.1021175384521484,
+        1.5753102898597717,
         0,
         1
       ]
@@ -2378,20 +2378,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-lights-cyan-violet",
       "localTransform": [
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
-        0,
-        0,
+        1.484999656677246,
+        2.3249999284744263,
         0,
         1
       ],
@@ -2406,20 +2406,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
         0,
         0,
         0,
-        1,
+        12.164999961853027,
         0,
-        0,
-        0,
+        1.484999656677246,
+        2.3249999284744263,
         0,
         1
       ]
@@ -2427,20 +2427,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-livery",
       "localTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600000381469727,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ],
@@ -2455,20 +2455,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600000381469727,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ]
@@ -2476,20 +2476,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600000381469727,
+        0.9000000953674316,
         0,
         1
       ],
@@ -2504,20 +2504,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600000381469727,
+        0.9000000953674316,
         0,
         1
       ]
@@ -2525,21 +2525,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        6.0718302726745605,
         0,
         0,
         0,
         0,
-        1,
+        6.0718302726745605,
         0,
         0,
         0,
         0,
-        1,
+        6.0718302726745605,
         0,
-        0,
-        0,
-        0,
+        -20.078169345855713,
+        1.5057384669780731,
+        0.1532384157180786,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2553,42 +2553,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        6.0718302726745605,
         0,
         0,
         0,
         0,
-        1,
+        6.0718302726745605,
         0,
         0,
         0,
         0,
-        1,
+        6.0718302726745605,
         0,
-        0,
-        0,
-        0,
+        -20.078169345855713,
+        1.5057384669780731,
+        0.1532384157180786,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod1-stone",
       "localTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0826309099793434,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2602,41 +2602,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0826309099793434,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-brushedmetal",
       "localTransform": [
-        1,
+        18.096187591552734,
         0,
         0,
         0,
         0,
-        1,
+        18.096187591552734,
         0,
         0,
         0,
         0,
-        1,
+        18.096187591552734,
         0,
-        0,
-        0,
+        -0.4538135528564453,
+        2.965559348464012,
         0,
         1
       ],
@@ -2651,20 +2651,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        18.096187591552734,
         0,
         0,
         0,
         0,
-        1,
+        18.096187591552734,
         0,
         0,
         0,
         0,
-        1,
+        18.096187591552734,
         0,
-        0,
-        0,
+        -0.4538135528564453,
+        2.965559348464012,
         0,
         1
       ]
@@ -2672,21 +2672,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal",
       "localTransform": [
-        1,
+        17.245022773742676,
         0,
         0,
         0,
         0,
-        1,
+        17.245022773742676,
         0,
         0,
         0,
         0,
-        1,
+        17.245022773742676,
         0,
-        0,
-        0,
-        0,
+        -2.2498598098754883,
+        1.1378451585769653,
+        -0.005544543266296387,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2700,42 +2700,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.245022773742676,
         0,
         0,
         0,
         0,
-        1,
+        17.245022773742676,
         0,
         0,
         0,
         0,
-        1,
+        17.245022773742676,
         0,
-        0,
-        0,
-        0,
+        -2.2498598098754883,
+        1.1378451585769653,
+        -0.005544543266296387,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-deep",
       "localTransform": [
-        1,
+        17.022446632385254,
         0,
         0,
         0,
         0,
-        1,
+        17.022446632385254,
         0,
         0,
         0,
         0,
-        1,
+        17.022446632385254,
         0,
-        0,
-        0,
-        0,
+        -2.785120964050293,
+        1.713215947151184,
+        -0.01230168342590332,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2749,42 +2749,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        17.022446632385254,
         0,
         0,
         0,
         0,
-        1,
+        17.022446632385254,
         0,
         0,
         0,
         0,
-        1,
+        17.022446632385254,
         0,
-        0,
-        0,
-        0,
+        -2.785120964050293,
+        1.713215947151184,
+        -0.01230168342590332,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded",
       "localTransform": [
-        1,
+        20.36516046524048,
         0,
         0,
         0,
         0,
-        1,
+        20.36516046524048,
         0,
         0,
         0,
         0,
-        1,
+        20.36516046524048,
         0,
-        0,
-        0,
-        0,
+        -5.634171962738037,
+        3.313331961631775,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2798,42 +2798,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        20.36516046524048,
         0,
         0,
         0,
         0,
-        1,
+        20.36516046524048,
         0,
         0,
         0,
         0,
-        1,
+        20.36516046524048,
         0,
-        0,
-        0,
-        0,
+        -5.634171962738037,
+        3.313331961631775,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-faded2",
       "localTransform": [
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
-        0,
-        0,
-        0,
+        15.09985637664795,
+        3.3997955322265625,
+        3.600401759147644,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2847,41 +2847,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
         0,
         0,
         0,
-        1,
+        2.77150821685791,
         0,
-        0,
-        0,
-        0,
+        15.09985637664795,
+        3.3997955322265625,
+        3.600401759147644,
         1
       ]
     },
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-deadmetal-rust",
       "localTransform": [
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
-        0,
-        0,
+        1.1021175384521484,
+        1.5753102898597717,
         0,
         1
       ],
@@ -2896,20 +2896,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
         0,
         0,
         0,
-        1,
+        14.0897855758667,
         0,
-        0,
-        0,
+        1.1021175384521484,
+        1.5753102898597717,
         0,
         1
       ]
@@ -2917,20 +2917,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-lights-cyan-violet",
       "localTransform": [
-        1,
+        12.138333320617676,
         0,
         0,
         0,
         0,
-        1,
+        12.138333320617676,
         0,
         0,
         0,
         0,
-        1,
+        12.138333320617676,
         0,
-        0,
-        0,
+        1.5116662979125977,
+        2.324999898672104,
         0,
         1
       ],
@@ -2945,20 +2945,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        12.138333320617676,
         0,
         0,
         0,
         0,
-        1,
+        12.138333320617676,
         0,
         0,
         0,
         0,
-        1,
+        12.138333320617676,
         0,
-        0,
-        0,
+        1.5116662979125977,
+        2.324999898672104,
         0,
         1
       ]
@@ -2966,20 +2966,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-livery",
       "localTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600001335144043,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ],
@@ -2994,20 +2994,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        0,
+        0,
+        0,
+        4.849999904632568,
+        0,
+        -22.600001335144043,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
         0,
         1
       ]
@@ -3015,20 +3015,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600001335144043,
+        0.9000000953674316,
         0,
         1
       ],
@@ -3043,20 +3043,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.6500000953674316,
         0,
-        0,
-        0,
+        15.600001335144043,
+        0.9000000953674316,
         0,
         1
       ]
@@ -3064,20 +3064,20 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        2.1936631202697754,
         0,
         0,
         0,
         0,
-        1,
+        2.1936631202697754,
         0,
         0,
         0,
         0,
-        1,
+        2.1936631202697754,
         0,
-        0,
-        0,
+        -16.200002193450928,
+        0.5800000429153442,
         0,
         1
       ],
@@ -3092,20 +3092,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        2.1936631202697754,
         0,
         0,
         0,
         0,
-        1,
+        2.1936631202697754,
         0,
         0,
         0,
         0,
-        1,
+        2.1936631202697754,
         0,
-        0,
-        0,
+        -16.200002193450928,
+        0.5800000429153442,
         0,
         1
       ]
@@ -3113,21 +3113,21 @@
     {
       "id": "sf.render.proteus-funnel.mesh.lod2-stone",
       "localTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0845301523804665,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3141,21 +3141,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.proteus-funnel.body",
       "worldTransform": [
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
         0,
         0,
         0,
-        1,
+        1.6769903302192688,
         0,
-        0,
-        0,
-        0,
+        -12.581737041473389,
+        0.9027292132377625,
+        1.0845301523804665,
         1
       ]
     },
@@ -3218,14 +3218,14 @@
       "uri": "place_proteus_funnel.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 531460,
-    "sha256": "bf860d3d86912e9c3792cb2b64bdc69a270a7d1cb3f5ef85e2ba0dcda4ed2499",
+    "bytes": 360852,
+    "sha256": "4a4d6b6403cde652299f13a4845051dd3b84d47620fa195766dba48dd7824778",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3237,18 +3237,18 @@
       ],
       "max": [
         17.87136459350586,
-        8.692479133605957,
-        6.535037040710449
+        8.692478994710964,
+        6.535037277244498
       ],
       "min": [
         -26.149999618530273,
-        -3.8509774208068848,
-        -6.535037040710449
+        -3.8509772819118915,
+        -6.535037277244498
       ],
       "size": [
         44.02136421203613,
-        12.543456554412842,
-        13.070074081420898
+        12.543456276622855,
+        13.070074554488995
       ]
     },
     "hidden": [
@@ -3605,21 +3605,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.14618682861328,
           0,
           0,
           0,
           0,
-          1,
+          18.14618682861328,
           0,
           0,
           0,
           0,
-          1,
+          18.14618682861328,
           0,
-          0,
-          0,
-          0,
+          -0.5038127899169922,
+          2.964989885687828,
+          0.4600001573562622,
           1
         ],
         "name": "LOD0_BrushedMetal",
@@ -3632,20 +3632,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
-          0,
-          0,
+          -2.90000057220459,
+          5.349999904632568,
           0,
           1
         ],
@@ -3659,20 +3659,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.25,
           0,
           0,
           0,
           0,
-          1,
+          17.25,
           0,
           0,
           0,
           0,
-          1,
+          17.25,
           0,
-          0,
-          0,
+          -2.25,
+          1.1497691869735718,
           0,
           1
         ],
@@ -3686,20 +3686,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.03248691558838,
           0,
           0,
           0,
           0,
-          1,
+          17.03248691558838,
           0,
           0,
           0,
           0,
-          1,
+          17.03248691558838,
           0,
-          0,
-          0,
+          -2.782486915588379,
+          1.699798822402954,
           0,
           1
         ],
@@ -3713,20 +3713,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.375,
           0,
           0,
           0,
           0,
-          1,
+          20.375,
           0,
           0,
           0,
           0,
-          1,
+          20.375,
           0,
-          0,
-          0,
+          -5.625,
+          3.2969632148742676,
           0,
           1
         ],
@@ -3740,21 +3740,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.770521640777588,
           0,
           0,
           0,
           0,
-          1,
+          2.770521640777588,
           0,
           0,
           0,
           0,
-          1,
+          2.770521640777588,
           0,
-          0,
-          0,
-          0,
+          15.099999904632568,
+          3.400000125169754,
+          3.600000023841858,
           1
         ],
         "name": "LOD0_deadmetal_faded2",
@@ -3767,20 +3767,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.093833923339844,
           0,
           0,
           0,
           0,
-          1,
+          14.093833923339844,
           0,
           0,
           0,
           0,
-          1,
+          14.093833923339844,
           0,
-          0,
-          0,
+          1.106165885925293,
+          1.5713497698307037,
           0,
           1
         ],
@@ -3794,20 +3794,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.164999961853027,
           0,
           0,
           0,
           0,
-          1,
+          12.164999961853027,
           0,
           0,
           0,
           0,
-          1,
+          12.164999961853027,
           0,
-          0,
-          0,
+          1.484999656677246,
+          2.3249999284744263,
           0,
           1
         ],
@@ -3821,20 +3821,20 @@
       {
         "canopy": false,
         "matrix": [
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          -22.600000381469727,
           1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
           0,
           1
         ],
@@ -3848,20 +3848,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
-          0,
-          0,
+          15.600000381469727,
+          0.9000000953674316,
           0,
           1
         ],
@@ -3875,21 +3875,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0749993324279785,
           0,
           0,
           0,
           0,
-          1,
+          6.0749993324279785,
           0,
           0,
           0,
           0,
-          1,
+          6.0749993324279785,
           0,
-          0,
-          0,
-          0,
+          -20.075000286102295,
+          1.5025000870227814,
+          0.1499999761581421,
           1
         ],
         "name": "LOD0_MechanicalDark",
@@ -3902,21 +3902,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
-          0,
-          0,
-          0,
+          -12.581737041473389,
+          0.9027292132377625,
+          1.0826309099793434,
           1
         ],
         "name": "LOD0_Stone",
@@ -3929,21 +3929,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.14618682861328,
           0,
           0,
           0,
           0,
-          1,
+          18.14618682861328,
           0,
           0,
           0,
           0,
-          1,
+          18.14618682861328,
           0,
-          0,
-          0,
-          0,
+          -0.5038127899169922,
+          2.964989885687828,
+          0.4600001573562622,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -3956,20 +3956,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
           0,
           0,
           0,
-          1,
+          13.300000190734863,
           0,
-          0,
-          0,
+          -2.90000057220459,
+          5.349999904632568,
           0,
           1
         ],
@@ -3983,21 +3983,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.246533393859863,
           0,
           0,
           0,
           0,
-          1,
+          17.246533393859863,
           0,
           0,
           0,
           0,
-          1,
+          17.246533393859863,
           0,
-          0,
-          0,
-          0,
+          -2.250399589538574,
+          1.152403473854065,
+          -0.0001468658447265625,
           1
         ],
         "name": "LOD1_deadmetal",
@@ -4010,21 +4010,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.022820472717285,
           0,
           0,
           0,
           0,
-          1,
+          17.022820472717285,
           0,
           0,
           0,
           0,
-          1,
+          17.022820472717285,
           0,
-          0,
-          0,
-          0,
+          -2.785494804382324,
+          1.6994473934173584,
+          -0.0000476837158203125,
           1
         ],
         "name": "LOD1_deadmetal_deep",
@@ -4037,21 +4037,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.363672733306885,
           0,
           0,
           0,
           0,
-          1,
+          20.363672733306885,
           0,
           0,
           0,
           0,
-          1,
+          20.363672733306885,
           0,
-          0,
-          0,
-          0,
+          -5.632684230804443,
+          3.2995635271072388,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD1_deadmetal_faded",
@@ -4064,21 +4064,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.77150821685791,
           0,
           0,
           0,
           0,
-          1,
+          2.77150821685791,
           0,
           0,
           0,
           0,
-          1,
+          2.77150821685791,
           0,
-          0,
-          0,
-          0,
+          15.09985637664795,
+          3.3997955322265625,
+          3.600401759147644,
           1
         ],
         "name": "LOD1_deadmetal_faded2",
@@ -4091,20 +4091,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.0897855758667,
           0,
           0,
           0,
           0,
-          1,
+          14.0897855758667,
           0,
           0,
           0,
           0,
-          1,
+          14.0897855758667,
           0,
-          0,
-          0,
+          1.1021175384521484,
+          1.5753102898597717,
           0,
           1
         ],
@@ -4118,20 +4118,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.164999961853027,
           0,
           0,
           0,
           0,
-          1,
+          12.164999961853027,
           0,
           0,
           0,
           0,
-          1,
+          12.164999961853027,
           0,
-          0,
-          0,
+          1.484999656677246,
+          2.3249999284744263,
           0,
           1
         ],
@@ -4145,20 +4145,20 @@
       {
         "canopy": false,
         "matrix": [
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          -22.600000381469727,
           1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
           0,
           1
         ],
@@ -4172,20 +4172,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
-          0,
-          0,
+          15.600000381469727,
+          0.9000000953674316,
           0,
           1
         ],
@@ -4199,21 +4199,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0718302726745605,
           0,
           0,
           0,
           0,
-          1,
+          6.0718302726745605,
           0,
           0,
           0,
           0,
-          1,
+          6.0718302726745605,
           0,
-          0,
-          0,
-          0,
+          -20.078169345855713,
+          1.5057384669780731,
+          0.1532384157180786,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -4226,21 +4226,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
-          0,
-          0,
-          0,
+          -12.581737041473389,
+          0.9027292132377625,
+          1.0826309099793434,
           1
         ],
         "name": "LOD1_Stone",
@@ -4253,20 +4253,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.096187591552734,
           0,
           0,
           0,
           0,
-          1,
+          18.096187591552734,
           0,
           0,
           0,
           0,
-          1,
+          18.096187591552734,
           0,
-          0,
-          0,
+          -0.4538135528564453,
+          2.965559348464012,
           0,
           1
         ],
@@ -4280,21 +4280,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.245022773742676,
           0,
           0,
           0,
           0,
-          1,
+          17.245022773742676,
           0,
           0,
           0,
           0,
-          1,
+          17.245022773742676,
           0,
-          0,
-          0,
-          0,
+          -2.2498598098754883,
+          1.1378451585769653,
+          -0.005544543266296387,
           1
         ],
         "name": "LOD2_deadmetal",
@@ -4307,21 +4307,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.022446632385254,
           0,
           0,
           0,
           0,
-          1,
+          17.022446632385254,
           0,
           0,
           0,
           0,
-          1,
+          17.022446632385254,
           0,
-          0,
-          0,
-          0,
+          -2.785120964050293,
+          1.713215947151184,
+          -0.01230168342590332,
           1
         ],
         "name": "LOD2_deadmetal_deep",
@@ -4334,21 +4334,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.36516046524048,
           0,
           0,
           0,
           0,
-          1,
+          20.36516046524048,
           0,
           0,
           0,
           0,
-          1,
+          20.36516046524048,
           0,
-          0,
-          0,
-          0,
+          -5.634171962738037,
+          3.313331961631775,
+          -2.384185791015625e-7,
           1
         ],
         "name": "LOD2_deadmetal_faded",
@@ -4361,21 +4361,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.77150821685791,
           0,
           0,
           0,
           0,
-          1,
+          2.77150821685791,
           0,
           0,
           0,
           0,
-          1,
+          2.77150821685791,
           0,
-          0,
-          0,
-          0,
+          15.09985637664795,
+          3.3997955322265625,
+          3.600401759147644,
           1
         ],
         "name": "LOD2_deadmetal_faded2",
@@ -4388,20 +4388,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          14.0897855758667,
           0,
           0,
           0,
           0,
-          1,
+          14.0897855758667,
           0,
           0,
           0,
           0,
-          1,
+          14.0897855758667,
           0,
-          0,
-          0,
+          1.1021175384521484,
+          1.5753102898597717,
           0,
           1
         ],
@@ -4415,20 +4415,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.138333320617676,
           0,
           0,
           0,
           0,
-          1,
+          12.138333320617676,
           0,
           0,
           0,
           0,
-          1,
+          12.138333320617676,
           0,
-          0,
-          0,
+          1.5116662979125977,
+          2.324999898672104,
           0,
           1
         ],
@@ -4442,20 +4442,20 @@
       {
         "canopy": false,
         "matrix": [
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          0,
+          0,
+          0,
+          4.849999904632568,
+          0,
+          -22.600001335144043,
           1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
           0,
           1
         ],
@@ -4469,20 +4469,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.6500000953674316,
           0,
-          0,
-          0,
+          15.600001335144043,
+          0.9000000953674316,
           0,
           1
         ],
@@ -4496,20 +4496,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1936631202697754,
           0,
           0,
           0,
           0,
-          1,
+          2.1936631202697754,
           0,
           0,
           0,
           0,
-          1,
+          2.1936631202697754,
           0,
-          0,
-          0,
+          -16.200002193450928,
+          0.5800000429153442,
           0,
           1
         ],
@@ -4523,21 +4523,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
           0,
           0,
           0,
-          1,
+          1.6769903302192688,
           0,
-          0,
-          0,
-          0,
+          -12.581737041473389,
+          0.9027292132377625,
+          1.0845301523804665,
           1
         ],
         "name": "LOD2_Stone",
@@ -4552,20 +4552,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_proteus_funnel.glb"
   },
-  "runtimeHash": "89d2d4447b2bdea14fd5d9c78631c0aa7ff8733e05038fa846db72ccde85256c",
+  "runtimeHash": "a98089418ecfbf48421448aa4094655d5715958b9e149b06c5d0b9cf9977e911",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           17.87136459350586,
-          8.692479133605957,
-          6.535037040710449
+          8.692478994710964,
+          6.535037277244498
         ],
         "min": [
           -26.149999618530273,
-          -3.8509774208068848,
-          -6.535037040710449
+          -3.8509772819118915,
+          -6.535037277244498
         ]
       },
       "id": "sf.render.proteus-funnel.body",

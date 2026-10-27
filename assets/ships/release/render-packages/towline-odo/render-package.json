@@ -202,7 +202,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ea07bf5b3b45e5d59934136d069996ac9589401ebea9aea8cdd51021004a2277",
+  "contentHash": "c0f2a7563ab1e2326ab8ac133e798e56ef7c30e5eaef6ab5d4814c52ccff1954",
   "dynamicGroups": [
     {
       "id": "sf.render.towline-odo.node.lod0-motion-towline-winch-armor.dynamic",
@@ -230,17 +230,17 @@
       "bounds": {
         "max": [
           11.999493598937988,
-          2.1005160808563232,
-          2.799955368041992
+          2.100516112114791,
+          2.799955214601915
         ],
         "min": [
           -12.999452590942383,
-          -1.5005161762237549,
-          -2.799955368041992
+          -1.500516207482223,
+          -2.799955214601915
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d236ec519ff08a4dd57165613969afbd3ccd79be91a8f8e6220d0ed4ed1d6da",
+      "geometryHash": "fb207d9b4fe1861a49e426207af66f549595bfefbe5f6595d03461c26f8da494",
       "id": "sf.render.towline-odo.node.collision-towline-odo-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -254,18 +254,18 @@
     {
       "bounds": {
         "max": [
-          -5.099978446960449,
-          2.3248391151428223,
+          -5.0999786370433675,
+          2.324839074467159,
           3
         ],
         "min": [
-          -10.90002155303955,
-          1.6751610040664673,
+          -10.900021362956632,
+          1.6751610447421306,
           -3
         ]
       },
       "drawMode": 4,
-      "geometryHash": "914da1e5a430f7e3549650c5f4fc7db51068de8877b55ddf92add009f141dcc6",
+      "geometryHash": "715ea5cbe0b5cca7569de11a4f0d9b87f0f11f4dd89f7326d47ba426ec5120a8",
       "id": "sf.render.towline-odo.node.collision-towline-odo-drum-bed.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -279,18 +279,18 @@
     {
       "bounds": {
         "max": [
-          9.599974632263184,
-          1.550073266029358,
+          9.599974822229683,
+          1.5500732444227423,
           1.875
         ],
         "min": [
-          8.400025367736816,
-          0.9499267339706421,
+          8.400025177770317,
+          0.9499267555772576,
           -1.875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "acc9af431d367d127e0fddb7359994637b5155c9212e8c311b8c8cf5ec91a635",
+      "geometryHash": "6c702c0f363a4048dfd63b9042021e89f96703d6b295959c47b10bd81b619de6",
       "id": "sf.render.towline-odo.node.lod0-armor.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -304,18 +304,18 @@
     {
       "bounds": {
         "max": [
-          -12.816554069519043,
-          0.7636047005653381,
+          -12.816553818534501,
+          0.7636046903213868,
           2.2885000705718994
         ],
         "min": [
-          -13.119945526123047,
-          -1.163604736328125,
+          -13.119945777107588,
+          -1.1636047260841735,
           -2.2885000705718994
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46502778412e016b7618ca9d26d1c8602d5e19106cd7e5047db98f70fa2a7765",
+      "geometryHash": "d247fbee82156221568f3fbe1169e3d1da494c7e84e399fe96d4f3cddebafec4",
       "id": "sf.render.towline-odo.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -330,17 +330,17 @@
       "bounds": {
         "max": [
           12,
-          2.0991482734680176,
-          2.8000733852386475
+          2.0991482731387707,
+          2.8000732444227423
         ],
         "min": [
           -13,
-          -1.1937988996505737,
-          -2.8000733852386475
+          -1.1937988993213267,
+          -2.8000732444227423
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99c7a35ba6fb4480647ab16066a86333ec4761069ce62d3b2612b84bb5091fd7",
+      "geometryHash": "1fd6bd61232cc427dbc165f5b34e44629254269f9deebff2ec7fab4c7a9739a8",
       "id": "sf.render.towline-odo.node.lod0-hull.primitive.0",
       "indexCount": 1368,
       "indexed": true,
@@ -354,18 +354,18 @@
     {
       "bounds": {
         "max": [
-          5.874964237213135,
-          2.2599740028381348,
+          5.874964045383934,
+          2.259974116492061,
           0.75
         ],
         "min": [
-          5.325035572052002,
-          2.190025806427002,
+          5.3250357638812025,
+          2.1900256927730757,
           -0.75
         ]
       },
       "drawMode": 4,
-      "geometryHash": "108d5b72761d5fd8a102a3d22d4b3faa301daf5df67df62c7bcec9abad12b1d4",
+      "geometryHash": "86ee3e4568e64f9dd833f6a2e27dd71c668ee6fa967b32c3d0a1f0ee7f92bc18",
       "id": "sf.render.towline-odo.node.lod0-lights-warm.primitive.0",
       "indexCount": 1692,
       "indexed": true,
@@ -380,17 +380,17 @@
       "bounds": {
         "max": [
           3.5999999046325684,
-          2.220130681991577,
-          1.7362581491470337
+          2.2201306249463286,
+          1.7362582353879532
         ],
         "min": [
           -3.1308023929595947,
-          2.1798694133758545,
-          -1.8687583208084106
+          2.179869470421103,
+          -1.8687584070493302
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ac2ee824a799784a7828171def0f6d3d73aacd9f530563c6ba995d22c27193e",
+      "geometryHash": "f7a3dfefb0a264f58997c940a8e13f9d02530003db09375e368cd384b3e3dbe3",
       "id": "sf.render.towline-odo.node.lod0-livery.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -405,17 +405,17 @@
       "bounds": {
         "max": [
           11.972909927368164,
-          2.3254640102386475,
-          3.0003974437713623
+          2.325464001800098,
+          3.000397370740347
         ],
         "min": [
           -13.119999885559082,
-          -1.500463843345642,
-          -3.0003974437713623
+          -1.5004638349070927,
+          -3.000397370740347
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfed4ef0ffa0614147d4c8749c4093a842767a5d70481da2c28a6ebe4eca835e",
+      "geometryHash": "c3757490761823f2ebaf9fb252da7f4de317a375199183c6373f9c9873c18fb3",
       "id": "sf.render.towline-odo.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 3552,
       "indexed": true,
@@ -440,7 +440,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fcdd2022d8653efe5d0aeb1158e99afb59ecae46646e6c3f280fc0a0d02b5612",
+      "geometryHash": "832abcd47b3e8328ce32f78d6d2b0b0c8c99a868f9ee51aae3dff88c172d5dd6",
       "id": "sf.render.towline-odo.node.lod0-motion-towline-winch-armor.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -465,7 +465,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86a3d5ac0436533bb2355c50602c21643b026234ae64fdb67b39bf4fa0abc788",
+      "geometryHash": "dda72b99d3c37903051ff4b6fd1d3a909576e7d88b41cc3a566333e95e1c73d4",
       "id": "sf.render.towline-odo.node.lod0-motion-towline-winch-livery.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -490,7 +490,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f54075df638d7e1360ae79fa0d44d76da453896a677d75e428aaf3f9d2e0ee92",
+      "geometryHash": "b735abdb1b55913fa807b5456abc84aa101c82c6c0f704251a1a0b4d175cd010",
       "id": "sf.render.towline-odo.node.lod0-motion-towline-winch-mechanicaldark.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -653,20 +653,20 @@
     {
       "id": "sf.render.towline-odo.node.collision-towline-odo-core",
       "localTransform": [
-        1,
+        12.499473094940186,
         0,
         0,
         0,
         0,
-        1,
+        12.499473094940186,
         0,
         0,
         0,
         0,
-        1,
+        12.499473094940186,
         0,
-        0,
-        0,
+        -0.49997949600219727,
+        0.2999999523162842,
         0,
         1
       ],
@@ -681,20 +681,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        12.499473094940186,
         0,
         0,
         0,
         0,
-        1,
+        12.499473094940186,
         0,
         0,
         0,
         0,
-        1,
+        12.499473094940186,
         0,
-        0,
-        0,
+        -0.49997949600219727,
+        0.2999999523162842,
         0,
         1
       ]
@@ -702,20 +702,20 @@
     {
       "id": "sf.render.towline-odo.node.collision-towline-odo-drum-bed",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
+        -8,
+        2.0000000596046448,
         0,
         1
       ],
@@ -730,20 +730,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
+        -8,
+        2.0000000596046448,
         0,
         1
       ]
@@ -751,20 +751,20 @@
     {
       "id": "sf.render.towline-odo.node.lod0-armor",
       "localTransform": [
-        1,
+        1.875,
         0,
         0,
         0,
         0,
-        1,
+        1.875,
         0,
         0,
         0,
         0,
-        1,
+        1.875,
         0,
-        0,
-        0,
+        9,
+        1.25,
         0,
         1
       ],
@@ -779,20 +779,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        1.875,
         0,
         0,
         0,
         0,
-        1,
+        1.875,
         0,
         0,
         0,
         0,
-        1,
+        1.875,
         0,
-        0,
-        0,
+        9,
+        1.25,
         0,
         1
       ]
@@ -800,20 +800,20 @@
     {
       "id": "sf.render.towline-odo.node.lod0-hook-drive-core",
       "localTransform": [
-        1,
+        2.2885000705718994,
         0,
         0,
         0,
         0,
-        1,
+        2.2885000705718994,
         0,
         0,
         0,
         0,
-        1,
+        2.2885000705718994,
         0,
-        0,
-        0,
+        -12.968249797821045,
+        -0.20000001788139343,
         0,
         1
       ],
@@ -828,20 +828,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        2.2885000705718994,
         0,
         0,
         0,
         0,
-        1,
+        2.2885000705718994,
         0,
         0,
         0,
         0,
-        1,
+        2.2885000705718994,
         0,
-        0,
-        0,
+        -12.968249797821045,
+        -0.20000001788139343,
         0,
         1
       ]
@@ -849,20 +849,20 @@
     {
       "id": "sf.render.towline-odo.node.lod0-hull",
       "localTransform": [
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
-        0,
-        0,
+        -0.5,
+        0.4526746869087219,
         0,
         1
       ],
@@ -877,20 +877,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
         0,
         0,
         0,
-        1,
+        12.5,
         0,
-        0,
-        0,
+        -0.5,
+        0.4526746869087219,
         0,
         1
       ]
@@ -898,20 +898,20 @@
     {
       "id": "sf.render.towline-odo.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
-        0,
-        0,
+        5.599999904632568,
+        2.2249999046325684,
         0,
         1
       ],
@@ -926,20 +926,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
         0,
         0,
         0,
-        1,
+        0.75,
         0,
-        0,
-        0,
+        5.599999904632568,
+        2.2249999046325684,
         0,
         1
       ]
@@ -947,21 +947,21 @@
     {
       "id": "sf.render.towline-odo.node.lod0-livery",
       "localTransform": [
-        1,
+        3.3654011487960815,
         0,
         0,
         0,
         0,
-        1,
+        3.3654011487960815,
         0,
         0,
         0,
         0,
-        1,
+        3.3654011487960815,
         0,
-        0,
-        0,
-        0,
+        0.23459875583648682,
+        2.200000047683716,
+        -0.06625008583068848,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -975,41 +975,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        3.3654011487960815,
         0,
         0,
         0,
         0,
-        1,
+        3.3654011487960815,
         0,
         0,
         0,
         0,
-        1,
+        3.3654011487960815,
         0,
-        0,
-        0,
-        0,
+        0.23459875583648682,
+        2.200000047683716,
+        -0.06625008583068848,
         1
       ]
     },
     {
       "id": "sf.render.towline-odo.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        12.546454906463623,
         0,
         0,
         0,
         0,
-        1,
+        12.546454906463623,
         0,
         0,
         0,
         0,
-        1,
+        12.546454906463623,
         0,
-        0,
-        0,
+        -0.573544979095459,
+        0.4125000834465027,
         0,
         1
       ],
@@ -1024,20 +1024,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-odo.body",
       "worldTransform": [
-        1,
+        12.546454906463623,
         0,
         0,
         0,
         0,
-        1,
+        12.546454906463623,
         0,
         0,
         0,
         0,
-        1,
+        12.546454906463623,
         0,
-        0,
-        0,
+        -0.573544979095459,
+        0.4125000834465027,
         0,
         1
       ]
@@ -1496,37 +1496,37 @@
       "uri": "towline_odo.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 476024,
-    "sha256": "cc237783344e340bb740e2bc0638f960256cf71ec275290ceae5fcda0d28a512",
+    "bytes": 399776,
+    "sha256": "321fe1b7bf3cf546121cded46f25ba7a8281aa27ed218596f2508adf014a7eb4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.559999942779541,
-        2.0747419595718384,
+        2.0747419439426045,
         0
       ],
       "max": [
         12,
         5.650000095367432,
-        3.0003974437713623
+        3.000397370740347
       ],
       "min": [
         -13.119999885559082,
-        -1.5005161762237549,
-        -3.0003974437713623
+        -1.500516207482223,
+        -3.000397370740347
       ],
       "size": [
         25.119999885559082,
-        7.1505162715911865,
-        6.000794887542725
+        7.150516302849654,
+        6.000794741480694
       ]
     },
     "hidden": [
@@ -1888,20 +1888,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.875,
           0,
           0,
           0,
           0,
-          1,
+          1.875,
           0,
           0,
           0,
           0,
-          1,
+          1.875,
           0,
-          0,
-          0,
+          9,
+          1.25,
           0,
           1
         ],
@@ -1915,20 +1915,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.2885000705718994,
           0,
           0,
           0,
           0,
-          1,
+          2.2885000705718994,
           0,
           0,
           0,
           0,
-          1,
+          2.2885000705718994,
           0,
-          0,
-          0,
+          -12.968249797821045,
+          -0.20000001788139343,
           0,
           1
         ],
@@ -1938,20 +1938,20 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            2.2885000705718994,
             0,
             0,
             0,
             0,
-            1,
+            2.2885000705718994,
             0,
             0,
             0,
             0,
-            1,
+            2.2885000705718994,
             0,
-            0,
-            0,
+            -12.968249797821045,
+            -0.20000001788139343,
             0,
             1
           ],
@@ -1961,20 +1961,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.5,
           0,
           0,
           0,
           0,
-          1,
+          12.5,
           0,
           0,
           0,
           0,
-          1,
+          12.5,
           0,
-          0,
-          0,
+          -0.5,
+          0.4526746869087219,
           0,
           1
         ],
@@ -1988,20 +1988,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.75,
           0,
           0,
           0,
           0,
-          1,
+          0.75,
           0,
           0,
           0,
           0,
-          1,
+          0.75,
           0,
-          0,
-          0,
+          5.599999904632568,
+          2.2249999046325684,
           0,
           1
         ],
@@ -2015,21 +2015,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.3654011487960815,
           0,
           0,
           0,
           0,
-          1,
+          3.3654011487960815,
           0,
           0,
           0,
           0,
-          1,
+          3.3654011487960815,
           0,
-          0,
-          0,
-          0,
+          0.23459875583648682,
+          2.200000047683716,
+          -0.06625008583068848,
           1
         ],
         "name": "LOD0_Livery",
@@ -2042,20 +2042,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.546454906463623,
           0,
           0,
           0,
           0,
-          1,
+          12.546454906463623,
           0,
           0,
           0,
           0,
-          1,
+          12.546454906463623,
           0,
-          0,
-          0,
+          -0.573544979095459,
+          0.4125000834465027,
           0,
           1
         ],
@@ -2158,7 +2158,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/towline_odo.glb"
   },
-  "runtimeHash": "cf74566b2e1aa805866a9adc1c724f58450519808df9e7998964d96a78ca83e8",
+  "runtimeHash": "fc0bdd38d17cab5ddb317d861c238f5977abd14954ad4ee4651081cae6d0ef3d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2166,12 +2166,12 @@
         "max": [
           12,
           5.650000095367432,
-          3.0003974437713623
+          3.000397370740347
         ],
         "min": [
           -13.119999885559082,
-          -1.5005161762237549,
-          -3.0003974437713623
+          -1.500516207482223,
+          -3.000397370740347
         ]
       },
       "id": "sf.render.towline-odo.body",

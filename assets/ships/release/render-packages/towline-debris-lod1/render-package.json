@@ -120,24 +120,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3f24297abcd92d545c14f3ab8a59e802e7f21cedead4c628f4c0f32c354459e3",
+  "contentHash": "2e95a0b6b2dd8e0937586684eb72c584ee1fb9759fd4f92f6e058c44cacb7caa",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.6500229835510254,
-          0.6500229239463806,
+          3.650022884323944,
+          0.6500228843239443,
           -0.19999992847442627
         ],
         "min": [
-          2.3499770164489746,
-          -0.6500229239463806,
+          2.349977115676056,
+          -0.6500228843239443,
           -3.5999999046325684
         ]
       },
       "drawMode": 4,
-      "geometryHash": "634722bc12ca2c807ae4de6f0337dc031fa4c1c0f41892dbfee6e0d6994ff45c",
+      "geometryHash": "91415266f76fdf6388906b940854ee139a4633ac63059850f26f315dc3169d6f",
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -152,17 +152,17 @@
       "bounds": {
         "max": [
           3,
-          0.6500442624092102,
-          3.6500442028045654
+          0.6500442518387402,
+          3.6500442518387404
         ],
         "min": [
           -3,
-          -0.6500442624092102,
-          2.3499557971954346
+          -0.6500442518387402,
+          2.3499557481612596
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bc1af2fb8b2563508ccc6cd4258b5c75800c03d6032e060e60a2f49d05b801d",
+      "geometryHash": "28b173b4bbfa846d5e7e6831ba6e085fcf9a744d73f8e720fe6f69a17572eddb",
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-lower.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -176,18 +176,18 @@
     {
       "bounds": {
         "max": [
-          -2.2501602172851562,
-          0.6498610973358154,
+          -2.250160222174749,
+          0.6498611407818842,
           3.5
         ],
         "min": [
-          -3.7498397827148438,
-          -0.6498610973358154,
+          -3.749839777825251,
+          -0.6498611407818842,
           -3.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "936500d8b662131d05477871b093393e98b9984f9ee89344c67b5b6578e19e9b",
+      "geometryHash": "3e3b9050fcf45618ef30545171602bef389b77cfbdc5bb30a2d2e630684c398b",
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-spine.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -202,17 +202,17 @@
       "bounds": {
         "max": [
           3,
-          0.6500442624092102,
-          -2.3499557971954346
+          0.6500442518387402,
+          -2.3499557481612596
         ],
         "min": [
           -3,
-          -0.6500442624092102,
-          -3.6500442028045654
+          -0.6500442518387402,
+          -3.6500442518387404
         ]
       },
       "drawMode": 4,
-      "geometryHash": "206e9aff8e77255f05afb915de62fe9a27e6c5b38c54df2e94ea520ef3433e33",
+      "geometryHash": "28b173b4bbfa846d5e7e6831ba6e085fcf9a744d73f8e720fe6f69a17572eddb",
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-upper.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -227,17 +227,17 @@
       "bounds": {
         "max": [
           3.644406318664551,
-          0.6443650126457214,
-          3.6437737941741943
+          0.6443650168422581,
+          3.643773694785218
         ],
         "min": [
           -3.7432453632354736,
-          -0.6443650126457214,
-          -3.6437737941741943
+          -0.6443650168422581,
+          -3.643773694785218
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6ff8b0ce01ba60a777d4feef194d755eea43acdf224ff13a4085c6f9b0c2d1a",
+      "geometryHash": "c4344498103d5e10d617f6bf800cef7d64736d9447fa80a00dad982327dd4082",
       "id": "sf.render.towline-debris-lod1.node.lod1-hull.primitive.0",
       "indexCount": 1278,
       "indexed": true,
@@ -251,18 +251,18 @@
     {
       "bounds": {
         "max": [
-          1.0962207317352295,
-          0.7561648488044739,
+          1.0962206987559449,
+          0.7561648675924793,
           2.576113700866699
         ],
         "min": [
-          -2.996220588684082,
-          0.6838352680206299,
+          -2.9962205557047974,
+          0.6838352492326245,
           -2.576113700866699
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74caf2abad786693caab1530979e8636b767ab97fd58bd59b6a4c0b8b573bc16",
+      "geometryHash": "5b2c63a50a244da78183bb3b9a505d804d3a008c86f0a8ea6e4e8650ba8e2d49",
       "id": "sf.render.towline-debris-lod1.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -347,21 +347,21 @@
     {
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-bent-tip",
       "localTransform": [
-        1,
+        1.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        1.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        1.699999988079071,
         0,
+        3,
         0,
-        0,
-        0,
+        -1.8999999165534973,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -375,42 +375,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        1.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        1.699999988079071,
         0,
         0,
         0,
         0,
-        1,
+        1.699999988079071,
         0,
+        3,
         0,
-        0,
-        0,
+        -1.8999999165534973,
         1
       ]
     },
     {
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-lower",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
-        0,
+        3,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -424,40 +424,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
-        0,
+        3,
         1
       ]
     },
     {
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-spine",
       "localTransform": [
-        1,
+        3.5,
         0,
         0,
         0,
         0,
-        1,
+        3.5,
         0,
         0,
         0,
         0,
-        1,
+        3.5,
         0,
-        0,
+        -3,
         0,
         0,
         1
@@ -473,19 +473,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        3.5,
         0,
         0,
         0,
         0,
-        1,
+        3.5,
         0,
         0,
         0,
         0,
-        1,
+        3.5,
         0,
-        0,
+        -3,
         0,
         0,
         1
@@ -494,21 +494,21 @@
     {
       "id": "sf.render.towline-debris-lod1.node.collision-towline-debris-upper",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
-        0,
+        -3,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -522,40 +522,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
-        0,
+        -3,
         1
       ]
     },
     {
       "id": "sf.render.towline-debris-lod1.node.lod1-hull",
       "localTransform": [
-        1,
+        3.693825840950012,
         0,
         0,
         0,
         0,
-        1,
+        3.693825840950012,
         0,
         0,
         0,
         0,
-        1,
+        3.693825840950012,
         0,
-        0,
+        -0.049419522285461426,
         0,
         0,
         1
@@ -571,19 +571,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        3.693825840950012,
         0,
         0,
         0,
         0,
-        1,
+        3.693825840950012,
         0,
         0,
         0,
         0,
-        1,
+        3.693825840950012,
         0,
-        0,
+        -0.049419522285461426,
         0,
         0,
         1
@@ -592,20 +592,20 @@
     {
       "id": "sf.render.towline-debris-lod1.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        2.576113700866699,
         0,
         0,
         0,
         0,
-        1,
+        2.576113700866699,
         0,
         0,
         0,
         0,
-        1,
+        2.576113700866699,
         0,
-        0,
-        0,
+        -0.9499999284744263,
+        0.7200000584125519,
         0,
         1
       ],
@@ -620,20 +620,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.towline-debris-lod1.body",
       "worldTransform": [
-        1,
+        2.576113700866699,
         0,
         0,
         0,
         0,
-        1,
+        2.576113700866699,
         0,
         0,
         0,
         0,
-        1,
+        2.576113700866699,
         0,
-        0,
-        0,
+        -0.9499999284744263,
+        0.7200000584125519,
         0,
         1
       ]
@@ -795,37 +795,37 @@
       "uri": "towline_debris_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 352060,
-    "sha256": "6c031ae3533968526baa029b4f6453a21ce2163684565725dad79a5f4730306d",
+    "bytes": 324360,
+    "sha256": "c4b4fa2508e09f6f43cc9ca352e18fd2ace35b0b2c49ca104506e09b66bf6b9e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.04990839958190918,
-        0.053060293197631836,
+        -0.049908446750653424,
+        0.05306030787686955,
         0
       ],
       "max": [
-        3.6500229835510254,
-        0.7561648488044739,
-        3.6500442028045654
+        3.650022884323944,
+        0.7561648675924793,
+        3.6500442518387404
       ],
       "min": [
-        -3.7498397827148438,
-        -0.6500442624092102,
-        -3.6500442028045654
+        -3.749839777825251,
+        -0.6500442518387402,
+        -3.6500442518387404
       ],
       "size": [
-        7.399862766265869,
-        1.406209111213684,
-        7.300088405609131
+        7.399862662149195,
+        1.4062091194312194,
+        7.300088503677481
       ]
     },
     "hidden": [
@@ -982,19 +982,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.693825840950012,
           0,
           0,
           0,
           0,
-          1,
+          3.693825840950012,
           0,
           0,
           0,
           0,
-          1,
+          3.693825840950012,
           0,
-          0,
+          -0.049419522285461426,
           0,
           0,
           1
@@ -1009,20 +1009,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.576113700866699,
           0,
           0,
           0,
           0,
-          1,
+          2.576113700866699,
           0,
           0,
           0,
           0,
-          1,
+          2.576113700866699,
           0,
-          0,
-          0,
+          -0.9499999284744263,
+          0.7200000584125519,
           0,
           1
         ],
@@ -1038,20 +1038,20 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/towline_debris_lod1.glb"
   },
-  "runtimeHash": "04bfcd2ed9f17b7a09fe23a632c35c43c30f50e7dc61011b24485f1640f13fc5",
+  "runtimeHash": "5ac7b0dd68329daae744981d345844b1c52fc4119f15bc37b9afc1ae9eff8bb4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.6500229835510254,
-          0.7561648488044739,
-          3.6500442028045654
+          3.650022884323944,
+          0.7561648675924793,
+          3.6500442518387404
         ],
         "min": [
-          -3.7498397827148438,
-          -0.6500442624092102,
-          -3.6500442028045654
+          -3.749839777825251,
+          -0.6500442518387402,
+          -3.6500442518387404
         ]
       },
       "id": "sf.render.towline-debris-lod1.body",

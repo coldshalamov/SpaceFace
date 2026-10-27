@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "feb806f1d51f7bbf14bc444e88d7dfd6a8fb6258171b0f3ab4ccad44ee8f1d68",
+  "contentHash": "1ba3a315883ea355b382856d0ee1d297ba2233c8f901a3cae4eab35e82268062",
   "dynamicGroups": [
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -726,17 +726,17 @@
       "bounds": {
         "max": [
           18.400609970092773,
-          7.331486225128174,
-          9.58283805847168
+          7.331486015639685,
+          9.58283789835207
         ],
         "min": [
           -21.21653938293457,
-          -5.456703186035156,
-          -8.936278343200684
+          -5.4567029765466675,
+          -8.936278183081074
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a70d254aad6c2df47dc6c29b18116ffac5f9b60fbd5f8855318782420f423a31",
+      "geometryHash": "19fe37d50c47a25b13f3a165cce74d0f66ac20d3c02672001be7ce555ded32c6",
       "id": "sf.render.massline-express-liner-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -751,17 +751,17 @@
       "bounds": {
         "max": [
           18.390104293823242,
-          5.560153484344482,
-          8.610003471374512
+          5.560153275023345,
+          8.610003719041115
         ],
         "min": [
           -20.299999237060547,
-          -5.2001519203186035,
-          -8.819257736206055
+          -5.200151710997466,
+          -8.819257983872658
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e871a497cf0ef33ce6a72c004a1d109bc0f5054c32b06637cd71fc2d4d15e35",
+      "geometryHash": "206a401d54ee3eff4337cd0684a5780915a55406460630d350f28731deea91ed",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame.primitive.0",
       "indexCount": 37242,
       "indexed": true,
@@ -776,17 +776,17 @@
       "bounds": {
         "max": [
           11.550000190734863,
-          5.670356750488281,
-          8.521037101745605
+          5.6703564441756695,
+          8.52103635649018
         ],
         "min": [
           -19.649999618530273,
-          -4.8616790771484375,
-          -8.521037101745605
+          -4.861678770835826,
+          -8.52103635649018
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30819f9373ed1783c830bd22631b7d2d32b8797525c57ca62f93bb7be846c3f8",
+      "geometryHash": "2724db80efac5c30f737ff1f56ef981c0372469e1a99dd677177beb2e9661713",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 7362,
       "indexed": true,
@@ -801,17 +801,17 @@
       "bounds": {
         "max": [
           3.490000009536743,
-          5.614950180053711,
-          8.990548133850098
+          5.6149501917956455,
+          8.990548267211102
         ],
         "min": [
           -18.017000198364258,
-          1.787049412727356,
-          -0.21754834055900574
+          1.7870494009854212,
+          -0.21754847392000976
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8f441382762dda17bd02bf330a4a0c56984dd87b2ae2e60d5422d5d20bdb038",
+      "geometryHash": "9a4e4012cda2117a00b9fcf6aa25fd81ec5d543edf5ed1c72114ed43672e5aee",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -826,17 +826,17 @@
       "bounds": {
         "max": [
           14.723433494567871,
-          5.619940280914307,
-          5.232458114624023
+          5.6199403841523825,
+          5.232458122111213
         ],
         "min": [
           -8.600000381469727,
-          0.4352152347564697,
-          -5.225966930389404
+          0.4352151315183943,
+          -5.225966937876594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d31896067e6ca49c62e5f2cfff53c3a26d630e647908dc014e8cd89a043e5db",
+      "geometryHash": "4fd43b9dc6023f1b6ea97b0639721f5185bbf2eca12601352773f33ec01b309d",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 2238,
       "indexed": true,
@@ -861,7 +861,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92a5b8607fd8309dfd795e1fc3f2622f1fd86b28a479368d6540bbd4c94261b5",
+      "geometryHash": "2186d38af4cb3c029cffc7c032673ff96c2b631f597631fe99b5512b05027444",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -926,17 +926,17 @@
       "bounds": {
         "max": [
           18.399999618530273,
-          5.558375358581543,
-          8.600905418395996
+          5.558375676626994,
+          8.600905388592764
         ],
         "min": [
           -18.592304229736328,
-          -3.9936697483062744,
-          -8.600905418395996
+          -3.9936700663517257,
+          -8.600905388592764
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9930a358815672b98d9e29b13da7a9001582b29281c44511999b41941525c008",
+      "geometryHash": "b37fd52ce15af3d00c781332330699459b2ccf1b986c4c3c7fb37370b9e99961",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 21474,
       "indexed": true,
@@ -951,17 +951,17 @@
       "bounds": {
         "max": [
           -12.66083812713623,
-          6.1248979568481445,
+          6.124897957663077,
           -2.5821290016174316
         ],
         "min": [
           -12.768837928771973,
-          6.049294471740723,
+          6.0492944709257905,
           -2.690128803253174
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f7256843f6ec1f9f6694bfe5c188a1df24b686949b1a2709811fd9e1dcc66a2",
+      "geometryHash": "262c6dcf28664931f09deb03e9d6c3e4806ea59a5f7c7fef57cd942108e4ab51",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -976,17 +976,17 @@
       "bounds": {
         "max": [
           7.900000095367432,
-          5.645087242126465,
-          8.644209861755371
+          5.645087122325986,
+          8.644209352495556
         ],
         "min": [
           -16.71500015258789,
-          -0.8100873231887817,
-          -8.644209861755371
+          -0.8100872033883024,
+          -8.644209352495556
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b5d1340ace8a08618b651e94d6e909693e401060842e64597496c65b601617a9",
+      "geometryHash": "115f14e2c5edeb3e8e88bc5f84122fc50121d1e1cbd2ccdddfb03eac6913a89c",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 4896,
       "indexed": true,
@@ -1001,17 +1001,17 @@
       "bounds": {
         "max": [
           9.100000381469727,
-          7.300330638885498,
-          9.580435752868652
+          7.30033057435306,
+          9.580435940099306
         ],
         "min": [
           -21.219999313354492,
-          -5.451520919799805,
-          -8.920435905456543
+          -5.451520855267367,
+          -8.920436092687197
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c919e79ec9e00c9e192dbb9054138eb1249671d1a22a79393ed6fbd73565d27",
+      "geometryHash": "ae875979a76ef114c0ec7a8c8041551dc0735c84ee15e2f9cd1f9538cb6216a5",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 19338,
       "indexed": true,
@@ -1026,17 +1026,17 @@
       "bounds": {
         "max": [
           8.980000495910645,
-          5.957698345184326,
-          9.499801635742188
+          5.957698762917077,
+          9.499801841898186
         ],
         "min": [
           -21.219999313354492,
-          -4.199904441833496,
-          -7.257801532745361
+          -4.199904859566247,
+          -7.25780173890136
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3ac35c427b3f1a47a0f551649a82f9babf25c1fb04e7ef56fa7b4dd2d2a49cd",
+      "geometryHash": "d9aeca427d4e88f49d03fadfc63d3799e10a6d69b3b02b4d173eb1f987510501",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 9096,
       "indexed": true,
@@ -1050,18 +1050,18 @@
     {
       "bounds": {
         "max": [
-          16.675065994262695,
-          5.500370979309082,
+          16.67506635425896,
+          5.500370880447629,
           9.535594940185547
         ],
         "min": [
-          2.1099328994750977,
-          -4.900371074676514,
+          2.109932539478832,
+          -4.90037097581506,
           -8.59791088104248
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa0b3aca1eb598598afcae290e8e12c56d686bf467873461e57747d00ece9b7c",
+      "geometryHash": "ff79b04c7d107f32708564895cfea7f7971bd9e0c67b547fd351fddb3bc35af1",
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 2712,
       "indexed": true,
@@ -1323,21 +1323,21 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.collision-hull",
       "localTransform": [
-        1,
+        19.808574676513672,
         0,
         0,
         0,
         0,
-        1,
+        19.808574676513672,
         0,
         0,
         0,
         0,
-        1,
+        19.808574676513672,
         0,
-        0,
-        0,
-        0,
+        -1.4079647064208984,
+        0.9373915195465088,
+        0.32327985763549805,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1351,21 +1351,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        19.808574676513672,
         0,
         0,
         0,
         0,
-        1,
+        19.808574676513672,
         0,
         0,
         0,
         0,
-        1,
+        19.808574676513672,
         0,
-        0,
-        0,
-        0,
+        -1.4079647064208984,
+        0.9373915195465088,
+        0.32327985763549805,
         1
       ]
     },
@@ -1420,20 +1420,20 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        15.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.599999904632568,
         0,
-        0,
-        0,
+        -4.049999713897705,
+        0.4043388366699219,
         0,
         1
       ],
@@ -1449,20 +1449,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        15.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.599999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.599999904632568,
         0,
-        0,
-        0,
+        -4.049999713897705,
+        0.4043388366699219,
         0,
         1
       ]
@@ -1470,21 +1470,21 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-armor-frame",
       "localTransform": [
-        1,
+        19.345051765441895,
         0,
         0,
         0,
         0,
-        1,
+        19.345051765441895,
         0,
         0,
         0,
         0,
-        1,
+        19.345051765441895,
         0,
-        0,
-        0,
-        0,
+        -0.9549474716186523,
+        0.18000078201293945,
+        -0.10462713241577148,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1499,42 +1499,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        19.345051765441895,
         0,
         0,
         0,
         0,
-        1,
+        19.345051765441895,
         0,
         0,
         0,
         0,
-        1,
+        19.345051765441895,
         0,
-        0,
-        0,
-        0,
+        -0.9549474716186523,
+        0.18000078201293945,
+        -0.10462713241577148,
         1
       ]
     },
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        10.7535001039505,
         0,
         0,
         0,
         0,
-        1,
+        10.7535001039505,
         0,
         0,
         0,
         0,
-        1,
+        10.7535001039505,
         0,
-        0,
-        0,
-        0,
+        -7.263500094413757,
+        3.7009997963905334,
+        4.386499896645546,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1549,42 +1549,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        10.7535001039505,
         0,
         0,
         0,
         0,
-        1,
+        10.7535001039505,
         0,
         0,
         0,
         0,
-        1,
+        10.7535001039505,
         0,
-        0,
-        0,
-        0,
+        -7.263500094413757,
+        3.7009997963905334,
+        4.386499896645546,
         1
       ]
     },
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        11.661716938018799,
         0,
         0,
         0,
         0,
-        1,
+        11.661716938018799,
         0,
         0,
         0,
         0,
-        1,
+        11.661716938018799,
         0,
-        0,
-        0,
-        0,
+        3.0617165565490723,
+        3.027577757835388,
+        0.0032455921173095703,
         1
       ],
       "materialPipelineKey": "blend",
@@ -1599,21 +1599,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        11.661716938018799,
         0,
         0,
         0,
         0,
-        1,
+        11.661716938018799,
         0,
         0,
         0,
         0,
-        1,
+        11.661716938018799,
         0,
-        0,
-        0,
-        0,
+        3.0617165565490723,
+        3.027577757835388,
+        0.0032455921173095703,
         1
       ]
     },
@@ -1770,20 +1770,20 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        18.4961519241333,
         0,
         0,
         0,
         0,
-        1,
+        18.4961519241333,
         0,
         0,
         0,
         0,
-        1,
+        18.4961519241333,
         0,
-        0,
-        0,
+        -0.09615230560302734,
+        0.7823528051376343,
         0,
         1
       ],
@@ -1799,20 +1799,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        18.4961519241333,
         0,
         0,
         0,
         0,
-        1,
+        18.4961519241333,
         0,
         0,
         0,
         0,
-        1,
+        18.4961519241333,
         0,
-        0,
-        0,
+        -0.09615230560302734,
+        0.7823528051376343,
         0,
         1
       ]
@@ -1820,21 +1820,21 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-cyan",
       "localTransform": [
-        1,
+        0.053999900817871094,
         0,
         0,
         0,
         0,
-        1,
+        0.053999900817871094,
         0,
         0,
         0,
         0,
-        1,
+        0.053999900817871094,
         0,
-        0,
-        0,
-        0,
+        -12.714838027954102,
+        6.087096214294434,
+        -2.6361289024353027,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1849,41 +1849,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        0.053999900817871094,
         0,
         0,
         0,
         0,
-        1,
+        0.053999900817871094,
         0,
         0,
         0,
         0,
-        1,
+        0.053999900817871094,
         0,
-        0,
-        0,
-        0,
+        -12.714838027954102,
+        6.087096214294434,
+        -2.6361289024353027,
         1
       ]
     },
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        12.307500123977661,
         0,
         0,
         0,
         0,
-        1,
+        12.307500123977661,
         0,
         0,
         0,
         0,
-        1,
+        12.307500123977661,
         0,
-        0,
-        0,
+        -4.4075000286102295,
+        2.4174999594688416,
         0,
         1
       ],
@@ -1899,20 +1899,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        12.307500123977661,
         0,
         0,
         0,
         0,
-        1,
+        12.307500123977661,
         0,
         0,
         0,
         0,
-        1,
+        12.307500123977661,
         0,
-        0,
-        0,
+        -4.4075000286102295,
+        2.4174999594688416,
         0,
         1
       ]
@@ -1920,21 +1920,21 @@
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        15.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        15.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        15.15999984741211,
         0,
-        0,
-        0,
-        0,
+        -6.059999465942383,
+        0.9244048595428467,
+        0.3299999237060547,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1949,42 +1949,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        15.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        15.15999984741211,
         0,
         0,
         0,
         0,
-        1,
+        15.15999984741211,
         0,
-        0,
-        0,
-        0,
+        -6.059999465942383,
+        0.9244048595428467,
+        0.3299999237060547,
         1
       ]
     },
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        15.099999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.099999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.099999904632568,
         0,
-        0,
-        0,
-        0,
+        -6.119999408721924,
+        0.878896951675415,
+        1.121000051498413,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1999,42 +1999,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        15.099999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.099999904632568,
         0,
         0,
         0,
         0,
-        1,
+        15.099999904632568,
         0,
-        0,
-        0,
-        0,
+        -6.119999408721924,
+        0.878896951675415,
+        1.121000051498413,
         1
       ]
     },
     {
       "id": "sf.render.massline-express-liner-v1.node.lod0-motion-hull-core-warning",
       "localTransform": [
-        1,
+        9.066752910614014,
         0,
         0,
         0,
         0,
-        1,
+        9.066752910614014,
         0,
         0,
         0,
         0,
-        1,
+        9.066752910614014,
         0,
-        0,
-        0,
-        0,
+        9.392499446868896,
+        0.2999999523162842,
+        0.4688420295715332,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2049,21 +2049,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.massline-express-liner-v1.body",
       "worldTransform": [
-        1,
+        9.066752910614014,
         0,
         0,
         0,
         0,
-        1,
+        9.066752910614014,
         0,
         0,
         0,
         0,
-        1,
+        9.066752910614014,
         0,
-        0,
-        0,
-        0,
+        9.392499446868896,
+        0.2999999523162842,
+        0.4688420295715332,
         1
       ]
     },
@@ -2862,14 +2862,14 @@
       "uri": "massline_express_liner_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1403532,
-    "sha256": "a332ba47dd117de2a6a2e7f5885f1f63e21bb9022887981ba24a0a7ded113839",
+    "bytes": 834732,
+    "sha256": "d67a903fd6eb51e5c75d2e56e90a0b3444649d10f4e56f63f338edb746df6d45",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2881,18 +2881,18 @@
       ],
       "max": [
         18.400609970092773,
-        7.331486225128174,
-        9.58283805847168
+        7.331486015639685,
+        9.58283789835207
       ],
       "min": [
         -21.219999313354492,
-        -5.456703186035156,
-        -8.936278343200684
+        -5.4567029765466675,
+        -8.936278183081074
       ],
       "size": [
         39.620609283447266,
-        12.78818941116333,
-        18.519116401672363
+        12.788188992186353,
+        18.519116081433143
       ]
     },
     "hidden": [
@@ -3837,20 +3837,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          15.599999904632568,
           0,
           0,
           0,
           0,
-          1,
+          15.599999904632568,
           0,
-          0,
-          0,
+          -4.049999713897705,
+          0.4043388366699219,
           0,
           1
         ],
@@ -3865,21 +3865,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.345051765441895,
           0,
           0,
           0,
           0,
-          1,
+          19.345051765441895,
           0,
           0,
           0,
           0,
-          1,
+          19.345051765441895,
           0,
-          0,
-          0,
-          0,
+          -0.9549474716186523,
+          0.18000078201293945,
+          -0.10462713241577148,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Armor_frame",
@@ -3893,21 +3893,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.7535001039505,
           0,
           0,
           0,
           0,
-          1,
+          10.7535001039505,
           0,
           0,
           0,
           0,
-          1,
+          10.7535001039505,
           0,
-          0,
-          0,
-          0,
+          -7.263500094413757,
+          3.7009997963905334,
+          4.386499896645546,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
@@ -3921,21 +3921,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          11.661716938018799,
           0,
           0,
           0,
           0,
-          1,
+          11.661716938018799,
           0,
           0,
           0,
           0,
-          1,
+          11.661716938018799,
           0,
-          0,
-          0,
-          0,
+          3.0617165565490723,
+          3.027577757835388,
+          0.0032455921173095703,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_CANOPY",
@@ -4054,20 +4054,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.4961519241333,
           0,
           0,
           0,
           0,
-          1,
+          18.4961519241333,
           0,
           0,
           0,
           0,
-          1,
+          18.4961519241333,
           0,
-          0,
-          0,
+          -0.09615230560302734,
+          0.7823528051376343,
           0,
           1
         ],
@@ -4082,21 +4082,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.053999900817871094,
           0,
           0,
           0,
           0,
-          1,
+          0.053999900817871094,
           0,
           0,
           0,
           0,
-          1,
+          0.053999900817871094,
           0,
-          0,
-          0,
-          0,
+          -12.714838027954102,
+          6.087096214294434,
+          -2.6361289024353027,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
@@ -4110,20 +4110,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          12.307500123977661,
           0,
           0,
           0,
           0,
-          1,
+          12.307500123977661,
           0,
           0,
           0,
           0,
-          1,
+          12.307500123977661,
           0,
-          0,
-          0,
+          -4.4075000286102295,
+          2.4174999594688416,
           0,
           1
         ],
@@ -4138,21 +4138,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.15999984741211,
           0,
           0,
           0,
           0,
-          1,
+          15.15999984741211,
           0,
           0,
           0,
           0,
-          1,
+          15.15999984741211,
           0,
-          0,
-          0,
-          0,
+          -6.059999465942383,
+          0.9244048595428467,
+          0.3299999237060547,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Mechanical",
@@ -4166,21 +4166,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.099999904632568,
           0,
           0,
           0,
           0,
-          1,
+          15.099999904632568,
           0,
           0,
           0,
           0,
-          1,
+          15.099999904632568,
           0,
-          0,
-          0,
-          0,
+          -6.119999408721924,
+          0.878896951675415,
+          1.121000051498413,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_MechanicalDark",
@@ -4194,21 +4194,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.066752910614014,
           0,
           0,
           0,
           0,
-          1,
+          9.066752910614014,
           0,
           0,
           0,
           0,
-          1,
+          9.066752910614014,
           0,
-          0,
-          0,
-          0,
+          9.392499446868896,
+          0.2999999523162842,
+          0.4688420295715332,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Warning",
@@ -4224,20 +4224,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb"
   },
-  "runtimeHash": "a87b2843590052762918ac005c3137c62f4f5eef857e6fda4900a60f54926003",
+  "runtimeHash": "82a82ae343b69291adb88531a2ad771a156d5f0548c4408648533aeee2b96613",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           18.400609970092773,
-          7.331486225128174,
-          9.58283805847168
+          7.331486015639685,
+          9.58283789835207
         ],
         "min": [
           -21.219999313354492,
-          -5.456703186035156,
-          -8.936278343200684
+          -5.4567029765466675,
+          -8.936278183081074
         ]
       },
       "id": "sf.render.massline-express-liner-v1.body",

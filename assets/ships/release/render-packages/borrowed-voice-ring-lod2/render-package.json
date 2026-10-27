@@ -125,7 +125,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "592f721c3d62fa7a88731d1b74d2c6055d6f556fd8deccb10871461a36948c55",
+  "contentHash": "9328742edf8624290ff3fa000c6ea4fba8d9b126d9f8d6e263d86ab311864d43",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -192,18 +192,18 @@
     {
       "bounds": {
         "max": [
-          17.9963436126709,
-          1.699792504310608,
+          17.99634322172995,
+          1.699792480998183,
           12.533221244812012
         ],
         "min": [
-          10.040508270263672,
-          -1.699792504310608,
+          10.040508661204619,
+          -1.699792480998183,
           0.19584164023399353
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d161b048f5bad413df02a11c487f83b05a966489473268ab47a2586c74fa4bd",
+      "geometryHash": "6cf4798ad82fca2f8ff6bbda8a8558fd0ef1c6309e4385126a80e1b66b714fe1",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -217,18 +217,18 @@
     {
       "bounds": {
         "max": [
-          17.9963436126709,
-          1.699792504310608,
+          17.99634322172995,
+          1.699792480998183,
           -0.19584164023399353
         ],
         "min": [
-          10.040508270263672,
-          -1.699792504310608,
+          10.040508661204619,
+          -1.699792480998183,
           -12.533221244812012
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce4982950ece7bfb16c6bf5d7f6295b9ebad3ea4ca7a890dfe72dc2a891151b",
+      "geometryHash": "6f58cc6ad76d25b2d858eae052fd20345ea04135bfbe2d52a76de4eac636c493",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -243,17 +243,17 @@
       "bounds": {
         "max": [
           12.533221244812012,
-          1.699792504310608,
-          -10.040508270263672
+          1.699792480998183,
+          -10.040508661204619
         ],
         "min": [
           0.19584164023399353,
-          -1.699792504310608,
-          -17.9963436126709
+          -1.699792480998183,
+          -17.99634322172995
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d42acaafe95ffb6c5a9e5098c83d60e481f2179cc3709520b144ff427cfedff5",
+      "geometryHash": "0cc24217620857b023478640910feaa59e090ffe518712dfd1a8b733045a38df",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -268,17 +268,17 @@
       "bounds": {
         "max": [
           -0.19584164023399353,
-          1.699792504310608,
-          -10.040508270263672
+          1.699792480998183,
+          -10.040508661204619
         ],
         "min": [
           -12.533221244812012,
-          -1.699792504310608,
-          -17.9963436126709
+          -1.699792480998183,
+          -17.99634322172995
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a57bc16966af5865fa853475747a2fcb45893531b694133a1ccaa0f0ba780ca",
+      "geometryHash": "ed1dd3870e066923d9cf59875909889a2f37f4e7dd2a530e20f565593ffff13d",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -292,18 +292,18 @@
     {
       "bounds": {
         "max": [
-          -10.040508270263672,
-          1.699792504310608,
+          -10.040508661204619,
+          1.699792480998183,
           -0.19584164023399353
         ],
         "min": [
-          -17.9963436126709,
-          -1.699792504310608,
+          -17.99634322172995,
+          -1.699792480998183,
           -12.533221244812012
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee9be98ca481e35c50c2edf5c5877b76a69c8b01e0c613575fbc1f3d46e0a6f8",
+      "geometryHash": "73bc74cf5c6037722b47e6d562bff15775034d8125652c9d104c11adb820280f",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -318,17 +318,17 @@
       "bounds": {
         "max": [
           13.712533950805664,
-          1.851901650428772,
-          5.864742755889893
+          1.8519016315852856,
+          5.864743127797265
         ],
         "min": [
           -13.712533950805664,
-          1.728029727935791,
-          -13.7120361328125
+          1.7280297467792773,
+          -13.712036504719872
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6f1de7323c1d445e8ada1fd337fa6027e50ca6480582c0670e917b3f9fb8834",
+      "geometryHash": "f700f9d01dc4b673a0d6f4c5b8b15704919cf43a746907428e62d177afeef298",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor.primitive.0",
       "indexCount": 594,
       "indexed": true,
@@ -343,17 +343,17 @@
       "bounds": {
         "max": [
           16.124114990234375,
-          1.8728283643722534,
-          11.238590240478516
+          1.8728283778222716,
+          11.238590636710155
         ],
         "min": [
           -16.124114990234375,
-          1.727171540260315,
-          -16.124229431152344
+          1.7271715268102967,
+          -16.124229827383985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade25aee682ef2e78f8c8fcd1b49516e10e038d9d18cd68d18c9a8344776822b",
+      "geometryHash": "2b2a3a414f1e9f70f872e82a961b17c90ebcb1b870e6cf183120f04712d93ec1",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal.primitive.0",
       "indexCount": 1020,
       "indexed": true,
@@ -367,18 +367,18 @@
     {
       "bounds": {
         "max": [
-          15.510103225708008,
-          1.7168231010437012,
+          15.510102745247313,
+          1.7168230474309905,
           8.70405101776123
         ],
         "min": [
-          13.166927337646484,
-          1.6831203699111938,
+          13.16692781810718,
+          1.6831204235239046,
           3.1823816299438477
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b3bdfa5cfa3886223c8fa05a0b5f3ced9e1ac4a3f145b05fa9ccbad45641a40",
+      "geometryHash": "f23d96b1c6098ab5f74c9589a0b31d9577f91056b2b1996900967cec48753f30",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -392,18 +392,18 @@
     {
       "bounds": {
         "max": [
-          15.509918212890625,
-          1.717113733291626,
+          15.509918176022223,
+          1.7171137460813308,
           -3.1820807456970215
         ],
         "min": [
-          13.167264938354492,
-          1.6827348470687866,
+          13.167264975222894,
+          1.6827348342790818,
           -8.704109191894531
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b89bcf0a5d961a938c9644c243b81120403ed3e9f569fc9c854ba3b3c648d393",
+      "geometryHash": "be208521e94480c45babcef06f7373ac7013bf95e05b0f1473adc7e813c1c70a",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -418,17 +418,17 @@
       "bounds": {
         "max": [
           8.70405101776123,
-          1.7168231010437012,
-          -13.166927337646484
+          1.7168230474309905,
+          -13.16692781810718
         ],
         "min": [
           3.1823816299438477,
-          1.6831203699111938,
-          -15.510103225708008
+          1.6831204235239046,
+          -15.510102745247313
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70fb549fe0b068ac00fc4d9cf1baf0a104807e174623958218518ec4694018e3",
+      "geometryHash": "41baef4aa31f17a7c50e1a93dd4a3b6ca65e0dcceab2eb12b36448b7575f26d5",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -443,17 +443,17 @@
       "bounds": {
         "max": [
           -3.1820807456970215,
-          1.717113733291626,
-          -13.167264938354492
+          1.7171137460813308,
+          -13.167264975222894
         ],
         "min": [
           -8.704109191894531,
-          1.6827348470687866,
-          -15.509918212890625
+          1.6827348342790818,
+          -15.509918176022223
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06440608c1414e291ab4ab1c6fcaa3481e23cc403f6c02fa04eb475576d2856f",
+      "geometryHash": "830416a6046d575f561b3fc3c6b6e79a03af04c5a7023395e122a21b35516b95",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -467,18 +467,18 @@
     {
       "bounds": {
         "max": [
-          -13.166927337646484,
-          1.7168231010437012,
+          -13.16692781810718,
+          1.7168230474309905,
           -3.1823816299438477
         ],
         "min": [
-          -15.510103225708008,
-          1.6831203699111938,
+          -15.510102745247313,
+          1.6831204235239046,
           -8.70405101776123
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06957dbe75937cd0cabd9a6b2795d195d25ada5aed7b005c18e4816be79111a9",
+      "geometryHash": "d2c1ced430be8a390a99ad176a73877a1cc6ca027170eead1af9bf3ee994e65d",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -493,17 +493,17 @@
       "bounds": {
         "max": [
           17.97461700439453,
-          1.6962008476257324,
-          12.518595695495605
+          1.6962007852943393,
+          12.518596188514987
         ],
         "min": [
           -17.974607467651367,
-          -1.6960842609405518,
-          -17.97576332092285
+          -1.6960841986091586,
+          -17.975763813942233
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa29fec9eb404382cadd706face2e5742e187ad294f755449a4bd17fea1e42ef",
+      "geometryHash": "06b2b9918767e9c1de3be2d135c49488f2ae465b0527ce5180a0f4ba67d62fa4",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull.primitive.0",
       "indexCount": 390,
       "indexed": true,
@@ -518,17 +518,17 @@
       "bounds": {
         "max": [
           17.992080688476562,
-          1.8663331270217896,
-          12.545214653015137
+          1.8663331028921588,
+          12.545214940380577
         ],
         "min": [
           -17.992080688476562,
-          -1.6961724758148193,
-          -17.991958618164062
+          -1.6961724516851886,
+          -17.9919589055295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af645dd8c4914b1231d2b98621dbefee056c6d71aefb94b8d6d4e2f2972e2c2d",
+      "geometryHash": "836bfc92de2ebacfc5328b3858c7af1780c28b2e90933289c26c49e767adf321",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 2370,
       "indexed": true,
@@ -553,7 +553,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f8a6c85a02512535d46e75b6d7e9c098d6428a23894b04f9783efff358db26b",
+      "geometryHash": "1ac18cc148c1ad58ee9069d63225b115f6d974abc5d85cc497ee99baf2e08a66",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -578,7 +578,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5319afe08f7d4a3abef6a6ab21749a4279ca2f53604e1daa31282e07cd932219",
+      "geometryHash": "0d58fb956bc7a5336644b073e7c891f98928d956114404f09a989b1200792f57",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone.primitive.0",
       "indexCount": 1170,
       "indexed": true,
@@ -603,7 +603,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5380ec1eadc37f3820b83c84c72632fe224122977e786fccfbde9023c2885eb2",
+      "geometryHash": "4e77375ff6f98b8548343223812f123ee377c8e40f3fa96fca29b026061c4b22",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone.primitive.0",
       "indexCount": 1554,
       "indexed": true,
@@ -628,7 +628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03eb5698bc313ccdb6772c5329112130a55941a80e3f3dc031781301dd93531d",
+      "geometryHash": "1e9deb5030b71bf975e0f3909b76aa5f318b3ceea3a124d2e897f32d19b853e2",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone.primitive.0",
       "indexCount": 1170,
       "indexed": true,
@@ -653,7 +653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd6a0b485cdf1fdc7e3c437fc9e5ab2e6fb2c54684634b12159b85f62dd93962",
+      "geometryHash": "8717e3cd820f0e300ca215b2039777f33878feb1300b0aa477968bb77b048895",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone.primitive.0",
       "indexCount": 1164,
       "indexed": true,
@@ -678,7 +678,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98a2b2d39899df5ff6ce3911f60792503078cdaeecef95279a4552a3666630bc",
+      "geometryHash": "3fcaf2ad2f1bcecbd5f2f56843057cf6f4550dbd5962e5d9d108c6f982e68d43",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone.primitive.0",
       "indexCount": 1470,
       "indexed": true,
@@ -841,21 +841,21 @@
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
       "localTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        14.018425941467285,
         0,
-        0,
-        0,
+        6.364531442523003,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -869,42 +869,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        14.018425941467285,
         0,
-        0,
-        0,
+        6.364531442523003,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
       "localTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        14.018425941467285,
         0,
-        0,
-        0,
+        -6.364531442523003,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -918,42 +918,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        14.018425941467285,
         0,
-        0,
-        0,
+        -6.364531442523003,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
       "localTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        6.364531442523003,
         0,
-        0,
-        0,
+        -14.018425941467285,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -967,42 +967,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        6.364531442523003,
         0,
-        0,
-        0,
+        -14.018425941467285,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
       "localTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        -6.364531442523003,
         0,
-        0,
-        0,
+        -14.018425941467285,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1016,42 +1016,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        -6.364531442523003,
         0,
-        0,
-        0,
+        -14.018425941467285,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
       "localTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        -14.018425941467285,
         0,
-        0,
-        0,
+        -6.364531442523003,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1065,42 +1065,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
         0,
         0,
         0,
-        1,
+        6.168689802289009,
         0,
+        -14.018425941467285,
         0,
-        0,
-        0,
+        -6.364531442523003,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor",
       "localTransform": [
-        1,
+        13.712533950805664,
         0,
         0,
         0,
         0,
-        1,
+        13.712533950805664,
         0,
         0,
         0,
         0,
-        1,
+        13.712533950805664,
         0,
         0,
-        0,
-        0,
+        1.7899656891822815,
+        -3.9236466884613037,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1114,42 +1114,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        13.712533950805664,
         0,
         0,
         0,
         0,
-        1,
+        13.712533950805664,
         0,
         0,
         0,
         0,
-        1,
+        13.712533950805664,
         0,
         0,
-        0,
-        0,
+        1.7899656891822815,
+        -3.9236466884613037,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal",
       "localTransform": [
-        1,
+        16.124114990234375,
         0,
         0,
         0,
         0,
-        1,
+        16.124114990234375,
         0,
         0,
         0,
         0,
-        1,
+        16.124114990234375,
         0,
         0,
-        0,
-        0,
+        1.7999999523162842,
+        -2.442819595336914,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1163,42 +1163,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        16.124114990234375,
         0,
         0,
         0,
         0,
-        1,
+        16.124114990234375,
         0,
         0,
         0,
         0,
-        1,
+        16.124114990234375,
         0,
         0,
-        0,
-        0,
+        1.7999999523162842,
+        -2.442819595336914,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan",
       "localTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        14.338515281677246,
+        1.6999717354774475,
+        5.943216323852539,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1212,42 +1212,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        14.338515281677246,
+        1.6999717354774475,
+        5.943216323852539,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan",
       "localTransform": [
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
-        0,
-        0,
-        0,
+        14.338591575622559,
+        1.6999242901802063,
+        -5.943094968795776,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1261,42 +1261,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
-        0,
-        0,
-        0,
+        14.338591575622559,
+        1.6999242901802063,
+        -5.943094968795776,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan",
       "localTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        5.943216323852539,
+        1.6999717354774475,
+        -14.338515281677246,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1310,42 +1310,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        5.943216323852539,
+        1.6999717354774475,
+        -14.338515281677246,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan",
       "localTransform": [
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
-        0,
-        0,
-        0,
+        -5.943094968795776,
+        1.6999242901802063,
+        -14.338591575622559,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1359,42 +1359,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
         0,
         0,
         0,
-        1,
+        2.761014223098755,
         0,
-        0,
-        0,
-        0,
+        -5.943094968795776,
+        1.6999242901802063,
+        -14.338591575622559,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan",
       "localTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        -14.338515281677246,
+        1.6999717354774475,
+        -5.943216323852539,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1408,42 +1408,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
         0,
         0,
         0,
-        1,
+        2.7608346939086914,
         0,
-        0,
-        0,
-        0,
+        -14.338515281677246,
+        1.6999717354774475,
+        -5.943216323852539,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull",
       "localTransform": [
-        1,
+        17.97461223602295,
         0,
         0,
         0,
         0,
-        1,
+        17.97461223602295,
         0,
         0,
         0,
         0,
-        1,
+        17.97461223602295,
         0,
-        0,
-        0,
-        0,
+        0.00000476837158203125,
+        0.00005829334259033203,
+        -2.728583812713623,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1457,42 +1457,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        17.97461223602295,
         0,
         0,
         0,
         0,
-        1,
+        17.97461223602295,
         0,
         0,
         0,
         0,
-        1,
+        17.97461223602295,
         0,
-        0,
-        0,
-        0,
+        0.00000476837158203125,
+        0.00005829334259033203,
+        -2.728583812713623,
         1
       ]
     },
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        17.992080688476562,
         0,
         0,
         0,
         0,
-        1,
+        17.992080688476562,
         0,
         0,
         0,
         0,
-        1,
+        17.992080688476562,
         0,
         0,
-        0,
-        0,
+        0.08508032560348511,
+        -2.723371982574463,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1506,21 +1506,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
       "worldTransform": [
-        1,
+        17.992080688476562,
         0,
         0,
         0,
         0,
-        1,
+        17.992080688476562,
         0,
         0,
         0,
         0,
-        1,
+        17.992080688476562,
         0,
         0,
-        0,
-        0,
+        0.08508032560348511,
+        -2.723371982574463,
         1
       ]
     },
@@ -2275,37 +2275,37 @@
       "uri": "borrowed_voice_ring_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 524844,
-    "sha256": "f590b3b37ee658a34d472b66de46c90dc3e192bb4f8d1a2aa3bdfdc68cbf2dd0",
+    "bytes": 444056,
+    "sha256": "c89d50d8ff183d9d7751d31669978fc7add8886b511819391cc8478c37e560a7",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.6444212057172323,
-        -3.19904475004617
+        0.6444212173734447,
+        -3.19904460636345
       ],
       "max": [
-        17.9963436126709,
+        17.99634322172995,
         2.9886349157450725,
-        12.545214653015137
+        12.545214940380577
       ],
       "min": [
-        -17.9963436126709,
-        -1.699792504310608,
+        -17.99634322172995,
+        -1.699792480998183,
         -18.943304153107476
       ],
       "size": [
-        35.9926872253418,
-        4.68842742005568,
-        31.488518806122613
+        35.9926864434599,
+        4.688427396743256,
+        31.48851909348805
       ]
     },
     "hidden": [
@@ -2955,21 +2955,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.712533950805664,
           0,
           0,
           0,
           0,
-          1,
+          13.712533950805664,
           0,
           0,
           0,
           0,
-          1,
+          13.712533950805664,
           0,
           0,
-          0,
-          0,
+          1.7899656891822815,
+          -3.9236466884613037,
           1
         ],
         "name": "LOD2_Armor",
@@ -2982,21 +2982,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          16.124114990234375,
           0,
           0,
           0,
           0,
-          1,
+          16.124114990234375,
           0,
           0,
           0,
           0,
-          1,
+          16.124114990234375,
           0,
           0,
-          0,
-          0,
+          1.7999999523162842,
+          -2.442819595336914,
           1
         ],
         "name": "LOD2_BrushedMetal",
@@ -3009,21 +3009,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
-          0,
-          0,
-          0,
+          14.338515281677246,
+          1.6999717354774475,
+          5.943216323852539,
           1
         ],
         "name": "LOD2_HOOK_BORROWED_SIGNAL_1_Lights_Cyan",
@@ -3036,21 +3036,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.761014223098755,
           0,
           0,
           0,
           0,
-          1,
+          2.761014223098755,
           0,
           0,
           0,
           0,
-          1,
+          2.761014223098755,
           0,
-          0,
-          0,
-          0,
+          14.338591575622559,
+          1.6999242901802063,
+          -5.943094968795776,
           1
         ],
         "name": "LOD2_HOOK_BORROWED_SIGNAL_2_Lights_Cyan",
@@ -3063,21 +3063,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
-          0,
-          0,
-          0,
+          5.943216323852539,
+          1.6999717354774475,
+          -14.338515281677246,
           1
         ],
         "name": "LOD2_HOOK_BORROWED_SIGNAL_3_Lights_Cyan",
@@ -3090,21 +3090,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.761014223098755,
           0,
           0,
           0,
           0,
-          1,
+          2.761014223098755,
           0,
           0,
           0,
           0,
-          1,
+          2.761014223098755,
           0,
-          0,
-          0,
-          0,
+          -5.943094968795776,
+          1.6999242901802063,
+          -14.338591575622559,
           1
         ],
         "name": "LOD2_HOOK_BORROWED_SIGNAL_4_Lights_Cyan",
@@ -3117,21 +3117,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
           0,
           0,
           0,
-          1,
+          2.7608346939086914,
           0,
-          0,
-          0,
-          0,
+          -14.338515281677246,
+          1.6999717354774475,
+          -5.943216323852539,
           1
         ],
         "name": "LOD2_HOOK_BORROWED_SIGNAL_5_Lights_Cyan",
@@ -3144,21 +3144,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.97461223602295,
           0,
           0,
           0,
           0,
-          1,
+          17.97461223602295,
           0,
           0,
           0,
           0,
-          1,
+          17.97461223602295,
           0,
-          0,
-          0,
-          0,
+          0.00000476837158203125,
+          0.00005829334259033203,
+          -2.728583812713623,
           1
         ],
         "name": "LOD2_Hull",
@@ -3171,21 +3171,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          17.992080688476562,
           0,
           0,
           0,
           0,
-          1,
+          17.992080688476562,
           0,
           0,
           0,
           0,
-          1,
+          17.992080688476562,
           0,
           0,
-          0,
-          0,
+          0.08508032560348511,
+          -2.723371982574463,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -3374,19 +3374,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb"
   },
-  "runtimeHash": "944a2ddf6da4d8abe1cf4b5184330843f574fc1faa3e93bcd194ac854b7d00e0",
+  "runtimeHash": "d9ec1a5455dde79c3a8e37c234fe7128f785e3f5889f84fc6bb9b978efc88907",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          17.9963436126709,
+          17.99634322172995,
           2.9886349157450725,
-          12.545214653015137
+          12.545214940380577
         ],
         "min": [
-          -17.9963436126709,
-          -1.699792504310608,
+          -17.99634322172995,
+          -1.699792480998183,
           -18.943304153107476
         ]
       },

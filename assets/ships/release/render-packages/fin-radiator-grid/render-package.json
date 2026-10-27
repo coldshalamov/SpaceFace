@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f1c646c6d6b8fa2f66aabe135c636cf7c7352f88795197607b6018e1d7601631",
+  "contentHash": "d9d5f535f4e40595168d9db94ac5ef494523ebe98d66f3984259490739706c80",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.070528507232666,
-          0.22992894053459167,
+          3.070528488302775,
+          0.229928947882851,
           3.4260218143463135
         ],
         "min": [
-          0.22947145998477936,
-          0.13007105886936188,
+          0.22947147891467035,
+          0.13007105152110254,
           0.1539781242609024
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb2ca75f90d249f4f1dc351862a5cbf69f9717dff289a1d0cd070a6ee23eccdb",
+      "geometryHash": "a0d5d846b14f17117136cb34585adc28898ee9cdd04b79cc3949bd9263ea3488",
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          3.6000335216522217,
-          0.2799328565597534,
+          3.600033514362873,
+          0.27993285870747703,
           3.799999952316284
         ],
         "min": [
-          -0.000033588472433621064,
-          -0.11993285268545151,
+          -0.00003358118308516289,
+          -0.11993285483317512,
           0
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb28fe3a9c15a4b6ebcb89cb6d01233c800cc38bc924c0c9725f988b37173ad7",
+      "geometryHash": "a532c98d66c90dede77f331e0e0c83f05392eaa9d60163209439d9b803b9962d",
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           2.8499999046325684,
-          0.3199829161167145,
-          0.26999297738075256
+          0.31998290695350307,
+          0.26999297135550737
         ],
         "min": [
           2.049999952316284,
-          0.16001708805561066,
-          0.09000701457262039
+          0.16001709721882204,
+          0.09000702059786561
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cb72c30e1b58583a3ab724c3d5b99d3ff85e20487e0e532d80d250efab5650c9",
+      "geometryHash": "01b3f30d8d06c454a4d48df84efdc61a03c19772427f1d3f62930cfdb933d412",
       "id": "sf.render.fin-radiator-grid.mesh.radiator-status.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -140,21 +140,21 @@
     {
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-hull-merged",
       "localTransform": [
-        1,
+        1.6360218450427055,
         0,
         0,
         0,
         0,
-        1,
+        1.6360218450427055,
         0,
         0,
         0,
         0,
-        1,
+        1.6360218450427055,
         0,
-        0,
-        0,
-        0,
+        1.6499999836087227,
+        0.17999999970197678,
+        1.789999969303608,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -168,42 +168,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.fin-radiator-grid.body",
       "worldTransform": [
-        1,
+        1.6360218450427055,
         0,
         0,
         0,
         0,
-        1,
+        1.6360218450427055,
         0,
         0,
         0,
         0,
-        1,
+        1.6360218450427055,
         0,
-        0,
-        0,
-        0,
+        1.6499999836087227,
+        0.17999999970197678,
+        1.789999969303608,
         1
       ]
     },
     {
       "id": "sf.render.fin-radiator-grid.mesh.fin-radiator-grid-material-mechanical-merged",
       "localTransform": [
-        1,
+        1.899999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.899999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.899999976158142,
         0,
-        0,
-        0,
-        0,
+        1.799999966589894,
+        0.08000000193715096,
+        1.899999976158142,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -217,42 +217,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.fin-radiator-grid.body",
       "worldTransform": [
-        1,
+        1.899999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.899999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.899999976158142,
         0,
-        0,
-        0,
-        0,
+        1.799999966589894,
+        0.08000000193715096,
+        1.899999976158142,
         1
       ]
     },
     {
       "id": "sf.render.fin-radiator-grid.mesh.radiator-status",
       "localTransform": [
-        1,
+        0.3999999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.3999999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.3999999761581421,
         0,
-        0,
-        0,
-        0,
+        2.4499999284744263,
+        0.24000000208616257,
+        0.17999999597668648,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -267,21 +267,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.fin-radiator-grid.body",
       "worldTransform": [
-        1,
+        0.3999999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.3999999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.3999999761581421,
         0,
-        0,
-        0,
-        0,
+        2.4499999284744263,
+        0.24000000208616257,
+        0.17999999597668648,
         1
       ]
     },
@@ -344,36 +344,36 @@
       "uri": "fin_radiator_grid.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 388460,
-    "sha256": "381a33f76afbee3ed8ca2600b1be68998a437d740843a9fbb23a2f41ece5e1f1",
+    "bytes": 379660,
+    "sha256": "392b47643e51d15edbef99881326302c2ba842329d20791c71f29cd626c88a9b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.799999966589894,
-        0.10002503171563148,
+        0.10002502606016397,
         1.899999976158142
       ],
       "max": [
-        3.6000335216522217,
-        0.3199829161167145,
+        3.600033514362873,
+        0.31998290695350307,
         3.799999952316284
       ],
       "min": [
-        -0.000033588472433621064,
-        -0.11993285268545151,
+        -0.00003358118308516289,
+        -0.11993285483317512,
         0
       ],
       "size": [
-        3.6000671101246553,
-        0.439915768802166,
+        3.600067095545958,
+        0.4399157617866782,
         3.799999952316284
       ]
     },
@@ -435,21 +435,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3999999761581421,
           0,
           0,
           0,
           0,
-          1,
+          0.3999999761581421,
           0,
           0,
           0,
           0,
-          1,
+          0.3999999761581421,
           0,
-          0,
-          0,
-          0,
+          2.4499999284744263,
+          0.24000000208616257,
+          0.17999999597668648,
           1
         ],
         "name": "Radiator_Status",
@@ -461,21 +461,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.899999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.899999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.899999976158142,
           0,
-          0,
-          0,
-          0,
+          1.799999966589894,
+          0.08000000193715096,
+          1.899999976158142,
           1
         ],
         "name": "fin_radiator_grid_Material_Mechanical_Merged",
@@ -487,21 +487,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6360218450427055,
           0,
           0,
           0,
           0,
-          1,
+          1.6360218450427055,
           0,
           0,
           0,
           0,
-          1,
+          1.6360218450427055,
           0,
-          0,
-          0,
-          0,
+          1.6499999836087227,
+          0.17999999970197678,
+          1.789999969303608,
           1
         ],
         "name": "fin_radiator_grid_Material_Hull_Merged",
@@ -515,19 +515,19 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_radiator_grid.glb"
   },
-  "runtimeHash": "d436eed577a48eb97edf4c373b2fcbfc23c2f80ee1270b119365dacd047b06c6",
+  "runtimeHash": "9fb1199e3b6be98f4e217ecef833bf5ca92adb88304c299f8cccfe9f59386b7d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.6000335216522217,
-          0.3199829161167145,
+          3.600033514362873,
+          0.31998290695350307,
           3.799999952316284
         ],
         "min": [
-          -0.000033588472433621064,
-          -0.11993285268545151,
+          -0.00003358118308516289,
+          -0.11993285483317512,
           0
         ]
       },

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c22ef67f5c6bdda08474661426cc7065230593aab5d782894f9389ccd2f0a6fa",
+  "contentHash": "bbaa656ca0413a6a4ea34c31f9d3d8809bfafa38cdb6d23d01c37266bf449ca8",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -81,18 +81,18 @@
     {
       "bounds": {
         "max": [
-          6.000394344329834,
+          6.00039406591887,
           13.359999656677246,
-          4.499622344970703
+          4.4996223254009635
         ],
         "min": [
-          -6.000394344329834,
+          -6.00039406591887,
           -0.21509699523448944,
-          -4.499622344970703
+          -4.4996223254009635
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f124b485c70d1aa1dc09fad860629d9ab31cc72eb229ed0d5479da199205fc47",
+      "geometryHash": "6815d451141d64c176179b029baf72dd8bc2476eb07d60ccd47b0fe1c16e0dc3",
       "id": "sf.render.extraction-mast.mesh.collision-hull.primitive.0",
       "indexCount": 774,
       "indexed": true,
@@ -106,18 +106,18 @@
     {
       "bounds": {
         "max": [
-          6.000024318695068,
+          6.000024468944768,
           12.59999942779541,
-          4.500360488891602
+          4.500360562144995
         ],
         "min": [
-          -6.000024318695068,
+          -6.000024468944768,
           -0.21509699523448944,
-          -4.500360488891602
+          -4.500360562144995
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f0f3058c5e07ad024a00fda32357cb48fd9e3f9a10e058bb94a9fffa12451c1",
+      "geometryHash": "a435c85356b632b35591af109a1281f54c4145bb54436006741dc53b539acf52",
       "id": "sf.render.extraction-mast.mesh.lod0-armor.primitive.0",
       "indexCount": 6372,
       "indexed": true,
@@ -131,18 +131,18 @@
     {
       "bounds": {
         "max": [
-          5.040206432342529,
+          5.040206495119588,
           11.547532081604004,
-          3.740236520767212
+          3.7402364871476235
         ],
         "min": [
-          -5.040206432342529,
+          -5.040206495119588,
           1.0519999265670776,
-          -3.740236520767212
+          -3.7402364871476235
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b83a02804ed34e74e83e0a68e4c7097077b1612fbeb01e8255f009200c9c673",
+      "geometryHash": "322239fd456fa633379eb60485cc59e7d28749a330557062faed163e4069c4c1",
       "id": "sf.render.extraction-mast.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 2736,
       "indexed": true,
@@ -167,7 +167,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f9caefadd5d57b7e19afc3898d640588707e668230db36920801a8172da5ff8",
+      "geometryHash": "c48b721e868812fc209e0fcc5bee38ea32a44e6dd17081ec87e2046f867b581c",
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -182,17 +182,17 @@
       "bounds": {
         "max": [
           4.400000095367432,
-          1.599877953529358,
-          2.399932861328125
+          1.5998779647023864,
+          2.3999329024890184
         ],
         "min": [
           1.1999999284744263,
-          0.00012204051745356992,
-          0.40006712079048157
+          0.00012202934442506752,
+          0.400067079629588
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd8b461a555085bd92516e817625f08c2d34cbb98d57b26cb5062459489ed727",
+      "geometryHash": "371e1a6802d7c06e60d61aba9ea577f0012ef46a381220f530c56d285e69522a",
       "id": "sf.render.extraction-mast.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -207,17 +207,17 @@
       "bounds": {
         "max": [
           1.350000023841858,
-          12.199902534484863,
+          12.19990234430008,
           1.350000023841858
         ],
         "min": [
           -1.350000023841858,
-          11.800097465515137,
+          11.80009765569992,
           -1.350000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "048b40ad423fd31945a8a8cedc6d6be05c5b056b8007a2e5a0b892820e7841b1",
+      "geometryHash": "37929796624c1abb61a77af7aeac3b1b04428211ce3b6ef8ffec3a9dc3a3ca76",
       "id": "sf.render.extraction-mast.mesh.lod0-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -231,18 +231,18 @@
     {
       "bounds": {
         "max": [
-          2.884875535964966,
+          2.884875591687769,
           13.140000343322754,
-          1.9066214561462402
+          1.9066214511802477
         ],
         "min": [
-          -1.2329894304275513,
+          -1.2329894861503545,
           1.2003414630889893,
-          -1.9066214561462402
+          -1.9066214511802477
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b44d851c11839a4ed60b432a06b560afaaa41c8b628b06d0f0ac72dc35dc91c",
+      "geometryHash": "5048da5b58eef1096659cd205c6242529179698edf2ca7831cb9a8bc1d601e04",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4548,
       "indexed": true,
@@ -256,18 +256,18 @@
     {
       "bounds": {
         "max": [
-          1.925066590309143,
-          11.881117820739746,
+          1.9250666209145737,
+          11.881118037235195,
           1.7838457822799683
         ],
         "min": [
-          -1.058589220046997,
-          11.162506103515625,
+          -1.0585892506524277,
+          11.162505887020176,
           -1.7838457822799683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e2446698b28441040c172f4e6f6cd80d951abc7f922e9abea040a212508575a7",
+      "geometryHash": "309ba64491be3ab8402126f5165d00db0e141caafe4a24250beb4fcf3a0ca2d1",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -281,18 +281,18 @@
     {
       "bounds": {
         "max": [
-          -1.2499788105487823,
+          -1.2499788092436177,
           9.170000076293945,
-          0.2500288784503937
+          0.25002888660790057
         ],
         "min": [
-          -1.9500212371349335,
+          -1.9500212384400981,
           8.270000457763672,
-          -0.2500288784503937
+          -0.25002888660790057
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3910586a90cec1bbe3451247abc3cf4e363ce00d0169f5e490280bf11ec8bf7",
+      "geometryHash": "76d049f63406dfeac6da6d40752d7a78f301d3ae86479e9577ac626057bf7982",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -307,17 +307,17 @@
       "bounds": {
         "max": [
           1.8000001013278961,
-          8.920055210590363,
-          0.16996368765830994
+          8.920055209682545,
+          0.16996368774107648
         ],
         "min": [
           -1.5999999940395355,
-          8.519945330917835,
-          -0.16996368765830994
+          8.519945331825653,
+          -0.16996368774107648
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8adf7cac207e48496c0c830b61ec5220b0496f7d5504321142e6d5f2b24994cd",
+      "geometryHash": "bbdf0ebf67fdc24726fdc06c58ed8912aa94763c2eb37b0d8b7f8c0ce78c6af2",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -331,18 +331,18 @@
     {
       "bounds": {
         "max": [
-          1.2857082933187485,
+          1.2857082906861357,
           8.5,
-          0.08678853511810303
+          0.08678853865068825
         ],
         "min": [
-          1.1142919212579727,
+          1.1142919238905855,
           2.5999999046325684,
-          -0.08678853511810303
+          -0.08678853865068825
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bf6bcaf52d2780fde8d6911fb6535212aca2cd1116975f08e1169f9c11ca03b",
+      "geometryHash": "a0c15bad0fb9bef528f09e83f868ea1ac2e55716d87ec278d9170683b4469a1b",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -357,17 +357,17 @@
       "bounds": {
         "max": [
           5.700000286102295,
-          9.600229263305664,
-          4.199634075164795
+          9.600229521594581,
+          4.199633988680124
         ],
         "min": [
           -5.700000286102295,
-          0.7747707962989807,
-          -4.199634075164795
+          0.7747705380100642,
+          -4.199633988680124
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aff5896ccee5f9d9c5bfaaba45214d87fb8830bc03ac466c9c59b41e5e66f400",
+      "geometryHash": "e5c0ec46a83e77f229ea07b3691a4013349b6b20abb7f11bc9ffd7ba06df0e2d",
       "id": "sf.render.extraction-mast.mesh.lod0-warning.primitive.0",
       "indexCount": 1836,
       "indexed": true,
@@ -381,18 +381,18 @@
     {
       "bounds": {
         "max": [
-          5.994516849517822,
+          5.99451693569985,
           12.593245506286621,
-          4.494861602783203
+          4.494861611529626
         ],
         "min": [
-          -5.994516849517822,
+          -5.99451693569985,
           -0.21509699523448944,
-          -4.494861602783203
+          -4.494861611529626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1e49b4f370623c0c312c6b409a120190f6faea118d652271c303c3a6ee189cf",
+      "geometryHash": "afd94cc1d26dbd4a15057076f58aacb5b4e68f5e495c3c875c6898e3edd8af19",
       "id": "sf.render.extraction-mast.mesh.lod1-armor.primitive.0",
       "indexCount": 3888,
       "indexed": true,
@@ -406,18 +406,18 @@
     {
       "bounds": {
         "max": [
-          5.040242671966553,
+          5.040242669163405,
           11.551610946655273,
-          3.739767551422119
+          3.739767455532985
         ],
         "min": [
-          -5.040242671966553,
+          -5.040242669163405,
           1.0519999265670776,
-          -3.739767551422119
+          -3.739767455532985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d193d663ef10a8e2d724d8308594414a4212f5c6ecc09a10373ab5885496de91",
+      "geometryHash": "450fca4ee55184c7fdcb26f31b1a468e30483fb7ad41a71b08792c22191f3675",
       "id": "sf.render.extraction-mast.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 1356,
       "indexed": true,
@@ -457,17 +457,17 @@
       "bounds": {
         "max": [
           4.391216278076172,
-          1.5911593437194824,
-          2.390944242477417
+          1.5911593452726627,
+          2.390944255776909
         ],
         "min": [
           1.2102426290512085,
-          0.009069819003343582,
-          0.4056874215602875
+          0.009069817450163442,
+          0.4056874082607953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48a09a44d2a11ffdbf3c56a5bdd7e725010c3fac472460d20357caa007774152",
+      "geometryHash": "2a72b8699e7fd25a43d221270e8f23e2ba39b53a2d9cebcb7f6bb505c5dc421a",
       "id": "sf.render.extraction-mast.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -482,17 +482,17 @@
       "bounds": {
         "max": [
           1.350000023841858,
-          12.199902534484863,
+          12.19990234430008,
           1.350000023841858
         ],
         "min": [
           -1.350000023841858,
-          11.800097465515137,
+          11.80009765569992,
           -1.350000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9ce261e54f0a5cc60cb5a875cdef9d0e3487bbe0c7b69b1c6fffae90f975464",
+      "geometryHash": "b56759cda1d240b2cd2221c0d8de48b8edd74b29498734ffbbcaeb02b8aadc00",
       "id": "sf.render.extraction-mast.mesh.lod1-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -506,18 +506,18 @@
     {
       "bounds": {
         "max": [
-          2.885931968688965,
+          2.8859320090335623,
           13.137862205505371,
-          1.9075828790664673
+          1.9075828813057116
         ],
         "min": [
-          -1.2338041067123413,
+          -1.2338041470569387,
           1.201228141784668,
-          -1.9076082706451416
+          -1.907608272884386
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c96097dede02ce5bd2e01dfaa2e1c062384735f8f4704ec82f8c7f5dd7d2214",
+      "geometryHash": "f746d82cee08acef3a05e723b03f186be1d73a81e8b70e673643a2982767edf5",
       "id": "sf.render.extraction-mast.mesh.lod1-mechanical.primitive.0",
       "indexCount": 732,
       "indexed": true,
@@ -531,18 +531,18 @@
     {
       "bounds": {
         "max": [
-          1.9249272346496582,
-          11.882854461669922,
+          1.9249272060324436,
+          11.882854541707898,
           1.7838457822799683
         ],
         "min": [
-          -1.0556800365447998,
-          11.162500381469727,
+          -1.0556800079275852,
+          11.16250030143175,
           -1.7838457822799683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb90fa7b431924a38b5f6fda3e4951ae7f1074810d82705d802c59142dd20c93",
+      "geometryHash": "b227978a91621aba9d1da3372f66aa5b9dc0892b0cfef45d841d44a2eaad2018",
       "id": "sf.render.extraction-mast.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -556,18 +556,18 @@
     {
       "bounds": {
         "max": [
-          -1.2527631223201752,
+          -1.2527631132667887,
           9.167202949523926,
-          0.24714259803295135
+          0.24714260102505284
         ],
         "min": [
-          -1.9469256103038788,
+          -1.9469256193572653,
           8.272797584533691,
-          -0.24718648195266724
+          -0.24718648494476872
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1cabbf22d089d2101a746723ade1040f0627c57912157e6dab34ef67b06f291b",
+      "geometryHash": "e1fa2a2a75d1fab0bf95b1ca63389efe922a5c4427db4c490de9353791017de8",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor.primitive.0",
       "indexCount": 276,
       "indexed": true,
@@ -582,17 +582,17 @@
       "bounds": {
         "max": [
           1.7959028780460358,
-          8.91598516702652,
-          0.16820159554481506
+          8.915985150700592,
+          0.16820157678841555
         ],
         "min": [
           -1.5981353223323822,
-          8.521963059902191,
-          -0.167815163731575
+          8.521963076228118,
+          -0.1678151449751755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "426deafc937c9007af4fc0e41ceb8cbe913ca78dbd083b526400303e52db36d6",
+      "geometryHash": "801428e5185b2224c2a847a02583e2bf6af30e7d5c48c934143f2740894e065b",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -606,18 +606,18 @@
     {
       "bounds": {
         "max": [
-          1.285360686480999,
+          1.285360689243901,
           8.5,
-          0.08676150441169739
+          0.08676150421899231
         ],
         "min": [
-          1.1146645620465279,
+          1.114664559283626,
           2.5999999046325684,
-          -0.08681557327508926
+          -0.08681557308238419
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e00cd01d137cb0b06863fb8758f01ae6471272f911e5242391f85fd89c5af3d",
+      "geometryHash": "9e5b61bbbdf9075911be22dd790aeaf0ef7661207a4d762e971b087b868e3d43",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 570,
       "indexed": true,
@@ -632,17 +632,17 @@
       "bounds": {
         "max": [
           5.700000286102295,
-          9.59765625,
-          4.199634075164795
+          9.597656126002985,
+          4.199633988680124
         ],
         "min": [
           -5.700000286102295,
-          0.7749803066253662,
-          -4.199634075164795
+          0.7749804306223824,
+          -4.199633988680124
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df3c096c707b00750b1d8b93ef0361b810f17af1e1e2d0b76bb321f334411b75",
+      "geometryHash": "c1218d2d71fb058d08d97b1e6c2da1b9405154adb5dcd9466d36aa4eed6132ee",
       "id": "sf.render.extraction-mast.mesh.lod1-warning.primitive.0",
       "indexCount": 444,
       "indexed": true,
@@ -656,18 +656,18 @@
     {
       "bounds": {
         "max": [
-          5.981049537658691,
+          5.981049807962627,
           12.561138153076172,
-          4.480474948883057
+          4.480474809693833
         ],
         "min": [
-          -5.981049537658691,
+          -5.981049807962627,
           -0.21509699523448944,
-          -4.480474948883057
+          -4.480474809693833
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef7a8e3f1383428fd450fb4f681e7ce86c3ee827c4a5ec04c6a90536fa9d8b33",
+      "geometryHash": "b23a26553fcfbb83c0d8bc0821be768500e9193a90813c9be754f8b8d4d297de",
       "id": "sf.render.extraction-mast.mesh.lod2-armor.primitive.0",
       "indexCount": 1830,
       "indexed": true,
@@ -681,18 +681,18 @@
     {
       "bounds": {
         "max": [
-          5.0401153564453125,
+          5.040115612957932,
           11.55430793762207,
-          3.7397539615631104
+          3.7397539995411297
         ],
         "min": [
-          -5.0401153564453125,
+          -5.040115612957932,
           1.1173332929611206,
-          -3.7397539615631104
+          -3.7397539995411297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74bcb4b7975e2cc51f6600a16f463508096bebeed82d993945aa7fca6a5acda7",
+      "geometryHash": "70db1222a507aebf296522e6c107da3e1c336dc5b50bf04c649643ef4c9cc0e6",
       "id": "sf.render.extraction-mast.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 429,
       "indexed": true,
@@ -717,7 +717,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48b15d0408a18443d592333d6144f82282c4d024f92a3f3b281adaf8b5eda919",
+      "geometryHash": "7cdf8405acf861739245196cae870a42698ddf6f0a06b43c8307774c9f4159bc",
       "id": "sf.render.extraction-mast.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -732,17 +732,17 @@
       "bounds": {
         "max": [
           4.368315696716309,
-          1.5675734281539917,
-          2.367687225341797
+          1.5675734256415497,
+          2.3676872446896136
         ],
         "min": [
           1.2316844463348389,
-          0.032426618039608,
-          0.432312935590744
+          0.032426620552050034,
+          0.43231291624292756
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1148dabd755e21e34089540c2571e0d89449d2b129eed0aaed350929ca8f7ec",
+      "geometryHash": "055597d68d1704e0b50f81897615dbb48cd60b325037aa5cb7dfdcf3b7d522f3",
       "id": "sf.render.extraction-mast.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -757,17 +757,17 @@
       "bounds": {
         "max": [
           1.350000023841858,
-          12.199902534484863,
+          12.19990234430008,
           1.350000023841858
         ],
         "min": [
           -1.350000023841858,
-          11.800097465515137,
+          11.80009765569992,
           -1.350000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9ce261e54f0a5cc60cb5a875cdef9d0e3487bbe0c7b69b1c6fffae90f975464",
+      "geometryHash": "b56759cda1d240b2cd2221c0d8de48b8edd74b29498734ffbbcaeb02b8aadc00",
       "id": "sf.render.extraction-mast.mesh.lod2-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -781,18 +781,18 @@
     {
       "bounds": {
         "max": [
-          2.886699914932251,
+          2.886699885281819,
           13.139547348022461,
-          1.8953158855438232
+          1.8953159362660716
         ],
         "min": [
-          -1.2443723678588867,
+          -1.2443723382084548,
           1.1827552318572998,
-          -1.8883681297302246
+          -1.888368180452473
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4cf82f519c22b206baec10273543fd59e77d25663fc0046cfd5981095f2c7a2",
+      "geometryHash": "dccc7ec4e7b516e84419e879f67e1d57f8eca96c8f4bd0c3df4e9a474ec1f4a2",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanical.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -806,18 +806,18 @@
     {
       "bounds": {
         "max": [
-          1.9249409437179565,
-          11.884071350097656,
+          1.9249409304389287,
+          11.884071384121071,
           1.7838457822799683
         ],
         "min": [
-          -1.0691674947738647,
-          11.20422077178955,
+          -1.0691674814948369,
+          11.204220737766136,
           -1.7838457822799683
         ]
       },
       "drawMode": 4,
-      "geometryHash": "861c57abdba1e764ce54411d975a65d084313a2253519fdd79ac6e1e9357bd2f",
+      "geometryHash": "7e6ba3fcc93c330bf5a5591a6820b0ac9c63a7aece3d8e087b38487f41961af1",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 69,
       "indexed": true,
@@ -831,18 +831,18 @@
     {
       "bounds": {
         "max": [
-          -1.2561119496822357,
+          -1.2561119756072638,
           9.164730072021484,
-          0.24386844038963318
+          0.24386844177597278
         ],
         "min": [
-          -1.9446357190608978,
+          -1.9446356931358697,
           8.279122352600098,
-          -0.24386851489543915
+          -0.24386851628177875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1738252757a7a2f5fded089792bc3b72f0616b4a9bf5c68bf17d819b891a6f23",
+      "geometryHash": "29f5f4e34c4dca0588497bcf11e4863efbb3b1dd29863345c6002e64c3e72d59",
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -857,17 +857,17 @@
       "bounds": {
         "max": [
           1.7892781794071198,
-          8.90980178117752,
-          0.16333016753196716
+          8.909801777963382,
+          0.1633301557975358
         ],
         "min": [
           -1.5903782546520233,
-          8.524050407111645,
-          -0.1638365238904953
+          8.524050410325783,
+          -0.16383651215606393
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47746b93f9084c44757b8a82b51c0a75738800dfce1d1dd0fd558c8b1a05936b",
+      "geometryHash": "c1672c2325ad67063b660bf61a640d8ff995c73d345b8a4cf5dfc8bdbb02fc9b",
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -881,18 +881,18 @@
     {
       "bounds": {
         "max": [
-          1.2852991670370102,
+          1.2852991656177004,
           8.498818397521973,
-          0.08711528778076172
+          0.08711528923599765
         ],
         "min": [
-          1.116108313202858,
+          1.1161083146221678,
           2.6010773181915283,
-          -0.08711528778076172
+          -0.08711528923599765
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cfe6e4707b7c90b9140a1eaf02d8633bb5d61485ac0371145a88b9e918d54bf",
+      "geometryHash": "f51ae14e7023aa7b23bf79264c250e7ad777d6bc6a04069b179abf8f0ac98972",
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -907,17 +907,17 @@
       "bounds": {
         "max": [
           5.700000286102295,
-          9.597573280334473,
-          4.199634075164795
+          9.597573370269872,
+          4.199633988680124
         ],
         "min": [
           -5.700000286102295,
-          0.8583964109420776,
-          -4.199634075164795
+          0.8583963210066781,
+          -4.199633988680124
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2a8f4427b579b6c29bcfba723816be200625a557974c9bbd67404761d546a8e",
+      "geometryHash": "68704b9f76937d14a5ae01d2ddb2947cbcfa1cca8a64ad64fe604c47c4ebb32d",
       "id": "sf.render.extraction-mast.mesh.lod2-warning.primitive.0",
       "indexCount": 348,
       "indexed": true,
@@ -1176,20 +1176,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.collision-hull",
       "localTransform": [
-        1,
+        6.787548325955868,
         0,
         0,
         0,
         0,
-        1,
+        6.787548325955868,
         0,
         0,
         0,
         0,
-        1,
+        6.787548325955868,
         0,
         0,
-        0,
+        6.572451330721378,
         0,
         1
       ],
@@ -1204,20 +1204,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        6.787548325955868,
         0,
         0,
         0,
         0,
-        1,
+        6.787548325955868,
         0,
         0,
         0,
         0,
-        1,
+        6.787548325955868,
         0,
         0,
-        0,
+        6.572451330721378,
         0,
         1
       ]
@@ -1225,20 +1225,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-armor",
       "localTransform": [
-        1,
+        6.40754821151495,
         0,
         0,
         0,
         0,
-        1,
+        6.40754821151495,
         0,
         0,
         0,
         0,
-        1,
+        6.40754821151495,
         0,
         0,
-        0,
+        6.19245121628046,
         0,
         1
       ],
@@ -1253,20 +1253,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        6.40754821151495,
         0,
         0,
         0,
         0,
-        1,
+        6.40754821151495,
         0,
         0,
         0,
         0,
-        1,
+        6.40754821151495,
         0,
         0,
-        0,
+        6.19245121628046,
         0,
         1
       ]
@@ -1274,20 +1274,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        5.247766077518463,
         0,
         0,
         0,
         0,
-        1,
+        5.247766077518463,
         0,
         0,
         0,
         0,
-        1,
+        5.247766077518463,
         0,
         0,
-        0,
+        6.299766004085541,
         0,
         1
       ],
@@ -1302,20 +1302,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.247766077518463,
         0,
         0,
         0,
         0,
-        1,
+        5.247766077518463,
         0,
         0,
         0,
         0,
-        1,
+        5.247766077518463,
         0,
         0,
-        0,
+        6.299766004085541,
         0,
         1
       ]
@@ -1372,21 +1372,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hull-aged",
       "localTransform": [
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
-        0,
-        0,
-        0,
+        2.800000011920929,
+        0.7999999970234057,
+        1.3999999910593033,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1400,41 +1400,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.6000000834465027,
         0,
-        0,
-        0,
-        0,
+        2.800000011920929,
+        0.7999999970234057,
+        1.3999999910593033,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod0-livery",
       "localTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ],
@@ -1449,20 +1449,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ]
@@ -1470,20 +1470,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        5.969829440116882,
         0,
         0,
         0,
         0,
-        1,
+        5.969829440116882,
         0,
         0,
         0,
         0,
-        1,
+        5.969829440116882,
         0,
-        0,
-        0,
+        0.8259430527687073,
+        7.170170903205872,
         0,
         1
       ],
@@ -1498,20 +1498,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.969829440116882,
         0,
         0,
         0,
         0,
-        1,
+        5.969829440116882,
         0,
         0,
         0,
         0,
-        1,
+        5.969829440116882,
         0,
-        0,
-        0,
+        0.8259430527687073,
+        7.170170903205872,
         0,
         1
       ]
@@ -1519,20 +1519,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.433238685131073,
+        11.521811962127686,
         0,
         1
       ],
@@ -1547,20 +1547,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.433238685131073,
+        11.521811962127686,
         0,
         1
       ]
@@ -1568,20 +1568,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor",
       "localTransform": [
-        1,
+        0.4499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.4499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.4499998092651367,
         0,
-        0,
-        0,
+        -1.2500000298023224,
+        0.11999988555908203,
         0,
         1
       ],
@@ -1597,20 +1597,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        0.4499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.4499998092651367,
         0,
         0,
         0,
         0,
-        1,
+        0.4499998092651367,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
+        -1.600000023841858,
+        8.720000267028809,
         0,
         1
       ]
@@ -1618,20 +1618,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning",
       "localTransform": [
-        1,
+        1.7000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.7000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.7000000476837158,
         0,
-        0,
-        0,
+        0.4500000476837158,
+        0.11999988928437233,
         0,
         1
       ],
@@ -1647,20 +1647,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.7000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.7000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.7000000476837158,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
+        0.1000000536441803,
+        8.720000270754099,
         0,
         1
       ]
@@ -1668,20 +1668,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal",
       "localTransform": [
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
-        0,
-        0,
+        5.960464477539063e-8,
+        0.14999985694885254,
         0,
         1
       ],
@@ -1697,20 +1697,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
-        1.2000000476837158,
-        5.400000095367432,
+        1.2000001072883606,
+        5.549999952316284,
         0,
         1
       ]
@@ -1718,20 +1718,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod0-warning",
       "localTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.187500029802322,
         0,
         1
       ],
@@ -1746,20 +1746,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.187500029802322,
         0,
         1
       ]
@@ -1767,20 +1767,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-armor",
       "localTransform": [
-        1,
+        6.404171250760555,
         0,
         0,
         0,
         0,
-        1,
+        6.404171250760555,
         0,
         0,
         0,
         0,
-        1,
+        6.404171250760555,
         0,
         0,
-        0,
+        6.189074255526066,
         0,
         1
       ],
@@ -1795,20 +1795,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        6.404171250760555,
         0,
         0,
         0,
         0,
-        1,
+        6.404171250760555,
         0,
         0,
         0,
         0,
-        1,
+        6.404171250760555,
         0,
         0,
-        0,
+        6.189074255526066,
         0,
         1
       ]
@@ -1816,20 +1816,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        5.249805510044098,
         0,
         0,
         0,
         0,
-        1,
+        5.249805510044098,
         0,
         0,
         0,
         0,
-        1,
+        5.249805510044098,
         0,
         0,
-        0,
+        6.3018054366111755,
         0,
         1
       ],
@@ -1844,20 +1844,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.249805510044098,
         0,
         0,
         0,
         0,
-        1,
+        5.249805510044098,
         0,
         0,
         0,
         0,
-        1,
+        5.249805510044098,
         0,
         0,
-        0,
+        6.3018054366111755,
         0,
         1
       ]
@@ -1914,21 +1914,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-hull-aged",
       "localTransform": [
-        1,
+        1.5904868245124817,
         0,
         0,
         0,
         0,
-        1,
+        1.5904868245124817,
         0,
         0,
         0,
         0,
-        1,
+        1.5904868245124817,
         0,
-        0,
-        0,
-        0,
+        2.80072945356369,
+        0.800114581361413,
+        1.3983158320188522,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1942,41 +1942,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.5904868245124817,
         0,
         0,
         0,
         0,
-        1,
+        1.5904868245124817,
         0,
         0,
         0,
         0,
-        1,
+        1.5904868245124817,
         0,
-        0,
-        0,
-        0,
+        2.80072945356369,
+        0.800114581361413,
+        1.3983158320188522,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod1-livery",
       "localTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ],
@@ -1991,20 +1991,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ]
@@ -2012,21 +2012,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        5.968317031860352,
         0,
         0,
         0,
         0,
-        1,
+        5.968317031860352,
         0,
         0,
         0,
         0,
-        1,
+        5.968317031860352,
         0,
-        0,
-        0,
-        0,
+        0.8260639309883118,
+        7.1695451736450195,
+        -0.000012695789337158203,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2040,41 +2040,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.968317031860352,
         0,
         0,
         0,
         0,
-        1,
+        5.968317031860352,
         0,
         0,
         0,
         0,
-        1,
+        5.968317031860352,
         0,
-        0,
-        0,
-        0,
+        0.8260639309883118,
+        7.1695451736450195,
+        -0.000012695789337158203,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.4346235990524292,
+        11.522677421569824,
         0,
         1
       ],
@@ -2089,20 +2089,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.4346235990524292,
+        11.522677421569824,
         0,
         1
       ]
@@ -2110,21 +2110,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor",
       "localTransform": [
-        1,
+        0.4472026824951172,
         0,
         0,
         0,
         0,
-        1,
+        0.4472026824951172,
         0,
         0,
         0,
         0,
-        1,
+        0.4472026824951172,
         0,
-        0,
-        0,
-        0,
+        -1.2498443722724915,
+        0.11999988555908203,
+        -0.000021941959857940674,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2139,42 +2139,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        0.4472026824951172,
         0,
         0,
         0,
         0,
-        1,
+        0.4472026824951172,
         0,
         0,
         0,
         0,
-        1,
+        0.4472026824951172,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
-        0,
+        -1.599844366312027,
+        8.720000267028809,
+        -0.000021941959857940674,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning",
       "localTransform": [
-        1,
+        1.697019100189209,
         0,
         0,
         0,
         0,
-        1,
+        1.697019100189209,
         0,
         0,
         0,
         0,
-        1,
+        1.697019100189209,
         0,
-        0,
-        0,
-        0,
+        0.4488837718963623,
+        0.1189737319946289,
+        0.00019321590662002563,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2189,42 +2189,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.697019100189209,
         0,
         0,
         0,
         0,
-        1,
+        1.697019100189209,
         0,
         0,
         0,
         0,
-        1,
+        1.697019100189209,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
-        0,
+        0.09888377785682678,
+        8.718974113464355,
+        0.00019321590662002563,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal",
       "localTransform": [
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
-        0,
-        0,
-        0,
+        0.000012576580047607422,
+        0.14999985694885254,
+        -0.00002703443169593811,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2239,41 +2239,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
         0,
         0,
         0,
-        1,
+        2.950000047683716,
         0,
-        1.2000000476837158,
-        5.400000095367432,
-        0,
+        1.2000126242637634,
+        5.549999952316284,
+        -0.00002703443169593811,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod1-warning",
       "localTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.186318278312683,
         0,
         1
       ],
@@ -2288,20 +2288,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.186318278312683,
         0,
         1
       ]
@@ -2309,20 +2309,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-armor",
       "localTransform": [
-        1,
+        6.388117574155331,
         0,
         0,
         0,
         0,
-        1,
+        6.388117574155331,
         0,
         0,
         0,
         0,
-        1,
+        6.388117574155331,
         0,
         0,
-        0,
+        6.173020578920841,
         0,
         1
       ],
@@ -2337,20 +2337,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        6.388117574155331,
         0,
         0,
         0,
         0,
-        1,
+        6.388117574155331,
         0,
         0,
         0,
         0,
-        1,
+        6.388117574155331,
         0,
         0,
-        0,
+        6.173020578920841,
         0,
         1
       ]
@@ -2358,20 +2358,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        5.218487322330475,
         0,
         0,
         0,
         0,
-        1,
+        5.218487322330475,
         0,
         0,
         0,
         0,
-        1,
+        5.218487322330475,
         0,
         0,
-        0,
+        6.3358206152915955,
         0,
         1
       ],
@@ -2386,20 +2386,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.218487322330475,
         0,
         0,
         0,
         0,
-        1,
+        5.218487322330475,
         0,
         0,
         0,
         0,
-        1,
+        5.218487322330475,
         0,
         0,
-        0,
+        6.3358206152915955,
         0,
         1
       ]
@@ -2456,21 +2456,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-hull-aged",
       "localTransform": [
-        1,
+        1.5683156251907349,
         0,
         0,
         0,
         0,
-        1,
+        1.5683156251907349,
         0,
         0,
         0,
         0,
-        1,
+        1.5683156251907349,
         0,
-        0,
-        0,
-        0,
+        2.8000000715255737,
+        0.8000000230967999,
+        1.4000000804662704,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2484,41 +2484,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.5683156251907349,
         0,
         0,
         0,
         0,
-        1,
+        1.5683156251907349,
         0,
         0,
         0,
         0,
-        1,
+        1.5683156251907349,
         0,
-        0,
-        0,
-        0,
+        2.8000000715255737,
+        0.8000000230967999,
+        1.4000000804662704,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod2-livery",
       "localTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ],
@@ -2533,20 +2533,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.350000023841858,
         0,
         0,
-        0,
+        12,
         0,
         1
       ]
@@ -2554,21 +2554,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        5.978396058082581,
         0,
         0,
         0,
         0,
-        1,
+        5.978396058082581,
         0,
         0,
         0,
         0,
-        1,
+        5.978396058082581,
         0,
-        0,
-        0,
-        0,
+        0.8211637735366821,
+        7.16115128993988,
+        0.0034738779067993164,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2582,41 +2582,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.978396058082581,
         0,
         0,
         0,
         0,
-        1,
+        5.978396058082581,
         0,
         0,
         0,
         0,
-        1,
+        5.978396058082581,
         0,
-        0,
-        0,
-        0,
+        0.8211637735366821,
+        7.16115128993988,
+        0.0034738779067993164,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.4278867244720459,
+        11.544146060943604,
         0,
         1
       ],
@@ -2631,20 +2631,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
         0,
         0,
         0,
-        1,
+        1.7838457822799683,
         0,
-        0,
-        0,
+        0.4278867244720459,
+        11.544146060943604,
         0,
         1
       ]
@@ -2652,21 +2652,21 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor",
       "localTransform": [
-        1,
+        0.44280385971069336,
         0,
         0,
         0,
         0,
-        1,
+        0.44280385971069336,
         0,
         0,
         0,
         0,
-        1,
+        0.44280385971069336,
         0,
-        0,
-        0,
-        0,
+        -1.2503738403320312,
+        0.12192583084106445,
+        -3.725290298461914e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2681,42 +2681,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        0.44280385971069336,
         0,
         0,
         0,
         0,
-        1,
+        0.44280385971069336,
         0,
         0,
         0,
         0,
-        1,
+        0.44280385971069336,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
-        0,
+        -1.6003738343715668,
+        8.721926212310791,
+        -3.725290298461914e-8,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning",
       "localTransform": [
-        1,
+        1.6898282170295715,
         0,
         0,
         0,
         0,
-        1,
+        1.6898282170295715,
         0,
         0,
         0,
         0,
-        1,
+        1.6898282170295715,
         0,
-        0,
-        0,
-        0,
+        0.44944995641708374,
+        0.11692571267485619,
+        -0.0002531781792640686,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2731,41 +2731,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        1.6898282170295715,
         0,
         0,
         0,
         0,
-        1,
+        1.6898282170295715,
         0,
         0,
         0,
         0,
-        1,
+        1.6898282170295715,
         0,
-        -0.3499999940395355,
-        8.600000381469727,
-        0,
+        0.09944996237754822,
+        8.716926094144583,
+        -0.0002531781792640686,
         1
       ]
     },
     {
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal",
       "localTransform": [
-        1,
+        2.948870539665222,
         0,
         0,
         0,
         0,
-        1,
+        2.948870539665222,
         0,
         0,
         0,
         0,
-        1,
+        2.948870539665222,
         0,
-        0,
-        0,
+        0.0007036924362182617,
+        0.14994776248931885,
         0,
         1
       ],
@@ -2781,20 +2781,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        2.948870539665222,
         0,
         0,
         0,
         0,
-        1,
+        2.948870539665222,
         0,
         0,
         0,
         0,
-        1,
+        2.948870539665222,
         0,
-        1.2000000476837158,
-        5.400000095367432,
+        1.200703740119934,
+        5.5499478578567505,
         0,
         1
       ]
@@ -2802,20 +2802,20 @@
     {
       "id": "sf.render.extraction-mast.mesh.lod2-warning",
       "localTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.227984845638275,
         0,
         1
       ],
@@ -2830,20 +2830,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.extraction-mast.body",
       "worldTransform": [
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
         0,
         0,
-        1,
+        5.700000286102295,
         0,
         0,
-        0,
+        5.227984845638275,
         0,
         1
       ]
@@ -3005,14 +3005,14 @@
       "uri": "place_extraction_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 651036,
-    "sha256": "62719d5e2dabf273c3adff38d1e92ad04145b47e363a27bad6d356844eb0b2bc",
+    "bytes": 415456,
+    "sha256": "6b6f028ff617ff70ec6a44ae869537337d99c1dbc9d4c9ce528c2e55b350cbb7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3023,19 +3023,19 @@
         0
       ],
       "max": [
-        6.000394344329834,
+        6.00039406591887,
         13.36825971530227,
-        4.500360488891602
+        4.500360562144995
       ],
       "min": [
-        -6.000394344329834,
+        -6.00039406591887,
         -0.21509699523448944,
-        -4.500360488891602
+        -4.500360562144995
       ],
       "size": [
-        12.000788688659668,
+        12.00078813183774,
         13.58335671053676,
-        9.000720977783203
+        9.00072112428999
       ]
     },
     "hidden": [
@@ -3405,20 +3405,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.40754821151495,
           0,
           0,
           0,
           0,
-          1,
+          6.40754821151495,
           0,
           0,
           0,
           0,
-          1,
+          6.40754821151495,
           0,
           0,
-          0,
+          6.19245121628046,
           0,
           1
         ],
@@ -3432,20 +3432,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.247766077518463,
           0,
           0,
           0,
           0,
-          1,
+          5.247766077518463,
           0,
           0,
           0,
           0,
-          1,
+          5.247766077518463,
           0,
           0,
-          0,
+          6.299766004085541,
           0,
           1
         ],
@@ -3487,21 +3487,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6000000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.6000000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.6000000834465027,
           0,
-          0,
-          0,
-          0,
+          2.800000011920929,
+          0.7999999970234057,
+          1.3999999910593033,
           1
         ],
         "name": "LOD0_Hull_aged",
@@ -3514,20 +3514,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
-          0,
+          12,
           0,
           1
         ],
@@ -3541,20 +3541,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.969829440116882,
           0,
           0,
           0,
           0,
-          1,
+          5.969829440116882,
           0,
           0,
           0,
           0,
-          1,
+          5.969829440116882,
           0,
-          0,
-          0,
+          0.8259430527687073,
+          7.170170903205872,
           0,
           1
         ],
@@ -3568,20 +3568,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
-          0,
-          0,
+          0.433238685131073,
+          11.521811962127686,
           0,
           1
         ],
@@ -3595,20 +3595,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
-          0,
+          5.187500029802322,
           0,
           1
         ],
@@ -3622,20 +3622,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.404171250760555,
           0,
           0,
           0,
           0,
-          1,
+          6.404171250760555,
           0,
           0,
           0,
           0,
-          1,
+          6.404171250760555,
           0,
           0,
-          0,
+          6.189074255526066,
           0,
           1
         ],
@@ -3649,20 +3649,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.249805510044098,
           0,
           0,
           0,
           0,
-          1,
+          5.249805510044098,
           0,
           0,
           0,
           0,
-          1,
+          5.249805510044098,
           0,
           0,
-          0,
+          6.3018054366111755,
           0,
           1
         ],
@@ -3704,21 +3704,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5904868245124817,
           0,
           0,
           0,
           0,
-          1,
+          1.5904868245124817,
           0,
           0,
           0,
           0,
-          1,
+          1.5904868245124817,
           0,
-          0,
-          0,
-          0,
+          2.80072945356369,
+          0.800114581361413,
+          1.3983158320188522,
           1
         ],
         "name": "LOD1_Hull_aged",
@@ -3731,20 +3731,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
-          0,
+          12,
           0,
           1
         ],
@@ -3758,21 +3758,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.968317031860352,
           0,
           0,
           0,
           0,
-          1,
+          5.968317031860352,
           0,
           0,
           0,
           0,
-          1,
+          5.968317031860352,
           0,
-          0,
-          0,
-          0,
+          0.8260639309883118,
+          7.1695451736450195,
+          -0.000012695789337158203,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -3785,20 +3785,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
-          0,
-          0,
+          0.4346235990524292,
+          11.522677421569824,
           0,
           1
         ],
@@ -3812,20 +3812,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
-          0,
+          5.186318278312683,
           0,
           1
         ],
@@ -3839,20 +3839,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.388117574155331,
           0,
           0,
           0,
           0,
-          1,
+          6.388117574155331,
           0,
           0,
           0,
           0,
-          1,
+          6.388117574155331,
           0,
           0,
-          0,
+          6.173020578920841,
           0,
           1
         ],
@@ -3866,20 +3866,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.218487322330475,
           0,
           0,
           0,
           0,
-          1,
+          5.218487322330475,
           0,
           0,
           0,
           0,
-          1,
+          5.218487322330475,
           0,
           0,
-          0,
+          6.3358206152915955,
           0,
           1
         ],
@@ -3921,21 +3921,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5683156251907349,
           0,
           0,
           0,
           0,
-          1,
+          1.5683156251907349,
           0,
           0,
           0,
           0,
-          1,
+          1.5683156251907349,
           0,
-          0,
-          0,
-          0,
+          2.8000000715255737,
+          0.8000000230967999,
+          1.4000000804662704,
           1
         ],
         "name": "LOD2_Hull_aged",
@@ -3948,20 +3948,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.350000023841858,
           0,
           0,
-          0,
+          12,
           0,
           1
         ],
@@ -3975,21 +3975,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.978396058082581,
           0,
           0,
           0,
           0,
-          1,
+          5.978396058082581,
           0,
           0,
           0,
           0,
-          1,
+          5.978396058082581,
           0,
-          0,
-          0,
-          0,
+          0.8211637735366821,
+          7.16115128993988,
+          0.0034738779067993164,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -4002,20 +4002,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
           0,
           0,
           0,
-          1,
+          1.7838457822799683,
           0,
-          0,
-          0,
+          0.4278867244720459,
+          11.544146060943604,
           0,
           1
         ],
@@ -4029,20 +4029,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
           0,
           0,
-          1,
+          5.700000286102295,
           0,
           0,
-          0,
+          5.227984845638275,
           0,
           1
         ],
@@ -4056,20 +4056,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4499998092651367,
           0,
           0,
           0,
           0,
-          1,
+          0.4499998092651367,
           0,
           0,
           0,
           0,
-          1,
+          0.4499998092651367,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
+          -1.600000023841858,
+          8.720000267028809,
           0,
           1
         ],
@@ -4084,20 +4084,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7000000476837158,
           0,
           0,
           0,
           0,
-          1,
+          1.7000000476837158,
           0,
           0,
           0,
           0,
-          1,
+          1.7000000476837158,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
+          0.1000000536441803,
+          8.720000270754099,
           0,
           1
         ],
@@ -4112,21 +4112,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4472026824951172,
           0,
           0,
           0,
           0,
-          1,
+          0.4472026824951172,
           0,
           0,
           0,
           0,
-          1,
+          0.4472026824951172,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
-          0,
+          -1.599844366312027,
+          8.720000267028809,
+          -0.000021941959857940674,
           1
         ],
         "name": "LOD1_MOTION_MAST_BEAM_Armor",
@@ -4140,21 +4140,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.697019100189209,
           0,
           0,
           0,
           0,
-          1,
+          1.697019100189209,
           0,
           0,
           0,
           0,
-          1,
+          1.697019100189209,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
-          0,
+          0.09888377785682678,
+          8.718974113464355,
+          0.00019321590662002563,
           1
         ],
         "name": "LOD1_MOTION_MAST_BEAM_Warning",
@@ -4168,21 +4168,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44280385971069336,
           0,
           0,
           0,
           0,
-          1,
+          0.44280385971069336,
           0,
           0,
           0,
           0,
-          1,
+          0.44280385971069336,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
-          0,
+          -1.6003738343715668,
+          8.721926212310791,
+          -3.725290298461914e-8,
           1
         ],
         "name": "LOD2_MOTION_MAST_BEAM_Armor",
@@ -4196,21 +4196,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6898282170295715,
           0,
           0,
           0,
           0,
-          1,
+          1.6898282170295715,
           0,
           0,
           0,
           0,
-          1,
+          1.6898282170295715,
           0,
-          -0.3499999940395355,
-          8.600000381469727,
-          0,
+          0.09944996237754822,
+          8.716926094144583,
+          -0.0002531781792640686,
           1
         ],
         "name": "LOD2_MOTION_MAST_BEAM_Warning",
@@ -4224,20 +4224,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.950000047683716,
           0,
           0,
           0,
           0,
-          1,
+          2.950000047683716,
           0,
           0,
           0,
           0,
-          1,
+          2.950000047683716,
           0,
-          1.2000000476837158,
-          5.400000095367432,
+          1.2000001072883606,
+          5.549999952316284,
           0,
           1
         ],
@@ -4252,21 +4252,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.950000047683716,
           0,
           0,
           0,
           0,
-          1,
+          2.950000047683716,
           0,
           0,
           0,
           0,
-          1,
+          2.950000047683716,
           0,
-          1.2000000476837158,
-          5.400000095367432,
-          0,
+          1.2000126242637634,
+          5.549999952316284,
+          -0.00002703443169593811,
           1
         ],
         "name": "LOD1_MOTION_MAST_ROD_BrushedMetal",
@@ -4280,20 +4280,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.948870539665222,
           0,
           0,
           0,
           0,
-          1,
+          2.948870539665222,
           0,
           0,
           0,
           0,
-          1,
+          2.948870539665222,
           0,
-          1.2000000476837158,
-          5.400000095367432,
+          1.200703740119934,
+          5.5499478578567505,
           0,
           1
         ],
@@ -4310,20 +4310,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "1b1a7e7287f2447233de57b326e0b7cd041db806bc9088b35b01a66b8725d4af",
+  "runtimeHash": "041321f6e2167fc2464f75c55ac35188f5be8bde31c16d2e02d4bbc2da0ede94",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          6.000394344329834,
+          6.00039406591887,
           13.36825971530227,
-          4.500360488891602
+          4.500360562144995
         ],
         "min": [
-          -6.000394344329834,
+          -6.00039406591887,
           -0.21509699523448944,
-          -4.500360488891602
+          -4.500360562144995
         ]
       },
       "id": "sf.render.extraction-mast.body",

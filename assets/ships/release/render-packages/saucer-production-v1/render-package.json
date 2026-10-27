@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16e39fa96fc605b72a9472f722146f2824b6bd955f479040c689020bde615737",
+  "contentHash": "40da4a450c87594f3c6b59a96a1cfdae386e71bb67967929bc93b8f4843c0dae",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -694,18 +694,18 @@
     {
       "bounds": {
         "max": [
-          11.212380409240723,
-          3.5664727687835693,
+          11.212380426616239,
+          3.566472847286272,
           11.030397415161133
         ],
         "min": [
-          -9.749865531921387,
-          -3.996363401412964,
+          -9.749865549296903,
+          -3.9963634799156664,
           -11.030624389648438
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e027138cfc50a02562491eb81b14d5b76199f5cbb1c393627f89cd4c6a9bfdcb",
+      "geometryHash": "c5fc1bdfe1c9f95db946dc8c54b51ae09d5f745f2dbab1e8000fd8491b7a50c0",
       "id": "sf.render.saucer-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -719,18 +719,18 @@
     {
       "bounds": {
         "max": [
-          9.878576278686523,
-          1.4600545167922974,
+          9.878575961212253,
+          1.4600544781175837,
           9.869999885559082
         ],
         "min": [
-          -9.75057601928711,
-          -3.9962027072906494,
+          -9.750575701812839,
+          -3.9962026686159358,
           -9.869999885559082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51f74b1aac632cbf7ac08727f9c52651f50aee03954b1991c5d5dde3c9b7bfbb",
+      "geometryHash": "ff7af8fa2f77ee45b45d2afc00729a172fa8df65fa6e2f7dd38fe86fd12798e3",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 23190,
       "indexed": true,
@@ -744,18 +744,18 @@
     {
       "bounds": {
         "max": [
-          11.212445259094238,
-          0.36131539940834045,
+          11.212445422864501,
+          0.36131539749879804,
           11.029999732971191
         ],
         "min": [
-          -0.045445311814546585,
-          -0.22844135761260986,
+          -0.045445475584809714,
+          -0.22844135570306745,
           -11.029999732971191
         ]
       },
       "drawMode": 4,
-      "geometryHash": "750f40ed856f5a78831a8b83fe21df95e3c2128a276d544f04d63a10bae1ae77",
+      "geometryHash": "e4bdb4c8a53e97849388477897ecc07077b3a88a10bc70c209fe6cef44afbdd5",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -780,7 +780,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4511a4bc73462430e034632d0fcc613854189ec6b4b5cf0fc9bda3b626a606de",
+      "geometryHash": "8a83205700a1bb53dc1907e82d37ce439ea32ba0f15422eb4345d928c8829333",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 1068,
       "indexed": true,
@@ -805,7 +805,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6d12e302f2c13ca6801a7fdbca705bc58d8739cad14a1df0a24f8e019246380",
+      "geometryHash": "addb1b59f25f3eb17d3d70f03b3961f2e218c8a965ea7136d3bb335352c7ac94",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.primitive.0",
       "indexCount": 1068,
       "indexed": true,
@@ -880,7 +880,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9fc2d34dc368960e7908048c2ba5952506bf6015628b0e0a73234fc4e0def74",
+      "geometryHash": "8c578607808356b77aa2f9ea35c455ac96f3e17028c96d34dab10626e57504dc",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-secondary-vane-mechanical.primitive.0",
       "indexCount": 4512,
       "indexed": true,
@@ -905,7 +905,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5740c3bf0ab5d683c0d6e9b08257eb86d5f6b5e143ac0c606333c9de83e6636a",
+      "geometryHash": "70d42ad55340b257ee70f336928d00362ec3cae1a7f4745a7b49fbf6a249fa23",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-beacon-amber-beacon.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -930,7 +930,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dca5d586d1180751cfa57e1c17d5baa2c544eedc69259c12bb1dfe6e245ef007",
+      "geometryHash": "15ae6d33a57006746f2b9e59b4f05b53b1b19a0e7f2e90d4b48412f317f1ea2b",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hook-sensor-dome-mechanical.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -945,17 +945,17 @@
       "bounds": {
         "max": [
           9.600102424621582,
-          1.3981558084487915,
+          1.3981558013690687,
           9.600102424621582
         ],
         "min": [
           -9.600102424621582,
-          -0.4886406660079956,
+          -0.4886406589282728,
           -9.600102424621582
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c8d235784297f1291bff18044fc604b6887b1c05f6e84e115250bd1160d63df",
+      "geometryHash": "acf5196d20febe71929cafbcfd486754c08bc41b681c21cfe407e0ebbda0778b",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 7716,
       "indexed": true,
@@ -970,17 +970,17 @@
       "bounds": {
         "max": [
           9.660000801086426,
-          3.4240992069244385,
+          3.4240990696338423,
           9.660000801086426
         ],
         "min": [
           -9.660000801086426,
-          -1.6802210807800293,
+          -1.680220943489433,
           -9.660000801086426
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5445318a6598fdf6602e38fead5b64931e3dde96ee18cea4306f4a954b5b0fe",
+      "geometryHash": "d067195ea395e416c8b6ffbcd81af9cd07f13a99c47b71fc285803bb4c87399d",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 22380,
       "indexed": true,
@@ -995,17 +995,17 @@
       "bounds": {
         "max": [
           2.0450000762939453,
-          1.5298709869384766,
-          1.9918265342712402
+          1.5298709672782391,
+          1.9918265141144034
         ],
         "min": [
           -2.0450000762939453,
-          1.3501291275024414,
-          -1.9918264150619507
+          1.3501291471626788,
+          -1.9918263949051138
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69bbf09c07f02f22be5f164d4bcc65eb7068b68b74f4ac8e5df50c15b7cde806",
+      "geometryHash": "64bfe879dfa3eb4691dfdf700f03bdfd6085d17e0e12b1366e327d5a85fab331",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 5640,
       "indexed": true,
@@ -1019,18 +1019,18 @@
     {
       "bounds": {
         "max": [
-          9.878620147705078,
-          0.13048847019672394,
+          9.878619877924347,
+          0.13048847197916058,
           9.869999885559082
         ],
         "min": [
-          -0.5206197500228882,
-          -0.45748844742774963,
+          -0.5206194802421562,
+          -0.4574884492101863,
           -9.869999885559082
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f20c6cc6a7067378f23f945d4505bb8e07a2f4969c9fdfa62da0006502e0e16",
+      "geometryHash": "04b36480a9a045923436dc484eff817c4f6a62d90397a5f8f8bb7f9509524940",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 540,
       "indexed": true,
@@ -1044,18 +1044,18 @@
     {
       "bounds": {
         "max": [
-          11.050519943237305,
-          3.4000306129455566,
+          11.05052032629906,
+          3.40003069466433,
           10.890000343322754
         ],
         "min": [
-          -9.599501609802246,
-          -3.5400304794311523,
+          -9.599501992864,
+          -3.540030561149926,
           -10.890000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee624c7a71aad44baeaa55d8c48af67b6db3cd4c3165bd9ab17543f7aa4cbac8",
+      "geometryHash": "9012d6c47a8f3661acb54d9a237538a2552b03f378d29b6d39b0d1850c9f82fb",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 11406,
       "indexed": true,
@@ -1069,18 +1069,18 @@
     {
       "bounds": {
         "max": [
-          9.763191223144531,
-          2.0979292392730713,
+          9.763191452475162,
+          2.097929217389961,
           9.769999504089355
         ],
         "min": [
-          -9.600293159484863,
-          -1.7949237823486328,
+          -9.600293388815494,
+          -1.7949237604655224,
           -9.769999504089355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b15f3e04a7e4e24c0b07ff8c0dcc97412e9758096fc7053c59a7fb11cd8c654c",
+      "geometryHash": "8afae2fccc8a2d1a02e7f2932fca507d00bc4b3a1e2849be522d9ad1c0c199cc",
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 101118,
       "indexed": true,
@@ -1310,21 +1310,21 @@
     {
       "id": "sf.render.saucer-production-v1.node.collision-hull",
       "localTransform": [
-        1,
+        11.030510902404785,
         0,
         0,
         0,
         0,
-        1,
+        11.030510902404785,
         0,
         0,
         0,
         0,
-        1,
+        11.030510902404785,
         0,
-        0,
-        0,
-        0,
+        0.731257438659668,
+        -0.21494531631469727,
+        -0.00011348724365234375,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1338,41 +1338,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        11.030510902404785,
         0,
         0,
         0,
         0,
-        1,
+        11.030510902404785,
         0,
         0,
         0,
         0,
-        1,
+        11.030510902404785,
         0,
-        0,
-        0,
-        0,
+        0.731257438659668,
+        -0.21494531631469727,
+        -0.00011348724365234375,
         1
       ]
     },
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
-        0,
-        0,
+        0.06400012969970703,
+        -1.268074095249176,
         0,
         1
       ],
@@ -1388,20 +1388,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
-        0,
-        0,
+        0.06400012969970703,
+        -1.268074095249176,
         0,
         1
       ]
@@ -1409,20 +1409,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        11.029999732971191,
         0,
         0,
         0,
         0,
-        1,
+        11.029999732971191,
         0,
         0,
         0,
         0,
-        1,
+        11.029999732971191,
         0,
-        0,
-        0,
+        5.583499973639846,
+        0.0664370208978653,
         0,
         1
       ],
@@ -1438,20 +1438,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        11.029999732971191,
         0,
         0,
         0,
         0,
-        1,
+        11.029999732971191,
         0,
         0,
         0,
         0,
-        1,
+        11.029999732971191,
         0,
-        0,
-        0,
+        5.583499973639846,
+        0.0664370208978653,
         0,
         1
       ]
@@ -1459,20 +1459,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        2.3000000715255737,
         0,
         1
       ],
@@ -1488,20 +1488,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        2.3000000715255737,
         0,
         1
       ]
@@ -1809,20 +1809,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        9.600102424621582,
         0,
         0,
         0,
         0,
-        1,
+        9.600102424621582,
         0,
         0,
         0,
         0,
-        1,
+        9.600102424621582,
         0,
         0,
-        0,
+        0.45475757122039795,
         0,
         1
       ],
@@ -1838,20 +1838,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        9.600102424621582,
         0,
         0,
         0,
         0,
-        1,
+        9.600102424621582,
         0,
         0,
         0,
         0,
-        1,
+        9.600102424621582,
         0,
         0,
-        0,
+        0.45475757122039795,
         0,
         1
       ]
@@ -1859,20 +1859,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-cyan",
       "localTransform": [
-        1,
+        9.660000801086426,
         0,
         0,
         0,
         0,
-        1,
+        9.660000801086426,
         0,
         0,
         0,
         0,
-        1,
+        9.660000801086426,
         0,
         0,
-        0,
+        0.8719390630722046,
         0,
         1
       ],
@@ -1888,20 +1888,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        9.660000801086426,
         0,
         0,
         0,
         0,
-        1,
+        9.660000801086426,
         0,
         0,
         0,
         0,
-        1,
+        9.660000801086426,
         0,
         0,
-        0,
+        0.8719390630722046,
         0,
         1
       ]
@@ -1909,21 +1909,21 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        2.0450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        2.0450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        2.0450000762939453,
         0,
         0,
-        0,
-        0,
+        1.440000057220459,
+        5.960464477539063e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1938,41 +1938,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        2.0450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        2.0450000762939453,
         0,
         0,
         0,
         0,
-        1,
+        2.0450000762939453,
         0,
         0,
-        0,
-        0,
+        1.440000057220459,
+        5.960464477539063e-8,
         1
       ]
     },
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-livery",
       "localTransform": [
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
-        0,
-        0,
+        4.679000198841095,
+        -0.16349998861551285,
         0,
         1
       ],
@@ -1988,20 +1988,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
         0,
         0,
         0,
-        1,
+        9.869999885559082,
         0,
-        0,
-        0,
+        4.679000198841095,
+        -0.16349998861551285,
         0,
         1
       ]
@@ -2009,20 +2009,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        10.890000343322754,
         0,
         0,
         0,
         0,
-        1,
+        10.890000343322754,
         0,
         0,
         0,
         0,
-        1,
+        10.890000343322754,
         0,
-        0,
-        0,
+        0.7255091667175293,
+        -0.06999993324279785,
         0,
         1
       ],
@@ -2038,20 +2038,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        10.890000343322754,
         0,
         0,
         0,
         0,
-        1,
+        10.890000343322754,
         0,
         0,
         0,
         0,
-        1,
+        10.890000343322754,
         0,
-        0,
-        0,
+        0.7255091667175293,
+        -0.06999993324279785,
         0,
         1
       ]
@@ -2059,20 +2059,20 @@
     {
       "id": "sf.render.saucer-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        9.769999504089355,
         0,
         0,
         0,
         0,
-        1,
+        9.769999504089355,
         0,
         0,
         0,
         0,
-        1,
+        9.769999504089355,
         0,
-        0,
-        0,
+        0.08144903182983398,
+        0.15150272846221924,
         0,
         1
       ],
@@ -2088,20 +2088,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.saucer-production-v1.body",
       "worldTransform": [
-        1,
+        9.769999504089355,
         0,
         0,
         0,
         0,
-        1,
+        9.769999504089355,
         0,
         0,
         0,
         0,
-        1,
+        9.769999504089355,
         0,
-        0,
-        0,
+        0.08144903182983398,
+        0.15150272846221924,
         0,
         1
       ]
@@ -2900,36 +2900,36 @@
       "uri": "saucer_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2147756,
-    "sha256": "5342d97de8417aa5499bf33c4f93ad3e8462e472e2796ee8d6502c25e75bd1ee",
+    "bytes": 1172776,
+    "sha256": "999275f9857ad005bd659df130b99ed7ee904f28f5d439c3364708ec384e284a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.7309346199035645,
+        0.7309348605258315,
         -0.21494531631469727,
         -0.00011348724365234375
       ],
       "max": [
-        11.212445259094238,
-        3.5664727687835693,
+        11.212445422864501,
+        3.566472847286272,
         11.030397415161133
       ],
       "min": [
-        -9.75057601928711,
-        -3.996363401412964,
+        -9.750575701812839,
+        -3.9963634799156664,
         -11.030624389648438
       ],
       "size": [
-        20.963021278381348,
-        7.562836170196533,
+        20.96302112467734,
+        7.562836327201938,
         22.06102180480957
       ]
     },
@@ -3827,20 +3827,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.869999885559082,
           0,
           0,
           0,
           0,
-          1,
+          9.869999885559082,
           0,
           0,
           0,
           0,
-          1,
+          9.869999885559082,
           0,
-          0,
-          0,
+          0.06400012969970703,
+          -1.268074095249176,
           0,
           1
         ],
@@ -3855,20 +3855,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.029999732971191,
           0,
           0,
           0,
           0,
-          1,
+          11.029999732971191,
           0,
           0,
           0,
           0,
-          1,
+          11.029999732971191,
           0,
-          0,
-          0,
+          5.583499973639846,
+          0.0664370208978653,
           0,
           1
         ],
@@ -3883,20 +3883,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
-          0,
+          2.3000000715255737,
           0,
           1
         ],
@@ -4103,20 +4103,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.600102424621582,
           0,
           0,
           0,
           0,
-          1,
+          9.600102424621582,
           0,
           0,
           0,
           0,
-          1,
+          9.600102424621582,
           0,
           0,
-          0,
+          0.45475757122039795,
           0,
           1
         ],
@@ -4131,20 +4131,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.660000801086426,
           0,
           0,
           0,
           0,
-          1,
+          9.660000801086426,
           0,
           0,
           0,
           0,
-          1,
+          9.660000801086426,
           0,
           0,
-          0,
+          0.8719390630722046,
           0,
           1
         ],
@@ -4159,21 +4159,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.0450000762939453,
           0,
           0,
           0,
           0,
-          1,
+          2.0450000762939453,
           0,
           0,
           0,
           0,
-          1,
+          2.0450000762939453,
           0,
           0,
-          0,
-          0,
+          1.440000057220459,
+          5.960464477539063e-8,
           1
         ],
         "name": "LOD0_MOTION_HULL_CORE_Lights_Warm",
@@ -4187,20 +4187,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.869999885559082,
           0,
           0,
           0,
           0,
-          1,
+          9.869999885559082,
           0,
           0,
           0,
           0,
-          1,
+          9.869999885559082,
           0,
-          0,
-          0,
+          4.679000198841095,
+          -0.16349998861551285,
           0,
           1
         ],
@@ -4215,20 +4215,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.890000343322754,
           0,
           0,
           0,
           0,
-          1,
+          10.890000343322754,
           0,
           0,
           0,
           0,
-          1,
+          10.890000343322754,
           0,
-          0,
-          0,
+          0.7255091667175293,
+          -0.06999993324279785,
           0,
           1
         ],
@@ -4243,20 +4243,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          9.769999504089355,
           0,
           0,
           0,
           0,
-          1,
+          9.769999504089355,
           0,
           0,
           0,
           0,
-          1,
+          9.769999504089355,
           0,
-          0,
-          0,
+          0.08144903182983398,
+          0.15150272846221924,
           0,
           1
         ],
@@ -4273,19 +4273,19 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1.glb"
   },
-  "runtimeHash": "8eb417f000c6e8c2fa42bb285f57792c8ee2e8ddf5c68dd276c25cc21f3eb364",
+  "runtimeHash": "9903a55a0371a6a371b97799f3323f2d47d65b95aa0c70b00ecad4f96f0775dd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          11.212445259094238,
-          3.5664727687835693,
+          11.212445422864501,
+          3.566472847286272,
           11.030397415161133
         ],
         "min": [
-          -9.75057601928711,
-          -3.996363401412964,
+          -9.750575701812839,
+          -3.9963634799156664,
           -11.030624389648438
         ]
       },

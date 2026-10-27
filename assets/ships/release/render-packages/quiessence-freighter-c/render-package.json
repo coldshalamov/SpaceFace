@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0ee5863bc9fdce0c90b86a01591bc30135eccfdceee5c392193b0443d41cfba1",
+  "contentHash": "93c5d676d5b61deb7ed2fcd02d3e757abf384d5780c0b8272a5b04c68abcdcc8",
   "dynamicGroups": [
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-drive-core.dynamic",
@@ -158,17 +158,17 @@
       "bounds": {
         "max": [
           20.539981842041016,
-          6.773810386657715,
-          4.755526065826416
+          6.773810280909358,
+          4.755526205485409
         ],
         "min": [
           -22.768613815307617,
-          -2.2297041416168213,
-          -4.755526065826416
+          -2.2297040358684646,
+          -4.755526205485409
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27230a068126ac9ff6b0de4e978463f63091e3e302fbba892ef8ff46f6007938",
+      "geometryHash": "ceed90fee21b7401d1aa64dc42470e9c22a261a14b46abdb0bbedf17b77c1c1a",
       "id": "sf.render.quiessence-freighter-c.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -183,17 +183,17 @@
       "bounds": {
         "max": [
           19.5,
-          3.8274388313293457,
-          4.330897808074951
+          3.827438858989743,
+          4.330897608169191
         ],
         "min": [
           -21.994304656982422,
-          -2.205425500869751,
-          -4.330897808074951
+          -2.205425528530148,
+          -4.330897608169191
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fd26d6f0b1d1d676597a74980d015ca48dbd34351f169736b0a8b339832bd68",
+      "geometryHash": "abd63c68e57da730ff6396fbcb9d441fb86a9e6927dd68ae749b7105a250f059",
       "id": "sf.render.quiessence-freighter-c.node.lod0-armor.primitive.0",
       "indexCount": 12726,
       "indexed": true,
@@ -207,18 +207,18 @@
     {
       "bounds": {
         "max": [
-          -15.190000534057617,
-          6.6270036697387695,
+          -15.19000019133091,
+          6.627003883057258,
           0.10999999940395355
         ],
         "min": [
-          -15.40999984741211,
-          6.472996711730957,
+          -15.410000190138817,
+          6.472996498412469,
           -0.10999999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4c3fbc46fee3704736ed1ce20538c7e29548ce000abcf96c9e0034a7446ae5c2",
+      "geometryHash": "700064eed9515689212cdb224fd41ebfa7c723797719d77cf2090c19bb0e7c60",
       "id": "sf.render.quiessence-freighter-c.node.lod0-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -233,17 +233,17 @@
       "bounds": {
         "max": [
           15,
-          1.5503039360046387,
-          3.0998871326446533
+          1.5503039119022934,
+          3.0998870815149386
         ],
         "min": [
           -12,
-          1.3096959590911865,
-          -3.0998871326446533
+          1.3096959831935318,
+          -3.0998870815149386
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb297a7da7f8b6ab7758a6f934f0fa894faaff6fe5ec4e3c31c83bb8d75a662d",
+      "geometryHash": "3a1f0748b33b58a655e16a19164495388fc8111093096eb97c5498ec9b71de99",
       "id": "sf.render.quiessence-freighter-c.node.lod0-brushedmetal.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -257,18 +257,18 @@
     {
       "bounds": {
         "max": [
-          -12.599884033203125,
-          4.948293685913086,
+          -12.599883763635221,
+          4.94829372803489,
           2.6981987953186035
         ],
         "min": [
-          -13.4134521484375,
-          3.5014920234680176,
+          -13.413452418005404,
+          3.5014919813462138,
           -2.6981987953186035
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee337098baab7718e5e1e21c2a8b7546749d23c864fb7943225d8aa024e6920f",
+      "geometryHash": "1834fb3d6bb460a46002b88e0d9568e28d83292d719c01f2d0ca8c92ddafcec7",
       "id": "sf.render.quiessence-freighter-c.node.lod0-canopy.primitive.0",
       "indexCount": 2760,
       "indexed": true,
@@ -283,17 +283,17 @@
       "bounds": {
         "max": [
           15.131881713867188,
-          2.0021848678588867,
-          2.5509278774261475
+          2.0021848329636933,
+          2.550927757365545
         ],
         "min": [
           -11.84912395477295,
-          -0.362677663564682,
-          -2.5279273986816406
+          -0.3626776286694886,
+          -2.5279272786210383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44dc901a480d354fee0ce63d6353ccc23a0f8868e68810d0fedfe1024e7e6993",
+      "geometryHash": "a34f512b347f6d0d7b5f51e5826f203980a6d66789cd90453eb52968d7cc882b",
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
@@ -308,17 +308,17 @@
       "bounds": {
         "max": [
           14.614740371704102,
-          1.8435002565383911,
-          2.424118995666504
+          1.843500244964263,
+          2.4241190677334252
         ],
         "min": [
           -12.189136505126953,
-          -0.34223416447639465,
-          -2.42179799079895
+          -0.34223415290226655,
+          -2.4217980628658715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13ba9528d7c4f07b89a5de1cd94a13d50ef3da6517517f184bbdb7d2471e9fbe",
+      "geometryHash": "47c45feba422bee1ac4aa3b4768b62235a4ee616eb336fccbdcabea2328f6d6c",
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -343,7 +343,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df76b47eb23c4ab6537bfdc55a1a1e99520fd5c248c5dfeff1b959fa136989f4",
+      "geometryHash": "075d0f5bdbcc1e255430d871d2c25b48680c5a71c99e81bc206179de4c828324",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -408,17 +408,17 @@
       "bounds": {
         "max": [
           19.998762130737305,
-          4.955165386199951,
-          4.554686546325684
+          4.955165119513414,
+          4.554686738853397
         ],
         "min": [
           -21.994321823120117,
-          -1.801252841949463,
-          -4.554686546325684
+          -1.801252575262926,
+          -4.554686738853397
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18a8c01c110804fb311a6f3b506dbaad194c4132b0e1f2246defce84fe3221be",
+      "geometryHash": "87d243bcfe263dcad75b56542582bd75b64fa38d390c22e6624a280f258e73ae",
       "id": "sf.render.quiessence-freighter-c.node.lod0-hull.primitive.0",
       "indexCount": 20988,
       "indexed": true,
@@ -432,18 +432,18 @@
     {
       "bounds": {
         "max": [
-          -13.74625015258789,
-          5.120377063751221,
+          -13.74624988436699,
+          5.1203769235046765,
           0.061250001192092896
         ],
         "min": [
-          -13.868749618530273,
-          5.034622669219971,
+          -13.868749886751175,
+          5.034622809466515,
           -0.061250001192092896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e1be61a3896e4ced98fb82725f89fd4056d20f1c69c213593dfe9d58918d900",
+      "geometryHash": "56b1fbaa125507cfb0f8bfe4b7305e3136e7262eda6c309659e3f26a35a00f01",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -458,17 +458,17 @@
       "bounds": {
         "max": [
           -15.050000190734863,
-          6.775008201599121,
+          6.775008297222675,
           0.25
         ],
         "min": [
           -15.550000190734863,
-          6.424991607666016,
+          6.424991512042462,
           -0.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d5b7753b4ed358d3940dc75f2bf59472bf2c395885aa2117fb620e783af2193",
+      "geometryHash": "f77db0e96c7e2bf79c258718c432aaf9e9ea72fbf653720f48f4136cbef77131",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -483,17 +483,17 @@
       "bounds": {
         "max": [
           20.530000686645508,
-          4.908933162689209,
-          3.8497488498687744
+          4.908932989705768,
+          3.8497486801955407
         ],
         "min": [
           -16.012500762939453,
-          0.27406737208366394,
-          -3.8497488498687744
+          0.2740675450671044,
+          -3.8497486801955407
         ]
       },
       "drawMode": 4,
-      "geometryHash": "679dc3438e5db7debf94668ac271652f239b23d6b9c26767debd9100aa3df01b",
+      "geometryHash": "53650fadf307ae2153b43b14d877d6e36aa9930d592348a79c73cfb3cfc6aa30",
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -508,17 +508,17 @@
       "bounds": {
         "max": [
           20,
-          4.970444202423096,
-          4.57953405380249
+          4.970444280292771,
+          4.579533761285515
         ],
         "min": [
           -19.509632110595703,
-          -2.2304444313049316,
-          -4.57953405380249
+          -2.230444509174607,
+          -4.579533761285515
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0c5c6391339dbb43ded32306746a322e75cafc4b6061da49b5cd024f147625b",
+      "geometryHash": "22c90f1c6f597e5a2c91739f5505e5f533706b4c531ae5d39d77e98a10c22212",
       "id": "sf.render.quiessence-freighter-c.node.lod0-livery.primitive.0",
       "indexCount": 7551,
       "indexed": true,
@@ -533,17 +533,17 @@
       "bounds": {
         "max": [
           20.40256118774414,
-          6.499238967895508,
-          4.674710750579834
+          6.499239077485687,
+          4.6747107980059734
         ],
         "min": [
           -22.770000457763672,
-          -2.1492393016815186,
-          -4.674710750579834
+          -2.149239411271698,
+          -4.6747107980059734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f8d88947d4d46b05cc4d0ecdd30f4b527b58dc791e10fa4912dd2714fb8f0b5",
+      "geometryHash": "328731a5f0a8aba123a17e87a36ecdb885726c411220fdc362ff59f099773b5b",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanical.primitive.0",
       "indexCount": 17373,
       "indexed": true,
@@ -558,17 +558,17 @@
       "bounds": {
         "max": [
           14.649999618530273,
-          1.449426293373108,
-          2.49941086769104
+          1.4494262720445787,
+          2.4994109202614383
         ],
         "min": [
           -11.649999618530273,
-          -0.14942620694637299,
-          -2.49941086769104
+          -0.14942618561784393,
+          -2.4994109202614383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e1c712304e75e6b1e6f367f16e213c803c334a65d3c2ef92ad470308b940b6c",
+      "geometryHash": "1298fb2f52a3a38344c7886c937ce7e02dcc47a941eda9b4bdb55297683ba69e",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark-ore.primitive.0",
       "indexCount": 3792,
       "indexed": true,
@@ -583,17 +583,17 @@
       "bounds": {
         "max": [
           18.43796730041504,
-          3.35092830657959,
-          4.698415279388428
+          3.350928337245049,
+          4.698415098866411
         ],
         "min": [
           -22.770000457763672,
-          -2.0819284915924072,
-          -4.698415279388428
+          -2.0819285222578663,
+          -4.698415098866411
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c60cb7fde0b4cecff841fadae0e118573ec072ea3684f3ea5370fe04f924028d",
+      "geometryHash": "eb3c05df4d082d4ac9ac0dedde9ecbe4bbcb422baa1dc2ff0e6d674b56b42978",
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 14058,
       "indexed": true,
@@ -608,17 +608,17 @@
       "bounds": {
         "max": [
           20.40999984741211,
-          4.05058479309082,
-          4.570815563201904
+          4.050584551725389,
+          4.5708155850741
         ],
         "min": [
           -21.355731964111328,
-          -2.2205848693847656,
-          -4.570815563201904
+          -2.220584628019334,
+          -4.5708155850741
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82dd56b06866eaa21fcfd390999122f2889432ba2125d6c6faaf1d9e470eea76",
+      "geometryHash": "bd38eb575823d57f7c2a182f5ddf086c13ea59580a05f160fa58ec88745cc2b9",
       "id": "sf.render.quiessence-freighter-c.node.lod0-warning.primitive.0",
       "indexCount": 22542,
       "indexed": true,
@@ -633,17 +633,17 @@
       "bounds": {
         "max": [
           19.499780654907227,
-          3.8142459392547607,
-          4.335792541503906
+          3.81424613110579,
+          4.3357923994583265
         ],
         "min": [
           -21.99295997619629,
-          -2.2082602977752686,
-          -4.335806846618652
+          -2.208260489626298,
+          -4.335806704573073
         ]
       },
       "drawMode": 4,
-      "geometryHash": "879ed1b9f91b62f6e549d9c3577f65d4635417c24e748e019e5936f09ed4887d",
+      "geometryHash": "88cab23a486a9f57fcf9bb3af7d50159f799a09bc15265902c8708074d9ddc73",
       "id": "sf.render.quiessence-freighter-c.node.lod1-armor.primitive.0",
       "indexCount": 2430,
       "indexed": true,
@@ -657,18 +657,18 @@
     {
       "bounds": {
         "max": [
-          -15.190000534057617,
-          6.6270036697387695,
+          -15.19000019133091,
+          6.627003883057258,
           0.10999999940395355
         ],
         "min": [
-          -15.40999984741211,
-          6.472996711730957,
+          -15.410000190138817,
+          6.472996498412469,
           -0.10999999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
+      "geometryHash": "2079cffbed35363d22edb2e3c6096671d3043c8067b2777ff30a8927c7e7970d",
       "id": "sf.render.quiessence-freighter-c.node.lod1-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -683,17 +683,17 @@
       "bounds": {
         "max": [
           14.999471664428711,
-          1.5486513376235962,
-          3.0981028079986572
+          1.5486513282791625,
+          3.0981029282557166
         ],
         "min": [
           -11.999471664428711,
-          1.3113486766815186,
-          -3.098132610321045
+          1.3113486860259522,
+          -3.0981327305781043
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30b01456e79f8a3ebd45ea0e4c369ba9ee416aadbbb20367a83bb7e687224f02",
+      "geometryHash": "f82e32ea4d106d69ea318d5d5b5a52bcbc1dacde790a3f7724ad21e1b8ed6f5e",
       "id": "sf.render.quiessence-freighter-c.node.lod1-brushedmetal.primitive.0",
       "indexCount": 552,
       "indexed": true,
@@ -707,18 +707,18 @@
     {
       "bounds": {
         "max": [
-          -12.600309371948242,
-          4.948489665985107,
+          -12.600309642331078,
+          4.94848959823296,
           2.6992111206054688
         ],
         "min": [
-          -13.409574508666992,
-          3.4998202323913574,
+          -13.409574238284156,
+          3.4998203001435044,
           -2.6992361545562744
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d037f8ed2c2e90aab714368d24fa43d74146be223061b8c8552ae13831a204ae",
+      "geometryHash": "7c31c2735793f76d646fb722703d7230c2c257e8226c434369158ceebc48d34f",
       "id": "sf.render.quiessence-freighter-c.node.lod1-canopy.primitive.0",
       "indexCount": 1158,
       "indexed": true,
@@ -733,17 +733,17 @@
       "bounds": {
         "max": [
           15.131881713867188,
-          2.0021848678588867,
-          2.5509278774261475
+          2.0021848329636933,
+          2.550927757365545
         ],
         "min": [
           -11.84912395477295,
-          -0.362677663564682,
-          -2.5279273986816406
+          -0.3626776286694886,
+          -2.5279272786210383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44dc901a480d354fee0ce63d6353ccc23a0f8868e68810d0fedfe1024e7e6993",
+      "geometryHash": "a34f512b347f6d0d7b5f51e5826f203980a6d66789cd90453eb52968d7cc882b",
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore.primitive.0",
       "indexCount": 3180,
       "indexed": true,
@@ -758,17 +758,17 @@
       "bounds": {
         "max": [
           14.614740371704102,
-          1.8435002565383911,
-          2.424118995666504
+          1.843500244964263,
+          2.4241190677334252
         ],
         "min": [
           -12.189136505126953,
-          -0.34223416447639465,
-          -2.42179799079895
+          -0.34223415290226655,
+          -2.4217980628658715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13ba9528d7c4f07b89a5de1cd94a13d50ef3da6517517f184bbdb7d2471e9fbe",
+      "geometryHash": "47c45feba422bee1ac4aa3b4768b62235a4ee616eb336fccbdcabea2328f6d6c",
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore2.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -793,7 +793,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df76b47eb23c4ab6537bfdc55a1a1e99520fd5c248c5dfeff1b959fa136989f4",
+      "geometryHash": "075d0f5bdbcc1e255430d871d2c25b48680c5a71c99e81bc206179de4c828324",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -858,17 +858,17 @@
       "bounds": {
         "max": [
           19.999744415283203,
-          4.949491024017334,
-          4.557277679443359
+          4.949491202209155,
+          4.557277608544265
         ],
         "min": [
           -21.993595123291016,
-          -1.801841139793396,
-          -4.557277679443359
+          -1.8018413179852173,
+          -4.557277608544265
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0347dbb8effcf215b45084ac04d899bf07dd5b1b8782e1880d6f5001ca550925",
+      "geometryHash": "14519861d59b72a08ce79c891349fad564ee02d735a865d807d0ff9bb65ba0c7",
       "id": "sf.render.quiessence-freighter-c.node.lod1-hull.primitive.0",
       "indexCount": 8301,
       "indexed": true,
@@ -882,18 +882,18 @@
     {
       "bounds": {
         "max": [
-          -13.74625015258789,
-          5.120377063751221,
+          -13.74624988436699,
+          5.1203769235046765,
           0.061250001192092896
         ],
         "min": [
-          -13.868749618530273,
-          5.034622669219971,
+          -13.868749886751175,
+          5.034622809466515,
           -0.061250001192092896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cad778838e46b02ec2eb6700b977341ec1fb8148f42de88cd995ceb33b4b349e",
+      "geometryHash": "b0c5505e5113b0c4305498f4fb8df0f0d78e34f257eaf3df61518680ceb89bc6",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-cyan.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -908,17 +908,17 @@
       "bounds": {
         "max": [
           -15.050000190734863,
-          6.775008201599121,
+          6.775008297222675,
           0.25
         ],
         "min": [
           -15.550000190734863,
-          6.424991607666016,
+          6.424991512042462,
           -0.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "366e7f90b56b0bd480107e90be690f0b8fb3afd50da19165181535a5f473ae38",
+      "geometryHash": "f9f47ddfb42eca5e7d2c6cb4daac80d4f78eb1553fdb83587edb1743dea5236a",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -933,17 +933,17 @@
       "bounds": {
         "max": [
           20.530000686645508,
-          4.908933162689209,
-          3.8497488498687744
+          4.908932989705768,
+          3.8497486801955407
         ],
         "min": [
           -16.012500762939453,
-          0.27406737208366394,
-          -3.8497488498687744
+          0.2740675450671044,
+          -3.8497486801955407
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40687899b59957bac000b2e15b3ce7138c9dae0d8e9f31feb4427e19f6da34ae",
+      "geometryHash": "daeaf9907aa94c75b0afd39c4faf2c363ca5f8a61c32caa01ee678b386c17bdb",
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -958,17 +958,17 @@
       "bounds": {
         "max": [
           19.99974822998047,
-          4.968063831329346,
-          4.579561710357666
+          4.96806373033961,
+          4.5795618383747705
         ],
         "min": [
           -19.5101261138916,
-          -2.228046178817749,
-          -4.579561710357666
+          -2.228046077828014,
+          -4.5795618383747705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "045eb9536a7dde86e32453b9d8aaebe8609b23b32b8d2bcbd87c5674ed781193",
+      "geometryHash": "b96948cece2f4fe00868a7a4be33087ceefd5e0e32415248fe04b3e9a33be5f0",
       "id": "sf.render.quiessence-freighter-c.node.lod1-livery.primitive.0",
       "indexCount": 2823,
       "indexed": true,
@@ -983,17 +983,17 @@
       "bounds": {
         "max": [
           20.400108337402344,
-          6.498995304107666,
-          4.674445152282715
+          6.498995303056258,
+          4.674445204176428
         ],
         "min": [
           -22.770000457763672,
-          -2.148991823196411,
-          -4.674445152282715
+          -2.1489918221450033,
+          -4.674445204176428
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3a265efb01f301dd60f8300f7b6ff55bc1345149285940601dec1ed4e134b28",
+      "geometryHash": "623a6a4527f1db44ba1e96346ab08956729181ddee3a3bfd15bbad9e5ac5bb0f",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanical.primitive.0",
       "indexCount": 8835,
       "indexed": true,
@@ -1008,17 +1008,17 @@
       "bounds": {
         "max": [
           14.65000057220459,
-          1.449545979499817,
-          2.4994113445281982
+          1.4495459764529166,
+          2.499411373421908
         ],
         "min": [
           -11.650003433227539,
-          -0.1493067741394043,
-          -2.4994113445281982
+          -0.149306771092504,
+          -2.499411373421908
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ba21028a9f7e5131850d91ee7b4fdb210e40af523eac8797fe143a9e34e41ca",
+      "geometryHash": "8dd2b75a4de984bd51f9d168e722d45024a276f3ed5a31a59b502ecc2ce93113",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark-ore.primitive.0",
       "indexCount": 2982,
       "indexed": true,
@@ -1033,17 +1033,17 @@
       "bounds": {
         "max": [
           18.43906021118164,
-          3.347771167755127,
-          4.698539733886719
+          3.347771159249273,
+          4.698539709438755
         ],
         "min": [
           -22.770000457763672,
-          -2.0801992416381836,
-          -4.698539733886719
+          -2.08019923313233,
+          -4.698539709438755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbc98ca5e0888c9fd1b2d94f5ff24ba6f145f8ef5748e7abe58945c7fa74ecb2",
+      "geometryHash": "f73c5470d62cee8c5c8508a30a64005545cad9380849ae3b81787e4b81164a68",
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5502,
       "indexed": true,
@@ -1058,17 +1058,17 @@
       "bounds": {
         "max": [
           20.40985107421875,
-          2.7731566429138184,
-          4.568613052368164
+          2.773156458750073,
+          4.568613060110019
         ],
         "min": [
           -21.359050750732422,
-          -2.218665361404419,
-          -4.568613052368164
+          -2.218665177240674,
+          -4.568613060110019
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5b795f3a9e31d0fe59a0623ce5d7f6f312dc737d94adad69ea73aa96d3bf7f2",
+      "geometryHash": "27af609f4292fcef7358f0f48568b62a6dbe6edf4bdaf3a77a6702dd215b0946",
       "id": "sf.render.quiessence-freighter-c.node.lod1-warning.primitive.0",
       "indexCount": 4149,
       "indexed": true,
@@ -1083,17 +1083,17 @@
       "bounds": {
         "max": [
           19.4985294342041,
-          3.802760601043701,
-          4.337791919708252
+          3.8027605637932997,
+          4.337792011395392
         ],
         "min": [
           -21.99789047241211,
-          -2.215214490890503,
-          -4.339641571044922
+          -2.2152144536401015,
+          -4.3396416627320615
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99cd4ad7feffb4e92e2a46cd0197006419d123985d87f080ca30b44debcd070e",
+      "geometryHash": "6b4cbb4406bc924ad09e55a3f5ba46c92efb8bafdd9308cd3217ad21ef394a2e",
       "id": "sf.render.quiessence-freighter-c.node.lod2-armor.primitive.0",
       "indexCount": 1545,
       "indexed": true,
@@ -1107,18 +1107,18 @@
     {
       "bounds": {
         "max": [
-          -15.190000534057617,
-          6.6270036697387695,
+          -15.19000019133091,
+          6.627003883057258,
           0.10999999940395355
         ],
         "min": [
-          -15.40999984741211,
-          6.472996711730957,
+          -15.410000190138817,
+          6.472996498412469,
           -0.10999999940395355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eff2a1e3955b41b3badd44f4826a01d1ec4274465c01d0c5551a9832bd1094b",
+      "geometryHash": "2079cffbed35363d22edb2e3c6096671d3043c8067b2777ff30a8927c7e7970d",
       "id": "sf.render.quiessence-freighter-c.node.lod2-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1132,18 +1132,18 @@
     {
       "bounds": {
         "max": [
-          -12.601780891418457,
-          4.947023868560791,
+          -12.601781098716815,
+          4.947023894409419,
           2.6980693340301514
         ],
         "min": [
-          -13.404780387878418,
-          3.5015926361083984,
+          -13.40478018058006,
+          3.5015926102597703,
           -2.6981306076049805
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72368d6d7161120a4a54a6f95706fa6b864567640ea312b3a93634c4ca1e6006",
+      "geometryHash": "2574004e52fc51db025b041b71b6c2260c8a12b8dbfbccef4fb219a6b88d1d4b",
       "id": "sf.render.quiessence-freighter-c.node.lod2-canopy.primitive.0",
       "indexCount": 447,
       "indexed": true,
@@ -1168,7 +1168,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "176b32fff1a8c4eb410f0221b5a177990ea874c5e86af9ae1794264847a54063",
+      "geometryHash": "513e12bb37008f2dd2c7ff16839bf002356f3a2dbfed31cce4fb6ceee1c9fbf8",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1233,17 +1233,17 @@
       "bounds": {
         "max": [
           19.999897003173828,
-          4.94926643371582,
-          4.552693843841553
+          4.949266479835885,
+          4.552694056815332
         ],
         "min": [
           -21.998449325561523,
-          -1.7977440357208252,
-          -4.552693843841553
+          -1.7977440818408903,
+          -4.552694056815332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d97d8ed5398dbbdf98230ef00054af77f67b6030490b38ea9b6c19d8afa73e3d",
+      "geometryHash": "bddb126743c389d14198e4e1d828eda9d9a1d005edc55c6a9f3545fb53b25979",
       "id": "sf.render.quiessence-freighter-c.node.lod2-hull.primitive.0",
       "indexCount": 3771,
       "indexed": true,
@@ -1258,17 +1258,17 @@
       "bounds": {
         "max": [
           -15.050000190734863,
-          6.775008201599121,
+          6.775008297222675,
           0.25
         ],
         "min": [
           -15.550000190734863,
-          6.424991607666016,
+          6.424991512042462,
           -0.25
         ]
       },
       "drawMode": 4,
-      "geometryHash": "366e7f90b56b0bd480107e90be690f0b8fb3afd50da19165181535a5f473ae38",
+      "geometryHash": "f9f47ddfb42eca5e7d2c6cb4daac80d4f78eb1553fdb83587edb1743dea5236a",
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1283,17 +1283,17 @@
       "bounds": {
         "max": [
           20.530000686645508,
-          4.908933162689209,
-          2.745678186416626
+          4.908932989705768,
+          2.745678230197399
         ],
         "min": [
           -16.012500762939453,
-          0.27406737208366394,
-          -2.745678186416626
+          0.2740675450671044,
+          -2.745678230197399
         ]
       },
       "drawMode": 4,
-      "geometryHash": "690845bd03b126e08a804cdc5d3474dfb6204562fd9df55e5b63303daa2a1e6a",
+      "geometryHash": "2e44fbca9514e8ad1ec8064d57a65a1199bf7ddbdd90bfd92f2cbeea9490a9bd",
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -1308,17 +1308,17 @@
       "bounds": {
         "max": [
           19.999897003173828,
-          4.967301845550537,
-          4.576313018798828
+          4.967301761263272,
+          4.576313044527399
         ],
         "min": [
           -19.502750396728516,
-          -2.227491855621338,
-          -4.576313018798828
+          -2.2274917713340727,
+          -4.576313044527399
         ]
       },
       "drawMode": 4,
-      "geometryHash": "119c81d1f3d7c21805667c94a1a670010c2b05cd71e1a570f3994ed4926e4ebc",
+      "geometryHash": "e758651964d2ea200644f12f29358d135da6ff43abf713fad055e1fe42dc9dda",
       "id": "sf.render.quiessence-freighter-c.node.lod2-livery.primitive.0",
       "indexCount": 1554,
       "indexed": true,
@@ -1333,17 +1333,17 @@
       "bounds": {
         "max": [
           20.400665283203125,
-          3.792844772338867,
-          3.9549977779388428
+          3.792844809316412,
+          3.954997825812467
         ],
         "min": [
           -22.77107810974121,
-          -2.146613121032715,
-          -3.955495834350586
+          -2.14661315801026,
+          -3.95549588222421
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21c27d9bae6aab4c2a235c61222d08e72af252330d6e035d5c8c71c96f66465e",
+      "geometryHash": "0ca54e29a6a5fd4fdcc0aee2a04909abfd8f9d2c69bd795d9af874ac310b097f",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanical.primitive.0",
       "indexCount": 2373,
       "indexed": true,
@@ -1358,17 +1358,17 @@
       "bounds": {
         "max": [
           14.650158882141113,
-          1.4498270750045776,
-          2.5003223419189453
+          1.4498270928400858,
+          2.5003222674072276
         ],
         "min": [
           -11.65014362335205,
-          -0.14904378354549408,
-          -2.501767873764038
+          -0.14904380138100215,
+          -2.5017677992523204
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9754c20283cbcbde218d08af9b7554b3a1dba25457d275ccb03d0fae95b97be",
+      "geometryHash": "635616f18171d54930acb8019bb8f1371afe69276adce6152c13773fb6d7371e",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark-ore.primitive.0",
       "indexCount": 1584,
       "indexed": true,
@@ -1383,17 +1383,17 @@
       "bounds": {
         "max": [
           18.437223434448242,
-          3.3457086086273193,
-          4.0973124504089355
+          3.3457084344501307,
+          4.0973127363191395
         ],
         "min": [
           -22.77107810974121,
-          -2.0821621417999268,
-          -4.0973124504089355
+          -2.082161967622738,
+          -4.0973127363191395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a69610814724bbaf30c8962fab20184c3eb4426c947e12d051c44d951e4da7cb",
+      "geometryHash": "133c4da783b1c8142d05d14d6a8abe129608e767a9938688773630ed580aa2fd",
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1815,
       "indexed": true,
@@ -1408,17 +1408,17 @@
       "bounds": {
         "max": [
           20.408206939697266,
-          2.767788887023926,
-          4.565417289733887
+          2.767788921854998,
+          4.565417241623787
         ],
         "min": [
           -21.354782104492188,
-          -2.2182278633117676,
-          -4.565417289733887
+          -2.21822789814284,
+          -4.565417241623787
         ]
       },
       "drawMode": 4,
-      "geometryHash": "376ff85c863ddc9049d6c2ee9b98d506391fab77a30d44761a92a938528769ce",
+      "geometryHash": "3282703758d1fa94cdb223c54aa042b45905620e444b354a220b30a0cf47b569",
       "id": "sf.render.quiessence-freighter-c.node.lod2-warning.primitive.0",
       "indexCount": 2565,
       "indexed": true,
@@ -1815,20 +1815,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.collision-hull",
       "localTransform": [
-        1,
+        21.654297828674316,
         0,
         0,
         0,
         0,
-        1,
+        21.654297828674316,
         0,
         0,
         0,
         0,
-        1,
+        21.654297828674316,
         0,
-        0,
-        0,
+        -1.1143159866333008,
+        2.2720531225204468,
         0,
         1
       ],
@@ -1843,20 +1843,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        21.654297828674316,
         0,
         0,
         0,
         0,
-        1,
+        21.654297828674316,
         0,
         0,
         0,
         0,
-        1,
+        21.654297828674316,
         0,
-        0,
-        0,
+        -1.1143159866333008,
+        2.2720531225204468,
         0,
         1
       ]
@@ -1864,20 +1864,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-armor",
       "localTransform": [
-        1,
+        20.74715232849121,
         0,
         0,
         0,
         0,
-        1,
+        20.74715232849121,
         0,
         0,
         0,
         0,
-        1,
+        20.74715232849121,
         0,
-        0,
-        0,
+        -1.247152328491211,
+        0.8110066652297974,
         0,
         1
       ],
@@ -1892,20 +1892,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.74715232849121,
         0,
         0,
         0,
         0,
-        1,
+        20.74715232849121,
         0,
         0,
         0,
         0,
-        1,
+        20.74715232849121,
         0,
-        0,
-        0,
+        -1.247152328491211,
+        0.8110066652297974,
         0,
         1
       ]
@@ -1913,20 +1913,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ],
@@ -1941,20 +1941,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ]
@@ -1962,20 +1962,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-brushedmetal",
       "localTransform": [
-        1,
+        13.5,
         0,
         0,
         0,
         0,
-        1,
+        13.5,
         0,
         0,
         0,
         0,
-        1,
+        13.5,
         0,
-        0,
-        0,
+        1.5,
+        1.4299999475479126,
         0,
         1
       ],
@@ -1990,20 +1990,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.5,
         0,
         0,
         0,
         0,
-        1,
+        13.5,
         0,
         0,
         0,
         0,
-        1,
+        13.5,
         0,
-        0,
-        0,
+        1.5,
+        1.4299999475479126,
         0,
         1
       ]
@@ -2011,20 +2011,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-canopy",
       "localTransform": [
-        1,
+        2.6981987953186035,
         0,
         0,
         0,
         0,
-        1,
+        2.6981987953186035,
         0,
         0,
         0,
         0,
-        1,
+        2.6981987953186035,
         0,
-        0,
-        0,
+        -13.006668090820312,
+        4.224892854690552,
         0,
         1
       ],
@@ -2039,20 +2039,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        2.6981987953186035,
         0,
         0,
         0,
         0,
-        1,
+        2.6981987953186035,
         0,
         0,
         0,
         0,
-        1,
+        2.6981987953186035,
         0,
-        0,
-        0,
+        -13.006668090820312,
+        4.224892854690552,
         0,
         1
       ]
@@ -2060,21 +2060,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore",
       "localTransform": [
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
-        0,
-        0,
-        0,
+        1.6413788795471191,
+        0.8197536021471024,
+        0.011500239372253418,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2088,42 +2088,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
-        0,
-        0,
-        0,
+        1.6413788795471191,
+        0.8197536021471024,
+        0.011500239372253418,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-ceramic-ore2",
       "localTransform": [
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
-        0,
-        0,
-        0,
+        1.2128019332885742,
+        0.7506330460309982,
+        0.0011605024337768555,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2137,21 +2137,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
-        0,
-        0,
-        0,
+        1.2128019332885742,
+        0.7506330460309982,
+        0.0011605024337768555,
         1
       ]
     },
@@ -2305,20 +2305,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-hull",
       "localTransform": [
-        1,
+        20.99654197692871,
         0,
         0,
         0,
         0,
-        1,
+        20.99654197692871,
         0,
         0,
         0,
         0,
-        1,
+        20.99654197692871,
         0,
-        0,
-        0,
+        -0.9977798461914062,
+        1.5769562721252441,
         0,
         1
       ],
@@ -2333,20 +2333,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.99654197692871,
         0,
         0,
         0,
         0,
-        1,
+        20.99654197692871,
         0,
         0,
         0,
         0,
-        1,
+        20.99654197692871,
         0,
-        0,
-        0,
+        -0.9977798461914062,
+        1.5769562721252441,
         0,
         1
       ]
@@ -2354,20 +2354,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-cyan",
       "localTransform": [
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
-        0,
-        0,
+        -13.807499885559082,
+        5.077499866485596,
         0,
         1
       ],
@@ -2382,20 +2382,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
-        0,
-        0,
+        -13.807499885559082,
+        5.077499866485596,
         0,
         1
       ]
@@ -2403,20 +2403,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ],
@@ -2431,20 +2431,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ]
@@ -2452,20 +2452,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-lights-warm-violet",
       "localTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ],
@@ -2480,20 +2480,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ]
@@ -2501,20 +2501,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-livery",
       "localTransform": [
-        1,
+        19.75481605529785,
         0,
         0,
         0,
         0,
-        1,
+        19.75481605529785,
         0,
         0,
         0,
         0,
-        1,
+        19.75481605529785,
         0,
-        0,
-        0,
+        0.24518394470214844,
+        1.369999885559082,
         0,
         1
       ],
@@ -2529,20 +2529,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        19.75481605529785,
         0,
         0,
         0,
         0,
-        1,
+        19.75481605529785,
         0,
         0,
         0,
         0,
-        1,
+        19.75481605529785,
         0,
-        0,
-        0,
+        0.24518394470214844,
+        1.369999885559082,
         0,
         1
       ]
@@ -2550,20 +2550,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanical",
       "localTransform": [
-        1,
+        21.586280822753906,
         0,
         0,
         0,
         0,
-        1,
+        21.586280822753906,
         0,
         0,
         0,
         0,
-        1,
+        21.586280822753906,
         0,
-        0,
-        0,
+        -1.1837196350097656,
+        2.1749998331069946,
         0,
         1
       ],
@@ -2578,20 +2578,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        21.586280822753906,
         0,
         0,
         0,
         0,
-        1,
+        21.586280822753906,
         0,
         0,
         0,
         0,
-        1,
+        21.586280822753906,
         0,
-        0,
-        0,
+        -1.1837196350097656,
+        2.1749998331069946,
         0,
         1
       ]
@@ -2599,20 +2599,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        20.603983879089355,
         0,
         0,
         0,
         0,
-        1,
+        20.603983879089355,
         0,
         0,
         0,
         0,
-        1,
+        20.603983879089355,
         0,
-        0,
-        0,
+        -2.1660165786743164,
+        0.6344999074935913,
         0,
         1
       ],
@@ -2627,20 +2627,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.603983879089355,
         0,
         0,
         0,
         0,
-        1,
+        20.603983879089355,
         0,
         0,
         0,
         0,
-        1,
+        20.603983879089355,
         0,
-        0,
-        0,
+        -2.1660165786743164,
+        0.6344999074935913,
         0,
         1
       ]
@@ -2648,20 +2648,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-mechanicaldark-ore",
       "localTransform": [
-        1,
+        13.149999618530273,
         0,
         0,
         0,
         0,
-        1,
+        13.149999618530273,
         0,
         0,
         0,
         0,
-        1,
+        13.149999618530273,
         0,
-        0,
-        0,
+        1.5,
+        0.6500000432133675,
         0,
         1
       ],
@@ -2676,20 +2676,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.149999618530273,
         0,
         0,
         0,
         0,
-        1,
+        13.149999618530273,
         0,
         0,
         0,
         0,
-        1,
+        13.149999618530273,
         0,
-        0,
-        0,
+        1.5,
+        0.6500000432133675,
         0,
         1
       ]
@@ -2697,20 +2697,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod0-warning",
       "localTransform": [
-        1,
+        20.88286590576172,
         0,
         0,
         0,
         0,
-        1,
+        20.88286590576172,
         0,
         0,
         0,
         0,
-        1,
+        20.88286590576172,
         0,
-        0,
-        0,
+        -0.4728660583496094,
+        0.9149999618530273,
         0,
         1
       ],
@@ -2725,20 +2725,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.88286590576172,
         0,
         0,
         0,
         0,
-        1,
+        20.88286590576172,
         0,
         0,
         0,
         0,
-        1,
+        20.88286590576172,
         0,
-        0,
-        0,
+        -0.4728660583496094,
+        0.9149999618530273,
         0,
         1
       ]
@@ -2746,21 +2746,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-armor",
       "localTransform": [
-        1,
+        20.746370315551758,
         0,
         0,
         0,
         0,
-        1,
+        20.746370315551758,
         0,
         0,
         0,
         0,
-        1,
+        20.746370315551758,
         0,
-        0,
-        0,
-        0,
+        -1.2465896606445312,
+        0.8029928207397461,
+        -0.000007152557373046875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2774,41 +2774,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.746370315551758,
         0,
         0,
         0,
         0,
-        1,
+        20.746370315551758,
         0,
         0,
         0,
         0,
-        1,
+        20.746370315551758,
         0,
-        0,
-        0,
-        0,
+        -1.2465896606445312,
+        0.8029928207397461,
+        -0.000007152557373046875,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ],
@@ -2823,20 +2823,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ]
@@ -2844,21 +2844,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-brushedmetal",
       "localTransform": [
-        1,
+        13.499471664428711,
         0,
         0,
         0,
         0,
-        1,
+        13.499471664428711,
         0,
         0,
         0,
         0,
-        1,
+        13.499471664428711,
         0,
-        0,
-        0,
-        0,
+        1.5,
+        1.4300000071525574,
+        -0.000014901161193847656,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2872,42 +2872,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.499471664428711,
         0,
         0,
         0,
         0,
-        1,
+        13.499471664428711,
         0,
         0,
         0,
         0,
-        1,
+        13.499471664428711,
         0,
-        0,
-        0,
-        0,
+        1.5,
+        1.4300000071525574,
+        -0.000014901161193847656,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-canopy",
       "localTransform": [
-        1,
+        2.6992236375808716,
         0,
         0,
         0,
         0,
-        1,
+        2.6992236375808716,
         0,
         0,
         0,
         0,
-        1,
+        2.6992236375808716,
         0,
-        0,
-        0,
-        0,
+        -13.004941940307617,
+        4.224154949188232,
+        -0.000012516975402832031,
         1
       ],
       "materialPipelineKey": "blend",
@@ -2921,42 +2921,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        2.6992236375808716,
         0,
         0,
         0,
         0,
-        1,
+        2.6992236375808716,
         0,
         0,
         0,
         0,
-        1,
+        2.6992236375808716,
         0,
-        0,
-        0,
-        0,
+        -13.004941940307617,
+        4.224154949188232,
+        -0.000012516975402832031,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore",
       "localTransform": [
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
-        0,
-        0,
-        0,
+        1.6413788795471191,
+        0.8197536021471024,
+        0.011500239372253418,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2970,42 +2970,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
         0,
         0,
         0,
-        1,
+        13.490502834320068,
         0,
-        0,
-        0,
-        0,
+        1.6413788795471191,
+        0.8197536021471024,
+        0.011500239372253418,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-ceramic-ore2",
       "localTransform": [
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
-        0,
-        0,
-        0,
+        1.2128019332885742,
+        0.7506330460309982,
+        0.0011605024337768555,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3019,21 +3019,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
         0,
         0,
         0,
-        1,
+        13.401938438415527,
         0,
-        0,
-        0,
-        0,
+        1.2128019332885742,
+        0.7506330460309982,
+        0.0011605024337768555,
         1
       ]
     },
@@ -3187,20 +3187,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-hull",
       "localTransform": [
-        1,
+        20.99666976928711,
         0,
         0,
         0,
         0,
-        1,
+        20.99666976928711,
         0,
         0,
         0,
         0,
-        1,
+        20.99666976928711,
         0,
-        0,
-        0,
+        -0.9969253540039062,
+        1.573824942111969,
         0,
         1
       ],
@@ -3215,20 +3215,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.99666976928711,
         0,
         0,
         0,
         0,
-        1,
+        20.99666976928711,
         0,
         0,
         0,
         0,
-        1,
+        20.99666976928711,
         0,
-        0,
-        0,
+        -0.9969253540039062,
+        1.573824942111969,
         0,
         1
       ]
@@ -3236,20 +3236,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-cyan",
       "localTransform": [
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
-        0,
-        0,
+        -13.807499885559082,
+        5.077499866485596,
         0,
         1
       ],
@@ -3264,20 +3264,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.061250001192092896,
         0,
-        0,
-        0,
+        -13.807499885559082,
+        5.077499866485596,
         0,
         1
       ]
@@ -3285,20 +3285,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm",
       "localTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ],
@@ -3313,20 +3313,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ]
@@ -3334,20 +3334,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-lights-warm-violet",
       "localTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ],
@@ -3362,20 +3362,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ]
@@ -3383,20 +3383,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-livery",
       "localTransform": [
-        1,
+        19.754937171936035,
         0,
         0,
         0,
         0,
-        1,
+        19.754937171936035,
         0,
         0,
         0,
         0,
-        1,
+        19.754937171936035,
         0,
-        0,
-        0,
+        0.2448110580444336,
+        1.3700088262557983,
         0,
         1
       ],
@@ -3411,20 +3411,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        19.754937171936035,
         0,
         0,
         0,
         0,
-        1,
+        19.754937171936035,
         0,
         0,
         0,
         0,
-        1,
+        19.754937171936035,
         0,
-        0,
-        0,
+        0.2448110580444336,
+        1.3700088262557983,
         0,
         1
       ]
@@ -3432,20 +3432,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanical",
       "localTransform": [
-        1,
+        21.585054397583008,
         0,
         0,
         0,
         0,
-        1,
+        21.585054397583008,
         0,
         0,
         0,
         0,
-        1,
+        21.585054397583008,
         0,
-        0,
-        0,
+        -1.184946060180664,
+        2.1750017404556274,
         0,
         1
       ],
@@ -3460,20 +3460,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        21.585054397583008,
         0,
         0,
         0,
         0,
-        1,
+        21.585054397583008,
         0,
         0,
         0,
         0,
-        1,
+        21.585054397583008,
         0,
-        0,
-        0,
+        -1.184946060180664,
+        2.1750017404556274,
         0,
         1
       ]
@@ -3481,20 +3481,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        20.604530334472656,
         0,
         0,
         0,
         0,
-        1,
+        20.604530334472656,
         0,
         0,
         0,
         0,
-        1,
+        20.604530334472656,
         0,
-        0,
-        0,
+        -2.1654701232910156,
+        0.6337859630584717,
         0,
         1
       ],
@@ -3509,20 +3509,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.604530334472656,
         0,
         0,
         0,
         0,
-        1,
+        20.604530334472656,
         0,
         0,
         0,
         0,
-        1,
+        20.604530334472656,
         0,
-        0,
-        0,
+        -2.1654701232910156,
+        0.6337859630584717,
         0,
         1
       ]
@@ -3530,20 +3530,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-mechanicaldark-ore",
       "localTransform": [
-        1,
+        13.150002002716064,
         0,
         0,
         0,
         0,
-        1,
+        13.150002002716064,
         0,
         0,
         0,
         0,
-        1,
+        13.150002002716064,
         0,
-        0,
-        0,
+        1.4999985694885254,
+        0.6501196026802063,
         0,
         1
       ],
@@ -3558,20 +3558,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.150002002716064,
         0,
         0,
         0,
         0,
-        1,
+        13.150002002716064,
         0,
         0,
         0,
         0,
-        1,
+        13.150002002716064,
         0,
-        0,
-        0,
+        1.4999985694885254,
+        0.6501196026802063,
         0,
         1
       ]
@@ -3579,20 +3579,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod1-warning",
       "localTransform": [
-        1,
+        20.884450912475586,
         0,
         0,
         0,
         0,
-        1,
+        20.884450912475586,
         0,
         0,
         0,
         0,
-        1,
+        20.884450912475586,
         0,
-        0,
-        0,
+        -0.47459983825683594,
+        0.2772456407546997,
         0,
         1
       ],
@@ -3607,20 +3607,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.884450912475586,
         0,
         0,
         0,
         0,
-        1,
+        20.884450912475586,
         0,
         0,
         0,
         0,
-        1,
+        20.884450912475586,
         0,
-        0,
-        0,
+        -0.47459983825683594,
+        0.2772456407546997,
         0,
         1
       ]
@@ -3628,21 +3628,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-armor",
       "localTransform": [
-        1,
+        20.748209953308105,
         0,
         0,
         0,
         0,
-        1,
+        20.748209953308105,
         0,
         0,
         0,
         0,
-        1,
+        20.748209953308105,
         0,
-        0,
-        0,
-        0,
+        -1.249680519104004,
+        0.7937730550765991,
+        -0.0009248256683349609,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3656,41 +3656,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.748209953308105,
         0,
         0,
         0,
         0,
-        1,
+        20.748209953308105,
         0,
         0,
         0,
         0,
-        1,
+        20.748209953308105,
         0,
-        0,
-        0,
-        0,
+        -1.249680519104004,
+        0.7937730550765991,
+        -0.0009248256683349609,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-beacon-amber",
       "localTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ],
@@ -3705,20 +3705,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
         0,
         0,
         0,
-        1,
+        0.10999999940395355,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.550000190734863,
         0,
         1
       ]
@@ -3726,21 +3726,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-canopy",
       "localTransform": [
-        1,
+        2.698099970817566,
         0,
         0,
         0,
         0,
-        1,
+        2.698099970817566,
         0,
         0,
         0,
         0,
-        1,
+        2.698099970817566,
         0,
-        0,
-        0,
-        0,
+        -13.003280639648438,
+        4.224308252334595,
+        -0.00003063678741455078,
         1
       ],
       "materialPipelineKey": "blend",
@@ -3754,21 +3754,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        2.698099970817566,
         0,
         0,
         0,
         0,
-        1,
+        2.698099970817566,
         0,
         0,
         0,
         0,
-        1,
+        2.698099970817566,
         0,
-        0,
-        0,
-        0,
+        -13.003280639648438,
+        4.224308252334595,
+        -0.00003063678741455078,
         1
       ]
     },
@@ -3922,20 +3922,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-hull",
       "localTransform": [
-        1,
+        20.999173164367676,
         0,
         0,
         0,
         0,
-        1,
+        20.999173164367676,
         0,
         0,
         0,
         0,
-        1,
+        20.999173164367676,
         0,
-        0,
-        0,
+        -0.9992761611938477,
+        1.5757611989974976,
         0,
         1
       ],
@@ -3950,20 +3950,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.999173164367676,
         0,
         0,
         0,
         0,
-        1,
+        20.999173164367676,
         0,
         0,
         0,
         0,
-        1,
+        20.999173164367676,
         0,
-        0,
-        0,
+        -0.9992761611938477,
+        1.5757611989974976,
         0,
         1
       ]
@@ -3971,20 +3971,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm",
       "localTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ],
@@ -3999,20 +3999,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
         0,
         0,
         0,
-        1,
+        18.27125072479248,
         0,
-        0,
-        0,
+        2.2587499618530273,
+        2.5915002673864365,
         0,
         1
       ]
@@ -4020,20 +4020,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-lights-warm-violet",
       "localTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ],
@@ -4048,20 +4048,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
         0,
         0,
         0,
-        1,
+        0.25,
         0,
-        0,
-        0,
+        -15.300000190734863,
+        6.599999904632568,
         0,
         1
       ]
@@ -4069,20 +4069,20 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-livery",
       "localTransform": [
-        1,
+        19.751323699951172,
         0,
         0,
         0,
         0,
-        1,
+        19.751323699951172,
         0,
         0,
         0,
         0,
-        1,
+        19.751323699951172,
         0,
-        0,
-        0,
+        0.24857330322265625,
+        1.3699049949645996,
         0,
         1
       ],
@@ -4097,20 +4097,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        19.751323699951172,
         0,
         0,
         0,
         0,
-        1,
+        19.751323699951172,
         0,
         0,
         0,
         0,
-        1,
+        19.751323699951172,
         0,
-        0,
-        0,
+        0.24857330322265625,
+        1.3699049949645996,
         0,
         1
       ]
@@ -4118,21 +4118,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanical",
       "localTransform": [
-        1,
+        21.585871696472168,
         0,
         0,
         0,
         0,
-        1,
+        21.585871696472168,
         0,
         0,
         0,
         0,
-        1,
+        21.585871696472168,
         0,
-        0,
-        0,
-        0,
+        -1.185206413269043,
+        0.8231158256530762,
+        -0.00024902820587158203,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4146,41 +4146,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        21.585871696472168,
         0,
         0,
         0,
         0,
-        1,
+        21.585871696472168,
         0,
         0,
         0,
         0,
-        1,
+        21.585871696472168,
         0,
-        0,
-        0,
-        0,
+        -1.185206413269043,
+        0.8231158256530762,
+        -0.00024902820587158203,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        20.604150772094727,
         0,
         0,
         0,
         0,
-        1,
+        20.604150772094727,
         0,
         0,
         0,
         0,
-        1,
+        20.604150772094727,
         0,
-        0,
-        0,
+        -2.1669273376464844,
+        0.6317732334136963,
         0,
         1
       ],
@@ -4195,20 +4195,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.604150772094727,
         0,
         0,
         0,
         0,
-        1,
+        20.604150772094727,
         0,
         0,
         0,
         0,
-        1,
+        20.604150772094727,
         0,
-        0,
-        0,
+        -2.1669273376464844,
+        0.6317732334136963,
         0,
         1
       ]
@@ -4216,21 +4216,21 @@
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-mechanicaldark-ore",
       "localTransform": [
-        1,
+        13.150151252746582,
         0,
         0,
         0,
         0,
-        1,
+        13.150151252746582,
         0,
         0,
         0,
         0,
-        1,
+        13.150151252746582,
         0,
-        0,
-        0,
-        0,
+        1.5000076293945312,
+        0.6503916457295418,
+        -0.0007227659225463867,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4244,41 +4244,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        13.150151252746582,
         0,
         0,
         0,
         0,
-        1,
+        13.150151252746582,
         0,
         0,
         0,
         0,
-        1,
+        13.150151252746582,
         0,
-        0,
-        0,
-        0,
+        1.5000076293945312,
+        0.6503916457295418,
+        -0.0007227659225463867,
         1
       ]
     },
     {
       "id": "sf.render.quiessence-freighter-c.node.lod2-warning",
       "localTransform": [
-        1,
+        20.881494522094727,
         0,
         0,
         0,
         0,
-        1,
+        20.881494522094727,
         0,
         0,
         0,
         0,
-        1,
+        20.881494522094727,
         0,
-        0,
-        0,
+        -0.47328758239746094,
+        0.2747805118560791,
         0,
         1
       ],
@@ -4293,20 +4293,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.quiessence-freighter-c.body",
       "worldTransform": [
-        1,
+        20.881494522094727,
         0,
         0,
         0,
         0,
-        1,
+        20.881494522094727,
         0,
         0,
         0,
         0,
-        1,
+        20.881494522094727,
         0,
-        0,
-        0,
+        -0.47328758239746094,
+        0.2747805118560791,
         0,
         1
       ]
@@ -4468,37 +4468,37 @@
       "uri": "place_quiessence_freighter_c.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2043304,
-    "sha256": "4d35036ce18cb4c7427e53d4c647cd412438bbef7aa867b11fc7b4e8ea0a1c0e",
+    "bytes": 1003484,
+    "sha256": "2d96e49bec747c684de9fcbde5664021f648e68bd2b2239e070cd3de810d417f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -1.1155481338500977,
-        2.2722818851470947,
+        2.272281894024034,
         0
       ],
       "max": [
         20.539981842041016,
-        6.775008201599121,
-        4.755526065826416
+        6.775008297222675,
+        4.755526205485409
       ],
       "min": [
         -22.77107810974121,
-        -2.2304444313049316,
-        -4.755526065826416
+        -2.230444509174607,
+        -4.755526205485409
       ],
       "size": [
         43.31105995178223,
-        9.005452632904053,
-        9.511052131652832
+        9.005452806397281,
+        9.511052410970818
       ]
     },
     "hidden": [
@@ -4883,20 +4883,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.74715232849121,
           0,
           0,
           0,
           0,
-          1,
+          20.74715232849121,
           0,
           0,
           0,
           0,
-          1,
+          20.74715232849121,
           0,
-          0,
-          0,
+          -1.247152328491211,
+          0.8110066652297974,
           0,
           1
         ],
@@ -4910,20 +4910,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.550000190734863,
           0,
           1
         ],
@@ -4937,20 +4937,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.5,
           0,
           0,
           0,
           0,
-          1,
+          13.5,
           0,
           0,
           0,
           0,
-          1,
+          13.5,
           0,
-          0,
-          0,
+          1.5,
+          1.4299999475479126,
           0,
           1
         ],
@@ -4964,20 +4964,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.6981987953186035,
           0,
           0,
           0,
           0,
-          1,
+          2.6981987953186035,
           0,
           0,
           0,
           0,
-          1,
+          2.6981987953186035,
           0,
-          0,
-          0,
+          -13.006668090820312,
+          4.224892854690552,
           0,
           1
         ],
@@ -4991,21 +4991,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.490502834320068,
           0,
           0,
           0,
           0,
-          1,
+          13.490502834320068,
           0,
           0,
           0,
           0,
-          1,
+          13.490502834320068,
           0,
-          0,
-          0,
-          0,
+          1.6413788795471191,
+          0.8197536021471024,
+          0.011500239372253418,
           1
         ],
         "name": "LOD0_Ceramic_ore",
@@ -5018,21 +5018,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.401938438415527,
           0,
           0,
           0,
           0,
-          1,
+          13.401938438415527,
           0,
           0,
           0,
           0,
-          1,
+          13.401938438415527,
           0,
-          0,
-          0,
-          0,
+          1.2128019332885742,
+          0.7506330460309982,
+          0.0011605024337768555,
           1
         ],
         "name": "LOD0_Ceramic_ore2",
@@ -5147,20 +5147,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.99654197692871,
           0,
           0,
           0,
           0,
-          1,
+          20.99654197692871,
           0,
           0,
           0,
           0,
-          1,
+          20.99654197692871,
           0,
-          0,
-          0,
+          -0.9977798461914062,
+          1.5769562721252441,
           0,
           1
         ],
@@ -5174,20 +5174,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.061250001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.061250001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.061250001192092896,
           0,
-          0,
-          0,
+          -13.807499885559082,
+          5.077499866485596,
           0,
           1
         ],
@@ -5201,20 +5201,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
-          0,
-          0,
+          2.2587499618530273,
+          2.5915002673864365,
           0,
           1
         ],
@@ -5228,20 +5228,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.599999904632568,
           0,
           1
         ],
@@ -5255,20 +5255,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.75481605529785,
           0,
           0,
           0,
           0,
-          1,
+          19.75481605529785,
           0,
           0,
           0,
           0,
-          1,
+          19.75481605529785,
           0,
-          0,
-          0,
+          0.24518394470214844,
+          1.369999885559082,
           0,
           1
         ],
@@ -5282,20 +5282,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.586280822753906,
           0,
           0,
           0,
           0,
-          1,
+          21.586280822753906,
           0,
           0,
           0,
           0,
-          1,
+          21.586280822753906,
           0,
-          0,
-          0,
+          -1.1837196350097656,
+          2.1749998331069946,
           0,
           1
         ],
@@ -5309,20 +5309,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.603983879089355,
           0,
           0,
           0,
           0,
-          1,
+          20.603983879089355,
           0,
           0,
           0,
           0,
-          1,
+          20.603983879089355,
           0,
-          0,
-          0,
+          -2.1660165786743164,
+          0.6344999074935913,
           0,
           1
         ],
@@ -5336,20 +5336,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.149999618530273,
           0,
           0,
           0,
           0,
-          1,
+          13.149999618530273,
           0,
           0,
           0,
           0,
-          1,
+          13.149999618530273,
           0,
-          0,
-          0,
+          1.5,
+          0.6500000432133675,
           0,
           1
         ],
@@ -5363,20 +5363,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.88286590576172,
           0,
           0,
           0,
           0,
-          1,
+          20.88286590576172,
           0,
           0,
           0,
           0,
-          1,
+          20.88286590576172,
           0,
-          0,
-          0,
+          -0.4728660583496094,
+          0.9149999618530273,
           0,
           1
         ],
@@ -5390,21 +5390,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.746370315551758,
           0,
           0,
           0,
           0,
-          1,
+          20.746370315551758,
           0,
           0,
           0,
           0,
-          1,
+          20.746370315551758,
           0,
-          0,
-          0,
-          0,
+          -1.2465896606445312,
+          0.8029928207397461,
+          -0.000007152557373046875,
           1
         ],
         "name": "LOD1_Armor",
@@ -5417,20 +5417,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.550000190734863,
           0,
           1
         ],
@@ -5444,21 +5444,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.499471664428711,
           0,
           0,
           0,
           0,
-          1,
+          13.499471664428711,
           0,
           0,
           0,
           0,
-          1,
+          13.499471664428711,
           0,
-          0,
-          0,
-          0,
+          1.5,
+          1.4300000071525574,
+          -0.000014901161193847656,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -5471,21 +5471,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.6992236375808716,
           0,
           0,
           0,
           0,
-          1,
+          2.6992236375808716,
           0,
           0,
           0,
           0,
-          1,
+          2.6992236375808716,
           0,
-          0,
-          0,
-          0,
+          -13.004941940307617,
+          4.224154949188232,
+          -0.000012516975402832031,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -5498,21 +5498,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.490502834320068,
           0,
           0,
           0,
           0,
-          1,
+          13.490502834320068,
           0,
           0,
           0,
           0,
-          1,
+          13.490502834320068,
           0,
-          0,
-          0,
-          0,
+          1.6413788795471191,
+          0.8197536021471024,
+          0.011500239372253418,
           1
         ],
         "name": "LOD1_Ceramic_ore",
@@ -5525,21 +5525,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.401938438415527,
           0,
           0,
           0,
           0,
-          1,
+          13.401938438415527,
           0,
           0,
           0,
           0,
-          1,
+          13.401938438415527,
           0,
-          0,
-          0,
-          0,
+          1.2128019332885742,
+          0.7506330460309982,
+          0.0011605024337768555,
           1
         ],
         "name": "LOD1_Ceramic_ore2",
@@ -5654,20 +5654,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.99666976928711,
           0,
           0,
           0,
           0,
-          1,
+          20.99666976928711,
           0,
           0,
           0,
           0,
-          1,
+          20.99666976928711,
           0,
-          0,
-          0,
+          -0.9969253540039062,
+          1.573824942111969,
           0,
           1
         ],
@@ -5681,20 +5681,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.061250001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.061250001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.061250001192092896,
           0,
-          0,
-          0,
+          -13.807499885559082,
+          5.077499866485596,
           0,
           1
         ],
@@ -5708,20 +5708,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
-          0,
-          0,
+          2.2587499618530273,
+          2.5915002673864365,
           0,
           1
         ],
@@ -5735,20 +5735,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.599999904632568,
           0,
           1
         ],
@@ -5762,20 +5762,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.754937171936035,
           0,
           0,
           0,
           0,
-          1,
+          19.754937171936035,
           0,
           0,
           0,
           0,
-          1,
+          19.754937171936035,
           0,
-          0,
-          0,
+          0.2448110580444336,
+          1.3700088262557983,
           0,
           1
         ],
@@ -5789,20 +5789,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.585054397583008,
           0,
           0,
           0,
           0,
-          1,
+          21.585054397583008,
           0,
           0,
           0,
           0,
-          1,
+          21.585054397583008,
           0,
-          0,
-          0,
+          -1.184946060180664,
+          2.1750017404556274,
           0,
           1
         ],
@@ -5816,20 +5816,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.604530334472656,
           0,
           0,
           0,
           0,
-          1,
+          20.604530334472656,
           0,
           0,
           0,
           0,
-          1,
+          20.604530334472656,
           0,
-          0,
-          0,
+          -2.1654701232910156,
+          0.6337859630584717,
           0,
           1
         ],
@@ -5843,20 +5843,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.150002002716064,
           0,
           0,
           0,
           0,
-          1,
+          13.150002002716064,
           0,
           0,
           0,
           0,
-          1,
+          13.150002002716064,
           0,
-          0,
-          0,
+          1.4999985694885254,
+          0.6501196026802063,
           0,
           1
         ],
@@ -5870,20 +5870,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.884450912475586,
           0,
           0,
           0,
           0,
-          1,
+          20.884450912475586,
           0,
           0,
           0,
           0,
-          1,
+          20.884450912475586,
           0,
-          0,
-          0,
+          -0.47459983825683594,
+          0.2772456407546997,
           0,
           1
         ],
@@ -5897,21 +5897,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.748209953308105,
           0,
           0,
           0,
           0,
-          1,
+          20.748209953308105,
           0,
           0,
           0,
           0,
-          1,
+          20.748209953308105,
           0,
-          0,
-          0,
-          0,
+          -1.249680519104004,
+          0.7937730550765991,
+          -0.0009248256683349609,
           1
         ],
         "name": "LOD2_Armor",
@@ -5924,20 +5924,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
           0,
           0,
           0,
-          1,
+          0.10999999940395355,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.550000190734863,
           0,
           1
         ],
@@ -5951,21 +5951,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.698099970817566,
           0,
           0,
           0,
           0,
-          1,
+          2.698099970817566,
           0,
           0,
           0,
           0,
-          1,
+          2.698099970817566,
           0,
-          0,
-          0,
-          0,
+          -13.003280639648438,
+          4.224308252334595,
+          -0.00003063678741455078,
           1
         ],
         "name": "LOD2_CANOPY",
@@ -6080,20 +6080,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.999173164367676,
           0,
           0,
           0,
           0,
-          1,
+          20.999173164367676,
           0,
           0,
           0,
           0,
-          1,
+          20.999173164367676,
           0,
-          0,
-          0,
+          -0.9992761611938477,
+          1.5757611989974976,
           0,
           1
         ],
@@ -6107,20 +6107,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
           0,
           0,
           0,
-          1,
+          18.27125072479248,
           0,
-          0,
-          0,
+          2.2587499618530273,
+          2.5915002673864365,
           0,
           1
         ],
@@ -6134,20 +6134,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
           0,
           0,
           0,
-          1,
+          0.25,
           0,
-          0,
-          0,
+          -15.300000190734863,
+          6.599999904632568,
           0,
           1
         ],
@@ -6161,20 +6161,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          19.751323699951172,
           0,
           0,
           0,
           0,
-          1,
+          19.751323699951172,
           0,
           0,
           0,
           0,
-          1,
+          19.751323699951172,
           0,
-          0,
-          0,
+          0.24857330322265625,
+          1.3699049949645996,
           0,
           1
         ],
@@ -6188,21 +6188,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          21.585871696472168,
           0,
           0,
           0,
           0,
-          1,
+          21.585871696472168,
           0,
           0,
           0,
           0,
-          1,
+          21.585871696472168,
           0,
-          0,
-          0,
-          0,
+          -1.185206413269043,
+          0.8231158256530762,
+          -0.00024902820587158203,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -6215,20 +6215,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.604150772094727,
           0,
           0,
           0,
           0,
-          1,
+          20.604150772094727,
           0,
           0,
           0,
           0,
-          1,
+          20.604150772094727,
           0,
-          0,
-          0,
+          -2.1669273376464844,
+          0.6317732334136963,
           0,
           1
         ],
@@ -6242,21 +6242,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.150151252746582,
           0,
           0,
           0,
           0,
-          1,
+          13.150151252746582,
           0,
           0,
           0,
           0,
-          1,
+          13.150151252746582,
           0,
-          0,
-          0,
-          0,
+          1.5000076293945312,
+          0.6503916457295418,
+          -0.0007227659225463867,
           1
         ],
         "name": "LOD2_MechanicalDark_ore",
@@ -6269,20 +6269,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.881494522094727,
           0,
           0,
           0,
           0,
-          1,
+          20.881494522094727,
           0,
           0,
           0,
           0,
-          1,
+          20.881494522094727,
           0,
-          0,
-          0,
+          -0.47328758239746094,
+          0.2747805118560791,
           0,
           1
         ],
@@ -6298,20 +6298,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_quiessence_freighter_c.glb"
   },
-  "runtimeHash": "447fedb6fb698559829622d4e02823dc61a37449eddfe952344fd12c0f795e60",
+  "runtimeHash": "30734636ea0e5be423e10cd3f416588a0327530816d13ee7fee8939304d44386",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           20.539981842041016,
-          6.775008201599121,
-          4.755526065826416
+          6.775008297222675,
+          4.755526205485409
         ],
         "min": [
           -22.77107810974121,
-          -2.2304444313049316,
-          -4.755526065826416
+          -2.230444509174607,
+          -4.755526205485409
         ]
       },
       "id": "sf.render.quiessence-freighter-c.body",

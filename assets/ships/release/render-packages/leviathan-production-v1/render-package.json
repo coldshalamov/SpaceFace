@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ecf4563c97ed27dd7c5156e82a95bb5b0dd6d7174cdfc9b7a42814ab23bc1667",
+  "contentHash": "ff13fcb76268a09191da5e4835bb139687c543a60a75544745969dc22413ca35",
   "dynamicGroups": [
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
@@ -633,17 +633,17 @@
       "bounds": {
         "max": [
           30.20081901550293,
-          14.526443481445312,
-          16.564027786254883
+          14.526443542998154,
+          16.56402801525081
         ],
         "min": [
           -30.899429321289062,
-          -2.8990705013275146,
-          -16.564027786254883
+          -2.8990705628803557,
+          -16.56402801525081
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c68b998a01cdba7164cccf1a894a0ba1e0b744d4177afff80e564a4838ed933",
+      "geometryHash": "361851d6c57b25102f787a75a94a29926bd3c727a4d2b67a031e326c74d6e1cc",
       "id": "sf.render.leviathan-production-v1.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -658,17 +658,17 @@
       "bounds": {
         "max": [
           26.36111068725586,
-          11.250136375427246,
-          16.34922981262207
+          11.250136573890504,
+          16.349229117077503
         ],
         "min": [
           -29.459999084472656,
-          -1.9968785047531128,
-          -16.34922981262207
+          -1.9968787032163702,
+          -16.349229117077503
         ]
       },
       "drawMode": 4,
-      "geometryHash": "81e5b9e816eaccf65f2f9d88d74d94080c85f558414370d8a9d298a897366c49",
+      "geometryHash": "ca34b52c36f6f632d7bcfba06f9000c1372b876de5bda9eed8caba763648b452",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 35763,
       "indexed": true,
@@ -683,17 +683,17 @@
       "bounds": {
         "max": [
           27.25,
-          11.40936279296875,
-          9.250572204589844
+          11.409362714181366,
+          9.250572026730909
         ],
         "min": [
           -26.94999885559082,
-          0.7966366410255432,
-          -9.250572204589844
+          0.796636719812926,
+          -9.250572026730909
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb4aafe044cdcf2847697f0d60dbc81ca4f25f6f730808d4faf26d555be98b0f",
+      "geometryHash": "1531083c74a26530b2ced16a02b463f2491002820da0210097af7f6da1b5f4b7",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-beacon-amber.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -708,17 +708,17 @@
       "bounds": {
         "max": [
           23,
-          3.3500707149505615,
-          4.5401763916015625
+          3.350070747234971,
+          4.540176263278858
         ],
         "min": [
           12.899999618530273,
-          3.2699291706085205,
-          -4.5401763916015625
+          3.269929138324111,
+          -4.540176263278858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "961bf188e98e9ff2121fe8388cda11406ab3716f16cf3bfd779d7d63e4e5aee9",
+      "geometryHash": "efc9ef25a4f675f4e5cde007f75b44d697eb7fb9c59e68f279a6ef6916788064",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -743,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5464cec8652eb7b915317b2d28d966a012a5fd413ba0b86731ebb837d85e83e9",
+      "geometryHash": "db3f7095119efe0374cf9585dcde3610845053e7ab7a9e1bb8f45e68a0c8ecdb",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -768,7 +768,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22aacbfdd8bddcfd33c08059f9428d84922fa28c860484e3ecb15def9358b6e2",
+      "geometryHash": "8b92f126cbc4eef2fefaa85bc6b20f38f4a683f9bfca28bd7c20d0879106657c",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 744,
       "indexed": true,
@@ -843,7 +843,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e89961aef23e7a3a070bb52749daebb956a0c5115ef82a55fa2e91426bfe27f9",
+      "geometryHash": "6cfd742d37ca131e719e681ca4a51859df8c2e47a41f89484a726bae5c1bbfc2",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-armor.primitive.0",
       "indexCount": 1374,
       "indexed": true,
@@ -893,7 +893,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bf35aebaa5a3bed757e7d6c47aaaa02dfdf0f0f506fec78bcf8c88a2ab06e4e6",
+      "geometryHash": "b3ac63c213bd12bc6d30b9e09a6c27a33912f383c4a3244b3358736575c59da0",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-livery.primitive.0",
       "indexCount": 498,
       "indexed": true,
@@ -918,7 +918,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d8562386837be15aed1cf45457a830b3483e6ca9b2f0f3283c15655fe5ffe5e",
+      "geometryHash": "23747173edec565c22d201aa7428fc19da07128d8df181c10b1c8c3cb97086ff",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -943,7 +943,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2807d168e739e3119b5cb8b6116aa8f414277f69749d919d4f5b4a7978513a97",
+      "geometryHash": "e97f3edafe09d83d2aa13757753de858d0d420a917effab44250f07f7d193629",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -968,7 +968,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee03f1503fba833615b2d3461b13c935e718dde77e990ec0d40c97b9cebb7b2a",
+      "geometryHash": "481b6fca730179fa3a60601942af94ab66208753ea77d9f82c2347286805586c",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hook-sensor-spire-armor.primitive.0",
       "indexCount": 312,
       "indexed": true,
@@ -1033,17 +1033,17 @@
       "bounds": {
         "max": [
           30.200000762939453,
-          11.249629020690918,
-          16.349889755249023
+          11.249628907007887,
+          16.34989078899042
         ],
         "min": [
           -29.148273468017578,
-          -2.8996286392211914,
-          -16.349889755249023
+          -2.8996285255381604,
+          -16.34989078899042
         ]
       },
       "drawMode": 4,
-      "geometryHash": "182106027759172c4af97a5daa01e10ea2e9274ac6cd78be307c52f23935c498",
+      "geometryHash": "c8644fe39f529e24323b55a11ac9e0b3c47f803e4e9136cd627bdb5283509c82",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 33132,
       "indexed": true,
@@ -1057,18 +1057,18 @@
     {
       "bounds": {
         "max": [
-          9.193700790405273,
-          0.7995243668556213,
+          9.193700185012574,
+          0.7995243666330157,
           15.200565338134766
         ],
         "min": [
-          -8.848244667053223,
-          -0.24703086912631989,
+          -8.848244061660523,
+          -0.24703086890371428,
           -15.200565338134766
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dcb4d84e1681175ca002fb8a9efdd1b4ed118966151fcb377c0370548458c7d",
+      "geometryHash": "d35c761ff97e6ae08ecdf4a350cb71c268a6fe9a1b230c719a7d19025d96c375",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-cyan-gold.primitive.0",
       "indexCount": 2766,
       "indexed": true,
@@ -1083,17 +1083,17 @@
       "bounds": {
         "max": [
           27.110000610351562,
-          3.4634153842926025,
-          12.609225273132324
+          3.463415387997997,
+          12.609225442463577
         ],
         "min": [
           -13.258000373840332,
-          1.5316845178604126,
-          -12.609225273132324
+          1.531684514155018,
+          -12.609225442463577
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff0af9a1b96c5aea235e42970ae0e8bfb17b57a17f64924475dd6d0b35e18a4f",
+      "geometryHash": "9f7b247bc9c540e6325624f72175150fb685c568f0a0588f794f9f881161d922",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-cyan.primitive.0",
       "indexCount": 2160,
       "indexed": true,
@@ -1108,17 +1108,17 @@
       "bounds": {
         "max": [
           27.43000030517578,
-          11.283662796020508,
-          15.378615379333496
+          11.283662675306982,
+          15.378616115770193
         ],
         "min": [
           -26.470001220703125,
-          0.12433730810880661,
-          -15.378615379333496
+          0.1243374288223329,
+          -15.378616115770193
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18ac87046716751c0ce19658a69a6e401cbc31981b1dc0472d0259eadff26fb6",
+      "geometryHash": "e2fac8f10487bfcc9c280ff92de3ad0b901be99e69d9c850de29265c4a207e81",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-warm.primitive.0",
       "indexCount": 17280,
       "indexed": true,
@@ -1133,17 +1133,17 @@
       "bounds": {
         "max": [
           26.25006866455078,
-          10.4008207321167,
-          16.350570678710938
+          10.400820349564277,
+          16.35057131150573
         ],
         "min": [
           -28.380212783813477,
-          -1.5899324417114258,
-          -16.350570678710938
+          -1.589932059159004,
+          -16.35057131150573
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a735169ffe929914c4ebd0a9c95adb04d5f14d920e9a9ae42a922b55d83dcdb",
+      "geometryHash": "a2f43db64d1995ace1bda627602cd34f032361f72d905fd1427397b3d69216b9",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 14052,
       "indexed": true,
@@ -1158,17 +1158,17 @@
       "bounds": {
         "max": [
           25.5,
-          4.9872965812683105,
-          15.981809616088867
+          4.987296678843699,
+          15.98181035639649
         ],
         "min": [
           -30.90021324157715,
-          -1.2780548334121704,
-          -15.981809616088867
+          -1.278054930987559,
+          -15.98181035639649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9181e567c268937efc0053596e3893bde2115114110e513459253e8ef320ad5b",
+      "geometryHash": "a6d1effa01f7cefcd8afc4ee9d8b582a00787fd247f90b517852d690d49e38e7",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 20952,
       "indexed": true,
@@ -1183,17 +1183,17 @@
       "bounds": {
         "max": [
           28.502315521240234,
-          5.048069477081299,
-          16.002262115478516
+          5.048069594587963,
+          16.002262074324445
         ],
         "min": [
           -30.90021324157715,
-          -1.2752439975738525,
-          -16.002262115478516
+          -1.275244115080516,
+          -16.002262074324445
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21d78344536fc5ff592e39884d618a7445636fd843dd83867021975357906cfb",
+      "geometryHash": "bb9bbe410f3a00564bd268e70b2fc597631d050b91c2d21f5177d5df2d8d071a",
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 26907,
       "indexed": true,
@@ -1430,20 +1430,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.collision-hull",
       "localTransform": [
-        1,
+        30.550124168395996,
         0,
         0,
         0,
         0,
-        1,
+        30.550124168395996,
         0,
         0,
         0,
         0,
-        1,
+        30.550124168395996,
         0,
-        0,
-        0,
+        -0.3493051528930664,
+        5.813686490058899,
         0,
         1
       ],
@@ -1458,20 +1458,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        30.550124168395996,
         0,
         0,
         0,
         0,
-        1,
+        30.550124168395996,
         0,
         0,
         0,
         0,
-        1,
+        30.550124168395996,
         0,
-        0,
-        0,
+        -0.3493051528930664,
+        5.813686490058899,
         0,
         1
       ]
@@ -1527,20 +1527,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-armor",
       "localTransform": [
-        1,
+        27.910554885864258,
         0,
         0,
         0,
         0,
-        1,
+        27.910554885864258,
         0,
         0,
         0,
         0,
-        1,
+        27.910554885864258,
         0,
-        0,
-        0,
+        -1.5494441986083984,
+        4.626628935337067,
         0,
         1
       ],
@@ -1556,20 +1556,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        27.910554885864258,
         0,
         0,
         0,
         0,
-        1,
+        27.910554885864258,
         0,
         0,
         0,
         0,
-        1,
+        27.910554885864258,
         0,
-        0,
-        0,
+        -1.5494441986083984,
+        4.626628935337067,
         0,
         1
       ]
@@ -1577,20 +1577,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-beacon-amber",
       "localTransform": [
-        1,
+        27.09999942779541,
         0,
         0,
         0,
         0,
-        1,
+        27.09999942779541,
         0,
         0,
         0,
         0,
-        1,
+        27.09999942779541,
         0,
-        0,
-        0,
+        0.15000057220458984,
+        6.102999716997147,
         0,
         1
       ],
@@ -1606,20 +1606,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        27.09999942779541,
         0,
         0,
         0,
         0,
-        1,
+        27.09999942779541,
         0,
         0,
         0,
         0,
-        1,
+        27.09999942779541,
         0,
-        0,
-        0,
+        0.15000057220458984,
+        6.102999716997147,
         0,
         1
       ]
@@ -1627,20 +1627,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-canopy",
       "localTransform": [
-        1,
+        5.050000190734863,
         0,
         0,
         0,
         0,
-        1,
+        5.050000190734863,
         0,
         0,
         0,
         0,
-        1,
+        5.050000190734863,
         0,
-        0,
-        0,
+        17.949999809265137,
+        3.309999942779541,
         0,
         1
       ],
@@ -1656,20 +1656,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        5.050000190734863,
         0,
         0,
         0,
         0,
-        1,
+        5.050000190734863,
         0,
         0,
         0,
         0,
-        1,
+        5.050000190734863,
         0,
-        0,
-        0,
+        17.949999809265137,
+        3.309999942779541,
         0,
         1
       ]
@@ -2277,20 +2277,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-hull",
       "localTransform": [
-        1,
+        29.674137115478516,
         0,
         0,
         0,
         0,
-        1,
+        29.674137115478516,
         0,
         0,
         0,
         0,
-        1,
+        29.674137115478516,
         0,
-        0,
-        0,
+        0.5258636474609375,
+        4.175000190734863,
         0,
         1
       ],
@@ -2306,20 +2306,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        29.674137115478516,
         0,
         0,
         0,
         0,
-        1,
+        29.674137115478516,
         0,
         0,
         0,
         0,
-        1,
+        29.674137115478516,
         0,
-        0,
-        0,
+        0.5258636474609375,
+        4.175000190734863,
         0,
         1
       ]
@@ -2327,20 +2327,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-cyan",
       "localTransform": [
-        1,
+        20.184000492095947,
         0,
         0,
         0,
         0,
-        1,
+        20.184000492095947,
         0,
         0,
         0,
         0,
-        1,
+        20.184000492095947,
         0,
-        0,
-        0,
+        6.926000118255615,
+        2.4975499510765076,
         0,
         1
       ],
@@ -2356,20 +2356,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        20.184000492095947,
         0,
         0,
         0,
         0,
-        1,
+        20.184000492095947,
         0,
         0,
         0,
         0,
-        1,
+        20.184000492095947,
         0,
-        0,
-        0,
+        6.926000118255615,
+        2.4975499510765076,
         0,
         1
       ]
@@ -2377,20 +2377,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-cyan-gold",
       "localTransform": [
-        1,
+        15.200565338134766,
         0,
         0,
         0,
         0,
-        1,
+        15.200565338134766,
         0,
         0,
         0,
         0,
-        1,
+        15.200565338134766,
         0,
-        0,
-        0,
+        0.1727280616760254,
+        0.2762467488646507,
         0,
         1
       ],
@@ -2406,20 +2406,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        15.200565338134766,
         0,
         0,
         0,
         0,
-        1,
+        15.200565338134766,
         0,
         0,
         0,
         0,
-        1,
+        15.200565338134766,
         0,
-        0,
-        0,
+        0.1727280616760254,
+        0.2762467488646507,
         0,
         1
       ]
@@ -2427,20 +2427,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-lights-warm",
       "localTransform": [
-        1,
+        26.950000762939453,
         0,
         0,
         0,
         0,
-        1,
+        26.950000762939453,
         0,
         0,
         0,
         0,
-        1,
+        26.950000762939453,
         0,
-        0,
-        0,
+        0.4799995422363281,
+        5.704000052064657,
         0,
         1
       ],
@@ -2456,20 +2456,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        26.950000762939453,
         0,
         0,
         0,
         0,
-        1,
+        26.950000762939453,
         0,
         0,
         0,
         0,
-        1,
+        26.950000762939453,
         0,
-        0,
-        0,
+        0.4799995422363281,
+        5.704000052064657,
         0,
         1
       ]
@@ -2477,20 +2477,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-livery",
       "localTransform": [
-        1,
+        27.31514072418213,
         0,
         0,
         0,
         0,
-        1,
+        27.31514072418213,
         0,
         0,
         0,
         0,
-        1,
+        27.31514072418213,
         0,
-        0,
-        0,
+        -1.0650720596313477,
+        4.405444145202637,
         0,
         1
       ],
@@ -2506,20 +2506,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        27.31514072418213,
         0,
         0,
         0,
         0,
-        1,
+        27.31514072418213,
         0,
         0,
         0,
         0,
-        1,
+        27.31514072418213,
         0,
-        0,
-        0,
+        -1.0650720596313477,
+        4.405444145202637,
         0,
         1
       ]
@@ -2527,20 +2527,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-mechanical",
       "localTransform": [
-        1,
+        28.200106620788574,
         0,
         0,
         0,
         0,
-        1,
+        28.200106620788574,
         0,
         0,
         0,
         0,
-        1,
+        28.200106620788574,
         0,
-        0,
-        0,
+        -2.700106620788574,
+        1.85462087392807,
         0,
         1
       ],
@@ -2556,20 +2556,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        28.200106620788574,
         0,
         0,
         0,
         0,
-        1,
+        28.200106620788574,
         0,
         0,
         0,
         0,
-        1,
+        28.200106620788574,
         0,
-        0,
-        0,
+        -2.700106620788574,
+        1.85462087392807,
         0,
         1
       ]
@@ -2577,20 +2577,20 @@
     {
       "id": "sf.render.leviathan-production-v1.node.lod0-motion-hull-core-mechanicaldark",
       "localTransform": [
-        1,
+        29.70126438140869,
         0,
         0,
         0,
         0,
-        1,
+        29.70126438140869,
         0,
         0,
         0,
         0,
-        1,
+        29.70126438140869,
         0,
-        0,
-        0,
+        -1.198948860168457,
+        1.8864127397537231,
         0,
         1
       ],
@@ -2606,20 +2606,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.leviathan-production-v1.body",
       "worldTransform": [
-        1,
+        29.70126438140869,
         0,
         0,
         0,
         0,
-        1,
+        29.70126438140869,
         0,
         0,
         0,
         0,
-        1,
+        29.70126438140869,
         0,
-        0,
-        0,
+        -1.198948860168457,
+        1.8864127397537231,
         0,
         1
       ]
@@ -3272,37 +3272,37 @@
       "uri": "leviathan_production_v1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1950032,
-    "sha256": "b2a81cd447bb0c4bf3d1bec2a927fe4bc8e48d8311b8aa0adc37395b9a80e7fe",
+    "bytes": 1125568,
+    "sha256": "157fd96aeffc202f96a8cf495053733b9c8ef2f7ed1af746c7f15fd4e9871b42",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.3496971130371094,
-        5.8134074211120605,
+        5.813407508729997,
         0
       ],
       "max": [
         30.20081901550293,
-        14.526443481445312,
-        16.564027786254883
+        14.526443542998154,
+        16.56402801525081
       ],
       "min": [
         -30.90021324157715,
-        -2.8996286392211914,
-        -16.564027786254883
+        -2.8996285255381604,
+        -16.56402801525081
       ],
       "size": [
         61.10103225708008,
-        17.426072120666504,
-        33.128055572509766
+        17.426072068536314,
+        33.12805603050162
       ]
     },
     "hidden": [
@@ -4131,20 +4131,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.910554885864258,
           0,
           0,
           0,
           0,
-          1,
+          27.910554885864258,
           0,
           0,
           0,
           0,
-          1,
+          27.910554885864258,
           0,
-          0,
-          0,
+          -1.5494441986083984,
+          4.626628935337067,
           0,
           1
         ],
@@ -4159,20 +4159,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.09999942779541,
           0,
           0,
           0,
           0,
-          1,
+          27.09999942779541,
           0,
           0,
           0,
           0,
-          1,
+          27.09999942779541,
           0,
-          0,
-          0,
+          0.15000057220458984,
+          6.102999716997147,
           0,
           1
         ],
@@ -4187,20 +4187,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          5.050000190734863,
           0,
           0,
           0,
           0,
-          1,
+          5.050000190734863,
           0,
           0,
           0,
           0,
-          1,
+          5.050000190734863,
           0,
-          0,
-          0,
+          17.949999809265137,
+          3.309999942779541,
           0,
           1
         ],
@@ -4581,20 +4581,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          29.674137115478516,
           0,
           0,
           0,
           0,
-          1,
+          29.674137115478516,
           0,
           0,
           0,
           0,
-          1,
+          29.674137115478516,
           0,
-          0,
-          0,
+          0.5258636474609375,
+          4.175000190734863,
           0,
           1
         ],
@@ -4609,20 +4609,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          20.184000492095947,
           0,
           0,
           0,
           0,
-          1,
+          20.184000492095947,
           0,
           0,
           0,
           0,
-          1,
+          20.184000492095947,
           0,
-          0,
-          0,
+          6.926000118255615,
+          2.4975499510765076,
           0,
           1
         ],
@@ -4637,20 +4637,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          15.200565338134766,
           0,
           0,
           0,
           0,
-          1,
+          15.200565338134766,
           0,
           0,
           0,
           0,
-          1,
+          15.200565338134766,
           0,
-          0,
-          0,
+          0.1727280616760254,
+          0.2762467488646507,
           0,
           1
         ],
@@ -4665,20 +4665,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          26.950000762939453,
           0,
           0,
           0,
           0,
-          1,
+          26.950000762939453,
           0,
           0,
           0,
           0,
-          1,
+          26.950000762939453,
           0,
-          0,
-          0,
+          0.4799995422363281,
+          5.704000052064657,
           0,
           1
         ],
@@ -4693,20 +4693,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          27.31514072418213,
           0,
           0,
           0,
           0,
-          1,
+          27.31514072418213,
           0,
           0,
           0,
           0,
-          1,
+          27.31514072418213,
           0,
-          0,
-          0,
+          -1.0650720596313477,
+          4.405444145202637,
           0,
           1
         ],
@@ -4721,20 +4721,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          28.200106620788574,
           0,
           0,
           0,
           0,
-          1,
+          28.200106620788574,
           0,
           0,
           0,
           0,
-          1,
+          28.200106620788574,
           0,
-          0,
-          0,
+          -2.700106620788574,
+          1.85462087392807,
           0,
           1
         ],
@@ -4749,20 +4749,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          29.70126438140869,
           0,
           0,
           0,
           0,
-          1,
+          29.70126438140869,
           0,
           0,
           0,
           0,
-          1,
+          29.70126438140869,
           0,
-          0,
-          0,
+          -1.198948860168457,
+          1.8864127397537231,
           0,
           1
         ],
@@ -4779,20 +4779,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/leviathan_production_v1.glb"
   },
-  "runtimeHash": "8a1d55ab989165fefc4e4465fa9193e8fdf9504641e203f905830e0949e97410",
+  "runtimeHash": "c6d3431ae5803c9742d21a7dd609635bc444d0a7b428a21f7cace4d5ca02fe10",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           30.20081901550293,
-          14.526443481445312,
-          16.564027786254883
+          14.526443542998154,
+          16.56402801525081
         ],
         "min": [
           -30.90021324157715,
-          -2.8996286392211914,
-          -16.564027786254883
+          -2.8996285255381604,
+          -16.56402801525081
         ]
       },
       "id": "sf.render.leviathan-production-v1.body",

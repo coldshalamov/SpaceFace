@@ -99,24 +99,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d14455fdb504cc86d41b2d4f7340f0b4d41f9aae411d79a2c2f62692679c2214",
+  "contentHash": "0d53eb5a7b918ed0b76e37c4829152ef863f85911b69df4d9a3b310ea13b0306",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -13.19076919555664,
+          -13.190768962944453,
           -2.379999876022339,
           0.2200000286102295
         ],
         "min": [
-          -13.609230041503906,
+          -13.609230274116094,
           -2.819999933242798,
           -0.2200000286102295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60a8ad14dabbc317ce400db308439c29cea561a048e454cc0f1fa08bdefc801e",
+      "geometryHash": "6b426933f3de5c30d0c2f424a56bd4f3be757b37bd4305e8a2848bf139156a57",
       "id": "sf.render.construction-frame.mesh.end-a.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -130,18 +130,18 @@
     {
       "bounds": {
         "max": [
-          13.609230041503906,
+          13.609230274116094,
           -2.379999876022339,
           0.2200000286102295
         ],
         "min": [
-          13.19076919555664,
+          13.190768962944453,
           -2.819999933242798,
           -0.2200000286102295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b909f78add3e69b3e12c87646d100c8fd2d28b976e8569b7371716c24563b3d0",
+      "geometryHash": "6b426933f3de5c30d0c2f424a56bd4f3be757b37bd4305e8a2848bf139156a57",
       "id": "sf.render.construction-frame.mesh.end-f.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -155,18 +155,18 @@
     {
       "bounds": {
         "max": [
-          12.060596466064453,
+          12.060580084473553,
           4.449476718902588,
-          -0.950523316860199
+          -0.9505232870578766
         ],
         "min": [
-          11.939403533935547,
+          11.939419915526447,
           3.750523328781128,
-          -1.6494766473770142
+          -1.6494766771793365
         ]
       },
       "drawMode": 4,
-      "geometryHash": "662fdc3370b9590754137719774fbbdcafd3c5e4c80eb4499787aee438866c3f",
+      "geometryHash": "a380df7a5161bf16d5abed449673d82e6df5fc9b30d26d65e00cab0f7f18099f",
       "id": "sf.render.construction-frame.mesh.fl-f-bracket.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -181,17 +181,17 @@
       "bounds": {
         "max": [
           12.257620811462402,
-          4.646676540374756,
-          -0.7499898076057434
+          4.646676720009079,
+          -0.7499898310141229
         ],
         "min": [
           11.742379188537598,
-          4.153323650360107,
-          -1.2500102519989014
+          4.153323470725784,
+          -1.250010228590522
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7d089a8d865b31a9e090f61325521b149577994ab227e595508195fd675c292",
+      "geometryHash": "76ed1693505ca7d217857748a56ad9546e45ef31b4f7544cdeb4aff33449886f",
       "id": "sf.render.construction-frame.mesh.fl-f-housing.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -205,18 +205,18 @@
     {
       "bounds": {
         "max": [
-          12.097408294677734,
-          4.396755695343018,
+          12.097408666046668,
+          4.39675561825917,
           -0.7999999523162842
         ],
         "min": [
-          11.775585174560547,
-          4.153706073760986,
+          11.775584803191613,
+          4.153706150844834,
           -1.2000000476837158
         ]
       },
       "drawMode": 4,
-      "geometryHash": "badd1b2fb4d928a013e51e50b0a49bf85331a642062be6a704ee8312b260a679",
+      "geometryHash": "5d52c79ad65530f04ed8a5a50e5e06c96cedd2a0c4dea12953f5acd7c8684a9f",
       "id": "sf.render.construction-frame.mesh.fl-f-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -230,18 +230,18 @@
     {
       "bounds": {
         "max": [
-          0.05453859269618988,
+          0.054524864054513476,
           4.428180694580078,
-          4.3563618659973145
+          4.356381312984497
         ],
         "min": [
-          -0.05453859269618988,
+          -0.054524864054513476,
           3.7718191146850586,
-          3.943638324737549
+          3.943618877750366
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3252dfd0ea9e26d3c784dcf2a517e0091813b6cd7da66905fa3fc938bc86a1f6",
+      "geometryHash": "1197fe50467abfb555e2e2df8be9c89f2a2b2b3763a64e709e77efcd44e00517",
       "id": "sf.render.construction-frame.mesh.fl-m-bracket.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -255,18 +255,18 @@
     {
       "bounds": {
         "max": [
-          0.22501100599765778,
-          4.6297760009765625,
+          0.22501100831557574,
+          4.629775991721262,
           4.536562442779541
         ],
         "min": [
-          -0.22501100599765778,
-          4.170224189758301,
+          -0.22501100831557574,
+          4.170224199013601,
           4.0634379386901855
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e209d8b8a149bf07567f0f3fead2ae27d6c4e616261946db630b4749d2f3abe",
+      "geometryHash": "b470c603fbbd8809a548b49e78146267b7597672a01fb829c7ab51f80a2261be",
       "id": "sf.render.construction-frame.mesh.fl-m-housing.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -281,17 +281,17 @@
       "bounds": {
         "max": [
           0.18000000715255737,
-          4.412356376647949,
-          4.374699115753174
+          4.4123561793652515,
+          4.374699339693975
         ],
         "min": [
           -0.18000000715255737,
-          4.175593376159668,
-          4.089145183563232
+          4.175593573442366,
+          4.089144959622431
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7b2a85b695a07a0da038f00170928677e0d0b5184db7d862f7b9e918752a6064",
+      "geometryHash": "83c1e04727130cc51a6e21f44960fdab05257d5f4f2b24c3c20097e0115fbf33",
       "id": "sf.render.construction-frame.mesh.fl-m-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -306,17 +306,17 @@
       "bounds": {
         "max": [
           13.054697036743164,
-          -1.720310926437378,
-          0.8685336112976074
+          -1.72031085598213,
+          0.8685335715842187
         ],
         "min": [
           -13.054697036743164,
-          -3.479688882827759,
-          -0.8685336112976074
+          -3.4796889532830066,
+          -0.8685335715842187
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f51aa52dd200bf3ed807281465e133c43201ce97e4d3fec28efca9aee5a9e150",
+      "geometryHash": "62b5a32164635e3d99ef49c4b20458beea0213ab680a578bb8ceac9fa788045f",
       "id": "sf.render.construction-frame.mesh.keel.primitive.0",
       "indexCount": 2880,
       "indexed": true,
@@ -330,18 +330,18 @@
     {
       "bounds": {
         "max": [
-          -11.878706932067871,
-          3.939974069595337,
+          -11.878707232865139,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          -12.121293067932129,
-          -2.7399725914001465,
+          -12.121292767134861,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "752a061500eb3ee8c18a4660075012c7c037038f564d9c1b0c633d13f91c234e",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib0.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -355,18 +355,18 @@
     {
       "bounds": {
         "max": [
-          -7.8787078857421875,
-          3.939974069595337,
+          -7.878707709702296,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          -8.121293067932129,
-          -2.7399725914001465,
+          -8.12129324397202,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "834bade645bc44566184f03db3fc03a3b8172dff4aa52ae20ab53070b25dbb8a",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib1.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -380,18 +380,18 @@
     {
       "bounds": {
         "max": [
-          -3.8787074089050293,
-          3.939974069595337,
+          -3.8787074712837177,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          -4.121293067932129,
-          -2.7399725914001465,
+          -4.121293005553441,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6030af0e02017a291c7951a4aceedf256ba6a5b591a7c461757ffbc02d351f3",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib2.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -405,18 +405,18 @@
     {
       "bounds": {
         "max": [
-          0.12129241973161697,
-          3.939974069595337,
+          0.12129241695757348,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          -0.12129312008619308,
-          -2.7399725914001465,
+          -0.12129311731214959,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade336c6638af115e1bc26c22072bb1fe3599f73ec77d4ac795bb645ec0a9205",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib3.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -430,18 +430,18 @@
     {
       "bounds": {
         "max": [
-          4.1212921142578125,
-          3.939974069595337,
+          4.121292171088414,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          3.878706693649292,
-          -2.7399725914001465,
+          3.878706636818691,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72798f2909a4f89b2c5e7e828626fa70752cc9a3c62ef942e77b51b04ca70c06",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib4.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -455,18 +455,18 @@
     {
       "bounds": {
         "max": [
-          8.121293067932129,
-          3.939974069595337,
+          8.12129300555344,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          7.878707408905029,
-          -2.7399725914001465,
+          7.878707471283717,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1199fcba074480fec92b5c9a64d7ac11696da840648733d0082212b57f3022ec",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib5.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -480,18 +480,18 @@
     {
       "bounds": {
         "max": [
-          12.121293067932129,
-          3.939974069595337,
+          12.121292767134861,
+          3.939973967441413,
           4.139999866485596
         ],
         "min": [
-          11.878706932067871,
-          -2.7399725914001465,
+          11.878707232865139,
+          -2.7399724892462225,
           -4.140000343322754
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fae04debe3789622a9f92a0add184b9319f62d6fb091cddefe8fe4e143747f6",
+      "geometryHash": "473dde4855b7fd207d298146890b2ec3ee098bf1e26d7b2143f5508046f909a3",
       "id": "sf.render.construction-frame.mesh.rib6.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -505,18 +505,18 @@
     {
       "bounds": {
         "max": [
-          -11.649983406066895,
-          -1.699966549873352,
+          -11.649983214819787,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          -12.350016593933105,
-          -3.100033760070801,
+          -12.350016785180213,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af4284a619b7fe6fb9fc5b57c7224fb611cf14d1f34792be31e7094e5fb89d1f",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -530,18 +530,18 @@
     {
       "bounds": {
         "max": [
-          -7.6499834060668945,
-          -1.699966549873352,
+          -7.649983214819788,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          -8.350016593933105,
-          -3.100033760070801,
+          -8.350016785180213,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d1d37a158c0b3ac0112673ff93474fbdff7f776b255b01a95f5d57eca3955168",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -555,18 +555,18 @@
     {
       "bounds": {
         "max": [
-          -3.6499831676483154,
-          -1.699966549873352,
+          -3.649983095610499,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          -4.3500165939331055,
-          -3.100033760070801,
+          -4.350016665970922,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bda1bc30d6d46608c7c931e5a5b4fe2751af09e377fbf725d0ee57191d81a1b",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -580,18 +580,18 @@
     {
       "bounds": {
         "max": [
-          0.3500167727470398,
-          -1.699966549873352,
+          0.3500167851802118,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          -0.3500167727470398,
-          -3.100033760070801,
+          -0.3500167851802118,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef8b311e108aaf2388f82bfe59c820963a3fa86060ef298ecb0b2ab2901dced3",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -605,18 +605,18 @@
     {
       "bounds": {
         "max": [
-          4.3500165939331055,
-          -1.699966549873352,
+          4.350016665970922,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          3.6499831676483154,
-          -3.100033760070801,
+          3.649983095610499,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecc486b8283b960d98b490a42ceaef264ae4400ab7d306841b2440cda1f4e096",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -630,18 +630,18 @@
     {
       "bounds": {
         "max": [
-          8.350016593933105,
-          -1.699966549873352,
+          8.350016785180213,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          7.6499834060668945,
-          -3.100033760070801,
+          7.649983214819788,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0c64cbac5e2b76848c5e9068791c6a82536fe7830b56559a88df72933f9678c",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -655,18 +655,18 @@
     {
       "bounds": {
         "max": [
-          12.350016593933105,
-          -1.699966549873352,
+          12.350016785180213,
+          -1.6999665846116527,
           1
         ],
         "min": [
-          11.649983406066895,
-          -3.100033760070801,
+          11.649983214819787,
+          -3.1000337253325,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f40449a133d767ba31a8ba13966a76c54b11a420ee2774ef5b58f04e202ee5c7",
+      "geometryHash": "68e7b2827dfdf1f3b0a630b634b4d027b5d4df17f2b5af333d5b54dafc8ca5d2",
       "id": "sf.render.construction-frame.mesh.ribjoint6.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -680,18 +680,18 @@
     {
       "bounds": {
         "max": [
-          -8.09985637664795,
+          -8.099856563005464,
           3.5999999046325684,
-          -3.924924373626709
+          -3.924924466689047
         ],
         "min": [
-          -11.90014362335205,
+          -11.900143436994536,
           -2.4000000953674316,
-          -4.075075626373291
+          -4.075075533310953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89339537f3d15836bd39c975ebc7bc155c99af49f3a843f6be81e8c47fbdf5c0",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-p0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -705,18 +705,18 @@
     {
       "bounds": {
         "max": [
-          -4.099856376647949,
+          -4.099856563005463,
           3.5999999046325684,
-          -3.924924373626709
+          -3.924924466689047
         ],
         "min": [
-          -7.900143623352051,
+          -7.900143436994537,
           -2.4000000953674316,
-          -4.075075626373291
+          -4.075075533310953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2f0c597cc1c9ff00bfc7615112a317652deb23bf7bddeeb376578ff3f041354",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-p1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -730,18 +730,18 @@
     {
       "bounds": {
         "max": [
-          -0.0998566746711731,
+          -0.09985659280778525,
           3.5999999046325684,
-          -3.924924373626709
+          -3.924924466689047
         ],
         "min": [
-          -3.9001433849334717,
+          -3.9001434667968597,
           -2.4000000953674316,
-          -4.075075626373291
+          -4.075075533310953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5ce6a971826b873860aafab18630b649e6fd08bc063c5343f6a87937d9781bc",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-p2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -755,18 +755,18 @@
     {
       "bounds": {
         "max": [
-          -8.09985637664795,
+          -8.099856563005464,
           3.5999999046325684,
-          4.075075626373291
+          4.075075533310953
         ],
         "min": [
-          -11.90014362335205,
+          -11.900143436994536,
           -2.4000000953674316,
-          3.924924373626709
+          3.924924466689047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "afbedadc9b37b131614e7273d73933dda3dd2e4de696c659f0e6fe5778c6d79e",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-s0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -780,18 +780,18 @@
     {
       "bounds": {
         "max": [
-          -4.099856376647949,
+          -4.099856563005463,
           3.5999999046325684,
-          4.075075626373291
+          4.075075533310953
         ],
         "min": [
-          -7.900143623352051,
+          -7.900143436994537,
           -2.4000000953674316,
-          3.924924373626709
+          3.924924466689047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d62f2bb38e9b6fd70b96ef1c40b6b222ddaa03da3c6dced1c9957e8035fd0c10",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-s1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -805,18 +805,18 @@
     {
       "bounds": {
         "max": [
-          -0.0998566746711731,
+          -0.09985659280778525,
           3.5999999046325684,
-          4.075075626373291
+          4.075075533310953
         ],
         "min": [
-          -3.9001433849334717,
+          -3.9001434667968597,
           -2.4000000953674316,
-          3.924924373626709
+          3.924924466689047
         ]
       },
       "drawMode": 4,
-      "geometryHash": "17574bfe05d864abc5ace51296aff5c47e6da5ae13786694521f66ee2151d928",
+      "geometryHash": "f7f58082165876e67a0c78cd9e45ddff23d97a92dc3d74dace33c2d044d52a82",
       "id": "sf.render.construction-frame.mesh.skin-s2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -830,18 +830,18 @@
     {
       "bounds": {
         "max": [
-          -8.100286483764648,
-          3.8252220153808594,
+          -8.100286827535033,
+          3.825222023995856,
           3.9000000953674316
         ],
         "min": [
-          -11.899713516235352,
-          3.6747779846191406,
+          -11.899713172464967,
+          3.674777976004144,
           -3.9000000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd14827819ca57ff333eb961e0b93fb82fad277095b1d32d3ecda8b03deca7ff",
+      "geometryHash": "53e122830f084e211b769180791312fecb061576036e22343b913c49dcb7d773",
       "id": "sf.render.construction-frame.mesh.skin-t0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -855,18 +855,18 @@
     {
       "bounds": {
         "max": [
-          -4.100286960601807,
-          3.8252220153808594,
+          -4.100286827535033,
+          3.825222023995856,
           3.9000000953674316
         ],
         "min": [
-          -7.899713039398193,
-          3.6747779846191406,
+          -7.899713172464967,
+          3.674777976004144,
           -3.9000000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c023e213e9c2f81e28941e053b1a9eda723ba4b2bce9e2b7b800ac476511495",
+      "geometryHash": "53e122830f084e211b769180791312fecb061576036e22343b913c49dcb7d773",
       "id": "sf.render.construction-frame.mesh.skin-t1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -880,18 +880,18 @@
     {
       "bounds": {
         "max": [
-          -0.10028686374425888,
-          3.8252220153808594,
+          -0.10028689831554871,
+          3.825222023995856,
           3.9000000953674316
         ],
         "min": [
-          -3.8997132778167725,
-          3.6747779846191406,
+          -3.8997132432454826,
+          3.674777976004144,
           -3.9000000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d7cf9e21a7406c4d80176d4e4838fedbcf7e76faa59a6e30fddbc0c50f44670",
+      "geometryHash": "53e122830f084e211b769180791312fecb061576036e22343b913c49dcb7d773",
       "id": "sf.render.construction-frame.mesh.skin-t2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -905,18 +905,18 @@
     {
       "bounds": {
         "max": [
-          8.847969055175781,
+          8.84796891867465,
           3.288123607635498,
-          -5.82920503616333
+          -5.829204893957675
         ],
         "min": [
-          5.152030944824219,
+          5.152031081325349,
           -2.4881234169006348,
-          -7.370794773101807
+          -7.370794915307462
         ]
       },
       "drawMode": 4,
-      "geometryHash": "602321823f93982374f5f3eae7ceaac7ca98f11da41d41e05b1fb0235729510d",
+      "geometryHash": "a353d06d52cb56a8c3b7734e8ff6df08bf5da8fb3c8fcea759ebeb4d8e6f3e48",
       "id": "sf.render.construction-frame.mesh.staged-a.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -930,18 +930,18 @@
     {
       "bounds": {
         "max": [
-          10.10013198852539,
+          10.10013203010148,
           2.661947011947632,
-          -6.399286270141602
+          -6.399286219448458
         ],
         "min": [
-          6.299867630004883,
+          6.299867588428793,
           -3.461947202682495,
-          -8.400713920593262
+          -8.400713971286406
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b051f2f13325f8a9e986b374667000f0cb63055de93ef4c21da0161e326cabe3",
+      "geometryHash": "9ba5f40e71d39334149f1d69663ca26ccbf5d4c168d945620edec4e5d26ba714",
       "id": "sf.render.construction-frame.mesh.staged-b.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -990,20 +990,20 @@
     {
       "id": "sf.render.construction-frame.mesh.end-a",
       "localTransform": [
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
-        0,
-        0,
+        -13.399999618530273,
+        -2.5999999046325684,
         0,
         1
       ],
@@ -1018,20 +1018,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
-        0,
-        0,
+        -13.399999618530273,
+        -2.5999999046325684,
         0,
         1
       ]
@@ -1039,20 +1039,20 @@
     {
       "id": "sf.render.construction-frame.mesh.end-f",
       "localTransform": [
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
-        0,
-        0,
+        13.399999618530273,
+        -2.5999999046325684,
         0,
         1
       ],
@@ -1067,20 +1067,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.2200000286102295,
         0,
-        0,
-        0,
+        13.399999618530273,
+        -2.5999999046325684,
         0,
         1
       ]
@@ -1088,21 +1088,21 @@
     {
       "id": "sf.render.construction-frame.mesh.fl-f-bracket",
       "localTransform": [
-        1,
+        0.34947669506073,
         0,
         0,
         0,
         0,
-        1,
+        0.34947669506073,
         0,
         0,
         0,
         0,
-        1,
+        0.34947669506073,
         0,
-        0,
-        0,
-        0,
+        12,
+        4.100000023841858,
+        -1.2999999821186066,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1116,42 +1116,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.34947669506073,
         0,
         0,
         0,
         0,
-        1,
+        0.34947669506073,
         0,
         0,
         0,
         0,
-        1,
+        0.34947669506073,
         0,
-        0,
-        0,
-        0,
+        12,
+        4.100000023841858,
+        -1.2999999821186066,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.fl-f-housing",
       "localTransform": [
-        1,
+        0.25762081146240234,
         0,
         0,
         0,
         0,
-        1,
+        0.25762081146240234,
         0,
         0,
         0,
         0,
-        1,
+        0.25762081146240234,
         0,
-        0,
-        0,
-        0,
+        12,
+        4.400000095367432,
+        -1.0000000298023224,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1165,42 +1165,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.25762081146240234,
         0,
         0,
         0,
         0,
-        1,
+        0.25762081146240234,
         0,
         0,
         0,
         0,
-        1,
+        0.25762081146240234,
         0,
-        0,
-        0,
-        0,
+        12,
+        4.400000095367432,
+        -1.0000000298023224,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.fl-f-lens",
       "localTransform": [
-        1,
+        0.20000004768371582,
         0,
         0,
         0,
         0,
-        1,
+        0.20000004768371582,
         0,
         0,
         0,
         0,
-        1,
+        0.20000004768371582,
         0,
-        0,
-        0,
-        0,
+        11.93649673461914,
+        4.275230884552002,
+        -1,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1214,42 +1214,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.20000004768371582,
         0,
         0,
         0,
         0,
-        1,
+        0.20000004768371582,
         0,
         0,
         0,
         0,
-        1,
+        0.20000004768371582,
         0,
-        0,
-        0,
-        0,
+        11.93649673461914,
+        4.275230884552002,
+        -1,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.fl-m-bracket",
       "localTransform": [
-        1,
+        0.32818078994750977,
         0,
         0,
         0,
         0,
-        1,
+        0.32818078994750977,
         0,
         0,
         0,
         0,
-        1,
+        0.32818078994750977,
         0,
         0,
-        0,
-        0,
+        4.099999904632568,
+        4.150000095367432,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1263,42 +1263,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.32818078994750977,
         0,
         0,
         0,
         0,
-        1,
+        0.32818078994750977,
         0,
         0,
         0,
         0,
-        1,
+        0.32818078994750977,
         0,
         0,
-        0,
-        0,
+        4.099999904632568,
+        4.150000095367432,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.fl-m-housing",
       "localTransform": [
-        1,
+        0.23656225204467773,
         0,
         0,
         0,
         0,
-        1,
+        0.23656225204467773,
         0,
         0,
         0,
         0,
-        1,
+        0.23656225204467773,
         0,
         0,
-        0,
-        0,
+        4.400000095367432,
+        4.300000190734863,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1312,42 +1312,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.23656225204467773,
         0,
         0,
         0,
         0,
-        1,
+        0.23656225204467773,
         0,
         0,
         0,
         0,
-        1,
+        0.23656225204467773,
         0,
         0,
-        0,
-        0,
+        4.400000095367432,
+        4.300000190734863,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.fl-m-lens",
       "localTransform": [
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
-        0,
-        0,
+        4.293974876403809,
+        4.231922149658203,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1361,41 +1361,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
         0,
         0,
-        1,
+        0.18000000715255737,
         0,
         0,
-        0,
-        0,
+        4.293974876403809,
+        4.231922149658203,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.keel",
       "localTransform": [
-        1,
+        13.054697036743164,
         0,
         0,
         0,
         0,
-        1,
+        13.054697036743164,
         0,
         0,
         0,
         0,
-        1,
+        13.054697036743164,
         0,
         0,
-        0,
+        -2.5999999046325684,
         0,
         1
       ],
@@ -1410,20 +1410,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        13.054697036743164,
         0,
         0,
         0,
         0,
-        1,
+        13.054697036743164,
         0,
         0,
         0,
         0,
-        1,
+        13.054697036743164,
         0,
         0,
-        0,
+        -2.5999999046325684,
         0,
         1
       ]
@@ -1431,21 +1431,21 @@
     {
       "id": "sf.render.construction-frame.mesh.rib0",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -12,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1459,42 +1459,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -12,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib1",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -8.000000476837158,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1508,42 +1508,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -8.000000476837158,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib2",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -4.000000238418579,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1557,42 +1557,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -4.000000238418579,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib3",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -3.501772880554199e-7,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1606,42 +1606,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        -3.501772880554199e-7,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib4",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        3.9999994039535522,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1655,42 +1655,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        3.9999994039535522,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib5",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        8.000000238418579,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1704,42 +1704,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        8.000000238418579,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.rib6",
       "localTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        12,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1753,21 +1753,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
         0,
         0,
         0,
-        1,
+        4.140000104904175,
         0,
-        0,
-        0,
-        0,
+        12,
+        0.6000007390975952,
+        -2.384185791015625e-7,
         1
       ]
     },
@@ -1786,8 +1786,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -12,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -1814,8 +1814,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -12,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -1835,8 +1835,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -8,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -1863,8 +1863,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -8,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -1884,8 +1884,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -3.9999998807907104,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -1912,8 +1912,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        -3.9999998807907104,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -1934,7 +1934,7 @@
         1,
         0,
         0,
-        0,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -1962,7 +1962,7 @@
         1,
         0,
         0,
-        0,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -1982,8 +1982,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        3.9999998807907104,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -2010,8 +2010,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        3.9999998807907104,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -2031,8 +2031,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        8,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -2059,8 +2059,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        8,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -2080,8 +2080,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        12,
+        -2.4000001549720764,
         0,
         1
       ],
@@ -2108,8 +2108,8 @@
         0,
         1,
         0,
-        0,
-        0,
+        12,
+        -2.4000001549720764,
         0,
         1
       ]
@@ -2117,21 +2117,21 @@
     {
       "id": "sf.render.construction-frame.mesh.skin-p0",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -10,
+        0.5999999046325684,
+        -4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2145,42 +2145,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -10,
+        0.5999999046325684,
+        -4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-p1",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -6,
+        0.5999999046325684,
+        -4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2194,42 +2194,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -6,
+        0.5999999046325684,
+        -4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-p2",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -2.0000000298023224,
+        0.5999999046325684,
+        -4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2243,42 +2243,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -2.0000000298023224,
+        0.5999999046325684,
+        -4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-s0",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -10,
+        0.5999999046325684,
+        4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2292,42 +2292,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -10,
+        0.5999999046325684,
+        4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-s1",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -6,
+        0.5999999046325684,
+        4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2341,42 +2341,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -6,
+        0.5999999046325684,
+        4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-s2",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -2.0000000298023224,
+        0.5999999046325684,
+        4,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2390,41 +2390,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
-        0,
+        -2.0000000298023224,
+        0.5999999046325684,
+        4,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.skin-t0",
       "localTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -10,
+        3.75,
         0,
         1
       ],
@@ -2439,20 +2439,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -10,
+        3.75,
         0,
         1
       ]
@@ -2460,20 +2460,20 @@
     {
       "id": "sf.render.construction-frame.mesh.skin-t1",
       "localTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -6,
+        3.75,
         0,
         1
       ],
@@ -2488,20 +2488,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -6,
+        3.75,
         0,
         1
       ]
@@ -2509,20 +2509,20 @@
     {
       "id": "sf.render.construction-frame.mesh.skin-t2",
       "localTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -2.0000000707805157,
+        3.75,
         0,
         1
       ],
@@ -2537,20 +2537,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        3.9000000953674316,
         0,
-        0,
-        0,
+        -2.0000000707805157,
+        3.75,
         0,
         1
       ]
@@ -2558,21 +2558,21 @@
     {
       "id": "sf.render.construction-frame.mesh.staged-a",
       "localTransform": [
-        1,
+        2.8881235122680664,
         0,
         0,
         0,
         0,
-        1,
+        2.8881235122680664,
         0,
         0,
         0,
         0,
-        1,
+        2.8881235122680664,
         0,
-        0,
-        0,
-        0,
+        7,
+        0.40000009536743164,
+        -6.599999904632568,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2586,42 +2586,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        2.8881235122680664,
         0,
         0,
         0,
         0,
-        1,
+        2.8881235122680664,
         0,
         0,
         0,
         0,
-        1,
+        2.8881235122680664,
         0,
-        0,
-        0,
-        0,
+        7,
+        0.40000009536743164,
+        -6.599999904632568,
         1
       ]
     },
     {
       "id": "sf.render.construction-frame.mesh.staged-b",
       "localTransform": [
-        1,
+        3.0619471073150635,
         0,
         0,
         0,
         0,
-        1,
+        3.0619471073150635,
         0,
         0,
         0,
         0,
-        1,
+        3.0619471073150635,
         0,
-        0,
-        0,
-        0,
+        8.199999809265137,
+        -0.40000009536743164,
+        -7.400000095367432,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2635,21 +2635,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.construction-frame.body",
       "worldTransform": [
-        1,
+        3.0619471073150635,
         0,
         0,
         0,
         0,
-        1,
+        3.0619471073150635,
         0,
         0,
         0,
         0,
-        1,
+        3.0619471073150635,
         0,
-        0,
-        0,
-        0,
+        8.199999809265137,
+        -0.40000009536743164,
+        -7.400000095367432,
         1
       ]
     },
@@ -2712,37 +2712,37 @@
       "uri": "place_construction_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 96956,
-    "sha256": "e0adfc7e891dd7157e17d552124d90772868fd9a13aafe8db28b881aecb6a9de",
+    "bytes": 44292,
+    "sha256": "85118e1d58623577995e312b2ad0e69f889cd558908de21f6ba6eeb7efe5d1d4",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.5834938287734985,
-        -1.9320757389068604
+        0.5834938833630363,
+        -1.9320757642534323
       ],
       "max": [
-        13.609230041503906,
-        4.646676540374756,
+        13.609230274116094,
+        4.646676720009079,
         4.536562442779541
       ],
       "min": [
-        -13.609230041503906,
-        -3.479688882827759,
-        -8.400713920593262
+        -13.609230274116094,
+        -3.4796889532830066,
+        -8.400713971286406
       ],
       "size": [
-        27.218460083007812,
-        8.126365423202515,
-        12.937276363372803
+        27.218460548232187,
+        8.126365673292085,
+        12.937276414065947
       ]
     },
     "hidden": [],
@@ -3005,20 +3005,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.2200000286102295,
           0,
-          0,
-          0,
+          -13.399999618530273,
+          -2.5999999046325684,
           0,
           1
         ],
@@ -3032,20 +3032,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.2200000286102295,
           0,
-          0,
-          0,
+          13.399999618530273,
+          -2.5999999046325684,
           0,
           1
         ],
@@ -3059,21 +3059,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.34947669506073,
           0,
           0,
           0,
           0,
-          1,
+          0.34947669506073,
           0,
           0,
           0,
           0,
-          1,
+          0.34947669506073,
           0,
-          0,
-          0,
-          0,
+          12,
+          4.100000023841858,
+          -1.2999999821186066,
           1
         ],
         "name": "fl_f_bracket",
@@ -3086,21 +3086,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.25762081146240234,
           0,
           0,
           0,
           0,
-          1,
+          0.25762081146240234,
           0,
           0,
           0,
           0,
-          1,
+          0.25762081146240234,
           0,
-          0,
-          0,
-          0,
+          12,
+          4.400000095367432,
+          -1.0000000298023224,
           1
         ],
         "name": "fl_f_housing",
@@ -3113,21 +3113,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.20000004768371582,
           0,
           0,
           0,
           0,
-          1,
+          0.20000004768371582,
           0,
           0,
           0,
           0,
-          1,
+          0.20000004768371582,
           0,
-          0,
-          0,
-          0,
+          11.93649673461914,
+          4.275230884552002,
+          -1,
           1
         ],
         "name": "fl_f_lens",
@@ -3140,21 +3140,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.32818078994750977,
           0,
           0,
           0,
           0,
-          1,
+          0.32818078994750977,
           0,
           0,
           0,
           0,
-          1,
+          0.32818078994750977,
           0,
           0,
-          0,
-          0,
+          4.099999904632568,
+          4.150000095367432,
           1
         ],
         "name": "fl_m_bracket",
@@ -3167,21 +3167,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.23656225204467773,
           0,
           0,
           0,
           0,
-          1,
+          0.23656225204467773,
           0,
           0,
           0,
           0,
-          1,
+          0.23656225204467773,
           0,
           0,
-          0,
-          0,
+          4.400000095367432,
+          4.300000190734863,
           1
         ],
         "name": "fl_m_housing",
@@ -3194,21 +3194,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.18000000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.18000000715255737,
           0,
           0,
           0,
           0,
-          1,
+          0.18000000715255737,
           0,
           0,
-          0,
-          0,
+          4.293974876403809,
+          4.231922149658203,
           1
         ],
         "name": "fl_m_lens",
@@ -3221,20 +3221,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          13.054697036743164,
           0,
           0,
           0,
           0,
-          1,
+          13.054697036743164,
           0,
           0,
           0,
           0,
-          1,
+          13.054697036743164,
           0,
           0,
-          0,
+          -2.5999999046325684,
           0,
           1
         ],
@@ -3248,21 +3248,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          -12,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib0",
@@ -3275,21 +3275,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          -8.000000476837158,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib1",
@@ -3302,21 +3302,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          -4.000000238418579,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib2",
@@ -3329,21 +3329,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          -3.501772880554199e-7,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib3",
@@ -3356,21 +3356,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          3.9999994039535522,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib4",
@@ -3383,21 +3383,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          8.000000238418579,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib5",
@@ -3410,21 +3410,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
           0,
           0,
           0,
-          1,
+          4.140000104904175,
           0,
-          0,
-          0,
-          0,
+          12,
+          0.6000007390975952,
+          -2.384185791015625e-7,
           1
         ],
         "name": "rib6",
@@ -3449,8 +3449,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          -12,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3476,8 +3476,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          -8,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3503,8 +3503,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          -3.9999998807907104,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3531,7 +3531,7 @@
           1,
           0,
           0,
-          0,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3557,8 +3557,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          3.9999998807907104,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3584,8 +3584,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          8,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3611,8 +3611,8 @@
           0,
           1,
           0,
-          0,
-          0,
+          12,
+          -2.4000001549720764,
           0,
           1
         ],
@@ -3626,21 +3626,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -10,
+          0.5999999046325684,
+          -4,
           1
         ],
         "name": "skin_p0",
@@ -3653,21 +3653,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -6,
+          0.5999999046325684,
+          -4,
           1
         ],
         "name": "skin_p1",
@@ -3680,21 +3680,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -2.0000000298023224,
+          0.5999999046325684,
+          -4,
           1
         ],
         "name": "skin_p2",
@@ -3707,21 +3707,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -10,
+          0.5999999046325684,
+          4,
           1
         ],
         "name": "skin_s0",
@@ -3734,21 +3734,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -6,
+          0.5999999046325684,
+          4,
           1
         ],
         "name": "skin_s1",
@@ -3761,21 +3761,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
-          0,
+          -2.0000000298023224,
+          0.5999999046325684,
+          4,
           1
         ],
         "name": "skin_s2",
@@ -3788,20 +3788,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
-          0,
-          0,
+          -10,
+          3.75,
           0,
           1
         ],
@@ -3815,20 +3815,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
-          0,
-          0,
+          -6,
+          3.75,
           0,
           1
         ],
@@ -3842,20 +3842,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          3.9000000953674316,
           0,
-          0,
-          0,
+          -2.0000000707805157,
+          3.75,
           0,
           1
         ],
@@ -3869,21 +3869,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8881235122680664,
           0,
           0,
           0,
           0,
-          1,
+          2.8881235122680664,
           0,
           0,
           0,
           0,
-          1,
+          2.8881235122680664,
           0,
-          0,
-          0,
-          0,
+          7,
+          0.40000009536743164,
+          -6.599999904632568,
           1
         ],
         "name": "staged_a",
@@ -3896,21 +3896,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.0619471073150635,
           0,
           0,
           0,
           0,
-          1,
+          3.0619471073150635,
           0,
           0,
           0,
           0,
-          1,
+          3.0619471073150635,
           0,
-          0,
-          0,
-          0,
+          8.199999809265137,
+          -0.40000009536743164,
+          -7.400000095367432,
           1
         ],
         "name": "staged_b",
@@ -3925,20 +3925,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "2dbce182bf0ff09f482bf1ec3a9f1ad6184fb7f4d818623bcce9b748a1aa6d7d",
+  "runtimeHash": "f317c528d565f2f847136131289803df67a2339da0ba8bb9197124dc0a4925b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          13.609230041503906,
-          4.646676540374756,
+          13.609230274116094,
+          4.646676720009079,
           4.536562442779541
         ],
         "min": [
-          -13.609230041503906,
-          -3.479688882827759,
-          -8.400713920593262
+          -13.609230274116094,
+          -3.4796889532830066,
+          -8.400713971286406
         ]
       },
       "id": "sf.render.construction-frame.body",

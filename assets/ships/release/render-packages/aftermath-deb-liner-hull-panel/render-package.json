@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cd5a983bea99e86c051f7eae721f310e789608e02ed5d18f2078b1507ca9d220",
+  "contentHash": "ad89acb26dbc2fa7dde5a0e9ec725c52359a9dd7e185017ba0e6e528ad0ef3dc",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          -6.578143119812012,
+          -6.578143246366604,
           -2.796947956085205,
-          -9.423094749450684
+          -9.42309467975216
         ],
         "min": [
-          -7.345868110656738,
+          -7.345867984102146,
           -4.494729995727539,
-          -9.961180686950684
+          -9.961180756649208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "368e2947dccae5fa99ab04a886c485a98d0d16f54d2ef9cf78b4a42d76ddca86",
+      "geometryHash": "6c5bc4881d0e63c56549e81087010325d7405845b70de32a5ff72f4a38c4caaf",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-4.primitive.0",
       "indexCount": 30,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          -6.578143119812012,
+          -6.578143246366604,
           -2.796947956085205,
-          -9.423094749450684
+          -9.42309467975216
         ],
         "min": [
-          -7.345868110656738,
+          -7.345867984102146,
           -4.494729995727539,
-          -9.961180686950684
+          -9.961180756649208
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6728ee17ba5ce5694125a43d0fddb90a5dc9fc18113d9d901c859a001acbe8f",
+      "geometryHash": "6bef04d5e764ad69214975dc452cb98c76baa7830021c15614920ecd2145b1eb",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-4.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          -4.246829032897949,
+          -4.246829011491428,
           -2.8302087783813477,
-          -9.579283714294434
+          -9.57928384712837
         ],
         "min": [
-          -5.518876075744629,
+          -5.51887609715115,
           -4.384838104248047,
-          -9.755969047546387
+          -9.75596891471245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e91b61e25f19cca80ba82c3f755f6f3fcab49046022a860498368b37d12ae29",
+      "geometryHash": "df604212a8c00837342862c811dbee3e8841024781b886a6998f7621ac48d8b8",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-5.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -87,18 +87,18 @@
     {
       "bounds": {
         "max": [
-          -1.6675578355789185,
+          -1.6675577545677531,
           -2.8302087783813477,
-          -9.579283714294434
+          -9.57928384712837
         ],
         "min": [
-          -2.9396047592163086,
+          -2.939604840227474,
           -4.384838104248047,
-          -9.755969047546387
+          -9.75596891471245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d5d5f82348da74b31aa8aa304d8c91e29924c7a0e49a4d2da9d32e25c32a3b5",
+      "geometryHash": "a7478f783140e7587fdead307e85731d88f91d087fab973902ad2a8c0681ba07",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-6.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -112,18 +112,18 @@
     {
       "bounds": {
         "max": [
-          0.9117116332054138,
+          0.9117117142165791,
           -2.8302087783813477,
-          -9.579283714294434
+          -9.57928384712837
         ],
         "min": [
-          -0.3603352904319763,
+          -0.36033537144314165,
           -4.384838104248047,
-          -9.755969047546387
+          -9.75596891471245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56172c170b6ee32b04d24515927f67d7ce9ad46f91c1cb503c3a960f0f456434",
+      "geometryHash": "3f6d6010b6b604927e98293a36597a81a86c78e2794a49a8c136679f4a550adf",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-7.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          3.4909849166870117,
+          3.4909849380935323,
           -2.8302087783813477,
-          -9.579283714294434
+          -9.57928384712837
         ],
         "min": [
-          2.218937873840332,
+          2.2189378524338115,
           -4.384838104248047,
-          -9.755969047546387
+          -9.75596891471245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c76465cf1ed36d7303b00dd90dff29129c62790c546f14bbc9ab8cdeb606b3a",
+      "geometryHash": "f88e40bc729926902ef0f6f7a5c017bd1c0c67a6b841391e5e2a1613294ade0b",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-8.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -162,18 +162,18 @@
     {
       "bounds": {
         "max": [
-          6.070252418518066,
+          6.070252439924587,
           -2.8302087783813477,
-          -9.579283714294434
+          -9.57928384712837
         ],
         "min": [
-          4.798205375671387,
+          4.798205354264866,
           -4.384838104248047,
-          -9.755969047546387
+          -9.75596891471245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e8c3b2b0815a85b826b78bf9016edb4e389bff96593cfde220503413af313b4",
+      "geometryHash": "6096f6338b2677f0c13f396ca1b635378cdad0f72e9ed9551a2dbb733e285353",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-9.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -187,18 +187,18 @@
     {
       "bounds": {
         "max": [
-          -3.2337257862091064,
+          -3.2337257814759517,
           14.408224105834961,
-          7.735378265380859
+          7.735378080391268
         ],
         "min": [
-          -4.366928577423096,
+          -4.366928582156251,
           11.906259536743164,
-          6.220623016357422
+          6.2206232013470135
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e128b14ab6845680ffe087e4dbb5293612c3cca18d2c0747e38ea8e04dc077f",
+      "geometryHash": "2e16902ad4c643143afa7d19e465528c9124f58f42e4c220b50c0118725a88c2",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-feed.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -212,18 +212,18 @@
     {
       "bounds": {
         "max": [
-          -3.2337257862091064,
-          13.19312858581543,
-          7.735378265380859
+          -3.2337257814759517,
+          13.193129249111967,
+          7.735378080391268
         ],
         "min": [
-          -3.977015495300293,
+          -3.9770154966718527,
           11.906259536743164,
-          6.220623016357422
+          6.2206232013470135
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f3fd0271b1ebd66b31be2a795965e77ca00c7077170e11b5fe14d8d65467425",
+      "geometryHash": "ae77389acb1de8f6ab8ef9deccdfa9a3effa5f577630239211ad9144cb5afb68",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-feed.primitive.1",
       "indexCount": 18,
       "indexed": true,
@@ -238,17 +238,17 @@
       "bounds": {
         "max": [
           -4.090831756591797,
-          14.500007629394531,
+          14.50000764486369,
           6.825116157531738
         ],
         "min": [
           -4.472423553466797,
-          14.232880592346191,
+          14.232880576877033,
           6.443524360656738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8f3bd6b755cc928a8233463f0cc871e70e8376f5ac86c20473d899dfc10def0",
+      "geometryHash": "b7736656376feefac8298304237f38d8d90f6e370a40f780aaa9d380328766e4",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -263,17 +263,17 @@
       "bounds": {
         "max": [
           -0.005611419677734375,
-          13.93578815460205,
-          7.975053787231445
+          13.935787951203725,
+          7.975053659127026
         ],
         "min": [
           -6.8428802490234375,
-          10.625345230102539,
-          4.015042304992676
+          10.625345433500865,
+          4.015042433097095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d760ff49d81f60f29b328158d130eaafe543432c626c87ec485213e664db3510",
+      "geometryHash": "5f52547e1b1a7f80ef72c1028708a0a7897164fd8d03890e1d1033db049033f1",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-rim.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -288,17 +288,17 @@
       "bounds": {
         "max": [
           -0.005611419677734375,
-          13.93578815460205,
-          7.975053787231445
+          13.935787951203725,
+          7.975053659127026
         ],
         "min": [
           -6.8428802490234375,
-          10.625345230102539,
-          6.245443820953369
+          10.625345433500865,
+          6.245443950382053
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f69a82c802eca983febae40d9a375b95f26764517d11852dff0a862bfa5d08c",
+      "geometryHash": "d792b729e5281d2e19baf5c77c9bf382cbcefb739408a5100f72891b5cbbf4f2",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-rim.primitive.1",
       "indexCount": 48,
       "indexed": true,
@@ -312,18 +312,18 @@
     {
       "bounds": {
         "max": [
-          -0.5292472243309021,
-          13.669474601745605,
-          7.995228290557861
+          -0.5292471499374218,
+          13.669474890973747,
+          7.99522853372051
         ],
         "min": [
-          -6.324294090270996,
-          10.67509937286377,
-          4.168435573577881
+          -6.324294139952751,
+          10.675099296769483,
+          4.16843562991734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "885a38e83961c2b08ef29d467c70674c6e2bed0b4f84e39920b5d1a6c40944c4",
+      "geometryHash": "c3902afafb7093c6c0ce3d7111c29e690ef473569a5c63301e8b3a7cc4499b2e",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish.primitive.0",
       "indexCount": 516,
       "indexed": true,
@@ -338,17 +338,17 @@
       "bounds": {
         "max": [
           -0.41574859619140625,
-          14.035791397094727,
-          8.00657844543457
+          14.035791473189013,
+          8.006578389095111
         ],
         "min": [
           -6.614093780517578,
-          10.953643798828125,
-          4.168435573577881
+          10.95364366408783,
+          4.16843562991734
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93360044e3b41d195ac19b3c5059c632a1818ae16baffec7c07742b1f904df6f",
+      "geometryHash": "b9d8f05772bd340729ade57ddf2faa90e2149ebde1981af4fd8dae85b7b77625",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish.primitive.1",
       "indexCount": 618,
       "indexed": true,
@@ -363,17 +363,17 @@
       "bounds": {
         "max": [
           -0.41574859619140625,
-          14.035791397094727,
-          8.00657844543457
+          14.035791473189013,
+          8.006578389095111
         ],
         "min": [
           -6.614093780517578,
-          10.67509937286377,
-          6.166955947875977
+          10.675099296769483,
+          6.1669559971284365
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb7aafe4ef616a0bf6c1bd169cb3338260aa599ce77daaf0bf251f9cf9b8bd10",
+      "geometryHash": "59ed95e935687358bc46191de74243ede291060e04dcaee7ba9d32b8e4ef9320",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish.primitive.2",
       "indexCount": 156,
       "indexed": true,
@@ -387,18 +387,18 @@
     {
       "bounds": {
         "max": [
-          8.067376136779785,
-          11.691798210144043,
-          7.449728012084961
+          8.067375622164702,
+          11.691798130986484,
+          7.4497281632548695
         ],
         "min": [
-          -8.067376136779785,
-          -6.069748878479004,
+          -8.067375622164702,
+          -6.069749262392071,
           -9.88663387298584
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70298799f7433ac70f95220fc6dae919c28efacca0365c2ba88f19545243d9eb",
+      "geometryHash": "b11321e1c4222fbdd3530b7303a4e875b5e32d08808611602603f18bb12cc45d",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.drum.primitive.0",
       "indexCount": 1698,
       "indexed": true,
@@ -412,18 +412,18 @@
     {
       "bounds": {
         "max": [
-          -4.714555263519287,
-          11.240514755249023,
-          5.356152534484863
+          -4.7145552835578854,
+          11.240514439906672,
+          5.356152437347864
         ],
         "min": [
-          -5.882455825805664,
-          -5.68044900894165,
-          -9.112382888793945
+          -5.88245572746082,
+          -5.680449114424427,
+          -9.112383299374212
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee1c0420918bf3330338f814e9629fd88147ebf18e28ad4b3068831b11f36a77",
+      "geometryHash": "f2c97fe3d20f212b1ba650ae0f841d5b7b14d26931cfa47df15ae3b7db6b7e73",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.drum.primitive.1",
       "indexCount": 1407,
       "indexed": true,
@@ -437,18 +437,18 @@
     {
       "bounds": {
         "max": [
-          -4.161868572235107,
-          11.401453971862793,
+          -4.161868690807731,
+          11.401454165882123,
           7.929285049438477
         ],
         "min": [
-          -7.270288944244385,
-          10.34447193145752,
-          4.98642635345459
+          -7.270289006353854,
+          10.344471641232541,
+          4.986426039836694
         ]
       },
       "drawMode": 4,
-      "geometryHash": "014c4304354bbbf0f32a42c5e508966756f4a561aba7a1dd23a5b13b75fcd272",
+      "geometryHash": "65ec212381561704e7aa44502a4b03ffd184c4982850c6ca9d95d8d1d8d8cb8f",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.drum.primitive.2",
       "indexCount": 1392,
       "indexed": true,
@@ -462,18 +462,18 @@
     {
       "bounds": {
         "max": [
-          8.070637702941895,
-          11.691798210144043,
+          8.070637913907447,
+          11.691798130986484,
           7.929285049438477
         ],
         "min": [
-          -8.070637702941895,
-          -6.074099063873291,
-          -9.883371353149414
+          -8.070637913907447,
+          -6.074098984715732,
+          -9.883371581243095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c0894a83927931925622fda9c91e3bc78573f1fb326c95e5ffa7c2a90d0a24d2",
+      "geometryHash": "59c340dd45243cc83e18bba08e82e22d0d66c58225b48dc5c0716db0bc95d6e1",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.drum.primitive.3",
       "indexCount": 1137,
       "indexed": true,
@@ -487,18 +487,18 @@
     {
       "bounds": {
         "max": [
-          0.6099628806114197,
-          -5.5226898193359375,
+          0.6099624862415722,
+          -5.522690140994012,
           13.558157920837402
         ],
         "min": [
-          -1.7941327095031738,
-          -7.395669460296631,
+          -1.7941323151333264,
+          -7.3956691386385565,
           11.143747329711914
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d16e41c97db51648c052189f12ad81f326d3b982c48bf32ee66a0180f9c7dfd3",
+      "geometryHash": "47c30e757930a434b446b5f9ca7f80650fb87194e237c3f8f0e8bada276df421",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -513,17 +513,17 @@
       "bounds": {
         "max": [
           0.47042083740234375,
-          2.54838228225708,
-          8.838663101196289
+          2.548382240133457,
+          8.838662876085843
         ],
         "min": [
           -1.3464584350585938,
-          0.84040367603302,
-          7.13645076751709
+          0.8404037181566432,
+          7.136450992627537
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d2c65b45355cd1cca9bce1b7478a984828bfdfaf22b29fbbd4acf4371588d354",
+      "geometryHash": "97c35e92bd1638cfb3bcfe4abd3f985552fc1715f21c75cde427ddff1be79bda",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -538,17 +538,17 @@
       "bounds": {
         "max": [
           0.5644874572753906,
-          4.443918704986572,
-          -3.071845531463623
+          4.4439185735933195,
+          -3.0718454437565534
         ],
         "min": [
           -1.6446304321289062,
-          2.3006014823913574,
-          -4.965712070465088
+          2.30060161378461,
+          -4.965712158172158
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae986a3479d1c5990c96d3e2297f0d52aba6be1e687565a22aba29d9c9b8789b",
+      "geometryHash": "7bdf050c70e269c78a8f2d1d11212faf63dbd8aadc4aaab7bf339581dda7c4bf",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -562,18 +562,18 @@
     {
       "bounds": {
         "max": [
-          0.7206863760948181,
-          -2.401761770248413,
+          0.7206863991284744,
+          -2.401761772878752,
           -10.935086250305176
         ],
         "min": [
-          -1.8930991888046265,
-          -4.392420768737793,
+          -1.8930992118382828,
+          -4.392420766107454,
           -13.558157920837402
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbe04fc2c630aea88243d8a408cf288b768b1241709cede1f288cf5379e5f620",
+      "geometryHash": "a274976e42854cfbad376f2e881ce91d3abf8ff1b636399d872707a0bf68d906",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -588,17 +588,17 @@
       "bounds": {
         "max": [
           0.5548934936523438,
-          -10.680989265441895,
-          -7.090060234069824
+          -10.680989276181537,
+          -7.0900601588341265
         ],
         "min": [
           -1.4668502807617188,
-          -12.60351848602295,
-          -8.952122688293457
+          -12.603518475283307,
+          -8.952122763529156
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d73cb6d0a6c054a536c9bcee762c960e7b0d022523f6dc1c75848ceea5812db4",
+      "geometryHash": "01dd07acdc534403f85009a1ac42d003baaac592e269812ccf3eb0ac1bf89af8",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -613,17 +613,17 @@
       "bounds": {
         "max": [
           0.6650848388671875,
-          -12.134035110473633,
-          5.237307548522949
+          -12.134034795502368,
+          5.237307484576244
         ],
         "min": [
           -1.7518997192382812,
-          -14.499975204467773,
-          3.1953327655792236
+          -14.499975519439039,
+          3.1953328295259285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "008cb9852fc2b49698e124bc68ae1cff9a07a9a83f7c386cc616dff668228f37",
+      "geometryHash": "b9ec32af2d5bbeb85adc36c61ca4cd2aa88101efea80cbbe56cfef7bfa386240",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -638,17 +638,17 @@
       "bounds": {
         "max": [
           0.3129386901855469,
-          -0.30532699823379517,
-          -8.771244049072266
+          -0.30532703729323707,
+          -8.771244171312084
         ],
         "min": [
           -5.445137023925781,
-          -3.0152268409729004,
-          -11.54229736328125
+          -3.0152268019134585,
+          -11.542297241041432
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1eb64e1f5111ced31f39dca6162ee3226ea0a37450e9ae03588d55f8b596b038",
+      "geometryHash": "dacea7363e6f6eb71c47eea04af2bbcf5871119eb9f09fac64c58f88ec73f4e8",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -663,17 +663,17 @@
       "bounds": {
         "max": [
           0.384307861328125,
-          -10.100311279296875,
-          -6.5712714195251465
+          -10.10031141101028,
+          -6.571271205569083
         ],
         "min": [
           -3.137928009033203,
-          -11.589417457580566,
-          -9.66998291015625
+          -11.589417325867162,
+          -9.669983124112314
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b37855ffc00d0f258aad40c4b4d2f2cddf9c8b3a64671890f39f34d0bba0f9d",
+      "geometryHash": "9848b8c753f5ed0b8d423734d0a5386e7b4c75f1cf578fb2257f1af2d6642f98",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -688,17 +688,17 @@
       "bounds": {
         "max": [
           0.4799537658691406,
-          -9.76804256439209,
-          7.032190799713135
+          -9.768042504058007,
+          7.0321906737479125
         ],
         "min": [
           -6.4050140380859375,
-          -13.578339576721191,
-          3.605360507965088
+          -13.578339637055274,
+          3.60536063393031
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39488ef956a2d0e624d7d5e22d001dec2654b9ad17760b7d84d95fc8af7a5d4f",
+      "geometryHash": "a0c8537119088a64613932b0a5cfb07f8c137b2c254458cfd365bb2cadd55415",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -713,17 +713,17 @@
       "bounds": {
         "max": [
           0.54327392578125,
-          -2.409937620162964,
-          13.5134916305542
+          -2.409937559257702,
+          13.513491311813873
         ],
         "min": [
           -4.089752197265625,
-          -4.860279083251953,
-          9.48619270324707
+          -4.860279144157214,
+          9.486193021987397
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2296c42e9c940dfad316dcaa0fdb28e300148c393d3ef95693c217c029395f9a",
+      "geometryHash": "a98e7fbe166506f3aa81eb439f15e6a3c87a962b89698059758a9165b2132bea",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -738,17 +738,17 @@
       "bounds": {
         "max": [
           0.0966949462890625,
-          3.8544297218322754,
-          2.7693259716033936
+          3.8544297041793536,
+          2.769325975538897
         ],
         "min": [
           -6.814617156982422,
-          0.7570262551307678,
-          0.3974974751472473
+          0.7570262727836894,
+          0.3974974712117436
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac6a15861abb7d70e44690ffd1b55ea960a26da09a3456a017877c623036202a",
+      "geometryHash": "59c920da4deb6db039ff07b900c13b6f4766c2532f82843121a86847d53d5344",
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1007,21 +1007,21 @@
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-4",
       "localTransform": [
-        1,
+        0.848891019821167,
         0,
         0,
         0,
         0,
-        1,
+        0.848891019821167,
         0,
         0,
         0,
         0,
-        1,
+        0.848891019821167,
         0,
-        0,
-        0,
-        0,
+        -6.962005615234375,
+        -3.645838975906372,
+        -9.692137718200684,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1035,42 +1035,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.848891019821167,
         0,
         0,
         0,
         0,
-        1,
+        0.848891019821167,
         0,
         0,
         0,
         0,
-        1,
+        0.848891019821167,
         0,
-        0,
-        0,
-        0,
+        -6.962005615234375,
+        -3.645838975906372,
+        -9.692137718200684,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-5",
       "localTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        -4.882852554321289,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1084,42 +1084,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        -4.882852554321289,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-6",
       "localTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        -2.3035812973976135,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1133,42 +1133,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        -2.3035812973976135,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-7",
       "localTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        0.27568817138671875,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1182,42 +1182,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        0.27568817138671875,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-8",
       "localTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        2.854961395263672,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1231,42 +1231,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        2.854961395263672,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.aftdeck-9",
       "localTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        5.434228897094727,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1280,42 +1280,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
         0,
         0,
         0,
-        1,
+        0.7773146629333496,
         0,
-        0,
-        0,
-        0,
+        5.434228897094727,
+        -3.6075234413146973,
+        -9.66762638092041,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish",
       "localTransform": [
-        1,
+        3.099172592163086,
         0,
         0,
         0,
         0,
-        1,
+        3.099172592163086,
         0,
         0,
         0,
         0,
-        1,
+        3.099172592163086,
         0,
-        0,
-        0,
-        0,
+        -3.514921188354492,
+        12.355445384979248,
+        6.087507009506226,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1329,42 +1329,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        3.099172592163086,
         0,
         0,
         0,
         0,
-        1,
+        3.099172592163086,
         0,
         0,
         0,
         0,
-        1,
+        3.099172592163086,
         0,
-        0,
-        0,
-        0,
+        -3.514921188354492,
+        12.355445384979248,
+        6.087507009506226,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-feed",
       "localTransform": [
-        1,
+        1.2509822845458984,
         0,
         0,
         0,
         0,
-        1,
+        1.2509822845458984,
         0,
         0,
         0,
         0,
-        1,
+        1.2509822845458984,
         0,
-        0,
-        0,
-        0,
+        -3.800327181816101,
+        13.157241821289062,
+        6.978000640869141,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1378,42 +1378,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.2509822845458984,
         0,
         0,
         0,
         0,
-        1,
+        1.2509822845458984,
         0,
         0,
         0,
         0,
-        1,
+        1.2509822845458984,
         0,
-        0,
-        0,
-        0,
+        -3.800327181816101,
+        13.157241821289062,
+        6.978000640869141,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-lens",
       "localTransform": [
-        1,
+        0.1907958984375,
         0,
         0,
         0,
         0,
-        1,
+        0.1907958984375,
         0,
         0,
         0,
         0,
-        1,
+        0.1907958984375,
         0,
-        0,
-        0,
-        0,
+        -4.281627655029297,
+        14.366444110870361,
+        6.634320259094238,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1427,42 +1427,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.1907958984375,
         0,
         0,
         0,
         0,
-        1,
+        0.1907958984375,
         0,
         0,
         0,
         0,
-        1,
+        0.1907958984375,
         0,
-        0,
-        0,
-        0,
+        -4.281627655029297,
+        14.366444110870361,
+        6.634320259094238,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.commsdish-rim",
       "localTransform": [
-        1,
+        3.4186344146728516,
         0,
         0,
         0,
         0,
-        1,
+        3.4186344146728516,
         0,
         0,
         0,
         0,
-        1,
+        3.4186344146728516,
         0,
-        0,
-        0,
-        0,
+        -3.424245834350586,
+        12.280566692352295,
+        5.9950480461120605,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1476,42 +1476,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        3.4186344146728516,
         0,
         0,
         0,
         0,
-        1,
+        3.4186344146728516,
         0,
         0,
         0,
         0,
-        1,
+        3.4186344146728516,
         0,
-        0,
-        0,
-        0,
+        -3.424245834350586,
+        12.280566692352295,
+        5.9950480461120605,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.drum",
       "localTransform": [
-        1,
+        8.907959461212158,
         0,
         0,
         0,
         0,
-        1,
+        8.907959461212158,
         0,
         0,
         0,
         0,
-        1,
+        8.907959461212158,
         0,
         0,
-        0,
-        0,
+        2.808849573135376,
+        -0.9786744117736816,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1525,42 +1525,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        8.907959461212158,
         0,
         0,
         0,
         0,
-        1,
+        8.907959461212158,
         0,
         0,
         0,
         0,
-        1,
+        8.907959461212158,
         0,
         0,
-        0,
-        0,
+        2.808849573135376,
+        -0.9786744117736816,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib0",
       "localTransform": [
-        1,
+        1.2072052955627441,
         0,
         0,
         0,
         0,
-        1,
+        1.2072052955627441,
         0,
         0,
         0,
         0,
-        1,
+        1.2072052955627441,
         0,
-        0,
-        0,
-        0,
+        -0.5920849144458771,
+        -6.459179639816284,
+        12.350952625274658,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1574,42 +1574,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.2072052955627441,
         0,
         0,
         0,
         0,
-        1,
+        1.2072052955627441,
         0,
         0,
         0,
         0,
-        1,
+        1.2072052955627441,
         0,
-        0,
-        0,
-        0,
+        -0.5920849144458771,
+        -6.459179639816284,
+        12.350952625274658,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib1",
       "localTransform": [
-        1,
+        0.9084396362304688,
         0,
         0,
         0,
         0,
-        1,
+        0.9084396362304688,
         0,
         0,
         0,
         0,
-        1,
+        0.9084396362304688,
         0,
-        0,
-        0,
-        0,
+        -0.438018798828125,
+        1.69439297914505,
+        7.9875569343566895,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1623,42 +1623,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        0.9084396362304688,
         0,
         0,
         0,
         0,
-        1,
+        0.9084396362304688,
         0,
         0,
         0,
         0,
-        1,
+        0.9084396362304688,
         0,
-        0,
-        0,
-        0,
+        -0.438018798828125,
+        1.69439297914505,
+        7.9875569343566895,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib2",
       "localTransform": [
-        1,
+        1.1045589447021484,
         0,
         0,
         0,
         0,
-        1,
+        1.1045589447021484,
         0,
         0,
         0,
         0,
-        1,
+        1.1045589447021484,
         0,
-        0,
-        0,
-        0,
+        -0.5400714874267578,
+        3.372260093688965,
+        -4.0187788009643555,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1672,42 +1672,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.1045589447021484,
         0,
         0,
         0,
         0,
-        1,
+        1.1045589447021484,
         0,
         0,
         0,
         0,
-        1,
+        1.1045589447021484,
         0,
-        0,
-        0,
-        0,
+        -0.5400714874267578,
+        3.372260093688965,
+        -4.0187788009643555,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib3",
       "localTransform": [
-        1,
+        1.3115358352661133,
         0,
         0,
         0,
         0,
-        1,
+        1.3115358352661133,
         0,
         0,
         0,
         0,
-        1,
+        1.3115358352661133,
         0,
-        0,
-        0,
-        0,
+        -0.5862064063549042,
+        -3.397091269493103,
+        -12.246622085571289,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1721,42 +1721,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.3115358352661133,
         0,
         0,
         0,
         0,
-        1,
+        1.3115358352661133,
         0,
         0,
         0,
         0,
-        1,
+        1.3115358352661133,
         0,
-        0,
-        0,
-        0,
+        -0.5862064063549042,
+        -3.397091269493103,
+        -12.246622085571289,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib4",
       "localTransform": [
-        1,
+        1.0108718872070312,
         0,
         0,
         0,
         0,
-        1,
+        1.0108718872070312,
         0,
         0,
         0,
         0,
-        1,
+        1.0108718872070312,
         0,
-        0,
-        0,
-        0,
+        -0.4559783935546875,
+        -11.642253875732422,
+        -8.02109146118164,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1770,42 +1770,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.0108718872070312,
         0,
         0,
         0,
         0,
-        1,
+        1.0108718872070312,
         0,
         0,
         0,
         0,
-        1,
+        1.0108718872070312,
         0,
-        0,
-        0,
-        0,
+        -0.4559783935546875,
+        -11.642253875732422,
+        -8.02109146118164,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-f-rib5",
       "localTransform": [
-        1,
+        1.2084922790527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2084922790527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2084922790527344,
         0,
-        0,
-        0,
-        0,
+        -0.5434074401855469,
+        -13.317005157470703,
+        4.216320157051086,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1819,42 +1819,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.2084922790527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2084922790527344,
         0,
         0,
         0,
         0,
-        1,
+        1.2084922790527344,
         0,
-        0,
-        0,
-        0,
+        -0.5434074401855469,
+        -13.317005157470703,
+        4.216320157051086,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear0",
       "localTransform": [
-        1,
+        2.879037857055664,
         0,
         0,
         0,
         0,
-        1,
+        2.879037857055664,
         0,
         0,
         0,
         0,
-        1,
+        2.879037857055664,
         0,
-        0,
-        0,
-        0,
+        -2.566099166870117,
+        -1.6602769196033478,
+        -10.156770706176758,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1868,42 +1868,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        2.879037857055664,
         0,
         0,
         0,
         0,
-        1,
+        2.879037857055664,
         0,
         0,
         0,
         0,
-        1,
+        2.879037857055664,
         0,
-        0,
-        0,
-        0,
+        -2.566099166870117,
+        -1.6602769196033478,
+        -10.156770706176758,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear1",
       "localTransform": [
-        1,
+        1.761117935180664,
         0,
         0,
         0,
         0,
-        1,
+        1.761117935180664,
         0,
         0,
         0,
         0,
-        1,
+        1.761117935180664,
         0,
-        0,
-        0,
-        0,
+        -1.376810073852539,
+        -10.84486436843872,
+        -8.120627164840698,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1917,42 +1917,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        1.761117935180664,
         0,
         0,
         0,
         0,
-        1,
+        1.761117935180664,
         0,
         0,
         0,
         0,
-        1,
+        1.761117935180664,
         0,
-        0,
-        0,
-        0,
+        -1.376810073852539,
+        -10.84486436843872,
+        -8.120627164840698,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear2",
       "localTransform": [
-        1,
+        3.442483901977539,
         0,
         0,
         0,
         0,
-        1,
+        3.442483901977539,
         0,
         0,
         0,
         0,
-        1,
+        3.442483901977539,
         0,
-        0,
-        0,
-        0,
+        -2.9625301361083984,
+        -11.67319107055664,
+        5.318775653839111,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1966,42 +1966,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        3.442483901977539,
         0,
         0,
         0,
         0,
-        1,
+        3.442483901977539,
         0,
         0,
         0,
         0,
-        1,
+        3.442483901977539,
         0,
-        0,
-        0,
-        0,
+        -2.9625301361083984,
+        -11.67319107055664,
+        5.318775653839111,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear3",
       "localTransform": [
-        1,
+        2.3165130615234375,
         0,
         0,
         0,
         0,
-        1,
+        2.3165130615234375,
         0,
         0,
         0,
         0,
-        1,
+        2.3165130615234375,
         0,
-        0,
-        0,
-        0,
+        -1.7732391357421875,
+        -3.6351083517074585,
+        11.499842166900635,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2015,42 +2015,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        2.3165130615234375,
         0,
         0,
         0,
         0,
-        1,
+        2.3165130615234375,
         0,
         0,
         0,
         0,
-        1,
+        2.3165130615234375,
         0,
-        0,
-        0,
-        0,
+        -1.7732391357421875,
+        -3.6351083517074585,
+        11.499842166900635,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-liner-hull-panel.mesh.panelrim-t-tear4",
       "localTransform": [
-        1,
+        3.455656051635742,
         0,
         0,
         0,
         0,
-        1,
+        3.455656051635742,
         0,
         0,
         0,
         0,
-        1,
+        3.455656051635742,
         0,
-        0,
-        0,
-        0,
+        -3.3589611053466797,
+        2.3057279884815216,
+        1.5834117233753204,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2064,21 +2064,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-liner-hull-panel.body",
       "worldTransform": [
-        1,
+        3.455656051635742,
         0,
         0,
         0,
         0,
-        1,
+        3.455656051635742,
         0,
         0,
         0,
         0,
-        1,
+        3.455656051635742,
         0,
-        0,
-        0,
-        0,
+        -3.3589611053466797,
+        2.3057279884815216,
+        1.5834117233753204,
         1
       ]
     },
@@ -2141,36 +2141,36 @@
       "uri": "place_aftermath_deb_liner_hull_panel.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 249608,
-    "sha256": "83621c84d9fdbe273fafe812155dcfbfe5f05ba89b8026ce0423ba90cc022bc8",
+    "bytes": 206820,
+    "sha256": "805b658cb9832398b6b10bca6c57c7bfea7e4fcf65c69ee94019570c621c60f8",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.00001621246337890625,
+        0.00001606271232557077,
         0
       ],
       "max": [
-        8.070637702941895,
-        14.500007629394531,
+        8.070637913907447,
+        14.50000764486369,
         13.558157920837402
       ],
       "min": [
-        -8.070637702941895,
-        -14.499975204467773,
+        -8.070637913907447,
+        -14.499975519439039,
         -13.558157920837402
       ],
       "size": [
-        16.14127540588379,
-        28.999982833862305,
+        16.141275827814894,
+        28.999983164302726,
         27.116315841674805
       ]
     },
@@ -2340,21 +2340,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.848891019821167,
           0,
           0,
           0,
           0,
-          1,
+          0.848891019821167,
           0,
           0,
           0,
           0,
-          1,
+          0.848891019821167,
           0,
-          0,
-          0,
-          0,
+          -6.962005615234375,
+          -3.645838975906372,
+          -9.692137718200684,
           1
         ],
         "name": "AftDeck_4_1",
@@ -2367,21 +2367,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.848891019821167,
           0,
           0,
           0,
           0,
-          1,
+          0.848891019821167,
           0,
           0,
           0,
           0,
-          1,
+          0.848891019821167,
           0,
-          0,
-          0,
-          0,
+          -6.962005615234375,
+          -3.645838975906372,
+          -9.692137718200684,
           1
         ],
         "name": "AftDeck_4_2",
@@ -2394,21 +2394,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
-          0,
-          0,
-          0,
+          -4.882852554321289,
+          -3.6075234413146973,
+          -9.66762638092041,
           1
         ],
         "name": "AftDeck_5",
@@ -2421,21 +2421,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
-          0,
-          0,
-          0,
+          -2.3035812973976135,
+          -3.6075234413146973,
+          -9.66762638092041,
           1
         ],
         "name": "AftDeck_6",
@@ -2448,21 +2448,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
-          0,
-          0,
-          0,
+          0.27568817138671875,
+          -3.6075234413146973,
+          -9.66762638092041,
           1
         ],
         "name": "AftDeck_7",
@@ -2475,21 +2475,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
-          0,
-          0,
-          0,
+          2.854961395263672,
+          -3.6075234413146973,
+          -9.66762638092041,
           1
         ],
         "name": "AftDeck_8",
@@ -2502,21 +2502,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
           0,
           0,
           0,
-          1,
+          0.7773146629333496,
           0,
-          0,
-          0,
-          0,
+          5.434228897094727,
+          -3.6075234413146973,
+          -9.66762638092041,
           1
         ],
         "name": "AftDeck_9",
@@ -2529,21 +2529,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
-          0,
-          0,
-          0,
+          -3.514921188354492,
+          12.355445384979248,
+          6.087507009506226,
           1
         ],
         "name": "CommsDish_1",
@@ -2556,21 +2556,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
-          0,
-          0,
-          0,
+          -3.514921188354492,
+          12.355445384979248,
+          6.087507009506226,
           1
         ],
         "name": "CommsDish_2",
@@ -2583,21 +2583,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
           0,
           0,
           0,
-          1,
+          3.099172592163086,
           0,
-          0,
-          0,
-          0,
+          -3.514921188354492,
+          12.355445384979248,
+          6.087507009506226,
           1
         ],
         "name": "CommsDish_3",
@@ -2610,21 +2610,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2509822845458984,
           0,
           0,
           0,
           0,
-          1,
+          1.2509822845458984,
           0,
           0,
           0,
           0,
-          1,
+          1.2509822845458984,
           0,
-          0,
-          0,
-          0,
+          -3.800327181816101,
+          13.157241821289062,
+          6.978000640869141,
           1
         ],
         "name": "CommsDish_Feed_1",
@@ -2637,21 +2637,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2509822845458984,
           0,
           0,
           0,
           0,
-          1,
+          1.2509822845458984,
           0,
           0,
           0,
           0,
-          1,
+          1.2509822845458984,
           0,
-          0,
-          0,
-          0,
+          -3.800327181816101,
+          13.157241821289062,
+          6.978000640869141,
           1
         ],
         "name": "CommsDish_Feed_2",
@@ -2664,21 +2664,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.1907958984375,
           0,
           0,
           0,
           0,
-          1,
+          0.1907958984375,
           0,
           0,
           0,
           0,
-          1,
+          0.1907958984375,
           0,
-          0,
-          0,
-          0,
+          -4.281627655029297,
+          14.366444110870361,
+          6.634320259094238,
           1
         ],
         "name": "CommsDish_Lens",
@@ -2691,21 +2691,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4186344146728516,
           0,
           0,
           0,
           0,
-          1,
+          3.4186344146728516,
           0,
           0,
           0,
           0,
-          1,
+          3.4186344146728516,
           0,
-          0,
-          0,
-          0,
+          -3.424245834350586,
+          12.280566692352295,
+          5.9950480461120605,
           1
         ],
         "name": "CommsDish_Rim_1",
@@ -2718,21 +2718,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4186344146728516,
           0,
           0,
           0,
           0,
-          1,
+          3.4186344146728516,
           0,
           0,
           0,
           0,
-          1,
+          3.4186344146728516,
           0,
-          0,
-          0,
-          0,
+          -3.424245834350586,
+          12.280566692352295,
+          5.9950480461120605,
           1
         ],
         "name": "CommsDish_Rim_2",
@@ -2745,21 +2745,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
-          0,
-          0,
+          2.808849573135376,
+          -0.9786744117736816,
           1
         ],
         "name": "Drum_1",
@@ -2772,21 +2772,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
-          0,
-          0,
+          2.808849573135376,
+          -0.9786744117736816,
           1
         ],
         "name": "Drum_2",
@@ -2799,21 +2799,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
-          0,
-          0,
+          2.808849573135376,
+          -0.9786744117736816,
           1
         ],
         "name": "Drum_3",
@@ -2826,21 +2826,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
           0,
           0,
-          1,
+          8.907959461212158,
           0,
           0,
-          0,
-          0,
+          2.808849573135376,
+          -0.9786744117736816,
           1
         ],
         "name": "Drum_4",
@@ -2853,21 +2853,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2072052955627441,
           0,
           0,
           0,
           0,
-          1,
+          1.2072052955627441,
           0,
           0,
           0,
           0,
-          1,
+          1.2072052955627441,
           0,
-          0,
-          0,
-          0,
+          -0.5920849144458771,
+          -6.459179639816284,
+          12.350952625274658,
           1
         ],
         "name": "panelRim_f_rib0",
@@ -2880,21 +2880,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9084396362304688,
           0,
           0,
           0,
           0,
-          1,
+          0.9084396362304688,
           0,
           0,
           0,
           0,
-          1,
+          0.9084396362304688,
           0,
-          0,
-          0,
-          0,
+          -0.438018798828125,
+          1.69439297914505,
+          7.9875569343566895,
           1
         ],
         "name": "panelRim_f_rib1",
@@ -2907,21 +2907,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1045589447021484,
           0,
           0,
           0,
           0,
-          1,
+          1.1045589447021484,
           0,
           0,
           0,
           0,
-          1,
+          1.1045589447021484,
           0,
-          0,
-          0,
-          0,
+          -0.5400714874267578,
+          3.372260093688965,
+          -4.0187788009643555,
           1
         ],
         "name": "panelRim_f_rib2",
@@ -2934,21 +2934,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3115358352661133,
           0,
           0,
           0,
           0,
-          1,
+          1.3115358352661133,
           0,
           0,
           0,
           0,
-          1,
+          1.3115358352661133,
           0,
-          0,
-          0,
-          0,
+          -0.5862064063549042,
+          -3.397091269493103,
+          -12.246622085571289,
           1
         ],
         "name": "panelRim_f_rib3",
@@ -2961,21 +2961,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0108718872070312,
           0,
           0,
           0,
           0,
-          1,
+          1.0108718872070312,
           0,
           0,
           0,
           0,
-          1,
+          1.0108718872070312,
           0,
-          0,
-          0,
-          0,
+          -0.4559783935546875,
+          -11.642253875732422,
+          -8.02109146118164,
           1
         ],
         "name": "panelRim_f_rib4",
@@ -2988,21 +2988,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2084922790527344,
           0,
           0,
           0,
           0,
-          1,
+          1.2084922790527344,
           0,
           0,
           0,
           0,
-          1,
+          1.2084922790527344,
           0,
-          0,
-          0,
-          0,
+          -0.5434074401855469,
+          -13.317005157470703,
+          4.216320157051086,
           1
         ],
         "name": "panelRim_f_rib5",
@@ -3015,21 +3015,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.879037857055664,
           0,
           0,
           0,
           0,
-          1,
+          2.879037857055664,
           0,
           0,
           0,
           0,
-          1,
+          2.879037857055664,
           0,
-          0,
-          0,
-          0,
+          -2.566099166870117,
+          -1.6602769196033478,
+          -10.156770706176758,
           1
         ],
         "name": "panelRim_t_tear0",
@@ -3042,21 +3042,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.761117935180664,
           0,
           0,
           0,
           0,
-          1,
+          1.761117935180664,
           0,
           0,
           0,
           0,
-          1,
+          1.761117935180664,
           0,
-          0,
-          0,
-          0,
+          -1.376810073852539,
+          -10.84486436843872,
+          -8.120627164840698,
           1
         ],
         "name": "panelRim_t_tear1",
@@ -3069,21 +3069,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.442483901977539,
           0,
           0,
           0,
           0,
-          1,
+          3.442483901977539,
           0,
           0,
           0,
           0,
-          1,
+          3.442483901977539,
           0,
-          0,
-          0,
-          0,
+          -2.9625301361083984,
+          -11.67319107055664,
+          5.318775653839111,
           1
         ],
         "name": "panelRim_t_tear2",
@@ -3096,21 +3096,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3165130615234375,
           0,
           0,
           0,
           0,
-          1,
+          2.3165130615234375,
           0,
           0,
           0,
           0,
-          1,
+          2.3165130615234375,
           0,
-          0,
-          0,
-          0,
+          -1.7732391357421875,
+          -3.6351083517074585,
+          11.499842166900635,
           1
         ],
         "name": "panelRim_t_tear3",
@@ -3123,21 +3123,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.455656051635742,
           0,
           0,
           0,
           0,
-          1,
+          3.455656051635742,
           0,
           0,
           0,
           0,
-          1,
+          3.455656051635742,
           0,
-          0,
-          0,
-          0,
+          -3.3589611053466797,
+          2.3057279884815216,
+          1.5834117233753204,
           1
         ],
         "name": "panelRim_t_tear4",
@@ -3152,19 +3152,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel.glb"
   },
-  "runtimeHash": "8b994d581f28de2e0bfc6dbd5d8a34beca0259def129202bab238289c25d1c4a",
+  "runtimeHash": "d7905b6a90bbbcea8d64e8e45fb7a91c0da92c6eb6b37b4c6c023feaf2fc73b5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          8.070637702941895,
-          14.500007629394531,
+          8.070637913907447,
+          14.50000764486369,
           13.558157920837402
         ],
         "min": [
-          -8.070637702941895,
-          -14.499975204467773,
+          -8.070637913907447,
+          -14.499975519439039,
           -13.558157920837402
         ]
       },

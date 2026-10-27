@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e72048f79e1fd34c8fb3a9a2eec7dc9acd028e8e66f027ad1b5bb84d9b655ce6",
+  "contentHash": "e986a0157edaa7c13764d59e95afafa5ef677381fcacf4873feb4ee1d4341ce7",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1.100000023841858,
-          0.32304057478904724,
+          0.32304057780705536,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.00004057489422848448,
+          -0.00004057791223660567,
           -1.100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "106034b0350f149f1c7421291a64786e5bb9e9099dd69953576e53e1ca87e035",
+      "geometryHash": "8ba75c713380f28a444c099bfee8f0dc799163a7ec0d6d33bd943d8bfee4a63a",
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas.primitive.0",
       "indexCount": 4788,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           -0.49699997901916504,
-          0.15700052678585052,
-          0.012001526542007923
+          0.15700052179234486,
+          0.01200152692073876
         ],
         "min": [
           -0.5429999828338623,
-          0.14699947834014893,
-          -0.012001526542007923
+          0.1469994833336546,
+          -0.01200152692073876
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3574b204c60786cccda0192170e7bb21b3f10fcfc929b53f176a35e5768c6a5",
+      "geometryHash": "b1be2b26f064855ff7f68c213d6f2ab4be615a8e35d757a238accc6a3465f361",
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-powered.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           0.20999999344348907,
-          0.2709980718791485,
+          0.27099807168575774,
           0.20999999344348907
         ],
         "min": [
           -0.20999999344348907,
-          0.2530019173864275,
+          0.25300191757981827,
           -0.20999999344348907
         ]
       },
       "drawMode": 4,
-      "geometryHash": "058802e77b77bb3a7c7ae522864db2956c965c0db6cf022f2ebbff3724645337",
+      "geometryHash": "17d3a95be1c4717679071eda6d1af4dff42d70b33c0eacf7cefac8704fc93e3e",
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-service-lid.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -88,17 +88,17 @@
       "bounds": {
         "max": [
           1.100000023841858,
-          0.32304057478904724,
+          0.32304057780705536,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.00004057489422848448,
+          -0.00004057791223660567,
           -1.100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d1d9b54fbeb7af4f537175642e25b19225df31e6910eed5b80947c0bf55fc62",
+      "geometryHash": "0be151c8cb5e74120c76eee9a451dae7c69260e1191187919e7b89d70cbb773d",
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas.primitive.0",
       "indexCount": 2100,
       "indexed": true,
@@ -113,17 +113,17 @@
       "bounds": {
         "max": [
           -0.49699997901916504,
-          0.15700052678585052,
-          0.012001526542007923
+          0.15700052179234486,
+          0.01200152692073876
         ],
         "min": [
           -0.5429999828338623,
-          0.14699947834014893,
-          -0.012001526542007923
+          0.1469994833336546,
+          -0.01200152692073876
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce273751752f976009f536f091ec3ccdddd77d57bccc29e10455efa15fe7640",
+      "geometryHash": "ed03d57b3688bf52595e5844ae69343a1b9b6abda3a8e1462916e3998bb222a6",
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-powered.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -138,17 +138,17 @@
       "bounds": {
         "max": [
           0.20999999344348907,
-          0.2709980718791485,
+          0.27099807168575774,
           0.20999999344348907
         ],
         "min": [
           -0.20999999344348907,
-          0.2530019173864275,
+          0.25300191757981827,
           -0.20999999344348907
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8752e66f6a0563ebe64938b35c68f9cadbd183cb9aff6bae6c6f723c43c049dc",
+      "geometryHash": "c01b59e49488196c15dc47a5caa9eebe7cf9583927165d8d803f16da507d0af5",
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-service-lid.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -201,20 +201,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-merged-material-atlas",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.16149999994740938,
         0,
         1
       ],
@@ -230,20 +230,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.16149999994740938,
         0,
         1
       ]
@@ -251,20 +251,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-powered",
       "localTransform": [
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
-        0,
-        0,
+        -0.5199999809265137,
+        0.15200000256299973,
         0,
         1
       ],
@@ -281,20 +281,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
-        0,
-        0,
+        -0.5199999809265137,
+        0.15200000256299973,
         0,
         1
       ]
@@ -302,20 +302,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod0-service-lid",
       "localTransform": [
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
-        0,
+        0.011999994632788002,
         0,
         1
       ],
@@ -332,20 +332,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
-        0.25,
+        0.261999994632788,
         0,
         1
       ]
@@ -353,20 +353,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-merged-material-atlas",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.16149999994740938,
         0,
         1
       ],
@@ -382,20 +382,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
-        0,
+        0.16149999994740938,
         0,
         1
       ]
@@ -403,20 +403,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-powered",
       "localTransform": [
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
-        0,
-        0,
+        -0.5199999809265137,
+        0.15200000256299973,
         0,
         1
       ],
@@ -433,20 +433,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.023000001907348633,
         0,
-        0,
-        0,
+        -0.5199999809265137,
+        0.15200000256299973,
         0,
         1
       ]
@@ -454,20 +454,20 @@
     {
       "id": "sf.render.works-conduit-power-junction.mesh.lod1-service-lid",
       "localTransform": [
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
-        0,
+        0.011999994632788002,
         0,
         1
       ],
@@ -484,20 +484,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-conduit-power-junction.body",
       "worldTransform": [
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
         0,
         0,
-        1,
+        0.20999999344348907,
         0,
         0,
-        0.25,
+        0.261999994632788,
         0,
         1
       ]
@@ -561,14 +561,14 @@
       "uri": "place_works_conduit_power_junction.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 564452,
-    "sha256": "155929ee24df28e392850a5d1d5dc41411f50e47c9ddc12e4b8434d1a3065309",
+    "bytes": 531196,
+    "sha256": "b647f251e36e43c8953fc479f229e26d369666d705f07a62f373c7c1c6189823",
     "uri": "render.glb"
   },
   "runtime": {
@@ -580,17 +580,17 @@
       ],
       "max": [
         1.100000023841858,
-        0.32304057478904724,
+        0.32304057780705536,
         1.100000023841858
       ],
       "min": [
         -1.100000023841858,
-        -0.00004057489422848448,
+        -0.00004057791223660567,
         -1.100000023841858
       ],
       "size": [
         2.200000047683716,
-        0.3230811496832757,
+        0.32308115571929197,
         2.200000047683716
       ]
     },
@@ -710,20 +710,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
-          0,
+          0.16149999994740938,
           0,
           1
         ],
@@ -737,20 +737,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
-          0,
+          0.16149999994740938,
           0,
           1
         ],
@@ -764,20 +764,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.023000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.023000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.023000001907348633,
           0,
-          0,
-          0,
+          -0.5199999809265137,
+          0.15200000256299973,
           0,
           1
         ],
@@ -791,20 +791,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.023000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.023000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.023000001907348633,
           0,
-          0,
-          0,
+          -0.5199999809265137,
+          0.15200000256299973,
           0,
           1
         ],
@@ -818,20 +818,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.20999999344348907,
           0,
           0,
           0,
           0,
-          1,
+          0.20999999344348907,
           0,
           0,
           0,
           0,
-          1,
+          0.20999999344348907,
           0,
           0,
-          0.25,
+          0.261999994632788,
           0,
           1
         ],
@@ -845,20 +845,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.20999999344348907,
           0,
           0,
           0,
           0,
-          1,
+          0.20999999344348907,
           0,
           0,
           0,
           0,
-          1,
+          0.20999999344348907,
           0,
           0,
-          0.25,
+          0.261999994632788,
           0,
           1
         ],
@@ -874,19 +874,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb"
   },
-  "runtimeHash": "57e4ad3b90c7b45640854adfab7a30423e159dccecb26c0a0f864a2448e9f266",
+  "runtimeHash": "247bfa602d9c4854fa1c0c378a001373162e90db8214785d1d65f828e57f4794",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.100000023841858,
-          0.32304057478904724,
+          0.32304057780705536,
           1.100000023841858
         ],
         "min": [
           -1.100000023841858,
-          -0.00004057489422848448,
+          -0.00004057791223660567,
           -1.100000023841858
         ]
       },

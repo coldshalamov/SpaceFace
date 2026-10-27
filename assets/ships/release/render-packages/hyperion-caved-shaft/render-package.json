@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d9bc0a84294556defda92233c4b8b5d8f461f786f1493640a473ba618ab763b",
+  "contentHash": "f9a533b3fb3c97eaa0772df5d0ba97a0600844cbcfae971d9f6baaa63972bf12",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1,
-          0.3199999928474426,
+          0.3200390601158506,
           1
         ],
         "min": [
           -1,
-          0,
+          -0.00003906726840796626,
           -1
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01e32e4fb2e5b37f4f2edab32d43d96bb34685a2f4f467a77cb58f6bd16eda3e",
+      "geometryHash": "39c63ee176383e24804666e5fa6028d51601fc1825c39931cde8c9c9afdb5b0e",
       "id": "sf.render.hyperion-caved-shaft.mesh.cavedshaftrim.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           1.1299999952316284,
-          0.25,
-          0.04500000178813934
+          0.25003143304431247,
+          0.04500259433051841
         ],
         "min": [
           -0.33000001311302185,
-          0.1899999976158142,
-          -0.04500000178813934
+          0.18996856457150174,
+          -0.04500259433051841
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfcdcea2b92d6ced82a09652e9044013f69576fe4d35e5cf77fe1abb63be49f6",
+      "geometryHash": "6dd9afab9142afe179db2fcdf6275d208cba086223c24747e9bd208aaadf1b47",
       "id": "sf.render.hyperion-caved-shaft.mesh.fallenboremast.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -96,7 +96,7 @@
         1,
         0,
         0,
-        0,
+        0.1599999964237213,
         0,
         1
       ],
@@ -124,7 +124,7 @@
         1,
         0,
         0,
-        0,
+        0.1599999964237213,
         0,
         1
       ]
@@ -132,20 +132,20 @@
     {
       "id": "sf.render.hyperion-caved-shaft.mesh.fallenboremast",
       "localTransform": [
-        1,
+        0.7300000041723251,
         0,
         0,
         0,
         0,
-        1,
+        0.7300000041723251,
         0,
         0,
         0,
         0,
-        1,
+        0.7300000041723251,
         0,
-        0,
-        0,
+        0.3999999910593033,
+        0.2199999988079071,
         0,
         1
       ],
@@ -160,20 +160,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hyperion-caved-shaft.body",
       "worldTransform": [
-        1,
+        0.7300000041723251,
         0,
         0,
         0,
         0,
-        1,
+        0.7300000041723251,
         0,
         0,
         0,
         0,
-        1,
+        0.7300000041723251,
         0,
-        0,
-        0,
+        0.3999999910593033,
+        0.2199999988079071,
         0,
         1
       ]
@@ -237,14 +237,14 @@
       "uri": "place_hyperion_caved_shaft.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 15784,
-    "sha256": "510270e19f0e1395ce8db62a81e6fc38cead9df63aed580656417810ffaa2e8d",
+    "bytes": 7004,
+    "sha256": "d5aea06a9cb28366484a5ca8b6aea755eec8d8e057577ab0776578421f57fcaa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -256,17 +256,17 @@
       ],
       "max": [
         1.1299999952316284,
-        0.3199999928474426,
+        0.3200390601158506,
         1
       ],
       "min": [
         -1,
-        0,
+        -0.00003906726840796626,
         -1
       ],
       "size": [
         2.1299999952316284,
-        0.3199999928474426,
+        0.32007812738425856,
         2
       ]
     },
@@ -307,7 +307,7 @@
           1,
           0,
           0,
-          0,
+          0.1599999964237213,
           0,
           1
         ],
@@ -320,20 +320,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7300000041723251,
           0,
           0,
           0,
           0,
-          1,
+          0.7300000041723251,
           0,
           0,
           0,
           0,
-          1,
+          0.7300000041723251,
           0,
-          0,
-          0,
+          0.3999999910593033,
+          0.2199999988079071,
           0,
           1
         ],
@@ -348,19 +348,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hyperion_caved_shaft.glb"
   },
-  "runtimeHash": "3b58c3a47a3c72af3db4ce19d894a490f29180110678382b20875f58cd08d76e",
+  "runtimeHash": "dd80e2d9fd0ffeac95372ee653d413f256f2f4921c99a33cf1dc06c9074ac14e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           1.1299999952316284,
-          0.3199999928474426,
+          0.3200390601158506,
           1
         ],
         "min": [
           -1,
-          0,
+          -0.00003906726840796626,
           -1
         ]
       },

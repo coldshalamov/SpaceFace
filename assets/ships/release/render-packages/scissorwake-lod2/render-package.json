@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "45393fcc96c7847c7220ba092a28b98b4cb5bf4a0a2d6afeffc9a57fd897552c",
+  "contentHash": "21d2238b40f9bac4e751e7c56e0e96646816a8d132e9f628d64fefd0d0a9c653",
   "dynamicGroups": [
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-port-beacon-amber.dynamic",
@@ -413,17 +413,17 @@
       "bounds": {
         "max": [
           1.9996848106384277,
-          1.646154522895813,
-          2.846315860748291
+          1.6461545524334642,
+          2.8463157981076606
         ],
         "min": [
           -9.8202543258667,
-          -1.1978164911270142,
-          -2.846315860748291
+          -1.1978165206646654,
+          -2.8463157981076606
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e4eb59373f1ae08239ca61251143819e1aa4d566c8898d03453bde2a82a410a",
+      "geometryHash": "8a5bfc6414de740d53da72a0df7cac881e687288d72d41ea54a2361ae8cba01d",
       "id": "sf.render.scissorwake-lod2.node.collision-scissorwake-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -438,17 +438,17 @@
       "bounds": {
         "max": [
           0.6972550749778748,
-          2.7204627990722656,
-          3.1980831623077393
+          2.7204628065875927,
+          3.1980832412160884
         ],
         "min": [
           -8.927783012390137,
-          0.050643447786569595,
-          -3.196676015853882
+          0.050643440271242346,
+          -3.196676094762231
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71a78d091da26c2ca1ca95294b34620da6a81593fb86ee10dfc0bc58d4643f04",
+      "geometryHash": "bde1652397a03bd3ef73704bdf70a3e0b837ae11dcf322cddcf70c496185b022",
       "id": "sf.render.scissorwake-lod2.node.lod2-brushedmetal.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -462,18 +462,18 @@
     {
       "bounds": {
         "max": [
-          -4.999479293823242,
-          2.0498979091644287,
+          -4.999479282128602,
+          2.0498979499674252,
           0.9215723276138306
         ],
         "min": [
-          -6.700348854064941,
-          1.6791490316390991,
+          -6.700348865759581,
+          1.6791489908361026,
           -0.9113080501556396
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a8215c652cf7298f234a51e10d64cecd910e06b657db2aa8cb6e32d244c19ef",
+      "geometryHash": "a6a27638d59d7b9fcbbce8802385f6e3e7b4ef81854004ea417bbb067d7a335a",
       "id": "sf.render.scissorwake-lod2.node.lod2-canopy.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -487,18 +487,18 @@
     {
       "bounds": {
         "max": [
-          -9.4847993850708,
-          0.646204948425293,
+          -9.484799305411185,
+          0.6462049470600998,
           2.2529027462005615
         ],
         "min": [
-          -9.820704460144043,
-          -0.8591634631156921,
+          -9.820704539803659,
+          -0.859163461750499,
           -2.265408754348755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f8bbd9bf123ac5363bda0b98b797080b3626b9c81374b892e03755bd0063c3b2",
+      "geometryHash": "ce805dc6cfad70d0c8f6d710c0f69ab3db6e1438435bc2581ac1cd50304600f1",
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -513,17 +513,17 @@
       "bounds": {
         "max": [
           -3.9574999809265137,
-          0.5797514319419861,
+          0.5797514520133277,
           -2.4574999809265137
         ],
         "min": [
           -4.042500019073486,
-          0.5202485918998718,
+          0.5202485718285302,
           -2.5425000190734863
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9617e4a39926ce7d814332a6acb82b388baf02e7028c9496b8a2ba52ce7b3e1b",
+      "geometryHash": "cbd79a7e38bac11bdfddf61540dce2e297362127d8267f4a2f015e8d10c771a0",
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -538,17 +538,17 @@
       "bounds": {
         "max": [
           -3.9574999809265137,
-          0.5797514319419861,
+          0.5797514520133277,
           2.5425000190734863
         ],
         "min": [
           -4.042500019073486,
-          0.5202485918998718,
+          0.5202485718285302,
           2.4574999809265137
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eeeb9b523965b12f2d8e1bed2b1ffe9ce07db53895a99bd195760d8089cca8a8",
+      "geometryHash": "1c75907b87c86753445833b4d672117448eed2eff17ce80d6c7f13e4b6957020",
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -563,17 +563,17 @@
       "bounds": {
         "max": [
           1.9988291263580322,
-          1.645982265472412,
-          2.549783706665039
+          1.6459822369334165,
+          2.549783868796512
         ],
         "min": [
           -9.64640998840332,
-          -0.7962945699691772,
-          -2.549783706665039
+          -0.7962945414301816,
+          -2.549783868796512
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1eebe9fc29e0b2250f211a3601acc807719113de39f59feba98133a7332c244",
+      "geometryHash": "b1edfb72e919b095498cbbe58fb80fe9d44e71539acf0348daf3b320fde2372f",
       "id": "sf.render.scissorwake-lod2.node.lod2-hull.primitive.0",
       "indexCount": 531,
       "indexed": true,
@@ -588,17 +588,17 @@
       "bounds": {
         "max": [
           1.995366096496582,
-          2.644364833831787,
-          2.839604377746582
+          2.644364804550621,
+          2.839604393783282
         ],
         "min": [
           -9.820662498474121,
-          -1.1971877813339233,
-          -2.839604377746582
+          -1.1971877520527572,
+          -2.839604393783282
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d2487d37557d0d405865c1663c26713e18d413f499c15d28267d76de8eff3ec",
+      "geometryHash": "c23d9ec76dc48a16b1d03d11c1c2534df1fcc7903fc4025b033d7fd396a6d982",
       "id": "sf.render.scissorwake-lod2.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1857,
       "indexed": true,
@@ -648,7 +648,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c9aa3a2f2527afe93d726ce94fb24c7d08a97fad176852c30bbe56bc92c37ae",
+      "geometryHash": "9d707fe4d28a905b7f929928592f9c0a7d4155846797afebb7c07c0ebbe964c7",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-port-brushedmetal.primitive.0",
       "indexCount": 165,
       "indexed": true,
@@ -698,7 +698,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a31d311a9c9154d0d68354e30d2665da0e5fa7b8d3ac63c834d562685390747f",
+      "geometryHash": "1cf0e2f8ca4e705f0cae1790f3491dbe0c12131a792cb9e73d28e9374f3bba89",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-port-mechanicaldark.primitive.0",
       "indexCount": 696,
       "indexed": true,
@@ -748,7 +748,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f129ebed50e2970dd78816ae2d6310d928225e612c5792da2b0fb51a5046c60d",
+      "geometryHash": "b4092e9232db4cbbe96beac8c8d4f91db73d213741d0ce5e7a0ceb0512c4f450",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-starboard-brushedmetal.primitive.0",
       "indexCount": 165,
       "indexed": true,
@@ -798,7 +798,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a522b052d54dfd4866278509faf40bc3ace715cd0ccd55acc30a4dbbae0beb0e",
+      "geometryHash": "b2043ec185025cb22bd67d2e3e42d19118f519a7010894eda2f5e328cd400e12",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-blade-starboard-mechanicaldark.primitive.0",
       "indexCount": 696,
       "indexed": true,
@@ -823,7 +823,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3c60e0a8e4de4b8c857bdd2675d675c581b1e2aa1b76115b61ebe44edac065a",
+      "geometryHash": "b45f4bb4cff8ce35b5c06299b4e5aee8c039eff3b0820dceca4817c84c3b4186",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-spool-armor.primitive.0",
       "indexCount": 450,
       "indexed": true,
@@ -848,7 +848,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "17800f3ad292e71a25631aa148d242d8adf6281e46ba12b87c3eded51ddfe0d0",
+      "geometryHash": "1a1adab5c713be27f038f282194e5e2788956a8f746cf3b054b21634dfd3a7bd",
       "id": "sf.render.scissorwake-lod2.node.lod2-motion-scissorwake-spool-brushedmetal.primitive.0",
       "indexCount": 906,
       "indexed": true,
@@ -1089,20 +1089,20 @@
     {
       "id": "sf.render.scissorwake-lod2.node.collision-scissorwake-core",
       "localTransform": [
-        1,
+        5.9099695682525635,
         0,
         0,
         0,
         0,
-        1,
+        5.9099695682525635,
         0,
         0,
         0,
         0,
-        1,
+        5.9099695682525635,
         0,
-        0,
-        0,
+        -3.9102847576141357,
+        0.22416901588439941,
         0,
         1
       ],
@@ -1117,20 +1117,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        5.9099695682525635,
         0,
         0,
         0,
         0,
-        1,
+        5.9099695682525635,
         0,
         0,
         0,
         0,
-        1,
+        5.9099695682525635,
         0,
-        0,
-        0,
+        -3.9102847576141357,
+        0.22416901588439941,
         0,
         1
       ]
@@ -1138,21 +1138,21 @@
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-brushedmetal",
       "localTransform": [
-        1,
+        4.812519043684006,
         0,
         0,
         0,
         0,
-        1,
+        4.812519043684006,
         0,
         0,
         0,
         0,
-        1,
+        4.812519043684006,
         0,
-        0,
-        0,
-        0,
+        -4.115263968706131,
+        1.3855531234294176,
+        0.0007035732269287109,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1166,42 +1166,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        4.812519043684006,
         0,
         0,
         0,
         0,
-        1,
+        4.812519043684006,
         0,
         0,
         0,
         0,
-        1,
+        4.812519043684006,
         0,
-        0,
-        0,
-        0,
+        -4.115263968706131,
+        1.3855531234294176,
+        0.0007035732269287109,
         1
       ]
     },
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-canopy",
       "localTransform": [
-        1,
+        0.9164401888847351,
         0,
         0,
         0,
         0,
-        1,
+        0.9164401888847351,
         0,
         0,
         0,
         0,
-        1,
+        0.9164401888847351,
         0,
-        0,
-        0,
-        0,
+        -5.849914073944092,
+        1.864523470401764,
+        0.005132138729095459,
         1
       ],
       "materialPipelineKey": "blend",
@@ -1215,42 +1215,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        0.9164401888847351,
         0,
         0,
         0,
         0,
-        1,
+        0.9164401888847351,
         0,
         0,
         0,
         0,
-        1,
+        0.9164401888847351,
         0,
-        0,
-        0,
-        0,
+        -5.849914073944092,
+        1.864523470401764,
+        0.005132138729095459,
         1
       ]
     },
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-drive-core",
       "localTransform": [
-        1,
+        2.259155750274658,
         0,
         0,
         0,
         0,
-        1,
+        2.259155750274658,
         0,
         0,
         0,
         0,
-        1,
+        2.259155750274658,
         0,
-        0,
-        0,
-        0,
+        -9.652751922607422,
+        -0.10647925734519958,
+        -0.00625300407409668,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1264,42 +1264,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        2.259155750274658,
         0,
         0,
         0,
         0,
-        1,
+        2.259155750274658,
         0,
         0,
         0,
         0,
-        1,
+        2.259155750274658,
         0,
-        0,
-        0,
-        0,
+        -9.652751922607422,
+        -0.10647925734519958,
+        -0.00625300407409668,
         1
       ]
     },
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-nav-port",
       "localTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -4,
+        0.550000011920929,
+        -2.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1313,42 +1313,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -4,
+        0.550000011920929,
+        -2.5,
         1
       ]
     },
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -4,
+        0.550000011920929,
+        2.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1362,41 +1362,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -4,
+        0.550000011920929,
+        2.5,
         1
       ]
     },
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-hull",
       "localTransform": [
-        1,
+        5.822619557380676,
         0,
         0,
         0,
         0,
-        1,
+        5.822619557380676,
         0,
         0,
         0,
         0,
-        1,
+        5.822619557380676,
         0,
-        0,
-        0,
+        -3.823790431022644,
+        0.42484384775161743,
         0,
         1
       ],
@@ -1411,20 +1411,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        5.822619557380676,
         0,
         0,
         0,
         0,
-        1,
+        5.822619557380676,
         0,
         0,
         0,
         0,
-        1,
+        5.822619557380676,
         0,
-        0,
-        0,
+        -3.823790431022644,
+        0.42484384775161743,
         0,
         1
       ]
@@ -1432,20 +1432,20 @@
     {
       "id": "sf.render.scissorwake-lod2.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        5.908014297485352,
         0,
         0,
         0,
         0,
-        1,
+        5.908014297485352,
         0,
         0,
         0,
         0,
-        1,
+        5.908014297485352,
         0,
-        0,
-        0,
+        -3.9126482009887695,
+        0.7235885262489319,
         0,
         1
       ],
@@ -1460,20 +1460,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.scissorwake-lod2.body",
       "worldTransform": [
-        1,
+        5.908014297485352,
         0,
         0,
         0,
         0,
-        1,
+        5.908014297485352,
         0,
         0,
         0,
         0,
-        1,
+        5.908014297485352,
         0,
-        0,
-        0,
+        -3.9126482009887695,
+        0.7235885262489319,
         0,
         1
       ]
@@ -2577,21 +2577,21 @@
       "uri": "scissorwake_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 443716,
-    "sha256": "8b9a069f3e551958c6f29a40810be25eff32469ba9279d75ec2fc418113fa5c5",
+    "bytes": 401804,
+    "sha256": "240cdcd9608b490b4133db75e8f40a5d76d96005b90e14850c60481dcf0eef00",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        1.5245704650878906,
-        1.2154085040092468,
+        1.5245704252580827,
+        1.215408489240421,
         -0.0000010532552017217256
       ],
       "max": [
@@ -2600,13 +2600,13 @@
         4.834008843235113
       ],
       "min": [
-        -9.820704460144043,
-        -1.1978164911270142,
+        -9.820704539803659,
+        -1.1978165206646654,
         -4.834010949745516
       ],
       "size": [
-        22.690549850463867,
-        4.826449990272522,
+        22.69054993012348,
+        4.826450019810173,
         9.66801979298063
       ]
     },
@@ -3303,21 +3303,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.812519043684006,
           0,
           0,
           0,
           0,
-          1,
+          4.812519043684006,
           0,
           0,
           0,
           0,
-          1,
+          4.812519043684006,
           0,
-          0,
-          0,
-          0,
+          -4.115263968706131,
+          1.3855531234294176,
+          0.0007035732269287109,
           1
         ],
         "name": "LOD2_BrushedMetal",
@@ -3330,21 +3330,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          0.9164401888847351,
           0,
           0,
           0,
           0,
-          1,
+          0.9164401888847351,
           0,
           0,
           0,
           0,
-          1,
+          0.9164401888847351,
           0,
-          0,
-          0,
-          0,
+          -5.849914073944092,
+          1.864523470401764,
+          0.005132138729095459,
           1
         ],
         "name": "LOD2_CANOPY",
@@ -3357,21 +3357,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.259155750274658,
           0,
           0,
           0,
           0,
-          1,
+          2.259155750274658,
           0,
           0,
           0,
           0,
-          1,
+          2.259155750274658,
           0,
-          0,
-          0,
-          0,
+          -9.652751922607422,
+          -0.10647925734519958,
+          -0.00625300407409668,
           1
         ],
         "name": "LOD2_HOOK_DRIVE_CORE",
@@ -3380,21 +3380,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            2.259155750274658,
             0,
             0,
             0,
             0,
-            1,
+            2.259155750274658,
             0,
             0,
             0,
             0,
-            1,
+            2.259155750274658,
             0,
-            0,
-            0,
-            0,
+            -9.652751922607422,
+            -0.10647925734519958,
+            -0.00625300407409668,
             1
           ],
           "lod": "lod2"
@@ -3403,21 +3403,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
-          0,
-          0,
-          0,
+          -4,
+          0.550000011920929,
+          -2.5,
           1
         ],
         "name": "LOD2_HOOK_NAV_PORT",
@@ -3431,21 +3431,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
-          0,
-          0,
-          0,
+          -4,
+          0.550000011920929,
+          2.5,
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
@@ -3459,20 +3459,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.822619557380676,
           0,
           0,
           0,
           0,
-          1,
+          5.822619557380676,
           0,
           0,
           0,
           0,
-          1,
+          5.822619557380676,
           0,
-          0,
-          0,
+          -3.823790431022644,
+          0.42484384775161743,
           0,
           1
         ],
@@ -3486,20 +3486,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.908014297485352,
           0,
           0,
           0,
           0,
-          1,
+          5.908014297485352,
           0,
           0,
           0,
           0,
-          1,
+          5.908014297485352,
           0,
-          0,
-          0,
+          -3.9126482009887695,
+          0.7235885262489319,
           0,
           1
         ],
@@ -3834,7 +3834,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scissorwake_lod2.glb"
   },
-  "runtimeHash": "ae440eae052430837c27c5d0aa5526fc4235a050cbc7a306a6c3900ae6f54fc2",
+  "runtimeHash": "2cf31794e9f785cb915fcab89e27b210266d189ccbbbece475e79376765afd3c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3845,8 +3845,8 @@
           4.834008843235113
         ],
         "min": [
-          -9.820704460144043,
-          -1.1978164911270142,
+          -9.820704539803659,
+          -1.1978165206646654,
           -4.834010949745516
         ]
       },

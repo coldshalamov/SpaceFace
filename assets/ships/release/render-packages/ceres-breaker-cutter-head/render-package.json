@@ -391,7 +391,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8c9e87f4ad61b48d2eddbe3b667d67317140df6fde415af1f43ff7a453cbc6a6",
+  "contentHash": "92991dbb1cbf6de02ef55521419e7461a1ad371dc46ef53e582d77103696f375",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.dynamic",
@@ -489,17 +489,17 @@
       "bounds": {
         "max": [
           2,
-          2.0001220703125,
+          2.000122074037904,
           3
         ],
         "min": [
           -4,
-          -2.0001220703125,
+          -2.000122074037904,
           -3
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e75cdb88795fdb9f691d24df76acb715fd50efc0a0f9b7e81ff366df7493cfa1",
+      "geometryHash": "23e78489fe0e0f3192797e01133ff8bc0ede5d3b5d69c5f54f13edca0c75510a",
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-motor.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -513,18 +513,18 @@
     {
       "bounds": {
         "max": [
-          4.00006103515625,
+          4.000061037018952,
           1.5,
-          -0.99993896484375
+          -0.999938962981048
         ],
         "min": [
-          1.99993896484375,
+          1.999938962981048,
           -1.5,
-          -3.00006103515625
+          -3.000061037018952
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eedb2271243716a8b4fb80c5a01555f21f8a81af9bd4de395d7c0934dc3fc859",
+      "geometryHash": "fa362bda555bae7ba243ca8f651b65913beaa930e1f7a14df65c01579bda8611",
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -538,18 +538,18 @@
     {
       "bounds": {
         "max": [
-          4.00006103515625,
+          4.000061037018952,
           1.5,
-          3.00006103515625
+          3.000061037018952
         ],
         "min": [
-          1.99993896484375,
+          1.999938962981048,
           -1.5,
-          0.99993896484375
+          0.999938962981048
         ]
       },
       "drawMode": 4,
-      "geometryHash": "622f2fa2b68330fa45255bf83a1d516e4a84a590b77eb279b6b60cdaa40ae705",
+      "geometryHash": "fa362bda555bae7ba243ca8f651b65913beaa930e1f7a14df65c01579bda8611",
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -564,17 +564,17 @@
       "bounds": {
         "max": [
           3.981077194213867,
-          1.150184154510498,
-          2.9947595596313477
+          1.1501842278434748,
+          2.9947596257099733
         ],
         "min": [
           -3.9585068225860596,
-          -1.900184154510498,
-          -2.9947595596313477
+          -1.9001842278434748,
+          -2.9947596257099733
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2da1f0fc577f26a4686b3ba34c5cf90014a6d12268712c813d7c73483827daf2",
+      "geometryHash": "21d3245cd59abc1385c52d73386d427cd16354f1343c65e4a2e7deed37e9c036",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-armor.primitive.0",
       "indexCount": 6036,
       "indexed": true,
@@ -588,18 +588,18 @@
     {
       "bounds": {
         "max": [
-          3.9750213623046875,
-          0.7000564932823181,
+          3.975021410640349,
+          0.7000564592425306,
           1.125
         ],
         "min": [
-          1.9249787330627441,
-          -0.7000564932823181,
+          1.9249786847270827,
+          -0.7000564592425306,
           -1.125
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28713f7a4f3acec3b6a443807e40a84e974612eb08dbce97274c64e4f93ac356",
+      "geometryHash": "8f3cdda96c68bef601f00c01480c20b950c4fb617521dcfc41152c052093f007",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber.primitive.0",
       "indexCount": 1404,
       "indexed": true,
@@ -614,17 +614,17 @@
       "bounds": {
         "max": [
           4,
-          1.850171685218811,
-          2.5750298500061035
+          1.8501716904576604,
+          2.575029755546739
         ],
         "min": [
           -4,
-          -1.4001716375350952,
-          -2.5750298500061035
+          -1.4001716427739446,
+          -2.575029755546739
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c4fcbf43bbec4af94d5e4ae5bb640a2fff5de09622633eaf8411a46234500e6",
+      "geometryHash": "cb1da9f96c40a980375009bb49f63ef61946dba9d461f97cc6408333dc1fae6d",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal.primitive.0",
       "indexCount": 6024,
       "indexed": true,
@@ -649,7 +649,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "geometryHash": "e8b0089d39aa68a67fc8f71dd8776a8ad3c744e1d6912ebe075becd7a3037c3a",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -674,7 +674,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "geometryHash": "076756ca649226c8eebdf13d87b4f53138e3f8c99e57d9c6c262b27436c2b222",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -699,7 +699,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "geometryHash": "f4cc212fb5d74f5df502827cd4a4501682bb9a6db77e4dcd4a49c854539b729e",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -724,7 +724,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "geometryHash": "380ca08b91d14d1449eb0614850b8faefe5fef9ef699808c30541f933edf3cc8",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -749,7 +749,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "geometryHash": "d183dc118a0b697cdbfb0b56a72e29ffd2f933f38c943a4f3a242d2a37ec1e64",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -774,7 +774,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "geometryHash": "8d2efde16c553821a5d9c7e3dc0256fa5d83a1700c3098ecc4ecadf32de82b8f",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -789,17 +789,17 @@
       "bounds": {
         "max": [
           2,
-          1.899871826171875,
-          2.250229597091675
+          1.899871739263366,
+          2.2502295996237853
         ],
         "min": [
           -3.959929943084717,
-          -1.5752838850021362,
-          -2.250229597091675
+          -1.5752837980936272,
+          -2.2502295996237853
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4348f47c5286ed6a5ae0ae64bb8d4433ffef52e9ab65c0054489445bc7b0c6c5",
+      "geometryHash": "8819fa356a534f1eb57485b0f069b4f179414cacf79b7b4d5739c6383f72935d",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hull.primitive.0",
       "indexCount": 2094,
       "indexed": true,
@@ -813,18 +813,18 @@
     {
       "bounds": {
         "max": [
-          -0.10999999195337296,
-          1.8399957418441772,
+          -0.10999998822808266,
+          1.8399957203412474,
           0.14000000059604645
         ],
         "min": [
-          -0.38999998569488525,
-          1.800004243850708,
+          -0.38999998942017555,
+          1.8000042653536379,
           -0.14000000059604645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfc7ae0f4d2c5fb7bed11427cdd6f54924fa5eef7b15a8fe11920272ac590f98",
+      "geometryHash": "1da196be3a871be98a482a61a9c8b005a211a285c4d4ad65cd3ada2bb2ee5fab",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -838,18 +838,18 @@
     {
       "bounds": {
         "max": [
-          0.33981069922447205,
-          1.999990463256836,
+          0.33981073784415994,
+          1.9999904791516503,
           2.944999933242798
         ],
         "min": [
-          -3.9998106956481934,
-          -1.1999905109405518,
+          -3.9998107342678813,
+          -1.1999905268353661,
           -2.944999933242798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "490232fb2b2dfea1c08913231f5a360ad58ee87e946d9776123d4cbd956a5605",
+      "geometryHash": "48ecca1a1627ca42c5174a00a6dfcf3f4562cb59db98165b268ec78adf42d289",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical.primitive.0",
       "indexCount": 2484,
       "indexed": true,
@@ -864,17 +864,17 @@
       "bounds": {
         "max": [
           2,
-          1.9625153541564941,
-          2.9450666904449463
+          1.9625154283735267,
+          2.945066682943205
         ],
         "min": [
           -4,
-          -1.4173483848571777,
-          -2.9450666904449463
+          -1.4173484590742103,
+          -2.945066682943205
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06b02eec949591b6276c53349c50ddf56a49262fb36fb4c59a3fc81f7de1db96",
+      "geometryHash": "6d1722506a1b7a9363922355615aec5eb1a42c87e051187db9779af82b1f096c",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 3198,
       "indexed": true,
@@ -888,18 +888,18 @@
     {
       "bounds": {
         "max": [
-          -0.5751115679740906,
-          1.899949550628662,
+          -0.5751115856761262,
+          1.899949593874636,
           2.08168625831604
         ],
         "min": [
-          -1.4248883724212646,
-          1.3063256740570068,
+          -1.424888354719229,
+          1.306325630811033,
           -2.08168625831604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6bd41053cab63afeca28b0a984fef9db75d829a6179d127240fa28bcc3c29489",
+      "geometryHash": "e2a8d9db80001a9cc01fb6557f198158021b06e46ccf11a548978e0431254745",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-warning.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -914,17 +914,17 @@
       "bounds": {
         "max": [
           3.984809637069702,
-          1.1498053073883057,
-          2.993265151977539
+          1.1498052468832336,
+          2.9932652945870224
         ],
         "min": [
           -3.947760581970215,
-          -1.8998053073883057,
-          -2.9928994178771973
+          -1.8998052468832336,
+          -2.9928995604866806
         ]
       },
       "drawMode": 4,
-      "geometryHash": "678c08be12fe8dfd917fc621de1aa213fce684ea9f19e6cbc7be1c80a29837e9",
+      "geometryHash": "2060a29e39a404bbb128cfbd2d3860bdf7be5bbb7f4bda7aecce820f5947c6b2",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-armor.primitive.0",
       "indexCount": 2664,
       "indexed": true,
@@ -938,18 +938,18 @@
     {
       "bounds": {
         "max": [
-          3.9724555015563965,
-          0.6962417364120483,
+          3.9724555558203254,
+          0.6962417317416505,
           1.1211857795715332
         ],
         "min": [
-          1.9249836206436157,
-          -0.6974818110466003,
+          1.9249835663796868,
+          -0.6974818063762025,
           -1.1211857795715332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fb632c7991195b8fbdfa050f947d03ccd605ddd60887a54f34eefc4d73d063d",
+      "geometryHash": "86f00deb8c56ed2a128e00e539e1c78271a19d4404aa47f612a58d3c3a2b856a",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -964,17 +964,17 @@
       "bounds": {
         "max": [
           4,
-          1.3961126804351807,
-          2.5701358318328857
+          1.3961126670870292,
+          2.5701359141846876
         ],
         "min": [
           -3.996927499771118,
-          -1.3961126804351807,
-          -2.5701358318328857
+          -1.3961126670870292,
+          -2.5701359141846876
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a5ca0b1a497908646032411a39768d4025480d70d1ef6dcc81a663e189167d8",
+      "geometryHash": "32ffd47a96450bf19862293697f34b0bbbd9e09c1862e1c97de3da44bf43d97d",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal.primitive.0",
       "indexCount": 1374,
       "indexed": true,
@@ -999,7 +999,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "geometryHash": "e8b0089d39aa68a67fc8f71dd8776a8ad3c744e1d6912ebe075becd7a3037c3a",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1024,7 +1024,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "geometryHash": "076756ca649226c8eebdf13d87b4f53138e3f8c99e57d9c6c262b27436c2b222",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1049,7 +1049,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "geometryHash": "f4cc212fb5d74f5df502827cd4a4501682bb9a6db77e4dcd4a49c854539b729e",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1074,7 +1074,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "geometryHash": "380ca08b91d14d1449eb0614850b8faefe5fef9ef699808c30541f933edf3cc8",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1099,7 +1099,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "geometryHash": "d183dc118a0b697cdbfb0b56a72e29ffd2f933f38c943a4f3a242d2a37ec1e64",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1124,7 +1124,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "geometryHash": "8d2efde16c553821a5d9c7e3dc0256fa5d83a1700c3098ecc4ecadf32de82b8f",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1139,17 +1139,17 @@
       "bounds": {
         "max": [
           1.9974273443222046,
-          1.9000730514526367,
-          2.250145196914673
+          1.900073045095075,
+          2.2501452541618354
         ],
         "min": [
           -3.950740098953247,
-          -1.575485110282898,
-          -2.250145196914673
+          -1.5754851039253361,
+          -2.2501452541618354
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c6b1588769c551108ae7cb720a885bea0364c968c7308de3f5085e3381d3eea",
+      "geometryHash": "bcfe6372654da212a8eb724f805c8f7c9497e02b24531454a5c57a94a3a0261b",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hull.primitive.0",
       "indexCount": 912,
       "indexed": true,
@@ -1163,18 +1163,18 @@
     {
       "bounds": {
         "max": [
-          -0.10999469459056854,
-          1.8399940729141235,
+          -0.10999469139018639,
+          1.8399940136259927,
           0.1404682844877243
         ],
         "min": [
-          -0.39000529050827026,
-          1.8000059127807617,
+          -0.39000529370865245,
+          1.8000059720688926,
           -0.1404682844877243
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87def569a3d6d4ec12083ee16d644a0bc2e98ea94124f18cc720a3c33061720d",
+      "geometryHash": "42cf1cb8f56764223110d13e1fbbe11e3f14fdf1c48eca2821fd8641aeaf6367",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -1188,18 +1188,18 @@
     {
       "bounds": {
         "max": [
-          0.33999496698379517,
-          2.0000669956207275,
+          0.3399949556629691,
+          2.0000669686206436,
           2.944999933242798
         ],
         "min": [
-          -3.9981884956359863,
-          -1.1963189840316772,
+          -3.9981884843151603,
+          -1.1963189570315935,
           -2.944999933242798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c9cfcdb5d2ff0781beec91a501285d0ade9d9b94e32576f91758d4dcd63b797",
+      "geometryHash": "7dd2dee3c3e92f4018ece61f3e8be7d00023d2bf68ba5e2dde689660dc869489",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical.primitive.0",
       "indexCount": 1908,
       "indexed": true,
@@ -1214,17 +1214,17 @@
       "bounds": {
         "max": [
           1.9988690614700317,
-          1.9557690620422363,
-          2.9450976848602295
+          1.9557691122951713,
+          2.9450976942919773
         ],
         "min": [
           -3.998211145401001,
-          -1.432699203491211,
-          -2.9450976848602295
+          -1.4326992537441459,
+          -2.9450976942919773
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c35d10266b32d43a2936423d2e3b09ad95b66a580f6362e61a41ea2c8faab99",
+      "geometryHash": "7884efb2dbf5687e82e6e0e875aa225e675b77ce3a55380f80e5d68c42cea9fb",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 1284,
       "indexed": true,
@@ -1239,17 +1239,17 @@
       "bounds": {
         "max": [
           3.9934816360473633,
-          1.1406774520874023,
-          2.999950885772705
+          1.1406775455717588,
+          2.9999509117159233
         ],
         "min": [
           -3.9869844913482666,
-          -1.8942229747772217,
-          -2.999950885772705
+          -1.8942230682615782,
+          -2.9999509117159233
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4268b61a1d3355209efb64f9a21466aa5df7fa39b357e807f5663817282b08d2",
+      "geometryHash": "d350cedc718dc4400fa74bef8b246484ec59352f31125a53eff53b84b95ab5b6",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-armor.primitive.0",
       "indexCount": 1218,
       "indexed": true,
@@ -1263,18 +1263,18 @@
     {
       "bounds": {
         "max": [
-          3.967092514038086,
-          0.691882312297821,
+          3.967092499092813,
+          0.6918823244544983,
           1.11690354347229
         ],
         "min": [
-          1.9249863624572754,
-          -0.691882312297821,
+          1.9249863774025484,
+          -0.6918823244544983,
           -1.11690354347229
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8a3c54e4e6c27f5298f71d212fe1d7784f39502eabc0cf1007f0d2714251b44",
+      "geometryHash": "60064ce10fc10152ecc06a3f30a54491f8c86edc0d6fc2dedf84b3f52d3f1c5e",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1289,17 +1289,17 @@
       "bounds": {
         "max": [
           3.980801820755005,
-          1.3965035676956177,
-          2.568223714828491
+          1.396503511945529,
+          2.568223599966719
         ],
         "min": [
           -3.990495204925537,
-          -1.3965035676956177,
-          -2.568223714828491
+          -1.396503511945529,
+          -2.568223599966719
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d4bc5f6250b2aab65b00d5c3cc98b4cf80ec3c4183d503dae2814488a2ee1f6",
+      "geometryHash": "73c1212a80c14404885d0a2ad4c7c0bf8211aa8cfed653aa9371b57e51e45f09",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal.primitive.0",
       "indexCount": 528,
       "indexed": true,
@@ -1324,7 +1324,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e63056e418284d73bfa99b0a188ac5f06e7364d658db88103c15166a3c76952",
+      "geometryHash": "e8b0089d39aa68a67fc8f71dd8776a8ad3c744e1d6912ebe075becd7a3037c3a",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1349,7 +1349,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03a544012c5ebbe2b38bf0e5a1e51d585e156ed7ed982447a13891b1847c4684",
+      "geometryHash": "076756ca649226c8eebdf13d87b4f53138e3f8c99e57d9c6c262b27436c2b222",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-aft-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1374,7 +1374,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa0954fc8c0d70cf680e84ea1889ac13f855976b44e34f2e0e06f716feebab27",
+      "geometryHash": "f4cc212fb5d74f5df502827cd4a4501682bb9a6db77e4dcd4a49c854539b729e",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-port-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1399,7 +1399,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad0d5b6d84e09330daf8b7e325a81dc29c22341865297eb14d7f01a129d11100",
+      "geometryHash": "380ca08b91d14d1449eb0614850b8faefe5fef9ef699808c30541f933edf3cc8",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-axial-fore-starboard-glow-drive.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1424,7 +1424,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "34dfead048aae8dcc4d23e71ae4e05fcdcf33e12b3f68955a948580fa3fd1752",
+      "geometryHash": "d183dc118a0b697cdbfb0b56a72e29ffd2f933f38c943a4f3a242d2a37ec1e64",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-port-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1449,7 +1449,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "509be330d18397d3c21b5873e18f6cbc9605fecf7564e81d43732e87f5e4c335",
+      "geometryHash": "8d2efde16c553821a5d9c7e3dc0256fa5d83a1700c3098ecc4ecadf32de82b8f",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hook-ceres-thruster-lateral-starboard-glow-drive.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1464,17 +1464,17 @@
       "bounds": {
         "max": [
           1.996494174003601,
-          1.8944391012191772,
-          2.2500081062316895
+          1.894439016086056,
+          2.2500080773179705
         ],
         "min": [
           -3.991891860961914,
-          -1.575378179550171,
-          -2.2500081062316895
+          -1.5753780944170497,
+          -2.2500080773179705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7d39f08cde1d4e1d3d046c0327a813a01ebc76c7f3e4829c192490461446a27",
+      "geometryHash": "4faa90acaa2bc96a97f035ca6b1087ee0163fb189216d48716f6090d1e8ecc13",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hull.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -1489,17 +1489,17 @@
       "bounds": {
         "max": [
           -0.09943946450948715,
-          1.8399969339370728,
-          0.15055371820926666
+          1.8399969257095325,
+          0.15055371258989583
         ],
         "min": [
           -0.40056055784225464,
-          1.8000030517578125,
-          -0.14619305729866028
+          1.8000030599853527,
+          -0.14619305167928945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90af6b83f5790e02d6d6621c23be058d81fcb572bc5899e05f0578f8849b37c2",
+      "geometryHash": "2804d4eb4b8dd35a117636dfe181da84b84a7d8fe7a48e2e67b767e1299e4dd3",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1513,18 +1513,18 @@
     {
       "bounds": {
         "max": [
-          0.3399093747138977,
-          1.9866364002227783,
+          0.33990925041946785,
+          1.9866363866927221,
           2.944999933242798
         ],
         "min": [
-          -3.9918031692504883,
-          -1.1888980865478516,
+          -3.9918030449560584,
+          -1.1888980730177954,
           -2.944999933242798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d91ebc0decd11a4d321f2bef6439d553a0b8e547e5e9d02e7fd0d4eca9c4d570",
+      "geometryHash": "fd74b9adf59ff7643fec6551d0e837f35ec046c643026838773e397509a1345e",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical.primitive.0",
       "indexCount": 1452,
       "indexed": true,
@@ -1539,17 +1539,17 @@
       "bounds": {
         "max": [
           1.9945958852767944,
-          1.945631742477417,
-          2.944831609725952
+          1.9456316508757723,
+          2.9448315889579164
         ],
         "min": [
           -3.997473955154419,
-          -1.4224504232406616,
-          -2.944831609725952
+          -1.422450331639017,
+          -2.9448315889579164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6871f3c360a3d79e0420ed935c22946a6a884743ee32355d020cb3a75c842319",
+      "geometryHash": "86c2abd4614821c978a553800aafcae7529d463418a01fe660efabddeca63451",
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 738,
       "indexed": true,
@@ -1783,19 +1783,19 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-motor",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
+        -1,
         0,
         0,
         1
@@ -1811,19 +1811,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
+        -1,
         0,
         0,
         1
@@ -1832,21 +1832,21 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-port-blade",
       "localTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
+        3,
         0,
-        0,
-        0,
+        -2,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1860,42 +1860,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
+        3,
         0,
-        0,
-        0,
+        -2,
         1
       ]
     },
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.collision-starboard-blade",
       "localTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
+        3,
         0,
-        0,
-        0,
+        2,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1909,41 +1909,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
         0,
         0,
         0,
-        1,
+        1.5,
         0,
+        3,
         0,
-        0,
-        0,
+        2,
         1
       ]
     },
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-armor",
       "localTransform": [
-        1,
+        3.9697920083999634,
         0,
         0,
         0,
         0,
-        1,
+        3.9697920083999634,
         0,
         0,
         0,
         0,
-        1,
+        3.9697920083999634,
         0,
-        0,
-        0,
+        0.011285185813903809,
+        -0.375,
         0,
         1
       ],
@@ -1958,20 +1958,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3.9697920083999634,
         0,
         0,
         0,
         0,
-        1,
+        3.9697920083999634,
         0,
         0,
         0,
         0,
-        1,
+        3.9697920083999634,
         0,
-        0,
-        0,
+        0.011285185813903809,
+        -0.375,
         0,
         1
       ]
@@ -1979,19 +1979,19 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
-        0,
+        2.950000047683716,
         0,
         0,
         1
@@ -2007,19 +2007,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
-        0,
+        2.950000047683716,
         0,
         0,
         1
@@ -2028,20 +2028,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-brushedmetal",
       "localTransform": [
-        1,
+        4,
         0,
         0,
         0,
         0,
-        1,
+        4,
         0,
         0,
         0,
         0,
-        1,
+        4,
         0,
         0,
-        0,
+        0.2250000238418579,
         0,
         1
       ],
@@ -2056,20 +2056,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        4,
         0,
         0,
         0,
         0,
-        1,
+        4,
         0,
         0,
         0,
         0,
-        1,
+        4,
         0,
         0,
-        0,
+        0.2250000238418579,
         0,
         1
       ]
@@ -2371,20 +2371,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-hull",
       "localTransform": [
-        1,
+        2.9799649715423584,
         0,
         0,
         0,
         0,
-        1,
+        2.9799649715423584,
         0,
         0,
         0,
         0,
-        1,
+        2.9799649715423584,
         0,
-        0,
-        0,
+        -0.9799649715423584,
+        0.16229397058486938,
         0,
         1
       ],
@@ -2399,20 +2399,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.9799649715423584,
         0,
         0,
         0,
         0,
-        1,
+        2.9799649715423584,
         0,
         0,
         0,
         0,
-        1,
+        2.9799649715423584,
         0,
-        0,
-        0,
+        -0.9799649715423584,
+        0.16229397058486938,
         0,
         1
       ]
@@ -2420,20 +2420,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
-        0,
-        0,
+        -0.2499999888241291,
+        1.8199999928474426,
         0,
         1
       ],
@@ -2448,20 +2448,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
-        0,
-        0,
+        -0.2499999888241291,
+        1.8199999928474426,
         0,
         1
       ]
@@ -2469,20 +2469,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanical",
       "localTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8299999982118607,
+        0.3999999761581421,
         0,
         1
       ],
@@ -2497,20 +2497,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8299999982118607,
+        0.3999999761581421,
         0,
         1
       ]
@@ -2518,20 +2518,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
+        -1,
+        0.2725834846496582,
         0,
         1
       ],
@@ -2546,20 +2546,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
         0,
         0,
         0,
-        1,
+        3,
         0,
-        0,
-        0,
+        -1,
+        0.2725834846496582,
         0,
         1
       ]
@@ -2567,20 +2567,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod0-warning",
       "localTransform": [
-        1,
+        2.08168625831604,
         0,
         0,
         0,
         0,
-        1,
+        2.08168625831604,
         0,
         0,
         0,
         0,
-        1,
+        2.08168625831604,
         0,
-        0,
-        0,
+        -0.9999999701976776,
+        1.6031376123428345,
         0,
         1
       ],
@@ -2595,20 +2595,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.08168625831604,
         0,
         0,
         0,
         0,
-        1,
+        2.08168625831604,
         0,
         0,
         0,
         0,
-        1,
+        2.08168625831604,
         0,
-        0,
-        0,
+        -0.9999999701976776,
+        1.6031376123428345,
         0,
         1
       ]
@@ -2616,21 +2616,21 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-armor",
       "localTransform": [
-        1,
+        3.9662851095199585,
         0,
         0,
         0,
         0,
-        1,
+        3.9662851095199585,
         0,
         0,
         0,
         0,
-        1,
+        3.9662851095199585,
         0,
-        0,
-        0,
-        0,
+        0.018524527549743652,
+        -0.375,
+        0.00018286705017089844,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2644,41 +2644,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3.9662851095199585,
         0,
         0,
         0,
         0,
-        1,
+        3.9662851095199585,
         0,
         0,
         0,
         0,
-        1,
+        3.9662851095199585,
         0,
-        0,
-        0,
-        0,
+        0.018524527549743652,
+        -0.375,
+        0.00018286705017089844,
         1
       ]
     },
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        1.1211857795715332,
         0,
         0,
         0,
         0,
-        1,
+        1.1211857795715332,
         0,
         0,
         0,
         0,
-        1,
+        1.1211857795715332,
         0,
-        0,
-        0,
+        2.948719561100006,
+        -0.000620037317276001,
         0,
         1
       ],
@@ -2693,20 +2693,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        1.1211857795715332,
         0,
         0,
         0,
         0,
-        1,
+        1.1211857795715332,
         0,
         0,
         0,
         0,
-        1,
+        1.1211857795715332,
         0,
-        0,
-        0,
+        2.948719561100006,
+        -0.000620037317276001,
         0,
         1
       ]
@@ -2714,19 +2714,19 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-brushedmetal",
       "localTransform": [
-        1,
+        3.998463749885559,
         0,
         0,
         0,
         0,
-        1,
+        3.998463749885559,
         0,
         0,
         0,
         0,
-        1,
+        3.998463749885559,
         0,
-        0,
+        0.001536250114440918,
         0,
         0,
         1
@@ -2742,19 +2742,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3.998463749885559,
         0,
         0,
         0,
         0,
-        1,
+        3.998463749885559,
         0,
         0,
         0,
         0,
-        1,
+        3.998463749885559,
         0,
-        0,
+        0.001536250114440918,
         0,
         0,
         1
@@ -3057,20 +3057,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-hull",
       "localTransform": [
-        1,
+        2.974083721637726,
         0,
         0,
         0,
         0,
-        1,
+        2.974083721637726,
         0,
         0,
         0,
         0,
-        1,
+        2.974083721637726,
         0,
-        0,
-        0,
+        -0.9766563773155212,
+        0.16229397058486938,
         0,
         1
       ],
@@ -3085,20 +3085,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.974083721637726,
         0,
         0,
         0,
         0,
-        1,
+        2.974083721637726,
         0,
         0,
         0,
         0,
-        1,
+        2.974083721637726,
         0,
-        0,
-        0,
+        -0.9766563773155212,
+        0.16229397058486938,
         0,
         1
       ]
@@ -3106,20 +3106,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-lights-warm",
       "localTransform": [
-        1,
+        0.1404682844877243,
         0,
         0,
         0,
         0,
-        1,
+        0.1404682844877243,
         0,
         0,
         0,
         0,
-        1,
+        0.1404682844877243,
         0,
-        0,
-        0,
+        -0.2499999925494194,
+        1.8199999928474426,
         0,
         1
       ],
@@ -3134,20 +3134,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        0.1404682844877243,
         0,
         0,
         0,
         0,
-        1,
+        0.1404682844877243,
         0,
         0,
         0,
         0,
-        1,
+        0.1404682844877243,
         0,
-        0,
-        0,
+        -0.2499999925494194,
+        1.8199999928474426,
         0,
         1
       ]
@@ -3155,20 +3155,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanical",
       "localTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8290967643260956,
+        0.40187400579452515,
         0,
         1
       ],
@@ -3183,20 +3183,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8290967643260956,
+        0.40187400579452515,
         0,
         1
       ]
@@ -3204,20 +3204,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        2.9985401034355164,
         0,
         0,
         0,
         0,
-        1,
+        2.9985401034355164,
         0,
         0,
         0,
         0,
-        1,
+        2.9985401034355164,
         0,
-        0,
-        0,
+        -0.9996710419654846,
+        0.2615349292755127,
         0,
         1
       ],
@@ -3232,20 +3232,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.9985401034355164,
         0,
         0,
         0,
         0,
-        1,
+        2.9985401034355164,
         0,
         0,
         0,
         0,
-        1,
+        2.9985401034355164,
         0,
-        0,
-        0,
+        -0.9996710419654846,
+        0.2615349292755127,
         0,
         1
       ]
@@ -3253,20 +3253,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-armor",
       "localTransform": [
-        1,
+        3.990233063697815,
         0,
         0,
         0,
         0,
-        1,
+        3.990233063697815,
         0,
         0,
         0,
         0,
-        1,
+        3.990233063697815,
         0,
-        0,
-        0,
+        0.00324857234954834,
+        -0.37677276134490967,
         0,
         1
       ],
@@ -3281,20 +3281,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3.990233063697815,
         0,
         0,
         0,
         0,
-        1,
+        3.990233063697815,
         0,
         0,
         0,
         0,
-        1,
+        3.990233063697815,
         0,
-        0,
-        0,
+        0.00324857234954834,
+        -0.37677276134490967,
         0,
         1
       ]
@@ -3302,19 +3302,19 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-beacon-amber",
       "localTransform": [
-        1,
+        1.11690354347229,
         0,
         0,
         0,
         0,
-        1,
+        1.11690354347229,
         0,
         0,
         0,
         0,
-        1,
+        1.11690354347229,
         0,
-        0,
+        2.9460394382476807,
         0,
         0,
         1
@@ -3330,19 +3330,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        1.11690354347229,
         0,
         0,
         0,
         0,
-        1,
+        1.11690354347229,
         0,
         0,
         0,
         0,
-        1,
+        1.11690354347229,
         0,
-        0,
+        2.9460394382476807,
         0,
         0,
         1
@@ -3351,19 +3351,19 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-brushedmetal",
       "localTransform": [
-        1,
+        3.985648512840271,
         0,
         0,
         0,
         0,
-        1,
+        3.985648512840271,
         0,
         0,
         0,
         0,
-        1,
+        3.985648512840271,
         0,
-        0,
+        -0.004846692085266113,
         0,
         0,
         1
@@ -3379,19 +3379,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        3.985648512840271,
         0,
         0,
         0,
         0,
-        1,
+        3.985648512840271,
         0,
         0,
         0,
         0,
-        1,
+        3.985648512840271,
         0,
-        0,
+        -0.004846692085266113,
         0,
         0,
         1
@@ -3694,20 +3694,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-hull",
       "localTransform": [
-        1,
+        2.9941930174827576,
         0,
         0,
         0,
         0,
-        1,
+        2.9941930174827576,
         0,
         0,
         0,
         0,
-        1,
+        2.9941930174827576,
         0,
-        0,
-        0,
+        -0.9976988434791565,
+        0.15953046083450317,
         0,
         1
       ],
@@ -3722,20 +3722,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.9941930174827576,
         0,
         0,
         0,
         0,
-        1,
+        2.9941930174827576,
         0,
         0,
         0,
         0,
-        1,
+        2.9941930174827576,
         0,
-        0,
-        0,
+        -0.9976988434791565,
+        0.15953046083450317,
         0,
         1
       ]
@@ -3743,21 +3743,21 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-lights-warm",
       "localTransform": [
-        1,
+        0.15056054666638374,
         0,
         0,
         0,
         0,
-        1,
+        0.15056054666638374,
         0,
         0,
         0,
         0,
-        1,
+        0.15056054666638374,
         0,
-        0,
-        0,
-        0,
+        -0.2500000111758709,
+        1.8199999928474426,
+        0.002180330455303192,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3771,41 +3771,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        0.15056054666638374,
         0,
         0,
         0,
         0,
-        1,
+        0.15056054666638374,
         0,
         0,
         0,
         0,
-        1,
+        0.15056054666638374,
         0,
-        0,
-        0,
-        0,
+        -0.2500000111758709,
+        1.8199999928474426,
+        0.002180330455303192,
         1
       ]
     },
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanical",
       "localTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8259468972682953,
+        0.3988691568374634,
         0,
         1
       ],
@@ -3820,20 +3820,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.944999933242798,
         0,
-        0,
-        0,
+        -1.8259468972682953,
+        0.3988691568374634,
         0,
         1
       ]
@@ -3841,20 +3841,20 @@
     {
       "id": "sf.render.ceres-breaker-cutter-head.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        2.9960349202156067,
         0,
         0,
         0,
         0,
-        1,
+        2.9960349202156067,
         0,
         0,
         0,
         0,
-        1,
+        2.9960349202156067,
         0,
-        0,
-        0,
+        -1.0014390349388123,
+        0.2615906596183777,
         0,
         1
       ],
@@ -3869,20 +3869,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-breaker-cutter-head.body",
       "worldTransform": [
-        1,
+        2.9960349202156067,
         0,
         0,
         0,
         0,
-        1,
+        2.9960349202156067,
         0,
         0,
         0,
         0,
-        1,
+        2.9960349202156067,
         0,
-        0,
-        0,
+        -1.0014390349388123,
+        0.2615906596183777,
         0,
         1
       ]
@@ -4338,37 +4338,37 @@
       "uri": "place_ceres_breaker_cutter_head.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 651828,
-    "sha256": "c05eed66379a1fff3ef51f379843c35dba319aa4c8b0fe089079a4ba724bf038",
+    "bytes": 407956,
+    "sha256": "09ef014c7c1698eeba413ffcf8678736f2e6849aaa520479d8cfbb6da645ec0a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.000030517578125,
+        0.000030518509475996325,
         0,
         0
       ],
       "max": [
-        4.00006103515625,
-        2.0001220703125,
-        3.00006103515625
+        4.000061037018952,
+        2.000122074037904,
+        3.000061037018952
       ],
       "min": [
         -4,
-        -2.0001220703125,
-        -3.00006103515625
+        -2.000122074037904,
+        -3.000061037018952
       ],
       "size": [
-        8.00006103515625,
-        4.000244140625,
-        6.0001220703125
+        8.000061037018952,
+        4.000244148075808,
+        6.000122074037904
       ]
     },
     "hidden": [
@@ -5144,20 +5144,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9697920083999634,
           0,
           0,
           0,
           0,
-          1,
+          3.9697920083999634,
           0,
           0,
           0,
           0,
-          1,
+          3.9697920083999634,
           0,
-          0,
-          0,
+          0.011285185813903809,
+          -0.375,
           0,
           1
         ],
@@ -5171,19 +5171,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.125,
           0,
           0,
           0,
           0,
-          1,
+          1.125,
           0,
           0,
           0,
           0,
-          1,
+          1.125,
           0,
-          0,
+          2.950000047683716,
           0,
           0,
           1
@@ -5198,20 +5198,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4,
           0,
           0,
           0,
           0,
-          1,
+          4,
           0,
           0,
           0,
           0,
-          1,
+          4,
           0,
           0,
-          0,
+          0.2250000238418579,
           0,
           1
         ],
@@ -5387,20 +5387,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9799649715423584,
           0,
           0,
           0,
           0,
-          1,
+          2.9799649715423584,
           0,
           0,
           0,
           0,
-          1,
+          2.9799649715423584,
           0,
-          0,
-          0,
+          -0.9799649715423584,
+          0.16229397058486938,
           0,
           1
         ],
@@ -5414,20 +5414,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.14000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.14000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.14000000059604645,
           0,
-          0,
-          0,
+          -0.2499999888241291,
+          1.8199999928474426,
           0,
           1
         ],
@@ -5441,20 +5441,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
-          0,
-          0,
+          -1.8299999982118607,
+          0.3999999761581421,
           0,
           1
         ],
@@ -5468,20 +5468,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
           0,
           0,
           0,
-          1,
+          3,
           0,
-          0,
-          0,
+          -1,
+          0.2725834846496582,
           0,
           1
         ],
@@ -5495,20 +5495,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.08168625831604,
           0,
           0,
           0,
           0,
-          1,
+          2.08168625831604,
           0,
           0,
           0,
           0,
-          1,
+          2.08168625831604,
           0,
-          0,
-          0,
+          -0.9999999701976776,
+          1.6031376123428345,
           0,
           1
         ],
@@ -5522,21 +5522,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.9662851095199585,
           0,
           0,
           0,
           0,
-          1,
+          3.9662851095199585,
           0,
           0,
           0,
           0,
-          1,
+          3.9662851095199585,
           0,
-          0,
-          0,
-          0,
+          0.018524527549743652,
+          -0.375,
+          0.00018286705017089844,
           1
         ],
         "name": "LOD1_Armor",
@@ -5549,20 +5549,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1211857795715332,
           0,
           0,
           0,
           0,
-          1,
+          1.1211857795715332,
           0,
           0,
           0,
           0,
-          1,
+          1.1211857795715332,
           0,
-          0,
-          0,
+          2.948719561100006,
+          -0.000620037317276001,
           0,
           1
         ],
@@ -5576,19 +5576,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.998463749885559,
           0,
           0,
           0,
           0,
-          1,
+          3.998463749885559,
           0,
           0,
           0,
           0,
-          1,
+          3.998463749885559,
           0,
-          0,
+          0.001536250114440918,
           0,
           0,
           1
@@ -5765,20 +5765,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.974083721637726,
           0,
           0,
           0,
           0,
-          1,
+          2.974083721637726,
           0,
           0,
           0,
           0,
-          1,
+          2.974083721637726,
           0,
-          0,
-          0,
+          -0.9766563773155212,
+          0.16229397058486938,
           0,
           1
         ],
@@ -5792,20 +5792,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.1404682844877243,
           0,
           0,
           0,
           0,
-          1,
+          0.1404682844877243,
           0,
           0,
           0,
           0,
-          1,
+          0.1404682844877243,
           0,
-          0,
-          0,
+          -0.2499999925494194,
+          1.8199999928474426,
           0,
           1
         ],
@@ -5819,20 +5819,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
-          0,
-          0,
+          -1.8290967643260956,
+          0.40187400579452515,
           0,
           1
         ],
@@ -5846,20 +5846,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9985401034355164,
           0,
           0,
           0,
           0,
-          1,
+          2.9985401034355164,
           0,
           0,
           0,
           0,
-          1,
+          2.9985401034355164,
           0,
-          0,
-          0,
+          -0.9996710419654846,
+          0.2615349292755127,
           0,
           1
         ],
@@ -5873,20 +5873,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.990233063697815,
           0,
           0,
           0,
           0,
-          1,
+          3.990233063697815,
           0,
           0,
           0,
           0,
-          1,
+          3.990233063697815,
           0,
-          0,
-          0,
+          0.00324857234954834,
+          -0.37677276134490967,
           0,
           1
         ],
@@ -5900,19 +5900,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.11690354347229,
           0,
           0,
           0,
           0,
-          1,
+          1.11690354347229,
           0,
           0,
           0,
           0,
-          1,
+          1.11690354347229,
           0,
-          0,
+          2.9460394382476807,
           0,
           0,
           1
@@ -5927,19 +5927,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.985648512840271,
           0,
           0,
           0,
           0,
-          1,
+          3.985648512840271,
           0,
           0,
           0,
           0,
-          1,
+          3.985648512840271,
           0,
-          0,
+          -0.004846692085266113,
           0,
           0,
           1
@@ -6116,20 +6116,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9941930174827576,
           0,
           0,
           0,
           0,
-          1,
+          2.9941930174827576,
           0,
           0,
           0,
           0,
-          1,
+          2.9941930174827576,
           0,
-          0,
-          0,
+          -0.9976988434791565,
+          0.15953046083450317,
           0,
           1
         ],
@@ -6143,21 +6143,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.15056054666638374,
           0,
           0,
           0,
           0,
-          1,
+          0.15056054666638374,
           0,
           0,
           0,
           0,
-          1,
+          0.15056054666638374,
           0,
-          0,
-          0,
-          0,
+          -0.2500000111758709,
+          1.8199999928474426,
+          0.002180330455303192,
           1
         ],
         "name": "LOD2_Lights_Warm",
@@ -6170,20 +6170,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.944999933242798,
           0,
-          0,
-          0,
+          -1.8259468972682953,
+          0.3988691568374634,
           0,
           1
         ],
@@ -6197,20 +6197,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9960349202156067,
           0,
           0,
           0,
           0,
-          1,
+          2.9960349202156067,
           0,
           0,
           0,
           0,
-          1,
+          2.9960349202156067,
           0,
-          0,
-          0,
+          -1.0014390349388123,
+          0.2615906596183777,
           0,
           1
         ],
@@ -6226,20 +6226,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_breaker_cutter_head.glb"
   },
-  "runtimeHash": "49ca4a09888bddfc7952b9f9d6779fc3d8a71117bdb897af3852ea0eb36cd71a",
+  "runtimeHash": "8bf9c4183e26296bda52fb47a70190a96c38c54a365f0ba07893f341e9959b7a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.00006103515625,
-          2.0001220703125,
-          3.00006103515625
+          4.000061037018952,
+          2.000122074037904,
+          3.000061037018952
         ],
         "min": [
           -4,
-          -2.0001220703125,
-          -3.00006103515625
+          -2.000122074037904,
+          -3.000061037018952
         ]
       },
       "id": "sf.render.ceres-breaker-cutter-head.body",

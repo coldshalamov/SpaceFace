@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d31ed0bd8ed030c539ea6a5dbfa423d786228d13a8761661319f6cd054e6466d",
+  "contentHash": "31427b98c762f9029a5eec3bbfafe44af64ba3c542d237caf9dea88a2b7425b2",
   "dynamicGroups": [
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-hook-nav-starboard.dynamic",
@@ -128,17 +128,17 @@
       "bounds": {
         "max": [
           3.240000009536743,
-          2.4000582695007324,
-          1.70014226436615
+          2.4000583820414034,
+          1.7001422212584234
         ],
         "min": [
           -3.240000009536743,
-          -1.5800580978393555,
-          -1.70014226436615
+          -1.5800582103800263,
+          -1.7001422212584234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f1451606787b93208de222c7d3dad7850876cc2538a7bcaf26457f68e502d2c",
+      "geometryHash": "b5188b1bc8fc8382b7e9a1e9258d7e28bd0db24d03d95667a381ee9942c95f6b",
       "id": "sf.render.cargo-pod-standard.mesh.collision-hull.primitive.0",
       "indexCount": 738,
       "indexed": true,
@@ -153,17 +153,17 @@
       "bounds": {
         "max": [
           3.240000009536743,
-          1.7101353406906128,
-          1.6601946353912354
+          1.710135244710527,
+          1.660194712977139
         ],
         "min": [
           -3.240000009536743,
-          -1.5501352548599243,
-          -1.6601946353912354
+          -1.5501351588798384,
+          -1.660194712977139
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c236cdb2f8dbf2fcbeb34a906a4981adb113225eb972117203baf98e0b4d9385",
+      "geometryHash": "7226441ab15bb6086f0f77a1c10ad11d2e4a47028a9c34cd8f2fee0c4fd32015",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-armor.primitive.0",
       "indexCount": 17484,
       "indexed": true,
@@ -177,18 +177,18 @@
     {
       "bounds": {
         "max": [
-          2.619999885559082,
-          1.6490024328231812,
+          2.6200000047683716,
+          1.6490024104853096,
           -1.1299999952316284
         ],
         "min": [
-          2.4800000190734863,
-          1.5509976148605347,
+          2.4799998998641968,
+          1.5509976371984062,
           -1.2700001001358032
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df4c8765bd47b4f4b76cb5003d7c25ccd2b6964637476c7c193984e6524be9b6",
+      "geometryHash": "1175dc6cde88bba29c67cb8223a75da5a346bdd596c93102d1c88ec8e7a8e4c0",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -228,17 +228,17 @@
       "bounds": {
         "max": [
           2.8499999046325684,
-          1.5101076364517212,
-          1.6099580526351929
+          1.5101076798068378,
+          1.6099581357691837
         ],
         "min": [
           -2.8499999046325684,
-          -1.5101076364517212,
-          -1.6099580526351929
+          -1.5101076798068378,
+          -1.6099581357691837
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ba7cd47137d8c85a858a984e7c78d507bcefd46c1439b9cc9aaf70d1861c369",
+      "geometryHash": "e1ab22fc89d38514888929424a377d57571b3960272c71f62890b4d3504d2e2c",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-hull.primitive.0",
       "indexCount": 5832,
       "indexed": true,
@@ -253,17 +253,17 @@
       "bounds": {
         "max": [
           3.0500001907348633,
-          1.5799442529678345,
-          1.7000296115875244
+          1.5799441856522582,
+          1.7000296401028723
         ],
         "min": [
           -3.059999942779541,
-          -1.5799442529678345,
-          -1.7000296115875244
+          -1.5799441856522582,
+          -1.7000296401028723
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab6b59756b0666408ce5689b92675891da8947b4150c2f5e07b9364fafa75451",
+      "geometryHash": "ac4ed11f74a8b4628a917a07b1cc0919c9289d060bc807eecfad8b4c8ec05505",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4848,
       "indexed": true,
@@ -277,18 +277,18 @@
     {
       "bounds": {
         "max": [
-          3.0200622770935297,
+          3.0200622768409953,
           1.2200000286102295,
-          1.480026705597993
+          1.4800267185002292
         ],
         "min": [
-          2.939937759190798,
+          2.9399377594433322,
           -1.2200000286102295,
-          0.12997329235076904
+          0.12997327944853299
         ]
       },
       "drawMode": 4,
-      "geometryHash": "94f0c36679cf4a0f179102bf65a6b4253e2b1f49826834fd7bdf03aba6586bff",
+      "geometryHash": "5e3f9419360303a7e0940a3910d386c6a3a49c029f1a1e8726063a0f8a2be633",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-port-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -302,18 +302,18 @@
     {
       "bounds": {
         "max": [
-          3.0449885353446007,
+          3.0449885357345656,
           1.149999976158142,
-          0.3399444818496704
+          0.3399444860643975
         ],
         "min": [
-          2.9950114260427654,
+          2.9950114256528004,
           -1.149999976158142,
-          0.22005558013916016
+          0.2200555759244331
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f08c7051fe880ccbd961878fc9c41754e5e40e2660e49b0870c560666eca1cff",
+      "geometryHash": "cab4c3db754148fcfc99d96c2322987f9ca08fcbab674094eb515a4b84e2c7ee",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-port-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -327,18 +327,18 @@
     {
       "bounds": {
         "max": [
-          3.0200622770935297,
+          3.0200622768409953,
           1.2200000286102295,
-          -0.12997329235076904
+          -0.12997327944853299
         ],
         "min": [
-          2.939937759190798,
+          2.9399377594433322,
           -1.2200000286102295,
-          -1.480026705597993
+          -1.4800267185002292
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24ef42d849ac0d9c4a94807a1c9d230c059d51a5b987a0402adb5e25cb4f593e",
+      "geometryHash": "5c45a6f75883b4c38b5ebdcc115705edbf10fdd80e02fd527b8a67a276e33bb9",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -352,18 +352,18 @@
     {
       "bounds": {
         "max": [
-          3.0449885353446007,
+          3.0449885357345656,
           1.149999976158142,
-          -0.22005558013916016
+          -0.2200555759244331
         ],
         "min": [
-          2.9950114260427654,
+          2.9950114256528004,
           -1.149999976158142,
-          -0.3399444818496704
+          -0.3399444860643975
         ]
       },
       "drawMode": 4,
-      "geometryHash": "865d56893d2ce66d95d4f9c5b309773196443704bf64a73726011b713545cc73",
+      "geometryHash": "09fa88bed37ba043a8e1c6e431217728b384b837701d4378af8fe9576d361429",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -377,18 +377,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          0.7400097548961639
+          0.7400097531726189
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          0.6599902212619781
+          0.6599902229855232
         ]
       },
       "drawMode": 4,
-      "geometryHash": "63e017ef7cec23f214e1a8033bd5883d056aa5d9bb21f4e56482bef34970c6d1",
+      "geometryHash": "b570b4fb3e79485f5fc2311b6ab2bd38f3eda923ad895ff4a59e2472315d39d2",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -402,18 +402,18 @@
     {
       "bounds": {
         "max": [
-          3.1800020337104797,
+          3.1800020326166116,
           0.5399999618530273,
-          0.7500057779252529
+          0.7500057803035405
         ],
         "min": [
-          3.019997779065079,
+          3.0199977801589473,
           0.35999998450279236,
-          0.6499941982328892
+          0.6499941958546016
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69238a3e13d91c802fbd42703014fa94493286826bf56379b1c87b9638a312f2",
+      "geometryHash": "066e257f8c63a619a0c4fda34c7e2e9cc38d719525300b4aaf866dbe96aaea3d",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -427,18 +427,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          0.2900097668170929
+          0.2900097650935478
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          0.2099902331829071
+          0.20999023490645216
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3acce2ff94bfb33988cddd33d3004443f722b29630d80b903b0ba9170ee6e0b4",
+      "geometryHash": "da623096e720e5516216ce31ea62386471eb78039cd2f84b59fcc4c3bd8f9578",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -452,18 +452,18 @@
     {
       "bounds": {
         "max": [
-          3.1800020337104797,
+          3.1800020326166116,
           0.5399999618530273,
-          0.30000579729676247
+          0.30000579967505
         ],
         "min": [
-          3.019997779065079,
+          3.0199977801589473,
           0.35999998450279236,
-          0.19999421760439873
+          0.1999942152261112
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6e1ff6b8409649a9d7ae3270de1297dc6b6c6557a604437cee1ca0ab0c386ea",
+      "geometryHash": "a3119f1765f9d01317a9d747eeb5e02776990fd8df887c6b435edcafe7bc8af6",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -477,18 +477,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          -0.2099902331829071
+          -0.20999023490645216
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          -0.2900097668170929
+          -0.2900097650935478
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a67b93d7e081e69562eb401723704e1b3719e5fd5b695b8070ee4474cc15837a",
+      "geometryHash": "19c9cb077da84fe392ac56e4905c9d548f14372c60d8cedfd7819cadc602cd99",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -502,18 +502,18 @@
     {
       "bounds": {
         "max": [
-          3.1800020337104797,
+          3.1800020326166116,
           0.5399999618530273,
-          -0.19999421760439873
+          -0.1999942152261112
         ],
         "min": [
-          3.019997779065079,
+          3.0199977801589473,
           0.35999998450279236,
-          -0.30000579729676247
+          -0.30000579967505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f61e7b3b4e517a56bac4385211fca55fbcb1b7e3d41b8629b1813302a824112",
+      "geometryHash": "c0711e840ff05c224be636466a3f59bc775f0ea83ae28cd061814ad6286b14f3",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -527,18 +527,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          -0.6599902212619781
+          -0.6599902229855232
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          -0.7400097548961639
+          -0.7400097531726189
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30fb336442bbab5858338f5e4ca1f889731205dc0e0323737e6c1442ddb2938a",
+      "geometryHash": "abaf618640f670683a31a05f702db0912c695bfab7517a77e9e3e88fd3a54bd5",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -552,18 +552,18 @@
     {
       "bounds": {
         "max": [
-          3.1800020337104797,
+          3.1800020326166116,
           0.5399999618530273,
-          -0.6499941982328892
+          -0.6499941958546016
         ],
         "min": [
-          3.019997779065079,
+          3.0199977801589473,
           0.35999998450279236,
-          -0.7500057779252529
+          -0.7500057803035405
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed77750efbcd658b65960c16b16b06feb0502bc3f3165f224df1da9829ae7255",
+      "geometryHash": "1555c8938be4394ffb66ef6dc532f8b8fdec215e6a8b27cb6cdd6838ef3b5442",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -577,18 +577,18 @@
     {
       "bounds": {
         "max": [
-          2.9699844904243946,
-          -0.6000076532363892,
+          2.9699844919692753,
+          -0.6000076657641373,
           1.4749999046325684
         ],
         "min": [
-          2.9100156277418137,
-          -1.3999923476949334,
+          2.910015626196933,
+          -1.3999923351671852,
           0.16500002145767212
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7a2f9d7cad99c3b437e105aca049223979e74a545371493d1f96c65e48761aa",
+      "geometryHash": "d27840eb276b8004d92722e06068df79c8731dfa30f8b877db461eadabb245e8",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-port-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -602,18 +602,18 @@
     {
       "bounds": {
         "max": [
-          2.9699844904243946,
-          -0.6000076532363892,
+          2.9699844919692753,
+          -0.6000076657641373,
           -0.16500002145767212
         ],
         "min": [
-          2.9100156277418137,
-          -1.3999923476949334,
+          2.910015626196933,
+          -1.3999923351671852,
           -1.4749999046325684
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c98ba66b8db2c0ae78d656a18a5b49da1fda736b6176c7a375d61fb47c7a193",
+      "geometryHash": "f8fb06b2b38186eb60ef23930ffcf56c51d7c7b4394f510331016f381133d5fc",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-star-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -628,17 +628,17 @@
       "bounds": {
         "max": [
           1.875,
-          2.3999171257019043,
-          1.5499613285064697
+          2.3999171174125165,
+          1.5499613414507933
         ],
         "min": [
           -3.179999828338623,
-          -1.449917197227478,
-          -1.5499613285064697
+          -1.4499171889380904,
+          -1.5499613414507933
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00020a5d314edec825eac700a8d221070f04a40aeb6c624d0a0f252b44d2990f",
+      "geometryHash": "a7a4f41c0554021023d06445093ea4a026347b29ee16a348b8781191a6b67d6e",
       "id": "sf.render.cargo-pod-standard.mesh.lod0-warning.primitive.0",
       "indexCount": 3600,
       "indexed": true,
@@ -653,17 +653,17 @@
       "bounds": {
         "max": [
           3.2390520572662354,
-          1.7087706327438354,
-          1.658918023109436
+          1.7087706966268739,
+          1.6589181073785109
         ],
         "min": [
           -3.2390518188476562,
-          -1.548964023590088,
-          -1.658918023109436
+          -1.5489640874731263,
+          -1.6589181073785109
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa91049e84b1402d061c9840ef197052e41910c9d28435ca409bec7bee821592",
+      "geometryHash": "20e586cdb891d154496a1a2d81d355753ab1403ee273c22f794bea1dcece9e33",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-armor.primitive.0",
       "indexCount": 5826,
       "indexed": true,
@@ -677,18 +677,18 @@
     {
       "bounds": {
         "max": [
-          2.619999885559082,
-          1.6490024328231812,
+          2.6200000047683716,
+          1.6490024104853096,
           -1.1299999952316284
         ],
         "min": [
-          2.4800000190734863,
-          1.5509976148605347,
+          2.4799998998641968,
+          1.5509976371984062,
           -1.2700001001358032
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0b1f1ce4402f2eb747c1a9e790092408e0700401beb61680340595ebdf42f0a",
+      "geometryHash": "40d4a1ddf55796246e031b25acec97b414a42dfbf835eb3e1c438dee81378fc2",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -728,17 +728,17 @@
       "bounds": {
         "max": [
           2.8499999046325684,
-          1.5094118118286133,
-          1.6092623472213745
+          1.509411857814069,
+          1.6092623137764148
         ],
         "min": [
           -2.8499999046325684,
-          -1.5094118118286133,
-          -1.6092623472213745
+          -1.509411857814069,
+          -1.6092623137764148
         ]
       },
       "drawMode": 4,
-      "geometryHash": "49141a2f1c870a251a1f4f7369123dd53f3ed5b9fe2353668f044b0bde35658b",
+      "geometryHash": "84e47f57efc65d70757f71a3c0617f8832742ddf595365e4b15611d5f5416866",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-hull.primitive.0",
       "indexCount": 2040,
       "indexed": true,
@@ -753,17 +753,17 @@
       "bounds": {
         "max": [
           3.0486018657684326,
-          1.578464150428772,
-          1.698604941368103
+          1.578464049591836,
+          1.6986048719315203
         ],
         "min": [
           -3.059999942779541,
-          -1.578464150428772,
-          -1.6984392404556274
+          -1.578464049591836,
+          -1.6984391710190447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e5c119dbec4a86d1271c6296a10849f20d10c96aad60b79688a62fe2b7e32c1",
+      "geometryHash": "852d13610c48322efbf3cb4242c08f3988e9e3d9772aed4b50ebb03ff7e324b7",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-mechanical.primitive.0",
       "indexCount": 2928,
       "indexed": true,
@@ -777,18 +777,18 @@
     {
       "bounds": {
         "max": [
-          3.019249051809311,
+          3.0192490527106477,
           1.2191559076309204,
-          1.4792619564686902
+          1.479261994213294
         ],
         "min": [
-          2.9406682550907135,
+          2.9406682541893767,
           -1.2191556692123413,
-          0.13073813915252686
+          0.13073810140792297
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d44b51d359fe61594fcc929db11e1c65dce01cd0d282c830dcf9258f3d1abda",
+      "geometryHash": "2d31dd1e44facfda1daaa584ee0f37bc0daaa88b9fa0f63dc0092a290bf915a9",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-port-armor.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -802,18 +802,18 @@
     {
       "bounds": {
         "max": [
-          3.044588528573513,
+          3.044588528215836,
           1.149550199508667,
-          0.3395000696182251
+          0.33950005047641546
         ],
         "min": [
-          2.995472945738584,
+          2.995472946096261,
           -1.149550199508667,
-          0.22049999237060547
+          0.22050001151241513
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecf6492711d0749996d75441a5a6ff61a35a278a111eb35e82a78f369c9355fd",
+      "geometryHash": "7c203554635f0b96543ee6687139585cf4f9e70bd5b63e4a2847f76b6a177726",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-port-warning.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -827,18 +827,18 @@
     {
       "bounds": {
         "max": [
-          3.019142769277096,
+          3.0191427698635103,
           1.2191556692123413,
-          -0.13071787357330322
+          -0.13071784527892638
         ],
         "min": [
-          2.940857268869877,
+          2.9408572682834624,
           -1.2192293405532837,
-          -1.4792823223397136
+          -1.4792823506340904
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38567438bf913cc976bd3c4832e740e4775268e1cb9c42fc1c02ac555c2421c8",
+      "geometryHash": "abe7448b2a47a3cbb79eeb167e47fd2e239a82ee092a93a52ff46a65f0444224",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-armor.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -852,18 +852,18 @@
     {
       "bounds": {
         "max": [
-          3.044588528573513,
+          3.044588528215836,
           1.149550199508667,
-          -0.22049999237060547
+          -0.22050001151241513
         ],
         "min": [
-          2.995472945738584,
+          2.995472946096261,
           -1.149550199508667,
-          -0.3395000696182251
+          -0.33950005047641546
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50dc934f2c2c549ca7985338de67b0728400f36bf1864b0004b18ee2ef3f07e9",
+      "geometryHash": "5b9d9d82cddb98c81368a71ac1f828ed51748c82e0db111e1cebc482b568bec2",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-warning.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -877,18 +877,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          0.7400097548961639
+          0.7400097531726189
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          0.6599902212619781
+          0.6599902229855232
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb5ffc12f2c99f5bc0e03106e83bb21878cce0931d142b5ffdb45aefb23dc107",
+      "geometryHash": "17995a53ac99184de476574b625115f66c09fca42ef5d7af41c7e948ea0fc82f",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -902,18 +902,18 @@
     {
       "bounds": {
         "max": [
-          3.1792973428964615,
+          3.1792973408122776,
           0.5391556620597839,
-          0.74930414929986
+          0.7493041486305652
         ],
         "min": [
-          3.0207027056603692,
+          3.020702707744553,
           0.3613519072532654,
-          0.6515329740941525
+          0.6515329747634473
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e74d503960cb700d678e1707f633ba5228ebea712fa78d1aea05781652a3b8d0",
+      "geometryHash": "a041ce6213bb2c486a0501629c195f3979844da020d538a13b2ba4266cb1f19d",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -927,18 +927,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          0.2900097668170929
+          0.2900097650935478
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          0.2099902331829071
+          0.20999023490645216
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2688f2ae7901d8287ea01be08d5c0f3b7df6bfa84c6e3814b4481b19f59c48c9",
+      "geometryHash": "3967274727640525501549209dcc21105c0c3cf6f61d17fee1f93cfce45a110e",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -952,18 +952,18 @@
     {
       "bounds": {
         "max": [
-          3.179219424724579,
+          3.1792194244717344,
           0.5391556024551392,
-          0.2992966063320637
+          0.299296607122325
         ],
         "min": [
-          3.0207026599091478,
+          3.020702660161992,
           0.3615363836288452,
-          0.20078128203749657
+          0.20078128124723524
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2cdad6b9b9297e52f6f970e4b287bfbcb0f32f158bf1305f8ab2ab38ead8b59f",
+      "geometryHash": "6c3951e47e1b1a9ee50b17f98919f198172380f572ec21184a2b9eaac5099664",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -977,18 +977,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          -0.2099902331829071
+          -0.20999023490645216
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          -0.2900097668170929
+          -0.2900097650935478
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9be7b7800c718498dc6cd51239135c2d1d71a4648d60b2c0590fbdcf1ace0163",
+      "geometryHash": "9ff035b4c7ddc59ff1cbc770745bcf9d01a7950dce155d2e83c5be754bc73753",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1002,18 +1002,18 @@
     {
       "bounds": {
         "max": [
-          3.1793017983436584,
+          3.1793017986683374,
           0.5391556620597839,
-          -0.20078127831220627
+          -0.20078127961873526
         ],
         "min": [
-          3.0206982506788336,
+          3.0206982503541546,
           0.3615363836288452,
-          -0.29929663985967636
+          -0.29929663855314736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cad3607a92d97404176cf2c89d00a49cc7e4f01fcf892209ed784f8db87910f",
+      "geometryHash": "a6f962edf0cf3f35956fef5fff104ec6933bb16b7d804678eaf680fd881d284d",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1027,18 +1027,18 @@
     {
       "bounds": {
         "max": [
-          3.0600097477436066,
+          3.0600097460200617,
           1.149999976158142,
-          -0.6599902212619781
+          -0.6599902229855232
         ],
         "min": [
-          2.9799902141094208,
+          2.9799902158329656,
           -1.149999976158142,
-          -0.7400097548961639
+          -0.7400097531726189
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf88fb680807f01d63f3e2c243d15db8d6697efcbc4f5f0107f7fe7300bd54d0",
+      "geometryHash": "b2e86ae12cad617860ef2e8a9dc61af6a6ee72c4b5219404357a1065e630dcf0",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -1052,18 +1052,18 @@
     {
       "bounds": {
         "max": [
-          3.179298773407936,
+          3.1792987768723338,
           0.5391556620597839,
-          -0.6513528786599636
+          -0.6513528798631482
         ],
         "min": [
-          3.021114451927133,
+          3.0211144484627352,
           0.36134955286979675,
-          -0.748886588960886
+          -0.7488865877577014
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10ff3f3d969261c9363a54733febbe6fb4104711a8fb645b43a2fea5741e7f37",
+      "geometryHash": "1575eee2fec4486a19327455fd76afa6f761920cb06b421768e40d5812e04d37",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -1077,18 +1077,18 @@
     {
       "bounds": {
         "max": [
-          2.9694288168102503,
-          -0.600644588470459,
+          2.9694288186559272,
+          -0.60064457193085,
           1.4743245840072632
         ],
         "min": [
-          2.910637818276882,
-          -1.3993554674088955,
+          2.9106378164312052,
+          -1.3993554839485045,
           0.1656256914138794
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cc9acae2cb6c6bd6243400dff6079862f4f5ebc1a5bba251e60a717765a175e6",
+      "geometryHash": "f2a543ca102c9ff2ece29548c70ffec95a8dd87320a567cc18e1d3b16ac178f5",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-port-hull.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1102,18 +1102,18 @@
     {
       "bounds": {
         "max": [
-          2.969476765021682,
-          -0.6006032824516296,
+          2.96947676389953,
+          -0.6006032790403235,
           -0.16562175750732422
         ],
         "min": [
-          2.91052358597517,
-          -1.3993469271808863,
+          2.910523587097322,
+          -1.3993469305921924,
           -1.4743742942810059
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b76181647a46bb4d7799f9afbde1dd599ac6abd302bcb09101f31e3d74982b98",
+      "geometryHash": "5b9ade7a886fc9f1588d068875496f7d702a0b8743e15189db0a13706f4d2b0a",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-star-hull.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1128,17 +1128,17 @@
       "bounds": {
         "max": [
           0.4300000071525574,
-          2.4001173973083496,
-          0.7488717436790466
+          2.4001174757855854,
+          0.748871752458667
         ],
         "min": [
           -3.1793007850646973,
-          0.3612321615219116,
-          -0.7492849230766296
+          0.3612320830446758,
+          -0.74928493185625
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43d893cd8981ad0d986b7728b0f6361df040aaa6f1a1732f10e67adcf946fe5a",
+      "geometryHash": "9e245fd0b103672553490266ec289be07213cc657488de40a137bd6e4a136a9f",
       "id": "sf.render.cargo-pod-standard.mesh.lod1-warning.primitive.0",
       "indexCount": 1866,
       "indexed": true,
@@ -1153,17 +1153,17 @@
       "bounds": {
         "max": [
           3.2384703159332275,
-          1.706986665725708,
-          1.6578295230865479
+          1.7069867593792356,
+          1.657829556549698
         ],
         "min": [
           -3.2384703159332275,
-          -1.5470002889633179,
-          -1.6578295230865479
+          -1.5470003826168455,
+          -1.657829556549698
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9d25648d48cfc4b7538b003c4b09558b1fa90253d9bb84865cea30b820f14f3",
+      "geometryHash": "d587cc9e59f7d8aca22f956185b0d6cba6fce3a86805499bf3e1811b9f7ec32a",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-armor.primitive.0",
       "indexCount": 2406,
       "indexed": true,
@@ -1177,18 +1177,18 @@
     {
       "bounds": {
         "max": [
-          2.619999885559082,
-          1.6490024328231812,
+          2.6200000047683716,
+          1.6490024104853096,
           -1.1299999952316284
         ],
         "min": [
-          2.4800000190734863,
-          1.5509976148605347,
+          2.4799998998641968,
+          1.5509976371984062,
           -1.2700001001358032
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0b1f1ce4402f2eb747c1a9e790092408e0700401beb61680340595ebdf42f0a",
+      "geometryHash": "40d4a1ddf55796246e031b25acec97b414a42dfbf835eb3e1c438dee81378fc2",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1228,17 +1228,17 @@
       "bounds": {
         "max": [
           2.8439183235168457,
-          1.5079267024993896,
-          1.6086057424545288
+          1.5079267846547344,
+          1.608605676688779
         ],
         "min": [
           -2.8439183235168457,
-          -1.5079267024993896,
-          -1.6086057424545288
+          -1.5079267846547344,
+          -1.608605676688779
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f999cffaa5f6cf5d725603452c7d8d4a31a3a4135491465bc64091cc270689fa",
+      "geometryHash": "ec26928d72b7f5537fb4e196e761d26b3dbcac804ac2426884999bec86571d75",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-hull.primitive.0",
       "indexCount": 936,
       "indexed": true,
@@ -1253,17 +1253,17 @@
       "bounds": {
         "max": [
           3.0474188327789307,
-          1.577412724494934,
-          1.6974475383758545
+          1.5774127963362938,
+          1.697447516983886
         ],
         "min": [
           -3.059999942779541,
-          -1.577412724494934,
-          -1.6974475383758545
+          -1.5774127963362938,
+          -1.697447516983886
         ]
       },
       "drawMode": 4,
-      "geometryHash": "83322960fa90390da7c7f455de2362bb0ac6bf379565256b6c82da32e2d8f49e",
+      "geometryHash": "b1c32a6a22f3802e4aa98891e062a44de40ebe4b32eea1d4efdefc75b4f5ad4a",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-mechanical.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1277,18 +1277,18 @@
     {
       "bounds": {
         "max": [
-          3.019201349467039,
+          3.0192013500731223,
           1.2186481952667236,
-          1.4791785400593653
+          1.479178521259417
         ],
         "min": [
-          2.9409507997334003,
+          2.940950799127317,
           -1.2186481952667236,
-          0.1315135955810547
+          0.13151361438100284
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7c89dc9c87bfab0397921853edf10a61b60c25f9d955b6e81133776ca2ef699",
+      "geometryHash": "cdc88ecec6426f47591c3cefccdf78cea3dbe2a34a6bd1db7ea220e22bedb78c",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-port-armor.primitive.0",
       "indexCount": 150,
       "indexed": true,
@@ -1302,18 +1302,18 @@
     {
       "bounds": {
         "max": [
-          3.043463997542858,
+          3.043463998021054,
           1.1486810445785522,
-          0.3391917943954468
+          0.3391917982354506
         ],
         "min": [
-          2.9963478511199355,
+          2.99634785064174,
           -1.1487219333648682,
-          0.22056007385253906
+          0.22056007001253525
         ]
       },
       "drawMode": 4,
-      "geometryHash": "672348b449e2d801472c9e2670514dbd5f6d9761cf4d189b6190b50ffb12a5f9",
+      "geometryHash": "0d61df5b40b63f16c75eaa033738868411659ebf4c6c3c869bd1d441b0d49ab1",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-port-warning.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1327,18 +1327,18 @@
     {
       "bounds": {
         "max": [
-          3.0192106794565916,
+          3.0192106799762986,
           1.2186481952667236,
-          -0.13157618045806885
+          -0.131576171281657
         ],
         "min": [
-          2.940941471606493,
+          2.940941471086786,
           -1.2192293405532837,
-          -1.4786695995135233
+          -1.4786696086899351
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b98bf2341f1933fa97443f700f36bc8f5c3359f8ddd8975a8411b0e7c4fa824f",
+      "geometryHash": "786bb8c989bf136abe3caed05b283c68f0083e9c91de9fee56c65be758cf3c87",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-armor.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -1352,18 +1352,18 @@
     {
       "bounds": {
         "max": [
-          3.043465029448271,
+          3.0434650297032855,
           1.1483807563781738,
-          -0.2205599546432495
+          -0.22055998508860428
         ],
         "min": [
-          2.99635587958619,
+          2.9963558793311753,
           -1.1486810445785522,
-          -0.3383328914642334
+          -0.3383328610188786
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd4c47b263986aa5d1aebba348c4a022e20d7e8b69efc7543cd95ff09143857e",
+      "geometryHash": "122eb6d0fc28836f3b2051767257edccb576b672716723a6ec8cc6d249e6748e",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-warning.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1377,18 +1377,18 @@
     {
       "bounds": {
         "max": [
-          3.05979211255908,
+          3.0597921132597534,
           1.149999976158142,
-          0.7398693971335888
+          0.7398693978342622
         ],
         "min": [
-          2.9800533540546894,
+          2.980053353354016,
           -1.149999976158142,
-          0.6601306386291981
+          0.6601306379285247
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff15e9ded881c50583475c1c95a9efefd35de2337bfe4907d91582ce0bdbfad9",
+      "geometryHash": "055930cfb74273eb7765b35a09724defab1420bf235e1a63ca279104d1f09813",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-mechanical.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1402,18 +1402,18 @@
     {
       "bounds": {
         "max": [
-          3.175810992717743,
+          3.1758109939811017,
           0.5377195477485657,
-          0.7477087453007698
+          0.7477087444969793
         ],
         "min": [
-          3.022282181074843,
+          3.022282179811484,
           0.3638341426849365,
-          0.6522832438349724
+          0.6522832446387629
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad57f66799021fa9a6cf7924528bf9ebc8ffc81aabb15d399b21644b0245dd8e",
+      "geometryHash": "46c11e6d452c4e092a8372770ebe63cfb23d699644af274f371cf0d974128f97",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning.primitive.0",
       "indexCount": 66,
       "indexed": true,
@@ -1427,18 +1427,18 @@
     {
       "bounds": {
         "max": [
-          3.05979211255908,
+          3.0597921132597534,
           1.149999976158142,
-          0.28986937180161476
+          0.2898693725022881
         ],
         "min": [
-          2.9800533540546894,
+          2.980053353354016,
           -1.149999976158142,
-          0.21013061329722404
+          0.2101306125965507
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7f4edf6ac78f10142d82607a3e6ffccc903c1bc4d5c7da58c9461ca83eda23a",
+      "geometryHash": "416d137c197fb53f6e4808ad595eb2849b5d24006746a7980dbf6c49343a84a3",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-mechanical.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1452,18 +1452,18 @@
     {
       "bounds": {
         "max": [
-          3.1777129769325256,
+          3.1777129729760034,
           0.5377114415168762,
-          0.29771148040890694
+          0.29771148067551073
         ],
         "min": [
-          3.022287077270448,
+          3.0222870812269704,
           0.3639121651649475,
-          0.20229081436991692
+          0.20229081410331315
         ]
       },
       "drawMode": 4,
-      "geometryHash": "323dd467eb472fe2cb411f6754f5bf7ea1f624129db60fad944e10a54d470dbb",
+      "geometryHash": "120d45100d86de67dd858bd30cb9ca40a390c3c5c7b835892a0df0e0cab46d43",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1477,18 +1477,18 @@
     {
       "bounds": {
         "max": [
-          3.05979211255908,
+          3.0597921132597534,
           1.149999976158142,
-          -0.21013064309954643
+          -0.21013064239887308
         ],
         "min": [
-          2.9800533540546894,
+          2.980053353354016,
           -1.149999976158142,
-          -0.28986940160393715
+          -0.2898694023046105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c17c781a8bf0913d1f66456b2a713d7cd93d3f7376ad8f746919c93ba1c84cfe",
+      "geometryHash": "ba90f6c34aef4152c8a2bc3d316a54fae4797b0d541462e633caea7cc59fce97",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-mechanical.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1502,18 +1502,18 @@
     {
       "bounds": {
         "max": [
-          3.1777135729789734,
+          3.1777135760863926,
           0.5377195477485657,
-          -0.20229005813598633
+          -0.20229005491468516
         ],
         "min": [
-          3.022727308329195,
+          3.0227273052217756,
           0.3638422191143036,
-          -0.29752008616924286
+          -0.29752008939054403
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93c5018ff1dc1ffb612081a711d162ae73947fba83cbe7b39d3d94f19663cd10",
+      "geometryHash": "a5e4ab1c0a1ba26bafe35f9a59ea17455e757b0447f4296c24a6adf5e9a8867d",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1527,18 +1527,18 @@
     {
       "bounds": {
         "max": [
-          3.05979211255908,
+          3.0597921132597534,
           1.149999976158142,
-          -0.6601306386291981
+          -0.6601306379285247
         ],
         "min": [
-          2.9800533540546894,
+          2.980053353354016,
           -1.149999976158142,
-          -0.7398693971335888
+          -0.7398693978342622
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f91de2f58f21790d575ae8df3a5d2597f77d0b6d02b2d840a416fb72f448a712",
+      "geometryHash": "27c631a93ea1c0a0a50f85b633707132c76971f593479efbd4ba37462c3a07a7",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-mechanical.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -1552,18 +1552,18 @@
     {
       "bounds": {
         "max": [
-          3.1784629076719284,
+          3.178462909506414,
           0.5377195477485657,
-          -0.6515360586345196
+          -0.6515360606649148
         ],
         "min": [
-          3.02421505888924,
+          3.0242150570547546,
           0.3639567196369171,
-          -0.7484639771282673
+          -0.7484639750978721
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b702ea7e7cf9b273e77ce70ebfe855bf75d6fcc6a94d9c1ac6cd61a759495ad0",
+      "geometryHash": "70d93d3be231d838b09e312e8a6761236c0213dd73a80f4f91c1a9586dc03e9f",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1577,18 +1577,18 @@
     {
       "bounds": {
         "max": [
-          2.9687601439654827,
-          -0.6010649800300598,
+          2.9687601429181107,
+          -0.6010649814798529,
           1.4731755256652832
         ],
         "min": [
-          2.911240205168724,
-          -1.3989350190386176,
+          2.911240206216096,
+          -1.3989350175888244,
           0.16794300079345703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a490392f72e0a780be5850759fcde4a139297d6ded249a26a9db022d914ff54",
+      "geometryHash": "46948c7b76a0e00a421741c8542f49c9ad430d997e52bd000465c8c132cc52c0",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-port-hull.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1602,18 +1602,18 @@
     {
       "bounds": {
         "max": [
-          2.968798030167818,
-          -0.6011004447937012,
+          2.9687980288323548,
+          -0.6011004545079126,
           -0.16622912883758545
         ],
         "min": [
-          2.911202557384968,
-          -1.398901429027319,
+          2.911202558720431,
+          -1.3989014193131075,
           -1.4731756448745728
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f1e68a824e5e9e83c1dc765b918035afc5c67a97836d297a427ed14ef840c6b",
+      "geometryHash": "8454daebf761cd4649e4ec8c5703c185eb485a471e36fef3e12ac0506ce03076",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-star-hull.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1628,17 +1628,17 @@
       "bounds": {
         "max": [
           0.4300000071525574,
-          2.400022029876709,
-          0.7483996152877808
+          2.400022049488287,
+          0.7483996088601855
         ],
         "min": [
           -3.1784634590148926,
-          0.3638121783733368,
-          -0.7476475238800049
+          0.3638121587617589,
+          -0.7476475174524096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c400e8fd21ad4457417e1eac1dd3e4e08f56b32b6a567b388e8974a31df8a08c",
+      "geometryHash": "45e194549cebc7936581f6a6676adcdedaecb9be80d4f837db0b0ba68319ce21",
       "id": "sf.render.cargo-pod-standard.mesh.lod2-warning.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -1801,20 +1801,20 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.collision-hull",
       "localTransform": [
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
-        0,
+        0.4100000858306885,
         0,
         1
       ],
@@ -1829,20 +1829,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
-        0,
+        0.4100000858306885,
         0,
         1
       ]
@@ -1850,20 +1850,20 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-armor",
       "localTransform": [
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
-        0,
+        0.08000004291534424,
         0,
         1
       ],
@@ -1878,20 +1878,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
         0,
         0,
-        1,
+        3.240000009536743,
         0,
         0,
-        0,
+        0.08000004291534424,
         0,
         1
       ]
@@ -1899,21 +1899,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-beacon-amber",
       "localTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1927,21 +1927,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ]
     },
@@ -1997,17 +1997,17 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-hull",
       "localTransform": [
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
@@ -2025,17 +2025,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
@@ -2046,19 +2046,19 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-mechanical",
       "localTransform": [
-        1,
+        3.055000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.055000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.055000066757202,
         0,
-        0,
+        -0.004999876022338867,
         0,
         0,
         1
@@ -2074,19 +2074,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.055000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.055000066757202,
         0,
         0,
         0,
         0,
-        1,
+        3.055000066757202,
         0,
-        0,
+        -0.004999876022338867,
         0,
         0,
         1
@@ -2095,21 +2095,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-port-armor",
       "localTransform": [
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
+        -0.019999981857836246,
         0,
-        0,
-        0,
+        -0.6750000200991053,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2124,42 +2124,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
-        3,
+        2.9800000181421638,
         0,
-        1.4800000190734863,
+        0.804999998974381,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-port-warning",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        0.019999980693683028,
         0,
-        0,
-        0,
+        -1.199999988079071,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2174,42 +2174,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3,
+        3.019999980693683,
         0,
-        1.4800000190734863,
+        0.2800000309944153,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-armor",
       "localTransform": [
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
+        -0.019999981857836246,
         0,
-        0,
-        0,
+        0.6750000200991053,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2224,42 +2224,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        1.2200000286102295,
         0,
-        3,
+        2.9800000181421638,
         0,
-        -1.4800000190734863,
+        -0.804999998974381,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-door-star-warning",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        0.019999980693683028,
         0,
-        0,
-        0,
+        1.199999988079071,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2274,38 +2274,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3,
+        3.019999980693683,
         0,
-        -1.4800000190734863,
+        -0.2800000309944153,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -2324,17 +2324,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -2345,20 +2345,20 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t0-warning",
       "localTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        0,
-        0,
+        0.07999992546126578,
+        0.44999997317790985,
         0,
         1
       ],
@@ -2374,20 +2374,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        3.0199999809265137,
-        0,
+        3.0999999063877794,
+        0.44999997317790985,
         0.699999988079071,
         1
       ]
@@ -2395,17 +2395,17 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -2424,17 +2424,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -2445,21 +2445,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t1-warning",
       "localTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        0,
-        0,
-        0,
+        0.07999992546126578,
+        0.44999997317790985,
+        7.450580596923828e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2474,38 +2474,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        3.0199999809265137,
-        0,
-        0.25,
+        3.0999999063877794,
+        0.44999997317790985,
+        0.2500000074505806,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -2524,17 +2524,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -2545,21 +2545,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t2-warning",
       "localTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        0,
-        0,
-        0,
+        0.07999992546126578,
+        0.44999997317790985,
+        -7.450580596923828e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2574,38 +2574,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        3.0199999809265137,
-        0,
-        -0.25,
+        3.0999999063877794,
+        0.44999997317790985,
+        -0.2500000074505806,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -2624,17 +2624,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -2645,20 +2645,20 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-lock-t3-warning",
       "localTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        0,
-        0,
+        0.07999992546126578,
+        0.44999997317790985,
         0,
         1
       ],
@@ -2674,20 +2674,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
         0,
         0,
         0,
-        1,
+        0.08999998867511749,
         0,
-        3.0199999809265137,
-        0,
+        3.0999999063877794,
+        0.44999997317790985,
         -0.699999988079071,
         1
       ]
@@ -2695,21 +2695,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-port-hull",
       "localTransform": [
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
-        0,
-        0,
-        0,
+        -0.059999940916895866,
+        0.38999998522922397,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2724,42 +2724,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
-        3,
-        -1.3899999856948853,
-        0.8199999928474426,
+        2.940000059083104,
+        -1.0000000004656613,
+        0.8199999630451202,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-motion-cargo-retain-star-hull",
       "localTransform": [
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
-        0,
-        0,
-        0,
+        -0.059999940916895866,
+        0.38999998522922397,
+        2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2774,41 +2774,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
         0,
         0,
         0,
-        1,
+        0.6549999415874481,
         0,
-        3,
-        -1.3899999856948853,
-        -0.8199999928474426,
+        2.940000059083104,
+        -1.0000000004656613,
+        -0.8199999630451202,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod0-warning",
       "localTransform": [
-        1,
+        2.5274999141693115,
         0,
         0,
         0,
         0,
-        1,
+        2.5274999141693115,
         0,
         0,
         0,
         0,
-        1,
+        2.5274999141693115,
         0,
-        0,
-        0,
+        -0.6524999141693115,
+        0.47499996423721313,
         0,
         1
       ],
@@ -2823,20 +2823,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        2.5274999141693115,
         0,
         0,
         0,
         0,
-        1,
+        2.5274999141693115,
         0,
         0,
         0,
         0,
-        1,
+        2.5274999141693115,
         0,
-        0,
-        0,
+        -0.6524999141693115,
+        0.47499996423721313,
         0,
         1
       ]
@@ -2844,20 +2844,20 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-armor",
       "localTransform": [
-        1,
+        3.239051938056946,
         0,
         0,
         0,
         0,
-        1,
+        3.239051938056946,
         0,
         0,
         0,
         0,
-        1,
+        3.239051938056946,
         0,
-        0,
-        0,
+        1.1920928955078125e-7,
+        0.07990330457687378,
         0,
         1
       ],
@@ -2872,20 +2872,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.239051938056946,
         0,
         0,
         0,
         0,
-        1,
+        3.239051938056946,
         0,
         0,
         0,
         0,
-        1,
+        3.239051938056946,
         0,
-        0,
-        0,
+        1.1920928955078125e-7,
+        0.07990330457687378,
         0,
         1
       ]
@@ -2893,21 +2893,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-beacon-amber",
       "localTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2921,21 +2921,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ]
     },
@@ -2991,17 +2991,17 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-hull",
       "localTransform": [
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
@@ -3019,17 +3019,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
         0,
-        1,
+        2.8499999046325684,
         0,
         0,
         0,
@@ -3040,21 +3040,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-mechanical",
       "localTransform": [
-        1,
+        3.054300904273987,
         0,
         0,
         0,
         0,
-        1,
+        3.054300904273987,
         0,
         0,
         0,
         0,
-        1,
+        3.054300904273987,
         0,
+        -0.005699038505554199,
         0,
-        0,
-        0,
+        0.00008285045623779297,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3068,42 +3068,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.054300904273987,
         0,
         0,
         0,
         0,
-        1,
+        3.054300904273987,
         0,
         0,
         0,
         0,
-        1,
+        3.054300904273987,
         0,
+        -0.005699038505554199,
         0,
-        0,
-        0,
+        0.00008285045623779297,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-port-armor",
       "localTransform": [
-        1,
+        1.2191557884216309,
         0,
         0,
         0,
         0,
-        1,
+        1.2191557884216309,
         0,
         0,
         0,
         0,
-        1,
+        1.2191557884216309,
         0,
-        0,
-        0,
-        0,
+        -0.020041346549987793,
+        1.1920928955078125e-7,
+        -0.6749999712628778,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3118,42 +3118,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2191557884216309,
         0,
         0,
         0,
         0,
-        1,
+        1.2191557884216309,
         0,
         0,
         0,
         0,
-        1,
+        1.2191557884216309,
         0,
-        3,
-        0,
-        1.4800000190734863,
+        2.979958653450012,
+        1.1920928955078125e-7,
+        0.8050000478106085,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-port-warning",
       "localTransform": [
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
+        0.020030737156048417,
         0,
-        0,
-        0,
+        -1.199999988079071,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3168,42 +3168,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
-        3,
+        3.0200307371560484,
         0,
-        1.4800000190734863,
+        0.2800000309944153,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-armor",
       "localTransform": [
-        1,
+        1.2191925048828125,
         0,
         0,
         0,
         0,
-        1,
+        1.2191925048828125,
         0,
         0,
         0,
         0,
-        1,
+        1.2191925048828125,
         0,
-        0,
-        0,
-        0,
+        -0.019999980926513672,
+        -0.000036835670471191406,
+        0.6749999211169779,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3218,42 +3218,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2191925048828125,
         0,
         0,
         0,
         0,
-        1,
+        1.2191925048828125,
         0,
         0,
         0,
         0,
-        1,
+        1.2191925048828125,
         0,
-        3,
-        0,
-        -1.4800000190734863,
+        2.9800000190734863,
+        -0.000036835670471191406,
+        -0.8050000979565084,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-door-star-warning",
       "localTransform": [
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
+        0.020030737156048417,
         0,
-        0,
-        0,
+        1.199999988079071,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3268,38 +3268,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
         0,
         0,
         0,
-        1,
+        1.149550199508667,
         0,
-        3,
+        3.0200307371560484,
         0,
-        -1.4800000190734863,
+        -0.2800000309944153,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -3318,17 +3318,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -3339,21 +3339,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t0-warning",
       "localTransform": [
-        1,
+        0.08890187740325928,
         0,
         0,
         0,
         0,
-        1,
+        0.08890187740325928,
         0,
         0,
         0,
         0,
-        1,
+        0.08890187740325928,
         0,
-        0,
-        0,
-        0,
+        0.0800000433519017,
+        0.45025378465652466,
+        0.00041857361793518066,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3368,38 +3368,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08890187740325928,
         0,
         0,
         0,
         0,
-        1,
+        0.08890187740325928,
         0,
         0,
         0,
         0,
-        1,
+        0.08890187740325928,
         0,
-        3.0199999809265137,
-        0,
-        0.699999988079071,
+        3.1000000242784154,
+        0.45025378465652466,
+        0.7004185616970062,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -3418,17 +3418,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -3439,21 +3439,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t1-warning",
       "localTransform": [
-        1,
+        0.08880960941314697,
         0,
         0,
         0,
         0,
-        1,
+        0.08880960941314697,
         0,
         0,
         0,
         0,
-        1,
+        0.08880960941314697,
         0,
-        0,
-        0,
-        0,
+        0.07996106139034964,
+        0.4503459930419922,
+        0.00003894418478012085,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3468,38 +3468,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08880960941314697,
         0,
         0,
         0,
         0,
-        1,
+        0.08880960941314697,
         0,
         0,
         0,
         0,
-        1,
+        0.08880960941314697,
         0,
-        3.0199999809265137,
-        0,
-        0.25,
+        3.0999610423168633,
+        0.4503459930419922,
+        0.2500389441847801,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -3518,17 +3518,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -3539,21 +3539,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t2-warning",
       "localTransform": [
-        1,
+        0.08880963921546936,
         0,
         0,
         0,
         0,
-        1,
+        0.08880963921546936,
         0,
         0,
         0,
         0,
-        1,
+        0.08880963921546936,
         0,
-        0,
-        0,
-        0,
+        0.08000004358473234,
+        0.4503460228443146,
+        -0.0000389590859413147,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3568,38 +3568,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08880963921546936,
         0,
         0,
         0,
         0,
-        1,
+        0.08880963921546936,
         0,
         0,
         0,
         0,
-        1,
+        0.08880963921546936,
         0,
-        3.0199999809265137,
-        0,
-        -0.25,
+        3.100000024511246,
+        0.4503460228443146,
+        -0.2500389590859413,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
@@ -3618,17 +3618,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         3.0199999809265137,
         0,
@@ -3639,21 +3639,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-lock-t3-warning",
       "localTransform": [
-        1,
+        0.08890305459499359,
         0,
         0,
         0,
         0,
-        1,
+        0.08890305459499359,
         0,
         0,
         0,
         0,
-        1,
+        0.08890305459499359,
         0,
-        0,
-        0,
-        0,
+        0.08020663174102083,
+        0.45025260746479034,
+        -0.00011974573135375977,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3668,42 +3668,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08890305459499359,
         0,
         0,
         0,
         0,
-        1,
+        0.08890305459499359,
         0,
         0,
         0,
         0,
-        1,
+        0.08890305459499359,
         0,
-        3.0199999809265137,
-        0,
-        -0.699999988079071,
+        3.1002066126675345,
+        0.45025260746479034,
+        -0.7001197338104248,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-port-hull",
       "localTransform": [
-        1,
+        0.6543494462966919,
         0,
         0,
         0,
         0,
-        1,
+        0.6543494462966919,
         0,
         0,
         0,
         0,
-        1,
+        0.6543494462966919,
         0,
-        0,
-        0,
-        0,
+        -0.05996668245643377,
+        0.389999957755208,
+        -0.00002485513687133789,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3718,42 +3718,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6543494462966919,
         0,
         0,
         0,
         0,
-        1,
+        0.6543494462966919,
         0,
         0,
         0,
         0,
-        1,
+        0.6543494462966919,
         0,
-        3,
-        -1.3899999856948853,
-        0.8199999928474426,
+        2.9400333175435662,
+        -1.0000000279396772,
+        0.8199751377105713,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-motion-cargo-retain-star-hull",
       "localTransform": [
-        1,
+        0.6543762683868408,
         0,
         0,
         0,
         0,
-        1,
+        0.6543762683868408,
         0,
         0,
         0,
         0,
-        1,
+        0.6543762683868408,
         0,
-        0,
-        0,
-        0,
+        -0.05999982450157404,
+        0.3900248808786273,
+        0.0000019669532775878906,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3768,42 +3768,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6543762683868408,
         0,
         0,
         0,
         0,
-        1,
+        0.6543762683868408,
         0,
         0,
         0,
         0,
-        1,
+        0.6543762683868408,
         0,
-        3,
-        -1.3899999856948853,
-        -0.8199999928474426,
+        2.940000175498426,
+        -0.999975104816258,
+        -0.819998025894165,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod1-warning",
       "localTransform": [
-        1,
+        1.8046503961086273,
         0,
         0,
         0,
         0,
-        1,
+        1.8046503961086273,
         0,
         0,
         0,
         0,
-        1,
+        1.8046503961086273,
         0,
-        0,
-        0,
-        0,
+        -1.37465038895607,
+        1.3806747794151306,
+        -0.0002065896987915039,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3817,41 +3817,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.8046503961086273,
         0,
         0,
         0,
         0,
-        1,
+        1.8046503961086273,
         0,
         0,
         0,
         0,
-        1,
+        1.8046503961086273,
         0,
-        0,
-        0,
-        0,
+        -1.37465038895607,
+        1.3806747794151306,
+        -0.0002065896987915039,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-armor",
       "localTransform": [
-        1,
+        3.2384703159332275,
         0,
         0,
         0,
         0,
-        1,
+        3.2384703159332275,
         0,
         0,
         0,
         0,
-        1,
+        3.2384703159332275,
         0,
         0,
-        0,
+        0.07999318838119507,
         0,
         1
       ],
@@ -3866,20 +3866,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.2384703159332275,
         0,
         0,
         0,
         0,
-        1,
+        3.2384703159332275,
         0,
         0,
         0,
         0,
-        1,
+        3.2384703159332275,
         0,
         0,
-        0,
+        0.07999318838119507,
         0,
         1
       ]
@@ -3887,21 +3887,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-beacon-amber",
       "localTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3915,21 +3915,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
         0,
         0,
         0,
-        1,
+        0.0700000524520874,
         0,
-        0,
-        0,
-        0,
+        2.549999952316284,
+        1.600000023841858,
+        -1.2000000476837158,
         1
       ]
     },
@@ -3985,17 +3985,17 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-hull",
       "localTransform": [
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
         0,
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
         0,
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
@@ -4013,17 +4013,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
         0,
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
         0,
-        1,
+        2.8439183235168457,
         0,
         0,
         0,
@@ -4034,19 +4034,19 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-mechanical",
       "localTransform": [
-        1,
+        3.053709387779236,
         0,
         0,
         0,
         0,
-        1,
+        3.053709387779236,
         0,
         0,
         0,
         0,
-        1,
+        3.053709387779236,
         0,
-        0,
+        -0.006290555000305176,
         0,
         0,
         1
@@ -4062,19 +4062,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        3.053709387779236,
         0,
         0,
         0,
         0,
-        1,
+        3.053709387779236,
         0,
         0,
         0,
         0,
-        1,
+        3.053709387779236,
         0,
-        0,
+        -0.006290555000305176,
         0,
         0,
         1
@@ -4083,21 +4083,21 @@
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-port-armor",
       "localTransform": [
-        1,
+        1.2186481952667236,
         0,
         0,
         0,
         0,
-        1,
+        1.2186481952667236,
         0,
         0,
         0,
         0,
-        1,
+        1.2186481952667236,
         0,
+        -0.019923925399780273,
         0,
-        0,
-        0,
+        -0.6746539512532763,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4112,42 +4112,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2186481952667236,
         0,
         0,
         0,
         0,
-        1,
+        1.2186481952667236,
         0,
         0,
         0,
         0,
-        1,
+        1.2186481952667236,
         0,
-        3,
+        2.9800760746002197,
         0,
-        1.4800000190734863,
+        0.80534606782021,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-port-warning",
       "localTransform": [
-        1,
+        1.1487014889717102,
         0,
         0,
         0,
         0,
-        1,
+        1.1487014889717102,
         0,
         0,
         0,
         0,
-        1,
+        1.1487014889717102,
         0,
-        0,
-        0,
-        0,
+        0.019905924331396818,
+        -0.000020444393157958984,
+        -1.2001240849494934,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4162,42 +4162,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.1487014889717102,
         0,
         0,
         0,
         0,
-        1,
+        1.1487014889717102,
         0,
         0,
         0,
         0,
-        1,
+        1.1487014889717102,
         0,
-        3,
-        0,
-        1.4800000190734863,
+        3.019905924331397,
+        -0.000020444393157958984,
+        0.2798759341239929,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-armor",
       "localTransform": [
-        1,
+        1.2189387679100037,
         0,
         0,
         0,
         0,
-        1,
+        1.2189387679100037,
         0,
         0,
         0,
         0,
-        1,
+        1.2189387679100037,
         0,
-        0,
-        0,
-        0,
+        -0.0199239244684577,
+        -0.0002905726432800293,
+        0.6748771290876903,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4212,42 +4212,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.2189387679100037,
         0,
         0,
         0,
         0,
-        1,
+        1.2189387679100037,
         0,
         0,
         0,
         0,
-        1,
+        1.2189387679100037,
         0,
-        3,
-        0,
-        -1.4800000190734863,
+        2.9800760755315423,
+        -0.0002905726432800293,
+        -0.8051228899857961,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-door-star-warning",
       "localTransform": [
-        1,
+        1.148530900478363,
         0,
         0,
         0,
         0,
-        1,
+        1.148530900478363,
         0,
         0,
         0,
         0,
-        1,
+        1.148530900478363,
         0,
-        0,
-        0,
-        0,
+        0.01991045451723039,
+        -0.00015014410018920898,
+        1.2005535960197449,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4262,42 +4262,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.148530900478363,
         0,
         0,
         0,
         0,
-        1,
+        1.148530900478363,
         0,
         0,
         0,
         0,
-        1,
+        1.148530900478363,
         0,
-        3,
-        0,
-        -1.4800000190734863,
+        3.0199104545172304,
+        -0.00015014410018920898,
+        -0.27944642305374146,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        -0.00007724761962890625,
         0,
-        0,
-        0,
+        2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4312,42 +4312,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3.0199999809265137,
+        3.0199227333068848,
         0,
-        0.699999988079071,
+        0.7000000178813934,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t0-warning",
       "localTransform": [
-        1,
+        0.08694270253181458,
         0,
         0,
         0,
         0,
-        1,
+        0.08694270253181458,
         0,
         0,
         0,
         0,
-        1,
+        0.08694270253181458,
         0,
-        0,
-        0,
-        0,
+        0.0790466059697792,
+        0.4507768452167511,
+        -0.000003993511199951172,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4362,42 +4362,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08694270253181458,
         0,
         0,
         0,
         0,
-        1,
+        0.08694270253181458,
         0,
         0,
         0,
         0,
-        1,
+        0.08694270253181458,
         0,
-        3.0199999809265137,
-        0,
-        0.699999988079071,
+        3.099046586896293,
+        0.4507768452167511,
+        0.6999959945678711,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        -0.00007724761962890625,
         0,
-        0,
-        0,
+        -7.450580596923828e-9,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4412,42 +4412,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3.0199999809265137,
+        3.0199227333068848,
         0,
-        0.25,
+        0.2499999925494194,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t1-warning",
       "localTransform": [
-        1,
+        0.08689963817596436,
         0,
         0,
         0,
         0,
-        1,
+        0.08689963817596436,
         0,
         0,
         0,
         0,
-        1,
+        0.08689963817596436,
         0,
-        0,
-        0,
-        0,
+        0.08000004617497325,
+        0.45081180334091187,
+        0.0000011473894119262695,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4462,42 +4462,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08689963817596436,
         0,
         0,
         0,
         0,
-        1,
+        0.08689963817596436,
         0,
         0,
         0,
         0,
-        1,
+        0.08689963817596436,
         0,
-        3.0199999809265137,
-        0,
-        0.25,
+        3.100000027101487,
+        0.45081180334091187,
+        0.2500011473894119,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        -0.00007724761962890625,
         0,
-        0,
-        0,
+        -2.2351741790771484e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4512,42 +4512,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3.0199999809265137,
+        3.0199227333068848,
         0,
-        -0.25,
+        -0.2500000223517418,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t2-warning",
       "localTransform": [
-        1,
+        0.08693866431713104,
         0,
         0,
         0,
         0,
-        1,
+        0.08693866431713104,
         0,
         0,
         0,
         0,
-        1,
+        0.08693866431713104,
         0,
-        0,
-        0,
-        0,
+        0.08022045972757041,
+        0.45078088343143463,
+        0.0000949278473854065,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4562,42 +4562,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08693866431713104,
         0,
         0,
         0,
         0,
-        1,
+        0.08693866431713104,
         0,
         0,
         0,
         0,
-        1,
+        0.08693866431713104,
         0,
-        3.0199999809265137,
-        0,
-        -0.25,
+        3.100220440654084,
+        0.45078088343143463,
+        -0.2499050721526146,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-mechanical",
       "localTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
+        -0.00007724761962890625,
         0,
-        0,
-        0,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4612,42 +4612,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
         0,
         0,
         0,
-        1,
+        1.149999976158142,
         0,
-        3.0199999809265137,
+        3.0199227333068848,
         0,
-        -0.699999988079071,
+        -0.7000000178813934,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-lock-t3-warning",
       "localTransform": [
-        1,
+        0.08688141405582428,
         0,
         0,
         0,
         0,
-        1,
+        0.08688141405582428,
         0,
         0,
         0,
         0,
-        1,
+        0.08688141405582428,
         0,
-        0,
-        0,
-        0,
+        0.08133900235407054,
+        0.4508381336927414,
+        -2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4662,42 +4662,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.08688141405582428,
         0,
         0,
         0,
         0,
-        1,
+        0.08688141405582428,
         0,
         0,
         0,
         0,
-        1,
+        0.08688141405582428,
         0,
-        3.0199999809265137,
-        0,
-        -0.699999988079071,
+        3.101338983280584,
+        0.4508381336927414,
+        -0.7000000178813934,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-port-hull",
       "localTransform": [
-        1,
+        0.6526162624359131,
         0,
         0,
         0,
         0,
-        1,
+        0.6526162624359131,
         0,
         0,
         0,
         0,
-        1,
+        0.6526162624359131,
         0,
-        0,
-        0,
-        0,
+        -0.059999825432896614,
+        0.38999998616054654,
+        0.0005592703819274902,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4712,42 +4712,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6526162624359131,
         0,
         0,
         0,
         0,
-        1,
+        0.6526162624359131,
         0,
         0,
         0,
         0,
-        1,
+        0.6526162624359131,
         0,
-        3,
-        -1.3899999856948853,
-        0.8199999928474426,
+        2.9400001745671034,
+        -0.9999999995343387,
+        0.8205592632293701,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-motion-cargo-retain-star-hull",
       "localTransform": [
-        1,
+        0.6534732580184937,
         0,
         0,
         0,
         0,
-        1,
+        0.6534732580184937,
         0,
         0,
         0,
         0,
-        1,
+        0.6534732580184937,
         0,
-        0,
-        0,
-        0,
+        -0.05999970622360706,
+        0.3899990487843752,
+        0.0002976059913635254,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4762,42 +4762,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        0.6534732580184937,
         0,
         0,
         0,
         0,
-        1,
+        0.6534732580184937,
         0,
         0,
         0,
         0,
-        1,
+        0.6534732580184937,
         0,
-        3,
-        -1.3899999856948853,
-        -0.8199999928474426,
+        2.940000293776393,
+        -1.00000093691051,
+        -0.8197023868560791,
         1
       ]
     },
     {
       "id": "sf.render.cargo-pod-standard.mesh.lod2-warning",
       "localTransform": [
-        1,
+        1.804231733083725,
         0,
         0,
         0,
         0,
-        1,
+        1.804231733083725,
         0,
         0,
         0,
         0,
-        1,
+        1.804231733083725,
         0,
-        0,
-        0,
-        0,
+        -1.3742317259311676,
+        1.3819171041250229,
+        0.00037604570388793945,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4811,21 +4811,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.cargo-pod-standard.body",
       "worldTransform": [
-        1,
+        1.804231733083725,
         0,
         0,
         0,
         0,
-        1,
+        1.804231733083725,
         0,
         0,
         0,
         0,
-        1,
+        1.804231733083725,
         0,
-        0,
-        0,
-        0,
+        -1.3742317259311676,
+        1.3819171041250229,
+        0.00037604570388793945,
         1
       ]
     },
@@ -5280,37 +5280,37 @@
       "uri": "place_cargo_pod_standard.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 981988,
-    "sha256": "5f90ffced465134a9b9956e38a50a939d41e2d2dd54f680f499a0a4f63f5decb",
+    "bytes": 547884,
+    "sha256": "6675f46d5f54323ff2545876ff523330f83ca7f5346435ef04ef4e7a22fac860",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        0.41002964973449707,
+        0.4100296327027796,
         0
       ],
       "max": [
         3.240000009536743,
-        2.4001173973083496,
-        1.70014226436615
+        2.4001174757855854,
+        1.7001422212584234
       ],
       "min": [
         -3.240000009536743,
-        -1.5800580978393555,
-        -1.70014226436615
+        -1.5800582103800263,
+        -1.7001422212584234
       ],
       "size": [
         6.480000019073486,
-        3.980175495147705,
-        3.4002845287323
+        3.9801756861656115,
+        3.400284442516847
       ]
     },
     "hidden": [
@@ -6245,20 +6245,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.240000009536743,
           0,
           0,
           0,
           0,
-          1,
+          3.240000009536743,
           0,
           0,
           0,
           0,
-          1,
+          3.240000009536743,
           0,
           0,
-          0,
+          0.08000004291534424,
           0,
           1
         ],
@@ -6272,21 +6272,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
-          0,
-          0,
-          0,
+          2.549999952316284,
+          1.600000023841858,
+          -1.2000000476837158,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -6327,17 +6327,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
           0,
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
           0,
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
@@ -6354,19 +6354,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.055000066757202,
           0,
           0,
           0,
           0,
-          1,
+          3.055000066757202,
           0,
           0,
           0,
           0,
-          1,
+          3.055000066757202,
           0,
-          0,
+          -0.004999876022338867,
           0,
           0,
           1
@@ -6381,20 +6381,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.5274999141693115,
           0,
           0,
           0,
           0,
-          1,
+          2.5274999141693115,
           0,
           0,
           0,
           0,
-          1,
+          2.5274999141693115,
           0,
-          0,
-          0,
+          -0.6524999141693115,
+          0.47499996423721313,
           0,
           1
         ],
@@ -6408,20 +6408,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.239051938056946,
           0,
           0,
           0,
           0,
-          1,
+          3.239051938056946,
           0,
           0,
           0,
           0,
-          1,
+          3.239051938056946,
           0,
-          0,
-          0,
+          1.1920928955078125e-7,
+          0.07990330457687378,
           0,
           1
         ],
@@ -6435,21 +6435,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
-          0,
-          0,
-          0,
+          2.549999952316284,
+          1.600000023841858,
+          -1.2000000476837158,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -6490,17 +6490,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
           0,
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
           0,
-          1,
+          2.8499999046325684,
           0,
           0,
           0,
@@ -6517,21 +6517,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.054300904273987,
           0,
           0,
           0,
           0,
-          1,
+          3.054300904273987,
           0,
           0,
           0,
           0,
-          1,
+          3.054300904273987,
           0,
+          -0.005699038505554199,
           0,
-          0,
-          0,
+          0.00008285045623779297,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -6544,21 +6544,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8046503961086273,
           0,
           0,
           0,
           0,
-          1,
+          1.8046503961086273,
           0,
           0,
           0,
           0,
-          1,
+          1.8046503961086273,
           0,
-          0,
-          0,
-          0,
+          -1.37465038895607,
+          1.3806747794151306,
+          -0.0002065896987915039,
           1
         ],
         "name": "LOD1_Warning",
@@ -6571,20 +6571,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.2384703159332275,
           0,
           0,
           0,
           0,
-          1,
+          3.2384703159332275,
           0,
           0,
           0,
           0,
-          1,
+          3.2384703159332275,
           0,
           0,
-          0,
+          0.07999318838119507,
           0,
           1
         ],
@@ -6598,21 +6598,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
           0,
           0,
           0,
-          1,
+          0.0700000524520874,
           0,
-          0,
-          0,
-          0,
+          2.549999952316284,
+          1.600000023841858,
+          -1.2000000476837158,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -6653,17 +6653,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.8439183235168457,
           0,
           0,
           0,
           0,
-          1,
+          2.8439183235168457,
           0,
           0,
           0,
           0,
-          1,
+          2.8439183235168457,
           0,
           0,
           0,
@@ -6680,19 +6680,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.053709387779236,
           0,
           0,
           0,
           0,
-          1,
+          3.053709387779236,
           0,
           0,
           0,
           0,
-          1,
+          3.053709387779236,
           0,
-          0,
+          -0.006290555000305176,
           0,
           0,
           1
@@ -6707,21 +6707,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.804231733083725,
           0,
           0,
           0,
           0,
-          1,
+          1.804231733083725,
           0,
           0,
           0,
           0,
-          1,
+          1.804231733083725,
           0,
-          0,
-          0,
-          0,
+          -1.3742317259311676,
+          1.3819171041250229,
+          0.00037604570388793945,
           1
         ],
         "name": "LOD2_Warning",
@@ -6734,21 +6734,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          1.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          1.2200000286102295,
           0,
-          3,
+          2.9800000181421638,
           0,
-          1.4800000190734863,
+          0.804999998974381,
           1
         ],
         "name": "LOD0_MOTION_CARGO_DOOR_PORT_Armor",
@@ -6762,21 +6762,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3,
+          3.019999980693683,
           0,
-          1.4800000190734863,
+          0.2800000309944153,
           1
         ],
         "name": "LOD0_MOTION_CARGO_DOOR_PORT_Warning",
@@ -6790,21 +6790,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2191557884216309,
           0,
           0,
           0,
           0,
-          1,
+          1.2191557884216309,
           0,
           0,
           0,
           0,
-          1,
+          1.2191557884216309,
           0,
-          3,
-          0,
-          1.4800000190734863,
+          2.979958653450012,
+          1.1920928955078125e-7,
+          0.8050000478106085,
           1
         ],
         "name": "LOD1_MOTION_CARGO_DOOR_PORT_Armor",
@@ -6818,21 +6818,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149550199508667,
           0,
           0,
           0,
           0,
-          1,
+          1.149550199508667,
           0,
           0,
           0,
           0,
-          1,
+          1.149550199508667,
           0,
-          3,
+          3.0200307371560484,
           0,
-          1.4800000190734863,
+          0.2800000309944153,
           1
         ],
         "name": "LOD1_MOTION_CARGO_DOOR_PORT_Warning",
@@ -6846,21 +6846,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2186481952667236,
           0,
           0,
           0,
           0,
-          1,
+          1.2186481952667236,
           0,
           0,
           0,
           0,
-          1,
+          1.2186481952667236,
           0,
-          3,
+          2.9800760746002197,
           0,
-          1.4800000190734863,
+          0.80534606782021,
           1
         ],
         "name": "LOD2_MOTION_CARGO_DOOR_PORT_Armor",
@@ -6874,21 +6874,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1487014889717102,
           0,
           0,
           0,
           0,
-          1,
+          1.1487014889717102,
           0,
           0,
           0,
           0,
-          1,
+          1.1487014889717102,
           0,
-          3,
-          0,
-          1.4800000190734863,
+          3.019905924331397,
+          -0.000020444393157958984,
+          0.2798759341239929,
           1
         ],
         "name": "LOD2_MOTION_CARGO_DOOR_PORT_Warning",
@@ -6902,21 +6902,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          1.2200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          1.2200000286102295,
           0,
-          3,
+          2.9800000181421638,
           0,
-          -1.4800000190734863,
+          -0.804999998974381,
           1
         ],
         "name": "LOD0_MOTION_CARGO_DOOR_STAR_Armor",
@@ -6930,21 +6930,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3,
+          3.019999980693683,
           0,
-          -1.4800000190734863,
+          -0.2800000309944153,
           1
         ],
         "name": "LOD0_MOTION_CARGO_DOOR_STAR_Warning",
@@ -6958,21 +6958,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2191925048828125,
           0,
           0,
           0,
           0,
-          1,
+          1.2191925048828125,
           0,
           0,
           0,
           0,
-          1,
+          1.2191925048828125,
           0,
-          3,
-          0,
-          -1.4800000190734863,
+          2.9800000190734863,
+          -0.000036835670471191406,
+          -0.8050000979565084,
           1
         ],
         "name": "LOD1_MOTION_CARGO_DOOR_STAR_Armor",
@@ -6986,21 +6986,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149550199508667,
           0,
           0,
           0,
           0,
-          1,
+          1.149550199508667,
           0,
           0,
           0,
           0,
-          1,
+          1.149550199508667,
           0,
-          3,
+          3.0200307371560484,
           0,
-          -1.4800000190734863,
+          -0.2800000309944153,
           1
         ],
         "name": "LOD1_MOTION_CARGO_DOOR_STAR_Warning",
@@ -7014,21 +7014,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2189387679100037,
           0,
           0,
           0,
           0,
-          1,
+          1.2189387679100037,
           0,
           0,
           0,
           0,
-          1,
+          1.2189387679100037,
           0,
-          3,
-          0,
-          -1.4800000190734863,
+          2.9800760755315423,
+          -0.0002905726432800293,
+          -0.8051228899857961,
           1
         ],
         "name": "LOD2_MOTION_CARGO_DOOR_STAR_Armor",
@@ -7042,21 +7042,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.148530900478363,
           0,
           0,
           0,
           0,
-          1,
+          1.148530900478363,
           0,
           0,
           0,
           0,
-          1,
+          1.148530900478363,
           0,
-          3,
-          0,
-          -1.4800000190734863,
+          3.0199104545172304,
+          -0.00015014410018920898,
+          -0.27944642305374146,
           1
         ],
         "name": "LOD2_MOTION_CARGO_DOOR_STAR_Warning",
@@ -7070,17 +7070,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7098,20 +7098,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
-          3.0199999809265137,
-          0,
+          3.0999999063877794,
+          0.44999997317790985,
           0.699999988079071,
           1
         ],
@@ -7126,17 +7126,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7154,21 +7154,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08890187740325928,
           0,
           0,
           0,
           0,
-          1,
+          0.08890187740325928,
           0,
           0,
           0,
           0,
-          1,
+          0.08890187740325928,
           0,
-          3.0199999809265137,
-          0,
-          0.699999988079071,
+          3.1000000242784154,
+          0.45025378465652466,
+          0.7004185616970062,
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T0_Warning",
@@ -7182,21 +7182,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3.0199999809265137,
+          3.0199227333068848,
           0,
-          0.699999988079071,
+          0.7000000178813934,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T0_Mechanical",
@@ -7210,21 +7210,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08694270253181458,
           0,
           0,
           0,
           0,
-          1,
+          0.08694270253181458,
           0,
           0,
           0,
           0,
-          1,
+          0.08694270253181458,
           0,
-          3.0199999809265137,
-          0,
-          0.699999988079071,
+          3.099046586896293,
+          0.4507768452167511,
+          0.6999959945678711,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T0_Warning",
@@ -7238,17 +7238,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7266,21 +7266,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
-          3.0199999809265137,
-          0,
-          0.25,
+          3.0999999063877794,
+          0.44999997317790985,
+          0.2500000074505806,
           1
         ],
         "name": "LOD0_MOTION_CARGO_LOCK_T1_Warning",
@@ -7294,17 +7294,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7322,21 +7322,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08880960941314697,
           0,
           0,
           0,
           0,
-          1,
+          0.08880960941314697,
           0,
           0,
           0,
           0,
-          1,
+          0.08880960941314697,
           0,
-          3.0199999809265137,
-          0,
-          0.25,
+          3.0999610423168633,
+          0.4503459930419922,
+          0.2500389441847801,
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T1_Warning",
@@ -7350,21 +7350,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3.0199999809265137,
+          3.0199227333068848,
           0,
-          0.25,
+          0.2499999925494194,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T1_Mechanical",
@@ -7378,21 +7378,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08689963817596436,
           0,
           0,
           0,
           0,
-          1,
+          0.08689963817596436,
           0,
           0,
           0,
           0,
-          1,
+          0.08689963817596436,
           0,
-          3.0199999809265137,
-          0,
-          0.25,
+          3.100000027101487,
+          0.45081180334091187,
+          0.2500011473894119,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T1_Warning",
@@ -7406,17 +7406,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7434,21 +7434,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
-          3.0199999809265137,
-          0,
-          -0.25,
+          3.0999999063877794,
+          0.44999997317790985,
+          -0.2500000074505806,
           1
         ],
         "name": "LOD0_MOTION_CARGO_LOCK_T2_Warning",
@@ -7462,17 +7462,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7490,21 +7490,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08880963921546936,
           0,
           0,
           0,
           0,
-          1,
+          0.08880963921546936,
           0,
           0,
           0,
           0,
-          1,
+          0.08880963921546936,
           0,
-          3.0199999809265137,
-          0,
-          -0.25,
+          3.100000024511246,
+          0.4503460228443146,
+          -0.2500389590859413,
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T2_Warning",
@@ -7518,21 +7518,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3.0199999809265137,
+          3.0199227333068848,
           0,
-          -0.25,
+          -0.2500000223517418,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T2_Mechanical",
@@ -7546,21 +7546,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08693866431713104,
           0,
           0,
           0,
           0,
-          1,
+          0.08693866431713104,
           0,
           0,
           0,
           0,
-          1,
+          0.08693866431713104,
           0,
-          3.0199999809265137,
-          0,
-          -0.25,
+          3.100220440654084,
+          0.45078088343143463,
+          -0.2499050721526146,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T2_Warning",
@@ -7574,17 +7574,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7602,20 +7602,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
           0,
           0,
           0,
-          1,
+          0.08999998867511749,
           0,
-          3.0199999809265137,
-          0,
+          3.0999999063877794,
+          0.44999997317790985,
           -0.699999988079071,
           1
         ],
@@ -7630,17 +7630,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           3.0199999809265137,
           0,
@@ -7658,21 +7658,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08890305459499359,
           0,
           0,
           0,
           0,
-          1,
+          0.08890305459499359,
           0,
           0,
           0,
           0,
-          1,
+          0.08890305459499359,
           0,
-          3.0199999809265137,
-          0,
-          -0.699999988079071,
+          3.1002066126675345,
+          0.45025260746479034,
+          -0.7001197338104248,
           1
         ],
         "name": "LOD1_MOTION_CARGO_LOCK_T3_Warning",
@@ -7686,21 +7686,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
           0,
           0,
           0,
-          1,
+          1.149999976158142,
           0,
-          3.0199999809265137,
+          3.0199227333068848,
           0,
-          -0.699999988079071,
+          -0.7000000178813934,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T3_Mechanical",
@@ -7714,21 +7714,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08688141405582428,
           0,
           0,
           0,
           0,
-          1,
+          0.08688141405582428,
           0,
           0,
           0,
           0,
-          1,
+          0.08688141405582428,
           0,
-          3.0199999809265137,
-          0,
-          -0.699999988079071,
+          3.101338983280584,
+          0.4508381336927414,
+          -0.7000000178813934,
           1
         ],
         "name": "LOD2_MOTION_CARGO_LOCK_T3_Warning",
@@ -7742,21 +7742,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6549999415874481,
           0,
           0,
           0,
           0,
-          1,
+          0.6549999415874481,
           0,
           0,
           0,
           0,
-          1,
+          0.6549999415874481,
           0,
-          3,
-          -1.3899999856948853,
-          0.8199999928474426,
+          2.940000059083104,
+          -1.0000000004656613,
+          0.8199999630451202,
           1
         ],
         "name": "LOD0_MOTION_CARGO_RETAIN_PORT_Hull",
@@ -7770,21 +7770,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6543494462966919,
           0,
           0,
           0,
           0,
-          1,
+          0.6543494462966919,
           0,
           0,
           0,
           0,
-          1,
+          0.6543494462966919,
           0,
-          3,
-          -1.3899999856948853,
-          0.8199999928474426,
+          2.9400333175435662,
+          -1.0000000279396772,
+          0.8199751377105713,
           1
         ],
         "name": "LOD1_MOTION_CARGO_RETAIN_PORT_Hull",
@@ -7798,21 +7798,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6526162624359131,
           0,
           0,
           0,
           0,
-          1,
+          0.6526162624359131,
           0,
           0,
           0,
           0,
-          1,
+          0.6526162624359131,
           0,
-          3,
-          -1.3899999856948853,
-          0.8199999928474426,
+          2.9400001745671034,
+          -0.9999999995343387,
+          0.8205592632293701,
           1
         ],
         "name": "LOD2_MOTION_CARGO_RETAIN_PORT_Hull",
@@ -7826,21 +7826,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6549999415874481,
           0,
           0,
           0,
           0,
-          1,
+          0.6549999415874481,
           0,
           0,
           0,
           0,
-          1,
+          0.6549999415874481,
           0,
-          3,
-          -1.3899999856948853,
-          -0.8199999928474426,
+          2.940000059083104,
+          -1.0000000004656613,
+          -0.8199999630451202,
           1
         ],
         "name": "LOD0_MOTION_CARGO_RETAIN_STAR_Hull",
@@ -7854,21 +7854,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6543762683868408,
           0,
           0,
           0,
           0,
-          1,
+          0.6543762683868408,
           0,
           0,
           0,
           0,
-          1,
+          0.6543762683868408,
           0,
-          3,
-          -1.3899999856948853,
-          -0.8199999928474426,
+          2.940000175498426,
+          -0.999975104816258,
+          -0.819998025894165,
           1
         ],
         "name": "LOD1_MOTION_CARGO_RETAIN_STAR_Hull",
@@ -7882,21 +7882,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6534732580184937,
           0,
           0,
           0,
           0,
-          1,
+          0.6534732580184937,
           0,
           0,
           0,
           0,
-          1,
+          0.6534732580184937,
           0,
-          3,
-          -1.3899999856948853,
-          -0.8199999928474426,
+          2.940000293776393,
+          -1.00000093691051,
+          -0.8197023868560791,
           1
         ],
         "name": "LOD2_MOTION_CARGO_RETAIN_STAR_Hull",
@@ -7912,20 +7912,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard.glb"
   },
-  "runtimeHash": "fc4f37ba40c577f508435487cb3120db35753a77c81388e049882b839eff69a0",
+  "runtimeHash": "1f7a650512d57a898447cfae0c6470f1223611be9bcb77d6931a61cf3d22bab5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           3.240000009536743,
-          2.4001173973083496,
-          1.70014226436615
+          2.4001174757855854,
+          1.7001422212584234
         ],
         "min": [
           -3.240000009536743,
-          -1.5800580978393555,
-          -1.70014226436615
+          -1.5800582103800263,
+          -1.7001422212584234
         ]
       },
       "id": "sf.render.cargo-pod-standard.body",

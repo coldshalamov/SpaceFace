@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "604db6714e6668c3124782dc3cebd74f85ef00c82a706cf16486ee62b0af044f",
+  "contentHash": "5b3128e163cbf65559a3dee43a823bf6ed6e2539f4ba0cfdb1605cfb44e39dd2",
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -618,17 +618,17 @@
       "bounds": {
         "max": [
           11.300007820129395,
-          4.000992298126221,
-          2.720341205596924
+          4.000992374660717,
+          2.7203412356257175
         ],
         "min": [
           -11.370013236999512,
-          -2.4007441997528076,
-          -2.7204084396362305
+          -2.4007442762873037,
+          -2.720408469665024
         ]
       },
       "drawMode": 4,
-      "geometryHash": "097a75ef0aae043089831c99f09c0714c5aa86e11300693cc4e89b0f7701a1fb",
+      "geometryHash": "fbf5471c8ff8dc32782295593c76d3c53d088393c052655829dd8f8ad095661b",
       "id": "sf.render.inspection-cutter.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -643,17 +643,17 @@
       "bounds": {
         "max": [
           11.299972534179688,
-          3.7497615814208984,
-          2.4501848220825195
+          3.7497614906505574,
+          2.45018493631854
         ],
         "min": [
           -10.5999755859375,
-          -2.39976167678833,
-          -2.4501848220825195
+          -2.399761586017989,
+          -2.45018493631854
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0f4297abba4d729c22be102cfbd76030d4c5acc8ef8e06231c8cbb362e29d94e",
+      "geometryHash": "7fddafec52d4a70847641310e851d09450db0a80b21f4f3c08835161af20a315",
       "id": "sf.render.inspection-cutter.node.lod0-armor.primitive.0",
       "indexCount": 26586,
       "indexed": true,
@@ -668,17 +668,17 @@
       "bounds": {
         "max": [
           2.177553176879883,
-          2.6999804973602295,
-          1.0447453260421753
+          2.6999805507128167,
+          1.0447453076552693
         ],
         "min": [
           -3.798386335372925,
-          1.2818188667297363,
-          -1.0447453260421753
+          1.281818813377149,
+          -1.0447453076552693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4a0ddacb385ffa7ca3c9b47416f20e09f42847bce8ba5d95f0235542f26a127",
+      "geometryHash": "740c926c3a72f120241abbce286d8a210a1f3cfb87cafe2420e0dc6b15b58656",
       "id": "sf.render.inspection-cutter.node.lod0-canopy.primitive.0",
       "indexCount": 1032,
       "indexed": true,
@@ -703,7 +703,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f1126856b3b19b778d696a91f093f8878a737bfd51520a3905a728fbb1349a0",
+      "geometryHash": "e7d57290ec1bccd54df5c04b5bde0e4bbf9bdd2775d8d8a1d83bac2086b20907",
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -768,17 +768,17 @@
       "bounds": {
         "max": [
           1.5880000591278076,
-          2.8198516368865967,
-          2.599968194961548
+          2.81985161866295,
+          2.5999681983413336
         ],
         "min": [
           -9.300000190734863,
-          -0.33985158801078796,
-          -2.599968194961548
+          -0.33985156978714137,
+          -2.5999681983413336
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6abee477deeb15070d59e95cf3d4a1806d49dd48517ae031cda1e2c701c7c793",
+      "geometryHash": "ec11a868b40dd25a72cf03c646b97ae17c1f319f810d86f7e05ef4336a641b56",
       "id": "sf.render.inspection-cutter.node.lod0-hull-graphite.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -793,17 +793,17 @@
       "bounds": {
         "max": [
           11.300000190734863,
-          2.7007603645324707,
-          1.4984509944915771
+          2.700760336227222,
+          1.4984510541489742
         ],
         "min": [
           -10.5999755859375,
-          -0.7907242178916931,
-          -1.4984509944915771
+          -0.7907241895864445,
+          -1.4984510541489742
         ]
       },
       "drawMode": 4,
-      "geometryHash": "681d2796d7d60e885fcebccf45d532707f1028fa7ec56bb3e4c2cde3e5b4607c",
+      "geometryHash": "d9788e141ba8041cd3c33b19e57d88654eb86f0f92efdd8ace836888e29e0ef3",
       "id": "sf.render.inspection-cutter.node.lod0-hull.primitive.0",
       "indexCount": 15384,
       "indexed": true,
@@ -817,18 +817,18 @@
     {
       "bounds": {
         "max": [
-          -0.23999574780464172,
-          2.9199869632720947,
+          -0.2399957297710852,
+          2.919987073084198,
           0.5399999618530273
         ],
         "min": [
-          -0.5600042343139648,
-          2.8000128269195557,
+          -0.5600042523475214,
+          2.8000127171074523,
           -0.5399999618530273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09ac14a3fb5ea35669ff0b3fe0dffacab03dd258159acf2c0934b91fbeffde84",
+      "geometryHash": "29c47d8f0a47e5091549e9adb953257985239802cc768bd133ff2820f01a6c13",
       "id": "sf.render.inspection-cutter.node.lod0-lights-cyan-blue.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -843,17 +843,17 @@
       "bounds": {
         "max": [
           10.479999542236328,
-          3.7969067096710205,
-          2.7194864749908447
+          3.7969066088922943,
+          2.7194862184254736
         ],
         "min": [
           -10.25999927520752,
-          -1.2819151878356934,
-          -2.7194864749908447
+          -1.281915087056967,
+          -2.7194862184254736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f10eb8e31714014f3ad58ab46b8affcc20b4eb0042ab07474844ead8487b6ce9",
+      "geometryHash": "e8257ddfeb08969908fa195ec2c03a32e930e055dc3dcf6bc246f6918aff51e4",
       "id": "sf.render.inspection-cutter.node.lod0-lights-cyan.primitive.0",
       "indexCount": 13560,
       "indexed": true,
@@ -868,17 +868,17 @@
       "bounds": {
         "max": [
           0.07500000298023224,
-          2.229917287826538,
-          1.0450032949447632
+          2.229917256964622,
+          1.045003340048664
         ],
         "min": [
           -2.674999952316284,
-          1.9700826406478882,
-          -1.0450032949447632
+          1.9700826715098043,
+          -1.045003340048664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f4c218c64fc4c9a32aa3ca86fc1d4bf6c686ea995469f7800fa7b228438c3606",
+      "geometryHash": "29cc7ad1af7b0a33174f9cd6d43b6c378513f6374085bf833f1cf4019befa616",
       "id": "sf.render.inspection-cutter.node.lod0-lights-warm.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -893,17 +893,17 @@
       "bounds": {
         "max": [
           11.210079193115234,
-          1.473794937133789,
-          2.4481148719787598
+          1.4737950285280628,
+          2.4481148097092142
         ],
         "min": [
           -10.599974632263184,
-          -1.276506781578064,
-          -2.4481148719787598
+          -1.2765068729723377,
+          -2.4481148097092142
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe2baab7f3c184d3e2f07ea6d2afb99846e0527538f3042c41b2d776fef07a3f",
+      "geometryHash": "4a5de38ca2ba3166531cee81b8a796c06d96a36d7555f72edb3d8f5cb904e7b2",
       "id": "sf.render.inspection-cutter.node.lod0-livery.primitive.0",
       "indexCount": 2850,
       "indexed": true,
@@ -918,17 +918,17 @@
       "bounds": {
         "max": [
           6.550000190734863,
-          3.999720335006714,
-          1.731459140777588
+          3.9997201910347657,
+          1.7314590973096906
         ],
         "min": [
           -11.369999885559082,
-          -0.6997202634811401,
-          -1.731459140777588
+          -0.699720119509192,
+          -1.7314590973096906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "207dc4483ba5e9527e1847d141cc41866a3cf3fd6c42360160034f1cce5d7a39",
+      "geometryHash": "17d3c9f2ecd9157a14ce778283117ac41169dd47d4cfa7925d8d2c963201bcf2",
       "id": "sf.render.inspection-cutter.node.lod0-mechanical.primitive.0",
       "indexCount": 7962,
       "indexed": true,
@@ -943,17 +943,17 @@
       "bounds": {
         "max": [
           6.490000247955322,
-          3.4022932052612305,
-          1.7572753429412842
+          3.4022931650166806,
+          1.7572753206106888
         ],
         "min": [
           -11.369999885559082,
-          -0.9996161460876465,
-          -1.7572753429412842
+          -0.9996161058430966,
+          -1.7572753206106888
         ]
       },
       "drawMode": 4,
-      "geometryHash": "912381c45f9e9962622275cd433dbc52b46b4605dbcf981af421e9435042ac21",
+      "geometryHash": "eeb093e03b4601ec2dc738e0b2922201751228211b83332b8a7d9ce7367895da",
       "id": "sf.render.inspection-cutter.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 4362,
       "indexed": true,
@@ -969,16 +969,16 @@
         "max": [
           0.077980637550354,
           0.8779806047677994,
-          -2.1000463366508484
+          -2.1000463375922043
         ],
         "min": [
           -1.277980625629425,
           -0.4779806584119797,
-          -2.379953622817993
+          -2.3799536218766373
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1963e45ba5dda13c3e9e3dcf87ec9cc0469c27e33e9760c5e829e03e84912e0",
+      "geometryHash": "cbc776256a71c96cf4dcdd52e169c666fffffe9df87edfc7589c31c0093318b1",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-hull-graphite.primitive.0",
       "indexCount": 948,
       "indexed": true,
@@ -994,16 +994,16 @@
         "max": [
           -0.12000000476837158,
           0.6800000220537186,
-          -1.3000008976459867
+          -1.3000008935016203
         ],
         "min": [
           -1.0800000429153442,
           -0.2800000160932541,
-          -2.1999990940093994
+          -2.199999098153766
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be0dc08689784ac1c10b1225a63f7311b4536f5ceec6ea9db172f54a04c2fd73",
+      "geometryHash": "baa8708f29079595a2897615580947e8c82749d2793383ef8118eb7a837a5040",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-hull.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -1019,16 +1019,16 @@
         "max": [
           0.08000004291534424,
           0.8800000101327896,
-          -2.107515513896942
+          -2.1075155260890908
         ],
         "min": [
           -1.2799999713897705,
           -0.48000000417232513,
-          -2.372484564781189
+          -2.3724845525890403
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1d5d0d821de0484c4e88464cf5b73973f0a99206b02f108e78905ee47667e28",
+      "geometryHash": "23775e34fc0e4da3f3417a5e3c3c8e3ab88d2512c8d1602ea4757955a7ce6b8c",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-livery.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -1044,16 +1044,16 @@
         "max": [
           0.21000003814697266,
           1.010000005364418,
-          -2.249999165534973
+          -2.249999179370629
         ],
         "min": [
           -1.409999966621399,
           -0.6099999994039536,
-          -2.55000102519989
+          -2.5500010113642344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91b4a2de0ed30aa014679530cca09b3c593fe79cf74bc57ecfd73a686af77ec7",
+      "geometryHash": "f8fd74413e75da7467585e0ff5f2bdc102d3788288cd50eff3db9356eb622163",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-mechanical.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1069,16 +1069,16 @@
         "max": [
           -0.10000002384185791,
           0.7000000029802322,
-          -2.380030870437622
+          -2.380030909525259
         ],
         "min": [
           -1.100000023841858,
           -0.29999999701976776,
-          -2.439969301223755
+          -2.4399692621361178
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2026649e3fd865e4f8585f4d127960d5ef02acaba53dc3aabac44c4af053d022",
+      "geometryHash": "e2a6a300a1e58b8a85377faece79ca58f70bace5544b486b7cf732a39400e87f",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-mechanicaldark.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -1093,17 +1093,17 @@
       "bounds": {
         "max": [
           5.319999933242798,
-          1.3499460369348526,
+          1.3499460358802613,
           0.7200000286102295
         ],
         "min": [
           3.879999876022339,
-          1.050054058432579,
+          1.0500540594871703,
           -0.7200000286102295
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ae56b82cfaf42a9e8978010cd89d394124a160e8ccc4311387383432278d36e",
+      "geometryHash": "2cc6b3ce988161e68ee318d2557c73f3bfb3911f3f785654919ab485c34c9c44",
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-scanring-hull-graphite.primitive.0",
       "indexCount": 1716,
       "indexed": true,
@@ -1118,17 +1118,17 @@
       "bounds": {
         "max": [
           11.300033569335938,
-          3.7497754096984863,
-          2.450195789337158
+          3.749775148068894,
+          2.450195819504199
         ],
         "min": [
           -10.600011825561523,
-          -2.399775505065918,
-          -2.450195789337158
+          -2.3997752434363258,
+          -2.450195819504199
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2904230a5c6ad5d7aa16e3951eccfa7a1c44b64a52704a5bc50d7f7571977f1d",
+      "geometryHash": "e8b7bf6d00abb17ff55237da6583a3f83dcdd7afeb4b30790bfc4d63b67a73e8",
       "id": "sf.render.inspection-cutter.node.lod1-armor.primitive.0",
       "indexCount": 10029,
       "indexed": true,
@@ -1143,17 +1143,17 @@
       "bounds": {
         "max": [
           2.3994734287261963,
-          2.700287342071533,
-          1.0445470809936523
+          2.7002872879294806,
+          1.044547051745229
         ],
         "min": [
           -3.799258232116699,
-          1.2791967391967773,
-          -1.0501993894577026
+          1.2791967933388302,
+          -1.0501993602092794
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e71d424250601fd076027cc0849f3904e8605341cb5819854c9a0f27b8169f74",
+      "geometryHash": "ca9a320376b365f6ab925d5a10e8a2d61e3efdababb13f0acd6755b0c85ac1eb",
       "id": "sf.render.inspection-cutter.node.lod1-canopy.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -1178,7 +1178,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f1126856b3b19b778d696a91f093f8878a737bfd51520a3905a728fbb1349a0",
+      "geometryHash": "e7d57290ec1bccd54df5c04b5bde0e4bbf9bdd2775d8d8a1d83bac2086b20907",
       "id": "sf.render.inspection-cutter.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -1243,17 +1243,17 @@
       "bounds": {
         "max": [
           1.5880000591278076,
-          2.8198516368865967,
-          2.599968194961548
+          2.81985161866295,
+          2.5999681983413336
         ],
         "min": [
           -9.300000190734863,
-          -0.33985158801078796,
-          -2.599968194961548
+          -0.33985156978714137,
+          -2.5999681983413336
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dc98cd00abd3682b6a21ae8ee463283efd3d63e1074a956f21077b12b893cb2",
+      "geometryHash": "260879e72e14505d9fe6bc2720a3a0d4ef6c507e3d2b010847f71bb33be7682a",
       "id": "sf.render.inspection-cutter.node.lod1-hull-graphite.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1268,17 +1268,17 @@
       "bounds": {
         "max": [
           11.300033569335938,
-          2.7007644176483154,
-          1.4997793436050415
+          2.700764370171243,
+          1.499779318516774
         ],
         "min": [
           -10.600005149841309,
-          -0.7907302379608154,
-          -1.4998048543930054
+          -0.7907301904837429,
+          -1.499804829304738
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba5da152dbf664258beeb2ccbc22de8f4259e71c7710242b68a9191755e803b0",
+      "geometryHash": "16bfaac992aa49f0cf8a697e67685401d2d3e59d3ab61077973df60bf654ae11",
       "id": "sf.render.inspection-cutter.node.lod1-hull.primitive.0",
       "indexCount": 4020,
       "indexed": true,
@@ -1292,18 +1292,18 @@
     {
       "bounds": {
         "max": [
-          -0.23999574780464172,
-          2.9199869632720947,
+          -0.2399957297710852,
+          2.919987073084198,
           0.5399999618530273
         ],
         "min": [
-          -0.5600042343139648,
-          2.8000128269195557,
+          -0.5600042523475214,
+          2.8000127171074523,
           -0.5399999618530273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08f9fe65cfc9d35be2d05cf85df145a7bcc8045458425545dbedbd56f074d0bd",
+      "geometryHash": "2ee0fde20709bdc05f428ed9bfa5463b63b8f7372415aba44fb4436d839b0ff4",
       "id": "sf.render.inspection-cutter.node.lod1-lights-cyan-blue.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1318,17 +1318,17 @@
       "bounds": {
         "max": [
           10.479999542236328,
-          3.79687762260437,
-          2.7194864749908447
+          3.796877521825644,
+          2.7194862184254736
         ],
         "min": [
           -10.25999927520752,
-          -1.2819442749023438,
-          -2.7194864749908447
+          -1.2819441741236175,
+          -2.7194862184254736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "575b25fbf3dd9d9a6b71d7bc91fb612820739e96e6979834860f98cb6b4c8bdb",
+      "geometryHash": "246fc63100a5e6c52edf719493665cc061e596740368c24338bc386dce1c4488",
       "id": "sf.render.inspection-cutter.node.lod1-lights-cyan.primitive.0",
       "indexCount": 2817,
       "indexed": true,
@@ -1343,17 +1343,17 @@
       "bounds": {
         "max": [
           0.07500000298023224,
-          2.229917287826538,
-          1.0450032949447632
+          2.229917256964622,
+          1.045003340048664
         ],
         "min": [
           -2.674999952316284,
-          1.9700826406478882,
-          -1.0450032949447632
+          1.9700826715098043,
+          -1.045003340048664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c877a1e2f36c268ad44132e4d4685dbae45d8dc22b35f360540bf9cb7d07948",
+      "geometryHash": "613ad84e8786302515725fddedfa577bf1a693f6290840431a6dc03681c1f2d9",
       "id": "sf.render.inspection-cutter.node.lod1-lights-warm.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1368,17 +1368,17 @@
       "bounds": {
         "max": [
           11.300006866455078,
-          1.4793143272399902,
-          2.4475364685058594
+          1.4793142746059256,
+          2.4475363122244347
         ],
         "min": [
           -10.599995613098145,
-          -1.279657006263733,
-          -2.4474990367889404
+          -1.2796569536296682,
+          -2.4474988805075157
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3d8f05f156efd224d13cbf77371f505c5197476966af031b5e7afaf51335cfe",
+      "geometryHash": "d2f0faf89ac80782944cc5723f18978b21fffad7888a518e0d8342bb8b119e99",
       "id": "sf.render.inspection-cutter.node.lod1-livery.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -1393,17 +1393,17 @@
       "bounds": {
         "max": [
           6.549374580383301,
-          3.999638319015503,
-          1.7313987016677856
+          3.9996381592687973,
+          1.7313986498359197
         ],
         "min": [
           -11.369999885559082,
-          -0.6996382474899292,
-          -1.7313987016677856
+          -0.6996380877432236,
+          -1.7313986498359197
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1f8d7e30bd7f5a59114fcf770f11c417e9d85c375c831b264fa68582a6b1622",
+      "geometryHash": "855ead6627be517e35dfa0c78dcae826bda280869a1329220c648a229d98bcaa",
       "id": "sf.render.inspection-cutter.node.lod1-mechanical.primitive.0",
       "indexCount": 5634,
       "indexed": true,
@@ -1418,17 +1418,17 @@
       "bounds": {
         "max": [
           6.490000247955322,
-          3.4022953510284424,
-          1.7572753429412842
+          3.4022953107838925,
+          1.7572753206106888
         ],
         "min": [
           -11.369999885559082,
-          -0.9996140003204346,
-          -1.7572753429412842
+          -0.9996139600758847,
+          -1.7572753206106888
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0cf10282a1599b1937adc974665a92cafd3019234340eebd5c7a033b6ba91da6",
+      "geometryHash": "331ba4d3387d53f8114d43c869f0a8145122e3fc507b011bb4d1233bf3d3e421",
       "id": "sf.render.inspection-cutter.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3366,
       "indexed": true,
@@ -1444,16 +1444,16 @@
         "max": [
           0.07909554243087769,
           0.8790676146745682,
-          -2.100370764732361
+          -2.100370780558052
         ],
         "min": [
           -1.2790664434432983,
           -0.47909437119960785,
-          -2.379571795463562
+          -2.379571779637871
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13f30c0749054fdd4b2188cd3c915e2cbd55b4e505915f0a0c9b7874d28130d3",
+      "geometryHash": "fd062feaa98b604abec71f08b528914aafc625ad4958abf7b0a7c8d7fe4191d6",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-hull-graphite.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -1467,18 +1467,18 @@
     {
       "bounds": {
         "max": [
-          -0.12088128924369812,
+          -0.12088127434253693,
           0.6790665537118912,
-          -1.300342029921012
+          -1.3003420049619967
         ],
         "min": [
-          -1.0790897011756897,
+          -1.079089716076851,
           -0.2791418880224228,
-          -2.199596345424652
+          -2.1995963703836674
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce824072d6a9c77372b820bba395b237e19c55eb54b4a1fdbd754da90ba65d0e",
+      "geometryHash": "9ab2e102b7c5fbeb38e621631e6c00c7a2fc9408230d035b8bd37c46fe51b7c3",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-hull.primitive.0",
       "indexCount": 624,
       "indexed": true,
@@ -1494,16 +1494,16 @@
         "max": [
           0.07909554243087769,
           0.8790676146745682,
-          -2.103862226009369
+          -2.103862236688072
         ],
         "min": [
           -1.2790664434432983,
           -0.47909437119960785,
-          -2.3759340047836304
+          -2.375933994104927
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a34c31268c00f99d0e8caa605209dfb24315d774636be57a9f926e519a954a9",
+      "geometryHash": "630a4e633a8d8168af958c84d2884f9b045eb6276c242e9c53a5227be646d5be",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-livery.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1517,18 +1517,18 @@
     {
       "bounds": {
         "max": [
-          0.20842480659484863,
+          0.2084247823515275,
           1.0086014419794083,
-          -2.251457095146179
+          -2.251457116792814
         ],
         "min": [
-          -1.4084249138832092,
+          -1.408424889639888,
           -0.6084456294775009,
-          -2.548543334007263
+          -2.5485433123606285
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62eb499e49213ac085184f1d06516a10a8b99524302c4343df1a98c0cc3793bb",
+      "geometryHash": "048b4f440fd4fe5c9e362284a7723aa3bfa481615591bf718c7993045b58862a",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-mechanical.primitive.0",
       "indexCount": 876,
       "indexed": true,
@@ -1542,18 +1542,18 @@
     {
       "bounds": {
         "max": [
-          -0.10085812211036682,
+          -0.10085810720920563,
           0.6991419345140457,
-          -2.3803930282592773
+          -2.3803930534494113
         ],
         "min": [
-          -1.0990665555000305,
+          -1.0990665704011917,
           -0.29906652867794037,
-          -2.439614772796631
+          -2.439614747606497
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6d1bebe690401cacc2a342f8265dd430947e2900292205ddb1980d72ff98174",
+      "geometryHash": "19d64d4e14a4c3b8deda81357301c8cb445993cf3e4bfdbf7fb121c7d4a56376",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-mechanicaldark.primitive.0",
       "indexCount": 606,
       "indexed": true,
@@ -1568,17 +1568,17 @@
       "bounds": {
         "max": [
           5.319180250167847,
-          1.3495808988809586,
+          1.349580905588232,
           0.7191427946090698
         ],
         "min": [
           3.880894660949707,
-          1.0503971427679062,
+          1.0503971360606328,
           -0.7191427946090698
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb5df83caf71cc38e450d902dcaa1657d61c93f9f440cb82ff9f790dbe106280",
+      "geometryHash": "f64e68e61c8939396d69d5320b1ceb63424b98ac009430875b22bd4d432adefb",
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-scanring-hull-graphite.primitive.0",
       "indexCount": 684,
       "indexed": true,
@@ -1593,17 +1593,17 @@
       "bounds": {
         "max": [
           11.300076484680176,
-          3.754495859146118,
-          2.4484851360321045
+          3.7544959025812727,
+          2.4484850422858058
         ],
         "min": [
           -10.600139617919922,
-          -2.400449275970459,
-          -2.4492714405059814
+          -2.4004493194056136,
+          -2.4492713467596827
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2d80e3bcd210cb44ca963688b517544b0ee2310bf086be3e21807c0b4f15a79",
+      "geometryHash": "bd059b190c55c7635e47bdbe47b9a2d0e8c647d6f76a5f2aa396da3f5809754c",
       "id": "sf.render.inspection-cutter.node.lod2-armor.primitive.0",
       "indexCount": 4122,
       "indexed": true,
@@ -1618,17 +1618,17 @@
       "bounds": {
         "max": [
           2.399557590484619,
-          2.7000410556793213,
-          1.0441800355911255
+          2.7000410771167656,
+          1.0441800898823401
         ],
         "min": [
           -3.799616575241089,
-          1.425660252571106,
-          -1.0507158041000366
+          1.4256602311336617,
+          -1.0507158583912513
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98c49896a64947f8579130004165e16ecd1ee056988be74b4265c014e75b76fe",
+      "geometryHash": "2c0bb7aaacf64628394250a41f5f5b0164726ee361696d1d3970bbcaec6391af",
       "id": "sf.render.inspection-cutter.node.lod2-canopy.primitive.0",
       "indexCount": 213,
       "indexed": true,
@@ -1653,7 +1653,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a26584e25248c4a02d359ae44771430435f4c9f37103430cb1b5e5c210af771f",
+      "geometryHash": "131293d77e581e8650eccfd62d2f5d66d6f2d9c29f335284b51eb1ae981e56b0",
       "id": "sf.render.inspection-cutter.node.lod2-hook-drive-core.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -1718,17 +1718,17 @@
       "bounds": {
         "max": [
           1.5849456787109375,
-          2.8172717094421387,
-          2.595604181289673
+          2.8172716287765915,
+          2.595604198148581
         ],
         "min": [
           -9.295904159545898,
-          -0.3363717794418335,
-          -2.595604181289673
+          -0.3363716987762866,
+          -2.595604198148581
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aec878b667a22b8eeffb58a79aa4d4f860b5b5a0cc5c0d42349bb70989c3f2ed",
+      "geometryHash": "1c81d922489378e1688e53c46951ef6f7a7d058d117e4d78eb7a07d7bc6656b5",
       "id": "sf.render.inspection-cutter.node.lod2-hull-graphite.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -1743,17 +1743,17 @@
       "bounds": {
         "max": [
           11.300076484680176,
-          2.700456142425537,
-          1.4994608163833618
+          2.7004562210846776,
+          1.4994606896923404
         ],
         "min": [
           -10.60025405883789,
-          -0.8418805599212646,
-          -1.5001635551452637
+          -0.841880638580405,
+          -1.5001634284542422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f3e5df63d475b902f1316a0a69149d814d6999a6d5bc9d6200fea2e3cb2df634",
+      "geometryHash": "4c9b887c33a301397e1c15b1123abcf2aa338f9e71137784992f918569d9db8b",
       "id": "sf.render.inspection-cutter.node.lod2-hull.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -1767,18 +1767,18 @@
     {
       "bounds": {
         "max": [
-          -0.23999574780464172,
-          2.9199869632720947,
+          -0.2399957297710852,
+          2.919987073084198,
           0.5399999618530273
         ],
         "min": [
-          -0.5600042343139648,
-          2.8000128269195557,
+          -0.5600042523475214,
+          2.8000127171074523,
           -0.5399999618530273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "08f9fe65cfc9d35be2d05cf85df145a7bcc8045458425545dbedbd56f074d0bd",
+      "geometryHash": "2ee0fde20709bdc05f428ed9bfa5463b63b8f7372415aba44fb4436d839b0ff4",
       "id": "sf.render.inspection-cutter.node.lod2-lights-cyan-blue.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -1793,17 +1793,17 @@
       "bounds": {
         "max": [
           10.479999542236328,
-          3.79687762260437,
-          2.7194864749908447
+          3.796877521825644,
+          2.7194862184254736
         ],
         "min": [
           -10.25999927520752,
-          -1.2819442749023438,
-          -2.7194864749908447
+          -1.2819441741236175,
+          -2.7194862184254736
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5cca7c142d29e1d852a9658210237a883ca786832a28f5689e60899e4646158d",
+      "geometryHash": "c36f53f0847376ca1e64fe3ec76042c55adc5a411929a6ac69171d7860f6d7fa",
       "id": "sf.render.inspection-cutter.node.lod2-lights-cyan.primitive.0",
       "indexCount": 2064,
       "indexed": true,
@@ -1818,17 +1818,17 @@
       "bounds": {
         "max": [
           0.07500000298023224,
-          2.229917287826538,
-          1.0450032949447632
+          2.229917256964622,
+          1.045003340048664
         ],
         "min": [
           -2.674999952316284,
-          1.9700826406478882,
-          -1.0450032949447632
+          1.9700826715098043,
+          -1.045003340048664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c877a1e2f36c268ad44132e4d4685dbae45d8dc22b35f360540bf9cb7d07948",
+      "geometryHash": "613ad84e8786302515725fddedfa577bf1a693f6290840431a6dc03681c1f2d9",
       "id": "sf.render.inspection-cutter.node.lod2-lights-warm.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1843,17 +1843,17 @@
       "bounds": {
         "max": [
           11.300041198730469,
-          1.479332685470581,
-          2.4440808296203613
+          1.4793327167526964,
+          2.4440808989805443
         ],
         "min": [
           -10.60025405883789,
-          -1.2796753644943237,
-          -2.4456727504730225
+          -1.279675395776439,
+          -2.4456728198332054
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a98552f7a5976b5048fbf0078a79915ec1145ab493e844b5543a7e2245dcac5",
+      "geometryHash": "c98588b6270ece00bb9338aebc41566071e19996725569638c9aa23c92f0f4d4",
       "id": "sf.render.inspection-cutter.node.lod2-livery.primitive.0",
       "indexCount": 465,
       "indexed": true,
@@ -1868,17 +1868,17 @@
       "bounds": {
         "max": [
           1.974436640739441,
-          3.358473300933838,
-          1.4987517595291138
+          3.3584733429537756,
+          1.4987517024583985
         ],
         "min": [
           -11.370562553405762,
-          -0.6999670267105103,
-          -1.4987517595291138
+          -0.699967068730448,
+          -1.4987517024583985
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e05a5ca67b7b5ae27b568c983ad6f8b12b019bdda589450fc3ed7c3f4fe48e9a",
+      "geometryHash": "ff5c2073d724e60503e9cf4e70a8fa4b7c8ec75e87b554f4abcb08ec2d0aa215",
       "id": "sf.render.inspection-cutter.node.lod2-mechanical.primitive.0",
       "indexCount": 1344,
       "indexed": true,
@@ -1893,17 +1893,17 @@
       "bounds": {
         "max": [
           2.025676965713501,
-          3.402364730834961,
-          1.4578994512557983
+          3.4023647842066485,
+          1.4578994148130524
         ],
         "min": [
           -11.370562553405762,
-          -0.9987252354621887,
-          -1.4578994512557983
+          -0.9987252888338762,
+          -1.4578994148130524
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4ece221f05f172794ca5471583bba78efde4805391e9a1855e72a5baa415b41",
+      "geometryHash": "61578a2da7e77345bc0ccb4668797e5030f3847563a49983f09c9fe1f9ceca32",
       "id": "sf.render.inspection-cutter.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -1917,18 +1917,18 @@
     {
       "bounds": {
         "max": [
-          0.07720589637756348,
+          0.07720592199972065,
           0.8772425204515457,
-          -2.101793050765991
+          -2.1017930749119933
         ],
         "min": [
-          -1.2769484519958496,
+          -1.276948477618007,
           -0.477242574095726,
-          -2.3780887126922607
+          -2.3780886885462587
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25f7787ea15b685c638c605915d7211052e9cf9e511e0639fd6f0161ae3601e9",
+      "geometryHash": "ec052872667c899f3ae6e808041764cfaf16d351d1e4f71c2637f602329eba5b",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-hull-graphite.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1942,18 +1942,18 @@
     {
       "bounds": {
         "max": [
-          -0.12365558743476868,
+          -0.1236555864934129,
           0.6767174750566483,
-          -1.3016836747992784
+          -1.3016836729831218
         ],
         "min": [
-          -1.0768922865390778,
+          -1.0768922874804336,
           -0.27698491513729095,
-          -2.198106288909912
+          -2.1981062907260687
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ed89800817726d93f41b4bcf7eedb33800bbef102e0b71db2907bbf9a183d13",
+      "geometryHash": "1c997185ca2e7a59caabc56a219c66c4137387ba1e1d2996f9e6f6cd17948bf9",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-hull.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1967,18 +1967,18 @@
     {
       "bounds": {
         "max": [
-          0.07720589637756348,
+          0.07720592199972065,
           0.8772425204515457,
-          -2.101793050765991
+          -2.1017930749119933
         ],
         "min": [
-          -1.2769484519958496,
+          -1.276948477618007,
           -0.477242574095726,
-          -2.3780887126922607
+          -2.3780886885462587
         ]
       },
       "drawMode": 4,
-      "geometryHash": "df9e97259d5f5e64ebbfd3575bcb75fd0b170144343b56a9ec016975cbea0e0d",
+      "geometryHash": "5f1768e8155fe8642a09ed3da7d164429d1a642a880716dbd7519b6573ff9353",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-livery.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1993,17 +1993,17 @@
       "bounds": {
         "max": [
           0.20692723989486694,
-          1.004998818039894,
-          -2.2531113624572754
+          1.0049988396874383,
+          -2.253111373367907
         ],
         "min": [
           -1.4054392576217651,
-          -0.6053993552923203,
-          -2.545401096343994
+          -0.6053993769398643,
+          -2.5454010854333626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "efed9d50a860e0b8a703e19020861fb66bda6686c6e385b0be3dcc55a1a927bd",
+      "geometryHash": "bcc511c919d45417349c742eda817d209fbe376e6a382eb8ba2600fbc3b17b1e",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-mechanical.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -2018,17 +2018,17 @@
       "bounds": {
         "max": [
           -0.10275745391845703,
-          0.6966962665319443,
-          -2.3818942308425903
+          0.6966962990310008,
+          -2.381894224173972
         ],
         "min": [
           -1.0972425937652588,
-          -0.296696200966835,
-          -2.438224196434021
+          -0.2966962334658915,
+          -2.4382242031026395
         ]
       },
       "drawMode": 4,
-      "geometryHash": "13d97f381106432c31a3c5c68023c61d4418b45fac89488e077888c6d6c962d8",
+      "geometryHash": "50cece407ead2229bdcc1430e382eaf3b04b8bf67892307a33d294d28b7cfc94",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-mechanicaldark.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -2042,18 +2042,18 @@
     {
       "bounds": {
         "max": [
-          5.31725138425827,
-          1.3483144789934158,
+          5.31725139069587,
+          1.3483144664479179,
           0.7171757221221924
         ],
         "min": [
-          3.883005440235138,
-          1.0516856163740158,
+          3.883005433797538,
+          1.0516856289195138,
           -0.71724534034729
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2c553f851325cca0a55a8e072477d6c557ea472e669e60ad3da8427bb1692f0a",
+      "geometryHash": "d26c76459d218230621b1c1f653933f70fd85a0ad1f29cf2baaa764e496cec1b",
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-scanring-hull-graphite.primitive.0",
       "indexCount": 306,
       "indexed": true,
@@ -2315,21 +2315,21 @@
     {
       "id": "sf.render.inspection-cutter.node.collision-hull",
       "localTransform": [
-        1,
+        11.335010528564453,
         0,
         0,
         0,
         0,
-        1,
+        11.335010528564453,
         0,
         0,
         0,
         0,
-        1,
+        11.335010528564453,
         0,
-        0,
-        0,
-        0,
+        -0.035002708435058594,
+        0.8001240491867065,
+        -0.00003361701965332031,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2343,41 +2343,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        11.335010528564453,
         0,
         0,
         0,
         0,
-        1,
+        11.335010528564453,
         0,
         0,
         0,
         0,
-        1,
+        11.335010528564453,
         0,
-        0,
-        0,
-        0,
+        -0.035002708435058594,
+        0.8001240491867065,
+        -0.00003361701965332031,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-armor",
       "localTransform": [
-        1,
+        10.949974060058594,
         0,
         0,
         0,
         0,
-        1,
+        10.949974060058594,
         0,
         0,
         0,
         0,
-        1,
+        10.949974060058594,
         0,
-        0,
-        0,
+        0.34999847412109375,
+        0.6749999523162842,
         0,
         1
       ],
@@ -2392,20 +2392,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.949974060058594,
         0,
         0,
         0,
         0,
-        1,
+        10.949974060058594,
         0,
         0,
         0,
         0,
-        1,
+        10.949974060058594,
         0,
-        0,
-        0,
+        0.34999847412109375,
+        0.6749999523162842,
         0,
         1
       ]
@@ -2413,20 +2413,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-canopy",
       "localTransform": [
-        1,
+        2.987969756126404,
         0,
         0,
         0,
         0,
-        1,
+        2.987969756126404,
         0,
         0,
         0,
         0,
-        1,
+        2.987969756126404,
         0,
-        0,
-        0,
+        -0.810416579246521,
+        1.990899682044983,
         0,
         1
       ],
@@ -2441,20 +2441,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        2.987969756126404,
         0,
         0,
         0,
         0,
-        1,
+        2.987969756126404,
         0,
         0,
         0,
         0,
-        1,
+        2.987969756126404,
         0,
-        0,
-        0,
+        -0.810416579246521,
+        1.990899682044983,
         0,
         1
       ]
@@ -2609,20 +2609,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-hull",
       "localTransform": [
-        1,
+        10.949987888336182,
         0,
         0,
         0,
         0,
-        1,
+        10.949987888336182,
         0,
         0,
         0,
         0,
-        1,
+        10.949987888336182,
         0,
-        0,
-        0,
+        0.35001230239868164,
+        0.9550180733203888,
         0,
         1
       ],
@@ -2637,20 +2637,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.949987888336182,
         0,
         0,
         0,
         0,
-        1,
+        10.949987888336182,
         0,
         0,
         0,
         0,
-        1,
+        10.949987888336182,
         0,
-        0,
-        0,
+        0.35001230239868164,
+        0.9550180733203888,
         0,
         1
       ]
@@ -2658,20 +2658,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-hull-graphite",
       "localTransform": [
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
-        0,
-        0,
+        -3.856000065803528,
+        1.2400000244379044,
         0,
         1
       ],
@@ -2686,20 +2686,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
-        0,
-        0,
+        -3.856000065803528,
+        1.2400000244379044,
         0,
         1
       ]
@@ -2707,20 +2707,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-lights-cyan",
       "localTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574957609176636,
         0,
         1
       ],
@@ -2735,20 +2735,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574957609176636,
         0,
         1
       ]
@@ -2756,20 +2756,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-lights-cyan-blue",
       "localTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ],
@@ -2784,20 +2784,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ]
@@ -2805,20 +2805,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ],
@@ -2833,20 +2833,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ]
@@ -2854,20 +2854,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-livery",
       "localTransform": [
-        1,
+        10.905026912689209,
         0,
         0,
         0,
         0,
-        1,
+        10.905026912689209,
         0,
         0,
         0,
         0,
-        1,
+        10.905026912689209,
         0,
-        0,
-        0,
+        0.3050522804260254,
+        0.09864407777786255,
         0,
         1
       ],
@@ -2882,20 +2882,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.905026912689209,
         0,
         0,
         0,
         0,
-        1,
+        10.905026912689209,
         0,
         0,
         0,
         0,
-        1,
+        10.905026912689209,
         0,
-        0,
-        0,
+        0.3050522804260254,
+        0.09864407777786255,
         0,
         1
       ]
@@ -2903,20 +2903,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-mechanical",
       "localTransform": [
-        1,
+        8.960000038146973,
         0,
         0,
         0,
         0,
-        1,
+        8.960000038146973,
         0,
         0,
         0,
         0,
-        1,
+        8.960000038146973,
         0,
-        0,
-        0,
+        -2.4099998474121094,
+        1.6500000357627869,
         0,
         1
       ],
@@ -2931,20 +2931,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        8.960000038146973,
         0,
         0,
         0,
         0,
-        1,
+        8.960000038146973,
         0,
         0,
         0,
         0,
-        1,
+        8.960000038146973,
         0,
-        0,
-        0,
+        -2.4099998474121094,
+        1.6500000357627869,
         0,
         1
       ]
@@ -2952,20 +2952,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
-        0,
-        0,
+        -2.43999981880188,
+        1.201338529586792,
         0,
         1
       ],
@@ -2980,20 +2980,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
-        0,
-        0,
+        -2.43999981880188,
+        1.201338529586792,
         0,
         1
       ]
@@ -3001,21 +3001,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-hull",
       "localTransform": [
-        1,
+        0.48000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.48000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.48000001907348633,
         0,
         0,
         0,
-        0,
+        -0.4500000435114089,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3030,42 +3030,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.48000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.48000001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.48000001907348633,
         0,
         -0.6000000238418579,
         0.20000000298023224,
-        -1.2999999523162842,
+        -1.749999995827693,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-hull-graphite",
       "localTransform": [
-        1,
+        0.6779806315898895,
         0,
         0,
         0,
         0,
-        1,
+        0.6779806315898895,
         0,
         0,
         0,
         0,
-        1,
+        0.6779806315898895,
         0,
-        0,
-        0,
-        0,
+        2.9802322387695312e-8,
+        -2.9802322387695312e-8,
+        -0.9400000274181366,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3080,42 +3080,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.6779806315898895,
         0,
         0,
         0,
         0,
-        1,
+        0.6779806315898895,
         0,
         0,
         0,
         0,
-        1,
+        0.6779806315898895,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5999999940395355,
+        0.19999997317790985,
+        -2.2399999797344208,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-livery",
       "localTransform": [
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
+        5.960464477539063e-8,
         0,
-        0,
-        0,
+        -0.9400000870227814,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3130,42 +3130,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
         0,
         0,
         0,
-        1,
+        0.6800000071525574,
         0,
-        -0.6000000238418579,
+        -0.5999999642372131,
         0.20000000298023224,
-        -1.2999999523162842,
+        -2.2400000393390656,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-mechanical",
       "localTransform": [
-        1,
+        0.8100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        0.8100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        0.8100000023841858,
         0,
+        5.960464477539063e-8,
         0,
-        0,
-        0,
+        -1.1000001430511475,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3180,42 +3180,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.8100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        0.8100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        0.8100000023841858,
         0,
-        -0.6000000238418579,
+        -0.5999999642372131,
         0.20000000298023224,
-        -1.2999999523162842,
+        -2.4000000953674316,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-arm-mechanicaldark",
       "localTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
-        0,
+        -1.1100001335144043,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3230,38 +3230,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         0,
         0,
         0,
-        1,
+        0.5,
         0,
         -0.6000000238418579,
         0.20000000298023224,
-        -1.2999999523162842,
+        -2.4100000858306885,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod0-motion-cutter-scanring-hull-graphite",
       "localTransform": [
-        1,
+        0.7200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.7200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.7200000286102295,
         0,
         0,
         0,
@@ -3280,17 +3280,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.7200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.7200000286102295,
         0,
         0,
         0,
         0,
-        1,
+        0.7200000286102295,
         0,
         4.599999904632568,
         1.2000000476837158,
@@ -3301,20 +3301,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-armor",
       "localTransform": [
-        1,
+        10.95002269744873,
         0,
         0,
         0,
         0,
-        1,
+        10.95002269744873,
         0,
         0,
         0,
         0,
-        1,
+        10.95002269744873,
         0,
-        0,
-        0,
+        0.35001087188720703,
+        0.6749999523162842,
         0,
         1
       ],
@@ -3329,20 +3329,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.95002269744873,
         0,
         0,
         0,
         0,
-        1,
+        10.95002269744873,
         0,
         0,
         0,
         0,
-        1,
+        10.95002269744873,
         0,
-        0,
-        0,
+        0.35001087188720703,
+        0.6749999523162842,
         0,
         1
       ]
@@ -3350,21 +3350,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-canopy",
       "localTransform": [
-        1,
+        3.0993658304214478,
         0,
         0,
         0,
         0,
-        1,
+        3.0993658304214478,
         0,
         0,
         0,
         0,
-        1,
+        3.0993658304214478,
         0,
-        0,
-        0,
-        0,
+        -0.6998924016952515,
+        1.9897420406341553,
+        -0.0028261542320251465,
         1
       ],
       "materialPipelineKey": "blend",
@@ -3378,21 +3378,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        3.0993658304214478,
         0,
         0,
         0,
         0,
-        1,
+        3.0993658304214478,
         0,
         0,
         0,
         0,
-        1,
+        3.0993658304214478,
         0,
-        0,
-        0,
-        0,
+        -0.6998924016952515,
+        1.9897420406341553,
+        -0.0028261542320251465,
         1
       ]
     },
@@ -3546,21 +3546,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-hull",
       "localTransform": [
-        1,
+        10.950019359588623,
         0,
         0,
         0,
         0,
-        1,
+        10.950019359588623,
         0,
         0,
         0,
         0,
-        1,
+        10.950019359588623,
         0,
-        0,
-        0,
-        0,
+        0.35001420974731445,
+        0.95501708984375,
+        -0.000012755393981933594,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3574,41 +3574,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.950019359588623,
         0,
         0,
         0,
         0,
-        1,
+        10.950019359588623,
         0,
         0,
         0,
         0,
-        1,
+        10.950019359588623,
         0,
-        0,
-        0,
-        0,
+        0.35001420974731445,
+        0.95501708984375,
+        -0.000012755393981933594,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-hull-graphite",
       "localTransform": [
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
-        0,
-        0,
+        -3.856000065803528,
+        1.2400000244379044,
         0,
         1
       ],
@@ -3623,20 +3623,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
         0,
         0,
         0,
-        1,
+        5.4440001249313354,
         0,
-        0,
-        0,
+        -3.856000065803528,
+        1.2400000244379044,
         0,
         1
       ]
@@ -3644,20 +3644,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-lights-cyan",
       "localTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574666738510132,
         0,
         1
       ],
@@ -3672,20 +3672,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574666738510132,
         0,
         1
       ]
@@ -3693,20 +3693,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-lights-cyan-blue",
       "localTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ],
@@ -3721,20 +3721,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ]
@@ -3742,20 +3742,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-lights-warm",
       "localTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ],
@@ -3770,20 +3770,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ]
@@ -3791,21 +3791,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-livery",
       "localTransform": [
-        1,
+        10.950001239776611,
         0,
         0,
         0,
         0,
-        1,
+        10.950001239776611,
         0,
         0,
         0,
         0,
-        1,
+        10.950001239776611,
         0,
-        0,
-        0,
-        0,
+        0.3500056266784668,
+        0.09982866048812866,
+        0.000018715858459472656,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3819,41 +3819,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.950001239776611,
         0,
         0,
         0,
         0,
-        1,
+        10.950001239776611,
         0,
         0,
         0,
         0,
-        1,
+        10.950001239776611,
         0,
-        0,
-        0,
-        0,
+        0.3500056266784668,
+        0.09982866048812866,
+        0.000018715858459472656,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-mechanical",
       "localTransform": [
-        1,
+        8.959687232971191,
         0,
         0,
         0,
         0,
-        1,
+        8.959687232971191,
         0,
         0,
         0,
         0,
-        1,
+        8.959687232971191,
         0,
-        0,
-        0,
+        -2.4103126525878906,
+        1.6500000357627869,
         0,
         1
       ],
@@ -3868,20 +3868,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        8.959687232971191,
         0,
         0,
         0,
         0,
-        1,
+        8.959687232971191,
         0,
         0,
         0,
         0,
-        1,
+        8.959687232971191,
         0,
-        0,
-        0,
+        -2.4103126525878906,
+        1.6500000357627869,
         0,
         1
       ]
@@ -3889,20 +3889,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
-        0,
-        0,
+        -2.43999981880188,
+        1.201340675354004,
         0,
         1
       ],
@@ -3917,20 +3917,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
         0,
         0,
         0,
-        1,
+        8.930000066757202,
         0,
-        0,
-        0,
+        -2.43999981880188,
+        1.201340675354004,
         0,
         1
       ]
@@ -3938,21 +3938,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-hull",
       "localTransform": [
-        1,
+        0.479104220867157,
         0,
         0,
         0,
         0,
-        1,
+        0.479104220867157,
         0,
         0,
         0,
         0,
-        1,
+        0.479104220867157,
         0,
-        0,
-        0,
-        0,
+        0.000014528632164001465,
+        -0.000037670135498046875,
+        -0.44996923535654787,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3967,42 +3967,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.479104220867157,
         0,
         0,
         0,
         0,
-        1,
+        0.479104220867157,
         0,
         0,
         0,
         0,
-        1,
+        0.479104220867157,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5999854952096939,
+        0.1999623328447342,
+        -1.749969187672832,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-hull-graphite",
       "localTransform": [
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
-        0,
-        0,
-        0,
+        0.000014573335647583008,
+        -0.000013381242752075195,
+        -0.9399713277816772,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4017,42 +4017,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5999854505062103,
+        0.19998662173748016,
+        -2.2399712800979614,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-livery",
       "localTransform": [
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
-        0,
-        0,
-        0,
+        0.000014573335647583008,
+        -0.000013381242752075195,
+        -0.9398981630802155,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4067,42 +4067,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
         0,
         0,
         0,
-        1,
+        0.679080992937088,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5999854505062103,
+        0.19998662173748016,
+        -2.2398981153964996,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-mechanical",
       "localTransform": [
-        1,
+        0.8085235357284546,
         0,
         0,
         0,
         0,
-        1,
+        0.8085235357284546,
         0,
         0,
         0,
         0,
-        1,
+        0.8085235357284546,
         0,
-        0,
-        0,
-        0,
+        -2.9802322387695312e-8,
+        0.00007790327072143555,
+        -1.100000262260437,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4117,42 +4117,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.8085235357284546,
         0,
         0,
         0,
         0,
-        1,
+        0.8085235357284546,
         0,
         0,
         0,
         0,
-        1,
+        0.8085235357284546,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.6000000536441803,
+        0.20007790625095367,
+        -2.400000214576721,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-arm-mechanicaldark",
       "localTransform": [
-        1,
+        0.49910423159599304,
         0,
         0,
         0,
         0,
-        1,
+        0.49910423159599304,
         0,
         0,
         0,
         0,
-        1,
+        0.49910423159599304,
         0,
-        0,
-        0,
-        0,
+        0.00003768503665924072,
+        0.00003769993782043457,
+        -1.11000394821167,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4167,41 +4167,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.49910423159599304,
         0,
         0,
         0,
         0,
-        1,
+        0.49910423159599304,
         0,
         0,
         0,
         0,
-        1,
+        0.49910423159599304,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5999623388051987,
+        0.20003770291805267,
+        -2.410003900527954,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod1-motion-cutter-scanring-hull-graphite",
       "localTransform": [
-        1,
+        0.7191427946090698,
         0,
         0,
         0,
         0,
-        1,
+        0.7191427946090698,
         0,
         0,
         0,
         0,
-        1,
+        0.7191427946090698,
         0,
-        0,
-        0,
+        0.000037550926208496094,
+        -0.000011026859283447266,
         0,
         1
       ],
@@ -4217,20 +4217,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.7191427946090698,
         0,
         0,
         0,
         0,
-        1,
+        0.7191427946090698,
         0,
         0,
         0,
         0,
-        1,
+        0.7191427946090698,
         0,
-        4.599999904632568,
-        1.2000000476837158,
+        4.600037455558777,
+        1.1999890208244324,
         0,
         1
       ]
@@ -4238,21 +4238,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-armor",
       "localTransform": [
-        1,
+        10.950108051300049,
         0,
         0,
         0,
         0,
-        1,
+        10.950108051300049,
         0,
         0,
         0,
         0,
-        1,
+        10.950108051300049,
         0,
-        0,
-        0,
-        0,
+        0.34996843338012695,
+        0.6770232915878296,
+        -0.00039315223693847656,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4266,42 +4266,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.950108051300049,
         0,
         0,
         0,
         0,
-        1,
+        10.950108051300049,
         0,
         0,
         0,
         0,
-        1,
+        10.950108051300049,
         0,
-        0,
-        0,
-        0,
+        0.34996843338012695,
+        0.6770232915878296,
+        -0.00039315223693847656,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-canopy",
       "localTransform": [
-        1,
+        3.099587082862854,
         0,
         0,
         0,
         0,
-        1,
+        3.099587082862854,
         0,
         0,
         0,
         0,
-        1,
+        3.099587082862854,
         0,
-        0,
-        0,
-        0,
+        -0.7000294923782349,
+        2.0628506541252136,
+        -0.0032678842544555664,
         1
       ],
       "materialPipelineKey": "blend",
@@ -4315,21 +4315,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        3.099587082862854,
         0,
         0,
         0,
         0,
-        1,
+        3.099587082862854,
         0,
         0,
         0,
         0,
-        1,
+        3.099587082862854,
         0,
-        0,
-        0,
-        0,
+        -0.7000294923782349,
+        2.0628506541252136,
+        -0.0032678842544555664,
         1
       ]
     },
@@ -4483,21 +4483,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-hull",
       "localTransform": [
-        1,
+        10.950165271759033,
         0,
         0,
         0,
         0,
-        1,
+        10.950165271759033,
         0,
         0,
         0,
         0,
-        1,
+        10.950165271759033,
         0,
-        0,
-        0,
-        0,
+        0.3499112129211426,
+        0.9292877912521362,
+        -0.00035136938095092773,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4511,41 +4511,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.950165271759033,
         0,
         0,
         0,
         0,
-        1,
+        10.950165271759033,
         0,
         0,
         0,
         0,
-        1,
+        10.950165271759033,
         0,
-        0,
-        0,
-        0,
+        0.3499112129211426,
+        0.9292877912521362,
+        -0.00035136938095092773,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-hull-graphite",
       "localTransform": [
-        1,
+        5.440424919128418,
         0,
         0,
         0,
         0,
-        1,
+        5.440424919128418,
         0,
         0,
         0,
         0,
-        1,
+        5.440424919128418,
         0,
-        0,
-        0,
+        -3.8554792404174805,
+        1.2404499650001526,
         0,
         1
       ],
@@ -4560,20 +4560,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        5.440424919128418,
         0,
         0,
         0,
         0,
-        1,
+        5.440424919128418,
         0,
         0,
         0,
         0,
-        1,
+        5.440424919128418,
         0,
-        0,
-        0,
+        -3.8554792404174805,
+        1.2404499650001526,
         0,
         1
       ]
@@ -4581,20 +4581,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-lights-cyan",
       "localTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574666738510132,
         0,
         1
       ],
@@ -4609,20 +4609,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
         0,
         0,
         0,
-        1,
+        10.369999408721924,
         0,
-        0,
-        0,
+        0.1100001335144043,
+        1.2574666738510132,
         0,
         1
       ]
@@ -4630,20 +4630,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-lights-cyan-blue",
       "localTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ],
@@ -4658,20 +4658,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        0.5399999618530273,
         0,
-        0,
-        0,
+        -0.3999999910593033,
+        2.859999895095825,
         0,
         1
       ]
@@ -4679,20 +4679,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-lights-warm",
       "localTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ],
@@ -4707,20 +4707,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
         0,
         0,
         0,
-        1,
+        1.3749999776482582,
         0,
-        0,
-        0,
+        -1.299999974668026,
+        2.099999964237213,
         0,
         1
       ]
@@ -4728,21 +4728,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-livery",
       "localTransform": [
-        1,
+        10.95014762878418,
         0,
         0,
         0,
         0,
-        1,
+        10.95014762878418,
         0,
         0,
         0,
         0,
-        1,
+        10.95014762878418,
         0,
-        0,
-        0,
-        0,
+        0.34989356994628906,
+        0.09982866048812866,
+        -0.0007959604263305664,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4756,41 +4756,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        10.95014762878418,
         0,
         0,
         0,
         0,
-        1,
+        10.95014762878418,
         0,
         0,
         0,
         0,
-        1,
+        10.95014762878418,
         0,
-        0,
-        0,
-        0,
+        0.34989356994628906,
+        0.09982866048812866,
+        -0.0007959604263305664,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-mechanical",
       "localTransform": [
-        1,
+        6.672499597072601,
         0,
         0,
         0,
         0,
-        1,
+        6.672499597072601,
         0,
         0,
         0,
         0,
-        1,
+        6.672499597072601,
         0,
-        0,
-        0,
+        -4.69806295633316,
+        1.3292531371116638,
         0,
         1
       ],
@@ -4805,20 +4805,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        6.672499597072601,
         0,
         0,
         0,
         0,
-        1,
+        6.672499597072601,
         0,
         0,
         0,
         0,
-        1,
+        6.672499597072601,
         0,
-        0,
-        0,
+        -4.69806295633316,
+        1.3292531371116638,
         0,
         1
       ]
@@ -4826,20 +4826,20 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        6.698119759559631,
         0,
         0,
         0,
         0,
-        1,
+        6.698119759559631,
         0,
         0,
         0,
         0,
-        1,
+        6.698119759559631,
         0,
-        0,
-        0,
+        -4.67244279384613,
+        1.201819747686386,
         0,
         1
       ],
@@ -4854,20 +4854,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        6.698119759559631,
         0,
         0,
         0,
         0,
-        1,
+        6.698119759559631,
         0,
         0,
         0,
         0,
-        1,
+        6.698119759559631,
         0,
-        0,
-        0,
+        -4.67244279384613,
+        1.201819747686386,
         0,
         1
       ]
@@ -4875,21 +4875,21 @@
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-hull",
       "localTransform": [
-        1,
+        0.4768511950969696,
         0,
         0,
         0,
         0,
-        1,
+        0.4768511950969696,
         0,
         0,
         0,
         0,
-        1,
+        0.4768511950969696,
         0,
-        0,
-        0,
-        0,
+        -0.0002739131450653076,
+        -0.00013372302055358887,
+        -0.44989502953831106,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4904,42 +4904,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.4768511950969696,
         0,
         0,
         0,
         0,
-        1,
+        0.4768511950969696,
         0,
         0,
         0,
         0,
-        1,
+        0.4768511950969696,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.6002739369869232,
+        0.19986627995967865,
+        -1.7498949818545952,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-hull-graphite",
       "localTransform": [
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
-        0,
-        0,
-        0,
+        0.00012874603271484375,
+        -2.9802322387695312e-8,
+        -0.9399409294128418,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4954,42 +4954,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5998712778091431,
+        0.19999997317790985,
+        -2.239940881729126,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-livery",
       "localTransform": [
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
-        0,
-        0,
-        0,
+        0.00012874603271484375,
+        -2.9802322387695312e-8,
+        -0.9399409294128418,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5004,42 +5004,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
         0,
         0,
         0,
-        1,
+        0.6772425472736359,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5998712778091431,
+        0.19999997317790985,
+        -2.239940881729126,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-mechanical",
       "localTransform": [
-        1,
+        0.806183248758316,
         0,
         0,
         0,
         0,
-        1,
+        0.806183248758316,
         0,
         0,
         0,
         0,
-        1,
+        0.806183248758316,
         0,
-        0,
-        0,
-        0,
+        0.0007440149784088135,
+        -0.0002002716064453125,
+        -1.0992562770843506,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5054,42 +5054,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.806183248758316,
         0,
         0,
         0,
         0,
-        1,
+        0.806183248758316,
         0,
         0,
         0,
         0,
-        1,
+        0.806183248758316,
         0,
-        -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        -0.5992560088634491,
+        0.19979973137378693,
+        -2.3992562294006348,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-arm-mechanicaldark",
       "localTransform": [
-        1,
+        0.4972425699234009,
         0,
         0,
         0,
         0,
-        1,
+        0.4972425699234009,
         0,
         0,
         0,
         0,
-        1,
+        0.4972425699234009,
         0,
         0,
-        0,
-        0,
+        2.9802322387695312e-8,
+        -1.1100592613220215,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5104,42 +5104,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.4972425699234009,
         0,
         0,
         0,
         0,
-        1,
+        0.4972425699234009,
         0,
         0,
         0,
         0,
-        1,
+        0.4972425699234009,
         0,
         -0.6000000238418579,
-        0.20000000298023224,
-        -1.2999999523162842,
+        0.20000003278255463,
+        -2.4100592136383057,
         1
       ]
     },
     {
       "id": "sf.render.inspection-cutter.node.lod2-motion-cutter-scanring-hull-graphite",
       "localTransform": [
-        1,
+        0.7172105312347412,
         0,
         0,
         0,
         0,
-        1,
+        0.7172105312347412,
         0,
         0,
         0,
         0,
-        1,
+        0.7172105312347412,
         0,
+        0.0001285076141357422,
         0,
-        0,
-        0,
+        -0.000034809112548828125,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5154,21 +5154,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.inspection-cutter.body",
       "worldTransform": [
-        1,
+        0.7172105312347412,
         0,
         0,
         0,
         0,
-        1,
+        0.7172105312347412,
         0,
         0,
         0,
         0,
-        1,
+        0.7172105312347412,
         0,
-        4.599999904632568,
+        4.600128412246704,
         1.2000000476837158,
-        0,
+        -0.000034809112548828125,
         1
       ]
     },
@@ -5917,14 +5917,14 @@
       "uri": "inspection_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323118,
+      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1805076,
-    "sha256": "dbafbca7be6bc2bf2222890ed9ab18eb0ed47ca8c45a1d55d7fe7e2890e6cdd3",
+    "bytes": 1003728,
+    "sha256": "f51f3d8c4eebfaf742e4f8512a94dbabf1b91ba9a4caf4759503e4cea2e13bf5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5936,18 +5936,18 @@
       ],
       "max": [
         11.300076484680176,
-        4.000992298126221,
-        2.720341205596924
+        4.000992374660717,
+        2.7203412356257175
       ],
       "min": [
         -11.370562553405762,
-        -2.4007441997528076,
-        -2.7204084396362305
+        -2.4007442762873037,
+        -2.720408469665024
       ],
       "size": [
         22.670639038085938,
-        6.401736497879028,
-        5.440749645233154
+        6.4017366509480205,
+        5.440749705290742
       ]
     },
     "hidden": [
@@ -7021,20 +7021,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.949974060058594,
           0,
           0,
           0,
           0,
-          1,
+          10.949974060058594,
           0,
           0,
           0,
           0,
-          1,
+          10.949974060058594,
           0,
-          0,
-          0,
+          0.34999847412109375,
+          0.6749999523162842,
           0,
           1
         ],
@@ -7048,20 +7048,20 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          2.987969756126404,
           0,
           0,
           0,
           0,
-          1,
+          2.987969756126404,
           0,
           0,
           0,
           0,
-          1,
+          2.987969756126404,
           0,
-          0,
-          0,
+          -0.810416579246521,
+          1.990899682044983,
           0,
           1
         ],
@@ -7177,20 +7177,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.949987888336182,
           0,
           0,
           0,
           0,
-          1,
+          10.949987888336182,
           0,
           0,
           0,
           0,
-          1,
+          10.949987888336182,
           0,
-          0,
-          0,
+          0.35001230239868164,
+          0.9550180733203888,
           0,
           1
         ],
@@ -7204,20 +7204,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.4440001249313354,
           0,
           0,
           0,
           0,
-          1,
+          5.4440001249313354,
           0,
           0,
           0,
           0,
-          1,
+          5.4440001249313354,
           0,
-          0,
-          0,
+          -3.856000065803528,
+          1.2400000244379044,
           0,
           1
         ],
@@ -7231,20 +7231,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
-          0,
-          0,
+          0.1100001335144043,
+          1.2574957609176636,
           0,
           1
         ],
@@ -7258,20 +7258,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
-          0,
-          0,
+          -0.3999999910593033,
+          2.859999895095825,
           0,
           1
         ],
@@ -7285,20 +7285,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
-          0,
-          0,
+          -1.299999974668026,
+          2.099999964237213,
           0,
           1
         ],
@@ -7312,20 +7312,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.905026912689209,
           0,
           0,
           0,
           0,
-          1,
+          10.905026912689209,
           0,
           0,
           0,
           0,
-          1,
+          10.905026912689209,
           0,
-          0,
-          0,
+          0.3050522804260254,
+          0.09864407777786255,
           0,
           1
         ],
@@ -7339,20 +7339,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.960000038146973,
           0,
           0,
           0,
           0,
-          1,
+          8.960000038146973,
           0,
           0,
           0,
           0,
-          1,
+          8.960000038146973,
           0,
-          0,
-          0,
+          -2.4099998474121094,
+          1.6500000357627869,
           0,
           1
         ],
@@ -7366,20 +7366,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          8.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          8.930000066757202,
           0,
-          0,
-          0,
+          -2.43999981880188,
+          1.201338529586792,
           0,
           1
         ],
@@ -7393,20 +7393,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.95002269744873,
           0,
           0,
           0,
           0,
-          1,
+          10.95002269744873,
           0,
           0,
           0,
           0,
-          1,
+          10.95002269744873,
           0,
-          0,
-          0,
+          0.35001087188720703,
+          0.6749999523162842,
           0,
           1
         ],
@@ -7420,21 +7420,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          3.0993658304214478,
           0,
           0,
           0,
           0,
-          1,
+          3.0993658304214478,
           0,
           0,
           0,
           0,
-          1,
+          3.0993658304214478,
           0,
-          0,
-          0,
-          0,
+          -0.6998924016952515,
+          1.9897420406341553,
+          -0.0028261542320251465,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -7549,21 +7549,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.950019359588623,
           0,
           0,
           0,
           0,
-          1,
+          10.950019359588623,
           0,
           0,
           0,
           0,
-          1,
+          10.950019359588623,
           0,
-          0,
-          0,
-          0,
+          0.35001420974731445,
+          0.95501708984375,
+          -0.000012755393981933594,
           1
         ],
         "name": "LOD1_Hull",
@@ -7576,20 +7576,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.4440001249313354,
           0,
           0,
           0,
           0,
-          1,
+          5.4440001249313354,
           0,
           0,
           0,
           0,
-          1,
+          5.4440001249313354,
           0,
-          0,
-          0,
+          -3.856000065803528,
+          1.2400000244379044,
           0,
           1
         ],
@@ -7603,20 +7603,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
-          0,
-          0,
+          0.1100001335144043,
+          1.2574666738510132,
           0,
           1
         ],
@@ -7630,20 +7630,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
-          0,
-          0,
+          -0.3999999910593033,
+          2.859999895095825,
           0,
           1
         ],
@@ -7657,20 +7657,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
-          0,
-          0,
+          -1.299999974668026,
+          2.099999964237213,
           0,
           1
         ],
@@ -7684,21 +7684,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.950001239776611,
           0,
           0,
           0,
           0,
-          1,
+          10.950001239776611,
           0,
           0,
           0,
           0,
-          1,
+          10.950001239776611,
           0,
-          0,
-          0,
-          0,
+          0.3500056266784668,
+          0.09982866048812866,
+          0.000018715858459472656,
           1
         ],
         "name": "LOD1_Livery",
@@ -7711,20 +7711,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.959687232971191,
           0,
           0,
           0,
           0,
-          1,
+          8.959687232971191,
           0,
           0,
           0,
           0,
-          1,
+          8.959687232971191,
           0,
-          0,
-          0,
+          -2.4103126525878906,
+          1.6500000357627869,
           0,
           1
         ],
@@ -7738,20 +7738,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          8.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          8.930000066757202,
           0,
           0,
           0,
           0,
-          1,
+          8.930000066757202,
           0,
-          0,
-          0,
+          -2.43999981880188,
+          1.201340675354004,
           0,
           1
         ],
@@ -7765,21 +7765,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.950108051300049,
           0,
           0,
           0,
           0,
-          1,
+          10.950108051300049,
           0,
           0,
           0,
           0,
-          1,
+          10.950108051300049,
           0,
-          0,
-          0,
-          0,
+          0.34996843338012695,
+          0.6770232915878296,
+          -0.00039315223693847656,
           1
         ],
         "name": "LOD2_Armor",
@@ -7792,21 +7792,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          3.099587082862854,
           0,
           0,
           0,
           0,
-          1,
+          3.099587082862854,
           0,
           0,
           0,
           0,
-          1,
+          3.099587082862854,
           0,
-          0,
-          0,
-          0,
+          -0.7000294923782349,
+          2.0628506541252136,
+          -0.0032678842544555664,
           1
         ],
         "name": "LOD2_CANOPY",
@@ -7921,21 +7921,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.950165271759033,
           0,
           0,
           0,
           0,
-          1,
+          10.950165271759033,
           0,
           0,
           0,
           0,
-          1,
+          10.950165271759033,
           0,
-          0,
-          0,
-          0,
+          0.3499112129211426,
+          0.9292877912521362,
+          -0.00035136938095092773,
           1
         ],
         "name": "LOD2_Hull",
@@ -7948,20 +7948,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.440424919128418,
           0,
           0,
           0,
           0,
-          1,
+          5.440424919128418,
           0,
           0,
           0,
           0,
-          1,
+          5.440424919128418,
           0,
-          0,
-          0,
+          -3.8554792404174805,
+          1.2404499650001526,
           0,
           1
         ],
@@ -7975,20 +7975,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
           0,
           0,
           0,
-          1,
+          10.369999408721924,
           0,
-          0,
-          0,
+          0.1100001335144043,
+          1.2574666738510132,
           0,
           1
         ],
@@ -8002,20 +8002,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          0.5399999618530273,
           0,
-          0,
-          0,
+          -0.3999999910593033,
+          2.859999895095825,
           0,
           1
         ],
@@ -8029,20 +8029,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
           0,
           0,
           0,
-          1,
+          1.3749999776482582,
           0,
-          0,
-          0,
+          -1.299999974668026,
+          2.099999964237213,
           0,
           1
         ],
@@ -8056,21 +8056,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.95014762878418,
           0,
           0,
           0,
           0,
-          1,
+          10.95014762878418,
           0,
           0,
           0,
           0,
-          1,
+          10.95014762878418,
           0,
-          0,
-          0,
-          0,
+          0.34989356994628906,
+          0.09982866048812866,
+          -0.0007959604263305664,
           1
         ],
         "name": "LOD2_Livery",
@@ -8083,20 +8083,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.672499597072601,
           0,
           0,
           0,
           0,
-          1,
+          6.672499597072601,
           0,
           0,
           0,
           0,
-          1,
+          6.672499597072601,
           0,
-          0,
-          0,
+          -4.69806295633316,
+          1.3292531371116638,
           0,
           1
         ],
@@ -8110,20 +8110,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.698119759559631,
           0,
           0,
           0,
           0,
-          1,
+          6.698119759559631,
           0,
           0,
           0,
           0,
-          1,
+          6.698119759559631,
           0,
-          0,
-          0,
+          -4.67244279384613,
+          1.201819747686386,
           0,
           1
         ],
@@ -8137,21 +8137,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.48000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.48000001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.48000001907348633,
           0,
           -0.6000000238418579,
           0.20000000298023224,
-          -1.2999999523162842,
+          -1.749999995827693,
           1
         ],
         "name": "LOD0_MOTION_CUTTER_ARM_Hull",
@@ -8165,21 +8165,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6779806315898895,
           0,
           0,
           0,
           0,
-          1,
+          0.6779806315898895,
           0,
           0,
           0,
           0,
-          1,
+          0.6779806315898895,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5999999940395355,
+          0.19999997317790985,
+          -2.2399999797344208,
           1
         ],
         "name": "LOD0_MOTION_CUTTER_ARM_Hull_graphite",
@@ -8193,21 +8193,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6800000071525574,
           0,
           0,
           0,
           0,
-          1,
+          0.6800000071525574,
           0,
           0,
           0,
           0,
-          1,
+          0.6800000071525574,
           0,
-          -0.6000000238418579,
+          -0.5999999642372131,
           0.20000000298023224,
-          -1.2999999523162842,
+          -2.2400000393390656,
           1
         ],
         "name": "LOD0_MOTION_CUTTER_ARM_Livery",
@@ -8221,21 +8221,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          0.8100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          0.8100000023841858,
           0,
-          -0.6000000238418579,
+          -0.5999999642372131,
           0.20000000298023224,
-          -1.2999999523162842,
+          -2.4000000953674316,
           1
         ],
         "name": "LOD0_MOTION_CUTTER_ARM_Mechanical",
@@ -8249,21 +8249,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
           0,
           0,
           0,
-          1,
+          0.5,
           0,
           -0.6000000238418579,
           0.20000000298023224,
-          -1.2999999523162842,
+          -2.4100000858306885,
           1
         ],
         "name": "LOD0_MOTION_CUTTER_ARM_MechanicalDark",
@@ -8277,21 +8277,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.479104220867157,
           0,
           0,
           0,
           0,
-          1,
+          0.479104220867157,
           0,
           0,
           0,
           0,
-          1,
+          0.479104220867157,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5999854952096939,
+          0.1999623328447342,
+          -1.749969187672832,
           1
         ],
         "name": "LOD1_MOTION_CUTTER_ARM_Hull",
@@ -8305,21 +8305,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.679080992937088,
           0,
           0,
           0,
           0,
-          1,
+          0.679080992937088,
           0,
           0,
           0,
           0,
-          1,
+          0.679080992937088,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5999854505062103,
+          0.19998662173748016,
+          -2.2399712800979614,
           1
         ],
         "name": "LOD1_MOTION_CUTTER_ARM_Hull_graphite",
@@ -8333,21 +8333,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.679080992937088,
           0,
           0,
           0,
           0,
-          1,
+          0.679080992937088,
           0,
           0,
           0,
           0,
-          1,
+          0.679080992937088,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5999854505062103,
+          0.19998662173748016,
+          -2.2398981153964996,
           1
         ],
         "name": "LOD1_MOTION_CUTTER_ARM_Livery",
@@ -8361,21 +8361,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8085235357284546,
           0,
           0,
           0,
           0,
-          1,
+          0.8085235357284546,
           0,
           0,
           0,
           0,
-          1,
+          0.8085235357284546,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.6000000536441803,
+          0.20007790625095367,
+          -2.400000214576721,
           1
         ],
         "name": "LOD1_MOTION_CUTTER_ARM_Mechanical",
@@ -8389,21 +8389,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.49910423159599304,
           0,
           0,
           0,
           0,
-          1,
+          0.49910423159599304,
           0,
           0,
           0,
           0,
-          1,
+          0.49910423159599304,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5999623388051987,
+          0.20003770291805267,
+          -2.410003900527954,
           1
         ],
         "name": "LOD1_MOTION_CUTTER_ARM_MechanicalDark",
@@ -8417,21 +8417,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4768511950969696,
           0,
           0,
           0,
           0,
-          1,
+          0.4768511950969696,
           0,
           0,
           0,
           0,
-          1,
+          0.4768511950969696,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.6002739369869232,
+          0.19986627995967865,
+          -1.7498949818545952,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_ARM_Hull",
@@ -8445,21 +8445,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6772425472736359,
           0,
           0,
           0,
           0,
-          1,
+          0.6772425472736359,
           0,
           0,
           0,
           0,
-          1,
+          0.6772425472736359,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5998712778091431,
+          0.19999997317790985,
+          -2.239940881729126,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_ARM_Hull_graphite",
@@ -8473,21 +8473,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6772425472736359,
           0,
           0,
           0,
           0,
-          1,
+          0.6772425472736359,
           0,
           0,
           0,
           0,
-          1,
+          0.6772425472736359,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5998712778091431,
+          0.19999997317790985,
+          -2.239940881729126,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_ARM_Livery",
@@ -8501,21 +8501,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.806183248758316,
           0,
           0,
           0,
           0,
-          1,
+          0.806183248758316,
           0,
           0,
           0,
           0,
-          1,
+          0.806183248758316,
           0,
-          -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          -0.5992560088634491,
+          0.19979973137378693,
+          -2.3992562294006348,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_ARM_Mechanical",
@@ -8529,21 +8529,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4972425699234009,
           0,
           0,
           0,
           0,
-          1,
+          0.4972425699234009,
           0,
           0,
           0,
           0,
-          1,
+          0.4972425699234009,
           0,
           -0.6000000238418579,
-          0.20000000298023224,
-          -1.2999999523162842,
+          0.20000003278255463,
+          -2.4100592136383057,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_ARM_MechanicalDark",
@@ -8557,17 +8557,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.7200000286102295,
           0,
           0,
           0,
           0,
-          1,
+          0.7200000286102295,
           0,
           4.599999904632568,
           1.2000000476837158,
@@ -8585,20 +8585,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7191427946090698,
           0,
           0,
           0,
           0,
-          1,
+          0.7191427946090698,
           0,
           0,
           0,
           0,
-          1,
+          0.7191427946090698,
           0,
-          4.599999904632568,
-          1.2000000476837158,
+          4.600037455558777,
+          1.1999890208244324,
           0,
           1
         ],
@@ -8613,21 +8613,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7172105312347412,
           0,
           0,
           0,
           0,
-          1,
+          0.7172105312347412,
           0,
           0,
           0,
           0,
-          1,
+          0.7172105312347412,
           0,
-          4.599999904632568,
+          4.600128412246704,
           1.2000000476837158,
-          0,
+          -0.000034809112548828125,
           1
         ],
         "name": "LOD2_MOTION_CUTTER_SCANRING_Hull_graphite",
@@ -8643,20 +8643,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "4daa7c7a416e0849975f81550d961df3d3a41460bd28415dbdfb299454718ca3",
+  "runtimeHash": "63984a041730c87e4a5c58c82765402a7e5b6d5e48959618f19f070d2246459c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.300076484680176,
-          4.000992298126221,
-          2.720341205596924
+          4.000992374660717,
+          2.7203412356257175
         ],
         "min": [
           -11.370562553405762,
-          -2.4007441997528076,
-          -2.7204084396362305
+          -2.4007442762873037,
+          -2.720408469665024
         ]
       },
       "id": "sf.render.inspection-cutter.body",
