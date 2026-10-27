@@ -6,6 +6,7 @@
 // WHAT THIS OWNS — one beacon marking the mouth (same event-driven seams as every one-off:
 // init / deferred sector-enter / save:loaded / newGame) plus the per-tick eat pass. The
 // intake never buys or holds freight — it consumes the body and files the fact.
+import { furnaceMouthGlobal } from '../missions/furnaceWorksite.js';
 import { FURNACE_INTAKE } from '../data/furnace.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
@@ -23,12 +24,14 @@ function furnaceEdible(entity) {
 export function furnaceIntakeSpec() {
   return {
     type: 'beacon',
-    pos: { ...FURNACE_INTAKE.mouth }, vel: { x: 0, z: 0 },
+    pos: furnaceMouthGlobal(), vel: { x: 0, z: 0 },
     radius: 14, mass: 1e6, hull: 1, hullMax: 1,
-    collides: false,
+    collides: false, physicsBody: false,
     homeSectorId: FURNACE_INTAKE.sectorId,
     data: {
       furnaceIntake: true, parentType: 'story_prop',
+      circuitMark: true, ringRadius: FURNACE_INTAKE.mouthRadius, visualRadius: FURNACE_INTAKE.mouthRadius,
+      tetherable: false, masslineTetherable: false,
       scanLabel: 'CR-FEED — furnace intake',
       scannerSignalKind: 'anomaly',
       homeSectorId: FURNACE_INTAKE.sectorId,
@@ -42,7 +45,7 @@ export function createFurnaceIntake() {
     init(ctx) {
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
-      this._unsubs = [];
+      this._unsubs = []; this._restoring = false;
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
@@ -53,7 +56,9 @@ export function createFurnaceIntake() {
       this._cookProvider = () => { this._sync(); };
       (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
         .push(this._cookProvider);
-      on('save:loaded', () => this._sync());
+      on('save:restoring', () => { this._restoring = true; });
+      on('save:loaded', () => { this._restoring = false; this._sync(); });
+      on('mission:accepted', () => this._sync());
       on('game:newGame', () => this._sync());
       this._sync();
     },
@@ -95,8 +100,10 @@ export function createFurnaceIntake() {
       }
     },
     _sync() {
-      if (!this.state?.story) return;
+      if (!this.state?.story || this._restoring) return;
       if (!this._adventure()) { this._removeOwned(); return; }
+      const beacon = this._beacon();
+      if (beacon && beacon.data.ringRadius !== FURNACE_INTAKE.mouthRadius) this.helpers.removeEntity?.(beacon.id);
       if (!this._beacon() && this.helpers.spawnEntity) this.helpers.spawnEntity(furnaceIntakeSpec());
       const flags = this._flags();
       if (flags && flags[FURNACE_INTAKE.announceFlag] !== true) {
@@ -110,9 +117,9 @@ export function createFurnaceIntake() {
     /** The mouth is a hazard ring: anything edible crossing the lip is taken, whatever
      *  the speed — flinging is the intended delivery. Once per body per tick. */
     update() {
-      if (!this._adventure()) return;
-      const list = this.state?.entityList || [];
-      const mouth = FURNACE_INTAKE.mouth;
+      if (this._restoring || !this._adventure()) return;
+      const list = [...(this.state?.entityList || [])];
+      const mouth = furnaceMouthGlobal();
       const r2 = FURNACE_INTAKE.mouthRadius * FURNACE_INTAKE.mouthRadius;
       for (const e of list) {
         if (!furnaceEdible(e) || e._furnaceTaken === true) continue;
@@ -128,6 +135,8 @@ export function createFurnaceIntake() {
         }
         this.bus?.emit('furnace:fed', {
           entityId: e.id, type: e.type,
+          missionId: e.data?.furnaceMissionId || null,
+          lotSlot: e.data?.furnaceLotSlot ?? null,
           payloadType: e.data?.payloadType || null,
           pos: { x: pos.x, z: pos.z },
           sectorId: FURNACE_INTAKE.sectorId,

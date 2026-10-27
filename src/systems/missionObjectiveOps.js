@@ -1,3 +1,5 @@
+import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
+import { furnaceDetail, authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
@@ -203,6 +205,28 @@ export const missionObjectiveOps = {
 
   _onKill(p) {
     if (!p) return;
+    recordFurnaceAftermathFact(this, p, 'lost');
+    // Only an actual kill loses a disposal lot; residency despawn is not destruction.
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!authoredFurnaceWorksite(m)) continue;
+      const body = this.state.entities?.get(p.id);
+      if (!body || (p.entity && p.entity !== body) || body.alive !== false) continue;
+      if (body?.id !== p.id || !isFurnaceOwnedLot(body, this.state) || body.data.furnaceMissionId !== m.id || body._furnaceTaken) continue;
+      const lot = furnaceLots(m).find(row => row.entityId === p.id && row.slot === body.data.furnaceLotSlot && !row.received);
+      if (!lot) continue;
+      lot.lost = true;
+      if (authoredFurnaceWorksite(m)) {
+        m.params.furnaceLosses = furnaceAccounting(m).lost;
+        delete m._extrasAnnounced;
+        this.bus.emit('mission:updated', { missionId: m.id, furnaceLosses: m.params.furnaceLosses });
+        this._sayStoryLine(`Disposal cargo lost: ${m.params.furnaceLosses}/3. Clear the site and account for the remaining pods; lost cargo earns no disposal pay.`, 6);
+        if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
+          prepareFurnaceSettlement(this, m);
+          this._completeMission(m, i);
+        }
+      } else this._failMission(m, i, 'payload_destroyed');
+    }
     const byPlayer = p.killerId === this.state.playerId;
     if (!byPlayer) { this._voidLostBountyTargets(p); return; } // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -239,6 +263,8 @@ export const missionObjectiveOps = {
    * after contractClauses has judged the kill — a kill no clause fails must still complete.
    */
   _settleBountyTargetKill(m, i, p) {
+    // Versioned refinery work is a cleared-place predicate, not fabricated kill credit.
+    if (authoredFurnaceWorksite(m)) return;
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
     if (m.params && m.params.requiredModule === 'mod_ram_plate') {
       if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_ram_plate')) return;
@@ -275,7 +301,10 @@ export const missionObjectiveOps = {
    */
   _bookExtrasSatisfied(m) {
     const p = (m && m.params) || {};
-    if (Number(p.furnaceFeedsNeeded) > 0 && (p.furnaceFeeds | 0) < p.furnaceFeedsNeeded) return false;
+    if (authoredFurnaceWorksite(m)) {
+      const accounted = furnaceAccounting(m);
+      if (accounted.received + accounted.lost < 3) return false;
+    } else if (Number(p.furnaceFeedsNeeded) > 0 && (p.furnaceFeeds | 0) < p.furnaceFeedsNeeded) return false;
     if (Number(p.rookDeliveryNeeded) > 0 && (p.rookDeliveries | 0) < p.rookDeliveryNeeded) return false;
     // W-BOOKS-3-4: Feed the Maw — the maw must be stunned with hot slag before the tow
     // can leave the lane; a thrashing maw does not ride a Line out.
@@ -287,7 +316,8 @@ export const missionObjectiveOps = {
     const p = (m && m.params) || {};
     const rows = [];
     if (Number(p.furnaceFeedsNeeded) > 0) {
-      const left = Math.max(0, p.furnaceFeedsNeeded - (p.furnaceFeeds | 0));
+      const accounted = authoredFurnaceWorksite(m) ? furnaceAccounting(m) : null;
+      const left = Math.max(0, p.furnaceFeedsNeeded - (accounted ? accounted.received + accounted.lost : (p.furnaceFeeds | 0)));
       if (left > 0) rows.push(`feed ${left} more to the CR-FEED intake`);
     }
     if (Number(p.rookDeliveryNeeded) > 0) {
@@ -311,14 +341,21 @@ export const missionObjectiveOps = {
 
   _onFurnaceFed(p) {
     if (!p) return;
+    if (recordFurnaceAftermathFact(this, p, 'received')) return;
     const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || !m.params || !(Number(m.params.furnaceFeedsNeeded) > 0)) continue;
       if (m.destSectorId && sectorId && m.destSectorId !== sectorId) continue;
-      m.params.furnaceFeeds = (m.params.furnaceFeeds | 0) + 1;
+      // A furnace can burn anything; this disposal contract pays only for its own lots.
+      if (authoredFurnaceWorksite(m)) {
+        if (!furnaceReceiptMatches(m, p, this.state.entities?.get(p.entityId))) continue;
+        furnaceLots(m)[p.lotSlot].received = true;
+      }
+      m.params.furnaceFeeds = Math.min(m.params.furnaceFeedsNeeded, (m.params.furnaceFeeds | 0) + 1);
       delete m._extrasAnnounced;
       if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
+        prepareFurnaceSettlement(this, m);
         this._completeMission(m, i);
       } else {
         this._refreshTrackedMissionNav(m);

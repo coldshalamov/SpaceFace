@@ -1,3 +1,4 @@
+import { syncFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredStarterSite } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -456,6 +457,7 @@ export const missionSpawningOps = {
   },
 
   _spawnTargetsFor(m) {
+    if (syncFurnaceWorksite(this, m)) return;
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns.

@@ -1,3 +1,4 @@
+import { isFurnaceOwnedLot } from '../missions/furnaceWorksite.js';
 // src/combat/industrialBeam.js — PQ-016 Contextual Industrial Beam Verb Resolver & Handlers
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
@@ -236,6 +237,8 @@ export function handlePayloadSectorTransition(state, helpers = null) {
     : null;
   for (const entity of Array.from(state.entities.values())) {
     if (entity.type === 'payload' && entity.data) {
+      // Finite refinery material is serialized by the mission owner, including settled aftermath.
+      if (isFurnaceOwnedLot(entity, state)) continue;
       // Anchored or worldRecord payloads survive sector transition
       if (entity.data.anchored || entity.data.worldRecordId != null) continue;
       // Active tethered payload survives sector transition if tethered by player

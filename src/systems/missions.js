@@ -1,3 +1,4 @@
+import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
@@ -3197,6 +3198,8 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    const furnaceFocus = furnaceWorksiteFocus(m, this.state);
+    if (furnaceFocus) return { ...base, ...furnaceFocus, stationId: null };
 
     if(m.source==='blackFlag'){
       const v=this.state.player?.shipjack?.vesselsById[m.params?.vesselId];
