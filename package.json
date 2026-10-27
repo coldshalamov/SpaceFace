@@ -111,7 +111,7 @@
     "check:live-sector-cook-owners": "node --test test/live-sector-cook-owner-runtime.test.mjs test/authored-decode-prefetch-lifetime.test.mjs test/render-package-loader.test.mjs",
     "check:save-envelope-fidelity": "node --test test/save-envelope-fidelity.test.mjs test/catalog-station-continue-identity.test.mjs test/survey-cartography-custody.test.mjs test/orchard-dormant-frame-continue.test.mjs",
     "check:asteroid-promote-overlap-guard": "node --test test/asteroid-promote-overlap-guard.test.mjs",
-    "check:pq146-stunt-proofs": "node --test test/pq146-escape-routes.test.mjs test/pq146-evidence.test.mjs test/pq146-projectiles.test.mjs test/pq146-save-roundtrip.test.mjs test/pq146-save-episodes.test.mjs test/pq146-clothesline-route.test.mjs test/pq146-narrative.test.mjs test/pq146-field-routes.test.mjs test/pq146-flight-evidence.test.mjs",
+    "check:pq146-stunt-proofs": "node --test test/pq146-escape-routes.test.mjs test/pq146-evidence.test.mjs test/pq146-contact-lineage.test.mjs test/pq146-projectiles.test.mjs test/pq146-save-roundtrip.test.mjs test/pq146-save-episodes.test.mjs test/pq146-clothesline-route.test.mjs test/pq146-narrative.test.mjs test/pq146-field-routes.test.mjs test/pq146-flight-evidence.test.mjs",
     "check:pq033:release-closeout": "node --test test/pq-033-01-crash-version.test.mjs",
     "check:pq033:store-readiness": "node --test test/pq-033-03-achievements-defs.test.mjs test/pq-033-03-achievements-ledger.test.mjs test/pq-033-03-steam-adapter.test.mjs test/pq-033-03-steam-export.test.mjs test/pq-033-03-store-assets.test.mjs test/pq-033-03-session.test.mjs",
     "check:pq172": "node scripts/check-data.mjs --user-content-dir=src/data/sample-content && node --test test/pq-172-01-workshop.test.mjs",
