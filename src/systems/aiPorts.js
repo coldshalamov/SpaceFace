@@ -1424,6 +1424,11 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   return out;
 }
 
+function hasActiveCloakRuntime(state, other) {
+  const runtime = cloakRuntimeFor(state, other);
+  return !!runtime && runtime.active === true;
+}
+
 function entityContacts(state, self, range, helpers = null, attachmentIndex = null, freeze = Object.freeze, candidateScratch = null, outScratch = null, cacheOwner = null, candidateOverride = null, contactRecords = null) {
   const out = outScratch || [];
   out.length = 0;
@@ -1444,14 +1449,18 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
     if (!other || other === self || !other.alive) continue;
     const kind = contactKindFor(other);
     if (!kind) continue;
-    if (cloakLive && cloakHidesEntityFrom(state, self, other)) {
-      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
-      continue;
-    }
     const dx = finite(self.pos && self.pos.x) - finite(other.pos && other.pos.x);
     const dz = finite(self.pos && self.pos.z) - finite(other.pos && other.pos.z);
     const distanceSq = dx * dx + dz * dz;
-    if (distanceSq > rangeSq) continue;
+    const outOfRange = distanceSq > rangeSq;
+    // Shared spatial supersets include distant bodies. Only an active cloak can
+    // still emit an established ghost outside sensor range; preserve that path.
+    if (cloakLive && (!outOfRange || hasActiveCloakRuntime(state, other))
+      && cloakHidesEntityFrom(state, self, other)) {
+      emitCloakFadeContact(state, self, other, kind, cloakNow, attachmentIndex, freeze, out, records, cacheOwner);
+      continue;
+    }
+    if (outOfRange) continue;
     const distance = Math.sqrt(distanceSq);
     const runtime = combatRuntimeFor(state, other.id);
     const hostile = isHostileForAI(state, self, other);
