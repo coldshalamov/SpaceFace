@@ -33,11 +33,17 @@ import {
 } from '../src/systems/survivalMutators.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
+  swarmArenaDebrisLayout,
+  swarmArenaTierForRun,
+} from '../src/data/swarmArenaLadder.js';
+import {
   swarmArena,
   planGravitySlalomWells,
   REEF_DEBRIS_INNER,
   REEF_DEBRIS_OUTER,
+  REEF_DEBRIS_SEPARATION,
   REEF_DEBRIS_TARGET,
+  SWARM_DEBRIS_FIGHT_RADIUS,
   SWARM_DEBRIS_TAG,
 } from '../src/systems/swarmArena.js';
 
@@ -235,10 +241,13 @@ test('reef: the field tops up as the tight crucible_reef ring, not the wave-2 pe
       `reef rock sits inside the ${REEF_DEBRIS_INNER}-${REEF_DEBRIS_OUTER} ring, got ${dist}`,
     );
   }
-  // The ring's authored ask is REEF_DEBRIS_TARGET bodies packed against the fight — placement
-  // honestly yields fewer when the narrow annulus saturates; the law pins the band, not a
-  // fabricated count.
+  // The ring's authored ask is REEF_DEBRIS_TARGET bodies packed against the fight, and the band
+  // is wide enough to hold it: placement lands the ask within one under the worst seed.
   assert.ok(rocks.length <= REEF_DEBRIS_TARGET, `the ring never exceeds its target, got ${rocks.length}`);
+  assert.ok(
+    rocks.length >= REEF_DEBRIS_TARGET - 1,
+    `the ring carries its authored ask, got ${rocks.length} of ${REEF_DEBRIS_TARGET}`,
+  );
 
   const h2 = arenaBoot();
   const plain = swarmRun([], 2);
@@ -253,11 +262,88 @@ test('reef: the field tops up as the tight crucible_reef ring, not the wave-2 pe
     plainRocks.every((e) => e.data.reefLayoutId === undefined),
     'a plain field carries no reef stamp',
   );
+  // The reef's tightness lives on the INNER edge: its ring hugs the fight from 58 wu out, while
+  // the ladder band keeps its own inner edge — no plain rock poaches the reef pocket.
+  const plainBand = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 2, ratingT: 0 }));
   assert.ok(
-    Math.max(...plainRocks.map((e) => Math.hypot(e.pos.x - h2.player.pos.x, e.pos.z - h2.player.pos.z)))
-      > REEF_DEBRIS_OUTER,
-    'the ladder field reaches past the reef ring — tightness, not just count, is the mutator',
+    REEF_DEBRIS_INNER < plainBand.inner,
+    `the reef ring hugs the fight inside the ${plainBand.id} band's ${plainBand.inner}wu edge — ` +
+    'closeness, not just count, is the mutator',
   );
+  assert.ok(
+    Math.min(...plainRocks.map((e) => Math.hypot(e.pos.x - h2.player.pos.x, e.pos.z - h2.player.pos.z)))
+      >= plainBand.inner - 1e-6,
+    'the plain field holds the ladder inner edge the reef is allowed inside',
+  );
+});
+
+test('reef yield: the ring lands its authored sixteen under the same separation law', () => {
+  // The reef's own surface gap — every placed pair must still honour it. Widening the band
+  // never weakened the law.
+  const reefGap = REEF_DEBRIS_SEPARATION;
+  // A non-reef wave must stay exactly where the ladder puts it — the reef recipe never leaks.
+  // The band comes from the ladder data itself, so every wave's tier is its own witness.
+  for (const [seed, wave] of [[1, 2], [4242, 2], [90210, 2], [777, 3], [31337, 5], [2026, 9]]) {
+    const h = arenaBoot();
+    const run = swarmRun(['reef'], wave);
+    run.seed = seed;
+    h.state.run = run;
+    swarmArena._topUp(run, wave);
+    const rocks = debris(h);
+    assert.ok(
+      rocks.length >= REEF_DEBRIS_TARGET - 1,
+      `seed ${seed} wave ${wave} fields the authored reef, got ${rocks.length} of ${REEF_DEBRIS_TARGET}`,
+    );
+    assert.ok(
+      rocks.length <= REEF_DEBRIS_TARGET,
+      `seed ${seed} wave ${wave} never over-builds the ask, got ${rocks.length}`,
+    );
+    for (const rock of rocks) {
+      const dist = Math.hypot(rock.pos.x - h.player.pos.x, rock.pos.z - h.player.pos.z);
+      assert.ok(
+        dist >= REEF_DEBRIS_INNER - 1e-6 && dist <= REEF_DEBRIS_OUTER + 1e-6,
+        `seed ${seed} reef rock sits inside the ${REEF_DEBRIS_INNER}-${REEF_DEBRIS_OUTER} ring, got ${dist}`,
+      );
+      // The ring's outer edge must stay inside the fight census — an authored rock the field
+      // cannot count is a rock it will top up forever trying to replace.
+      assert.ok(
+        dist <= SWARM_DEBRIS_FIGHT_RADIUS,
+        `seed ${seed} reef rock stays inside the ${SWARM_DEBRIS_FIGHT_RADIUS}wu fight census, got ${dist}`,
+      );
+    }
+    for (let i = 0; i < rocks.length; i++) {
+      for (let j = i + 1; j < rocks.length; j++) {
+        const a = rocks[i];
+        const b = rocks[j];
+        const gap = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z) - a.radius - b.radius;
+        assert.ok(
+          gap >= reefGap - 1e-9,
+          `seed ${seed} honours the ${reefGap.toFixed(1)}wu reef surface gap, got ${gap.toFixed(2)}`,
+        );
+      }
+    }
+  }
+
+  // Non-reef waves are untouched: same seeds, same waves, and the ladder band — not the widened
+  // reef ring — owns every rock the plain field places.
+  for (const [seed, wave] of [[1, 2], [4242, 2], [777, 3], [31337, 5]]) {
+    const h = arenaBoot();
+    const run = swarmRun([], wave);
+    run.seed = seed;
+    h.state.run = run;
+    swarmArena._topUp(run, wave);
+    const rocks = debris(h);
+    assert.ok(rocks.length > 0, `seed ${seed} wave ${wave} plain field still tops up`);
+    const band = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave, ratingT: 0 }));
+    for (const rock of rocks) {
+      assert.equal(rock.data.reefLayoutId, undefined, 'a plain rock carries no reef stamp');
+      const dist = Math.hypot(rock.pos.x - h.player.pos.x, rock.pos.z - h.player.pos.z);
+      assert.ok(
+        dist >= band.inner - 1e-6 && dist <= band.outer + 1e-6,
+        `seed ${seed} wave ${wave} plain rock stays in the ${band.id} band, got ${dist}`,
+      );
+    }
+  }
 });
 
 test('wreck_ballast: the debris field materializes dead hulls, not rock', () => {
