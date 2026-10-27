@@ -24,6 +24,7 @@ Current save version: `22`
 - `economy`
 - `economyContracts`
 - `factions`
+- `vergeCourt`
 - `environmentMaterials`
 - `reactiveMatter`
 - `spectrum`
@@ -599,28 +600,9 @@ Current save version: `22`
 | `$.uiScreenMemory.v` | number | 1 |
 | `$.uiWatchlist` | array | length 0 |
 | `$.v2Flavor` | object | {} |
+| `$.vergeCourt` | object | {} |
 | `$.vesper` | object | {} |
 | `$.world` | object | {} |
 | `$.worldNews` | null | null |
 | `$.worldPressure` | object | {} |
 | `$.wreckCourt` | null | null |
-
-
-### Additive PR480 finite-recovery and return-memory fields (v22 envelope unchanged)
-
-- The existing traffic serialization owner (`trafficCausalChainOps`) optionally carries
-  `traffic.vestaWinnowRecovery`, normalized by `world/vestaWinnowRecovery.js` with schema
-  `vesta_winnow_recovery_v1`. Legacy absence/null restores to null. Only the real Winnow
-  encounter creates a batch; its original-source IDs and finite custody are durable.
-  The24-batch admission bound never evicts prior batches. Invalid non-null ledgers refuse
-  restore instead of discarding consumption history. Pod/itinerary/manifest source stamps
-  remain inside existing persistent entity/world-record data; economy remains the receiver.
-- Existing Vesper v1 memory adds `visitPresence` (`unknown`, `inside`, `away`),
-  `returnPending` and `returnHeard`. Older saves normalize to unknown/false, never to a
-  fabricated departure or heard greeting. A completed player phrase and actual departure
-  can make a return pending; only the matching actual `voice:surface` receipt marks it heard.
-- `ilexGreenhousePublic` is a transient read-only domain projection of the accepted six-vault
-  voyage, economy harvest receipt and mission payment. It is not an additional save region,
-  inventory, reward, voyage or progression writer.
-
-No global save-version bump is required for these conservative additive defaults.
