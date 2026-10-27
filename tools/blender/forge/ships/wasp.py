@@ -16,10 +16,13 @@ import ANI_31  # noqa: E402
 
 SHIP_ID = 'wasp'
 COLORS = {
-    # The brief's graphite is #2b2f36 as seen; the Helios key light lifts authored values ~2.5x, so
-    # the hull is authored darker to land on that picture.
-    'paint': '#1a1f28',    # dark graphite, cooled against the warm key light
-    'paint2': '#2b313b',   # lighter graphite armour plates (the mid value)
+    # Graphite arrow, but the fleet audit (2026-10-24) found the old #1a1f28/#2b313b pair read
+    # as ONE near-black value at the gameplay camera — no light-primary per the look bar
+    # (FORGE.md: paint channels ≈ 0x30–0x90). The fuselage is lifted to the bar floor and the
+    # armour plates to a light graphite, so the three values separate: light hull plates, mid
+    # fuselage, dark recesses — while the cyan channels keep the recognisable-by-lights identity.
+    'paint': '#2e3540',    # graphite fuselage — the mid value, now lifted to the bar floor
+    'paint2': '#4d5663',   # armour plates — the light value of the three
     'dark': '#0e1013',     # recesses, gaps, intakes
     'stripe': '#5c646e',
     'hazard': '#8a6d22',
