@@ -43,6 +43,7 @@
 
 import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { FIELD_DEFS } from '../data/fields.js';
+import { GYRE_SNARE } from '../data/gyreSnare.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { arsenalIcon } from './orrery/arsenalGlyphs.js';
@@ -51,6 +52,18 @@ import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
+import { injectPowerRailLayouts } from './orrery/power-railLayouts.js';
+
+// The rail's composition sheet rides the model's import path: every surface that renders the rail
+// (the flight Cluster through hudAdapter, the ORRERY flight preview, the QA fixture) imports THIS
+// module, and the rail has no mount of its own to inject from. Headless-safe — with no document it
+// does no work. What the sheet owns (rest-light law, hover/focus/press states): see the header of
+// src/ui/orrery/power-railLayouts.js.
+injectPowerRailLayouts();
+import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
+import { LINE_BANK, staticVerbSentence } from '../data/arsenalWords.js';
+import { collectorRailSlot } from '../data/collectorKnot.js';
+import { collectorFitted } from '../systems/fields.js';
 
 export const BAND_DRIVE = 'DRIVE';
 export const BAND_PULL = 'PULL';
@@ -88,30 +101,43 @@ export const RAIL_SLOTS = Object.freeze([
   // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
   // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
   { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
-    description: 'latch the travel drive — a long burn that holds your speed' },
+    description: staticVerbSentence('travel') },
   // Slots 1–5 are the five powers; each index is its own number-row digit.
   { index: 1, band: BAND_PULL, action: 'pull', name: 'Pull', glyph: 'well',
-    description: 'drop a gravity well at your aim — it drags light ships, rocks and shots in, and grips your locked target three times as hard' },
+    description: staticVerbSentence('pull') },
   { index: 2, band: BAND_SHOVE, action: 'shove', name: 'Shove', glyph: 'repel',
-    description: 'blast everything outward from your ship — and set off every charge and bomb you have armed' },
+    description: staticVerbSentence('shove') },
   { index: 3, band: BAND_PIN, action: 'pin', name: 'Pin', glyph: 'seed',
-    description: 'fire an anchor that locks where it lands — latch your Line to it and swing' },
+    description: staticVerbSentence('pin') },
   { index: 4, band: BAND_BAY, action: 'bomb', name: 'Bomb', glyph: 'weapon',
-    description: 'throw a sticky charge that Shove sets off — or the drift bomb the cycle chose' },
+    description: staticVerbSentence('bomb') },
   { index: 5, band: BAND_RIG, action: 'rig', name: 'Rig', glyph: 'cone',
-    description: 'toggle your rig — the clearing cone sweeps debris ahead; in a planet band it opens the skim scoop' },
+    description: staticVerbSentence('rig') },
   // The Line has no digit (Space / F); index 6 keeps it off the power row's own numbers.
   { index: 6, band: BAND_LINE, action: 'tether', name: 'Line', glyph: 'tether',
-    description: 'throw the tether line onto a body and haul it — tap to latch or cut' },
+    description: LINE_BANK },
+]);
+
+// Support verbs beside the rank. They are not number-row powers and no prompt may claim them, so they
+// live outside RAIL_SLOTS (the rank's digit/claim contract) — but they are verbs the pilot must be able
+// to FIND and read: the Gyre (hold to gather, release to throw) and a fitted cloak. The ORRERY Cluster
+// unfolds them after the Line; the words come from the arsenal presentation, never from here.
+export const SUPPORT_SLOTS = Object.freeze([
+  { index: 7, band: 'GYRE', action: 'gyreSnare', name: 'Gyre', glyph: 'gyre',
+    description: staticVerbSentence('gyre') },
+  { index: 8, band: 'CLOAK', action: 'cloak', name: 'Cloak', glyph: 'cloak',
+    description: staticVerbSentence('cloak') },
 ]);
 
 /** The rail index of each power, the Line and the bomb bay (one place, so no reader hardcodes a digit). */
 export const POWER_SLOT = Object.freeze({ pull: 1, shove: 2, pin: 3, bomb: 4, rig: 5, line: 6 });
+/** The support verbs' indexes (beside the rank, never on the number row). */
+export const SUPPORT_SLOT = Object.freeze({ gyre: 7, cloak: 8 });
 export const BOMB_SLOT_INDEX = POWER_SLOT.bomb;
 
 /** Static description for a slot index, or '' — the enumerated bank above, read verbatim. */
 export function slotDescription(index) {
-  const slot = RAIL_SLOTS.find((s) => s.index === index);
+  const slot = RAIL_SLOTS.find((s) => s.index === index) || SUPPORT_SLOTS.find((s) => s.index === index);
   return (slot && slot.description) || '';
 }
 
@@ -143,6 +169,10 @@ export function codeToLabel(code) {
   if (raw === 'Equal') return '=';
   if (raw === 'Semicolon') return ';';
   if (raw === 'Quote') return "'";
+  if (raw === 'Backquote') return '`';
+  if (raw === 'Backslash' || raw === 'IntlBackslash') return '\\';
+  if (raw === 'BracketLeft') return '[';
+  if (raw === 'BracketRight') return ']';
   if (raw === 'Slash') return '/';
   if (raw === 'MetaLeft') return 'L-Meta';
   if (raw === 'MetaRight') return 'R-Meta';
@@ -188,7 +218,7 @@ const LOCK_KEY_CODES = new Set(['NumLock', 'CapsLock', 'ScrollLock']);
 export function resolveSlotLabels(bindings) {
   const table = bindings || {};
   const out = {};
-  for (const slot of RAIL_SLOTS) {
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
     if (!slot.action) { out[slot.index] = ''; continue; }
     const codes = slotCodes(table, slot.action);
     const ownDigit = codes.find((c) => c === `Digit${slot.index}`);
@@ -206,7 +236,7 @@ export function resolveSlotKeys(bindings) {
   const table = bindings || {};
   const out = {};
   const labels = resolveSlotLabels(table);
-  for (const slot of RAIL_SLOTS) {
+  for (const slot of [...RAIL_SLOTS, ...SUPPORT_SLOTS]) {
     if (!slot.action) { out[slot.index] = ''; continue; }
     const rest = slotCodes(table, slot.action)
       .map(codeToLabel)
@@ -417,10 +447,11 @@ export function readRailModel(state, nowS) {
   const capacity = resolveImpulseChargeCapacity(s);
   const chargeWhy = charges <= 0 ? 'No impulse charges in cargo'
     : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready';
-  // Typed `charges` bucket, not the fat entityList (rocks/FX/wrecks all live there). The per-entity
-  // predicate stays because the index-less fallback path returns the fat list.
-  const armed = indexedTypeScan(s, 'charges').some(e => e.alive && e.type === 'charge'
-    && e.data?.ownerId === s.playerId && e.data?.armed);
+  // What a Shove press will set off: armed charges, armed drift bombs and planted sticky charges, by the
+  // owners' own predicates (arsenalPresentation.armedOrdnanceCounts reads the typed `charges` bucket,
+  // not the fat entityList).
+  const armedCounts = armedOrdnanceCounts(s, now);
+  const armed = armedCounts.charges + armedCounts.plants > 0;
 
   const bay = readBombBayModel(s, now);
   // SWARM-03 — tactical-live flags, swarm runs only. Computed once here so both presenters
@@ -433,11 +464,18 @@ export function readRailModel(state, nowS) {
     if (swarmLineLive(s)) lineLiveWhy = 'Latch is in reach — a body you can throw';
     wellLiveWhy = swarmWellLive(s, hostiles, hull);
   }
-  const armedOrdnance = armed || bay.armedCount > 0;
+  const armedOrdnance = armed || bay.armedCount > 0 || armedCounts.total > 0;
   const blastLive = swarm && armedOrdnance;
   // BOMB throws the sticky charge while one is aboard, unless the ordnance cycle chose a drift bomb —
   // the same predicate the input layer uses, so the socket and the press agree.
-  const bombSlot = bombUsesCharge(s) ? {
+  const bombAct = resolveBombAction(s);
+  const bombSlot = bombAct.action === 'callin' ? {
+    // A stocked swarm call-in outranks the drift bomb on the press (input.js), so the socket names it.
+    name: `${bombAct.name} ×${bombAct.stock}`, glyph: bombAct.id,
+    state: 'ready', cooldownMs: 0, badge: 'CALL-IN', callin: true,
+    why: `Ready · ${bombAct.stock} ${bombAct.stock === 1 ? 'charge' : 'charges'} left this run`,
+    description: `${bombAct.name}: one Bomb press calls it in and spends one. With none left, Bomb falls back to your drift bomb.`,
+  } : bombUsesCharge(s) ? {
     name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
     glyph: 'munitions',
     state: throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
@@ -474,13 +512,16 @@ export function readRailModel(state, nowS) {
     // 1 PULL — the well.
     1: { ...(wellCd || { state: 'ready' }),
       live: wellCd ? undefined : (wellLiveWhy != null || undefined),
-      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready') },
+      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready'),
+      // The Collector Maw (packet 05): the socket names the current role and the next press.
+      ...(collectorRailSlot(s, collectorFitted(s)) || {}) },
     // 2 SHOVE — the repulsor, plus the detonation of armed ordnance. Armed ordnance makes the key
     // ARMED even while the repulsor recharges: the press still sets the ordnance off.
     2: armedOrdnance ? {
       state: 'armed',
       live: blastLive || undefined,
-      why: blastLive ? 'Armed — the pack is on the field' : 'Armed — Shove sets them off',
+      why: blastLive ? 'Armed — the pack is on the field'
+        : `Armed — Shove sets off ${armedCounts.total > 0 ? armedCounts.total : 'them'}`,
     } : repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
     // 3 PIN — the anchor Mass Seed.
     3: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
@@ -492,6 +533,10 @@ export function readRailModel(state, nowS) {
     6: { state: player.tether?.active ? 'armed' : 'ready',
       live: lineLiveWhy != null || undefined,
       why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
+    // 7 GYRE — hold to gather, release to throw (the Gyre system's own published phase).
+    7: gyreSlotState(s, hull),
+    // 8 CLOAK — the fitted module's own runtime; absent when none is fitted (or the mode has no cloak).
+    8: cloakSlotState(s),
   };
 }
 
@@ -576,13 +621,35 @@ function dryFittedBomb(cells) {
 // RIG reads the same predicate the input layer uses (resolveRigTarget), so the socket's "why" names
 // the rig the next press will actually toggle.
 function rigSlotState(state) {
-  if (state.fields && state.fields.coneActive) return { state: 'armed', why: 'Cone is on — press to fold it' };
+  if (state.fields && state.fields.coneActive) return { state: 'armed', name: 'Cone', glyph: 'cone', why: 'Cone is on — press to fold it' };
   const planet = state.planet;
   const rec = planet && planet.active && planet.player ? planet.player : null;
-  if (rec && rec.collectorOn === true) return { state: 'armed', why: 'Scoop is open — press to close it' };
+  if (rec && rec.collectorOn === true) return { state: 'armed', name: 'Scoop', glyph: 'skim', why: 'Scoop is open — press to close it' };
   return resolveRigTarget(state) === 'skim'
-    ? { state: 'ready', why: 'In a planet band — press to open the scoop' }
-    : { state: 'ready', why: 'Ready — the clearing cone' };
+    ? { state: 'ready', name: 'Scoop', glyph: 'skim', why: 'In a planet band — press to open the scoop' }
+    : { state: 'ready', name: 'Cone', glyph: 'cone', why: 'Ready — the clearing cone' };
+}
+
+// GYRE reads the Gyre system's published phase (state.gyreSnare is its runtime mirror, never saved).
+function gyreSlotState(state, hull) {
+  const g = state.gyreSnare || {};
+  const cap = Number(hull && hull.cap);
+  const need = GYRE_SNARE.capActivateMin;
+  if (g.phase === 'holding') return { state: 'armed', why: 'Holding a ball — release to throw it' };
+  if (g.phase === 'beaming') return { state: 'armed', why: 'Gathering — release to stop, hold to keep building' };
+  if (g.phase === 'launching' || Number(g.liveBalls) > 0) return { state: 'ready', why: 'Ball thrown — it flies for a few seconds' };
+  if (Number.isFinite(cap) && cap < need) return { state: 'unaffordable', why: `Needs ${need} charge to start` };
+  return { state: 'ready', why: 'Ready — hold to gather, release to throw' };
+}
+
+// CLOAK reads the cloak system's own runtime through the shared state reader. `locked` renders as a dim,
+// unavailable socket; the Cluster hides it entirely when no cloak is fitted.
+function cloakSlotState(state) {
+  const c = readCloakState(state);
+  if (c.state === 'unavailable') return { state: 'locked', why: c.reason, absent: !c.module };
+  if (c.state === 'active' || c.state === 'revealed') return { state: 'armed', why: c.reason };
+  if (c.state === 'depleted') return { state: 'unaffordable', why: c.reason };
+  return { state: 'ready', why: 'Ready — press to go dark' };
 }
 
 function sweepSvg() {

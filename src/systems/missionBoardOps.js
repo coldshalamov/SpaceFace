@@ -1,3 +1,4 @@
+import { starterWorkSite, STARTER_WORKDAY_VERSION } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { deferredEnterNow } from '../core/sectorEnterDefer.js';
@@ -1300,6 +1301,12 @@ export const missionBoardOps = {
       offer.params.cmdtyId = next.step.cmdtyId;
       offer.params.qty = next.step.qty;
     }
+    const workSite = starterWorkSite(next.job.id, next.step.step);
+    if (workSite) {
+      offer.params.starterWorkdayVersion = STARTER_WORKDAY_VERSION;
+      offer.brief = workSite.brief;
+      if (workSite.mass) offer.params.massU = workSite.mass;
+    }
     offer.destStationId = info.id;
     offer.destSectorId = info.sectorId;
     offers.unshift(offer);
@@ -2025,3 +2032,4 @@ export const missionBoardOps = {
     return clamp90(line);
   },
 };
+

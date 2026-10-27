@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "96ca9c2e0583a099907e07a8d04c14f352bf89211d3960a13554d3eb4003d437",
+  "contentHash": "20852ae4d8165881afe7ff72c01fc78cc6d85dd083a75ad24e8687851786f9eb",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           3.843500852584839,
-          0.23006971180438995,
-          -1.1583991050720215
+          0.2300697116995675,
+          -1.158399069613379
         ],
         "min": [
           0.04880698770284653,
-          0.14993029832839966,
-          -1.5753092765808105
+          0.14993029843322211,
+          -1.575309312039453
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e92624f60a4939f3680913335e5b083b7bd56cd1a0609ff5159030401ee86d8",
+      "geometryHash": "1a1ac95727f185292ef9eafbbf878d17b396f2b8d41dd3c5cda62ba00c5b8803",
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged.primitive.0",
       "indexCount": 4800,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           4.403451442718506,
-          0.22995388507843018,
-          1.470770001411438
+          0.22995388449349355,
+          1.470769975347935
         ],
         "min": [
           0.04654828459024429,
-          0.08847785741090775,
-          -1.5728261470794678
+          0.08847785799584437,
+          -1.5728261210159649
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24dd222db0b9c19dff50cd6bcca05b0fd3fdf1cba320ffd25d37a8b64de294e4",
+      "geometryHash": "46d36d2e5c880f85b8ebe27d1b44caf496b4673cab53161f5148dff56db6ca0f",
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged.primitive.0",
       "indexCount": 20304,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           4.619626522064209,
-          0.11788064986467361,
-          1.568589448928833
+          0.1178806490002862,
+          1.5685894887659166
         ],
         "min": [
           -0.2694820761680603,
-          -0.07788065075874329,
-          -1.525692343711853
+          -0.07788064989435588,
+          -1.5256923835489367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc0c5d208a234e54ec84b4b9b51b3cc62a2aa4c3eb6a8c61ad4450aaf87c17de",
+      "geometryHash": "b7b2fde69621bc33dea763f3c849868e07df69d26212c621511c6391a06ff7eb",
       "id": "sf.render.pod-repair-patch.mesh.repair-patch.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -140,21 +140,21 @@
     {
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged",
       "localTransform": [
-        1,
+        1.8973469324409962,
         0,
         0,
         0,
         0,
-        1,
+        1.8973469324409962,
         0,
         0,
         0,
         0,
-        1,
+        1.8973469324409962,
         0,
-        0,
-        0,
-        0,
+        1.9461539201438427,
+        0.1900000050663948,
+        -1.366854190826416,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -168,42 +168,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-repair-patch.body",
       "worldTransform": [
-        1,
+        1.8973469324409962,
         0,
         0,
         0,
         0,
-        1,
+        1.8973469324409962,
         0,
         0,
         0,
         0,
-        1,
+        1.8973469324409962,
         0,
-        0,
-        0,
-        0,
+        1.9461539201438427,
+        0.1900000050663948,
+        -1.366854190826416,
         1
       ]
     },
     {
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged",
       "localTransform": [
-        1,
+        2.178451579064131,
         0,
         0,
         0,
         0,
-        1,
+        2.178451579064131,
         0,
         0,
         0,
         0,
-        1,
+        2.178451579064131,
         0,
-        0,
-        0,
-        0,
+        2.224999863654375,
+        0.15921587124466896,
+        -0.05102807283401489,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -217,42 +217,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-repair-patch.body",
       "worldTransform": [
-        1,
+        2.178451579064131,
         0,
         0,
         0,
         0,
-        1,
+        2.178451579064131,
         0,
         0,
         0,
         0,
-        1,
+        2.178451579064131,
         0,
-        0,
-        0,
-        0,
+        2.224999863654375,
+        0.15921587124466896,
+        -0.05102807283401489,
         1
       ]
     },
     {
       "id": "sf.render.pod-repair-patch.mesh.repair-patch",
       "localTransform": [
-        1,
+        2.4445542991161346,
         0,
         0,
         0,
         0,
-        1,
+        2.4445542991161346,
         0,
         0,
         0,
         0,
-        1,
+        2.4445542991161346,
         0,
-        0,
-        0,
-        0,
+        2.1750722229480743,
+        0.019999999552965164,
+        0.02144855260848999,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -266,21 +266,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.pod-repair-patch.body",
       "worldTransform": [
-        1,
+        2.4445542991161346,
         0,
         0,
         0,
         0,
-        1,
+        2.4445542991161346,
         0,
         0,
         0,
         0,
-        1,
+        2.4445542991161346,
         0,
-        0,
-        0,
-        0,
+        2.1750722229480743,
+        0.019999999552965164,
+        0.02144855260848999,
         1
       ]
     },
@@ -343,37 +343,37 @@
       "uri": "pod_repair_patch.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 367824,
-    "sha256": "0f7ecacc8d5f2b244eb81338670e0e821a5bfe31a7de49b4cab7250a2993209f",
+    "bytes": 295472,
+    "sha256": "c8b11681e77c9adb6d925de74e3bfe584917dca6558e4a48895fe557f8f5b02b",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         2.1750722229480743,
-        0.07609453052282333,
-        -0.0033599138259887695
+        0.07609453090260582,
+        -0.003359911636768187
       ],
       "max": [
         4.619626522064209,
-        0.23006971180438995,
-        1.568589448928833
+        0.2300697116995675,
+        1.5685894887659166
       ],
       "min": [
         -0.2694820761680603,
-        -0.07788065075874329,
-        -1.5753092765808105
+        -0.07788064989435588,
+        -1.575309312039453
       ],
       "size": [
         4.889108598232269,
-        0.30795036256313324,
-        3.1438987255096436
+        0.30795036159392336,
+        3.1438988008053697
       ]
     },
     "hidden": [],
@@ -406,21 +406,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8973469324409962,
           0,
           0,
           0,
           0,
-          1,
+          1.8973469324409962,
           0,
           0,
           0,
           0,
-          1,
+          1.8973469324409962,
           0,
-          0,
-          0,
-          0,
+          1.9461539201438427,
+          0.1900000050663948,
+          -1.366854190826416,
           1
         ],
         "name": "pod_repair_patch_Material_Accent_Merged",
@@ -432,21 +432,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.178451579064131,
           0,
           0,
           0,
           0,
-          1,
+          2.178451579064131,
           0,
           0,
           0,
           0,
-          1,
+          2.178451579064131,
           0,
-          0,
-          0,
-          0,
+          2.224999863654375,
+          0.15921587124466896,
+          -0.05102807283401489,
           1
         ],
         "name": "pod_repair_patch_Material_Mechanical_Merged",
@@ -458,21 +458,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.4445542991161346,
           0,
           0,
           0,
           0,
-          1,
+          2.4445542991161346,
           0,
           0,
           0,
           0,
-          1,
+          2.4445542991161346,
           0,
-          0,
-          0,
-          0,
+          2.1750722229480743,
+          0.019999999552965164,
+          0.02144855260848999,
           1
         ],
         "name": "Repair_Patch",
@@ -486,20 +486,20 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_repair_patch.glb"
   },
-  "runtimeHash": "96e430519de6d255ccccaf480fb2da49061cdb9d2faff36681b9dfeaf214abc8",
+  "runtimeHash": "ab82240803d7533c7a6da3bac35fd6c4f00d5ebb122d651b70d504fc50d55fc9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           4.619626522064209,
-          0.23006971180438995,
-          1.568589448928833
+          0.2300697116995675,
+          1.5685894887659166
         ],
         "min": [
           -0.2694820761680603,
-          -0.07788065075874329,
-          -1.5753092765808105
+          -0.07788064989435588,
+          -1.575309312039453
         ]
       },
       "id": "sf.render.pod-repair-patch.body",

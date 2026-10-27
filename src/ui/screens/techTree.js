@@ -9,7 +9,8 @@
 // Click, focus or arrow to a star to choose it; Unlock emits ui:unlockTech{nodeId} (ships handles it).
 // READ-ONLY on state; emits intents only. The labelled node selector stays as the second keyboard
 // and screen-reader route. This file owns no CSS (the composition is
-// src/ui/orrery/constellationLayouts.js). ctx.font cannot resolve var(), so the canvas that measures
+// src/ui/orrery/constellationLayouts.js, plus this screen's pacing-ladder instrument in
+// src/ui/orrery/tech-treeLayouts.js). ctx.font cannot resolve var(), so the canvas that measures
 // the stars' names spells its faces below.
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
@@ -17,9 +18,11 @@
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createConstellation } from '../orrery/constellation.js';
 import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
+import { injectTechTreeScreens } from '../orrery/tech-treeLayouts.js';
 import { rollTo, decrypt } from '../orrery/text.js';
+import { reducedMotion } from '../kit/motion.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { hourVerbCurveLine, verbForNodeId } from '../../data/techVerbLadder.js';
+import { HOUR_VERB_CURVE, hourVerbCurveLine, verbForNodeId } from '../../data/techVerbLadder.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -233,6 +236,7 @@ export const techTreeScreen = {
 
     injectDeckplate();
     injectConstellationScreens();
+    injectTechTreeScreens();
     this._ctx = ctx;
     this._root = rootEl;
     // Resource readings belong to this DOM mount. A retained singleton may be
@@ -252,13 +256,39 @@ export const techTreeScreen = {
     head.appendChild(heading);
     const branchLine = el('p', 'k-t-emph k-62 con-sub', 'Select a node');
     head.appendChild(branchLine);
-    // Full ladder stays on title for hover/a11y; the painted line is clipped so Range-based
-    // layout measure (and the eye) never run it across rim labels on the dial.
+    // .con-curve — the pacing line as an instrument: the collapsed reading names the promise (a new
+    // verb every hour) and shows the first rungs; hover, keyboard focus or a pinned click opens the
+    // full ten-hour ladder beside the dial (styled by src/ui/orrery/tech-treeLayouts.js). A real
+    // control, not a hover tip: keyboard reachable, aria-expanded, Esc closes, and the sky lays its
+    // rim words out clear of it (it rides in the avoid list below).
+    const curve = el('div', 'con-curve');
+    curve.dataset.hourVerbCurve = '1';
+    const curveBtn = el('button', 'con-curve__head');
+    curveBtn.type = 'button';
+    curveBtn.setAttribute('aria-expanded', 'false');
+    curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
+    curveBtn.appendChild(el('span', 'con-curve__key', 'A verb every hour'));
     const curveFull = hourVerbCurveLine();
-    const curveLine = el('p', 'k-t-fine con-curve', clipHourVerbCurve(curveFull, 42));
-    curveLine.dataset.hourVerbCurve = '1';
-    if (curveFull) curveLine.setAttribute('data-why', curveFull);
-    head.appendChild(curveLine);
+    curveBtn.appendChild(el('span', 'con-curve__rungs', curveFull ? clipHourVerbCurve(curveFull, 46) : ''));
+    const curveFly = el('ul', 'con-rows con-curve__fly');
+    curveFly.id = 'sf-curve-ladder';
+    curveFly.setAttribute('aria-label', 'Verbs by research hour');
+    curveFly.hidden = true;
+    for (const row of HOUR_VERB_CURVE) {
+      const li = el('li', 'con-row');
+      li.appendChild(el('span', 'con-row__name', row.label));
+      li.appendChild(el('span', 'con-row__sub', 'Hour ' + row.hour));
+      curveFly.appendChild(li);
+    }
+    curve.append(curveBtn);
+    head.appendChild(curve);
+    // The open ladder portals to the screen root instead of hanging off the header: an absolute
+    // overlay that escapes the header's own box neither paints nor hit-tests inside it (the screen
+    // root's zoom clips the header's composited layer), while a child of the root does both. The
+    // ladder anchors to the curve's live rect when it opens (this._bindCurve).
+    rootEl.appendChild(curveFly);
+    this._curve = { root: curve, btn: curveBtn, fly: curveFly };
+    this._bindCurve();
     rootEl.appendChild(head);
 
     // .k-corner — credits, research points, unlocked n/N as three thin readings.
@@ -356,9 +386,9 @@ export const techTreeScreen = {
     this._sky = createConstellation(skyHost, {
       measure,
       wrap,
-      // the dial stands clear of the title tucked into its corner
+      // the dial stands clear of the title, its line and the pacing ladder tucked into the corner
       // the elements themselves: the sky measures them as laid out, whatever the screen's arrival is doing
-      avoid: () => [heading, branchLine].filter((node) => node && typeof node.offsetWidth === 'number'),
+      avoid: () => [heading, branchLine, curve].filter((node) => node && typeof node.offsetWidth === 'number'),
       onPick: (id, how) => this._selectNode(id, { how }),
     });
 
@@ -417,7 +447,117 @@ export const techTreeScreen = {
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => requestAnimationFrame(focus)); else focus();
   },
 
-  onHide() { cue('close'); /* cached DOM retained */ },
+  onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
+
+  /**
+   * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,
+   * styled in tech-treeLayouts.js). The ladder's shade cannot be trusted to occlude by itself:
+   * under the screen root's zoom the fly rasterizes beside the sky's layer, and a rim word at its
+   * edge ("Combat Basics") read through it as a half-lit smudge whatever the shade's alpha. Run
+   * once at open and again after the entrance settles (the arrival transform skews the first
+   * rects), and on close to hand the names back.
+   */
+  _syncCurveCover() {
+    const fly = this._curve && this._curve.fly;
+    if (!fly || !this._sky || typeof this._sky.button !== 'function') return;
+    const open = !fly.hidden;
+    const fr = open ? fly.getBoundingClientRect() : null;
+    for (const n of this._nodes()) {
+      const btn = this._sky.button(n.id);
+      const label = btn && btn.querySelector('.con-label');
+      if (!label) continue;
+      let under = false;
+      if (fr) {
+        const r = label.getBoundingClientRect();
+        under = r.left < fr.right - 6 && r.right > fr.left + 6 && r.top < fr.bottom - 6 && r.bottom > fr.top + 6;
+      }
+      label.classList.toggle('is-curve-covered', under);
+    }
+  },
+
+  /**
+   * The pacing ladder's open/close. Hover or keyboard focus previews it; click pins it open (a
+   * second click, Esc, a click elsewhere or leaving the screen closes it); the pointer leaving the
+   * line closes an unpinned ladder after a short grace so the gap between the line and the fly can
+   * be crossed. Arrival rides the kit's settle (top); leaving fades over the settle duration and is
+   * instant under reduced motion.
+   */
+  _bindCurve() {
+    const curve = this._curve && this._curve.root;
+    const btn = this._curve && this._curve.btn;
+    const fly = this._curve && this._curve.fly;
+    if (!curve || !btn || !fly || !this._root) return;
+    let pinned = false;
+    let hideTimer = 0;
+    const isReduced = () => { try { return reducedMotion() === true; } catch (_) { return false; } };
+    // the ladder hangs below the collapsed line, in root coordinates (it portals to the root; the
+    // root is its containing block, and both rects share the root's zoom). The fly's padding band
+    // is the shade's dissolve, so the anchor seats the rows (the content box) to the curve.
+    const anchor = () => {
+      const cr = curve.getBoundingClientRect();
+      const rr = this._root.getBoundingClientRect();
+      fly.style.left = Math.round(cr.left - rr.left - 26) + 'px';
+      fly.style.top = Math.round(cr.bottom - rr.top - 8) + 'px';
+    };
+    const open = () => {
+      window.clearTimeout(hideTimer);
+      fly.classList.remove('is-closing');
+      if (!fly.hidden) return;
+      anchor();
+      fly.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      curve.classList.add('is-open');
+      try { settle(fly, { from: 'top', state: 'techTree:curve' }); } catch (_) { /* motion is cosmetic */ }
+      this._syncCurveCover();
+      window.clearTimeout(this._curveCoverTimer);
+      this._curveCoverTimer = window.setTimeout(() => this._syncCurveCover(), 320);
+    };
+    const close = ({ instant = false } = {}) => {
+      window.clearTimeout(hideTimer);
+      if (fly.hidden) return;
+      btn.setAttribute('aria-expanded', 'false');
+      curve.classList.remove('is-open');
+      const finish = () => {
+        fly.hidden = true;
+        fly.classList.remove('is-closing');
+        this._syncCurveCover();
+      };
+      if (instant || isReduced()) { finish(); return; }
+      fly.classList.add('is-closing');
+      hideTimer = window.setTimeout(finish, 150);
+    };
+    this._curveReset = () => { pinned = false; close({ instant: true }); };
+    btn.addEventListener('pointerenter', open);
+    btn.addEventListener('mouseenter', open); // synthetic hovers (the walk) dispatch mouseenter only
+    const leave = () => {
+      if (pinned) return;
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => close(), 160);
+    };
+    curve.addEventListener('pointerleave', leave);
+    fly.addEventListener('pointerenter', () => window.clearTimeout(hideTimer));
+    fly.addEventListener('pointerleave', leave);
+    btn.addEventListener('focus', open);
+    btn.addEventListener('blur', () => { if (!pinned) close({ instant: isReduced() }); });
+    btn.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || fly.hidden) return;
+      pinned = false;
+      close();
+      e.stopPropagation();
+    });
+    btn.addEventListener('click', () => {
+      pinned = !pinned;
+      if (pinned) open();
+      else close();
+    });
+    // a pinned ladder retracts when the player commits elsewhere on this screen (the listener dies
+    // with the root — no document-level lease outliving the mount)
+    this._root.addEventListener('pointerdown', (e) => {
+      if (!pinned || curve.contains(e.target) || fly.contains(e.target)) return;
+      pinned = false;
+      close();
+    }, true);
+  },
 
   refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
@@ -609,6 +749,12 @@ export const techTreeScreen = {
     // FB-053 — the dossier reads as the thing you can DO: the verb-ladder line, then the
     // efficiency rider on its own line when the node folds one, then any remaining effect notes.
     const reading = techNodeReading(n);
+    // The three faucet nodes (heat lure, containment seal, capture cradle) have no authored verb,
+    // so the ladder hands back the node's own name — printed here it would sit twice on one
+    // reading (once as the "verb", again in UNLOCKS). The unlock row already names it.
+    const verbLine = reading.verb
+      && reading.verb.trim().toLowerCase() !== String(n.name || '').trim().toLowerCase()
+      ? reading.verb : '';
     // A locked node's first question is what stands in the way, so its requirements come first.
     const requiresHtml = `<div class="con-caps">Requires</div>${prereqHtml}`;
     const owned = readiness.state === 'researched';
@@ -624,7 +770,7 @@ export const techTreeScreen = {
         ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
       </dl>`}
       ${readiness.state === 'locked' ? requiresHtml : ''}
-      <p class="con-sentence con-dossier__verb">${escapeHtml(reading.verb)}</p>
+      ${verbLine ? `<p class="con-sentence con-dossier__verb">${escapeHtml(verbLine)}</p>` : ''}
       ${reading.rider ? `<p class="con-sentence con-dossier__rider">${reading.rider}</p>` : ''}
       ${effects ? `<p class="con-sentence">${effects}</p>` : ''}
       ${unlockRows ? `<div class="con-caps">Unlocks</div><ul class="con-rows con-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}

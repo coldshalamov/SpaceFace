@@ -1,6 +1,19 @@
-// PQ-133.12 / PQ-175.01 — named library over the four live arena-law installers.
+// PQ-133.12 / PQ-175.01 — named library over the six live arena-law installers.
 // Does not fork them. Each module is the same { phase, note, fields, mines, cover, toys } shape.
 // Toys are usable: shutters cut lines, plates bank shots, crushers kill, relays conduct, currents carry.
+//
+// SWARM-07 B4 fold: the Asteroid Mill and the Hive are law arenas too — the Mill's grind is a
+// pair of opposed carrying currents, the Hive's breath is a centred pull — so `law` names the
+// field MECHANISM the contract validates (pull/current/freeze/conduct), not the fiction name
+// ARENA_LAWS gives the results card ('grind'/'breathe'). Neither room authors install.toys: the
+// Mill's seam lives in the debris layout and the Hive's walls/sacs spawn swarm-side through
+// swarmArena, so their installs declare no toy array and the three-toy law below binds only the
+// rooms that author furniture.
+//
+// Non-law arenas (helios_core, ceres_belt, tethys_hub) intentionally have no entry — they run the
+// generic Helios phase table inside planArenaInstallBody, not a named installer. That is the
+// documented fallback: previewArenaModule returns { ok:false } for them and
+// simulateAuthoredRecipe still plans the wave, estimating against a null install.
 
 import { TERRAIN_CRUMPLE_LAW } from '../combat/impulseKernel.js';
 import { compileAttackSpec } from '../combat/attackSpec.js';
@@ -32,6 +45,14 @@ import {
   planStormInstall,
   stormGraphNodes,
 } from '../systems/stormLatticeArena.js';
+import {
+  MILL_ARENA_ID,
+  planMillInstall,
+} from '../systems/asteroidMillArena.js';
+import {
+  HIVE_ARENA_ID,
+  planHiveInstall,
+} from '../systems/theHiveArena.js';
 import { validateArenaModule } from '../contracts/contentFactory.js';
 
 export const ARENA_TOY_KINDS = Object.freeze([
@@ -56,6 +77,28 @@ export const ARENA_TOY_DT = 1 / 60;
 export const ARENA_TOY_LIGHT_MASS = 16;
 export const ARENA_TOY_LIGHT_RADIUS = 6;
 export const CRUSHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 3.5, calmS: 6.5 });
+
+// Wave-10 boss is a role over the existing dreadnought hull, not a new model — the same contract
+// the four module-exported roles carry. The Mill and Hive arena modules predate this library fold
+// and export no role of their own, so their rows live here next to the library that consumes them.
+/** The seam's wave-10: the grind at full turn hurls the mass that kills it. */
+export const MILL_BOSS_ROLE = Object.freeze({
+  id: 'seam_crusher',
+  hullId: 'dreadnought_boss',
+  role: 'elite',
+  law: MILL_ARENA_ID,
+  method: 'thrown_mass',
+  invulnerable: false,
+});
+/** The queen chamber's wave-10: the living room itself — walls, sacs, breath — is the machinery. */
+export const HIVE_BOSS_ROLE = Object.freeze({
+  id: 'queen_warden',
+  hullId: 'dreadnought_boss',
+  role: 'elite',
+  law: HIVE_ARENA_ID,
+  method: 'machinery',
+  invulnerable: false,
+});
 
 export const ARENA_MODULE_LIBRARY = Object.freeze([
   Object.freeze({
@@ -85,6 +128,20 @@ export const ARENA_MODULE_LIBRARY = Object.freeze([
     bossRole: STORM_BOSS_ROLE,
     fieldBudget: 2,
     planInstall: planStormInstall,
+  }),
+  Object.freeze({
+    id: MILL_ARENA_ID,
+    law: 'current',
+    bossRole: MILL_BOSS_ROLE,
+    fieldBudget: 2,
+    planInstall: planMillInstall,
+  }),
+  Object.freeze({
+    id: HIVE_ARENA_ID,
+    law: 'pull',
+    bossRole: HIVE_BOSS_ROLE,
+    fieldBudget: 2,
+    planInstall: planHiveInstall,
   }),
 ]);
 
@@ -257,7 +314,11 @@ export function validateArenaModuleLibrary(library = ARENA_MODULE_LIBRARY) {
           across: { x: 0, z: 1 },
         });
         const toys = listArenaToys(install);
-        if (toys.length < ARENA_TOY_MIN) {
+        // The three-toy law binds rooms that AUTHOR install furniture — they declare a toys array
+        // and populate it (the four toy arenas). Rooms whose machinery arrives through other
+        // owners install no toys array at all: the Mill's seam is the debris layout and the
+        // Hive's walls/sacs spawn swarm-side, so a zero count there is honest, not a shortfall.
+        if (Array.isArray(install && install.toys) && toys.length < ARENA_TOY_MIN) {
           issues.push({
             path: `[${i}].toys`,
             rule: 'toys.min',

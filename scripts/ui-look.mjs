@@ -18,6 +18,7 @@
 //   node scripts/ui-look.mjs --only=pause
 //   node scripts/ui-look.mjs --only=pause --viewport=1280x720
 //   node scripts/ui-look.mjs --only=settings --headed --max=30
+//   node scripts/ui-look.mjs --only=asteroid-works --devsetup=drill   (screens that need a session)
 //
 // Output: .devshots/ui-look/<id>/index.md + the PNGs it judged, and a console table of every
 // control with its effect (opened a screen, toggled a region, changed text, or nothing at all).
@@ -65,7 +66,11 @@ for (const id of args.only) {
   // The dev route speaks SCREEN ids (mainMenu, newGame, drill…), not surface ids; the surface
   // registry keeps the mapping in `screenId` for exactly this.
   const devId = surface.screenId || surface.id;
-  const baseUrl = `${server.baseUrl}?dev=screen:${encodeURIComponent(devId)}`;
+  // --devsetup=<sandbox preset id> rides the dev route's sandbox-launch branch (main.js
+  // `?dev=screen:<id>&devsetup=<preset>`): session-dependent screens like `drill` pop without
+  // their session, so the preset boots one first.
+  const setupQ = args.devsetup ? `&devsetup=${encodeURIComponent(args.devsetup)}` : '';
+  const baseUrl = `${server.baseUrl}?dev=screen:${encodeURIComponent(devId)}${setupQ}`;
   const result = await lookAtSurface({ surface, baseUrl, outDir });
   if (!result.ok) exitCode = 1;
 }
@@ -159,6 +164,21 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
         } else {
           await waitAnyRoot(ROOT_TIMEOUT_MS);
           await applyNestedEntry();
+        }
+        // The screen mounts under the loading gate: `#boot-overlay` (`loadingPresenter.js`)
+        // covers the frame until the boot/new-game gate clears — shooting before then captures
+        // the loading art, not the surface. Dev-route arrivals on a slow host hit exactly that.
+        const overlayGone = await page.waitForSelector('#boot-overlay', { state: 'hidden', timeout: 300_000 })
+          .then(() => true).catch(() => false);
+        if (!overlayGone) {
+          // The GPU-admission gate is fail-closed and can refuse on a software-GL host while the
+          // DOM surface underneath is real and live. Drop the overlay visually so the picture is
+          // of the surface; the index row still records the console error honestly.
+          await page.evaluate(() => {
+            const el = document.getElementById('boot-overlay');
+            if (el) el.style.display = 'none';
+          }).catch(() => {});
+          console.log('  note: loading overlay did not clear — hidden for capture (GPU gate refused?)');
         }
         await page.waitForTimeout(SETTLE_MS);
         return;
@@ -384,9 +404,10 @@ function parseViewport(value) {
 }
 
 function parseArgs(argv) {
-  const parsed = { only: [], headed: false, viewport: '1920x1080', out: null, max: 24 };
+  const parsed = { only: [], headed: false, viewport: '1920x1080', out: null, max: 24, devsetup: null };
   for (const arg of argv) {
     if (arg.startsWith('--only=')) parsed.only = arg.slice('--only='.length).split(',').map((s) => s.trim()).filter(Boolean);
+    if (arg.startsWith('--devsetup=')) parsed.devsetup = arg.slice('--devsetup='.length);
     if (arg.startsWith('--viewport=')) parsed.viewport = arg.slice('--viewport='.length);
     if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length);
     if (arg.startsWith('--max=')) parsed.max = Number(arg.slice('--max='.length)) || 24;

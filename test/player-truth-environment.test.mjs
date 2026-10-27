@@ -5,12 +5,82 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import {
   assessTree, parseLsTree, quoteLoadError, needsHash, gitBlobOid, renderEnvironmentAbort, STALE_BANNER, verifyHarnessEnvironment, isHarnessOutput, isRouteServed,
 } from '../scripts/player-truth/environment.mjs';
 import { classifyOfferRead, fittedClaimFromText, explanationThePlayerSees, fittedSentenceThePlayerSees } from '../scripts/player-truth/routes.mjs';
+import { parseArgs } from '../scripts/player-truth/run.mjs';
+
+const { sourceOverlayDigest } = createRequire(import.meta.url)('../scripts/lib/gameServer.cjs');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+test('candidate assets are explicit, HTTP-verified and leave committed baseline checks strict', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'pt-candidate-'));
+  const starter = 'assets/ships/release/render-packages/kestrel/render-package.json';
+  const changed = 'assets/changed.txt'; const added = 'assets/new.txt'; const unchanged = 'assets/unchanged.txt';
+  const disk = new Map([[starter, Buffer.from('{}')], [changed, Buffer.from('old')], [unchanged, Buffer.from('stable')]]);
+  const candidate = new Map([[changed, Buffer.from('new candidate')], [added, Buffer.from('new asset')]]);
+  let tamper = false;
+  const server = createServer((req, res) => {
+    const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\//, '');
+    const data = tamper && name === added ? Buffer.from('wrong') : candidate.get(name) || disk.get(name);
+    if (!data) { res.writeHead(404); res.end(); return; }
+    res.end(data);
+  });
+  try {
+    for (const [name, body] of disk) {
+      const file = path.join(dir, name); mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, body);
+    }
+    execFileSync('git', ['init', '-q', dir]);
+    execFileSync('git', ['add', '--', 'assets'], { cwd: dir });
+    execFileSync('git', ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'assets'], { cwd: dir });
+    const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim();
+    const files = [...candidate].map(([name, body]) => ({ path: name, bytes: body.length,
+      sha256: createHash('sha256').update(body).digest('hex'), contentBase64: body.toString('base64') }));
+    const overlay = { schema: 'spaceface.sourceBaseline.v1', sourceCommit, files,
+      sourceOverlayDigest: sourceOverlayDigest(files) };
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const baseUrl = `http://127.0.0.1:${server.address().port}/`;
+    const baseline = await verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: overlay });
+    assert.equal(baseline.ok, false, 'a Git baseline still rejects changed and untracked candidate assets');
+    assert.ok(baseline.problems.some((p) => p.path === changed));
+    assert.ok(baseline.problems.some((p) => p.path === added));
+    const good = await verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: overlay, candidateAssets: true });
+    assert.equal(good.ok, true); assert.equal(good.candidateAssets, 2);
+    tamper = true;
+    const wrong = await verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: overlay, candidateAssets: true });
+    assert.equal(wrong.ok, false, 'every candidate asset must match what the browser actually receives');
+    assert.ok(wrong.problems.some((p) => p.path === added));
+    tamper = false;
+    writeFileSync(path.join(dir, unchanged), 'stale');
+    const stale = await verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: overlay, candidateAssets: true });
+    assert.equal(stale.ok, false, 'unoverridden committed assets are still checked against Git');
+    assert.ok(stale.problems.some((p) => p.path === unchanged));
+    await assert.rejects(() => verifyHarnessEnvironment({ root: dir, sourceOverlay: overlay, candidateAssets: true }), /running server/);
+    const forged = structuredClone(overlay); forged.files[0].contentBase64 = Buffer.from('forged').toString('base64');
+    await assert.rejects(() => verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: forged, candidateAssets: true }), /mismatch/);
+    const wrongBase = structuredClone(overlay); wrongBase.sourceCommit = '0'.repeat(40);
+    await assert.rejects(() => verifyHarnessEnvironment({ root: dir, baseUrl, sourceOverlay: wrongBase, candidateAssets: true }), /not an ancestor/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    const resolved = path.resolve(dir), tmp = path.resolve(tmpdir()) + path.sep;
+    assert.ok(resolved.startsWith(tmp) && path.basename(resolved).startsWith('pt-candidate-'));
+    rmSync(resolved, { recursive: true, force: true });
+  }
+});
+
+test('candidate source is labelled and cannot masquerade as a Git baseline', () => {
+  const candidate = parseArgs(['--mode=adventure', '--candidate-source=.devshots/candidate.json']);
+  assert.equal(candidate.candidateSource, true); assert.equal(candidate.baselineSource, '.devshots/candidate.json');
+  assert.equal(parseArgs(['--baseline-source=.devshots/base.json']).candidateSource, false);
+  assert.throws(() => parseArgs(['--candidate-source=a', '--baseline-source=b']), /only one/);
+  assert.throws(() => parseArgs(['--candidate-source=a', '--baseline=master']), /Git performance baseline/);
+});
 
 test('parseLsTree reads blob size and path', () => {
   const rows = parseLsTree('100644 blob abcdef 12\tassets/a.txt\n120000 tree 000  -\tdesign\n100644 blob abcdef 9\tdesign/b.md\n');

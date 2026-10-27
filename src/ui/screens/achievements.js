@@ -46,13 +46,16 @@ export function achievementSummaryText(rows) {
 export function nextGoalText(rows) {
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) return 'No achievements yet.';
+  const unlocked = list.filter((row) => row.unlocked).length;
+  if (unlocked === list.length) return `All ${list.length} unlocked.`;
   const open = list.filter((r) => !r.unlocked && !r.masked);
-  if (!open.length) return list.every((r) => r.unlocked) ? `All ${list.length} unlocked.` : achievementSummaryText(list);
+  if (!open.length) return achievementSummaryText(list);
   const share = (r) => (Number(r.target) > 1 ? Math.max(0, Math.min(1, (Number(r.current) || 0) / Number(r.target))) : 0);
   let best = open[0];
   for (const r of open) if (share(r) > share(best)) best = r;
   const n = (v) => Math.round(Number(v) || 0).toLocaleString('en-US');
-  return Number(best.target) > 1 ? `Next: ${best.name}, ${n(best.current)} of ${n(best.target)}` : `Next: ${best.name}`;
+  const next = Number(best.target) > 1 ? `next: ${best.name}, ${n(best.current)} of ${n(best.target)}` : `next: ${best.name}`;
+  return `${unlocked} of ${list.length} held — ${next}`;
 }
 
 export function rowsForSection(rows, sectionId) {
@@ -75,7 +78,10 @@ const MEDAL_ROOT = (() => {
   try { return new URL('../../../assets/ui/generated/achievements/', import.meta.url).href; }
   catch (_) { return '/assets/ui/generated/achievements/'; }
 })();
-/** Emblems drawn for the deeds whose sheet faces were stock pictograms (a 48 grid, lines of light). */
+// Emblems drawn for the deeds whose sheet faces were stock pictograms (a 48 grid, lines of light).
+// Together with the produced medal sheet (assets/ui/generated/achievements/) this covers every
+// shipped deed: no achievement ever falls back to the kit's generic check glyph, which read as
+// "done" on medals that were not.
 const DRAWN_EMBLEM = Object.freeze({
   // a sealed manifest, a berth stamp pressed on its corner
   signed_and_delivered: 'M14 9 H30 L35 14 V39 H14 Z M30 9 V14 H35 M18 17 H28 M18 21 H30 M18 25 H25 M27.6 30 V35 H34.4 V30',
@@ -85,12 +91,60 @@ const DRAWN_EMBLEM = Object.freeze({
   better_than_last_time: 'M6 39 H42 M8 39 V33 H12 V29 H16 V26 H20 V39 M25 39 V31 H29 V25 H33 V19 H37 V13 H41 V39',
   // a counter drum: its wheels in their windows
   six_figures: 'M8 16 H40 Q43 24 40 32 H8 Q5 24 8 16 Z M12 19 H17 V29 H12 Z M19.5 19 H24.5 V29 H19.5 Z M27 19 H32 V29 H27 Z M34.5 19 H38 M34.5 29 H38 M13.5 22.5 H15.5 M13.5 25.5 H15.5 M21 22.5 H23 M21 25.5 H23 M28.5 22.5 H30.5 M28.5 25.5 H30.5',
+  // two hulls joined by one sagging rope
+  two_hulls_one_rope: 'M8 24 L16 19 L16 29 Z M40 24 L32 19 L32 29 Z M16 24 Q24 31 32 24',
+  // the heavy mass at the line's end, speed chevrons behind it
+  keep_the_heavy_end: 'M9 14 L27 28 M14 10 L30 25 M8 38 L14 34 M13 41 L19 37',
+  // a taut cable with its warning ticks, a hull crossing above it
+  watch_the_cable: 'M6 33 H42 M14 30 V36 M24 30 V36 M34 30 V36 M24 8 L31 15 L24 22 L17 15 Z',
+  // one impact point; three wrecks fanned out from it
+  one_mistake_three_wrecks: 'M10 24 L16 24 M13 21 L13 27 M26 12 L32 18 M32 12 L26 18 M33 22 L39 28 M39 22 L33 28 M25 33 L31 39 M31 33 L25 39',
+  // the graze that missed: a hull, and the shot's curve just past it
+  still_flying: 'M20 10 L28 24 L20 38 L12 24 Z M35 6 C41 16 41 32 35 42',
+  // a hostile on the long line, arriving at the berth ring
+  dragged_all_the_way: 'M7 24 L15 19 L15 29 Z M15 24 Q25 29 32 24',
+  // the rock held; the hull that struck it did not
+  the_rock_won: 'M22 9 L35 13 L40 25 L33 38 L18 36 L13 23 Z M22 9 L27 20 L23 31 M6 19 L12 23 M5 28 L12 27',
+  // a well drawn as two open arcs, the hull already out the far side
+  out_the_other_side: 'M13 31 A12 12 0 1 1 35 31 M20 31 A5.5 5.5 0 1 1 28 31 M31 15 L36 10 M38 5 L44 11 L38 17 L32 11 Z',
+  // a wreck back on a fresh line, moving again
+  one_job_left: 'M9 17 H21 V29 H9 Z M9 17 L21 29 M21 17 L9 29 M21 23 L31 23 M33 19 Q37 23 33 27',
+  // the shot bends round the cover and flies on: cover is not a guarantee
+  cover_not_guaranteed: 'M5 30 Q12 30 14 26 Q24 8 34 26 Q36 30 43 30',
+  // the long way home: a hull on the return arc, its berth waiting
+  back_with_your_name: 'M6 8 L12 12 L6 16 Z M12 12 Q22 15 30 25 M28 41 H40',
+  // riding the shockwave out, streaks behind
+  rode_the_blast: 'M37 5 L43 11 L37 17 L31 11 Z M28 18 L32 14 M24 22 L28 18',
+  // the gap between two bodies that fit you exactly
+  you_fit: 'M9 6 V42 M39 6 V42 M24 14 L29 24 L24 34 L19 24 Z',
+  // a body's dotted line, corrected twice: two burns, one held course
+  second_impulse: 'M8 12 Q22 18 24 24 Q26 30 40 36 M13 14 L17 10 M31 34 L35 30',
+  // two hulls and the rock, all strung on the one rope
+  two_hulls_one_rock: 'M4 24 H44 M9 19 L16 24 L9 29 Z M39 19 L32 24 L39 29 Z',
+  // the wreck you threw met its own wing
+  his_own_wingman: 'M6 24 L13 20 L13 28 Z M24 18 L29 24 L24 30 L19 24 Z M42 19 L35 24 L42 29 Z M13 14 L17 18 M15 11 L19 15',
+  // the rope, cut clean once: two ends and the spark
+  perfect_cut: 'M5 21 Q13 19 20 21 M28 27 Q35 29 43 27 M24 15 V11 M24 33 V37 M17 24 H13 M31 24 H35',
+});
+/** Circle and well accents a drawn emblem needs beyond its one path (stroked, dashed, or filled). */
+const DRAWN_EMBLEM_EXTRA = Object.freeze({
+  keep_the_heavy_end: '<circle cx="33" cy="31" r="7.5" class="con-emblem__core"></circle>',
+  dragged_all_the_way: '<circle cx="38" cy="24" r="6" class="con-emblem__core"></circle>',
+  cover_not_guaranteed: '<circle cx="24" cy="31" r="6" class="con-emblem__core"></circle>',
+  back_with_your_name: '<circle cx="34" cy="31" r="6.5" class="con-emblem__core"></circle>',
+  rode_the_blast: '<circle cx="20" cy="26" r="9" class="con-emblem__core"></circle><circle cx="20" cy="26" r="15" class="con-emblem__ring"></circle>',
+  second_impulse: '<circle cx="24" cy="24" r="3.4" class="con-emblem__dot"></circle>',
+  rope_well_wreck: '<circle cx="28" cy="24" r="9" class="con-emblem__core"></circle><circle cx="28" cy="24" r="4" class="con-emblem__core"></circle>',
+  two_hulls_one_rock: '<circle cx="24" cy="24" r="5" class="con-emblem__core"></circle>',
+  perfect_cut: '<circle cx="24" cy="24" r="2" class="con-emblem__dot"></circle>',
 });
 const STAMP = '<circle cx="31" cy="32.5" r="8.4" class="con-emblem__seal"></circle><circle cx="31" cy="32.5" r="5.6" class="con-emblem__ring"></circle>';
 function emblemSvg(id) {
   const d = DRAWN_EMBLEM[id];
   if (!d) return '';
-  const extra = id === 'signed_and_delivered' ? STAMP : id === 'paper_trail' ? '<circle cx="38.6" cy="17.5" r="1.8" class="con-emblem__dot"></circle>' : '';
+  const extra = id === 'signed_and_delivered' ? STAMP
+    : id === 'paper_trail' ? '<circle cx="38.6" cy="17.5" r="1.8" class="con-emblem__dot"></circle>'
+    : DRAWN_EMBLEM_EXTRA[id] || '';
   return `<svg class="con-medal__emblem" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path class="con-emblem__bloom" d="${d}"></path><path class="con-emblem__core" d="${d}"></path>${extra}</svg>`;
 }
 
@@ -299,14 +353,17 @@ export const achievementsScreen = {
     const counted = !row.masked && Number(row.target) > 1;
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const day = row.unlocked ? String(row.status || '').replace(/^Unlocked\s*/, '') : '';
+    // the rim already reads "EARNED · <date>" when there is a date: the kicker keeps only the
+    // category there, and the status line shows only when there is no rim to say it
+    const stateWord = state === 'earned' ? (day ? '' : 'earned') : state === 'going' ? 'under way' : 'not yet earned';
     read.dataset.state = state;
     read.innerHTML = `
       <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}"><span class="con-medal__body"></span>${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span>${rimHtml(day ? 'earned · ' + day : '')}</div>
-      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))} <span aria-hidden="true">·</span> ${esc(state === 'earned' ? 'earned' : state === 'going' ? 'under way' : 'not yet earned')}</p>
+      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))}${stateWord ? ` <span aria-hidden="true">·</span> ${esc(stateWord)}` : ''}</p>
       <h2 class="con-medal-read__name">${esc(row.name)}</h2>
       <p class="con-medal-read__line">${esc(row.description)}</p>
       ${counted && !row.unlocked ? `<div class="con-medal-read__figure"><span class="con-medal-read__n" data-n>0</span><span class="con-medal-read__of">of ${esc(Number(row.target).toLocaleString('en-US'))}</span></div>` : ''}
-      ${row.unlocked ? `<p class="con-medal-read__status">${esc(day ? 'earned ' + day : 'earned')}</p>` : ''}
+      ${row.unlocked && !day ? '<p class="con-medal-read__status">earned</p>' : ''}
     `;
     const dial = read.querySelector('.con-medal-read__dial');
     const rim = dial && dial.querySelector('.con-medal-read__rim');

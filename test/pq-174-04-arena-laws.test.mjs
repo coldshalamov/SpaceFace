@@ -40,7 +40,9 @@ function printMatrix(matrix) {
 test('library toys still validate after the law rooms stopped sharing Foundry furniture', () => {
   const check = validateArenaModuleLibrary();
   assert.equal(check.ok, true, JSON.stringify(check.issues));
-  assert.equal(ARENA_MODULE_LIBRARY.length, 4);
+  // Six law arenas now: the four toy rooms plus the Mill and the Hive (SWARM-07 B4),
+  // whose machinery is ambient/swarm-side rather than authored install.toys.
+  assert.equal(ARENA_MODULE_LIBRARY.length, 6);
 });
 
 test(`seed ${PQ_174_04_SEED}: each live arena's top kit differs from Foundry, and the results card shows it`, () => {

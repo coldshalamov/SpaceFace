@@ -11,7 +11,7 @@ export function createStationCommands({ root, trigger, getCommands, canOpen = ()
   trigger.setAttribute('aria-expanded', 'false');
   dialog.className = 'so-command-palette';
   dialog.setAttribute('aria-labelledby', 'so-command-title');
-  dialog.innerHTML = `<div class="so-command-head"><div><span class="so-overline">Station access</span><h2 id="so-command-title">Where to next?</h2></div><button type="button" ${stationControlAttrs('close-palette')} data-close aria-label="${stationControlLabel('close-palette')}">${stationIcon('close')}</button></div>
+  dialog.innerHTML = `<div class="so-command-head"><div><span class="so-overline">Station access</span><h2 id="so-command-title">Where to next?</h2></div><button type="button" ${stationControlAttrs('close-palette')} data-close aria-label="${stationControlLabel('close-palette')}" style="border:0;background:none"><span aria-hidden="true" style="display:inline-flex;color:var(--dp-ink,#e8e2d4)">${stationIcon('close')}</span></button></div>
     <div class="so-command-search">${stationIcon('search')}<input type="search" autocomplete="off" spellcheck="false" placeholder="Market, sell cargo, departure…" aria-label="Find a station service" role="combobox" aria-expanded="true" aria-controls="so-command-results" aria-autocomplete="list"/></div>
     <ul id="so-command-results" role="listbox" aria-label="Matching station commands"></ul>
     <p class="so-command-empty" role="status" hidden>No matching services. Try “cargo” or “missions”.</p>

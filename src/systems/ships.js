@@ -47,7 +47,7 @@ import {
   normalizeLivingHull,
   sameLivingHull,
 } from '../core/livingHull.js';
-import { derivedWithOverbore } from './impoundLot.js';
+import { derivedWithOverbore, impoundListingFor } from './impoundLot.js';
 import { mintImpoundShadow } from './impoundGrudge.js';
 import {
   scarFromPlayerContact,
@@ -172,9 +172,11 @@ function dockedShopStationId(state) {
   return ui && ui.docked === true ? ui.dockedStationId : null;
 }
 
-/** The one open impound listing, when it is this hull at the dock the player is standing in. */
+/** The one open impound listing, when it is this hull at the dock the player is standing in.
+ *  The quote path takes the same normalize-on-read every other seam does — the price a
+ *  screen shows is always the healed book's price, never a divergent raw field. */
 function impoundOfferFor(state, defId) {
-  const lot = state && state.lossLedger && state.lossLedger.impound;
+  const lot = impoundListingFor(state);
   if (!lot || !defId || lot.defId !== defId) return null;
   const stationId = dockedShopStationId(state);
   if (!stationId || lot.stationId !== stationId) return null;
@@ -2680,8 +2682,10 @@ export const ships = {
 
   /** Buy the open lot hull: its scars, papers, and bored thrusters, at the listing price. */
   buyImpound(listing) {
-    const current = this.state.lossLedger && this.state.lossLedger.impound;
-    if (!current || current.listingId !== listing.listingId) return false;
+    // Normalize-on-read, same as every other seam: the charged price is the
+    // healed book's priceSync — never a raw field that diverged from ask/hold.
+    const current = impoundListingFor(this.state);
+    if (!current || !listing || current.listingId !== listing.listingId) return false;
     const def = SHIP_BY_ID.get(current.defId);
     const p = this.state.player;
     const price = Number(current.price);
@@ -2694,7 +2698,6 @@ export const ships = {
       && Number.isFinite(Number(current.quirk.accelMult)) && Number(current.quirk.accelMult) > 1
       ? { kind: 'overbored', accelMult: Number(current.quirk.accelMult) }
       : null;
-    this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + def.id });
     const slots = buildSlotList(def);
     const owned = {
       defId: def.id,
@@ -2716,6 +2719,7 @@ export const ships = {
     if (shadow) owned.impoundShadow = shadow;
     p.ownedShips.push(owned);
     delete this.state.lossLedger.impound;
+    this.bus.emit('economy:chargeCredits', { amount: price, reason: 'buyShip:' + def.id });
     this.bus.emit('ship:purchased', {
       defId: def.id,
       ...purchasedHullNameField(def),

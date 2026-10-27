@@ -202,12 +202,12 @@ test('simulator matches planWave hashes across seeds and waves', () => {
   assert.equal(hashSemanticWavePlan(viaOverride), hashSemanticWavePlan(viaLookup));
 });
 
-test('arena module library names the four live laws and previews them', () => {
+test('arena module library names the six live laws and previews them', () => {
   const check = validateArenaModuleLibrary();
   assert.equal(check.ok, true, JSON.stringify(check.issues));
-  assert.equal(ARENA_MODULE_LIBRARY.length, 4);
+  assert.equal(ARENA_MODULE_LIBRARY.length, 6);
   const laws = ARENA_MODULE_LIBRARY.map((mod) => mod.law).sort();
-  assert.deepEqual(laws, ['conduct', 'current', 'freeze', 'pull']);
+  assert.deepEqual(laws, ['conduct', 'current', 'current', 'freeze', 'pull', 'pull']);
   for (const mod of ARENA_MODULE_LIBRARY) {
     const preview = previewArenaModule(mod.id, 'idle');
     assert.equal(preview.ok, true, mod.id);

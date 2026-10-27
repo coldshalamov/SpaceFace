@@ -1576,6 +1576,57 @@ export function overconfidenceStreak(history) {
   return streak;
 }
 
+/**
+ * Mutator ids a mid-run pact signed onto this run. The provenance rides
+ * `run.telemetry.pacts` (the wager seam `_acceptPact` stamps), with the durable
+ * `run.modifiers` pact ledger as the fallback so a run whose telemetry bag was rebuilt
+ * still carries its signature.
+ */
+function pactMutatorIds(result, run) {
+  const ids = [];
+  const push = (id) => {
+    if (typeof id === 'string' && id && !ids.includes(id)) ids.push(id);
+  };
+  const scan = (rows) => {
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) push(typeof row === 'string' ? row : row && row.mutatorId);
+  };
+  scan(result && result.pacts);
+  scan(run && run.telemetry && run.telemetry.pacts);
+  if (run && Array.isArray(run.modifiers)) {
+    for (const row of run.modifiers) if (row && row.kind === 'pact') push(row.mutatorId);
+  }
+  return ids;
+}
+
+/**
+ * The pact rows a record files — which handicap bound, and the wave the signature landed.
+ * The same sources pactMutatorIds reads, so the row and the exclusion can never disagree.
+ */
+function pactRecordRows(result, run) {
+  const out = [];
+  const push = (mutatorId, wave) => {
+    if (typeof mutatorId !== 'string' || !mutatorId) return;
+    if (out.some((row) => row.mutatorId === mutatorId)) return;
+    out.push({ mutatorId, wave: Number.isInteger(wave) && wave > 0 ? wave : null });
+  };
+  const scan = (rows) => {
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) {
+      if (typeof row === 'string') push(row, null);
+      else if (row && typeof row === 'object') push(row.mutatorId, row.wave);
+    }
+  };
+  scan(result && result.pacts);
+  scan(run && run.telemetry && run.telemetry.pacts);
+  if (run && Array.isArray(run.modifiers)) {
+    for (const row of run.modifiers) {
+      if (row && row.kind === 'pact') push(row.mutatorId, row.wave);
+    }
+  }
+  return out;
+}
+
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
   const dailyDateKey = resolveDailyDateKey(result, run);
@@ -1587,6 +1638,11 @@ export function compactRunResult(result, run, newly) {
     (result && Array.isArray(result.threats) && result.threats)
     || (run && run.telemetry && Array.isArray(run.telemetry.threats) && run.telemetry.threats)
     || []));
+  // A signed mid-run pact (the armory's One Hull wager) folds its mutator into
+  // run.arenaMutators the same way — kept out of compact.mutators so a mid-flight signature
+  // cannot relabel the climb it joined. The signature itself files on compact.pacts below,
+  // the same double truth compact.threats keeps for a wager.
+  const pactMutators = new Set(pactMutatorIds(result, run));
   const compact = {
     schemaVersion: 1,
     outcome: result && result.outcome ? result.outcome : null,
@@ -1594,8 +1650,8 @@ export function compactRunResult(result, run, newly) {
     arenaId: (result && result.arenaId) || (run && run.arenaId) || null,
     ruleset: challenge.ruleset,
     trialId: challenge.trialId,
-    mutators: wagerMutators.size
-      ? challenge.mutators.filter((id) => !wagerMutators.has(id))
+    mutators: (wagerMutators.size || pactMutators.size)
+      ? challenge.mutators.filter((id) => !wagerMutators.has(id) && !pactMutators.has(id))
       : challenge.mutators.slice(),
     wave: result && Number.isInteger(result.wave) ? result.wave : 0,
     // SWARM-04: the round the run began at — 1 for a fresh ladder attempt, the checkpoint's
@@ -1624,6 +1680,10 @@ export function compactRunResult(result, run, newly) {
     unlocksEarned: Array.isArray(newly) ? newly.slice() : [],
   };
   if (dailyDateKey) compact.dailyDateKey = dailyDateKey;
+  // The signature itself is part of the run's truth: the row still says the ship flew bound
+  // (and from which wave), it just never lets the signature pose as the launch contract.
+  const pacts = pactRecordRows(result, run);
+  if (pacts.length) compact.pacts = pacts;
   if (typeof (result && result.kitId) === 'string' && result.kitId) compact.kitId = result.kitId;
   if (Number.isInteger(result && result.stuntScore) && result.stuntScore >= 0) compact.stuntScore = result.stuntScore;
   if (Number.isInteger(result && result.physicsKills) && result.physicsKills >= 0) compact.physicsKills = result.physicsKills;
@@ -1706,6 +1766,13 @@ function hangarBankInput(result, run) {
     && outcome === 'victory');
   return {
     credits: src.credits,
+    // The window's middle seat: salvage the pilot already banked mid-run rides the run's
+    // telemetry stamp, spent out of the purse when it was secured — applyBank adds it on top
+    // of whatever fraction the ending pays on the remainder, so it is never paid twice.
+    // A result may also carry the figure flat when the run object is not in hand.
+    securedCredits: src.securedCredits != null
+      ? src.securedCredits
+      : (runSrc.telemetry && runSrc.telemetry.securedBounty),
     // The results plate says "defeat". The hangar banks a death.
     outcome: outcome === 'defeat' ? 'death' : (isCircuit && outcome === 'extracted' ? 'aborted' : outcome),
     cashOut: isCircuit ? circuitComplete : src.cashOut === true,
@@ -1719,8 +1786,17 @@ function hangarBankInput(result, run) {
 
 export function settleCrucibleRun({ result, run, profile = null, storage = liveStorage() } = {}) {
   const loaded = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
-  const bank = applyBank(loaded.hangar, hangarBankInput(result, run));
-  const evaluated = evaluateUnlocks(loaded, result || {});
+  // RC-CRUCIBLE-DOOR (row 481): the drill's promise — "no records, no rewards, nothing carried
+  // back". recordRulesFor is the one normalization: an explicit practice flag on either input
+  // and a 'practice' mode stamped into provided rules both land on the same truth here.
+  const isPractice = recordRulesFor(result || {}, run || {}).mode === 'practice';
+  // A drill settles the Hangar as an empty run — bounty untouched, no settle key spent — and
+  // earns no unlocks. evaluateUnlocks also refuses a practice-shaped result on its own; this
+  // gate is the one that can see the run-side flag.
+  const bank = applyBank(loaded.hangar, isPractice ? null : hangarBankInput(result, run));
+  const evaluated = isPractice
+    ? { unlocks: { ...(asObject(loaded.unlocks) || {}) }, newly: [] }
+    : evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
   // Invalid Circuit data remains a Circuit for isolation even though it cannot publish a
   // valid journey summary. It must never silently regain ordinary ladder/challenge authority.
@@ -1786,7 +1862,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     compact.hangarBounty = bank.hangar.bounty;
   }
   if (threatIds.length) compact.threats = threatIds.slice();
-  const challengeEval = isCircuit
+  // A drill claims no purse either: a practice run that happens to carry the weekly mutator or a
+  // daily stamp still pays nothing into the chest.
+  const challengeEval = isCircuit || isPractice
     ? { paid: [], challenges: loaded.challenges }
     : challengePayoutFor(compact, loaded.challenges, recordedAt);
   if (challengeEval.paid.length) {
@@ -1796,7 +1874,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     compact.hangarBounty = bank.hangar.bounty;
   }
   const cabinet = migrateCabinet(loaded.cabinet);
-  if (cabinetEligible(compact) && result?.practice !== true && run?.practice !== true) {
+  if (cabinetEligible(compact) && !isPractice) {
     const identity = stableStringify({ seed: compact.seed, rules: compact.recordRules,
       outcome: compact.outcome, endedAt: result?.endedAt ?? null, progress: roundProgress(compact), score: compact.score });
     compact.cabinetEntryId = `${recordedAt}:${String(cabinet.nextId).padStart(16, '0')}:${hash32('swarm-cabinet', identity).toString(16)}`;
@@ -1817,8 +1895,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
     cabinet,
-    // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it was.
-    daily: isCircuit ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
+    // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it
+    // was. A drill files no standings either — even if a daily stamp leaked onto its envelope.
+    daily: isCircuit || isPractice ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
     hangar: bank.hangar,

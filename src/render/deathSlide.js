@@ -1,4 +1,11 @@
 // Render-only slide along the velocity copied at death. The sim body stays parked.
+//
+// Scope (Controlled Chaos packet 08): this decorative slide is the PLAYER's own defeat only
+// (shipMicroMotion arms it for the local hull). It must never be the model for an NPC death: a
+// decisive NPC kill hands its real velocity, spin, mass and cargo identity to its successor wreck,
+// which is the authoritative planar body and fails PHYSICALLY for a bounded window before one
+// rupture (src/systems/dyingHull.js, lifecycle in src/combat/lifecycle.js). Collision-dependent
+// consequences never ride this offset.
 
 export const DEATH_SLIDE_S = 0.4;
 export const DEATH_SLIDE_CAP_WU = 36;

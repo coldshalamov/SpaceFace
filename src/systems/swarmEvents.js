@@ -22,7 +22,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { gateBearing } from './waveMaterialization.js';
-import { swarmEventFor, SWARM_EVENT_BY_ID } from '../data/swarmEvents.js';
+import { swarmEventFor, swarmMinorEventFor, SWARM_EVENT_BY_ID } from '../data/swarmEvents.js';
 
 export const SWARM_EVENT_FIELD_ID = 'swarm_event_field';
 export const SWARM_EVENT_MINE_OWNER = 'survival-arena';
@@ -147,7 +147,10 @@ export function createSwarmEventDirector(ctx) {
       const run = liveSwarmRun(state);
       if (!run || run.phase !== 'active') return;
       const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
-      const event = swarmEventFor({ arenaId: run.arenaId, wave, seed: run.seed });
+      // Major band first, then the minor off-beats — the bands are disjoint by construction,
+      // so the fallback can never book a second event onto an event or boss wave.
+      const event = swarmEventFor({ arenaId: run.arenaId, wave, seed: run.seed })
+        || swarmMinorEventFor({ arenaId: run.arenaId, wave, seed: run.seed });
       if (!event) return;
       // Telegraph first, spend later — the player reads the card's wager before the room
       // plays it. deadlineAt IS the fire line: the deck and the director share one clock.
@@ -157,7 +160,7 @@ export function createSwarmEventDirector(ctx) {
       if (this._bus) {
         this._bus.emit('alert', {
           key: `swarm-event-${event.id}`,
-          sev: 'warn',
+          sev: event.band === 'minor' ? 'info' : 'warn',
           text: event.telegraph,
           ttl: 5,
         });
@@ -167,6 +170,7 @@ export function createSwarmEventDirector(ctx) {
           name: event.name,
           telegraph: event.telegraph,
           kind: event.kind,
+          band: event.band || 'major',
           wager: swarmEventWager(event),
         });
       }

@@ -178,7 +178,8 @@ test('disabling mobile restores original host methods and releases keys',()=>{
 test('all four power banks have distinct, described choices',()=>{
  // 24 -> 25: gyreSnare joins the Ordnance page (gyre wave-63 touch-deck reachability).
  // 25 -> 22: the five powers (owner 2026-10-22) replace eight ordnance/field verbs.
- assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,22);
+ // 22 -> 23: the labeled Shield pylons verb (Controlled Chaos packet 06) joins the Gear page.
+ assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,23);
  for(const p of POWER_PAGES)for(const a of p.powers)assert.ok(a.description&&a.id&&a.label);
 });
 

@@ -470,14 +470,12 @@ export const trafficRecoveryOps = {
       if (carried && Array.isArray(carried.lines) && carried.totalQty > 0) return true;
       const waypointId = typeof intent.field === 'string' ? intent.field
         : (typeof intent.waypointId === 'string' ? intent.waypointId : '');
-      const target = this._resolveSalvorTargetFromWaypoint(waypointId, intent.payload)
-        || (intent.payload && intent.payload.targetId != null
-          && this.state.entities && this.state.entities.get
-          ? this.state.entities.get(intent.payload.targetId)
-          : null);
+      const job = this.helpers?.npcJobs?.get(context.jobId)?.job;
+      if (!job || waypointId !== job.route?.[1]?.id) return false;
+      const target = this._resolveSalvorTargetFromWaypoint(waypointId, job.payload);
       if (!target || target.alive === false) {
         // Player beat the cutter (or the body despawned) — depart empty, no mint.
-        const source = this._salvageSourceBindingFromPayload(intent.payload);
+        const source = this._salvageSourceBindingFromPayload(job.payload);
         if (source) this._releaseSalvageSourceClaim(source, context.worldRecordId);
         this._setTrafficManifest(
           context.entity,
@@ -595,7 +593,9 @@ export const trafficRecoveryOps = {
       && context.entity.data.cargoManifest.totalQty > 0;
     if (hasCargo) return true;
     const origin = typeof intent.origin === 'string' ? intent.origin : '';
-    const target = this._resolveSalvorTargetFromWaypoint(origin, intent.payload);
+    const job = this.helpers?.npcJobs?.get(context.jobId)?.job;
+    if (!job || origin !== job.route?.[1]?.id) return false;
+    const target = this._resolveSalvorTargetFromWaypoint(origin, job.payload);
     if (!target || target.alive === false || !this._isSalvageableBody(target)) return false;
     return this._takeSalvageValueOntoSalvor(context, intent, target);
   },

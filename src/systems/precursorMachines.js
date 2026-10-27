@@ -260,7 +260,7 @@ export function materializeMachineLayer(world, sector, active) {
         physicsBody: false,
         homeSectorId: sector.id,
         hull: 400, // machines do not die to stray fire in this layer; they ignore damage events
-        factionId: 'verge_layers',
+        factionId: 'faction_verge_layers',
         data: {
           name: scannerMachineLabel(ae.machineProtocol),
           scanLabel: scannerMachineLabel(ae.machineProtocol),
@@ -559,6 +559,7 @@ export function tickMachineLayer(world, dt) {
   // ── Machine kinematics ──
   for (const e of machines) {
     if (e.data.cleanCylinderOf) continue; // escort/physics owns this moving Shepherd charge
+    if (e.data.vergeDriven) continue;     // the border authority owns this body's motion
     const m = e.data.machine;
     const kind = machineKindById(m.kind);
     if (!kind) continue;
@@ -986,7 +987,7 @@ function ensureCourierTokenBody(world, e, token) {
     radius: 5,
     ownerId: e.id,
     ownerName: 'Courier frame',
-    factionId: 'verge_layers',
+    factionId: 'faction_verge_layers',
     originId: token.originSiteId,
     destinationId: token.destSiteId,
   }, world.helpers);

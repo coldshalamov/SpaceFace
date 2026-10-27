@@ -1,0 +1,845 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.hundred-hand-power.anchor.socket-install-pivot",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Install_Pivot",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.hundred-hand-power.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-power.anchor.socket-tether-massline",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.699999809265137,
+        0.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tether_Massline",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.hundred-hand-power.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -5.699999809265137,
+        0.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.hundred-hand-power",
+  "collisions": [
+    {
+      "id": "sf.render.hundred-hand-power.mesh.collision-power-body.collision",
+      "nodeId": "sf.render.hundred-hand-power.mesh.collision-power-body",
+      "reference": "COLLISION_POWER_BODY"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "90f70839fdb421a3309990116f57f06353f15d2200ad9ce39bc25dd13116ffa0",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          5,
+          4.749821662902832,
+          2.900195598602295
+        ],
+        "min": [
+          -5.809999942779541,
+          0.00017822778318077326,
+          -2.900195598602295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "088d1a35dbdcfaf1dd4f4260e2db939846ce1f16dca2bdaf8c24ce354a6c75e5",
+      "id": "sf.render.hundred-hand-power.mesh.collision-power-body.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_POWER_BODY",
+      "nodeId": "sf.render.hundred-hand-power.mesh.collision-power-body",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          4.099999904632568,
+          4.75012731552124,
+          2.500258445739746
+        ],
+        "min": [
+          -5.809999942779541,
+          0.38987255096435547,
+          -2.500258445739746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dcd5643f17e7a08f3a3eadc55cea7ce72c2042562fb1113da36e2f4d2972b696",
+      "id": "sf.render.hundred-hand-power.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 8508,
+      "indexed": true,
+      "materialHash": "f2392bb39fc12d30953e059064c9c96c0d772b7982c502f75a4590ff55cf7b37",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.hundred-hand-power.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 2708
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9000000953674316,
+          3.6497879028320312,
+          2.2502334117889404
+        ],
+        "min": [
+          -3.9000000953674316,
+          0.5502119660377502,
+          -2.2502334117889404
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fb7e5631e8e62129c9343e1da9fa6ccd163b3c2f3cc8cfdb6fc690ada89128a",
+      "id": "sf.render.hundred-hand-power.mesh.lod0-hull.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "c9a26f8893bc04fd9eb2e5c5aea54e95efecb1696f21749fe4b262444d088d6a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.hundred-hand-power.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          5,
+          4.61979341506958,
+          2.9001739025115967
+        ],
+        "min": [
+          -5,
+          0.0002065598964691162,
+          -2.9001739025115967
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa601028133d8ce3992d716feae6c29c01aeb3836c5b42bfad34c53c2c5cd49c",
+      "id": "sf.render.hundred-hand-power.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 2460,
+      "indexed": true,
+      "materialHash": "9cfb6d46ed4cca0a235c5e6edd5b1a2705d82f9bd80914d648237a0382597b1a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.hundred-hand-power.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 796
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "9cfb6d46ed4cca0a235c5e6edd5b1a2705d82f9bd80914d648237a0382597b1a",
+      "id": "material:9cfb6d46ed4cca0a235c5e6e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c9a26f8893bc04fd9eb2e5c5aea54e95efecb1696f21749fe4b262444d088d6a",
+      "id": "material:c9a26f8893bc04fd9eb2e5c5",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f2392bb39fc12d30953e059064c9c96c0d772b7982c502f75a4590ff55cf7b37",
+      "id": "material:f2392bb39fc12d30953e0590",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.hundred-hand-power.mesh.collision-power-body",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_POWER_BODY",
+      "nodeName": "COLLISION_POWER_BODY",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.hundred-hand-power.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-power.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-power.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.hundred-hand-power.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-power.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-power.mesh.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.hundred-hand-power.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-power.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-power.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.hundred-hand-power.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-power.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.hundred-hand-power.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PROP_HUNDRED_HAND_POWER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.hundred-hand-power.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "fd3eb855b1713a16b6942ec0e3a665b3a2a92b267d7402bc8e89432147e9b52a"
+    },
+    "sourceGlb": {
+      "bytes": 188256,
+      "sha256": "aa744c7587acd653d607f4ec2acae511ec68c839f787895da27665ebf3c6b9d0",
+      "uri": "place_hundred_hand_power.glb"
+    },
+    "sourceManifest": {
+      "bytes": 276190,
+      "sha256": "da7021a52f3430a0560a4858cffd2d8a9164f726eeaa3d65f93ef31efc5d578d",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 262120,
+    "sha256": "3e9a2787c0eaf2fbe77fb2edd707ebcb8064d245853ef02bf25847efc8a208cb",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.4049999713897705,
+        2.3751527716522105,
+        0
+      ],
+      "max": [
+        5,
+        4.75012731552124,
+        2.900195598602295
+      ],
+      "min": [
+        -5.809999942779541,
+        0.00017822778318077326,
+        -2.900195598602295
+      ],
+      "size": [
+        10.809999942779541,
+        4.7499490877380595,
+        5.80039119720459
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Install_Pivot",
+        "planIndex": 6,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Install_Pivot",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Install_Pivot",
+            "recordIds": [
+              "sf.render.hundred-hand-power.anchor.socket-install-pivot"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -5.699999809265137,
+          0.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tether_Massline",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tether_Massline",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tether_Massline",
+            "recordIds": [
+              "sf.render.hundred-hand-power.anchor.socket-tether-massline"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 8,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_hundred_hand_power.glb"
+  },
+  "runtimeHash": "f2da14f9fe6cb6886563c990e8484922e793dc21dbb57c5ad97e4ab5d89b9003",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          5,
+          4.75012731552124,
+          2.900195598602295
+        ],
+        "min": [
+          -5.809999942779541,
+          0.00017822778318077326,
+          -2.900195598602295
+        ]
+      },
+      "id": "sf.render.hundred-hand-power.body",
+      "nodeIds": [
+        "sf.render.hundred-hand-power.mesh.collision-power-body",
+        "sf.render.hundred-hand-power.mesh.lod0-brushedmetal",
+        "sf.render.hundred-hand-power.mesh.lod0-hull",
+        "sf.render.hundred-hand-power.mesh.lod0-mechanical",
+        "sf.render.hundred-hand-power.root"
+      ]
+    }
+  ]
+}

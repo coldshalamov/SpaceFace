@@ -1,3 +1,5 @@
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { starterBuoySpec, starterMiningReceiptMatches } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
@@ -104,6 +106,7 @@ export const missionObjectiveOps = {
       if (m.params.cmdtyId !== p.commodityId) continue;
       // A starter cut pays only while its tool is fitted. The Hitch contract is a rich-core
       // hold (Drill Amp) plus the mining laser. Iron mined without that fit does not count.
+      if (!starterMiningReceiptMatches(m, p, this.state)) continue;
       if (m.params.starterJobId) {
         const ship = activeOwnedShip(this.state);
         if (!shipCarriesModule(ship, m.params.requiredModule)) continue;
@@ -327,7 +330,9 @@ export const missionObjectiveOps = {
   },
 
   _onRookWreckDelivered(p) {
-    if (!p) return;
+    // The book counts Rook's pad only — the rival laundry ring does not settle
+    // a "tow it to Rook's booth" contract. Legacy emitters carry no standId.
+    if (!p || (p.standId != null && p.standId !== 'rook')) return;
     const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
@@ -1373,6 +1378,7 @@ export const missionObjectiveOps = {
       (marker && marker.sectorId) || (this.state.world && this.state.world.currentSectorId),
     );
     const active = this.state.missions.active;
+    const survivorClaims = new Map();
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (!m || m.status !== 'active' || !ONE_LOAD_CARGO_TYPES.has(m.type)) continue;
@@ -1385,7 +1391,14 @@ export const missionObjectiveOps = {
       const lost = losses
         ? Math.max(0, Math.floor(Number((losses.find((l) => l && l.commodityId === cmdtyId) || {}).qty) || 0))
         : Math.floor(have * 0.5);
-      if (lost <= 0 || have - lost >= need) continue;
+      // Survivors cover this manifest only after the sibling contracts of the same good that
+      // already kept their rows have taken their share: two 10-unit manifests cannot both be
+      // backed by the same 10 surviving units.
+      const claimed = survivorClaims.get(cmdtyId) || 0;
+      if (lost <= 0 || have - lost - claimed >= need) {
+        survivorClaims.set(cmdtyId, claimed + need);
+        continue;
+      }
       if (site) {
         m._escorteeSectorId = site.sectorId;
         m._escorteeWreckPos = site.wreckPos;
@@ -1647,7 +1660,11 @@ export const missionObjectiveOps = {
       const r = 220 + rng() * 80;
       const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
       const cachePos = ashfallCacheApproachPos(m, -200);
-      spawnAt(durableSlot, {
+      const buoy = starterBuoySpec(m, sectorLocalToGlobalForSector);
+      if (buoy) {
+        buoy.data.physicalRole = PHYSICAL_ROLE.SLAG_CORE;
+        spawnAt(durableSlot, buoy);
+      } else spawnAt(durableSlot, {
         type: 'asteroid',
         team: 2,
         pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
@@ -2805,3 +2822,4 @@ export const missionObjectiveOps = {
     }
   },
 };
+

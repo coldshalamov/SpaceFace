@@ -107,6 +107,7 @@ export const masslineTelemetry = {
     // Per-latch mass-weigh dwell (AL-STORY-1). Private runtime — never serialized, and it
     // does not survive a save/load because partial dwell is not a measurement.
     this._weigh = null;
+    this._massWeighAt = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
     // A reload or a fresh game severs every latch: the weigh dwell, the latch identity, and
     // the projected measurement all reset so partial dwell can never straddle a boundary.
     this._onStateReset = () => {
@@ -114,6 +115,7 @@ export const masslineTelemetry = {
       this._snap = null;
       this._pump = null;
       this._weigh = null;
+      this._massWeighAt = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
       const tele = this.state && this.state.player && this.state.player.masslineTelemetry;
       if (tele) delete tele.massWeighing;
     };
@@ -121,6 +123,23 @@ export const masslineTelemetry = {
       this.bus.on('save:loaded', this._onStateReset);
       this.bus.on('save:restoring', this._onStateReset);
       this.bus.on('game:new', this._onStateReset);
+      this.bus.on('game:newGame', this._onStateReset);
+      this.bus.on('sector:exit', this._onStateReset);
+      this.bus.on('player:death', this._onStateReset);
+      const endWeigh = (payload) => {
+        const weigh = this._weigh;
+        if (!weigh || !payload) return;
+        const owner = payload.ownerId ?? payload.controllerId;
+        if (owner != null && owner !== this.state.playerId) return;
+        if (payload.attachmentId != null && weigh.attachmentId != null) {
+          if (payload.attachmentId !== weigh.attachmentId) return;
+        } else if (payload.targetId !== weigh.targetId) return;
+        this._weigh = null;
+        this._massWeighAt = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+        const tele = this.state.player?.masslineTelemetry;
+        if (tele) delete tele.massWeighing;
+      };
+      for (const event of ['tether:released', 'tether:broke', 'tether:broken']) this.bus.on(event, endWeigh);
     }
   },
 
@@ -255,9 +274,23 @@ export const masslineTelemetry = {
   _stepMassWeighing(telemetry, dt, state, target, strain, phase, targetSpeed) {
     const tether = state.player && state.player.tether;
     const decl = massDeclarationForTarget(state, target);
+    const now = state.simTime;
+    const previous = this._massWeighAt;
+    this._massWeighAt = Number.isFinite(now) ? now : null;
+    const attachmentId = tether?.attachmentId ?? null;
+    if (this._weigh && (this._weigh.target !== target || this._weigh.attachmentId !== attachmentId
+        || (decl && this._weigh.missionId !== decl.missionId)
+        || !Number.isFinite(now) || !Number.isFinite(previous) || now < previous)) {
+      this._weigh = null;
+      delete telemetry.massWeighing;
+    }
+    const elapsed = Number.isFinite(now) && Number.isFinite(previous) ? now - previous : 0;
     const qualifying = !!(decl
       && state.mode === 'flight'
-      && dt > 0
+      && Number.isFinite(dt) && dt > 0
+      && Number.isFinite(now) && now >= 0
+      && [target.vel?.x, target.vel?.z].every(Number.isFinite)
+      && physicalMassT(target) != null
       && tether && tether.targetId === target.id
       && (phase === 'loaded' || phase === 'overload')
       && strain > 0
@@ -267,13 +300,15 @@ export const masslineTelemetry = {
       if (!(this._weigh && this._weigh.emitted)) delete telemetry.massWeighing;
       return;
     }
+    if (!(elapsed > 0)) return; // repeated/backward observation is not qualifying simulation time
     const slipId = `mass-slip:${decl.sourceOfferId}:${decl.targetSlot}`;
     let weigh = this._weigh;
     if (!weigh || weigh.slipId !== slipId) {
-      weigh = this._weigh = { slipId, ticks: 0, dwellS: 0, emitted: false };
+      weigh = this._weigh = { slipId, target, targetId: target.id, attachmentId,
+        missionId: decl.missionId, ticks: 0, dwellS: 0, emitted: false };
     }
     weigh.ticks += 1;
-    weigh.dwellS += dt;
+    weigh.dwellS += Math.min(dt, elapsed);
     if (weigh.emitted) return; // one event per target latch; the receiver also dedupes by slipId
     // Simulation time only — a tick count would make the measurement frame-rate dependent.
     if (weigh.dwellS < MASS_WEIGH_DWELL_S - 1e-9) return;

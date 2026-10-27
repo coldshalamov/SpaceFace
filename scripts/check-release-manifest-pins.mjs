@@ -100,4 +100,42 @@ if (failures.length) {
   );
   process.exit(1);
 }
+
+// Every GLB in the retail copy must be declared by the release manifest. A release build writes
+// files but never deletes one that a later blocking decision retired, and the retail projection
+// copies the tree wholesale - so a retired original silently rides along in every deploy. This is
+// the cheapest place to catch it: no GLB parsing, just the manifest against the directory.
+if (!only) {
+  const RELEASE_ROOT = join(ROOT, 'assets/ships/release');
+  const declared = new Set(
+    JSON.parse(await readFile(join(RELEASE_ROOT, 'release_manifest.json'), 'utf8'))
+      .assets.map((asset) => String(asset.release).replace(/\\/g, '/')),
+  );
+  const undeclared = [];
+  const walk = async (dir) => {
+    const { readdir } = await import('node:fs/promises');
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'render-packages') continue;
+        await walk(full);
+      } else if (entry.name.endsWith('.glb')) {
+        const relative = full.slice(ROOT.length + 1).replace(/\\/g, '/');
+        if (!declared.has(relative)) undeclared.push(relative);
+      }
+    }
+  };
+  await walk(RELEASE_ROOT);
+  if (undeclared.length) {
+    console.error(`release-manifest-pins: ${undeclared.length} shipped GLB(s) are not declared by release_manifest.json`);
+    for (const file of undeclared) console.error(`  ${file}`);
+    console.error(
+      '\nA release build never deletes a file a later decision retired. Delete it, or give it a\n'
+      + 'manifest row (and a render package) if it still ships. npm run check:asset-census prints\n'
+      + 'the bytes this is costing.',
+    );
+    process.exit(1);
+  }
+}
+
 console.log(`release-manifest-pins: ${checked} pilots consistent with on-disk release assets`);

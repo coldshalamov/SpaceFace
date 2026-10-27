@@ -439,6 +439,7 @@ function leanIdentityData(entity) {
   // stay on the combat list. Ships do not carry salvagePointId; their pools stay lean.
   if (d.salvagePointId != null) {
     out.salvagePointId = d.salvagePointId;
+    if (d.salvageSourceKey != null) out.salvageSourceKey = d.salvageSourceKey;
     if (d.parentType != null) out.parentType = d.parentType;
     if (d.sortPocketId != null) out.sortPocketId = d.sortPocketId;
     if (d.authoredScanLabel != null) out.authoredScanLabel = d.authoredScanLabel;
@@ -461,6 +462,20 @@ function leanIdentityData(entity) {
   if (ai) out.ai = ai;
   // A promoted worker must rejoin the same finite shift, with its manifest still owned by
   // traffic. Losing these fields also overwrites the durable world record on its next capture.
+  if (entity.type === 'ship' && d.trafficRole === 'salvor' && !d.activityActorSlotId && !d.ceresActivityCast) {
+    for (const key of ['cargoManifest', 'generalSalvor', 'salvageSource', 'salvagePointId',
+      'homeStationId', 'jobKind', 'jobPhase', 'jobProgress']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
+  // A commissioned ordinary wreck has no authored source ledger. Preserve its finite pool and
+  // traffic-owned identity through the existing far-row projection, never from its recycled id.
+  if ((entity.type === 'wreck' || entity.type === 'payload') && typeof d.salvorTargetKey === 'string') {
+    for (const key of ['salvorTargetKey', 'salvorClaimedBy', 'salvagePool', 'salvageTimeLeft',
+      '_salvaged', 'parentType', 'payloadType', 'salvorNoticeAt']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
   if (isAnvilWorker(entity)) {
     for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'anvilSlingWitness',
       'name', 'named', 'durable', 'propulsionRuntime']) {

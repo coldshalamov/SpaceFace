@@ -1,0 +1,1062 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.thimble-recorder.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.anchor.socket-tow-eye",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.25999999046325684,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Tow_Eye",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentNodeId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.25999999046325684,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.thimble-recorder",
+  "collisions": [
+    {
+      "id": "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder.collision",
+      "nodeId": "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder",
+      "reference": "COLLISION_THIMBLE_RECORDER_RECORDER"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9d99b0adfa14d60550118691690636d989fc4b9c7f910c696b593b8d810c0c0f",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.6000549333170568,
+          0.6750083925901059
+        ],
+        "min": [
+          -1,
+          -0.6000549333170568,
+          -0.6750083925901059
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7deb2d144e5466522f5f2ffa587172aff5e9e90524dd9347a9a18b23a0aef1c3",
+      "id": "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_THIMBLE_RECORDER_RECORDER",
+      "nodeId": "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          0.75,
+          0.6550209201549696,
+          0.5300454804774123
+        ],
+        "min": [
+          -0.8500000238418579,
+          0.5649791084552599,
+          -0.5300454804774123
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f1db5c8507f605e948326183a01e065a497b93143d8ac61310494beeae60d65e",
+      "id": "sf.render.thimble-recorder.node.lod0-armor.primitive.0",
+      "indexCount": 504,
+      "indexed": true,
+      "materialHash": "58e79f0e2e32e266bd69166b5b8ead75d41cd07d584d15aad5710e46484dc82d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.thimble-recorder.node.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 202
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5250000953674316,
+          0.6874925871900517,
+          0.7055245288650696
+        ],
+        "min": [
+          -0.6949999928474426,
+          -0.2049925705007512,
+          -0.44502454483911436
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "31886a818ea42f8f8fe0a6a72bd147265a8e5b9e9278a58bc290de348d6b418f",
+      "id": "sf.render.thimble-recorder.node.lod0-brushedmetal.primitive.0",
+      "indexCount": 6228,
+      "indexed": true,
+      "materialHash": "04b6686662dbe675d78109256ff5d6a54ffdc1609d28a7b03e816dec1d83ddf3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.thimble-recorder.node.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 1843
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.07499998807907104,
+          0.11499221713984234,
+          0.7034901476693655
+        ],
+        "min": [
+          -0.625,
+          -0.014992221237661668,
+          0.6685098313497996
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bb360fe18b9c398418e6161eb508144013d276926f2dc7296f73ea125d78fa3",
+      "id": "sf.render.thimble-recorder.node.lod0-lights-cyan.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "1e94cbfd5886b8a40042b7722ee916e6f76276c32059ec62afc4472d495242a1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Lights_Cyan",
+      "nodeId": "sf.render.thimble-recorder.node.lod0-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          1,
+          0.6000549333170568,
+          0.6750083925901059
+        ],
+        "min": [
+          -1,
+          -0.6000549333170568,
+          -0.6750083925901059
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "605408c589f26ad11ee240e48fbb942c23c910f84c84845b8d378ad963cea80a",
+      "id": "sf.render.thimble-recorder.node.lod0-mechanicaldark.primitive.0",
+      "indexCount": 564,
+      "indexed": true,
+      "materialHash": "987f9f0abb228d870a0c7916e3a4830836438660b983b1a4a73fd280ff52b18e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.thimble-recorder.node.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "04b6686662dbe675d78109256ff5d6a54ffdc1609d28a7b03e816dec1d83ddf3",
+      "id": "material:04b6686662dbe675d7810925",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1e94cbfd5886b8a40042b7722ee916e6f76276c32059ec62afc4472d495242a1",
+      "id": "material:1e94cbfd5886b8a40042b772",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "58e79f0e2e32e266bd69166b5b8ead75d41cd07d584d15aad5710e46484dc82d",
+      "id": "material:58e79f0e2e32e266bd69166b",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "987f9f0abb228d870a0c7916e3a4830836438660b983b1a4a73fd280ff52b18e",
+      "id": "material:987f9f0abb228d870a0c7916",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_THIMBLE_RECORDER_RECORDER",
+      "nodeName": "COLLISION_THIMBLE_RECORDER_RECORDER",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.lod0-armor",
+      "localTransform": [
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        -0.050000011920928955,
+        0.6100000143051147,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        0,
+        0,
+        0,
+        0.800000011920929,
+        0,
+        -0.050000011920928955,
+        0.6100000143051147,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.lod0-brushedmetal",
+      "localTransform": [
+        1.1100000441074371,
+        0,
+        0,
+        0,
+        0,
+        1.1100000441074371,
+        0,
+        0,
+        0,
+        0,
+        1.1100000441074371,
+        0,
+        0.4150000512599945,
+        0.24125000834465027,
+        0.1302499920129776,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1.1100000441074371,
+        0,
+        0,
+        0,
+        0,
+        1.1100000441074371,
+        0,
+        0,
+        0,
+        0,
+        1.1100000441074371,
+        0,
+        0.4150000512599945,
+        0.24125000834465027,
+        0.1302499920129776,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.lod0-lights-cyan",
+      "localTransform": [
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        -0.3499999940395355,
+        0.049999997951090336,
+        0.6859999895095825,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Lights_Cyan",
+      "nodeName": "LOD0_Lights_Cyan",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        0,
+        0,
+        0,
+        0.2750000059604645,
+        0,
+        -0.3499999940395355,
+        0.049999997951090336,
+        0.6859999895095825,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.lod0-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PROP_THIMBLE_RECORDER_ROOT",
+      "nodeName": "SF_PROP_THIMBLE_RECORDER_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.thimble-recorder.node.socket-tow-eye",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.25999999046325684,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Tow_Eye",
+      "nodeName": "SOCKET_Tow_Eye",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.thimble-recorder.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.2000000476837158,
+        0.25999999046325684,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "6adf6051074f59117da9bb31a1814dd4f189a7e59614e9184fa1ba126692d27b"
+    },
+    "sourceGlb": {
+      "bytes": 339968,
+      "sha256": "5ca41debe7cc66efd0df473905a2032c398f9186c1a35fa54671a3859b43a8ff",
+      "uri": "thimble_recorder.glb"
+    },
+    "sourceManifest": {
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 341488,
+    "sha256": "c9029ccc41602bf3160dee3e8052c7b5c3e46de526e585f2f424f506de03df2c",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.2625000476837158,
+        0.043718826936497424,
+        0.015258068137481817
+      ],
+      "max": [
+        1.5250000953674316,
+        0.6874925871900517,
+        0.7055245288650696
+      ],
+      "min": [
+        -1,
+        -0.6000549333170568,
+        -0.6750083925901059
+      ],
+      "size": [
+        2.5250000953674316,
+        1.2875475205071085,
+        1.3805329214551754
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 7,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.thimble-recorder.anchor.socket-camera-focus",
+              "sf.render.thimble-recorder.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.2000000476837158,
+          0.25999999046325684,
+          0,
+          1
+        ],
+        "name": "SOCKET_Tow_Eye",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Tow_Eye",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Tow_Eye",
+            "recordIds": [
+              "sf.render.thimble-recorder.anchor.socket-tow-eye",
+              "sf.render.thimble-recorder.node.socket-tow-eye"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 1,
+      "mechanical": 2,
+      "signal": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 9,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.800000011920929,
+          0,
+          0,
+          0,
+          0,
+          0.800000011920929,
+          0,
+          -0.050000011920928955,
+          0.6100000143051147,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1100000441074371,
+          0,
+          0,
+          0,
+          0,
+          1.1100000441074371,
+          0,
+          0,
+          0,
+          0,
+          1.1100000441074371,
+          0,
+          0.4150000512599945,
+          0.24125000834465027,
+          0.1302499920129776,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.2750000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.2750000059604645,
+          0,
+          0,
+          0,
+          0,
+          0.2750000059604645,
+          0,
+          -0.3499999940395355,
+          0.049999997951090336,
+          0.6859999895095825,
+          1
+        ],
+        "name": "LOD0_Lights_Cyan",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "pod",
+    "url": "assets/ships/release/parts/wholeships/thimble_recorder.glb"
+  },
+  "runtimeHash": "63ae9690207bb48de49ecfe565f7c94efc631f735c9d5083674f3f5b1f57d58f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.5250000953674316,
+          0.6874925871900517,
+          0.7055245288650696
+        ],
+        "min": [
+          -1,
+          -0.6000549333170568,
+          -0.6750083925901059
+        ]
+      },
+      "id": "sf.render.thimble-recorder.body",
+      "nodeIds": [
+        "sf.render.thimble-recorder.node.collision-thimble-recorder-recorder",
+        "sf.render.thimble-recorder.node.lod0-armor",
+        "sf.render.thimble-recorder.node.lod0-brushedmetal",
+        "sf.render.thimble-recorder.node.lod0-lights-cyan",
+        "sf.render.thimble-recorder.node.lod0-mechanicaldark",
+        "sf.render.thimble-recorder.node.sf-prop-thimble-recorder-root",
+        "sf.render.thimble-recorder.node.socket-camera-focus",
+        "sf.render.thimble-recorder.node.socket-tow-eye"
+      ]
+    }
+  ]
+}

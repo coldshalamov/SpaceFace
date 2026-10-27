@@ -3,12 +3,14 @@
 // Chain hops use the spatial query the caller supplies. Untraited shots never enter here.
 
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import {
   SURFACE_RESPONSE,
   isSurfaceContactReceipt,
   surfaceResponseFor,
 } from '../core/surfaceContact.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { hasBlockingPanels, chainBlocked } from './pylonShieldQuery.js';
 import { entityKey } from './runtime.js';
 import { canAct } from './attackLineage.js';
 import { tryPierce, tryChain, trySplit } from './attackPropagation.js';
@@ -79,7 +81,7 @@ function isSurfaceTarget(target) {
   return SURFACE_TYPES.has(target.type);
 }
 
-export function collectAttackCandidates(state, origin, range, scratch, ownerId, ownerTeam) {
+export function collectAttackCandidates(state, origin, range, scratch, ownerId, ownerTeam, ownerLife = undefined) {
   const nearby = queryNearbyEntities(
     state,
     origin,
@@ -87,11 +89,17 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     scratch || [],
     state && state.entityList,
   );
-  const owner = ownerId != null && state && state.entities && typeof state.entities.get === 'function'
+  const currentOwner = ownerId != null && state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(ownerId)
     : null;
+  const owner = currentOwner?.alive !== false && (ownerLife === undefined
+    || (ownerLife != null && occupantGenerationOf(currentOwner) === ownerLife)) ? currentOwner : null;
+  const sourceLife = ownerLife === undefined ? occupantGenerationOf(owner) : ownerLife;
   const out = [];
   const list = Array.isArray(nearby) ? nearby : [];
+  // Linked shield pylons (packet 06): a chain hop / steer candidate behind a panel that blocks this
+  // source cannot be reached. Same shared geometry read as the projectile, beam and blast paths.
+  const panels = hasBlockingPanels(state);
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
@@ -100,6 +108,7 @@ export function collectAttackCandidates(state, origin, range, scratch, ownerId, 
     if (owner) {
       if (!isHostileForAI(state, owner, entity)) continue;
     } else if (ownerTeam != null && entity.team != null && entity.team === ownerTeam) continue;
+    if (panels && chainBlocked(state, origin, entity.pos, ownerId, entity.id, ownerTeam, sourceLife)) continue;
     out.push({
       id: entity.id,
       pos: entity.pos,

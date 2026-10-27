@@ -10,6 +10,7 @@
 // The radial keeps the player's hands on thrust/trigger — open, pick, gone — matching the cockpit feel.
 
 import { injectWingmanLayouts } from './orrery/wingmanLayouts.js';
+import { injectFlightRadialsLayouts } from './orrery/flight-radialsLayouts.js';
 import { BINDINGS } from './bindings.js';
 import { dpIcon } from './deckplate/icons.js';
 
@@ -22,7 +23,7 @@ const STYLE_ID = 'sf-wingman-radial-style';
 const OPTIONS = [
   { key: '1', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
   { key: '2', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
-  { key: '3', order: 'regroup', label: 'Regroup', icon: 'boost', pos: 'bottom' },
+  { key: '3', order: 'regroup', label: 'Regroup', icon: 'beacon', pos: 'bottom' },
   { key: '4', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
 ];
 
@@ -32,9 +33,8 @@ const C = DIAL / 2;
 const R_IN = 68;
 const R_OUT = 150;
 const HALF_SPAN = (44 * Math.PI) / 180;   // 88-degree keys, 2-degree hairline seams
-const R_FACE = 110;                       // where each key's legend sits
+const R_FACE = 110;                       // where each key's legend sits — and where its receipt lands
 const R_LAMP = 160;                       // the bezel lamps, one per key
-const R_RECEIPT = 65;                     // the receipt word, between hub rim and key inner edge
 const POS_ANGLE = { top: -Math.PI / 2, right: 0, bottom: Math.PI / 2, left: Math.PI };
 
 function polarX(r, a) { return C + r * Math.cos(a); }
@@ -68,6 +68,9 @@ export function createWingmanRadial(ctx) {
   const { bus, state } = ctx;
   injectCss();
   injectWingmanLayouts();
+  // The radials' shared layout home loads after both layout sheets: the ≤1400px tier's type
+  // compensation and the press/arrival presets must out-rank them to reach the pixels.
+  injectFlightRadialsLayouts();
 
   const root = document.getElementById('ui-root');
   const overlay = document.createElement('div');
@@ -92,6 +95,7 @@ export function createWingmanRadial(ctx) {
 
   const wedgeEls = [];
   const receiptEls = {};
+  const receiptWedges = {};
   for (const opt of OPTIONS) {
     const wedge = document.createElement('button');
     wedge.type = 'button';
@@ -115,15 +119,19 @@ export function createWingmanRadial(ctx) {
     lamp.style.top = `${polarY(R_LAMP, a).toFixed(1)}px`;
     overlay.appendChild(lamp);
     // The order receipt line (FB-138): a real node so a blocked/converted/status event can
-    // write its word onto the slot the pilot picked. Appended to the overlay — the wedge's
-    // clip-path would cut anything outside the arc — seated between hub rim and key inner edge.
+    // write its word onto the slot the pilot picked. It takes the slot's legend place
+    // (R_FACE) — the seat between hub rim and key inner edge is ~24px of clear track on the
+    // side keys, narrower than any receipt word, so the word printed across the neighbouring
+    // key's legend. Appended to the overlay (the wedge's clip-path would cut it) and raised
+    // above the wedge; the legend stands down while the word shows (has-receipt below).
     const receipt = document.createElement('span');
     receipt.className = 'sf-wradial__receipt mono';
     receipt.setAttribute('aria-live', 'polite');
-    receipt.style.left = `${polarX(R_RECEIPT, a).toFixed(1)}px`;
-    receipt.style.top = `${polarY(R_RECEIPT, a).toFixed(1)}px`;
+    receipt.style.left = `${polarX(R_FACE, a).toFixed(1)}px`;
+    receipt.style.top = `${polarY(R_FACE, a).toFixed(1)}px`;
     overlay.appendChild(receipt);
     receiptEls[opt.order] = receipt;
+    receiptWedges[opt.order] = wedge;
     wedge.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); issue(opt); });
     overlay.appendChild(wedge);
     wedgeEls.push(wedge);
@@ -160,8 +168,14 @@ export function createWingmanRadial(ctx) {
     const el = order != null ? receiptEls[order] : null;
     if (!el || !word) return;
     if (issuing && el.textContent) return; // the blocked reason outranks the status line
-    for (const key of Object.keys(receiptEls)) if (receiptEls[key] !== el) receiptEls[key].textContent = '';
+    for (const key of Object.keys(receiptEls)) {
+      if (receiptEls[key] !== el) {
+        receiptEls[key].textContent = '';
+        receiptWedges[key]?.classList.remove('has-receipt');
+      }
+    }
     el.textContent = word;
+    receiptWedges[order]?.classList.add('has-receipt');
     if (issuing) { issueReceipt = true; return; }  // issue() decides whether to hold
     if (open) { receiptHold = true; scheduleReceiptEnd(); }
     else flashReceipt();
@@ -183,6 +197,7 @@ export function createWingmanRadial(ctx) {
   function endReceipt() {
     receiptTimer = 0;
     for (const el of Object.values(receiptEls)) el.textContent = '';
+    for (const wedge of Object.values(receiptWedges)) wedge.classList.remove('has-receipt');
     if (receiptHold) { receiptHold = false; close(); }
     if (receiptFlash) {
       receiptFlash = false;
@@ -427,19 +442,21 @@ function injectCss() {
     font-size:12px;
   }
   .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path {
-    stroke:var(--dp-lamp, #f2b950); stroke-width:4; filter:drop-shadow(0 0 6px rgb(242 185 80 / .45)); }
+    stroke:var(--dp-lamp, #f2b950); stroke-width:4; }
   .sf-wradial:has(.sf-wradial__wedge--top:is(:hover, :focus-visible)) .sf-wradial__lamp--top,
   .sf-wradial:has(.sf-wradial__wedge--right:is(:hover, :focus-visible)) .sf-wradial__lamp--right,
   .sf-wradial:has(.sf-wradial__wedge--bottom:is(:hover, :focus-visible)) .sf-wradial__lamp--bottom,
   .sf-wradial:has(.sf-wradial__wedge--left:is(:hover, :focus-visible)) .sf-wradial__lamp--left {
     background:linear-gradient(var(--dp-lamp) 0 0);
     box-shadow:0 0 7px var(--dp-lamp-bloom, rgb(242 185 80 / .34)), 0 0 16px var(--dp-lamp-bloom-soft, rgb(242 185 80 / .16)), 0 0 8px rgb(242 185 80 / .25); }
-  /* the order receipt: a word seated between hub rim and key inner edge on the slot it names */
-  .sf-wradial__receipt { position:absolute; transform:translate(-50%,-50%); max-width:120px; pointer-events:none;
+  /* the order receipt: the word lands ON the slot it names — it takes the legend's place and
+     the legend stands down while it shows (width 120 may wrap NOT DEPLOYED onto two lines). */
+  .sf-wradial__receipt { position:absolute; transform:translate(-50%,-50%); width:120px; z-index:3; pointer-events:none;
     font-family:var(--dp-face-etch, sans-serif); font-variation-settings:"wght" 800, "wdth" 72; font-size:var(--wr-type);
-    letter-spacing:.1em; text-transform:uppercase; text-align:center; line-height:1.2; white-space:nowrap;
+    letter-spacing:.1em; text-transform:uppercase; text-align:center; line-height:1.2;
     color:var(--dp-lamp-hot, #ffd98c); text-shadow:0 1px 0 rgb(0 0 0 / .8), 0 0 9px rgb(242 185 80 / .3); }
   .sf-wradial__receipt:empty { display:none; }
+  .sf-wradial__wedge.has-receipt .sf-wradial__label { opacity:0; }
   /* receipt-only flash: visible, but the keys cannot be pressed */
   .sf-wradial--receipt .sf-wradial__wedge, .sf-wradial--receipt .sf-wradial__hub { pointer-events:none; }
 

@@ -36,7 +36,7 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     training: { careerId: 'hunter', stepId: 'doctrine_pursuit' },
     legality: 'legal',
     collateral: { civilians: 'spread_warning', cargo: 'none' },
-    blurb: 'Mount synchronizer. A second weaker root sibling. Heat and spread rise.',
+    blurb: 'Mount synchronizer. Fires a second, weaker shot with every trigger pull. Heat and spread rise.',
   },
   {
     traitId: 'mod_triad_mount',
@@ -52,7 +52,7 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     acquisition: ['buy', 'research'],
     legality: 'legal',
     collateral: { civilians: 'wide_spread', cargo: 'none' },
-    blurb: 'Three-root synchronizer. Needs a medium utility slot — Hitch cannot carry it.',
+    blurb: 'Three-shot synchronizer. Needs a medium utility slot — Hitch cannot carry it.',
   },
   {
     traitId: 'mod_piercing_core',
@@ -281,7 +281,7 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     acquisition: ['buy', 'research'],
     legality: 'legal',
     collateral: { civilians: 'wide_cone', cargo: 'none' },
-    blurb: 'Spreads the root volley. Heat up a little; damage stays the same.',
+    blurb: 'Spreads each volley wider. Heat up a little; damage stays the same.',
   },
   {
     traitId: 'mod_storm_carom',
@@ -327,7 +327,7 @@ export const ADVENTURE_COLLISION_DIVIDEND = freezeDeep({
   form: 'doctrine',
   fittedId: null,
   acquisition: ['bounty', 'salvage'],
-  blurb: 'Kills pay world credits and salvage. Causal KINDs are a receipt, not a wave score.',
+  blurb: 'Kills pay world credits and salvage. How you made the kill is a receipt, not a wave score.',
 });
 
 export function assertTraitMapComplete(traits = ATTACK_TRAITS) {

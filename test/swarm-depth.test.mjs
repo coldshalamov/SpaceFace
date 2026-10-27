@@ -38,6 +38,8 @@ import {
 import {
   SWARM_CROSSOVER_CATALOG,
   SWARM_SAUCER_EARN_WAVE,
+  SWARM_YARD_CHIT_EARN_WAVE,
+  SWARM_YARD_CHIT_SERVICE_DISCOUNT,
   applyCrossoverResult,
   crossoverEarnedByRun,
   crossoverFactsFor,
@@ -46,6 +48,7 @@ import {
   migrateCrossover,
   registerCrossoverReader,
   swarmCrossoverEarned,
+  swarmCrossoverServiceDiscount,
   swarmEarnedCrossoverIds,
   swarmEarnedHullDefIds,
 } from '../src/data/swarmCrossover.js';
@@ -56,7 +59,7 @@ import {
   swarmChainLift,
   THEME_STEM_WEIGHTS,
 } from '../src/audio/themeMatrix.js';
-import { economy } from '../src/systems/economy.js';
+import { economy, serviceUnitCr, SERVICE_PRICES } from '../src/systems/economy.js';
 import { runSession } from '../src/systems/runSession.js';
 import { defLockReasonText, ships } from '../src/systems/ships.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
@@ -169,17 +172,28 @@ test('SWARM-06: normalizePerkLoadout drops unearned ids silently', () => {
 
 /* ---- the crossover ledger -------------------------------------------------- */
 
-test('SWARM-06: the earn is the Zone 3 boss — span-cleared, swarm-only, never practice', () => {
+test('SWARM-06: the earn is the zone boss — span-cleared, swarm-only, never practice', () => {
   const facts = crossoverFactsFor({ ruleset: SWARM, startWave: 21, wavesCleared: 10 });
   assert.equal(facts.startWave, 21);
   assert.equal(facts.lastClearedWave, 30);
   const earned = crossoverEarnedByRun(facts);
   assert.equal(earned.length, 1);
   assert.equal(earned[0].id, 'hull:ship_saucer');
-  // A Round-31 checkpoint start never met that boss.
+  // A Round-31 checkpoint start never met either boss.
   assert.equal(crossoverEarnedByRun({ ruleset: SWARM, startWave: 31, lastClearedWave: 40 }).length, 0);
-  // A run that died at Round 29 did not finish it.
-  assert.equal(crossoverEarnedByRun({ ruleset: SWARM, startWave: 1, lastClearedWave: 29 }).length, 0);
+  // A run that died at Round 19 never finished a zone at all.
+  assert.equal(crossoverEarnedByRun({ ruleset: SWARM, startWave: 1, lastClearedWave: 19 }).length, 0);
+  // A run that died at Round 29 still proved the Zone 2 boss — the chit, not the disc.
+  assert.deepEqual(
+    crossoverEarnedByRun({ ruleset: SWARM, startWave: 1, lastClearedWave: 29 }).map((row) => row.id),
+    ['permit:yard_chit'],
+  );
+  // The Round-21 checkpoint start met the Zone 3 boss but never fought the Zone 2 one — each
+  // row's earn is the span of ITS fight, so the chit stays unproven.
+  assert.deepEqual(
+    crossoverEarnedByRun({ ruleset: SWARM, startWave: 21, lastClearedWave: 30 }).map((row) => row.id),
+    ['hull:ship_saucer'],
+  );
   assert.equal(crossoverEarnedByRun({ ruleset: 'scored', startWave: 1, lastClearedWave: 30 }).length, 0);
   assert.equal(crossoverEarnedByRun({ ruleset: SWARM, practice: true, startWave: 1, lastClearedWave: 30 }).length, 0);
 });
@@ -191,27 +205,39 @@ test('SWARM-06: the ledger migrates closed and earns once', () => {
   const first = applyCrossoverResult(emptyCrossover(), {
     ruleset: SWARM, startWave: 1, lastClearedWave: SWARM_SAUCER_EARN_WAVE,
   });
-  assert.equal(first.earned.length, 1);
+  // One deep run proves every row its span covered — the chit's Zone 2 boss and the Saucer's.
+  assert.equal(first.earned.length, 2);
   const again = applyCrossoverResult(first.crossover, {
     ruleset: SWARM, startWave: 1, lastClearedWave: 30,
   });
   assert.equal(again.earned.length, 0, 'an already-proven row never re-fires');
-  assert.deepEqual(crossoverHullIds(again.crossover), ['ship_saucer']);
+  assert.deepEqual(crossoverHullIds(again.crossover), ['ship_saucer'],
+    'a permit is no hull — the shipyard manifest never sees it');
 });
 
 test('SWARM-06: the read port answers off the registered profile', () => {
   registerCrossoverReader(() => null);
   assert.equal(swarmCrossoverEarned('hull:ship_saucer'), false);
+  assert.equal(swarmCrossoverServiceDiscount(), 0, 'no reader, no discount — never a guess');
   registerCrossoverReader(() => ({ crossover: dirtyLedger() }));
   assert.equal(swarmCrossoverEarned('hull:ship_saucer'), true);
   assert.deepEqual(swarmEarnedCrossoverIds(), ['hull:ship_saucer']);
   assert.deepEqual(swarmEarnedHullDefIds(), ['ship_saucer']);
+  assert.equal(swarmCrossoverServiceDiscount(), 0, 'the disc is no permit');
+  registerCrossoverReader(() => ({ crossover: permitLedger() }));
+  assert.equal(swarmCrossoverEarned('permit:yard_chit'), true);
+  assert.equal(swarmCrossoverServiceDiscount(), SWARM_YARD_CHIT_SERVICE_DISCOUNT);
+  assert.deepEqual(swarmEarnedHullDefIds(), [], 'the chit opens no hull');
   // Re-arm the live reader for the rest of the suite — importing survivalRecords registered it.
   registerCrossoverReader(() => { try { return loadCrucibleMeta(); } catch { return null; } });
 });
 
 function dirtyLedger() {
   return { earned: { 'hull:ship_saucer': { wave: 30, at: 't' } } };
+}
+
+function permitLedger() {
+  return { earned: { 'permit:yard_chit': { wave: SWARM_YARD_CHIT_EARN_WAVE, at: 't' } } };
 }
 
 /* ---- settlement ------------------------------------------------------------ */
@@ -281,6 +307,31 @@ test('SWARM-06: a practice run and a short run write nothing to the ledger', () 
   });
   const profile = loadCrucibleMeta();
   assert.deepEqual(Object.keys(profile.crossover.earned), []);
+});
+
+test('SWARM-06: a full-sweep settle proves the chit and the disc on one ledger', () => {
+  resetCrucibleMetaForTests();
+  const settled = settleCrucibleRun({
+    result: swarmResult({ startWave: 1, wavesCleared: 30, wave: 30, deepestWave: 30 }),
+    run: swarmRun(),
+  });
+  assert.deepEqual(settled.result.crossoverEarned, ['hull:ship_saucer', 'permit:yard_chit']);
+  const profile = loadCrucibleMeta();
+  assert.ok(profile.crossover.earned['permit:yard_chit'], 'the profile carries the chit');
+  assert.equal(swarmCrossoverServiceDiscount(), SWARM_YARD_CHIT_SERVICE_DISCOUNT,
+    'the live reader answers the permit off the written bag');
+});
+
+test('SWARM-06: a zone-2 clear proves the chit alone — a second crossover kind', () => {
+  resetCrucibleMetaForTests();
+  const settled = settleCrucibleRun({
+    result: swarmResult({ startWave: 1, wavesCleared: 20, wave: 20, deepestWave: 20 }),
+    run: swarmRun(),
+  });
+  assert.deepEqual(settled.result.crossoverEarned, ['permit:yard_chit']);
+  const profile = loadCrucibleMeta();
+  assert.equal(profile.crossover.earned['hull:ship_saucer'], undefined,
+    'the disc still waits for its own boss');
 });
 
 test('SWARM-06: the Threat wager pays its bounty multiplier at settle', () => {
@@ -597,8 +648,39 @@ test('SWARM-06: the setup carries the wager for swarm and never for the gauntlet
   assert.equal(gauntlet.value.swarmThreats, undefined);
 });
 
-test('SWARM-06: the crossover catalog keeps its one-hull contract', () => {
-  assert.equal(SWARM_CROSSOVER_CATALOG.length, 1);
-  assert.equal(SWARM_CROSSOVER_CATALOG[0].defId, 'ship_saucer');
-  assert.equal(SWARM_CROSSOVER_CATALOG[0].earnWave, 30);
+test('SWARM-06: the Yard Chit cuts the docked service rate the quote and charge share', () => {
+  resetCrucibleMetaForTests();
+  const state = createGameState(1);
+  state.ui.dockedStationId = 'station_helios';
+  const list = SERVICE_PRICES.fuelCrPerUnit;
+  assert.equal(serviceUnitCr(state, list, 'refuel'), list,
+    'an unproven ledger leaves the berth at list');
+  saveCrucibleMeta({ crossover: permitLedger(), hangar: emptyHangar() });
+  const chitUnit = serviceUnitCr(state, list, 'refuel');
+  assert.ok(Math.abs(chitUnit - list * (1 - SWARM_YARD_CHIT_SERVICE_DISCOUNT)) < 1e-9,
+    'the chit takes its tenth off the docked rate');
+  // Standing still pays its own way — the chit stacks on a veteran berth, never replaces it.
+  state.factions = { faction_scn: { rep: 200 } };
+  const stacked = serviceUnitCr(state, list, 'refuel');
+  assert.ok(stacked < chitUnit, 'rank-2 standing and the chit both count');
+  assert.ok(Math.abs(stacked - list * 0.9 * (1 - SWARM_YARD_CHIT_SERVICE_DISCOUNT)) < 1e-9,
+    'a tenth under a tenth — the credentials multiply');
+  // Off-station work stays at list: the reserve and depot costs never see the dock chit.
+  state.ui.dockedStationId = null;
+  assert.equal(serviceUnitCr(state, list, 'refuel'), list);
+});
+
+test('SWARM-06: the crossover catalog keeps its two-kind contract', () => {
+  assert.equal(SWARM_CROSSOVER_CATALOG.length, 2);
+  const saucer = SWARM_CROSSOVER_CATALOG.find((row) => row.id === 'hull:ship_saucer');
+  assert.equal(saucer.kind, 'hull');
+  assert.equal(saucer.defId, 'ship_saucer');
+  assert.equal(saucer.earnWave, 30);
+  const chit = SWARM_CROSSOVER_CATALOG.find((row) => row.id === 'permit:yard_chit');
+  assert.equal(chit.kind, 'permit');
+  assert.equal(chit.earnWave, SWARM_YARD_CHIT_EARN_WAVE);
+  assert.equal(chit.serviceDiscount, SWARM_YARD_CHIT_SERVICE_DISCOUNT);
+  for (const row of SWARM_CROSSOVER_CATALOG) {
+    assert.ok(row.id && row.name && row.blurb, 'every row reads on the results screen');
+  }
 });

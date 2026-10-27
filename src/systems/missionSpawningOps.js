@@ -1,8 +1,10 @@
+import { registerMassScaleTow } from './cargoCustody.js';
+import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { MARK_HAIL_RANGE_WU, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
-import { bumpCollidesFlipEpoch, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { hash32 } from '../core/rng.js';
@@ -106,10 +108,22 @@ export const missionSpawningOps = {
     if (m.type === 'race' && !follow) return this._adoptRaceGateTargets(m, existing);
     const list = [];
     // Campaign 47-A B2 uses the existing authored rescue-capsule payload. Adopt it through the
-    // cargo-interactable view on Continue instead of respawning the capsule.
-    const visitMissionTargets = isCampaign47aB2Rescue(m)
+    // cargo-interactable view on Continue instead of respawning the capsule. Authored starter
+    // buoys are payloads too; the living-actor view deliberately excludes that type.
+    const starterBuoy = m.type === 'tow_recovery' && m.params?.starterJobId === 'starter_pelican' && authoredStarterSite(m);
+    const visitMissionTargets = isCampaign47aB2Rescue(m) || starterBuoy
       ? forEachJobInteractable : forEachLivingWorldActor;
     visitMissionTargets(this.state, (e) => { list.push(e); });
+    // Tow-recovery cores belong to the rock domain, outside the living-actor view.
+    // Only the current promoted mission/slot occupant can survive this adoption boundary.
+    if (m.type === 'tow_recovery') forEachFieldRock(this.state, (entity) => {
+      if (!entity || entity.alive === false || entity.type !== 'asteroid'
+          || this.state.entities.get(entity.id) !== entity
+          || physicalRoleOf(entity) !== PHYSICAL_ROLE.SLAG_CORE
+          || String(missionIdentityOf(entity)) !== String(m.id)
+          || missionTargetSlotOf(entity, m.id) == null) return;
+      list.push(entity);
+    });
     if (follow) {
       const exact = list.filter((e) => e && e.alive && !e.isPlayer && e.data
         && e.data.worldRecordId === follow.targetRecordId);
@@ -138,6 +152,9 @@ export const missionSpawningOps = {
     }
     const candidates = list.filter((e) => {
       if (!e || !e.alive || e.isPlayer) return false;
+      if (starterBuoy && (e.type !== 'payload' || e.data?.physicalRole !== PHYSICAL_ROLE.SLAG_CORE
+        || e.data?.starterWorkdayVersion !== m.params.starterWorkdayVersion
+        || e.data?.starterJobId !== m.params.starterJobId || e.data?.starterStep !== m.params.starterStep)) return false;
       const mid = missionIdentityOf(e);
       return mid != null && String(mid) === String(m.id);
     });
@@ -381,7 +398,11 @@ export const missionSpawningOps = {
       if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
       syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
     }
-    if (ent.data.worldRecordId || !sectorId) return;
+    if (ent.data.worldRecordId || !sectorId) {
+      registerStarterBuoyTow(this.state,ent,m);
+      registerMassScaleTow(this.state,ent,m);
+      return;
+    }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const key = `mission:${m.id}:${durableSlot}`;
     ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
@@ -391,6 +412,8 @@ export const missionSpawningOps = {
     // Post-spawn stamp — register it so byWorldRecordId/count answer O(1) (the contender path
     // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
     registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
+    registerStarterBuoyTow(this.state,ent,m);
+    registerMassScaleTow(this.state,ent,m);
   },
 
   /**
@@ -1240,3 +1263,4 @@ export const missionSpawningOps = {
     this.bus.emit('mission:updated', { missionId: m.id, twist: 'escort_turns' });
   },
 };
+

@@ -303,10 +303,6 @@ export function offerDraftForChallenge(input, challenge) {
   };
 }
 
-export function allowsReroll(challenge) {
-  return !(challenge && challenge.skipReroll);
-}
-
 /** Weapons cold: guns stay in the rack. Utilities and massline heads remain. */
 export function applyWeaponsColdLoadout(loadout) {
   if (!Array.isArray(loadout)) return [];
@@ -318,11 +314,6 @@ export function applyWeaponsColdLoadout(loadout) {
     out.push({ ...slot });
   }
   return out;
-}
-
-export function allowedHullIds(challenge, fallback = 'ship_kestrel') {
-  if (challenge && isNonEmptyString(challenge.hullId)) return [challenge.hullId];
-  return [fallback];
 }
 
 /** Live fitting rule: every named fitting must land on the hull and stay inside budget. */

@@ -34,7 +34,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics', 'latchNine',
   'aiPorts', 'reactiveMatter', 'orbitalGallery', 'kineticLeague', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'hullBurst', 'mines', 'bombs', 'emergentPrimitives', 'environmentMaterials', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks', 'dyingHull',
   // Packet 09 (Three Capitals): the score system validates helpers.routeCombatDamage /
   // getCombatCapabilities at init, so it initialises after the combat kernel installs them.
   'capitalBossEncounters',
@@ -68,7 +68,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
   // miningHud: the mining beam's vent/rich-core/seam instrument — event-mirrored, DOM-guarded,
   // ticks only to place the world-anchored dial (same posture as the sibling HUDs).
-  'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud', 'survivalHud', 'swarmJuiceHud', 'crucibleFocus', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'noFireAdvisory', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
@@ -119,8 +119,8 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   // gyreSnare shares fields' slot contract: it queues its pull/hold/launch impulses on the physics
   // membrane so this tick's solve applies them (one slot later they'd always be a tick stale).
-  'survivalArena', 'fields', 'gyreSnare', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
-  'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
+  'survivalArena', 'fields', 'gyreSnare', 'shieldPylons', 'planetRuntime', 'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket', 'industrialDisasters', 'salvageTender', 'physics', 'reactiveMatter', 'latchNine', 'combat',
+  'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
@@ -131,7 +131,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'tensionDirector', 'encounterDirector', 'rockCore', 'scissorwake', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'stationServices',
   'difficultyDirector', 'gateControlDirector',
-  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger', 'recoveryEncounter',
+  'salvage', 'tallyThree', 'lastShift', 'sableVenn', 'lossInvestigation', 'salvageActions', 'survivorPod', 'rookBooth', 'kesslerScale', 'furnaceIntake', 'gateThreeWeir', 'slateColumn', 'bouncer', 'receipt', 'mop', 'tallyho', 'tare', 'lamplighter', 'shepherd12', 'quill', 'holdfast', 'bellhop', 'gravedigger', 'recoveryEncounter',
   'factions',
   // §34 rows 513/515/516/526/530: these five tick real per-step work — the sweep-ring
   // sensor model, formation lock, coupler snap, flag-flip/lien dwell, and pylon claims all
@@ -163,7 +163,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // precede the HUDs' readout this tick.
   'swarmElites',
   'heat', 'traffic', 'drill', 'claims', 'chronicler', 'longBerth', 'crew',
-  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'planetHud', 'miningHud',
+  'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'gyreHud', 'pylonHud', 'planetHud', 'miningHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
   'survivalHud',
@@ -199,13 +199,13 @@ export const SLOT_SYSTEM_IDS = Object.freeze(['aiSlot', 'flightSlot']);
  * Unlisted systems default to { nodeSafe: true, phase: 'sim' }.
  */
 export const SYSTEM_CAPABILITIES = Object.freeze({
-  // Event-only deck adapters. newGame only resolves a card, and promptDeck stays
-  // importable without a DOM, so a fresh run can clear them under Node the same way
-  // customsPrompt does. capability stays hud: they are not a sim tick.
-  lastShiftPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  // Event-only deck adapters. Capability stays hud: they are not a sim tick.
+  // Last Shift, Ilex and Towline require the main realm's decision deck.
+  // Other node-safe adapters can still clear cards during fresh-run setup.
+  lastShiftPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   redKitePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  ilexArkPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
-  towlineTablePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
+  ilexArkPrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
+  towlineTablePrompt: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'hud' }),
   mothlightPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   palletJackPrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
   borrowedVoicePrompt: Object.freeze({ nodeSafe: true, phase: 'platform', capability: 'hud' }),
@@ -235,6 +235,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   gyreHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  pylonHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   miningHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   voiceArbiter: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),
@@ -259,6 +260,15 @@ export const OWNED_RUNTIME_MODULES = Object.freeze({
     owner: 'uniqueWrecks',
     tick: 'owned',
     driven: Object.freeze(['economy:tick', 'entity:killed']),
+  }),
+  // createScavengerOccupationSwitch(uniqueWrecks) returns { departed, jobComplete, killed,
+  // sync, clear, status }; uniqueWrecks — an event-driven registered system — drives departed
+  // from 'wreckEcology:departed', jobComplete from 'npcjobs:complete', killed from
+  // 'entity:killed', and sync from its 'economy:tick' listener. The switch has no own tick.
+  scavengerOccupationSwitch: Object.freeze({
+    owner: 'uniqueWrecks',
+    tick: 'owned',
+    driven: Object.freeze(['wreckEcology:departed', 'npcjobs:complete', 'entity:killed', 'economy:tick']),
   }),
 });
 
@@ -355,6 +365,9 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'receipt',
   // row 506 MOP: the clean-up patrol is a seconds-scale census.
   'mop',
+  // row 506 TALLYHO: the hunt board's quarry/rival census is a seconds-scale read;
+  // the event pump covers spawn/kill bursts, the tick covers expiry and steering.
+  'tallyho',
   // row 506 TARE: the scale deck census reads settled bodies on the 2 Hz pass.
   'tare',
   // row 506 LAMPLIGHTER: the arm ring and stock census is a seconds-scale read.
@@ -452,11 +465,11 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // Combat/contact owners and damage single-writers.
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs',
   'emergentPrimitives', 'environmentMaterials', 'impulseCharges', 'hullBurst', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'gyreSnare', 'environmentalMachinery',
+  'uniqueLootAbilities', 'fields', 'gyreSnare', 'shieldPylons', 'environmentalMachinery',
   // Anchored set-pieces queue physics impulses every tick.
   'morrow', 'vesper', 'bracket', 'ravel', 'solstice', 'rubric', 'ruckus', 'ruud', 'docket',
   // Combat island: damage/attachment/custody owners at combat cadence.
-  'combat', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
+  'combat', 'dyingHull', 'tetherGameplay', 'surrenderRecovery', 'shipjack', 'custodyConsequences',
   'lineProgression',
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',

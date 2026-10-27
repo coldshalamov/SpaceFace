@@ -3,8 +3,11 @@
 // A ten-wave Survival run used to happen in total silence: waves opened with no word, the wave-10
 // boss arrived unremarked, and a pile of authored warning copy never reached anybody. This system
 // is the run's combat net. It says what is coming and from where, gives the boss a real arrival,
-// teaches an archetype's counter the first time the player meets it, and marks a wave cleared —
+// teaches an archetype's counter the first time the player meets it, names an elite's affix trick
+// the first time a marked hull carries it, and marks a wave cleared —
 // or says plainly when the spawn cap starved a wave so the player never mistakes it for a clear.
+// It also names the watchdog's stall release, so a room that resumes spawning after a starved
+// hold never reads as the sim quietly glitching back to life.
 //
 // It is READ-ONLY over the run. It never writes state.run (runSession owns that), never spawns,
 // and uses no RNG at all — every line is a pure function of the plan and the receipts. FB-025
@@ -30,6 +33,8 @@
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SURVIVAL_TEMPLATE_BLOCK } from '../data/survivalActs.js';
 import { physicalProblemFromPackages, shippedQuestionFor } from '../data/survivalWaves.js';
+import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
+import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
 import { validateRunState } from '../core/runState.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
@@ -61,6 +66,16 @@ export const MAX_BROOD_TELEGRAPH_LINES_PER_WAVE = 2;
 export const BROOD_TELEGRAPH_GAP_S = 8;
 /** Reading time for a tell — short, since the attack lands a breath behind it. */
 const BROOD_TELEGRAPH_TTL_S = 3;
+
+/**
+ * An affix first-sight tell is a vocabulary lesson, not a chorus: a whole wave stamping the same
+ * trick is one spoken line, and a wave that debuts several tricks still paces them — at most
+ * this many affix tells a wave, each counted against MAX_LINES_PER_WAVE through _alert, because
+ * the bound is hard. A type crowded out of one wave stays unmarked and speaks on a later stamp.
+ */
+export const MAX_AFFIX_LINES_PER_WAVE = 2;
+/** Reading time for an affix tell — it teaches a trick, not an imminent attack. */
+const AFFIX_TELL_TTL_S = 5;
 
 /**
  * Gate id → world bearing, in words.
@@ -357,6 +372,8 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
     this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
     this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
+    this._unsubs.push(this.bus.on('swarm:affix', (p) => this._onAffix(p)));
+    this._unsubs.push(this.bus.on('swarm:stallReleased', (p) => this._onStallReleased(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -379,6 +396,8 @@ export const survivalAnnounce = {
     // Archetypes already taught this run. Marked on ANNOUNCE, not on sight, so a hint crowded out
     // by this wave's budget still gets its turn next wave instead of being lost forever.
     this._hintedEnemyIds = new Set();
+    // Affix types already taught this run — the same announce-not-sight law as the hints.
+    this._seenAffixIds = new Set();
     this._plan = null;
     this._planWave = 0;
     this._muted = false;
@@ -399,6 +418,8 @@ export const survivalAnnounce = {
     this._compassWave = 0;
     this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
     this._broodTeleLines = 0;      // telegraph lines spent this wave
+    this._affixLines = 0;          // affix first-sight lines spent this wave
+    this._stallSpokeWave = 0;      // the wave the stall release last spoke on
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -519,7 +540,25 @@ export const survivalAnnounce = {
       const arenaId = this.state && this.state.run ? this.state.run.arenaId : null;
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
+      this._speakChampionApproach(wave);
     }
+  },
+
+  /**
+   * The next champion is a named goal, not a rumor. At exactly the authored lead the net
+   * speaks the rotation row the ladder will field — its label, the wave it waits on, and
+   * its authored line — once, then stays quiet: no countdown, and nothing on the boss wave
+   * itself, which names itself on arrival. A Circuit round carries its own boss contract,
+   * so the cadence preview would lie there; mutator runs keep it because the cadence
+   * champion still lands.
+   */
+  _speakChampionApproach(wave) {
+    const swarm = this._plan && this._plan.swarm;
+    if (!swarm || swarm.circuit) return;
+    const next = swarmNextBossFor(wave);
+    if (!next || next.distance !== SWARM_CHAMPION_LEAD_WAVES) return;
+    const line = typeof next.line === 'string' && next.line ? ` ${next.line}` : '';
+    this._say('objective', `survival:w${wave}:champion`, `${next.label} waits at wave ${next.wave}.${line}`, 6);
   },
 
   /**
@@ -582,6 +621,25 @@ export const survivalAnnounce = {
   },
 
   /**
+   * D195 — the stall watchdog's release, heard. A pressure hold that froze an owed quota is
+   * lifted after nine suppressed seconds and the stream's own law resumes the round — the room
+   * visibly refills after a dead lull with no other word for it, so the net says why, once per
+   * wave and counted in the same budget. 'objective' like the surge telegraph: a state of the
+   * round, not a danger beat. Marked on a successful speak, so a line crowded out of this wave's
+   * budget can still be said by a later release instead of being lost silently.
+   */
+  _onStallReleased(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const wave = payload && payload.wave;
+    if (!Number.isInteger(wave) || wave < 1) return;
+    if (this._stallSpokeWave === wave) return;
+    const spoke = this._say('objective', `survival:w${wave}:stall`,
+      'The room breathes again — the pack is inbound.', 5);
+    if (spoke) this._stallSpokeWave = wave;
+  },
+
+  /**
    * SWARM-07 B2 — a brood family's tell, heard. The engine emits once per cell that commits
    * to the attack language (a buried family cracking out of the rock, the mother's first
    * birth, a splitter's break), each carrying the family's authored {bark,line}. A burst of
@@ -606,6 +664,37 @@ export const survivalAnnounce = {
     if (!this._alert(`brood-telegraph:${familyId}`, sev, line, BROOD_TELEGRAPH_TTL_S)) return;
     this._broodTeleAt.set(familyId, now);
     this._broodTeleLines += 1;
+  },
+
+  /**
+   * SWARM-06 §6.4 — an elite trick's first sight, named. swarmElites stamps a marked hull and
+   * emits the receipt (affixes[] carries the primary plus a veteran's second), and nobody
+   * listened: a shielded or volatile hostile arrived with no vocabulary for what made it
+   * different. The combat net speaks the affix's own authored blurb once per run per type —
+   * marked on ANNOUNCE, the same law as the counter-hints, so a wave whose budget is spent
+   * defers the lesson to a later stamp instead of losing it. A veteran's two tricks are two
+   * lessons: one line per affix type, never per body. Warn-sev on the alert lane, and the
+   * stable key coalesces a repeated tell in the arbiter instead of stacking it.
+   */
+  _onAffix(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const list = payload && Array.isArray(payload.affixes) && payload.affixes.length > 0
+      ? payload.affixes
+      : [payload && payload.affix, payload && payload.affix2].filter((a) => typeof a === 'string');
+    for (const id of list.slice(0, 4)) {
+      if (this._seenAffixIds.has(id)) continue;
+      if (this._affixLines >= MAX_AFFIX_LINES_PER_WAVE) return;
+      const row = SWARM_AFFIX_BY_ID[id];
+      // An unrecognised id is silence, never a raw identifier on the player's screen.
+      if (!row) continue;
+      const text = typeof row.blurb === 'string' && row.blurb
+        ? `${row.name}: ${row.blurb}`
+        : `${row.name} is on the field.`;
+      if (!this._alert(`swarm-affix:${id}`, 'warn', text, AFFIX_TELL_TTL_S)) return;
+      this._seenAffixIds.add(id);
+      this._affixLines += 1;
+    }
   },
 
   /** The lesson's held pack arriving early is still an arrival — name it, or the room fills silently. */

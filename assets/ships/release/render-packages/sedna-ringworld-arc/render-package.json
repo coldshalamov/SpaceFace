@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "124730a5db85dfce153a8393136471031f75d42532cdb86e6cdbd290ed2808ab",
+  "contentHash": "93ceaa0fbc3c385c88905b1d47e2c3290bf2ebace0d9cc9942d93231becad80c",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1,
-          0.09000000357627869,
+          1.0000325069738691,
+          0.08993834658145676,
           0.9999223351478577
         ],
         "min": [
-          -0.6006285548210144,
-          -0.03999999910593033,
+          -0.6006610617948837,
+          -0.0399383421111084,
           -0.9999223351478577
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0f7bad4875247524dd13c246fc959b52508ccfaf4cc40120eb257b43a251481",
+      "geometryHash": "619643800c0d192c2a74c0f7361cc525c67f85ad24489cf784aa41f824f75ad9",
       "id": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -37,22 +37,22 @@
     {
       "bounds": {
         "max": [
-          0.7502551674842834,
-          0.08500000089406967,
-          0.751003623008728
+          0.750257907126913,
+          0.08493369974273948,
+          0.751032703339455
         ],
         "min": [
-          -0.30996301770210266,
-          0.04500000178813934,
-          -0.7490872144699097
+          -0.30999483533889605,
+          0.04501858959004325,
+          -0.7490491542875245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16d22db6820c0ff43804d4e41020cf087a6899a1fdb9a58151bba7087c6672fa",
+      "geometryHash": "3f972f2275a82db914e10da6aa36a382e71e5e77ac31e9904f6295871fc8c8c8",
       "id": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc.primitive.1",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
+      "materialHash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
       "materialPipelineKey": "opaque",
       "meshName": "place_sedna_ringworld_arc",
       "nodeId": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc",
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          1,
-          0.09000000357627869,
+          1.0000325069738691,
+          0.08993834658145676,
           0.9999223351478577
         ],
         "min": [
-          -0.6006285548210144,
-          -0.03999999910593033,
+          -0.6006610617948837,
+          -0.0399383421111084,
           -0.9999223351478577
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0f7bad4875247524dd13c246fc959b52508ccfaf4cc40120eb257b43a251481",
+      "geometryHash": "619643800c0d192c2a74c0f7361cc525c67f85ad24489cf784aa41f824f75ad9",
       "id": "sf.render.sedna-ringworld-arc.root.primitive.0",
       "indexCount": 1824,
       "indexed": true,
@@ -87,22 +87,22 @@
     {
       "bounds": {
         "max": [
-          0.7502551674842834,
-          0.08500000089406967,
-          0.751003623008728
+          0.750257907126913,
+          0.08493369974273948,
+          0.751032703339455
         ],
         "min": [
-          -0.30996301770210266,
-          0.04500000178813934,
-          -0.7490872144699097
+          -0.30999483533889605,
+          0.04501858959004325,
+          -0.7490491542875245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16d22db6820c0ff43804d4e41020cf087a6899a1fdb9a58151bba7087c6672fa",
+      "geometryHash": "3f972f2275a82db914e10da6aa36a382e71e5e77ac31e9904f6295871fc8c8c8",
       "id": "sf.render.sedna-ringworld-arc.root.primitive.1",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
+      "materialHash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
       "materialPipelineKey": "root",
       "meshName": "place_sedna_ringworld_arc",
       "nodeId": "sf.render.sedna-ringworld-arc.root",
@@ -122,10 +122,10 @@
       "textures": []
     },
     {
-      "hash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
-      "id": "material:7dd8815b645ec8e880aeb708",
+      "hash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
+      "id": "material:4873cf13925af0d59a4e723d",
       "name": "RingworldCityGrid",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -133,20 +133,20 @@
     {
       "id": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc",
       "localTransform": [
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
-        0,
-        0,
+        0.1996857225894928,
+        0.02500000223517418,
         0,
         1
       ],
@@ -160,20 +160,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.sedna-ringworld-arc.body",
       "worldTransform": [
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
-        0,
-        0,
+        0.1996857225894928,
+        0.02500000223517418,
         0,
         1
       ]
@@ -181,20 +181,20 @@
     {
       "id": "sf.render.sedna-ringworld-arc.root",
       "localTransform": [
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
-        0,
-        0,
+        0.1996857225894928,
+        0.02500000223517418,
         0,
         1
       ],
@@ -208,20 +208,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.sedna-ringworld-arc.body",
       "worldTransform": [
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
         0,
         0,
         0,
-        1,
+        0.9999223351478577,
         0,
-        0,
-        0,
+        0.1996857225894928,
+        0.02500000223517418,
         0,
         1
       ]
@@ -237,36 +237,36 @@
       "uri": "place_sedna_ringworld_arc.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 45760,
-    "sha256": "3fe79011bdf8b655631b9974d352a1ca182814befa83c099f119ccd675765332",
+    "bytes": 14092,
+    "sha256": "93f554b15974c986ad62fe2522048e10f024478e06251c80807b080a4d680885",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.1996857225894928,
+        0.19968572258949274,
         0.02500000223517418,
         0
       ],
       "max": [
-        1,
-        0.09000000357627869,
+        1.0000325069738691,
+        0.08993834658145676,
         0.9999223351478577
       ],
       "min": [
-        -0.6006285548210144,
-        -0.03999999910593033,
+        -0.6006610617948837,
+        -0.0399383421111084,
         -0.9999223351478577
       ],
       "size": [
-        1.6006285548210144,
-        0.13000000268220901,
+        1.6006935687687527,
+        0.12987668869256516,
         1.9998446702957153
       ]
     },
@@ -293,20 +293,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9999223351478577,
           0,
           0,
           0,
           0,
-          1,
+          0.9999223351478577,
           0,
           0,
           0,
           0,
-          1,
+          0.9999223351478577,
           0,
-          0,
-          0,
+          0.1996857225894928,
+          0.02500000223517418,
           0,
           1
         ],
@@ -319,20 +319,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9999223351478577,
           0,
           0,
           0,
           0,
-          1,
+          0.9999223351478577,
           0,
           0,
           0,
           0,
-          1,
+          0.9999223351478577,
           0,
-          0,
-          0,
+          0.1996857225894928,
+          0.02500000223517418,
           0,
           1
         ],
@@ -347,19 +347,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sedna_ringworld_arc.glb"
   },
-  "runtimeHash": "7bb2b65f346f901eecba64d51d532750f2ca27fffa50f4ed388795d1f971e222",
+  "runtimeHash": "5e686cb7660943b0b8b0548de6da7e9015c5f652b9f9095ddff537dac1a95bc8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1,
-          0.09000000357627869,
+          1.0000325069738691,
+          0.08993834658145676,
           0.9999223351478577
         ],
         "min": [
-          -0.6006285548210144,
-          -0.03999999910593033,
+          -0.6006610617948837,
+          -0.0399383421111084,
           -0.9999223351478577
         ]
       },

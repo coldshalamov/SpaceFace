@@ -113,14 +113,19 @@ function injectStyle() {
   position:absolute; inset:0; z-index:14; pointer-events:none; overflow:hidden;
 }
 .sf-dmgind-marker {
-  --impact-tone:var(--sf-danger, #ff5c5c);
+  /* ORRERY tone chain (design/frontend/ORRERY.md §3.3): the layer triad resolves from the --dp-*
+     root — ice for the shield reading (data in motion), lamp for the armor bite, danger red for
+     the hull (threat only) — with the kit's --sf-* trio kept as the deep fallback contract. */
+  --impact-tone:var(--dp-danger, var(--sf-danger, #ff5c5c));
   position:absolute; left:0; top:0;
   display:none; align-items:center; justify-content:center; gap:7px;
   pointer-events:none; opacity:0; will-change:transform,opacity;
 }
-/* Direction: the kit damage wedge, rotated onto the attacker by tick(). */
+/* Direction: the kit damage wedge, rotated onto the attacker by tick(). 17px so the direction
+   read survives at arm's length next to the 22px layer shape — the marker's first question is
+   "from where", and at 14px the wedge dissolved into the world (bench probe, 2026-10-25). */
 .sf-dmgind-marker__chevron {
-  width:14px; height:14px; flex:0 0 auto;
+  width:17px; height:17px; flex:0 0 auto;
   color:var(--impact-tone);
 }
 .sf-dmgind-marker__chevron > svg { width:100%; height:100%; display:block; }
@@ -137,13 +142,13 @@ function injectStyle() {
 .sf-dmgind-marker.layer-nearmiss .sf-dmgind-shape-nearmiss { display:block; }
 .sf-dmgind-marker.layer-nearmiss .sf-dmgind-marker__letter { display:none; }
 .sf-dmgind-marker__letter {
-  font-family:var(--dp-face-label, "Archivo");
-  font-size:12px; font-weight:600; line-height:1; letter-spacing:.08em;
+  font-family:var(--dp-face-etch, var(--dp-face-label, "Archivo", sans-serif));
+  font-stretch:112%; font-size:12px; font-weight:650; line-height:1; letter-spacing:.12em;
 }
-.sf-dmgind-marker.layer-nearmiss { --impact-tone:var(--sf-quiet, #9fb4c8); }
-.sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #39d0ff); }
-.sf-dmgind-marker.layer-armor { --impact-tone:var(--sf-warn, #ffb35c); }
-.sf-dmgind-marker.layer-hull { --impact-tone:var(--sf-danger, #ff5c5c); }
+.sf-dmgind-marker.layer-nearmiss { --impact-tone:var(--dp-ink-dim, var(--sf-quiet, #9fb4c8)); }
+.sf-dmgind-marker.layer-shield { --impact-tone:var(--dp-ice, var(--sf-shield, #39d0ff)); }
+.sf-dmgind-marker.layer-armor { --impact-tone:var(--dp-lamp, var(--sf-warn, #ffb35c)); }
+.sf-dmgind-marker.layer-hull { --impact-tone:var(--dp-danger, var(--sf-danger, #ff5c5c)); }
 /* Critical hull: a drawn alert ring around the shape, not an outline around a letterbox. */
 .sf-dmgind-ring { opacity:0; }
 .sf-dmgind-marker.severity-critical .sf-dmgind-ring { opacity:1; }

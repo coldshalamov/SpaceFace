@@ -329,7 +329,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f8ce0d0bd077d472841cbb7c132e092ed28017f5fe74b19128f23adf49fff765",
+  "contentHash": "6bf6bb6bd4aeb20e8dae683901e1809144966cd8e1a3115c5ba6f6019c79b0da",
   "dynamicGroups": [
     {
       "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor.dynamic",
@@ -367,17 +367,17 @@
       "bounds": {
         "max": [
           7.988974571228027,
-          0.8900285363197327,
-          -1.9995468854904175
+          0.8900285208678556,
+          -1.9995469169580755
         ],
         "min": [
           -6.992896556854248,
-          0.5699714422225952,
-          -5.800453186035156
+          0.5699714576744723,
+          -5.800453154567498
         ]
       },
       "drawMode": 4,
-      "geometryHash": "877d6fe9ac1829c393a6d6529457de793b4ecdee190c04db4680c4c6fe11a67f",
+      "geometryHash": "47b195ba3ddadca6159b6c0c45448d356fd95b0957aa25390371fa01ce741a85",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -392,17 +392,17 @@
       "bounds": {
         "max": [
           7.9907684326171875,
-          0.8899089097976685,
-          -3.0052483081817627
+          0.8899088815713211,
+          -3.0052483668888152
         ],
         "min": [
           0.0033680149354040623,
-          0.5700910687446594,
-          -9.991268157958984
+          0.5700910969710068,
+          -9.991268099251933
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f099c0bb651cde329be260aef00d54bdd832aacfaff0c14b84574be868d7c6b2",
+      "geometryHash": "b54491cd18803278cfa3459362d88d5cbceeb81b47034311f021ccb329a80c0c",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -417,17 +417,17 @@
       "bounds": {
         "max": [
           1.9935675859451294,
-          0.8899838328361511,
-          -7.150014877319336
+          0.8899838103300179,
+          -7.150014590539628
         ],
         "min": [
           -2.1934850215911865,
-          0.5700161457061768,
-          -9.991132736206055
+          0.5700161682123099,
+          -9.991133022985762
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c789516871598e1bba2c4bbffc00d1ec4fcfbf3ab76c8141043720102e7a8e9",
+      "geometryHash": "2c2a6b74abcb4cfc938a9637d52e7bccd216cfb8066e57ee664399ae22b746be",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -442,17 +442,17 @@
       "bounds": {
         "max": [
           2.9823992252349854,
-          0.6899505853652954,
-          -0.999893307685852
+          0.6899505810326715,
+          -0.9998933957403593
         ],
         "min": [
           -4,
-          0.0600493922829628,
-          -3.5001068115234375
+          0.060049396615586725,
+          -3.5001067234689303
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0eaa9fcc336483e8aa4279f1933e3c18199a5ca0452dd01342226d4f06d140a",
+      "geometryHash": "ae3a2facdfcaea423be688313727fc16e72db3d1b72830bd1a126276511f223b",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-spar.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -467,17 +467,17 @@
       "bounds": {
         "max": [
           11.7992582321167,
-          1.057909607887268,
-          1.3804105520248413
+          1.0579095745578178,
+          1.3804104786045504
         ],
         "min": [
           -7.399345397949219,
-          -0.7490454316139221,
-          -1.3804105520248413
+          -0.7490453982844717,
+          -1.3804104786045504
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eca60975fdaeca8a9cc3580ad01efec44d7fc9cf73c17bae2dd12649d86b8bc4",
+      "geometryHash": "d49e8d9a01f2e8ee2036b7c44cfd13d5fd1f0406f20b20bd88c4dbfded5ce2b8",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -492,17 +492,17 @@
       "bounds": {
         "max": [
           -1.2004063129425049,
-          0.7498842477798462,
-          5.799863815307617
+          0.7498842230581163,
+          5.7998638596522945
         ],
         "min": [
           -6.660073280334473,
-          -0.6998842358589172,
-          4.200136661529541
+          -0.6998842111371874,
+          4.200136617184864
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d959c5e4565ebed33861135dcfc4474493a3c1f51be8f1ceb7964727a493880a",
+      "geometryHash": "fec4f0b4305e381c1ebf452adc7ae389e8d8b86d4cd9316bb9d68f171c7d2a9c",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -516,18 +516,18 @@
     {
       "bounds": {
         "max": [
-          -2.1023061275482178,
-          0.23004098236560822,
+          -2.1023062425136754,
+          0.23004096874846536,
           4.998313903808594
         ],
         "min": [
-          -5.8935465812683105,
-          -0.3800409436225891,
+          -5.893546466302853,
+          -0.38004093000544625,
           1.100000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c16cc7329652a0af498d533d65b7487971a235869f479b0cc736c7b3e1f3ec1c",
+      "geometryHash": "1064e33c58498ec0e15f2470df53abf79d7c10560bc7199b6f8abb30fd49813a",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar.primitive.0",
       "indexCount": 660,
       "indexed": true,
@@ -542,17 +542,17 @@
       "bounds": {
         "max": [
           -5.949957847595215,
-          0.50981605052948,
-          -0.7835004925727844
+          0.5098160108333722,
+          -0.7835005142548903
         ],
         "min": [
           -10.569999694824219,
-          -0.5877030491828918,
-          -1.850000262260437
+          -0.5877030094867841,
+          -1.8500002405783311
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56b2c85f1a8efb20106475a5d51a201a98c62bf1ec9ca97b000f499f6984a36e",
+      "geometryHash": "281b5ce31da1c8be098fd41c7360e159ae23b428ac508676844631bde554c08f",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-port.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -567,17 +567,17 @@
       "bounds": {
         "max": [
           -5.949957847595215,
-          0.50981605052948,
-          1.850000262260437
+          0.5098160108333722,
+          1.8500002405783311
         ],
         "min": [
           -10.569999694824219,
-          -0.5877030491828918,
-          0.7835004925727844
+          -0.5877030094867841,
+          0.7835005142548903
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3b9ab5c134bc74243c4c3c077d5b9a3947bf46c07cb5e47f85503c678e93acc",
+      "geometryHash": "f515581e7763b4e4f8977352a6b6a70ef305e748e043db2c038b63122b16f85c",
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -591,18 +591,18 @@
     {
       "bounds": {
         "max": [
-          2.9820382595062256,
-          1.9295268058776855,
+          2.9820383119565674,
+          1.9295267435972256,
           5.8001275062561035
         ],
         "min": [
-          -6.499875545501709,
-          -0.6474196910858154,
+          -6.499875597952051,
+          -0.6474196288053555,
           -9.698918342590332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd04a84b3cf411f423a1194974941c3d995c2c8076dda63698ca9a20b05dd32e",
+      "geometryHash": "ba7e056be00b48c364ecf46bd366e1b7dc56c2bb86eb1424ebbbd62542f9aefd",
       "id": "sf.render.red-kite-lod1.node.lod1-armor.primitive.0",
       "indexCount": 2172,
       "indexed": true,
@@ -617,17 +617,17 @@
       "bounds": {
         "max": [
           7.400028705596924,
-          1.149911880493164,
-          0.549446702003479
+          1.1499118895629221,
+          0.5494466939778528
         ],
         "min": [
           3.5999648571014404,
-          0.8502395153045654,
-          -0.549622654914856
+          0.8502395062348075,
+          -0.5496226468892298
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe65fb617610a31f39b74f992852c9e0456ce788628c20ed2c45da56b747fa5a",
+      "geometryHash": "f81f1b49e10b66f45a6a76db24329fb43c13005567183aa0f6e52f61b1fd3026",
       "id": "sf.render.red-kite-lod1.node.lod1-canopy.primitive.0",
       "indexCount": 762,
       "indexed": true,
@@ -641,18 +641,18 @@
     {
       "bounds": {
         "max": [
-          -6.361133098602295,
-          0.5474792122840881,
+          -6.361133111655761,
+          0.5474792099002298,
           5.587500095367432
         ],
         "min": [
-          -10.569839477539062,
-          -0.6274791955947876,
+          -10.569839464485597,
+          -0.6274791932109293,
           -1.720750093460083
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ea1241d024eb8e407b1f2d7a31de4a7fe69cf712c243de5e98e2cc0a8a65adb",
+      "geometryHash": "208649add37de8e4c9010317685642a560661f494922ec35a30f27e50d5a25b3",
       "id": "sf.render.red-kite-lod1.node.lod1-hook-drive-core.primitive.0",
       "indexCount": 984,
       "indexed": true,
@@ -667,17 +667,17 @@
       "bounds": {
         "max": [
           0.042500000447034836,
-          1.0197514295578003,
-          -9.67750072479248
+          1.0197514365900004,
+          -9.677500266581774
         ],
         "min": [
           -0.042500000447034836,
-          0.960248589515686,
-          -9.762499809265137
+          0.9602485824834858,
+          -9.762500267475843
         ]
       },
       "drawMode": 4,
-      "geometryHash": "728c7b3d67e0784fc84821d40830b4a7ce2ec5d8a9d0b440b9710fc42edb30ec",
+      "geometryHash": "1cd60c412e192e1f966f041a5aaa9a253c45dd424c4c427d756253fd1a06a556",
       "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -692,17 +692,17 @@
       "bounds": {
         "max": [
           -2.557499885559082,
-          0.5997514128684998,
+          0.5997514329398413,
           5.742499828338623
         ],
         "min": [
           -2.6424999237060547,
-          0.5402485728263855,
+          0.5402485527550439,
           5.65749979019165
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d177ba49343b3571724a5ae2e5b1ea796ad878834e43eaffa7255469c8320746",
+      "geometryHash": "cef41cd431fcb271ba01864e97dda77eb414ed4f5d9e5df22eba0b7ec496ac09",
       "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -717,17 +717,17 @@
       "bounds": {
         "max": [
           11.800067901611328,
-          1.1099356412887573,
-          1.6490110158920288
+          1.1099356358830108,
+          1.6490109434121845
         ],
         "min": [
           -9.349037170410156,
-          -0.46493592858314514,
-          -9.990839004516602
+          -0.4649359231773985,
+          -9.990838932036757
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea0bdb5ed06a65f56006fa0ac2e790f8f7aeae7dc8c213107271f08f08fe94a1",
+      "geometryHash": "de9eb450ebae5c66fd4704e9c27a854d07aaf8031eb14a2f831922cf40dcbde6",
       "id": "sf.render.red-kite-lod1.node.lod1-hull.primitive.0",
       "indexCount": 2424,
       "indexed": true,
@@ -742,17 +742,17 @@
       "bounds": {
         "max": [
           11.780753135681152,
-          2.043558120727539,
-          5.677071571350098
+          2.0435580757807585,
+          5.6770717606617405
         ],
         "min": [
           -10.569999694824219,
-          -0.7503713369369507,
-          -10.048330307006836
+          -0.7503712919901699,
+          -10.048330496318478
         ]
       },
       "drawMode": 4,
-      "geometryHash": "181cb821f128e036d6f18cd0f31a74e5a6a2049219bb330ad09bc9afcc692156",
+      "geometryHash": "7eaabb52ce4b5f06e3d58dde755a579a8335667920b4436654d0e83dbcc7933a",
       "id": "sf.render.red-kite-lod1.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 7338,
       "indexed": true,
@@ -777,7 +777,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b98cedc293afb0a429a492a1f7cd70e888d5c7fa4a2feb136b8d4f474916e25",
+      "geometryHash": "9f9041dd15c61cb680ea9a1134819c69fbf194e5ea221d00d2eba7e7d850442f",
       "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -802,7 +802,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0948818d5ec84fc4a47b23ea3d59a707b482c8cfd359ad2e8afcff75c4862c0",
+      "geometryHash": "1695dc969ae52355c746dd33ac4f9dbbcc5fe4ebdf8a19929c8914ab12e7421d",
       "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-starboard-armor.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -827,7 +827,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "767b05d4ae1eb85fe482d61f66380ba2d8eb32c6bb7b6316e29fa31ba0c7d0b0",
+      "geometryHash": "1ef7f8e32c9c436c58b62415b24ed0cc422509fe4145dba2222d72e097c6e393",
       "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-flap-armor.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -972,21 +972,21 @@
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-0",
       "localTransform": [
-        1,
+        7.490935564041138,
         0,
         0,
         0,
         0,
-        1,
+        7.490935564041138,
         0,
         0,
         0,
         0,
-        1,
+        7.490935564041138,
         0,
-        0,
-        0,
-        0,
+        0.49803900718688965,
+        0.7299999892711639,
+        -3.900000035762787,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1000,42 +1000,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        7.490935564041138,
         0,
         0,
         0,
         0,
-        1,
+        7.490935564041138,
         0,
         0,
         0,
         0,
-        1,
+        7.490935564041138,
         0,
-        0,
-        0,
-        0,
+        0.49803900718688965,
+        0.7299999892711639,
+        -3.900000035762787,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-1",
       "localTransform": [
-        1,
+        3.9937002088408917,
         0,
         0,
         0,
         0,
-        1,
+        3.9937002088408917,
         0,
         0,
         0,
         0,
-        1,
+        3.9937002088408917,
         0,
-        0,
-        0,
-        0,
+        3.997068223776296,
+        0.7299999892711639,
+        -6.4982582330703735,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1049,42 +1049,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        3.9937002088408917,
         0,
         0,
         0,
         0,
-        1,
+        3.9937002088408917,
         0,
         0,
         0,
         0,
-        1,
+        3.9937002088408917,
         0,
-        0,
-        0,
-        0,
+        3.997068223776296,
+        0.7299999892711639,
+        -6.4982582330703735,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-sail-2",
       "localTransform": [
-        1,
+        2.093526303768158,
         0,
         0,
         0,
         0,
-        1,
+        2.093526303768158,
         0,
         0,
         0,
         0,
-        1,
+        2.093526303768158,
         0,
-        0,
-        0,
-        0,
+        -0.09995871782302856,
+        0.7299999892711639,
+        -8.570573806762695,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1098,42 +1098,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        2.093526303768158,
         0,
         0,
         0,
         0,
-        1,
+        2.093526303768158,
         0,
         0,
         0,
         0,
-        1,
+        2.093526303768158,
         0,
-        0,
-        0,
-        0,
+        -0.09995871782302856,
+        0.7299999892711639,
+        -8.570573806762695,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-port-spar",
       "localTransform": [
-        1,
+        3.4911996126174927,
         0,
         0,
         0,
         0,
-        1,
+        3.4911996126174927,
         0,
         0,
         0,
         0,
-        1,
+        3.4911996126174927,
         0,
-        0,
-        0,
-        0,
+        -0.5088003873825073,
+        0.3749999888241291,
+        -2.2500000596046448,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1147,41 +1147,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        3.4911996126174927,
         0,
         0,
         0,
         0,
-        1,
+        3.4911996126174927,
         0,
         0,
         0,
         0,
-        1,
+        3.4911996126174927,
         0,
-        0,
-        0,
-        0,
+        -0.5088003873825073,
+        0.3749999888241291,
+        -2.2500000596046448,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-pressure-dart",
       "localTransform": [
-        1,
+        9.599301815032959,
         0,
         0,
         0,
         0,
-        1,
+        9.599301815032959,
         0,
         0,
         0,
         0,
-        1,
+        9.599301815032959,
         0,
-        0,
-        0,
+        2.1999564170837402,
+        0.15443208813667297,
         0,
         1
       ],
@@ -1196,20 +1196,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        9.599301815032959,
         0,
         0,
         0,
         0,
-        1,
+        9.599301815032959,
         0,
         0,
         0,
         0,
-        1,
+        9.599301815032959,
         0,
-        0,
-        0,
+        2.1999564170837402,
+        0.15443208813667297,
         0,
         1
       ]
@@ -1217,21 +1217,21 @@
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-drive",
       "localTransform": [
-        1,
+        2.729833483695984,
         0,
         0,
         0,
         0,
-        1,
+        2.729833483695984,
         0,
         0,
         0,
         0,
-        1,
+        2.729833483695984,
         0,
-        0,
-        0,
-        0,
+        -3.9302397966384888,
+        0.025000005960464478,
+        5.000000238418579,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1245,42 +1245,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        2.729833483695984,
         0,
         0,
         0,
         0,
-        1,
+        2.729833483695984,
         0,
         0,
         0,
         0,
-        1,
+        2.729833483695984,
         0,
-        0,
-        0,
-        0,
+        -3.9302397966384888,
+        0.025000005960464478,
+        5.000000238418579,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-starboard-spar",
       "localTransform": [
-        1,
+        1.949156939983368,
         0,
         0,
         0,
         0,
-        1,
+        1.949156939983368,
         0,
         0,
         0,
         0,
-        1,
+        1.949156939983368,
         0,
-        0,
-        0,
-        0,
+        -3.997926354408264,
+        -0.07499998062849045,
+        3.049156963825226,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1294,42 +1294,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        1.949156939983368,
         0,
         0,
         0,
         0,
-        1,
+        1.949156939983368,
         0,
         0,
         0,
         0,
-        1,
+        1.949156939983368,
         0,
-        0,
-        0,
-        0,
+        -3.997926354408264,
+        -0.07499998062849045,
+        3.049156963825226,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-port",
       "localTransform": [
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
-        0,
-        0,
-        0,
+        -8.259978771209717,
+        -0.03894349932670593,
+        -1.3167503774166107,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1343,42 +1343,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
-        0,
-        0,
-        0,
+        -8.259978771209717,
+        -0.03894349932670593,
+        -1.3167503774166107,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.collision-red-kite-stern-starboard",
       "localTransform": [
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
-        0,
-        0,
-        0,
+        -8.259978771209717,
+        -0.03894349932670593,
+        1.3167503774166107,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -1392,42 +1392,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
         0,
         0,
         0,
-        1,
+        2.310020923614502,
         0,
-        0,
-        0,
-        0,
+        -8.259978771209717,
+        -0.03894349932670593,
+        1.3167503774166107,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-armor",
       "localTransform": [
-        1,
+        7.749522924423218,
         0,
         0,
         0,
         0,
-        1,
+        7.749522924423218,
         0,
         0,
         0,
         0,
-        1,
+        7.749522924423218,
         0,
-        0,
-        0,
-        0,
+        -1.7589186429977417,
+        0.6410535573959351,
+        -1.9493954181671143,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1441,42 +1441,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        7.749522924423218,
         0,
         0,
         0,
         0,
-        1,
+        7.749522924423218,
         0,
         0,
         0,
         0,
-        1,
+        7.749522924423218,
         0,
-        0,
-        0,
-        0,
+        -1.7589186429977417,
+        0.6410535573959351,
+        -1.9493954181671143,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-canopy",
       "localTransform": [
-        1,
+        1.9000319242477417,
         0,
         0,
         0,
         0,
-        1,
+        1.9000319242477417,
         0,
         0,
         0,
         0,
-        1,
+        1.9000319242477417,
         0,
-        0,
-        0,
-        0,
+        5.499996781349182,
+        1.0000756978988647,
+        -0.00008797645568847656,
         1
       ],
       "materialPipelineKey": "blend",
@@ -1490,42 +1490,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        1.9000319242477417,
         0,
         0,
         0,
         0,
-        1,
+        1.9000319242477417,
         0,
         0,
         0,
         0,
-        1,
+        1.9000319242477417,
         0,
-        0,
-        0,
-        0,
+        5.499996781349182,
+        1.0000756978988647,
+        -0.00008797645568847656,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-hook-drive-core",
       "localTransform": [
-        1,
+        3.6541250944137573,
         0,
         0,
         0,
         0,
-        1,
+        3.6541250944137573,
         0,
         0,
         0,
         0,
-        1,
+        3.6541250944137573,
         0,
-        0,
-        0,
-        0,
+        -8.465486288070679,
+        -0.03999999165534973,
+        1.9333750009536743,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1539,42 +1539,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        3.6541250944137573,
         0,
         0,
         0,
         0,
-        1,
+        3.6541250944137573,
         0,
         0,
         0,
         0,
-        1,
+        3.6541250944137573,
         0,
-        0,
-        0,
-        0,
+        -8.465486288070679,
+        -0.03999999165534973,
+        1.9333750009536743,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-port",
       "localTransform": [
-        1,
+        0.042500000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.042500000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.042500000447034836,
         0,
         0,
-        0,
-        0,
+        0.9900000095367432,
+        -9.720000267028809,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1588,42 +1588,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        0.042500000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.042500000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.042500000447034836,
         0,
         0,
-        0,
-        0,
+        0.9900000095367432,
+        -9.720000267028809,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -2.5999999046325684,
+        0.5699999928474426,
+        5.699999809265137,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1637,42 +1637,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
         0,
         0,
         0,
-        1,
+        0.04250001907348633,
         0,
-        0,
-        0,
-        0,
+        -2.5999999046325684,
+        0.5699999928474426,
+        5.699999809265137,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-hull",
       "localTransform": [
-        1,
+        10.574552536010742,
         0,
         0,
         0,
         0,
-        1,
+        10.574552536010742,
         0,
         0,
         0,
         0,
-        1,
+        10.574552536010742,
         0,
-        0,
-        0,
-        0,
+        1.225515365600586,
+        0.3224998563528061,
+        -4.170913994312286,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1686,42 +1686,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        10.574552536010742,
         0,
         0,
         0,
         0,
-        1,
+        10.574552536010742,
         0,
         0,
         0,
         0,
-        1,
+        10.574552536010742,
         0,
-        0,
-        0,
-        0,
+        1.225515365600586,
+        0.3224998563528061,
+        -4.170913994312286,
         1
       ]
     },
     {
       "id": "sf.render.red-kite-lod1.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        11.175376415252686,
         0,
         0,
         0,
         0,
-        1,
+        11.175376415252686,
         0,
         0,
         0,
         0,
-        1,
+        11.175376415252686,
         0,
-        0,
-        0,
-        0,
+        0.6053767204284668,
+        0.6465933918952942,
+        -2.185629367828369,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1735,21 +1735,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.red-kite-lod1.body",
       "worldTransform": [
-        1,
+        11.175376415252686,
         0,
         0,
         0,
         0,
-        1,
+        11.175376415252686,
         0,
         0,
         0,
         0,
-        1,
+        11.175376415252686,
         0,
-        0,
-        0,
-        0,
+        0.6053767204284668,
+        0.6465933918952942,
+        -2.185629367828369,
         1
       ]
     },
@@ -2403,22 +2403,22 @@
       "uri": "red_kite_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 616032,
-    "sha256": "7e467201654872e351ca145426c8374c6896c9d84a8efbde8f4b6475b8b509e7",
+    "bytes": 464612,
+    "sha256": "6d58538e5747cfa8b09ee911d77959bfdddd50c14c7d0722920f807d69908c8c",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0.6150341033935547,
-        0.6958669264008339,
-        -2.124101400375366
+        0.6958669488742243,
+        -2.124101495031187
       ],
       "max": [
         11.800067901611328,
@@ -2427,13 +2427,13 @@
       ],
       "min": [
         -10.569999694824219,
-        -0.7503713369369507,
-        -10.048330307006836
+        -0.7503712919901699,
+        -10.048330496318478
       ],
       "size": [
         22.370067596435547,
-        2.892476526675569,
-        15.84845781326294
+        2.8924764817287887,
+        15.848458002574581
       ]
     },
     "hidden": [
@@ -3087,21 +3087,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.749522924423218,
           0,
           0,
           0,
           0,
-          1,
+          7.749522924423218,
           0,
           0,
           0,
           0,
-          1,
+          7.749522924423218,
           0,
-          0,
-          0,
-          0,
+          -1.7589186429977417,
+          0.6410535573959351,
+          -1.9493954181671143,
           1
         ],
         "name": "LOD1_Armor",
@@ -3114,21 +3114,21 @@
       {
         "canopy": true,
         "matrix": [
-          1,
+          1.9000319242477417,
           0,
           0,
           0,
           0,
-          1,
+          1.9000319242477417,
           0,
           0,
           0,
           0,
-          1,
+          1.9000319242477417,
           0,
-          0,
-          0,
-          0,
+          5.499996781349182,
+          1.0000756978988647,
+          -0.00008797645568847656,
           1
         ],
         "name": "LOD1_CANOPY",
@@ -3141,21 +3141,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.6541250944137573,
           0,
           0,
           0,
           0,
-          1,
+          3.6541250944137573,
           0,
           0,
           0,
           0,
-          1,
+          3.6541250944137573,
           0,
-          0,
-          0,
-          0,
+          -8.465486288070679,
+          -0.03999999165534973,
+          1.9333750009536743,
           1
         ],
         "name": "LOD1_HOOK_DRIVE_CORE",
@@ -3164,21 +3164,21 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            3.6541250944137573,
             0,
             0,
             0,
             0,
-            1,
+            3.6541250944137573,
             0,
             0,
             0,
             0,
-            1,
+            3.6541250944137573,
             0,
-            0,
-            0,
-            0,
+            -8.465486288070679,
+            -0.03999999165534973,
+            1.9333750009536743,
             1
           ],
           "lod": "lod1"
@@ -3187,21 +3187,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.042500000447034836,
           0,
           0,
           0,
           0,
-          1,
+          0.042500000447034836,
           0,
           0,
           0,
           0,
-          1,
+          0.042500000447034836,
           0,
           0,
-          0,
-          0,
+          0.9900000095367432,
+          -9.720000267028809,
           1
         ],
         "name": "LOD1_HOOK_NAV_PORT",
@@ -3215,21 +3215,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
           0,
           0,
           0,
-          1,
+          0.04250001907348633,
           0,
-          0,
-          0,
-          0,
+          -2.5999999046325684,
+          0.5699999928474426,
+          5.699999809265137,
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
@@ -3243,21 +3243,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          10.574552536010742,
           0,
           0,
           0,
           0,
-          1,
+          10.574552536010742,
           0,
           0,
           0,
           0,
-          1,
+          10.574552536010742,
           0,
-          0,
-          0,
-          0,
+          1.225515365600586,
+          0.3224998563528061,
+          -4.170913994312286,
           1
         ],
         "name": "LOD1_Hull",
@@ -3270,21 +3270,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          11.175376415252686,
           0,
           0,
           0,
           0,
-          1,
+          11.175376415252686,
           0,
           0,
           0,
           0,
-          1,
+          11.175376415252686,
           0,
-          0,
-          0,
-          0,
+          0.6053767204284668,
+          0.6465933918952942,
+          -2.185629367828369,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -3386,7 +3386,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/red_kite_lod1.glb"
   },
-  "runtimeHash": "3ec25a73be027256946984390fa2cafc0857df0607437c84e9d07ac1d7354d01",
+  "runtimeHash": "1ec1d1617dbcf982acbdc2ef03089953e0c4f08eb17aa4290c7fc318ebcf787b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -3398,8 +3398,8 @@
         ],
         "min": [
           -10.569999694824219,
-          -0.7503713369369507,
-          -10.048330307006836
+          -0.7503712919901699,
+          -10.048330496318478
         ]
       },
       "id": "sf.render.red-kite-lod1.body",

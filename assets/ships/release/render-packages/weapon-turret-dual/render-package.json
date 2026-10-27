@@ -54,28 +54,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "321c45162bb453f9834457475fc036ee0fbf33df91a8db0fe049aa1b7b08c19b",
+  "contentHash": "e24506201930598e24720f69e31464a7b19d5e903479ecbedaed6fd17e15be37",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           4.864999771118164,
-          0.8149751424789429,
-          0.8550387024879456
+          0.8149751637480118,
+          0.8550387127146161
         ],
         "min": [
           0.23446452617645264,
-          -0.09454124420881271,
-          -0.8550387024879456
+          -0.09454126547788172,
+          -0.8550387127146161
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43d722ed4e9ca26425d175b0affedf4b99084aa0631b0b14912337d133bf6d34",
+      "geometryHash": "a52aa042ba63587ee1fa1e17a67de861c1ebd9a24022d79013938a65a228e479",
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1416,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_RecessedTwinBore-0.62",
       "nodeId": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-brushednickel",
@@ -85,22 +85,22 @@
     {
       "bounds": {
         "max": [
-          1.6523712873458862,
+          1.652371252538007,
           0.7717589735984802,
-          0.7425247430801392
+          0.7425247105337875
         ],
         "min": [
-          0.1606321632862091,
+          0.16063219809408835,
           -0.8399999737739563,
-          -0.7425247430801392
+          -0.7425247105337875
         ]
       },
       "drawMode": 4,
-      "geometryHash": "87ea8c4de1e1e594067e83209001a16dac54afb61b6f7649a708cf3466c8da46",
+      "geometryHash": "d569c839fd79e3b0aeeb0dedb5694ddd27cdf2b966652d1036b8a48ed18632dd",
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 420,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-shadowenamel",
@@ -111,17 +111,17 @@
       "bounds": {
         "max": [
           4.7500001937150955,
-          0.8000536859035492,
-          0.8400537371635437
+          0.800053706532428,
+          0.8400537428912613
         ],
         "min": [
           1.3000000268220901,
-          0.35994628071784973,
-          0.39994630217552185
+          0.35994626008897085,
+          0.39994629644780416
         ]
       },
       "drawMode": 4,
-      "geometryHash": "701f686958ebfbc711c0ec5c4f0b72f205b6465f52cb949d70a3a6f3eda2b39b",
+      "geometryHash": "1685ad2a4fb32a545add81f2e556022c0631cceb3253d24013df3bda2bc2569f",
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62-2.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -136,17 +136,17 @@
       "bounds": {
         "max": [
           4.7500001937150955,
-          0.8000536859035492,
-          -0.39994630217552185
+          0.800053706532428,
+          -0.39994629644780416
         ],
         "min": [
           1.3000000268220901,
-          0.35994628071784973,
-          -0.8400537371635437
+          0.35994626008897085,
+          -0.8400537428912613
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ff78b47a6f1d305232e0775bb634060467225dc37578578a6d32a4a0c681bd53",
+      "geometryHash": "1685ad2a4fb32a545add81f2e556022c0631cceb3253d24013df3bda2bc2569f",
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -160,18 +160,18 @@
     {
       "bounds": {
         "max": [
-          0.17996153235435486,
+          0.17996153850545527,
           1.0499999523162842,
           1.0499999523162842
         ],
         "min": [
-          -0.17996153235435486,
+          -0.17996153850545527,
           -1.0499999523162842,
           -1.0499999523162842
         ]
       },
       "drawMode": 4,
-      "geometryHash": "94619cbf995d83a3b2db093a0a441f6418c117dd49928c265b0eff97c2ea5939",
+      "geometryHash": "0ed0a01873382076df1806025f1d620a7906780b307f926e33f0fe5f44963c92",
       "id": "sf.render.weapon-turret-dual.node.turret-base.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -185,22 +185,22 @@
     {
       "bounds": {
         "max": [
-          1.7300281077623367,
-          0.7200188934803009,
+          1.7300282196845322,
+          0.7200189004790762,
           0.7749999761581421
         ],
         "min": [
-          1.5099715739488602,
-          0.439981073141098,
+          1.5099714620266647,
+          0.4399810661423227,
           -0.7749999761581421
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8ca053caae67faa4b5fbf2a8154d802fd484216b2112f231a9c25444c9c0daa",
+      "geometryHash": "93c06b439bc908642be0013921e9363c15bb6cc41b1de8782cb26723619231ad",
       "id": "sf.render.weapon-turret-dual.node.turret-charge-block.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Turret_Charge_Block.001",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-charge-block",
@@ -210,22 +210,22 @@
     {
       "bounds": {
         "max": [
-          1.5500480681657791,
-          1.0287593007087708,
+          1.550048042810567,
+          1.028759305900325,
           1.125
         ],
         "min": [
-          -0.25004811584949493,
-          0.12998157739639282,
+          -0.25004809049428267,
+          0.12998157220483858,
           -1.125
         ]
       },
       "drawMode": 4,
-      "geometryHash": "733f99adff922349e393988bd70fc37537b47fa336f825bc1b8da6e0bbcbab95",
+      "geometryHash": "2f7dd475bdebde10dfbd8920d24620f0083aa3719443c22e64f5494a907ad05b",
       "id": "sf.render.weapon-turret-dual.node.turret-head.primitive.0",
       "indexCount": 852,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "TEMP_castReceiver.001",
       "nodeId": "sf.render.weapon-turret-dual.node.turret-head",
@@ -235,18 +235,18 @@
     {
       "bounds": {
         "max": [
-          4.792798712849617,
+          4.792798738723712,
           0.8449999690055847,
           0.8849999904632568
         ],
         "min": [
-          4.707201674580574,
+          4.707201648706479,
           0.3149999976158142,
           0.35500001907348633
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d692a4c73e3b414ba236dc6b4d635359590e781d9bbd8e9ff7578890f8a9adf",
+      "geometryHash": "4181071ac52dfcd6b34b8562309c1ced94411fdc10d94054afe16386ea750263",
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62-2.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -260,18 +260,18 @@
     {
       "bounds": {
         "max": [
-          4.792798712849617,
+          4.792798738723712,
           0.8449999690055847,
           -0.35500001907348633
         ],
         "min": [
-          4.707201674580574,
+          4.707201648706479,
           0.3149999976158142,
           -0.8849999904632568
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2cc94fc5ba7e52b7dbcc1b8421726674889b2e0c9b753feba78fa6812d53b3f2",
+      "geometryHash": "4181071ac52dfcd6b34b8562309c1ced94411fdc10d94054afe16386ea750263",
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62.primitive.0",
       "indexCount": 480,
       "indexed": true,
@@ -285,18 +285,18 @@
     {
       "bounds": {
         "max": [
-          0.04500062018632889,
-          0.940035343170166,
+          0.04500062120704047,
+          0.9400353551503958,
           0.9427975416183472
         ],
         "min": [
-          -0.04500062018632889,
-          -0.940035343170166,
+          -0.04500062120704047,
+          -0.9400353551503958,
           -0.9427975416183472
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd47ecd7b047bbf78e8a1c2a2cb1955f230bb3f7d5ae0df511d33e2f99ea9da2",
+      "geometryHash": "bc48b8ced67cf2187f1fb0cbbe2e48e26df812b2a13b2099b18387c1a2b011a2",
       "id": "sf.render.weapon-turret-dual.node.weapon-turret-dual-material-mechanical-merged.primitive.0",
       "indexCount": 2880,
       "indexed": true,
@@ -313,74 +313,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
-      "id": "material:9b606ffef39761a1e7cc390d",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -416,6 +352,38 @@
       "textures": []
     },
     {
+      "hash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
+      "id": "material:dc94a28d84c8ece3128cbf01",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
       "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
@@ -442,6 +410,38 @@
         {
           "colorSpace": "linear",
           "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -551,20 +551,20 @@
     {
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
-        1,
+        2.3152676224708557,
         0,
         0,
         0,
         0,
-        1,
+        2.3152676224708557,
         0,
         0,
         0,
         0,
-        1,
+        2.3152676224708557,
         0,
-        0,
-        0,
+        2.5497321486473083,
+        0.3602169491350651,
         0,
         1
       ],
@@ -578,20 +578,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        2.3152676224708557,
         0,
         0,
         0,
         0,
-        1,
+        2.3152676224708557,
         0,
         0,
         0,
         0,
-        1,
+        2.3152676224708557,
         0,
-        0,
-        0,
+        2.5497321486473083,
+        0.3602169491350651,
         0,
         1
       ]
@@ -599,20 +599,20 @@
     {
       "id": "sf.render.weapon-turret-dual.node.remaster-material-mechanical-shadowenamel",
       "localTransform": [
-        1,
+        0.8058794736862183,
         0,
         0,
         0,
         0,
-        1,
+        0.8058794736862183,
         0,
         0,
         0,
         0,
-        1,
+        0.8058794736862183,
         0,
-        0,
-        0,
+        0.9065017253160477,
+        -0.03412050008773804,
         0,
         1
       ],
@@ -626,20 +626,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        0.8058794736862183,
         0,
         0,
         0,
         0,
-        1,
+        0.8058794736862183,
         0,
         0,
         0,
         0,
-        1,
+        0.8058794736862183,
         0,
-        0,
-        0,
+        0.9065017253160477,
+        -0.03412050008773804,
         0,
         1
       ]
@@ -697,21 +697,21 @@
     {
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62",
       "localTransform": [
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
+        2.8250001072883606,
         0,
-        0,
-        0,
+        -0.6200000196695328,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -726,42 +726,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
-        0.20000000298023224,
+        3.025000110268593,
         0.5799999833106995,
-        0,
+        -0.6200000196695328,
         1
       ]
     },
     {
       "id": "sf.render.weapon-turret-dual.node.turret-barrel-0-62-2",
       "localTransform": [
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
+        2.8250001072883606,
         0,
-        0,
-        0,
+        0.6200000196695328,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -776,38 +776,38 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
         0,
         0,
         0,
-        1,
+        1.7250000834465027,
         0,
-        0.20000000298023224,
+        3.025000110268593,
         0.5799999833106995,
-        0,
+        0.6200000196695328,
         1
       ]
     },
     {
       "id": "sf.render.weapon-turret-dual.node.turret-base",
       "localTransform": [
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
@@ -825,17 +825,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
         0,
-        1,
+        1.0499999523162842,
         0,
         0,
         0,
@@ -846,19 +846,19 @@
     {
       "id": "sf.render.weapon-turret-dual.node.turret-charge-block",
       "localTransform": [
-        1,
+        0.7749999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.7749999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.7749999761581421,
         0,
-        0,
+        -3.299999952316284,
         0,
         0,
         1
@@ -876,19 +876,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        0.7749999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.7749999761581421,
         0,
         0,
         0,
         0,
-        1,
+        0.7749999761581421,
         0,
-        4.919999793171883,
+        1.6199998408555984,
         0.5799999833106995,
         0,
         1
@@ -897,20 +897,20 @@
     {
       "id": "sf.render.weapon-turret-dual.node.turret-head",
       "localTransform": [
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
-        0,
-        0,
+        0.44999997317790985,
+        -0.0006295442581176758,
         0,
         1
       ],
@@ -926,20 +926,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
         0,
         0,
         0,
-        1,
+        1.125,
         0,
-        0.20000000298023224,
-        0.5799999833106995,
+        0.6499999761581421,
+        0.5793704390525818,
         0,
         1
       ]
@@ -947,21 +947,21 @@
     {
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62",
       "localTransform": [
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
+        4.550000190734863,
         0,
-        0,
-        0,
+        -0.6200000047683716,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -976,42 +976,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
-        0.20000000298023224,
+        4.7500001937150955,
         0.5799999833106995,
-        0,
+        -0.6200000047683716,
         1
       ]
     },
     {
       "id": "sf.render.weapon-turret-dual.node.turret-muzzle-0-62-2",
       "localTransform": [
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
+        4.550000190734863,
         0,
-        0,
-        0,
+        0.6200000047683716,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1026,21 +1026,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        0.26499998569488525,
         0,
-        0.20000000298023224,
+        4.7500001937150955,
         0.5799999833106995,
-        0,
+        0.6200000047683716,
         1
       ]
     },
@@ -1683,17 +1683,17 @@
     {
       "id": "sf.render.weapon-turret-dual.node.weapon-turret-dual-material-mechanical-merged",
       "localTransform": [
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
         0,
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
         0,
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
@@ -1711,17 +1711,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-turret-dual.body",
       "worldTransform": [
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
         0,
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
         0,
-        1,
+        0.9427975416183472,
         0,
         0,
         0,
@@ -1740,20 +1740,20 @@
       "uri": "weapon_turret_dual.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 475388,
-    "sha256": "04eb28b5e3b07dea2093889ef73d07eaf0292d5aebffa9e30c3536c61d26aab6",
+    "bytes": 434276,
+    "sha256": "92502e976893c74c6e032cce58dcb0c34a243d7adab7f2287fd14e3a7e8d1590",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.3074758276343346,
+        2.3074758403119406,
         0,
         0
       ],
@@ -1763,12 +1763,12 @@
         1.125
       ],
       "min": [
-        -0.25004811584949493,
+        -0.25004809049428267,
         -1.0499999523162842,
         -1.125
       ],
       "size": [
-        5.115047886967659,
+        5.115047861612447,
         2.0999999046325684,
         2.25
       ]
@@ -1961,19 +1961,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7749999761581421,
           0,
           0,
           0,
           0,
-          1,
+          0.7749999761581421,
           0,
           0,
           0,
           0,
-          1,
+          0.7749999761581421,
           0,
-          4.919999793171883,
+          1.6199998408555984,
           0.5799999833106995,
           0,
           1
@@ -1987,21 +1987,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7250000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.7250000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.7250000834465027,
           0,
-          0.20000000298023224,
+          3.025000110268593,
           0.5799999833106995,
-          0,
+          -0.6200000196695328,
           1
         ],
         "name": "Turret_Barrel_-062",
@@ -2013,21 +2013,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7250000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.7250000834465027,
           0,
           0,
           0,
           0,
-          1,
+          1.7250000834465027,
           0,
-          0.20000000298023224,
+          3.025000110268593,
           0.5799999833106995,
-          0,
+          0.6200000196695328,
           1
         ],
         "name": "Turret_Barrel_062",
@@ -2039,20 +2039,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.125,
           0,
           0,
           0,
           0,
-          1,
+          1.125,
           0,
           0,
           0,
           0,
-          1,
+          1.125,
           0,
-          0.20000000298023224,
-          0.5799999833106995,
+          0.6499999761581421,
+          0.5793704390525818,
           0,
           1
         ],
@@ -2065,21 +2065,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.26499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.26499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.26499998569488525,
           0,
-          0.20000000298023224,
+          4.7500001937150955,
           0.5799999833106995,
-          0,
+          -0.6200000047683716,
           1
         ],
         "name": "Turret_Muzzle_-062",
@@ -2091,21 +2091,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.26499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.26499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          0.26499998569488525,
           0,
-          0.20000000298023224,
+          4.7500001937150955,
           0.5799999833106995,
-          0,
+          0.6200000047683716,
           1
         ],
         "name": "Turret_Muzzle_062",
@@ -2117,17 +2117,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0499999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.0499999523162842,
           0,
           0,
           0,
           0,
-          1,
+          1.0499999523162842,
           0,
           0,
           0,
@@ -2143,17 +2143,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9427975416183472,
           0,
           0,
           0,
           0,
-          1,
+          0.9427975416183472,
           0,
           0,
           0,
           0,
-          1,
+          0.9427975416183472,
           0,
           0,
           0,
@@ -2169,20 +2169,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8058794736862183,
           0,
           0,
           0,
           0,
-          1,
+          0.8058794736862183,
           0,
           0,
           0,
           0,
-          1,
+          0.8058794736862183,
           0,
-          0,
-          0,
+          0.9065017253160477,
+          -0.03412050008773804,
           0,
           1
         ],
@@ -2197,20 +2197,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.3152676224708557,
           0,
           0,
           0,
           0,
-          1,
+          2.3152676224708557,
           0,
           0,
           0,
           0,
-          1,
+          2.3152676224708557,
           0,
-          0,
-          0,
+          2.5497321486473083,
+          0.3602169491350651,
           0,
           1
         ],
@@ -2227,7 +2227,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "3a239d4c969f27bcba535c6ba41bbb0cc833908feabfc996d602adf6891fc3e8",
+  "runtimeHash": "ff94a035410c62949b3517c3eba1aa44abec751b459d7a6cbad179a71d0f20cd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2238,7 +2238,7 @@
           1.125
         ],
         "min": [
-          -0.25004811584949493,
+          -0.25004809049428267,
           -1.0499999523162842,
           -1.125
         ]

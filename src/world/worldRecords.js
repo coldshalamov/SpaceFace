@@ -1,3 +1,5 @@
+import { starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord } from '../missions/starterWorkday.js';
+import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
@@ -365,7 +367,8 @@ export function normalizeRecord(raw, fallbackId) {
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
+    type: isStarterBuoyRecord(raw) ? 'payload'
+      : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
     factionId: raw.factionId || null,
@@ -734,7 +737,13 @@ export function entityHasDurableMarkers(entity, playerId) {
   if (entity.type === 'station' && entity.data && entity.data.isGate) return false;
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
   if (entity.type === 'asteroid') return false;
-  if (entity.type === 'projectile' || entity.type === 'pickup' || entity.type === 'payload') return false;
+  if (entity.type === 'payload') {
+    const missionId = missionIdentityOf(entity);
+    return !!starterBuoyRecordMarker(entity) && !!missionId
+      && entity.data.identityKey === `mission:${missionId}:0`
+      && (entity.homeSectorId || entity.data.homeSectorId) === 'sector_helios_prime';
+  }
+  if (entity.type === 'projectile' || entity.type === 'pickup') return false;
   // Cosmetic dressing re-rolls with FULL extras.
   if (entity.type === 'fx' && entity.data && entity.data.worldDressing && !entity.data.poi) return false;
 
@@ -779,6 +788,34 @@ export function classifyEntityKind(entity) {
   return RECORD_KIND.NPC;
 }
 
+// A commissioned ordinary workpiece is finite cargo still attached to its original body.
+// Keep only that source's identity, remaining pool and body recipe in the existing record;
+// generic wrecks continue using their original compact representation.
+const SALVOR_SOURCE_DATA_KEYS = [
+  'salvagePool', 'salvageTimeLeft', 'parentType', 'parentDefId', 'defId', 'wreckClass',
+  'salvorTargetKey', 'salvorClaimedBy', 'salvorNoticeAt',
+];
+const SALVOR_SOURCE_BODY_KEYS = ['radius', 'mass', 'collides', 'collisionProxy', 'physicsBody'];
+function validSalvorSource(source, recordId) {
+  if (!source || source.version !== 1 || source.recordId !== recordId
+    || !/^salvor:\d+:\d+:\d+$/.test(source.data?.salvorTargetKey || '')
+    || typeof source.data?.salvorClaimedBy !== 'string' || !source.data.salvorClaimedBy
+    || !Number.isFinite(source.body?.radius) || source.body.radius <= 0
+    || !Number.isFinite(source.body?.mass) || source.body.mass <= 0) return false;
+  const pool = source.data.salvagePool;
+  return !!pool && typeof pool === 'object' && !Array.isArray(pool)
+    && Object.entries(pool).every(([id, qty]) => /^cmdty_[a-z0-9_]+$/.test(id)
+      && Number.isSafeInteger(qty) && qty >= 0);
+}
+function captureSalvorSource(entity, recordId) {
+  if (entity.type !== 'wreck' || entity.data?.persistenceOwner
+    || entity.data?.markerId || entity.data?.missionId || entity.data?.missionTag) return null;
+  const source = { version: 1, recordId, body: {}, data: {} };
+  for (const key of SALVOR_SOURCE_BODY_KEYS) if (entity[key] !== undefined) source.body[key] = clonePlain(entity[key]);
+  for (const key of SALVOR_SOURCE_DATA_KEYS) if (entity.data?.[key] !== undefined) source.data[key] = clonePlain(entity.data[key]);
+  return validSalvorSource(source, recordId) ? source : null;
+}
+
 /**
  * Build a durable record snapshot from a live entity.
  * Preserves existing data.worldRecordId when present (identity stability).
@@ -798,6 +835,7 @@ export function captureEntityRecord(entity, opts = {}) {
   if (kind === RECORD_KIND.AFTERMATH) return null;
   const seed = opts.seed != null ? opts.seed : 1;
   const d = entity.data || {};
+  const starterBuoy = kind === RECORD_KIND.MISSION_TARGET && sectorId === 'sector_helios_prime' ? starterBuoyRecordMarker(entity) : null;
   const existingId = d.worldRecordId || opts.recordId || null;
   const previous = opts.previousRecord
     || opts.existingRecord
@@ -893,6 +931,14 @@ export function captureEntityRecord(entity, opts = {}) {
   const deactivation = opts.deactivation !== undefined
     ? opts.deactivation
     : (d.deactivation !== undefined ? d.deactivation : (previous && previous.deactivation));
+  const priorExtra = opts.extra !== undefined ? opts.extra : previous?.extra || null;
+  const salvorSource = captureSalvorSource(entity, recordId);
+  let extra = priorExtra;
+  if (salvorSource || priorExtra?.salvorSource) {
+    extra = { ...priorExtra };
+    if (salvorSource) extra.salvorSource = salvorSource;
+    else delete extra.salvorSource;
+  }
   const rec = normalizeRecord({
     recordId,
     kind,
@@ -902,7 +948,7 @@ export function captureEntityRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    type: entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
+    type: starterBuoy ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
     enemyTypeId: d.lootTableId || d.enemyTypeId || null,
     shipDefId: d.defId || null,
     factionId: entity.factionId || d.factionId || null,
@@ -951,9 +997,11 @@ export function captureEntityRecord(entity, opts = {}) {
     scheduledEventIds,
     regeneration,
     deactivation,
-    extra: claimsTallyAssessor(entity) ? {...(opts.extra !== undefined ? opts.extra : previous?.extra),tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
-      : opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
+    extra: starterBuoy ? { ...extra, starterWorkdayBuoy: starterBuoy }
+      : claimsTallyAssessor(entity) ? {...extra,tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
+      : extra,
   });
+  rec.extra = captureOrchardWorkDamage(opts.stationSource || opts.state, entity, rec.extra);
   return rec;
 }
 
@@ -1156,9 +1204,25 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  const starterBuoy = starterBuoyFromRecord(rec);
+  if (starterBuoy) return starterBuoy;
+  // A malformed versioned starter marker must not fall through into a generic ship.
+  if (rec.extra?.starterWorkdayBuoy != null) return null;
   if (isCeresWorkfleetRecordIdentity(record)) {
     const role=ceresWorkfleetHardwareRoleForRecord(record);
     return role ? ceresWorkfleetHardwareSpec(role,record) : null;
+  }
+
+  if (rec.extra?.salvorSource) {
+    const source = rec.extra.salvorSource;
+    // A foreign/malformed source recipe never falls through to a plausible generic shell.
+    if (rec.kind !== RECORD_KIND.WRECK || rec.type !== 'wreck' || rec.markerId || rec.missionId
+      || !validSalvorSource(source, rec.recordId)) return null;
+    return { ...clonePlain(source.body), type: 'wreck', factionId: rec.factionId, team: rec.team,
+      pos: cloneXZ(rec.pos), vel: cloneXZ(rec.vel), rot: rec.rot, angVel: rec.angVel,
+      hull: rec.hull, hullMax: rec.hullMax, flags: { noInterp: true },
+      data: { ...clonePlain(source.data), worldRecordId: rec.recordId,
+        homeSectorId: rec.homeSectorId, sectorId: rec.sectorId, durable: true } };
   }
 
   if (rec.type === 'wreck' || rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
@@ -1236,9 +1300,11 @@ export function spawnSpecFromRecord(record) {
   // Anvil's two workers start with canonical Mule hardware. A defId-only shell changes
   // their drive, mass and collision scale on Continue. Reconstruct hardware before
   // native admission; saved motion, damage, itinerary and cargo remain authoritative.
-  if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId === 'ship_mule'
-    && rec.sectorId === PLANET_SITE.sectorId && rec.itinerary?.kind === 'anvil_work'
-    && ['collector', 'receiver'].includes(rec.itinerary.role)) {
+  // Salvor cutters likewise keep their public hardware across a mid-cut Continue.
+  if (rec.kind === RECORD_KIND.CONVOY && rec.shipDefId
+    && (rec.trafficRole === 'salvor' || (rec.shipDefId === 'ship_mule'
+      && rec.sectorId === PLANET_SITE.sectorId && rec.itinerary?.kind === 'anvil_work'
+      && ['collector', 'receiver'].includes(rec.itinerary.role)))) {
     const hardware = makeShipEntitySpec(rec.shipDefId, {
       team: rec.team, factionId: rec.factionId, pos: spec.pos, rot: spec.rot, ai: spec.data.ai,
     });

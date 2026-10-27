@@ -68,10 +68,10 @@ const SHIP_LEDGER_CSS = `
 .st-ledger .st-ledger-chip[data-ledger-anchor="1"] { outline: 1px solid var(--k-signal, #ffb454); outline-offset: calc(2px * var(--k-s, 1)); }
 .st-ledger .st-ledger-board-links { list-style: none; margin: calc(8px * var(--k-s, 1)) 0 0; padding: 0; }
 .st-ledger .st-ledger-board-links li { display: flex; align-items: baseline; gap: calc(8px * var(--k-s, 1)); }
-.st-ledger .st-ledger-board-note { min-height: 1em; margin: calc(8px * var(--k-s, 1)) 0 0; color: var(--k-signal, #ffb454); }
-.st-ledger .st-ledger-onboard { color: var(--k-signal, #ffb454); }
+.st-ledger .st-ledger-board-note { min-height: 1em; margin: calc(8px * var(--k-s, 1)) 0 0; color: var(--dp-ink-dim, #b7b4a6); }
+.st-ledger .st-ledger-onboard { color: var(--dp-ink-dim, #b7b4a6); }
 .st-ledger .st-ledger-detail-tools { display: flex; flex-wrap: wrap; gap: calc(8px * var(--k-s, 1)); }
-.st-ledger .st-ledger-detail-note { min-height: 1em; margin: calc(8px * var(--k-s, 1)) 0 0; color: var(--k-signal, #ffb454); }
+.st-ledger .st-ledger-detail-note { min-height: 1em; margin: calc(8px * var(--k-s, 1)) 0 0; color: var(--dp-ink-dim, #b7b4a6); }
 `;
 
 let ledgerCssInjected = false;

@@ -44,6 +44,7 @@ export const SHARD_SPHERE_SONG = Object.freeze({
   maxRangeWu: 300,
   poiLabel: 'The Shard Sphere',
   requiredSignalScans: 4,
+  signalLineIds: Object.freeze(['c9_01', 'c9_02', 'c9_03', 'c9_05']),
   rewardCr: 1800,
   minRep: 150,
   riskTier: 2,
@@ -60,6 +61,41 @@ export const SHARD_SPHERE_SONG = Object.freeze({
     body: 'Four shard-notes align into a phrase that ends before its answer. The shrine identifies the silence as part of the composition: the Vael schism removed a voice, not merely a faction.',
   }),
 });
+
+// Read-only return guidance from scanner, mission and world authorities. No new saved flags:
+// old saves, rejected voice lines and revisits all resolve from the same durable evidence.
+export function shardSphereSongProgress(state) {
+  const definition = SHARD_SPHERE_SONG;
+  const record = discoveryRecord(state, definition);
+  if (!isFound(record)) return null;
+  const total = definition.requiredSignalScans;
+  let recovered = Math.min(total, signalScanCount(state, definition));
+  if (questComplete(state, definition)) {
+    return { phase: 'filed', recovered: total, total,
+      text: 'Reconstruction filed at the Echo Shrine. The unfinished phrase remains in your archive; there is no second reconstruction payment.' };
+  }
+  const active = state?.missions?.active?.some((mission) =>
+    mission?.source === LANDMARK_QUEST_SOURCE
+    && mission.params?.landmarkProbe?.questId === definition.id);
+  if (active) {
+    return { phase: 'return', recovered, total,
+      text: 'Reconstruction accepted. Return to the Shard Sphere and fire one close scanner pulse to file the song.' };
+  }
+  // Missions keeps an earned offer through board refresh and Save/Continue, even if
+  // scanner's bounded contact history later evicts the original four-pulse record.
+  const posted = state?.missions?.boards?.[definition.stationId]?.slots;
+  if (Array.isArray(posted) && posted.some((offer) =>
+    offer?.id === definition.id && validateLandmarkQuestOffer(offer))) recovered = total;
+  if (recovered < total) {
+    return { phase: 'collecting', recovered, total,
+      text: `Schism fragments ${recovered}/${total}. Return to the Shard Sphere and use active scanner pulses to recover the remaining notes.` };
+  }
+  const rep = Number(state?.factions?.[definition.factionId]?.rep) || 0;
+  return { phase: rep >= definition.minRep ? 'ready' : 'trust', recovered, total,
+    text: rep >= definition.minRep
+      ? 'All four fragments recovered. Dock at the Echo Shrine and accept Reconstruct the Song from its mission board, then take one close reading at the sphere.'
+      : `All four fragments recovered. The Echo Shrine offers Reconstruct the Song only at Vael standing +${definition.minRep} or higher. Earn that trust before accepting the reconstruction.` };
+}
 
 // PQ-048.14: this is deliberately a return survey, not another way to reveal the Obelisk. The
 // ordinary physical investigation remains the sole writer of the discovery Doss later reads.
@@ -413,6 +449,89 @@ export const EUNOMIA_LICENSED_PLATE = Object.freeze({
   }),
 });
 
+export const DEN_TOLL_REGISTER = Object.freeze({
+  id: 'landmark_den_toll_register',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_den_arch_d',
+  targetRef: 'landmark_den_toll_lamp',
+  stationId: 'station_smuggler',
+  factionId: 'faction_quiet',
+  targetLocalPos: Object.freeze({ x: -1700, z: 2140 }),
+  maxRangeWu: 300,
+  poiLabel: 'Toll Hulk Lamp',
+  rewardCr: 700,
+  minRep: -1000,
+  riskTier: 1,
+  signalKind: 'salvage',
+  title: 'The Toll Hulk: Lamp Register',
+  brief: 'Board-scan the old Reach gunboat’s tally lamp and file the register at the den berth.',
+  summary: 'The lamp still burns on a hulk with no guns left to argue for it. The house wants the toll register copied — who paid, who still owes — before somebody collects on it.',
+  causeTag: 'landmark:den_toll_register',
+  causeFingerprint: 'landmark:den:toll-register:v1',
+  causeLine: 'The archipelago’s last gunboat kept its lamp lit and its tally honest.',
+  successText: 'Register filed. The house paid without a word and struck one name from the tally.',
+  artifact: Object.freeze({
+    id: 'artifact_den_toll_register',
+    title: 'Den · Toll Register',
+    body: 'Grease-pencil tolls, wiped and rewritten for years. Most names are Quiet grey; three are Reach grey and dated after the gunboat died. The lamp keeps its own list of who still crosses.',
+  }),
+});
+
+export const DEN_SPLIT_MANIFEST = Object.freeze({
+  id: 'landmark_den_split_manifest',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_den_arch_c',
+  targetRef: 'landmark_den_wide_door_manifest',
+  stationId: 'station_drift',
+  factionId: 'faction_mts',
+  targetLocalPos: Object.freeze({ x: -1520, z: 1720 }),
+  maxRangeWu: 300,
+  poiLabel: 'Split Freighter Hold',
+  rewardCr: 640,
+  minRep: -1000,
+  riskTier: 1,
+  signalKind: 'salvage',
+  title: 'The Split Freighter: Wide-Door Manifest',
+  brief: 'Read the manifest sealed in the split hold and file it at the Drift Market board.',
+  summary: 'The wide door under the stern is the regulars’ gap, and the hold still seals one manifest the market wants read before the Quiet sell it twice.',
+  causeTag: 'landmark:den_split_manifest',
+  causeFingerprint: 'landmark:den:split-manifest:v1',
+  causeLine: 'The freighter broke her back on the middle rock and kept her manifest dry.',
+  successText: 'Manifest filed. One Drift client now buys insurance; the den never listed the cargo at all.',
+  artifact: Object.freeze({
+    id: 'artifact_den_split_manifest',
+    title: 'Drift · Wide-Door Manifest',
+    body: 'A bulk manifest under a Concord seal nobody at the den ever broke. Every line item is rations; every tonnage figure says machinery. Somewhere between the two columns is the reason she was running dark.',
+  }),
+});
+
+export const DEN_BELL_ROLL = Object.freeze({
+  id: 'landmark_den_bell_roll',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_pallas_quiet_bell',
+  targetRef: 'landmark_den_bell_roll',
+  stationId: 'station_smuggler',
+  factionId: 'faction_quiet',
+  targetLocalPos: Object.freeze({ x: -950, z: 700 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Quiet Bell',
+  rewardCr: 480,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Quiet Bell: The Roll',
+  brief: 'Scan the bell buoy once and file the one-note roll at the den.',
+  summary: 'The house keeps no other record of who called. One reading of the bell’s own tally is the closest thing to a roll call the den will ever post.',
+  causeTag: 'landmark:den_bell_roll',
+  causeFingerprint: 'landmark:den:bell-roll:v1',
+  causeLine: 'The bell answers one note with silence, and silence is a complete sentence.',
+  successText: 'Roll filed. The bell said nothing back, which at the den is an acknowledgement.',
+  artifact: Object.freeze({
+    id: 'artifact_den_bell_roll',
+    title: 'Den · Bell Roll',
+    body: 'The buoy’s tally ring holds one strike per hull, worn to different depths. The deepest groove is struck from the wrong side — somebody rings the bell from inside the archipelago, and has for years.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
@@ -428,6 +547,9 @@ const LANDMARK_QUESTS = Object.freeze([
   NEREID_SAME_SHIFT_ICE,
   PROTEUS_WELL_SOUNDING,
   EUNOMIA_LICENSED_PLATE,
+  DEN_TOLL_REGISTER,
+  DEN_SPLIT_MANIFEST,
+  DEN_BELL_ROLL,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 
@@ -458,7 +580,8 @@ function signalScanCount(state, definition) {
   const stableId = `signal:poi:${definition.poiId}`;
   const record = state && state.signalInvestigation && state.signalInvestigation.records
     && state.signalInvestigation.records[stableId];
-  return Math.max(0, Math.trunc(Number(record && record.scanCount) || 0));
+  const count = Number(record && record.scanCount);
+  return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
 }
 
 function questReady(state, definition) {

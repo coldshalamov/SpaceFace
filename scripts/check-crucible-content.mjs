@@ -122,14 +122,14 @@ for (const seed of [1, 47, 99, 12345]) {
 }
 check('recipe simulator agrees with planWave across 20 seed/wave cells', agreed, agreeDetail);
 
-// 6. Arena module library: four live laws, each previewable inside its field budget.
+// 6. Arena module library: six live law arenas, each previewable inside its field budget.
 const libraryCheck = validateArenaModuleLibrary();
 check('arena module library validates', libraryCheck.ok === true,
   JSON.stringify(libraryCheck.issues));
 const laws = ARENA_MODULE_LIBRARY.map((mod) => mod.law).sort();
-check('arena module library names the four live laws',
-  ARENA_MODULE_LIBRARY.length === 4
-    && laws.join(',') === 'conduct,current,freeze,pull',
+check('arena module library names the six live law arenas',
+  ARENA_MODULE_LIBRARY.length === 6
+    && laws.join(',') === 'conduct,current,current,freeze,pull,pull',
   laws.join(','));
 let previewsOk = true;
 let previewDetail = '';

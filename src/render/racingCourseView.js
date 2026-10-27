@@ -8,6 +8,19 @@ import { readFrameOrigin } from './frameCoordinates.js';
 import { createRacingGhostView } from './racingGhostView.js';
 import { createRacingDraftView } from './racingDraftView.js';
 
+const ROPE_POOL_SIZE = 3;
+// Mirrors combat/geometry.js entityLocalPointToWorld — scratch writes keep the frame
+// loop allocation-free while reading the same canonical anchor-local endpoints.
+function attachmentEndpoint(entity, local, out) {
+  const lx = Number(local && local.x) || 0, lz = Number(local && local.z) || 0;
+  const angle = Number(entity && entity.rot) || 0;
+  const c = Math.cos(angle), s = Math.sin(angle);
+  out.x = (entity && entity.pos ? Number(entity.pos.x) || 0 : 0) + lx * c - lz * s;
+  out.z = (entity && entity.pos ? Number(entity.pos.z) || 0 : 0) + lx * s + lz * c;
+  return out;
+}
+const noRaycast = () => {};
+
 export function createRacingCourseView(scene, state) {
   const ghost = createRacingGhostView(scene, state);
   const draft = createRacingDraftView(scene, state);
@@ -23,14 +36,63 @@ export function createRacingCourseView(scene, state) {
   const pace = new THREE.Mesh(paceGeometry, paceMaterial); pace.name='Draft pace beacon';
   const markers=new THREE.InstancedMesh(ringGeometry,ringMaterial,8);
   markers.name='Massline anchors and crossing refuges';markers.count=0;markers.frustumCulled=false;
+  // Pooled rival rope presentation: shared tube, narrow core plus a transparent outer
+  // strand. The sim's canonical attachment records are the only truth read here.
+  const ropeGeometry=new THREE.CylinderGeometry(1,1,1,6,1,true);
+  const ropeCoreMaterial=new THREE.MeshBasicMaterial({color:0x8adccf,toneMapped:false});
+  const ropeStrandMaterial=new THREE.MeshBasicMaterial({color:0x8adccf,transparent:true,opacity:0.18,toneMapped:false,depthWrite:false});
+  const ropes=[];
+  for(let i=0;i<ROPE_POOL_SIZE;i++){
+    const core=new THREE.Mesh(ropeGeometry,ropeCoreMaterial);
+    const strand=new THREE.Mesh(ropeGeometry,ropeStrandMaterial);
+    core.name='Rival Massline core';strand.name='Rival Massline strand';
+    core.raycast=noRaycast;strand.raycast=noRaycast;
+    core.visible=false;strand.visible=false;
+    root.add(core,strand);
+    ropes.push({core,strand,attachmentId:null,claimed:false});
+  }
   root.add(target, pace, markers);
   const dummy = new THREE.Object3D(), origin = {}, from = {}, pacePoint = {};
-  const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3();
+  const ropeA = { x: 0, z: 0 }, ropeB = { x: 0, z: 0 };
+  const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3(), ropeDir = new THREE.Vector3();
   const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956), litColor = new THREE.Color(0xffe4a8);
   const anchorColor=new THREE.Color(0x8adccf),refugeColor=new THREE.Color(0xffc577);
   const markerState=new Float64Array(8*4);markerState.fill(NaN);
   let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, lastFinished = false, disposed=false;
   let markerCount=0,markersChanged=false;
+  function frameRopes(race){
+    let used=0;
+    const byId=state.combat?.attachments?.byId;
+    if(byId)for(const attachment of Object.values(byId)){
+      if(used>=ropes.length)break;
+      if(!attachment||attachment.state!=='active'||attachment.defId!=='tether_standard')continue;
+      const ownerEntity=state.entities?.get(attachment.ownerId);
+      if(!ownerEntity||ownerEntity.data?.raceOpponent?.missionId!==race.id)continue;
+      const targetEntity=state.entities?.get(attachment.targetId);
+      if(!targetEntity)continue;
+      let rope=null;
+      for(const row of ropes)if(row.attachmentId===attachment.id&&!row.claimed){rope=row;break;}
+      if(!rope)for(const row of ropes)if(!row.claimed){rope=row;rope.attachmentId=attachment.id;break;}
+      if(!rope)break;
+      rope.claimed=true;used++;
+      attachmentEndpoint(ownerEntity,attachment.sourceAnchorLocal,ropeA);
+      attachmentEndpoint(targetEntity,attachment.targetAnchorLocal,ropeB);
+      // Children of root live in sector-local space; the frame-origin rebase is inherited.
+      const ax=ropeA.x-sectorX,az=ropeA.z-sectorZ,bx=ropeB.x-sectorX,bz=ropeB.z-sectorZ;
+      ropeDir.set(bx-ax,0,bz-az);
+      const length=ropeDir.length()||0.001;
+      for(const mesh of [rope.core,rope.strand]){
+        mesh.visible=true;
+        mesh.position.set((ax+bx)/2,2.5,(az+bz)/2);
+        mesh.quaternion.setFromUnitVectors(up,ropeDir.normalize());
+        mesh.scale.set(mesh===rope.core?0.7:1.6,length,mesh===rope.core?0.7:1.6);
+      }
+    }
+    for(const rope of ropes){
+      if(!rope.claimed){rope.core.visible=false;rope.strand.visible=false;rope.attachmentId=null;}
+      rope.claimed=false;
+    }
+  }
   function putMarker(point,radius,anchor){
     const offset=markerCount*4,x=point.x-sectorX,z=point.z-sectorZ,y=anchor?4:-2;
     if(markerState[offset]!==x||markerState[offset+1]!==z||markerState[offset+2]!==radius||markerState[offset+3]!==y){
@@ -125,10 +187,12 @@ export function createRacingCourseView(scene, state) {
         forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
         pace.quaternion.setFromUnitVectors(up,forward);
       }
+      frameRopes(race);
     },
     dispose(){
       if(disposed)return;disposed=true;ghost.dispose();draft.dispose();releaseCourse();root.removeFromParent();
       markers.dispose();
+      ropeGeometry.dispose();ropeCoreMaterial.dispose();ropeStrandMaterial.dispose();
       ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
     },
   };

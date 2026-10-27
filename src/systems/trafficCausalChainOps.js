@@ -1,3 +1,5 @@
+import { normalizeWinnowRecovery } from '../world/vestaWinnowRecovery.js';
+import { normalizeCharonSupply, releaseCharonSupply } from '../world/charonSalvageSupply.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
 import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
@@ -2157,13 +2159,20 @@ export const trafficCausalChainOps = {
     // lot was accepted (including an idempotent duplicate acknowledgement).
     if (intent.kind === 'salvor') {
       const context = this._jobTrafficContext(intent, 'salvor');
-      if (!context) return false;
+      if (!context || this.helpers?.npcJobs?.get(context.jobId)?.control) return false;
       const destination = typeof intent.destination === 'string' ? intent.destination : '';
       if (!destination.startsWith('yard:') || destination.length <= 5) return false;
       const manifest = context.entity.data && context.entity.data.cargoManifest
         || context.rec.manifest;
       if (!manifest || !Array.isArray(manifest.lines)) return false;
-      if (!(manifest.totalQty > 0)) return true; // already empty: no custody commit is required
+      const yard = this._sectorStations().find(station => stationIdentity(station) === destination.slice(5));
+      if (!yard || !this._salvorAtTarget(context.entity, yard,
+        Math.max(this._salvorReach(context.entity, yard), yard.data?.dockRadius || 0))) return false;
+      if (!(manifest.totalQty > 0)) {
+        const job = this.helpers?.npcJobs?.get(context.jobId)?.job;
+        if (job?.payload?.sourceUnavailable) this.helpers.npcJobs.release(context.jobId);
+        return true;
+      }
 
       const manifestId = typeof manifest.manifestId === 'string' && manifest.manifestId
         ? manifest.manifestId
@@ -2188,8 +2197,10 @@ export const trafficCausalChainOps = {
       if (!this.bus || typeof this.bus.emit !== 'function') return false;
 
       const yardId = destination.slice(5);
+      const generation = manifest.salvageIntakeGeneration ?? 0;
+      if (!Number.isSafeInteger(generation) || generation < 0 || generation >= Number.MAX_SAFE_INTEGER) return false;
       const payload = {
-        intakeId: `salvage-intake:${context.worldRecordId}:${sourceSeq}:${manifestId}`,
+        intakeId: `salvage-intake:${context.worldRecordId}:${sourceSeq}:${manifestId}${generation ? `:remainder:${generation}` : ''}`,
         jobId: context.jobId,
         salvorId: context.entity.id,
         yardId,
@@ -2200,12 +2211,48 @@ export const trafficCausalChainOps = {
         lotId,
         lines,
       };
+      const run = this.state.traffic;
+      const offered = JSON.stringify(manifest.lines);
+      let committed = false;
+      // Non-enumerable: this synchronous owner handshake is not save/event content.
+      // Economy calls it before publishing settlement, so even a kill or Continue listener
+      // observes the reduced hold, never both accepted stock and its old physical cargo.
+      Object.defineProperty(payload, 'commitCustody', { value: (result) => {
+        // A listener may Continue, replace the job/hull, or settle this exact lot recursively.
+        // Never clear a newer owner or newer load using a stale acknowledgement.
+        const current = this._jobTrafficContext(intent, 'salvor');
+        if (this.state.traffic !== run || !current || current.entity !== context.entity
+          || current.rec !== context.rec || context.entity.alive === false
+          || context.entity.data.cargoManifest !== manifest || context.rec.manifest !== manifest
+          || manifest.totalQty !== copiedQty || JSON.stringify(manifest.lines) !== offered) return false;
+        if (!result || result.ok !== true) return false;
+        if (result.intakeId !== payload.intakeId || result.yardId !== yardId
+          || result.manifestId !== manifestId || result.lotId !== lotId
+          || !Array.isArray(result.acceptedLines) || !result.acceptedLines.length) return false;
+        const accepted = new Map();
+        for (const line of result.acceptedLines) {
+          const available = lines.find(offeredLine => offeredLine.commodityId === line?.commodityId);
+          if (!available || accepted.has(line.commodityId) || !Number.isSafeInteger(line.qty)
+            || line.qty <= 0 || line.qty > available.qty) return false;
+          accepted.set(line.commodityId, line.qty);
+        }
+        const acceptedQty = [...accepted.values()].reduce((sum, qty) => sum + qty, 0);
+        if (acceptedQty !== result.qty) return false;
+        const remainder = manifest.lines.map(line => ({ ...line, qty: line.qty - (accepted.get(line.commodityId) || 0) }))
+          .filter(line => line.qty > 0);
+        const next = remainder.length ? { ...manifest, lines: remainder,
+          totalQty: copiedQty - acceptedQty, salvageIntakeGeneration: generation + 1, salvageIntakeHeld: true }
+          : this._emptySalvorManifest(context.entity, intent.seq | 0);
+        this._setTrafficManifest(context.entity, context.rec, next);
+        committed = true;
+        return true;
+      } });
       this.bus.emit('salvage:npcUnload', payload);
-      if (!payload.intakeResult || payload.intakeResult.ok !== true) return false;
-
-      const emptied = this._emptySalvorManifest(context.entity, intent.seq | 0);
-      this._setTrafficManifest(context.entity, context.rec, emptied);
-      return true;
+      if (!committed && this.state.traffic === run && context.entity.data.cargoManifest === manifest
+        && ['unsupported_salvage_yard', 'salvage_listing_unavailable'].includes(payload.intakeResult?.reason)) {
+        manifest.salvageIntakeHeld = true;
+      }
+      return committed;
     }
 
     if (intent.kind !== 'hauler' && intent.kind !== 'miner') return false;
@@ -2327,6 +2374,7 @@ export const trafficCausalChainOps = {
     // Release any wreck/payload reservation so another cutter (or the player) can take it.
     if (ent && ent.data && ent.data.worldRecordId) {
       const claimId = ent.data.worldRecordId;
+      this._releaseShelvedSalvorClaims(claimId);
       forEachJobInteractable(this.state, (body) => {
         if (body.data && body.data.salvorClaimedBy === claimId) {
           this._clearSalvorClaim(body, claimId);
@@ -2510,6 +2558,7 @@ export const trafficCausalChainOps = {
       ? data.worldRecordId
       : null;
     if (!worldRecordId) return;
+    this._releaseShelvedSalvorClaims(worldRecordId);
     const sourceKey = typeof data.salvageSource === 'string' && data.salvageSource
       ? data.salvageSource
       : null;
@@ -2755,6 +2804,9 @@ export const trafficCausalChainOps = {
     const heliosFreightTallies = normalizeHeliosFreightTallyList(this.state.traffic.heliosFreightTallies);
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      vestaWinnowRecovery: normalizeWinnowRecovery(this.state.traffic.vestaWinnowRecovery),
+      charonSalvageSupply: normalizeCharonSupply(this.state.traffic.charonSalvageSupply),
+      pallasWorkLoop: normalizePallasShift(this.state.traffic.pallasWorkLoop, this.state.meta.seed),
       ...(this.state.traffic.captainRoster?.length
         ? { captainRoster: normalizeCaptainRoster(this.state.traffic.captainRoster) } : {}),
       ...(this.state.traffic.coldburnRey
@@ -2802,6 +2854,7 @@ export const trafficCausalChainOps = {
   // Generator twin: each section (release pass, incident normalizes, id compacts) is atomic —
   // yields sit only at those boundaries so order and RNG consumption stay identical.
   *deserializeChunked(data) {
+    releaseCharonSupply(this);
     const previousTraffic = this.state && this.state.traffic;
     this._releaseCeresMinerHaulerHandoffControls(previousTraffic && previousTraffic.ceresMinerHaulerHandoff);
     this._releaseCeresTenderServiceControls(previousTraffic && previousTraffic.ceresTenderServiceIncident);
@@ -2812,6 +2865,11 @@ export const trafficCausalChainOps = {
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
     yield 'traffic-releases';
+    const winnow = normalizeWinnowRecovery(data?.vestaWinnowRecovery);
+    if (data?.vestaWinnowRecovery != null && !winnow) throw new Error('Invalid finite Vesta Winnow recovery ledger');
+    this.state.traffic.vestaWinnowRecovery = winnow;
+    this.state.traffic.charonSalvageSupply = normalizeCharonSupply(data?.charonSalvageSupply) || (data?.charonSalvageSupply ? { blocked: true } : null);
+    this.state.traffic.pallasWorkLoop = normalizePallasShift(data?.pallasWorkLoop, this.state.meta.seed);
     const depotServices = normalizeDepotServices(data?.depotServices);
     const captainRoster = normalizeCaptainRoster(data?.captainRoster);
     if (captainRoster.length) this.state.traffic.captainRoster = captainRoster;
@@ -2955,3 +3013,4 @@ export const trafficCausalChainOps = {
     };
   },
 };
+import { normalizePallasShift } from '../data/pallasWorkShift.js';

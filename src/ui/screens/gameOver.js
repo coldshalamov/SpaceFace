@@ -24,6 +24,7 @@ import { el, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { injectSaveLayouts } from '../orrery/saveLayouts.js';
 import { injectGameOverLayouts } from '../orrery/gameOverLayouts.js';
+import { injectEndCardLayouts } from '../orrery/game-overLayouts.js';
 import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
@@ -409,6 +410,7 @@ export const gameOverScreen = {
     injectDeckplate();
     injectSaveLayouts();
     injectGameOverLayouts();
+    injectEndCardLayouts();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
     // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).
@@ -1017,17 +1019,28 @@ export const gameOverScreen = {
     if (costHero) costHero.hidden = values.cost === '-';
     // The display line is the cause itself; the caps kicker above it carries the verdict.
     const verdict = ironman ? 'Run Over' : 'Ship Lost';
-    if (this._kickerEl) {
-      const kicker = verdict + ' · ' + lower(LABEL.cause);
-      if (this._kickerEl.textContent !== kicker) this._kickerEl.textContent = kicker;
-    }
     if (this._titleEl) {
       const cause = String(values.cause || '');
       // With no recorded cause the title says so (the kicker above already carries the verdict).
+      // Pinned verbatim by test/zc-rc-50 — a real cause names itself; only a missing one falls back.
       const text = cause && !/^unknown loss$/i.test(cause) ? cause : 'Cause unrecorded';
+      // A named faction rides in a trailing parenthetical; its inner spaces become no-break so
+      // the headline's measure never strands "(Crimson" alone on its own line.
+      const display = text === 'Cause unrecorded'
+        ? text
+        : text.replace(/\(([^()]*)\)$/, (m, inner) => '(' + inner.replace(/ /g, '\u00A0') + ')');
       // A running decrypt would land its old word after this one: retire it first.
       if (this._stopTitleDecrypt) { this._stopTitleDecrypt(); this._stopTitleDecrypt = null; }
-      if (this._titleEl.textContent !== text) this._titleEl.textContent = text;
+      if (this._titleEl.textContent !== display) this._titleEl.textContent = display;
+    }
+    if (this._kickerEl) {
+      // Over the honest fallback headline ("Cause unrecorded") the kicker's field tail would
+      // echo the headline word for word, so the verdict rides alone; a named cause keeps its
+      // field named ("SHIP LOST · LOSS CAUSE", which the public-route check reads).
+      const kicker = this._titleEl && this._titleEl.textContent === 'Cause unrecorded'
+        ? verdict
+        : verdict + ' · ' + lower(LABEL.cause);
+      if (this._kickerEl.textContent !== kicker) this._kickerEl.textContent = kicker;
     }
     if (this._lineEl) {
       // A missing value drops its pair; an empty line hides, never prints a dash as data.
@@ -1043,7 +1056,9 @@ export const gameOverScreen = {
         ? 'Your ship was lost. In Ironman, death is final.'
         : recoverable
         ? 'Flight controls locked. Review the loss, then continue from the lawful recovery berth.'
-        : 'Recovery receipt unavailable. Load a save or start a new run.';
+        // one sentence carries both the fact and the way out; the stage line under the receipt
+        // heroes stays silent rather than repeating it (no duplicate copy on the sheet)
+        : 'No recovery consequences were applied. Load a save or start a new run.';
     }
     if (this._recoveryEl) {
       if (recoverable) {
@@ -1051,10 +1066,14 @@ export const gameOverScreen = {
           ? entitySpanHtml('station:' + recovery.stationId, escapeHtml(recovery.stationName || 'lawful dock'))
           : escapeHtml(recovery.stationName || 'lawful dock');
         this._recoveryEl.innerHTML = `RECOVERY BERTH · ${dockHtml} · ${escapeHtml(costText)} · ${escapeHtml(cargoText)}`;
+        this._recoveryEl.hidden = false;
+      } else if (ironman) {
+        this._recoveryEl.textContent = 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.';
+        this._recoveryEl.hidden = false;
       } else {
-        this._recoveryEl.textContent = ironman
-          ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
-          : 'No recovery consequences were applied. Load a valid save or begin a new run.';
+        // The sub sentence already says it; an empty element drops out of the sheet entirely.
+        this._recoveryEl.textContent = '';
+        this._recoveryEl.hidden = true;
       }
       // The receipt line repeats the figures above it: it leaves the view and stays their description.
       if (this._recoveryEl.classList) {

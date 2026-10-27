@@ -31,6 +31,69 @@ import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mj
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Texture budget per place asset: the longest edge its maps are allowed to ship at.
+//
+// A place texture earns its resolution from how many pixels the thing occupies at the gameplay
+// camera, not from how big the number in Blender was. The Asteroid Works props measured worst in
+// the 2026-10-27 census - `place_works_derrick` 21 MB, `place_works_rover` 20 MB,
+// `place_works_inclusion_kit` 16 MB of decoded VRAM - for bodies 1.4 to 20 units across, i.e. a
+// couple of hundred pixels on glass. Four 2048x2048 maps on a prop that size is 16 suppersampling
+// levels of wasted bandwidth, upload time and VRAM on an integrated GPU, and the surfaces they
+// paint read as flat colour anyway (the rover's atlas is a stripe field).
+//
+// 512 is still 4x the texel density the gameplay camera can resolve for these, so the picture does
+// not change. Anything not listed keeps the authored resolution: this is a measured per-asset
+// decision, not a blanket downgrade.
+export const PLACE_TEXTURE_BUDGET = Object.freeze({
+  place_works_derrick: 512,
+  place_works_rover: 512,
+  place_works_inclusion_kit: 512,
+});
+
+/** Longest edge this asset's maps may ship at, or 0 for "leave authored". */
+export function placeTextureBudget(assetId) {
+  return Number(PLACE_TEXTURE_BUDGET[assetId]) || 0;
+}
+
+/**
+ * Box-filter an RGBA buffer down to at most `maxEdge` on its longest side.
+ *
+ * Integer box filtering, not bilinear: a 2048 -> 512 reduction averages each 4x4 block exactly, so
+ * the result is what a mip level looks like, with no resampling ring. Above the target it is a
+ * no-op and the caller gets the original buffer back untouched.
+ */
+export function downsampleRgbaRgba(image, maxEdge) {
+  const { width, height, data } = image;
+  const longest = Math.max(width, height);
+  if (!maxEdge || longest <= maxEdge) return image;
+  const scale = maxEdge / longest;
+  const outWidth = Math.max(1, Math.round(width * scale));
+  const outHeight = Math.max(1, Math.round(height * scale));
+  const out = new Uint8Array(outWidth * outHeight * 4);
+  for (let y = 0; y < outHeight; y += 1) {
+    const y0 = Math.floor((y * height) / outHeight);
+    const y1 = Math.max(y0 + 1, Math.floor(((y + 1) * height) / outHeight));
+    for (let x = 0; x < outWidth; x += 1) {
+      const x0 = Math.floor((x * width) / outWidth);
+      const x1 = Math.max(x0 + 1, Math.floor(((x + 1) * width) / outWidth));
+      let r = 0; let g = 0; let b = 0; let a = 0; let n = 0;
+      for (let sy = y0; sy < y1; sy += 1) {
+        for (let sx = x0; sx < x1; sx += 1) {
+          const offset = (sy * width + sx) * 4;
+          r += data[offset]; g += data[offset + 1]; b += data[offset + 2]; a += data[offset + 3];
+          n += 1;
+        }
+      }
+      const target = (y * outWidth + x) * 4;
+      out[target] = Math.round(r / n);
+      out[target + 1] = Math.round(g / n);
+      out[target + 2] = Math.round(b / n);
+      out[target + 3] = Math.round(a / n);
+    }
+  }
+  return { width: outWidth, height: outHeight, data: out };
+}
+
 export const PLACE_TEXTURE_PROFILES = Object.freeze({
   color: Object.freeze({
     codec: 'ETC1S',
@@ -195,6 +258,9 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
       const document = await io.read(sourceAbs);
       splitIncompatibleTextureSlots(document);
       const transforms = [];
+      // Right-size this asset's maps before they are encoded. 0 leaves the authored resolution.
+      const textureEdgeBudget = placeTextureBudget(asset.id);
+      const decodeForAsset = (buffer) => decodeImage(buffer, textureEdgeBudget);
       const textureCount = Number(sourceInspection.metrics.textureCount) || 0;
       const sourceAlreadyKtx2 = textureCount > 0
         && sourceInspection.metrics.ktx2TextureCount === textureCount;
@@ -202,7 +268,7 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
         transforms.push(
           ktx2({
             slots: /^(baseColorTexture|emissiveTexture)$/,
-            imageDecoder: decodeImage,
+            imageDecoder: decodeForAsset,
             ...PLACE_TEXTURE_PROFILES.color.options,
             generateMipmap: true,
             needSupercompression: false,
@@ -211,7 +277,7 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
           }),
           ktx2({
             slots: /^(normalTexture|clearcoatNormalTexture)$/,
-            imageDecoder: decodeImage,
+            imageDecoder: decodeForAsset,
             ...PLACE_TEXTURE_PROFILES.normal.options,
             generateMipmap: true,
             isNormalMap: true,
@@ -220,7 +286,7 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
           }),
           ktx2({
             slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture|clearcoatTexture|clearcoatRoughnessTexture)$/,
-            imageDecoder: decodeImage,
+            imageDecoder: decodeForAsset,
             ...PLACE_TEXTURE_PROFILES.orm.options,
             generateMipmap: true,
             needSupercompression: false,
@@ -763,21 +829,21 @@ function releaseDeliverableRole(source) {
     : 'production_multi_lod';
 }
 
-function decodeImage(buffer) {
+function decodeImage(buffer, maxEdge = 0) {
   try {
     const png = PNG.sync.read(Buffer.from(buffer));
-    return {
+    return downsampleRgbaRgba({
       width: png.width,
       height: png.height,
       data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength),
-    };
+    }, maxEdge);
   } catch {
     const jpeg = JPEG.decode(Buffer.from(buffer), { useTArray: true });
-    return {
+    return downsampleRgbaRgba({
       width: jpeg.width,
       height: jpeg.height,
       data: new Uint8Array(jpeg.data.buffer, jpeg.data.byteOffset, jpeg.data.byteLength),
-    };
+    }, maxEdge);
   }
 }
 
@@ -810,3 +876,4 @@ function isMainModule() {
   if (!process.argv[1]) return false;
   return resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase();
 }
+

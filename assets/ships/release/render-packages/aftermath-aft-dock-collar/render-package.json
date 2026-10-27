@@ -53,28 +53,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "363316afccf1e93601e4c328c84d6788c6b1aeced19dd742bc994dcdc7e9d418",
+  "contentHash": "62c17a6b93718442c28b5bea97854673a6ef731a3b633049997fc6602e1de801",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.2734497785568237,
-          0.14575092494487762,
+          1.2734497638734932,
+          0.14575091844975038,
           6.690537452697754
         ],
         "min": [
-          0.7267531156539917,
-          -0.17307639122009277,
+          0.7267531303373223,
+          -0.17307638472496553,
           5.654230117797852
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f27dd1d14fd175ef24d43b1c23d8228321ebb737f26dce5c9f7807aaa2ba99ff",
+      "geometryHash": "58aa0578f27711f4dfca31b12f98f265fc15e3a985572a5dd1c9a52fb54e0348",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear0",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear0",
@@ -84,22 +84,22 @@
     {
       "bounds": {
         "max": [
-          1.763545274734497,
-          1.0868780612945557,
+          1.7635454285929542,
+          1.086878174241783,
           6.705778121948242
         ],
         "min": [
-          1.2858052253723145,
-          0.7457712292671204,
+          1.2858050715138574,
+          0.7457711163198929,
           5.980042457580566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ab19b2735ba3ca38b5d47e2e9fcc3633706abb9673dcb1bf602d70db606143a",
+      "geometryHash": "6005cbae1a1e7eab24e5ac501a41f89068f5ed77f398d4d82b7e00f356af79be",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear1",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear1",
@@ -110,21 +110,21 @@
       "bounds": {
         "max": [
           2.8708481788635254,
-          1.1274484395980835,
-          6.728763580322266
+          1.1274483577447003,
+          6.728763485855625
         ],
         "min": [
           2.43314266204834,
-          0.7220159769058228,
-          6.2981109619140625
+          0.7220160587592059,
+          6.298111056380703
         ]
       },
       "drawMode": 4,
-      "geometryHash": "614e1f51f69708a1fa532329bc29f0930afeb2f9ed3ca21c002bf7b615fef586",
+      "geometryHash": "f6180d7454cad84e99011724ae974f75691e31a335b5e3aef5dfe4eff96fa3ea",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear2",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear2",
@@ -134,22 +134,22 @@
     {
       "bounds": {
         "max": [
-          3.460291862487793,
-          0.09081964194774628,
+          3.4602920053191997,
+          0.09081972819753359,
           6.733782768249512
         ],
         "min": [
-          2.762929916381836,
-          -0.28041988611221313,
+          2.7629297735504292,
+          -0.28041997236200045,
           5.838353157043457
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8187fbd1ae41d63468e5b97752824dda291ed1fe010da04f34c028f9e4a00a3c",
+      "geometryHash": "5a9bd675011b42bba0a42b4a0759050a1ba37a5916c0e494efd3a5aae5aa727e",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear3",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear3",
@@ -159,22 +159,22 @@
     {
       "bounds": {
         "max": [
-          2.7524797916412354,
-          -0.9237860441207886,
+          2.7524799278331282,
+          -0.9237858973857114,
           6.682913780212402
         ],
         "min": [
-          2.3791890144348145,
-          -1.1931277513504028,
+          2.3791888782429216,
+          -1.19312789808548,
           6.230276107788086
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a05a074e1d769dbfa7c11c0646ea4845c701e18fe722da54be24e7ede5a53cf6",
+      "geometryHash": "04ab257b76bbaa34377e650a835bf0c4c5c62671921f0c250482d1796c95d5ce",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear4",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear4",
@@ -184,22 +184,22 @@
     {
       "bounds": {
         "max": [
-          1.6696521043777466,
-          -0.6453596353530884,
+          1.6696522299646075,
+          -0.6453595017478774,
           6.717730522155762
         ],
         "min": [
-          1.2762786149978638,
-          -1.249627709388733,
+          1.2762784894110029,
+          -1.2496278429939438,
           5.740721702575684
         ]
       },
       "drawMode": 4,
-      "geometryHash": "449a0bccf24e0d56542b8cdf08a4272e26a4dea36655da2d518ca348971ef10d",
+      "geometryHash": "3dbbdcb8e18cc79ed087b201fddac4a7c69a801c241a2a3ee70d3fef448cfaf5",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
+      "materialHash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
       "materialPipelineKey": "opaque",
       "meshName": "collarCut_tear5",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear5",
@@ -210,17 +210,17 @@
       "bounds": {
         "max": [
           3.110931873321533,
-          1.0214879512786865,
-          7.854903221130371
+          1.0214880108833313,
+          7.854903239819238
         ],
         "min": [
           0.9610207080841064,
-          -1.1284230947494507,
-          6.834176063537598
+          -1.1284231543540955,
+          6.83417604484873
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8b0d752a6b37e244f8b461abd813dfde53abfe649560a343157ebd6c9abaad05",
+      "geometryHash": "40231335cc157d1a2ad285b1fa1e9e9e74a08317b905a59c2b57ec368bfc8e35",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockcollar.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -234,18 +234,18 @@
     {
       "bounds": {
         "max": [
-          3.110013246536255,
-          1.0205693244934082,
-          7.86133337020874
+          3.110013304141769,
+          1.0205694417035673,
+          7.861333224077586
         ],
         "min": [
-          0.96193927526474,
-          -1.127504587173462,
-          6.8277459144592285
+          0.9619392772638704,
+          -1.1275045851743315,
+          6.827746060590383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c76f0a87e30995bcb7e954fbf726ad5c55564d5c48aecdf72c76dff82318185",
+      "geometryHash": "a4f64ccb36d5cc7eba68ede6fe537a6e0f77e3b1bf30e9dda84c1b5984f11424",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockcollar.primitive.1",
       "indexCount": 948,
       "indexed": true,
@@ -260,21 +260,21 @@
       "bounds": {
         "max": [
           2.1134886741638184,
-          1.249601125717163,
-          7.422051429748535
+          1.2496011529191609,
+          7.422051668167114
         ],
         "min": [
           1.9584636688232422,
-          1.1410784721374512,
-          7.267026901245117
+          1.1410784449354534,
+          7.267026662826538
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dea78127c39c0efc3c9b5f11c94cc805858fdda22d045e6898583be0d8a549ae",
+      "geometryHash": "90f1861213fe2ec29812f2c68ad020028fe3f8fdcb014109c9af68063f04745d",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.docklamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "8268e6e3b1dff20c6f484cc1b788a1ecba6c9f11476b52369a4a773069220e4d",
+      "materialHash": "6f0fc3368dc854c20665c292deca821a0d783fa5053e2b3ad8023d869fa30d9a",
       "materialPipelineKey": "opaque",
       "meshName": "DockLamp",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.docklamp",
@@ -285,21 +285,21 @@
       "bounds": {
         "max": [
           2.9260330200195312,
-          0.5766220688819885,
-          8.000011444091797
+          0.5766220033518049,
+          8.000011282989902
         ],
         "min": [
           1.2175089120864868,
-          -0.8711941242218018,
-          7.661299228668213
+          -0.8711940586916181,
+          7.6612993897701065
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66afd354f79fd4338a03442118cf55f0c27c81135a72ef98134e217804677590",
+      "geometryHash": "accac32305a8702176997f587371c57d062160c522425f9c21f4ccea7d94d958",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "DockRing_xrib1a",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1a",
@@ -310,21 +310,21 @@
       "bounds": {
         "max": [
           2.8244686126708984,
-          -0.11152376234531403,
-          7.950280666351318
+          -0.11152375152586225,
+          7.950280643918856
         ],
         "min": [
           2.0524702072143555,
-          -0.8369671106338501,
-          7.773673057556152
+          -0.8369671214533019,
+          7.7736730799886145
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f6f91c6447f888d6e2e1263dcc93132050650fada2d97ace20324e5f1aa71ada",
+      "geometryHash": "aee8ea8f0fa3b518dee077dae77ee89e0db68b6cede20dcc97da91bf213562fe",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "DockRing_xrib1b",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1b",
@@ -335,17 +335,17 @@
       "bounds": {
         "max": [
           3.146984100341797,
-          1.0575401782989502,
-          7.891869068145752
+          1.057540237903595,
+          7.891869161193537
         ],
         "min": [
           0.9249683618545532,
-          -1.164475440979004,
-          7.744580268859863
+          -1.1644755005836487,
+          7.744580175812078
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53ac708d7c4c9c1900043608e3b0bd30a73ffff6a4059fff52e7dae8f3ddb07c",
+      "geometryHash": "d47239e90f1ab9c95f29033fd36c206d0970bef89918709cb45e57884a054747",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring.primitive.0",
       "indexCount": 1194,
       "indexed": true,
@@ -360,21 +360,21 @@
       "bounds": {
         "max": [
           -1.444782018661499,
-          0.7911471724510193,
-          -7.636533737182617
+          0.7911472396956527,
+          -7.636533840322464
         ],
         "min": [
           -3.4603099822998047,
-          -0.8988649249076843,
-          -7.999940395355225
+          -0.8988649921523177,
+          -7.999940292215378
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3024af6c04788d0af352db592f8c39352bff4608c52f2fea24ae732174400367",
+      "geometryHash": "a8d7341d943094bc85859d7e896dd6594b5337d0298411453a20681c9b85ca53",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "ServiceHatch_xrib1a",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1a",
@@ -385,21 +385,21 @@
       "bounds": {
         "max": [
           -1.457208514213562,
-          -0.016047077253460884,
-          -7.785808563232422
+          -0.016047082958241532,
+          -7.785808445314654
         ],
         "min": [
           -2.4696176052093506,
-          -0.8664311766624451,
-          -7.9748992919921875
+          -0.8664311709576644,
+          -7.9748994099099555
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b19c30f9fa79a4c35264e726e3fac7a4b0f632b69c7c41abeff35f13c2c98903",
+      "geometryHash": "0d5db4c05882f6617ea6817d7dea3bf74d68ab7a6ccd671c583f3dc64d9660f7",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "ServiceHatch_xrib1b",
       "nodeId": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1b",
@@ -410,17 +410,17 @@
       "bounds": {
         "max": [
           -1.4951341152191162,
-          0.7217016220092773,
-          -7.7444634437561035
+          0.7217016287215531,
+          -7.744463617722283
         ],
         "min": [
           -3.389876365661621,
-          -0.828636646270752,
-          -7.916781425476074
+          -0.8286366529830277,
+          -7.916781251509895
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a90334ac367463797f464215ea234206675661e20f7be916dcce5c854636303",
+      "geometryHash": "525481d21e04e7fbb86a37f9fa93dc720643f123cf5ba0ab7875fe4fda868109",
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -469,6 +469,38 @@
       ]
     },
     {
+      "hash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
+      "id": "material:0c898285a1af648404c69513",
+      "name": "Forge_massline_express_liner_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "4910b1e96e545ef824c3f2f7776e9609845fe81a76de9d2e6a1f64c54814cf5b",
       "id": "material:4910b1e96e545ef824c3f2f7",
       "name": "Forge_massline_express_liner_dark__dead",
@@ -501,80 +533,16 @@
       ]
     },
     {
-      "hash": "8268e6e3b1dff20c6f484cc1b788a1ecba6c9f11476b52369a4a773069220e4d",
-      "id": "material:8268e6e3b1dff20c6f484cc1",
+      "hash": "6f0fc3368dc854c20665c292deca821a0d783fa5053e2b3ad8023d869fa30d9a",
+      "id": "material:6f0fc3368dc854c20665c292",
       "name": "Forge_massline_express_liner_glow_amber__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
       "hash": "8ae036dd411f7e5445fda0a3843c7efdfec1aad89973c7dba55d76524fb7e1a5",
       "id": "material:8ae036dd411f7e5445fda0a3",
       "name": "Forge_massline_express_liner_gunmetal__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "8e7bb086a9b3b9e3e1d2f26a733913fc2d12b6bb1d978cc6a8ea9cb5d13391c8",
-      "id": "material:8e7bb086a9b3b9e3e1d2f26a",
-      "name": "Forge_massline_express_liner_wk_torn__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
-      "id": "material:bd2c5bccc203471f40a56c83",
-      "name": "Forge_massline_express_liner_wk_frame",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -634,27 +602,59 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "fba950ac866373efa7ab367823cbe96e9d5e7781be6a0ae3abcb4a8eccfcbffa",
+      "id": "material:fba950ac866373efa7ab3678",
+      "name": "Forge_massline_express_liner_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear0",
       "localTransform": [
-        1,
+        0.5181536674499512,
         0,
         0,
         0,
         0,
-        1,
+        0.5181536674499512,
         0,
         0,
         0,
         0,
-        1,
+        0.5181536674499512,
         0,
-        0,
-        0,
-        0,
+        1.0001014471054077,
+        -0.013662733137607574,
+        6.172383785247803,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -668,42 +668,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.5181536674499512,
         0,
         0,
         0,
         0,
-        1,
+        0.5181536674499512,
         0,
         0,
         0,
         0,
-        1,
+        0.5181536674499512,
         0,
-        0,
-        0,
-        0,
+        1.0001014471054077,
+        -0.013662733137607574,
+        6.172383785247803,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear1",
       "localTransform": [
-        1,
+        0.3628678321838379,
         0,
         0,
         0,
         0,
-        1,
+        0.3628678321838379,
         0,
         0,
         0,
         0,
-        1,
+        0.3628678321838379,
         0,
-        0,
-        0,
-        0,
+        1.5246752500534058,
+        0.916324645280838,
+        6.342910289764404,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -717,42 +717,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.3628678321838379,
         0,
         0,
         0,
         0,
-        1,
+        0.3628678321838379,
         0,
         0,
         0,
         0,
-        1,
+        0.3628678321838379,
         0,
-        0,
-        0,
-        0,
+        1.5246752500534058,
+        0.916324645280838,
+        6.342910289764404,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear2",
       "localTransform": [
-        1,
+        0.21885275840759277,
         0,
         0,
         0,
         0,
-        1,
+        0.21885275840759277,
         0,
         0,
         0,
         0,
-        1,
+        0.21885275840759277,
         0,
-        0,
-        0,
-        0,
+        2.6519954204559326,
+        0.9247322082519531,
+        6.513437271118164,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -766,42 +766,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.21885275840759277,
         0,
         0,
         0,
         0,
-        1,
+        0.21885275840759277,
         0,
         0,
         0,
         0,
-        1,
+        0.21885275840759277,
         0,
-        0,
-        0,
-        0,
+        2.6519954204559326,
+        0.9247322082519531,
+        6.513437271118164,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear3",
       "localTransform": [
-        1,
+        0.44771480560302734,
         0,
         0,
         0,
         0,
-        1,
+        0.44771480560302734,
         0,
         0,
         0,
         0,
-        1,
+        0.44771480560302734,
         0,
-        0,
-        0,
-        0,
+        3.1116108894348145,
+        -0.09480012208223343,
+        6.286067962646484,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -815,42 +815,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.44771480560302734,
         0,
         0,
         0,
         0,
-        1,
+        0.44771480560302734,
         0,
         0,
         0,
         0,
-        1,
+        0.44771480560302734,
         0,
-        0,
-        0,
-        0,
+        3.1116108894348145,
+        -0.09480012208223343,
+        6.286067962646484,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear4",
       "localTransform": [
-        1,
+        0.2263188362121582,
         0,
         0,
         0,
         0,
-        1,
+        0.2263188362121582,
         0,
         0,
         0,
         0,
-        1,
+        0.2263188362121582,
         0,
-        0,
-        0,
-        0,
+        2.565834403038025,
+        -1.0584568977355957,
+        6.456594944000244,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -864,42 +864,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.2263188362121582,
         0,
         0,
         0,
         0,
-        1,
+        0.2263188362121582,
         0,
         0,
         0,
         0,
-        1,
+        0.2263188362121582,
         0,
-        0,
-        0,
-        0,
+        2.565834403038025,
+        -1.0584568977355957,
+        6.456594944000244,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.collarcut-tear5",
       "localTransform": [
-        1,
+        0.48850440979003906,
         0,
         0,
         0,
         0,
-        1,
+        0.48850440979003906,
         0,
         0,
         0,
         0,
-        1,
+        0.48850440979003906,
         0,
-        0,
-        0,
-        0,
+        1.4729653596878052,
+        -0.9474936723709106,
+        6.229226112365723,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -913,42 +913,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.48850440979003906,
         0,
         0,
         0,
         0,
-        1,
+        0.48850440979003906,
         0,
         0,
         0,
         0,
-        1,
+        0.48850440979003906,
         0,
-        0,
-        0,
-        0,
+        1.4729653596878052,
+        -0.9474936723709106,
+        6.229226112365723,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockcollar",
       "localTransform": [
-        1,
+        1.0749555826187134,
         0,
         0,
         0,
         0,
-        1,
+        1.0749555826187134,
         0,
         0,
         0,
         0,
-        1,
+        1.0749555826187134,
         0,
-        0,
-        0,
-        0,
+        2.03597629070282,
+        -0.05346757173538208,
+        7.344539642333984,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -962,42 +962,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        1.0749555826187134,
         0,
         0,
         0,
         0,
-        1,
+        1.0749555826187134,
         0,
         0,
         0,
         0,
-        1,
+        1.0749555826187134,
         0,
-        0,
-        0,
-        0,
+        2.03597629070282,
+        -0.05346757173538208,
+        7.344539642333984,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.docklamp",
       "localTransform": [
-        1,
+        0.07751250267028809,
         0,
         0,
         0,
         0,
-        1,
+        0.07751250267028809,
         0,
         0,
         0,
         0,
-        1,
+        0.07751250267028809,
         0,
-        0,
-        0,
-        0,
+        2.0359761714935303,
+        1.1953397989273071,
+        7.344539165496826,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1011,42 +1011,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.07751250267028809,
         0,
         0,
         0,
         0,
-        1,
+        0.07751250267028809,
         0,
         0,
         0,
         0,
-        1,
+        0.07751250267028809,
         0,
-        0,
-        0,
-        0,
+        2.0359761714935303,
+        1.1953397989273071,
+        7.344539165496826,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring",
       "localTransform": [
-        1,
+        1.1110078692436218,
         0,
         0,
         0,
         0,
-        1,
+        1.1110078692436218,
         0,
         0,
         0,
         0,
-        1,
+        1.1110078692436218,
         0,
-        0,
-        0,
-        0,
+        2.035976231098175,
+        -0.053467631340026855,
+        7.818224668502808,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1060,42 +1060,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        1.1110078692436218,
         0,
         0,
         0,
         0,
-        1,
+        1.1110078692436218,
         0,
         0,
         0,
         0,
-        1,
+        1.1110078692436218,
         0,
-        0,
-        0,
-        0,
+        2.035976231098175,
+        -0.053467631340026855,
+        7.818224668502808,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1a",
       "localTransform": [
-        1,
+        0.8542620539665222,
         0,
         0,
         0,
         0,
-        1,
+        0.8542620539665222,
         0,
         0,
         0,
         0,
-        1,
+        0.8542620539665222,
         0,
-        0,
-        0,
-        0,
+        2.071770966053009,
+        -0.14728602766990662,
+        7.830655336380005,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1109,42 +1109,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.8542620539665222,
         0,
         0,
         0,
         0,
-        1,
+        0.8542620539665222,
         0,
         0,
         0,
         0,
-        1,
+        0.8542620539665222,
         0,
-        0,
-        0,
-        0,
+        2.071770966053009,
+        -0.14728602766990662,
+        7.830655336380005,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.dockring-xrib1b",
       "localTransform": [
-        1,
+        0.3859992027282715,
         0,
         0,
         0,
         0,
-        1,
+        0.3859992027282715,
         0,
         0,
         0,
         0,
-        1,
+        0.3859992027282715,
         0,
-        0,
-        0,
-        0,
+        2.438469409942627,
+        -0.47424543648958206,
+        7.861976861953735,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1158,42 +1158,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.3859992027282715,
         0,
         0,
         0,
         0,
-        1,
+        0.3859992027282715,
         0,
         0,
         0,
         0,
-        1,
+        0.3859992027282715,
         0,
-        0,
-        0,
-        0,
+        2.438469409942627,
+        -0.47424543648958206,
+        7.861976861953735,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch",
       "localTransform": [
-        1,
+        0.9473711252212524,
         0,
         0,
         0,
         0,
-        1,
+        0.9473711252212524,
         0,
         0,
         0,
         0,
-        1,
+        0.9473711252212524,
         0,
-        0,
-        0,
-        0,
+        -2.4425052404403687,
+        -0.053467512130737305,
+        -7.830622434616089,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1207,42 +1207,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.9473711252212524,
         0,
         0,
         0,
         0,
-        1,
+        0.9473711252212524,
         0,
         0,
         0,
         0,
-        1,
+        0.9473711252212524,
         0,
-        0,
-        0,
-        0,
+        -2.4425052404403687,
+        -0.053467512130737305,
+        -7.830622434616089,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1a",
       "localTransform": [
-        1,
+        1.0077639818191528,
         0,
         0,
         0,
         0,
-        1,
+        1.0077639818191528,
         0,
         0,
         0,
         0,
-        1,
+        1.0077639818191528,
         0,
-        0,
-        0,
-        0,
+        -2.452546000480652,
+        -0.05385887622833252,
+        -7.818237066268921,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1256,42 +1256,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        1.0077639818191528,
         0,
         0,
         0,
         0,
-        1,
+        1.0077639818191528,
         0,
         0,
         0,
         0,
-        1,
+        1.0077639818191528,
         0,
-        0,
-        0,
-        0,
+        -2.452546000480652,
+        -0.05385887622833252,
+        -7.818237066268921,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-dock-collar.mesh.servicehatch-xrib1b",
       "localTransform": [
-        1,
+        0.5062045454978943,
         0,
         0,
         0,
         0,
-        1,
+        0.5062045454978943,
         0,
         0,
         0,
         0,
-        1,
+        0.5062045454978943,
         0,
-        0,
-        0,
-        0,
+        -1.9634130597114563,
+        -0.441239126957953,
+        -7.880353927612305,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1305,21 +1305,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-dock-collar.body",
       "worldTransform": [
-        1,
+        0.5062045454978943,
         0,
         0,
         0,
         0,
-        1,
+        0.5062045454978943,
         0,
         0,
         0,
         0,
-        1,
+        0.5062045454978943,
         0,
-        0,
-        0,
-        0,
+        -1.9634130597114563,
+        -0.441239126957953,
+        -7.880353927612305,
         1
       ]
     },
@@ -1382,37 +1382,37 @@
       "uri": "place_aftermath_aft_dock_collar.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 167472,
-    "sha256": "d9f1d22c3d626dacf8d785af92d2955a93b024f7e9e480e9a9c0e2870d967fb6",
+    "bytes": 155972,
+    "sha256": "d30d541b479c507c4b2d1f67bb17d1eb62363970dcff254b9eb370d83b6f9295",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -0.000009059906005859375,
-        -0.00001329183578491211,
-        0.00003552436828613281
+        -0.000008988490302508367,
+        -0.000013345037391476744,
+        0.000035495387262329814
       ],
       "max": [
-        3.460291862487793,
-        1.249601125717163,
-        8.000011444091797
+        3.4602920053191997,
+        1.2496011529191609,
+        8.000011282989902
       ],
       "min": [
         -3.4603099822998047,
-        -1.249627709388733,
-        -7.999940395355225
+        -1.2496278429939438,
+        -7.999940292215378
       ],
       "size": [
-        6.920601844787598,
-        2.499228835105896,
-        15.999951839447021
+        6.920601987619005,
+        2.4992289959131044,
+        15.99995157520528
       ]
     },
     "hidden": [],
@@ -1544,21 +1544,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5181536674499512,
           0,
           0,
           0,
           0,
-          1,
+          0.5181536674499512,
           0,
           0,
           0,
           0,
-          1,
+          0.5181536674499512,
           0,
-          0,
-          0,
-          0,
+          1.0001014471054077,
+          -0.013662733137607574,
+          6.172383785247803,
           1
         ],
         "name": "collarCut_tear0",
@@ -1571,21 +1571,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3628678321838379,
           0,
           0,
           0,
           0,
-          1,
+          0.3628678321838379,
           0,
           0,
           0,
           0,
-          1,
+          0.3628678321838379,
           0,
-          0,
-          0,
-          0,
+          1.5246752500534058,
+          0.916324645280838,
+          6.342910289764404,
           1
         ],
         "name": "collarCut_tear1",
@@ -1598,21 +1598,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.21885275840759277,
           0,
           0,
           0,
           0,
-          1,
+          0.21885275840759277,
           0,
           0,
           0,
           0,
-          1,
+          0.21885275840759277,
           0,
-          0,
-          0,
-          0,
+          2.6519954204559326,
+          0.9247322082519531,
+          6.513437271118164,
           1
         ],
         "name": "collarCut_tear2",
@@ -1625,21 +1625,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44771480560302734,
           0,
           0,
           0,
           0,
-          1,
+          0.44771480560302734,
           0,
           0,
           0,
           0,
-          1,
+          0.44771480560302734,
           0,
-          0,
-          0,
-          0,
+          3.1116108894348145,
+          -0.09480012208223343,
+          6.286067962646484,
           1
         ],
         "name": "collarCut_tear3",
@@ -1652,21 +1652,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2263188362121582,
           0,
           0,
           0,
           0,
-          1,
+          0.2263188362121582,
           0,
           0,
           0,
           0,
-          1,
+          0.2263188362121582,
           0,
-          0,
-          0,
-          0,
+          2.565834403038025,
+          -1.0584568977355957,
+          6.456594944000244,
           1
         ],
         "name": "collarCut_tear4",
@@ -1679,21 +1679,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.48850440979003906,
           0,
           0,
           0,
           0,
-          1,
+          0.48850440979003906,
           0,
           0,
           0,
           0,
-          1,
+          0.48850440979003906,
           0,
-          0,
-          0,
-          0,
+          1.4729653596878052,
+          -0.9474936723709106,
+          6.229226112365723,
           1
         ],
         "name": "collarCut_tear5",
@@ -1706,21 +1706,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0749555826187134,
           0,
           0,
           0,
           0,
-          1,
+          1.0749555826187134,
           0,
           0,
           0,
           0,
-          1,
+          1.0749555826187134,
           0,
-          0,
-          0,
-          0,
+          2.03597629070282,
+          -0.05346757173538208,
+          7.344539642333984,
           1
         ],
         "name": "DockCollar_1",
@@ -1733,21 +1733,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0749555826187134,
           0,
           0,
           0,
           0,
-          1,
+          1.0749555826187134,
           0,
           0,
           0,
           0,
-          1,
+          1.0749555826187134,
           0,
-          0,
-          0,
-          0,
+          2.03597629070282,
+          -0.05346757173538208,
+          7.344539642333984,
           1
         ],
         "name": "DockCollar_2",
@@ -1760,21 +1760,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.07751250267028809,
           0,
           0,
           0,
           0,
-          1,
+          0.07751250267028809,
           0,
           0,
           0,
           0,
-          1,
+          0.07751250267028809,
           0,
-          0,
-          0,
-          0,
+          2.0359761714935303,
+          1.1953397989273071,
+          7.344539165496826,
           1
         ],
         "name": "DockLamp",
@@ -1787,21 +1787,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1110078692436218,
           0,
           0,
           0,
           0,
-          1,
+          1.1110078692436218,
           0,
           0,
           0,
           0,
-          1,
+          1.1110078692436218,
           0,
-          0,
-          0,
-          0,
+          2.035976231098175,
+          -0.053467631340026855,
+          7.818224668502808,
           1
         ],
         "name": "DockRing",
@@ -1814,21 +1814,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8542620539665222,
           0,
           0,
           0,
           0,
-          1,
+          0.8542620539665222,
           0,
           0,
           0,
           0,
-          1,
+          0.8542620539665222,
           0,
-          0,
-          0,
-          0,
+          2.071770966053009,
+          -0.14728602766990662,
+          7.830655336380005,
           1
         ],
         "name": "DockRing_xrib1a",
@@ -1841,21 +1841,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3859992027282715,
           0,
           0,
           0,
           0,
-          1,
+          0.3859992027282715,
           0,
           0,
           0,
           0,
-          1,
+          0.3859992027282715,
           0,
-          0,
-          0,
-          0,
+          2.438469409942627,
+          -0.47424543648958206,
+          7.861976861953735,
           1
         ],
         "name": "DockRing_xrib1b",
@@ -1868,21 +1868,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9473711252212524,
           0,
           0,
           0,
           0,
-          1,
+          0.9473711252212524,
           0,
           0,
           0,
           0,
-          1,
+          0.9473711252212524,
           0,
-          0,
-          0,
-          0,
+          -2.4425052404403687,
+          -0.053467512130737305,
+          -7.830622434616089,
           1
         ],
         "name": "ServiceHatch",
@@ -1895,21 +1895,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0077639818191528,
           0,
           0,
           0,
           0,
-          1,
+          1.0077639818191528,
           0,
           0,
           0,
           0,
-          1,
+          1.0077639818191528,
           0,
-          0,
-          0,
-          0,
+          -2.452546000480652,
+          -0.05385887622833252,
+          -7.818237066268921,
           1
         ],
         "name": "ServiceHatch_xrib1a",
@@ -1922,21 +1922,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5062045454978943,
           0,
           0,
           0,
           0,
-          1,
+          0.5062045454978943,
           0,
           0,
           0,
           0,
-          1,
+          0.5062045454978943,
           0,
-          0,
-          0,
-          0,
+          -1.9634130597114563,
+          -0.441239126957953,
+          -7.880353927612305,
           1
         ],
         "name": "ServiceHatch_xrib1b",
@@ -1951,20 +1951,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_dock_collar.glb"
   },
-  "runtimeHash": "e50c4d562c042894bc0cb20885074853b84a87164a4d32159582c218f4adc2fa",
+  "runtimeHash": "8eefb467aa79a9c2cc4b4269cdeb738d5758e422c29480eaf61e2051d56663da",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.460291862487793,
-          1.249601125717163,
-          8.000011444091797
+          3.4602920053191997,
+          1.2496011529191609,
+          8.000011282989902
         ],
         "min": [
           -3.4603099822998047,
-          -1.249627709388733,
-          -7.999940395355225
+          -1.2496278429939438,
+          -7.999940292215378
         ]
       },
       "id": "sf.render.aftermath-aft-dock-collar.body",

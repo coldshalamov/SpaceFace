@@ -44,7 +44,7 @@ const FT_MARK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
   + '<circle class="sf-ft-shape sf-ft-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
   + '<path class="sf-ft-shape sf-ft-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
   + '<rect class="sf-ft-shape sf-ft-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
-  + '<circle class="sf-ft-shape sf-ft-shape-crit" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="1.5"/>'
+  + '<circle class="sf-ft-shape sf-ft-shape-crit" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="2.2"/>'
   + '</svg>';
 
 /** Direct-to-cargo yield names what the hold took. Loose ore keeps the released quantity. */
@@ -145,6 +145,10 @@ export function createFloatingText(ctx) {
   injectStyle();
   const layer = document.createElement('div');
   layer.id = 'sf-floattext';
+  // Pure presentation: numbers and pips are visuals over the world; the screen-reader channels
+  // for the same facts are alerts.js and the receipt lane (the damageIndicators contract).
+  // Optional call: headless test stubs mount a minimal DOM without setAttribute.
+  layer.setAttribute?.('aria-hidden', 'true');
   const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
   root.appendChild(layer);
 
@@ -163,7 +167,7 @@ export function createFloatingText(ctx) {
     el.appendChild(mark);
     el.appendChild(label);
     layer.appendChild(el);
-    nodes.push({ el, mark, label, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
+    nodes.push({ el, mark, label, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0, oy: 0,
       targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null });
   }
   let head = 0;
@@ -198,8 +202,9 @@ export function createFloatingText(ctx) {
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
+    n.oy = opts.oy || 0;                            // birth offset — a callout can open clear of the hit number
     // Control receipts are flat marks — the rise animation belongs to damage numbers.
-    n.el.className = 'sf-ft ' + (opts.controlReceipt === 'pip' ? '' : 'sf-ft--rise ') + cls;
+    n.el.className = 'sf-ft ' + cls;
     n.label.textContent = text;
     n.el.style.display = 'block';
     n.el.style.opacity = '1';
@@ -259,7 +264,7 @@ export function createFloatingText(ctx) {
       if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage) continue;
       n.damage += amount;
       n.label.textContent = String(Math.round(n.damage));
-      n.el.className = 'sf-ft sf-ft--rise ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
+      n.el.className = 'sf-ft ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
       return;
     }
     const big = amount >= 25 || p.killing;
@@ -270,11 +275,14 @@ export function createFloatingText(ctx) {
   on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); }, { presentation: true });
   // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
   // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
+  // The callout rises faster than the damage numbers (42-58 px/s) so the two never stack on the
+  // same hull — the skill read climbs clear of the arithmetic.
   on('combat:weakPointHit', (p) => {
     const spec = weakPointFloatingTextSpec(p);
     if (!spec) return;
     // Accent the existing callout; combat:damage remains the sole damage-number receipt.
-    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
+    // The -16 px birth offset plus the faster rise keep the skill read clear of the number.
+    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 66, vx: 18, oy: -16 });
   });
   // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
   // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
@@ -365,17 +373,41 @@ export function createFloatingText(ctx) {
     on(name, () => { for (const n of nodes) retire(n); });
   }
 
-  // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
-  // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
-  // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
-  // transform update already owns the element's transform — folding the scale in keeps a
-  // single source of truth and never fights the position transform.
-  const POP_TIME = 0.08;
+  // Spawn-pop: numbers arrive on the system's snap spring (ORRERY §3.5 — stiffness 420, damping
+  // 38, mass 1), computed closed-form from the spring's step response so the per-frame transform
+  // stays the single owner of motion: the numeral lands at 1.3, overshoots just under its rest
+  // size once, and settles — one snap, never a bare ease. Driven here (not via a CSS keyframe)
+  // because the per-frame transform update already owns the element's transform — folding the
+  // scale in keeps a single source of truth and never fights the position transform.
+  const SNAP_W = Math.sqrt(420);            // natural frequency ≈ 20.494
+  const SNAP_ZETA = 38 / (2 * SNAP_W);      // ≈ 0.927 — the preset's one-overshoot damping
+  const SNAP_WD = SNAP_W * Math.sqrt(1 - SNAP_ZETA * SNAP_ZETA);
+  const SNAP_DECAY = SNAP_ZETA * SNAP_W;
+  const SNAP_RATIO = SNAP_DECAY / SNAP_WD;
   function popScale(age) {
-    if (age >= POP_TIME) return 1;
-    const x = age / POP_TIME;          // 0 -> 1 over the pop window
-    const e = 1 - (1 - x) * (1 - x);   // ease-out quad
-    return 1.3 - 0.3 * e;              // 1.3 -> 1.0
+    if (age <= 0) return 1.3;
+    const t = Math.min(age, 1.2);
+    return 1 + 0.3 * Math.exp(-SNAP_DECAY * t)
+      * (Math.cos(SNAP_WD * t) + SNAP_RATIO * Math.sin(SNAP_WD * t));
+  }
+
+  // Reduced motion on a JS-owned motion path cannot be cut by a CSS guard, so the surface reads
+  // the switches itself — the same pattern starmap.js and uiRoot.js use. All three are honoured:
+  // settings.video.motionReduce (the runtime contract accessibility.js resolves and keeps in sync
+  // with the html.sf-reduce-motion class), the class itself for paths that set it directly (the
+  // kit lab's ?motion=reduce), and the OS prefers-reduced-motion query so a reduce audience gets a
+  // stilled entrance even before an in-game choice exists.
+  let _motionMql = null, _motionMqlTried = false;
+  function motionReduced() {
+    if (state.settings?.video?.motionReduce) return true;
+    const el = typeof document !== 'undefined' ? document.documentElement : null;
+    if (el && typeof el.matches === 'function' && el.matches('html.sf-reduce-motion')) return true;
+    if (!_motionMqlTried) {
+      _motionMqlTried = true;
+      try { _motionMql = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null; }
+      catch (_) { _motionMql = null; }
+    }
+    return !!(_motionMql && _motionMql.matches);
   }
 
   function update(dt) {
@@ -384,6 +416,7 @@ export function createFloatingText(ctx) {
     // Viewport for the edge-overshoot fade — the same measures worldToScreen maps NDC against.
     const vw = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 720;
+    const reduced = motionReduced();
     for (let i = 0; i < POOL; i++) {
       const n = nodes[i];
       if (!n.alive) continue;
@@ -398,9 +431,8 @@ export function createFloatingText(ctx) {
       _ftWorld.x = wx; _ftWorld.z = wz;
       const s = helpers.worldToScreen(_ftWorld, _ftScreen);
       const t = n.age / n.life;
-      const rise = n.vy * n.age;            // integrated rise (px)
+      const rise = n.vy * n.age + n.oy;     // integrated rise (px), plus the birth offset
       const drift = n.vx * n.age;
-      const reduced = state.settings?.video?.motionReduce;
       const sc = reduced ? 1 : popScale(n.age);
       const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
       if (n._sfHudTransform !== nextTransform) {
@@ -445,27 +477,32 @@ function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
+  // ORRERY lease (design/frontend/ORRERY.md §3): transient combat text speaks in the system's
+  // voices only — numerals in the Archivo tabular face (--dp-face-numeral, never mono), colours
+  // from the --dp-* root. The temperature grammar: cool ice = the shield reading (data in
+  // motion), phosphor = the plain reading, warm lamp = money you earned and the skill callout,
+  // danger red = damage taken (threat only). Legibility over the world is the one sanctioned
+  // black keyline (--dp-text-legible), never a coloured glow.
   s.textContent = `
-  #sf-floattext { position:absolute; inset:0; pointer-events:none; z-index:40; overflow:hidden; }
-  .sf-ft { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%); font-family:var(--mono,Consolas,monospace);
-    font-weight:700; font-size:16px; letter-spacing:.02em; white-space:nowrap; will-change:transform,opacity;
-    text-shadow:0 0 6px rgba(0,0,0,.9), 0 1px 2px rgba(0,0,0,.9); }
-  /* Demo-prep microinteraction: numbers arrive with a short rise instead of
-     popping at full size — margin-top keeps the owned transform untouched. */
-  .sf-ft--rise { animation:sf-ft-rise 220ms ease-out 1; }
-  @keyframes sf-ft-rise { from { margin-top:6px; } to { margin-top:0; } }
-  @media (prefers-reduced-motion:reduce) { .sf-ft--rise { animation:none; } }
-  html.sf-reduce-motion .sf-ft--rise { animation:none; }
-  .sf-ft--hull { color:#ffd24a; }
+  /* Layering (ARCHITECTURE §1.2 via src/ui/AGENTS.md): floats are world-anchored transients, so
+     they live in the z11–14 band with the lock diamond, lead pip and damage markers — never above
+     the prompt deck (z20) or a decision ladder. */
+  #sf-floattext { position:absolute; inset:0; pointer-events:none; z-index:14; overflow:hidden; }
+  .sf-ft { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%);
+    font-family:var(--dp-face-numeral, var(--dp-face-read, "Archivo", sans-serif));
+    font-weight:620; font-variant-numeric:tabular-nums lining-nums;
+    font-size:16px; letter-spacing:.01em; white-space:nowrap; will-change:transform,opacity;
+    text-shadow:0 0 6px rgb(0 0 0 / .92), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-ft--hull { color:var(--dp-phos, #dfeeff); }
   /* FB-019 hit pips — control receipts, not damage numbers. One drawn mark per layer at the
      impact: ring for shield work, diamond outline for armor bite, solid square for hull — the
-     damageIndicators geometry, ~10px. Flat marks, no rise. Colors ride the same tokens the
-     damage indicators use (--sf-shield / --sf-warn / --sf-danger), never per-system hexes. */
+     damageIndicators geometry, ~10px. Flat marks, no rise. The layer trio rides the same tokens
+     damageIndicators resolves (--dp-ice / --dp-lamp / --dp-danger), so eye and ear agree. */
   .sf-ft--pip { position:absolute; left:0; top:0; line-height:1;
-    pointer-events:none; text-shadow:0 0 6px rgba(0,0,0,.85); will-change:transform,opacity; }
-  .sf-ft--pip-shield { color:var(--sf-shield, #39d0ff); }
-  .sf-ft--pip-armor { color:var(--sf-warn, #ffb35c); }
-  .sf-ft--pip-hull { color:var(--sf-danger, #ff5c5c); }
+    pointer-events:none; text-shadow:0 0 6px rgb(0 0 0 / .85); will-change:transform,opacity; }
+  .sf-ft--pip-shield { color:var(--dp-ice, var(--sf-shield, #39d0ff)); }
+  .sf-ft--pip-armor { color:var(--dp-lamp, var(--sf-warn, #ffb35c)); }
+  .sf-ft--pip-hull { color:var(--dp-danger, var(--sf-danger, #ff5c5c)); }
   .sf-ft--pip-calm { opacity:.6; }
   /* The shared drawn-shape svg every pooled node carries; the spawn class reveals one shape. */
   .sf-ft-mark { display:none; vertical-align:middle; }
@@ -477,23 +514,28 @@ function injectStyle() {
   .sf-ft--pip-armor .sf-ft-shape-armor,
   .sf-ft--pip-hull .sf-ft-shape-hull { display:block; }
   /* Weak-point callout: the indicator's critical alert ring leads the CRIT word. */
-  .sf-ft--critical .sf-ft-mark { display:inline-block; width:12px; height:12px; margin-right:5px; }
+  .sf-ft--critical .sf-ft-mark { display:inline-block; width:13px; height:13px; margin-right:5px; }
   .sf-ft--critical .sf-ft-shape-crit { display:block; }
-  .sf-ft--shield { color:#7fe0ff; font-size:14px; }
-  .sf-ft--player { color:#ff5470; font-size:18px; }
+  .sf-ft--shield { color:var(--dp-ice, #8fcbff); font-size:14px; }
+  .sf-ft--player { color:var(--dp-danger, #ff5038); font-size:18px; }
   .sf-ft--big { font-size:24px; }
-  .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.06em; }
-  .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.06em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
-  .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.06em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
-  .sf-ft--critical { color:#fff1ad; font-size:15px; font-weight:900; text-shadow:0 0 6px rgba(0,0,0,.9),0 1px 2px #000; }
-  .sf-ft--ore { color:#4fbf8f; }
-  .sf-ft--credits { color:#ffd84a; font-size:15px; }
-  .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
-    text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
-  .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }
-  .sf-ft--module { color:#4f8fdd; font-size:15px; text-shadow:0 0 8px rgba(79,143,221,.6),0 0 4px #000; }
-  .sf-ft--rights { color:#e8a05c; font-size:14px; letter-spacing:.05em; text-shadow:0 0 8px rgba(232,160,92,.55),0 0 4px #000; }
-  .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
+  .sf-ft--kill { color:var(--dp-lamp-hot, #ffd98c); font-size:15px; font-weight:700;
+    letter-spacing:.08em; text-shadow:0 0 6px rgb(0 0 0 / .92), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-ft--weak { color:var(--dp-lamp, #f2b950); font-size:13px; font-weight:800; letter-spacing:.08em;
+    text-shadow:0 0 6px rgb(0 0 0 / .92), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-ft--critical { color:var(--dp-lamp-hot, #ffd98c); font-size:15px; font-weight:900;
+    text-shadow:0 0 6px rgb(0 0 0 / .92), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  /* Mundane yields read warm bone-dim — the etched family at rest (ORRERY §3.3: rest light is warm
+     bone, the cold note is for data in motion). The pick ladder: ore=bone-dim, pickup=ink,
+     exotic=phos, credits/bounty=lamp. */
+  .sf-ft--ore { color:var(--dp-ink-dim, #b7b4a6); }
+  .sf-ft--credits { color:var(--dp-lamp, #f2b950); font-size:15px; }
+  .sf-ft--bounty { color:var(--dp-lamp, #f2b950); font-size:18px; font-weight:800; letter-spacing:.06em;
+    text-shadow:0 0 6px rgb(0 0 0 / .92), var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-ft--exotic { color:var(--dp-phos, #dfeeff); font-size:15px; font-weight:700; }
+  .sf-ft--module { color:var(--dp-ink-dim, #b7b4a6); font-size:15px; }
+  .sf-ft--rights { color:var(--dp-lamp, #f2b950); font-size:14px; letter-spacing:.05em; }
+  .sf-ft--pickup { color:var(--dp-ink, #e8e2d4); font-size:14px; }
   `;
   document.head.appendChild(s);
 }

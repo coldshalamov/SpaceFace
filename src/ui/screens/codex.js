@@ -29,6 +29,7 @@ import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { injectCodexLayouts } from '../orrery/codexLayouts.js';
 import {
   archivePlateSvg, archiveBladeSvg, archiveHoverSvg, archiveDialAngle, archiveDialIndex, archiveGaugeSvg, archiveScramble, archiveHash,
   archiveWedgeSvg, archiveZoom, createLadderHand,
@@ -743,6 +744,7 @@ export const codexScreen = {
 
     injectDeckplate();
     injectArchiveLayouts();
+    injectCodexLayouts();
     // A fresh mount opens on the first section with no search (a deep link still picks its tab in
     // onShow); a hidden-and-shown codex keeps the page the player left it on.
     this._activeTab = 'Story';
@@ -1847,11 +1849,22 @@ export const codexScreen = {
       }
     } else aperture.textContent = '';
     const parts = entry.locked ? lockedNameParts(entry.id, entry.name) : null;
+    // The ring engraving holds ~32 tracked caps characters on its arc (bench: GRAFFITI · BULKHEAD —
+    // THE PREVIOUS CREW clipped at both ends); a longer section drops its " — subtitle" tail first,
+    // then the line is cut on a word boundary rather than painted past the arc.
+    let engraveTop = ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · ');
+    if (engraveTop.length > 32 && sectionName) {
+      engraveTop = ['Codex', this._activeTab, sectionName.split(' — ')[0].trim()].filter(Boolean).join(' · ');
+      if (engraveTop.length > 32) {
+        const cut = engraveTop.slice(0, 29);
+        engraveTop = cut.slice(0, cut.lastIndexOf(' ')).trimEnd() + '…';
+      }
+    }
     dial.rings.innerHTML = archivePlateSvg({
       entries: list.map((candidate) => (candidate.locked ? 'locked' : (this._readIds.has(candidate.id) ? 'read' : 'open'))),
       current: at,
       starts: this._tapeStarts || [],
-      top: ['Codex', this._activeTab, sectionName].filter(Boolean).join(' · '),
+      top: engraveTop,
       bottom: 'Entry ' + pad2(at + 1) + ' of ' + pad2(list.length),
       locked: entry.locked,
       cipher: parts ? (parts.cipher + '  ·  ').repeat(6) : '',
@@ -2173,9 +2186,9 @@ export const codexScreen = {
       art: codexEntryArt('reference-codes'),
       name: 'Reference Codes',
       sub: REFS.CONTRACT_47A + ' · ' + REFS.REF_44C,
-      meta: 'Two codes that keep coming back',
-      body: REFS.CONTRACT_47A + ' — your first contract. Payment withheld forever.\n' +
-        REFS.REF_44C + ' — the administrative code that governs everything inconvenient.',
+      meta: 'Administrative reference codes',
+      body: REFS.CONTRACT_47A + ' — your opening flight assignment in Helios System.\n' +
+        REFS.REF_44C + ' — Concord regulatory reference code.',
     })]);
 
     this._section('Personal Effects', PERSISTENT_CARGO.map((p) => makeEntry({

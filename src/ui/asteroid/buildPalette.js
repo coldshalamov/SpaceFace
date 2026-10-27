@@ -108,6 +108,36 @@ export const PALETTE_GLYPHS = {
     + '<rect x="16.7" y="13.4" width="1.8" height="5.4" rx="0.8"/>'
     + PLINTH,
   ),
+  // Press frame: crosshead over twin uprights, ram with a shaped tip, one charge blank on the bed.
+  sm_charge_press: svg(
+    '<rect x="4.4" y="2.6" width="15.2" height="2.2" rx="0.9"/>'
+    + '<rect x="4.4" y="4.8" width="2.4" height="12.2" rx="0.9"/>'
+    + '<rect x="17.2" y="4.8" width="2.4" height="12.2" rx="0.9"/>'
+    + '<rect x="10.5" y="4.8" width="3" height="8" rx="0.7"/>'
+    + '<path d="M9.4 12.8h5.2L12 16.1z"/>'
+    + '<circle cx="12" cy="17.7" r="1.25"/>'
+    + PLINTH,
+  ),
+  // Bore motor on a mast, side feed arms, chuck and bit feeding the plinth line.
+  sm_auto_drill: svg(
+    '<rect x="8.6" y="2.2" width="6.8" height="3.4" rx="1"/>'
+    + '<rect x="10.9" y="5.6" width="2.2" height="8.2" rx="0.7"/>'
+    + '<rect x="6" y="6.6" width="3.9" height="1.6" rx="0.8"/>'
+    + '<rect x="14.1" y="6.6" width="3.9" height="1.6" rx="0.8"/>'
+    + '<rect x="9.6" y="13.8" width="4.8" height="1.9" rx="0.7"/>'
+    + '<path d="M10.8 15.7h2.4L12 18.9z"/>'
+    + PLINTH,
+  ),
+  // Relay mast: beacon head, twin crossarms, a signal pip each side of the head.
+  sm_relay: svg(
+    '<circle cx="12" cy="4.6" r="2.1"/>'
+    + '<rect x="10.9" y="6.7" width="2.2" height="12.8" rx="0.8"/>'
+    + '<rect x="5.6" y="8.4" width="4.4" height="1.6" rx="0.8"/>'
+    + '<rect x="14" y="8.4" width="4.4" height="1.6" rx="0.8"/>'
+    + '<circle cx="4.4" cy="5.2" r="1.05"/>'
+    + '<circle cx="19.6" cy="5.2" r="1.05"/>'
+    + PLINTH,
+  ),
   // Verbs: no plinth. Nothing is installed by these.
   power: svg('<path d="M13.9 1.9 5.9 13.6h4.9l-1.4 8.5 8-12h-4.9z"/>'),
   lane: svg(

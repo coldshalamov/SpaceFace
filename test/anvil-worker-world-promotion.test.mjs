@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { wholeShipVisualForEntity } from '../src/render/partsLibrary.js';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
@@ -14,6 +15,7 @@ import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { ZONE_TETHYS_ANVIL } from '../src/data/authoredPlaces.js';
 import { PLANET_SITE } from '../src/data/planets.js';
 import { STORMSHIFT_COLLECTOR_COLLISION } from '../src/data/stormshiftCollectorCollision.js';
+import { STORMSHIFT_RECEIVER_COLLISION } from '../src/data/stormshiftReceiverCollision.js';
 
 // Compact seeded boundary regression, not a replay of a saved harvesting route.
 // Fixture setup supplies a loaded return and a separated tender. After native preparation,
@@ -101,18 +103,22 @@ test('ordinary world ticks promote both Anvil workers with native hardware and f
         const native = local[0] && facade._sg02.records.get(local[0].id);
         if (!native) { e.stable = 0; e.generation = null; continue; }
         const entity = local[0];
+        assert.equal(wholeShipVisualForEntity(entity, { requiredWholeShip: true }).file,
+          role === 'collector' ? 'wholeships/ship_stormshift_collector_v01.glb' : 'wholeships/ship_stormshift_receiver_v01.glb',
+          'ordinary residency promotion retains the dedicated visual identity');
         assert.ok(promoted.has(role), 'ordinary promotion must precede native observation');
         assert.equal(entity.id, e.id);
         assert.equal(native.entity, entity);
         assert.equal(native.body.mass(), canonical.mass);
-        assert.ok(native.colliders.length >= (role === 'collector' ? 2 : 1),
+        if (role === 'receiver') assert.equal(native.colliders.length, 27, 'the original cradle keeps every fixed authored solid');
+        else assert.ok(native.colliders.length >= 2,
           'native collector retains compound collision hardware rather than a generic capsule');
         assert.equal(entity.mass, canonical.mass); assert.equal(entity.radius, canonical.radius);
         assert.deepEqual(entity.propulsion, canonical.propulsion);
         assert.deepEqual(entity.data.fittings, canonical.data.fittings);
         assert.deepEqual(entity.data.weapons, canonical.data.weapons);
         assert.equal(entity.physicsBody.collisionProxyManifest?.id,
-          role === 'collector' ? STORMSHIFT_COLLECTOR_COLLISION.id : undefined);
+          role === 'collector' ? STORMSHIFT_COLLECTOR_COLLISION.id : STORMSHIFT_RECEIVER_COLLISION.id);
         assert.equal(budget.ownerForEntity(entity.id), e.requester);
         if (e.generation !== entity.occupantGeneration) e.stable = 0;
         e.generation = entity.occupantGeneration; e.stable++;

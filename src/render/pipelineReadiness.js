@@ -1,6 +1,7 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
+import { shouldFreezeFlightSubmit } from '../core/presentationFreeze.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
@@ -165,6 +166,7 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   let lastAccountingAt = null;
   let wasCounting = false;
   let wasInContextRecovery = false;
+  let wasSubmitFrozen = shouldFreezeFlightSubmit(state);
   let initialized = false;
   let observedContextGeneration = Number.isFinite(Number(render.contextRecovery?.generation))
     ? Number(render.contextRecovery.generation) : null;
@@ -196,7 +198,16 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
       wasCounting = false;
     }
     wasInContextRecovery = recoveryActive;
-    const canCount = foreground() && !recoveryActive;
+    const submitFrozen = shouldFreezeFlightSubmit(state);
+    if (submitFrozen !== wasSubmitFrozen) {
+      // Armory, dock and pause intentionally withhold the world submit. A menu can open
+      // between timer deliveries; begin a fresh bounded paint window when it closes.
+      activeElapsedMs = 0;
+      lastAccountingAt = null;
+      wasCounting = false;
+    }
+    wasSubmitFrozen = submitFrozen;
+    const canCount = foreground() && !recoveryActive && !submitFrozen;
     if (wasCounting && lastAccountingAt !== null) {
       activeElapsedMs += Math.max(0, now - lastAccountingAt);
     }
@@ -276,7 +287,7 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
   };
   function arm() {
     if (!active || !current()) return;
-    const canCount = foreground() && !contextRecoveryActive();
+    const canCount = foreground() && !contextRecoveryActive() && !shouldFreezeFlightSubmit(state);
     const delay = canCount ? Math.max(0, timeoutMs - activeElapsedMs) : inactivePollMs;
     const sequence = ++timerSequence;
     timerArmed = true;
@@ -303,7 +314,7 @@ export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure,
 function openingPresentBudgetMs(state, timeoutMs, options = {}) {
   return Number.isFinite(options.presentBudgetMs) && options.presentBudgetMs >= 0
     ? options.presentBudgetMs
-    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, 120000);
+    : state?.run?.kind === 'survival' ? Math.max(timeoutMs, 360000) : Math.max(timeoutMs, openingGateBudgetMs(120000));
 }
 
 /** Both launch routes join one exact-picture preparation owned by this renderer/run/context. */

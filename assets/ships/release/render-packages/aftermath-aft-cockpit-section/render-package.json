@@ -99,28 +99,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a206795af39899aa579777b583b9d222d7ad55d51812c106a30664a306cfc71a",
+  "contentHash": "973cafd460092c0047c8aa78d99e5bde2381cbb2d913cc875072e564c3031587",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           -1.4096620082855225,
-          10.500009536743164,
+          10.500009916021305,
           0.31313538551330566
         ],
         "min": [
           -2.035932779312134,
-          10.061599731445312,
+          10.061599352167171,
           -0.31313538551330566
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4e8310b3c3bf6e0a54c8a6e47fec670d8e1669e3a60425aa71502cb6785526a",
+      "geometryHash": "abfe65acd1e9c7f44cd0af35bc4ea7964b67d9bdd3bc385612ebdd41c75400b0",
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
+      "materialHash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
       "materialPipelineKey": "opaque",
       "meshName": "Beacon",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
@@ -130,18 +130,18 @@
     {
       "bounds": {
         "max": [
-          5.94617223739624,
-          5.739847183227539,
-          7.699642181396484
+          5.946172335726532,
+          5.739847346812429,
+          7.699642276830858
         ],
         "min": [
-          -5.708094120025635,
-          1.6011390686035156,
-          -7.699642181396484
+          -5.708093932227437,
+          1.6011389762997192,
+          -7.699642276830858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9601a2fd88ad3c8ac93baa4b56694d55477901e7aca419d47b26ab850fe9a18a",
+      "geometryHash": "931c09a5fe7a10fc49ed27a4738c1a0267c1bb85ab1356cbdf753c10c8224990",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.0",
       "indexCount": 2748,
       "indexed": true,
@@ -155,18 +155,18 @@
     {
       "bounds": {
         "max": [
-          5.945227146148682,
-          2.5314860343933105,
-          7.49736213684082
+          5.945227101429281,
+          2.531485833368838,
+          7.497362137219182
         ],
         "min": [
-          -5.693915367126465,
-          1.4423396587371826,
-          -7.49736213684082
+          -5.693915417768675,
+          1.442339614361582,
+          -7.497362137219182
         ]
       },
       "drawMode": 4,
-      "geometryHash": "275e7ebc96e22f55920cf3edeab10e8c60a5385ff6861b091a8d46a3a3681060",
+      "geometryHash": "69f8540c5797f7da140855486d3bafd95fca021a65375f271dc1bf1f691d57de",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.1",
       "indexCount": 1248,
       "indexed": true,
@@ -180,18 +180,18 @@
     {
       "bounds": {
         "max": [
-          5.963186740875244,
-          5.721888065338135,
-          7.680737495422363
+          5.963186553077047,
+          5.721887895164664,
+          7.68073759088584
         ],
         "min": [
-          3.6478352546691895,
-          1.6020842790603638,
-          -7.680737495422363
+          3.6478351419611665,
+          1.6020842105969701,
+          -7.68073759088584
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01603305b68fefdd42a398fc8b022c63c9a1da357a76f37cc0aa4b3bfc8036e6",
+      "geometryHash": "685d6016cdb93cb3bbcbdfb745db93be9cd21e143edf21aad34b9fbdc8f28db0",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.2",
       "indexCount": 2760,
       "indexed": true,
@@ -205,18 +205,18 @@
     {
       "bounds": {
         "max": [
-          -0.7354526519775391,
-          5.783328056335449,
+          -0.7354526029651928,
+          5.783328124485967,
           7.7431230545043945
         ],
         "min": [
-          -2.165828227996826,
-          1.398858904838562,
+          -2.1658284032799946,
+          1.3988588366880443,
           -7.7431230545043945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54fc7ad113402bec8a0a8a2016d25a542bd2f428bf99c7e8c737767f36644965",
+      "geometryHash": "95fb756ab92ea7f58f9de9c244f8a7dda690e3219b5b9117ef899465e930ce9f",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge.primitive.3",
       "indexCount": 2880,
       "indexed": true,
@@ -231,21 +231,21 @@
       "bounds": {
         "max": [
           -2.6123886108398438,
-          3.6764841079711914,
-          7.814153671264648
+          3.67648418364346,
+          7.814153697415239
         ],
         "min": [
           -3.7510643005371094,
-          2.93636417388916,
-          7.671814918518066
+          2.9363640982168917,
+          7.671814892367476
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f769dcc3980eea89962f70876ec65254a0fdcd34c8e242ba465a6ef4af6953b",
+      "geometryHash": "423bfd2291cec3c4d1bc97524613ddae68d6e7d44db7d1fb7b86baa686c6763c",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m",
@@ -256,21 +256,21 @@
       "bounds": {
         "max": [
           -2.6123886108398438,
-          3.6764841079711914,
-          -7.671814918518066
+          3.67648418364346,
+          -7.671814892367476
         ],
         "min": [
           -3.7510643005371094,
-          2.93636417388916,
-          -7.814153671264648
+          2.9363640982168917,
+          -7.814153697415239
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2820433500d4f51fa697915aa517e79c16fe22d3f382e962cc5ab15cf8464c0d",
+      "geometryHash": "0c6501cedeb2ceab4153bfd00c360cf95968330c73608a8903e0b9391c25746f",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0",
@@ -281,21 +281,21 @@
       "bounds": {
         "max": [
           -0.9755439758300781,
-          3.676482915878296,
-          7.814153671264648
+          3.676482943898864,
+          7.814153458989383
         ],
         "min": [
           -2.114215850830078,
-          2.9363653659820557,
-          7.671814918518066
+          2.9363653379614876,
+          7.671815130793332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2691c5916ee2e61c97057e274fc4a50f316746b690af03a1509c882f3310e452",
+      "geometryHash": "c5256b9e4b09255a73fcff25b36d477b5e3d09c25755679d34cf2872bb349c8d",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m",
@@ -306,21 +306,21 @@
       "bounds": {
         "max": [
           -0.9755439758300781,
-          3.676482915878296,
-          -7.671814918518066
+          3.676482943898864,
+          -7.671815130793332
         ],
         "min": [
           -2.114215850830078,
-          2.9363653659820557,
-          -7.814153671264648
+          2.9363653379614876,
+          -7.814153458989383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4c186161df040dcdd7001ff4850d0a37070de11ee7e726077010fe04c01b334",
+      "geometryHash": "e0e71190e6e4214d3c3b306d8e0d8fa76799a987ed1cf959705b65a299840bc4",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1",
@@ -331,21 +331,21 @@
       "bounds": {
         "max": [
           0.6613006591796875,
-          3.676482915878296,
-          7.814153671264648
+          3.676482943898864,
+          7.814153458989383
         ],
         "min": [
           -0.4773712158203125,
-          2.9363653659820557,
-          7.671814918518066
+          2.9363653379614876,
+          7.671815130793332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44522ac79c455166ea5cf65fb8c6940412535b9ab86db3e3a465e293d3384442",
+      "geometryHash": "c4f0c6af4ec3cb80cc5ec5d799924f80c35ca6635e7a95dc38c4d2d872ef312c",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m",
@@ -356,21 +356,21 @@
       "bounds": {
         "max": [
           0.6613006591796875,
-          3.676482915878296,
-          -7.671814918518066
+          3.676482943898864,
+          -7.671815130793332
         ],
         "min": [
           -0.4773712158203125,
-          2.9363653659820557,
-          -7.814153671264648
+          2.9363653379614876,
+          -7.814153458989383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f326a4107ca097d8f15e6d3152f3b66fc90a95934153dd2b57e4a1e1aff6cb62",
+      "geometryHash": "17fb3ab903e413e9b5209513e1da6e23e8d2c88373f1a205242dc0aee574d5d3",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2",
@@ -381,21 +381,21 @@
       "bounds": {
         "max": [
           2.298145294189453,
-          3.676482915878296,
-          7.814153671264648
+          3.676482943898864,
+          7.814153458989383
         ],
         "min": [
           1.1594734191894531,
-          2.9363653659820557,
-          7.671814918518066
+          2.9363653379614876,
+          7.671815130793332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03fec97daf4acaead5389df690dbdf4b360dde129ccd20cc6f4201ad97622d95",
+      "geometryHash": "bb86f5c454d61e810cd415c6ee72cece0789c1fabf25bc00bf4fb97239c14741",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m",
@@ -406,21 +406,21 @@
       "bounds": {
         "max": [
           2.298145294189453,
-          3.676482915878296,
-          -7.671814918518066
+          3.676482943898864,
+          -7.671815130793332
         ],
         "min": [
           1.1594734191894531,
-          2.9363653659820557,
-          -7.814153671264648
+          2.9363653379614876,
+          -7.814153458989383
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc37f71453d38d7f5ceb6ab94c2795a9d194c4dd9f68d4aa5f9c364c3104b2ce",
+      "geometryHash": "7198bfae5e53909a7eb3a2fd9ffc860d29c8558ce8f3b5c381c71d6beaedb60f",
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3",
@@ -431,21 +431,21 @@
       "bounds": {
         "max": [
           6.077121734619141,
-          5.612250804901123,
+          5.612250919995733,
           2.5620181560516357
         ],
         "min": [
           5.507781982421875,
-          5.213694095611572,
+          5.213693980516962,
           1.9926784038543701
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65a5c6c4f758a620bff8c03ace1cc73f73ac7831b08341ceb6cf3a20bc2f4c63",
+      "geometryHash": "25b859637726655cc38282762b7e4852a1933b7942224dec16ea2519c511ae4b",
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood-m",
@@ -456,21 +456,21 @@
       "bounds": {
         "max": [
           6.077121734619141,
-          5.612250804901123,
+          5.612250919995733,
           -1.9926784038543701
         ],
         "min": [
           5.507781982421875,
-          5.213694095611572,
+          5.213693980516962,
           -2.5620181560516357
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00a5130ee3e5dfe82a8a9c59f9bf72107f11c0fa2dfc148a97d5f9239b4444bb",
+      "geometryHash": "cc347ed63031e72312e435fd2e7ac320b506656613af80555abd683e79182e30",
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood",
@@ -480,22 +480,22 @@
     {
       "bounds": {
         "max": [
-          5.749622821807861,
-          5.612081050872803,
+          5.749622714571525,
+          5.61208127666721,
           3.416022539138794
         ],
         "min": [
-          5.038207530975342,
-          5.099996089935303,
+          5.038207638211678,
+          5.099995864140896,
           -3.416022539138794
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98aa30cf7bc9b735d7b75296dae0e00e05bf306c87cca79a232187615dafe9f3",
+      "geometryHash": "5e9d423249f213879fbc0c1707933068a39cf1bca65872de083fc4ca36988320",
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "LampBar",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.lampbar",
@@ -505,22 +505,22 @@
     {
       "bounds": {
         "max": [
-          -1.4950625896453857,
-          5.75458288192749,
+          -1.4950625598430634,
+          5.754582882983446,
           0.22773483395576477
         ],
         "min": [
-          -1.9505321979522705,
-          5.5837626457214355,
+          -1.950532227754593,
+          5.58376264466548,
           -0.22773483395576477
         ]
       },
       "drawMode": 4,
-      "geometryHash": "47c9805112faf728d10d9aa3984b479721b30eb077e186fe72353e777eab4321",
+      "geometryHash": "93fb3c199ddafcfbb45c397d854bd573a9cf60472ca766fe41424941e1f179e4",
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "Mast_Foot",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-foot",
@@ -530,22 +530,22 @@
     {
       "bounds": {
         "max": [
-          -1.627997636795044,
+          -1.6279976446896989,
           10.138470649719238,
-          0.09952583909034729
+          0.09952583630811809
         ],
         "min": [
-          -1.8175971508026123,
+          -1.8175971429079574,
           5.583773612976074,
-          -0.09952583909034729
+          -0.09952583630811809
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d311133fe5456d1b987ed2e444afce8e09af104e73d30bd27ac57b24ab502808",
+      "geometryHash": "086c529b4ea110c4066aca15d274da9ce0efa0c182e8d81b696040667fc916c8",
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "Mast_Mast",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-mast",
@@ -555,22 +555,22 @@
     {
       "bounds": {
         "max": [
-          1.2909139394760132,
+          1.2909140559931163,
           -4.48966121673584,
-          6.381850242614746
+          6.381850515420551
         ],
         "min": [
-          -0.4000028371810913,
+          -0.4000029536981944,
           -6.8403730392456055,
-          4.155106067657471
+          4.155105794851666
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f195452eac179bcbe8edf4093afc2ce63201212263a6280bb80ff29b4996ee64",
+      "geometryHash": "1a18ced7a12828564be687153ddb0e513defed1a473cf26c7faf3e1d871ed5e5",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0",
@@ -580,22 +580,22 @@
     {
       "bounds": {
         "max": [
-          -2.883457899093628,
+          -2.8834578713313643,
           -4.594234466552734,
-          4.338887691497803
+          4.338887784873016
         ],
         "min": [
-          -4.511023998260498,
+          -4.511024026022762,
           -6.4097394943237305,
-          2.724397659301758
+          2.724397565926544
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0a8a2a55721656b7b0cf58da05eea7c9a9d9045df37c25b3d6076d951138e1f",
+      "geometryHash": "fbf345785d8b0a7ca9918185783831fc6ad795db2a9fb082a4c7049744e19d52",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1",
@@ -605,22 +605,22 @@
     {
       "bounds": {
         "max": [
-          -4.179264068603516,
+          -4.179263858198228,
           -4.524518966674805,
-          0.10382995009422302
+          0.10383007189155868
         ],
         "min": [
-          -6.247886657714844,
+          -6.247886868120132,
           -6.696828365325928,
-          -1.4513330459594727
+          -1.4513331677568084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b1eb5d8d98c43181d19d50c62ec58e60b3357d7bea15356a1733c25dea62d6eb",
+      "geometryHash": "2cc4aec437deb8d940f4b0c02f76e95653a8f5fc3911e98658993e2b754622b1",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib2",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2",
@@ -630,22 +630,22 @@
     {
       "bounds": {
         "max": [
-          -1.9660743474960327,
+          -1.9660744150680942,
           -4.629092216491699,
-          -3.593965768814087
+          -3.5939658523482674
         ],
         "min": [
-          -3.316995143890381,
+          -3.316995076318319,
           -6.266194820404053,
-          -5.089176654815674
+          -5.089176571281493
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4e477f5143d3a8cfc05fb38e3cb7ee4bc688ddbd7a1cc85423f07072d03acc2",
+      "geometryHash": "fcb3e734e36ae7dae4d6fd3575170458cef64c54db021a984296d235b6a511a0",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib3",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3",
@@ -655,22 +655,22 @@
     {
       "bounds": {
         "max": [
-          2.5611164569854736,
+          2.5611162757431143,
           -4.559377670288086,
-          -3.8845787048339844
+          -3.884578766215836
         ],
         "min": [
-          1.0767161846160889,
+          1.0767163658584482,
           -6.553283214569092,
-          -5.778932094573975
+          -5.778932033192123
         ]
       },
       "drawMode": 4,
-      "geometryHash": "265519c24622de3e14fd52e8f80ead2d900dcab9f93812c644e262e4ebcfc04c",
+      "geometryHash": "4932f0361078eff43f14ff01d92ac0e64d19817953008be4107237f6d53b781f",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib4",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4",
@@ -680,22 +680,22 @@
     {
       "bounds": {
         "max": [
-          6.077794551849365,
+          6.077794260496579,
           -4.48966121673584,
-          -0.7663400769233704
+          -0.7663401712672254
         ],
         "min": [
-          3.8346924781799316,
+          3.834692769532718,
           -6.8403730392456055,
-          -2.50116229057312
+          -2.501162196229265
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0180362cbddc8eb13903d081def6e9c1eb288698e9bb05f9a033bd3fe951e8f4",
+      "geometryHash": "8fb7cdb56b136c66ce69a59d866042f89fa3c4a4d5831abc649281102f0943d3",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib5",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5",
@@ -705,22 +705,22 @@
     {
       "bounds": {
         "max": [
-          5.0543389320373535,
+          5.054338720271421,
           -4.594235420227051,
-          3.5865821838378906
+          3.5865821140629657
         ],
         "min": [
-          3.4043898582458496,
+          3.4043900700117824,
           -6.409738540649414,
-          2.060300588607788
+          2.060300658382713
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a9ecaf4ea8f1f82cd91d4422eaad686e0e8ca47b8ec6e3211d84184184265b2",
+      "geometryHash": "4016d9fb4d5f9fda8376f7734cde4d3a1c01f90c0a6b6327528f4403cdfdb62a",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib6",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6",
@@ -730,18 +730,18 @@
     {
       "bounds": {
         "max": [
-          4.25508451461792,
-          1.8833600282669067,
+          4.255084314930445,
+          1.8833600057707782,
           4.839365482330322
         ],
         "min": [
-          -4.2846598625183105,
-          -5.51857852935791,
+          -4.284659662830836,
+          -5.518578506861782,
           -4.839365482330322
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4f378936556825e51b126b65e71a1bfe6fcc369e1877260b2f4ae9792ce3565",
+      "geometryHash": "b8f53f75127cf05e85e37bc105e70cf35d11ed1b71be12a8bf4d3d371b013785",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase.primitive.0",
       "indexCount": 3084,
       "indexed": true,
@@ -756,21 +756,21 @@
       "bounds": {
         "max": [
           6.247920989990234,
-          1.4564560651779175,
-          6.177525043487549
+          1.45645611674966,
+          6.177525037208206
         ],
         "min": [
           -5.992824554443359,
-          -10.50037670135498,
-          5.778553009033203
+          -10.500376752926723,
+          5.778553015312546
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0151bbc81cfa67e036ddc659430d2bab9d480d5b4e8634cd6da79bde7111b7c6",
+      "geometryHash": "2ef0e66dbc637bd87a2f66dff8c1f8a76b360987275b9cdfd0feb81eb90357df",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
+      "materialHash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
       "materialPipelineKey": "opaque",
       "meshName": "TowerSkirt",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerskirt",
@@ -781,21 +781,21 @@
       "bounds": {
         "max": [
           -0.7264556884765625,
-          -0.5366220474243164,
-          4.96746826171875
+          -0.5366220705116345,
+          4.96746828786934
         ],
         "min": [
           -1.8651313781738281,
-          -1.3905854225158691,
-          4.825129508972168
+          -1.390585399428551,
+          4.825129482821578
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9c917ba44921799d62b8baa85a9b025be08f8d53d0d87b42f1ccf0f13b9bbafb",
+      "geometryHash": "b3303f7f8fef8c6a4f23f3875094b6b73ea6f8fa9beb585e246d3cb6bf93789c",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m",
@@ -806,21 +806,21 @@
       "bounds": {
         "max": [
           -0.7264556884765625,
-          -0.5366220474243164,
-          -4.825129508972168
+          -0.5366220705116345,
+          -4.825129482821578
         ],
         "min": [
           -1.8651313781738281,
-          -1.3905854225158691,
-          -4.96746826171875
+          -1.390585399428551,
+          -4.96746828786934
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9419f82c29abf1832258ee03f4cc27310cf9e6034769bb53566415c5211619d5",
+      "geometryHash": "3cc4ae73fae5d8a8a5b637bdf2f3c2d99b50130eddbccdfe4d02b9c86eb54c01",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0",
@@ -831,21 +831,21 @@
       "bounds": {
         "max": [
           1.8355598449707031,
-          -0.5366220474243164,
-          4.96746826171875
+          -0.5366220705116345,
+          4.96746828786934
         ],
         "min": [
           0.6968841552734375,
-          -1.3905854225158691,
-          4.825129508972168
+          -1.390585399428551,
+          4.825129482821578
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f39f5476b5a8857e176bb7e8ffa1a199a7002b7a2aa409463df71f92ab720e8",
+      "geometryHash": "feac37abb35576d97bb2cde280654aa5e39f05c82b4be1be22174255f0f8d8c9",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m",
@@ -856,21 +856,21 @@
       "bounds": {
         "max": [
           1.8355598449707031,
-          -0.5366220474243164,
-          -4.825129508972168
+          -0.5366220705116345,
+          -4.825129482821578
         ],
         "min": [
           0.6968841552734375,
-          -1.3905854225158691,
-          -4.96746826171875
+          -1.390585399428551,
+          -4.96746828786934
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebbff79862df1fb98b5ee18cbc8e8aaf1bfc730650a940f0699e3b6374b92075",
+      "geometryHash": "dd7c49ad6ce8eb85891c4e8fe6059c442f8a9d9b93710b25d40224e1b8817930",
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1",
@@ -882,70 +882,6 @@
   "kind": "place",
   "lods": [],
   "materials": [
-    {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "id": "material:0dac9b269e88e4a2a6e51b7b",
-      "name": "Forge_ore_barge_gunmetal",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
       "id": "material:15ed238ec68bfce5920f3de3",
@@ -979,11 +915,36 @@
       ]
     },
     {
-      "hash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
-      "id": "material:458a949ee94c7745fec3c2d5",
-      "name": "Forge_ore_barge_glow_amber",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
+      "id": "material:1ebadaa97cbcbe08a1b9931f",
+      "name": "Forge_ore_barge_gunmetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "4e85f4b12211dce9496ca638d96cd779448e7cedac9aab38dd65da2871c14a4d",
@@ -1057,10 +1018,24 @@
       ]
     },
     {
-      "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
-      "id": "material:c36a4bf93ab869729a357a6a",
-      "name": "Forge_ore_barge_wk_scorch",
-      "pipelineKey": "opaque:double",
+      "hash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
+      "id": "material:b7dd1f662234aa98804ecaf3",
+      "name": "Forge_ore_barge_glow_warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
+      "id": "material:befa2158c9128240e6aaed8c",
+      "name": "Forge_ore_barge_glow_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1089,11 +1064,36 @@
       ]
     },
     {
-      "hash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
-      "id": "material:f6a0573d4efe444e59efea7d",
-      "name": "Forge_ore_barge_glow_warm",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
+      "id": "material:e9f7bd582170738d03ca89c5",
+      "name": "Forge_ore_barge_wk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1148,20 +1148,20 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon",
       "localTransform": [
-        1,
+        0.31313538551330566,
         0,
         0,
         0,
         0,
-        1,
+        0.31313538551330566,
         0,
         0,
         0,
         0,
-        1,
+        0.31313538551330566,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        10.280804634094238,
         0,
         1
       ],
@@ -1176,20 +1176,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.31313538551330566,
         0,
         0,
         0,
         0,
-        1,
+        0.31313538551330566,
         0,
         0,
         0,
         0,
-        1,
+        0.31313538551330566,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        10.280804634094238,
         0,
         1
       ]
@@ -1197,20 +1197,20 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridge",
       "localTransform": [
-        1,
+        7.7431230545043945,
         0,
         0,
         0,
         0,
-        1,
+        7.7431230545043945,
         0,
         0,
         0,
         0,
-        1,
+        7.7431230545043945,
         0,
-        0,
-        0,
+        0.1275463104248047,
+        3.5910934805870056,
         0,
         1
       ],
@@ -1225,20 +1225,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        7.7431230545043945,
         0,
         0,
         0,
         0,
-        1,
+        7.7431230545043945,
         0,
         0,
         0,
         0,
-        1,
+        7.7431230545043945,
         0,
-        0,
-        0,
+        0.1275463104248047,
+        3.5910934805870056,
         0,
         1
       ]
@@ -1246,21 +1246,21 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -3.1817264556884766,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1274,42 +1274,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -3.1817264556884766,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -3.1817264556884766,
+        3.306424140930176,
+        7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1323,42 +1323,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -3.1817264556884766,
+        3.306424140930176,
+        7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        -1.5448799133300781,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1372,42 +1372,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        -1.5448799133300781,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        -1.5448799133300781,
+        3.306424140930176,
+        7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1421,42 +1421,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        -1.5448799133300781,
+        3.306424140930176,
+        7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        0.0919647216796875,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1470,42 +1470,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        0.0919647216796875,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        0.0919647216796875,
+        3.306424140930176,
+        7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1519,42 +1519,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        0.0919647216796875,
+        3.306424140930176,
+        7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        1.7288093566894531,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1568,42 +1568,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        1.7288093566894531,
+        3.306424140930176,
+        -7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m",
       "localTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        1.7288093566894531,
+        3.306424140930176,
+        7.742984294891357,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1617,42 +1617,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
         0,
         0,
         0,
-        1,
+        0.5693359375,
         0,
-        0,
-        0,
-        0,
+        1.7288093566894531,
+        3.306424140930176,
+        7.742984294891357,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood",
       "localTransform": [
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
-        0,
-        0,
-        0,
+        5.792451858520508,
+        5.412972450256348,
+        -2.277348279953003,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1666,42 +1666,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
-        0,
-        0,
-        0,
+        5.792451858520508,
+        5.412972450256348,
+        -2.277348279953003,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m",
       "localTransform": [
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
-        0,
-        0,
-        0,
+        5.792451858520508,
+        5.412972450256348,
+        2.277348279953003,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1715,41 +1715,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
         0,
         0,
         0,
-        1,
+        0.2846698760986328,
         0,
-        0,
-        0,
-        0,
+        5.792451858520508,
+        5.412972450256348,
+        2.277348279953003,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar",
       "localTransform": [
-        1,
+        3.416022539138794,
         0,
         0,
         0,
         0,
-        1,
+        3.416022539138794,
         0,
         0,
         0,
         0,
-        1,
+        3.416022539138794,
         0,
-        0,
-        0,
+        5.393915176391602,
+        5.356038570404053,
         0,
         1
       ],
@@ -1764,20 +1764,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        3.416022539138794,
         0,
         0,
         0,
         0,
-        1,
+        3.416022539138794,
         0,
         0,
         0,
         0,
-        1,
+        3.416022539138794,
         0,
-        0,
-        0,
+        5.393915176391602,
+        5.356038570404053,
         0,
         1
       ]
@@ -1785,20 +1785,20 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot",
       "localTransform": [
-        1,
+        0.22773483395576477,
         0,
         0,
         0,
         0,
-        1,
+        0.22773483395576477,
         0,
         0,
         0,
         0,
-        1,
+        0.22773483395576477,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        5.669172763824463,
         0,
         1
       ],
@@ -1813,20 +1813,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.22773483395576477,
         0,
         0,
         0,
         0,
-        1,
+        0.22773483395576477,
         0,
         0,
         0,
         0,
-        1,
+        0.22773483395576477,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        5.669172763824463,
         0,
         1
       ]
@@ -1834,20 +1834,20 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast",
       "localTransform": [
-        1,
+        2.277348518371582,
         0,
         0,
         0,
         0,
-        1,
+        2.277348518371582,
         0,
         0,
         0,
         0,
-        1,
+        2.277348518371582,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        7.861122131347656,
         0,
         1
       ],
@@ -1862,20 +1862,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        2.277348518371582,
         0,
         0,
         0,
         0,
-        1,
+        2.277348518371582,
         0,
         0,
         0,
         0,
-        1,
+        2.277348518371582,
         0,
-        0,
-        0,
+        -1.7227973937988281,
+        7.861122131347656,
         0,
         1
       ]
@@ -1981,20 +1981,20 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase",
       "localTransform": [
-        1,
+        4.839365482330322,
         0,
         0,
         0,
         0,
-        1,
+        4.839365482330322,
         0,
         0,
         0,
         0,
-        1,
+        4.839365482330322,
         0,
-        0,
-        0,
+        -0.014787673950195312,
+        -1.8176092505455017,
         0,
         1
       ],
@@ -2009,20 +2009,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        4.839365482330322,
         0,
         0,
         0,
         0,
-        1,
+        4.839365482330322,
         0,
         0,
         0,
         0,
-        1,
+        4.839365482330322,
         0,
-        0,
-        0,
+        -0.014787673950195312,
+        -1.8176092505455017,
         0,
         1
       ]
@@ -2030,21 +2030,21 @@
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0",
       "localTransform": [
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
-        0,
-        0,
-        0,
+        0.44545555114746094,
+        -5.665017127990723,
+        5.268478155136108,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2058,42 +2058,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
-        0,
-        0,
-        0,
+        0.44545555114746094,
+        -5.665017127990723,
+        5.268478155136108,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1",
       "localTransform": [
-        1,
+        0.907752513885498,
         0,
         0,
         0,
         0,
-        1,
+        0.907752513885498,
         0,
         0,
         0,
         0,
-        1,
+        0.907752513885498,
         0,
-        0,
-        0,
-        0,
+        -3.697240948677063,
+        -5.501986980438232,
+        3.5316426753997803,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2107,42 +2107,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.907752513885498,
         0,
         0,
         0,
         0,
-        1,
+        0.907752513885498,
         0,
         0,
         0,
         0,
-        1,
+        0.907752513885498,
         0,
-        0,
-        0,
-        0,
+        -3.697240948677063,
+        -5.501986980438232,
+        3.5316426753997803,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2",
       "localTransform": [
-        1,
+        1.0861546993255615,
         0,
         0,
         0,
         0,
-        1,
+        1.0861546993255615,
         0,
         0,
         0,
         0,
-        1,
+        1.0861546993255615,
         0,
-        0,
-        0,
-        0,
+        -5.21357536315918,
+        -5.610673666000366,
+        -0.6737515479326248,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2156,42 +2156,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        1.0861546993255615,
         0,
         0,
         0,
         0,
-        1,
+        1.0861546993255615,
         0,
         0,
         0,
         0,
-        1,
+        1.0861546993255615,
         0,
-        0,
-        0,
-        0,
+        -5.21357536315918,
+        -5.610673666000366,
+        -0.6737515479326248,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3",
       "localTransform": [
-        1,
+        0.8185513019561768,
         0,
         0,
         0,
         0,
-        1,
+        0.8185513019561768,
         0,
         0,
         0,
         0,
-        1,
+        0.8185513019561768,
         0,
-        0,
-        0,
-        0,
+        -2.641534745693207,
+        -5.447643518447876,
+        -4.34157121181488,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2205,42 +2205,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.8185513019561768,
         0,
         0,
         0,
         0,
-        1,
+        0.8185513019561768,
         0,
         0,
         0,
         0,
-        1,
+        0.8185513019561768,
         0,
-        0,
-        0,
-        0,
+        -2.641534745693207,
+        -5.447643518447876,
+        -4.34157121181488,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4",
       "localTransform": [
-        1,
+        0.9969527721405029,
         0,
         0,
         0,
         0,
-        1,
+        0.9969527721405029,
         0,
         0,
         0,
         0,
-        1,
+        0.9969527721405029,
         0,
-        0,
-        0,
-        0,
+        1.8189163208007812,
+        -5.556330442428589,
+        -4.8317553997039795,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2254,42 +2254,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.9969527721405029,
         0,
         0,
         0,
         0,
-        1,
+        0.9969527721405029,
         0,
         0,
         0,
         0,
-        1,
+        0.9969527721405029,
         0,
-        0,
-        0,
-        0,
+        1.8189163208007812,
+        -5.556330442428589,
+        -4.8317553997039795,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5",
       "localTransform": [
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
-        0,
-        0,
-        0,
+        4.956243515014648,
+        -5.665017127990723,
+        -1.6337511837482452,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2303,42 +2303,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
         0,
         0,
         0,
-        1,
+        1.1753559112548828,
         0,
-        0,
-        0,
-        0,
+        4.956243515014648,
+        -5.665017127990723,
+        -1.6337511837482452,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6",
       "localTransform": [
-        1,
+        0.9077515602111816,
         0,
         0,
         0,
         0,
-        1,
+        0.9077515602111816,
         0,
         0,
         0,
         0,
-        1,
+        0.9077515602111816,
         0,
-        0,
-        0,
-        0,
+        4.229364395141602,
+        -5.501986980438232,
+        2.8234413862228394,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2352,42 +2352,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.9077515602111816,
         0,
         0,
         0,
         0,
-        1,
+        0.9077515602111816,
         0,
         0,
         0,
         0,
-        1,
+        0.9077515602111816,
         0,
-        0,
-        0,
-        0,
+        4.229364395141602,
+        -5.501986980438232,
+        2.8234413862228394,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt",
       "localTransform": [
-        1,
+        6.120372772216797,
         0,
         0,
         0,
         0,
-        1,
+        6.120372772216797,
         0,
         0,
         0,
         0,
-        1,
+        6.120372772216797,
         0,
-        0,
-        0,
-        0,
+        0.1275482177734375,
+        -4.5219603180885315,
+        5.978039026260376,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2401,42 +2401,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        6.120372772216797,
         0,
         0,
         0,
         0,
-        1,
+        6.120372772216797,
         0,
         0,
         0,
         0,
-        1,
+        6.120372772216797,
         0,
-        0,
-        0,
-        0,
+        0.1275482177734375,
+        -4.5219603180885315,
+        5.978039026260376,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -1.2957935333251953,
+        -0.9636037349700928,
+        -4.896298885345459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2450,42 +2450,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -1.2957935333251953,
+        -0.9636037349700928,
+        -4.896298885345459,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -1.2957935333251953,
+        -0.9636037349700928,
+        4.896298885345459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2499,42 +2499,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        -1.2957935333251953,
+        -0.9636037349700928,
+        4.896298885345459,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        1.2662220001220703,
+        -0.9636037349700928,
+        -4.896298885345459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2548,42 +2548,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        1.2662220001220703,
+        -0.9636037349700928,
+        -4.896298885345459,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m",
       "localTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        1.2662220001220703,
+        -0.9636037349700928,
+        4.896298885345459,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2597,21 +2597,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-aft-cockpit-section.body",
       "worldTransform": [
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
         0,
         0,
         0,
-        1,
+        0.5693378448486328,
         0,
-        0,
-        0,
-        0,
+        1.2662220001220703,
+        -0.9636037349700928,
+        4.896298885345459,
         1
       ]
     }
@@ -2626,37 +2626,37 @@
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 279720,
-    "sha256": "d4df5f01d5afce0b79dcda38267ae8e50085f2b43ccff95a94e1f4a82913df23",
+    "bytes": 217696,
+    "sha256": "d87103f28fe38e6c31c04fdd0983a7ff3adf2ea6935752804c265fe638456c40",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.0000171661376953125,
-        -0.00018358230590820312,
+        0.000017060935051382842,
+        -0.00018341845270875012,
         0
       ],
       "max": [
         6.247920989990234,
-        10.500009536743164,
-        7.814153671264648
+        10.500009916021305,
+        7.814153697415239
       ],
       "min": [
-        -6.247886657714844,
-        -10.50037670135498,
-        -7.814153671264648
+        -6.247886868120132,
+        -10.500376752926723,
+        -7.814153697415239
       ],
       "size": [
-        12.495807647705078,
-        21.000386238098145,
-        15.628307342529297
+        12.495807858110366,
+        21.00038666894803,
+        15.628307394830477
       ]
     },
     "hidden": [],
@@ -2909,20 +2909,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.31313538551330566,
           0,
           0,
           0,
           0,
-          1,
+          0.31313538551330566,
           0,
           0,
           0,
           0,
-          1,
+          0.31313538551330566,
           0,
-          0,
-          0,
+          -1.7227973937988281,
+          10.280804634094238,
           0,
           1
         ],
@@ -2936,20 +2936,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
-          0,
-          0,
+          0.1275463104248047,
+          3.5910934805870056,
           0,
           1
         ],
@@ -2963,20 +2963,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
-          0,
-          0,
+          0.1275463104248047,
+          3.5910934805870056,
           0,
           1
         ],
@@ -2990,20 +2990,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
-          0,
-          0,
+          0.1275463104248047,
+          3.5910934805870056,
           0,
           1
         ],
@@ -3017,20 +3017,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
           0,
           0,
           0,
-          1,
+          7.7431230545043945,
           0,
-          0,
-          0,
+          0.1275463104248047,
+          3.5910934805870056,
           0,
           1
         ],
@@ -3044,21 +3044,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          -3.1817264556884766,
+          3.306424140930176,
+          -7.742984294891357,
           1
         ],
         "name": "BridgeWin_0",
@@ -3071,21 +3071,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          -3.1817264556884766,
+          3.306424140930176,
+          7.742984294891357,
           1
         ],
         "name": "BridgeWin_0_M",
@@ -3098,21 +3098,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          -1.5448799133300781,
+          3.306424140930176,
+          -7.742984294891357,
           1
         ],
         "name": "BridgeWin_1",
@@ -3125,21 +3125,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          -1.5448799133300781,
+          3.306424140930176,
+          7.742984294891357,
           1
         ],
         "name": "BridgeWin_1_M",
@@ -3152,21 +3152,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          0.0919647216796875,
+          3.306424140930176,
+          -7.742984294891357,
           1
         ],
         "name": "BridgeWin_2",
@@ -3179,21 +3179,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          0.0919647216796875,
+          3.306424140930176,
+          7.742984294891357,
           1
         ],
         "name": "BridgeWin_2_M",
@@ -3206,21 +3206,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          1.7288093566894531,
+          3.306424140930176,
+          -7.742984294891357,
           1
         ],
         "name": "BridgeWin_3",
@@ -3233,21 +3233,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
           0,
           0,
           0,
-          1,
+          0.5693359375,
           0,
-          0,
-          0,
-          0,
+          1.7288093566894531,
+          3.306424140930176,
+          7.742984294891357,
           1
         ],
         "name": "BridgeWin_3_M",
@@ -3260,21 +3260,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2846698760986328,
           0,
           0,
           0,
           0,
-          1,
+          0.2846698760986328,
           0,
           0,
           0,
           0,
-          1,
+          0.2846698760986328,
           0,
-          0,
-          0,
-          0,
+          5.792451858520508,
+          5.412972450256348,
+          -2.277348279953003,
           1
         ],
         "name": "Flood",
@@ -3287,21 +3287,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2846698760986328,
           0,
           0,
           0,
           0,
-          1,
+          0.2846698760986328,
           0,
           0,
           0,
           0,
-          1,
+          0.2846698760986328,
           0,
-          0,
-          0,
-          0,
+          5.792451858520508,
+          5.412972450256348,
+          2.277348279953003,
           1
         ],
         "name": "Flood_M",
@@ -3314,20 +3314,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.416022539138794,
           0,
           0,
           0,
           0,
-          1,
+          3.416022539138794,
           0,
           0,
           0,
           0,
-          1,
+          3.416022539138794,
           0,
-          0,
-          0,
+          5.393915176391602,
+          5.356038570404053,
           0,
           1
         ],
@@ -3341,20 +3341,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.22773483395576477,
           0,
           0,
           0,
           0,
-          1,
+          0.22773483395576477,
           0,
           0,
           0,
           0,
-          1,
+          0.22773483395576477,
           0,
-          0,
-          0,
+          -1.7227973937988281,
+          5.669172763824463,
           0,
           1
         ],
@@ -3368,20 +3368,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.277348518371582,
           0,
           0,
           0,
           0,
-          1,
+          2.277348518371582,
           0,
           0,
           0,
           0,
-          1,
+          2.277348518371582,
           0,
-          0,
-          0,
+          -1.7227973937988281,
+          7.861122131347656,
           0,
           1
         ],
@@ -3395,20 +3395,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.839365482330322,
           0,
           0,
           0,
           0,
-          1,
+          4.839365482330322,
           0,
           0,
           0,
           0,
-          1,
+          4.839365482330322,
           0,
-          0,
-          0,
+          -0.014787673950195312,
+          -1.8176092505455017,
           0,
           1
         ],
@@ -3422,21 +3422,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1753559112548828,
           0,
           0,
           0,
           0,
-          1,
+          1.1753559112548828,
           0,
           0,
           0,
           0,
-          1,
+          1.1753559112548828,
           0,
-          0,
-          0,
-          0,
+          0.44545555114746094,
+          -5.665017127990723,
+          5.268478155136108,
           1
         ],
         "name": "towerBase_rib0",
@@ -3449,21 +3449,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.907752513885498,
           0,
           0,
           0,
           0,
-          1,
+          0.907752513885498,
           0,
           0,
           0,
           0,
-          1,
+          0.907752513885498,
           0,
-          0,
-          0,
-          0,
+          -3.697240948677063,
+          -5.501986980438232,
+          3.5316426753997803,
           1
         ],
         "name": "towerBase_rib1",
@@ -3476,21 +3476,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0861546993255615,
           0,
           0,
           0,
           0,
-          1,
+          1.0861546993255615,
           0,
           0,
           0,
           0,
-          1,
+          1.0861546993255615,
           0,
-          0,
-          0,
-          0,
+          -5.21357536315918,
+          -5.610673666000366,
+          -0.6737515479326248,
           1
         ],
         "name": "towerBase_rib2",
@@ -3503,21 +3503,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.8185513019561768,
           0,
           0,
           0,
           0,
-          1,
+          0.8185513019561768,
           0,
           0,
           0,
           0,
-          1,
+          0.8185513019561768,
           0,
-          0,
-          0,
-          0,
+          -2.641534745693207,
+          -5.447643518447876,
+          -4.34157121181488,
           1
         ],
         "name": "towerBase_rib3",
@@ -3530,21 +3530,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9969527721405029,
           0,
           0,
           0,
           0,
-          1,
+          0.9969527721405029,
           0,
           0,
           0,
           0,
-          1,
+          0.9969527721405029,
           0,
-          0,
-          0,
-          0,
+          1.8189163208007812,
+          -5.556330442428589,
+          -4.8317553997039795,
           1
         ],
         "name": "towerBase_rib4",
@@ -3557,21 +3557,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1753559112548828,
           0,
           0,
           0,
           0,
-          1,
+          1.1753559112548828,
           0,
           0,
           0,
           0,
-          1,
+          1.1753559112548828,
           0,
-          0,
-          0,
-          0,
+          4.956243515014648,
+          -5.665017127990723,
+          -1.6337511837482452,
           1
         ],
         "name": "towerBase_rib5",
@@ -3584,21 +3584,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.9077515602111816,
           0,
           0,
           0,
           0,
-          1,
+          0.9077515602111816,
           0,
           0,
           0,
           0,
-          1,
+          0.9077515602111816,
           0,
-          0,
-          0,
-          0,
+          4.229364395141602,
+          -5.501986980438232,
+          2.8234413862228394,
           1
         ],
         "name": "towerBase_rib6",
@@ -3611,21 +3611,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.120372772216797,
           0,
           0,
           0,
           0,
-          1,
+          6.120372772216797,
           0,
           0,
           0,
           0,
-          1,
+          6.120372772216797,
           0,
-          0,
-          0,
-          0,
+          0.1275482177734375,
+          -4.5219603180885315,
+          5.978039026260376,
           1
         ],
         "name": "TowerSkirt",
@@ -3638,21 +3638,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          -1.2957935333251953,
+          -0.9636037349700928,
+          -4.896298885345459,
           1
         ],
         "name": "TowerWin_0",
@@ -3665,21 +3665,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          -1.2957935333251953,
+          -0.9636037349700928,
+          4.896298885345459,
           1
         ],
         "name": "TowerWin_0_M",
@@ -3692,21 +3692,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          1.2662220001220703,
+          -0.9636037349700928,
+          -4.896298885345459,
           1
         ],
         "name": "TowerWin_1",
@@ -3719,21 +3719,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
           0,
           0,
           0,
-          1,
+          0.5693378448486328,
           0,
-          0,
-          0,
-          0,
+          1.2662220001220703,
+          -0.9636037349700928,
+          4.896298885345459,
           1
         ],
         "name": "TowerWin_1_M",
@@ -3748,20 +3748,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "0600aea0bd0fc50e4ec8d6a89a0f2d7164d0fa61f949f89d8a99581dc463bffa",
+  "runtimeHash": "5fdaf58c71400e4b5de6aa61cf15e8f727f0fba42fc5ca1d7cbc6b78acc01820",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           6.247920989990234,
-          10.500009536743164,
-          7.814153671264648
+          10.500009916021305,
+          7.814153697415239
         ],
         "min": [
-          -6.247886657714844,
-          -10.50037670135498,
-          -7.814153671264648
+          -6.247886868120132,
+          -10.500376752926723,
+          -7.814153697415239
         ]
       },
       "id": "sf.render.aftermath-aft-cockpit-section.body",

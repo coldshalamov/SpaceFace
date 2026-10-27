@@ -6,6 +6,7 @@ import { createWorkshopJobs, RIG_JOB_DEFS } from './jobs.js';
 import { captureRigWorkshop, restoreRigWorkshop } from './persistence.js';
 import { explainWorkshopReason, PART_BUTTONS } from './text.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
+import { isGuidedOnboardingActive } from '../../onboarding/opportunityAdmission.js';
 
 const owners = new WeakMap();
 const dist = (a, b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.z || 0) - (b?.z || 0));
@@ -36,7 +37,10 @@ export function isWorkshopAdventure(state) {
 export const rigWorkshopEncounter = Object.freeze({
   fire(director, live, state) {
     const owner = owners.get(state);
-    if (owner) owner.discover();
+    if (!owner?.discover()) {
+      if (typeof director?.abort === 'function') director.abort(live, 'workshop_unavailable');
+      return;
+    }
     if (typeof director?.resolve === 'function') director.resolve(live, 'workshop_charted', { speak: false });
   },
   tick() {},
@@ -97,7 +101,7 @@ export function createRigWorkshopSystem() {
     },
 
     discover() {
-      if (!isWorkshopAdventure(this.state)) return false;
+      if (!isWorkshopAdventure(this.state) || isGuidedOnboardingActive(this.state)) return false;
       this.place();
       if (!this.workshop.bench) return false;
       this.workshop.introduced = true;
@@ -146,29 +150,33 @@ export function createRigWorkshopSystem() {
       const flying = isWorkshopAdventure(state);
       if (!flying) { if (this._wasFlying) this._close(); this._wasFlying = false; this._near = false; return; }
       this._wasFlying = true;
-      this.place();
+      const offersDeferred = isGuidedOnboardingActive(state);
+      // Retained machinery and work keep running; only a new automatic yard waits for the guide.
+      if (this.workshop.bench || !offersDeferred) this.place();
       this.physics.update(dt, this.workshop);
       this.jobs.update(this.workshop);
       const now = state.simTime || 0;
       const near = this._atBench();
-      if (near) this._farPromptOffered = false;
-      if (near && !this._near && now >= (this.workshop.declinedUntil || 0)) {
-        this.workshop.introduced = true;
-        this._showBench();
-      } else if (!this.workshop.introduced && this.workshop.bench && now >= (this.workshop.declinedUntil || 0)) {
-        this.workshop.introduced = true;
-        this._showIntro();
-      } else if (!near && this._near && this._page !== 'intro') {
-        this.physics.cancelPreview(this.workshop);
-        this._close();
-      }
-      this._near = near;
-      // Field verbs stay reachable through the same deck once the bench falls behind.
-      if (!near && this.activeRig && !this.workshop.prompt && now >= (this.workshop.declinedUntil || 0)) {
-        const body = this.activeRig.partIds.map(id => state.entities.get(id)).find(e => at(e));
-        if (body && dist(body.pos, this.player?.pos) < 150) { this._farPromptOffered = false; this._showField(); }
-        else if (!this._farPromptOffered) { this._farPromptOffered = true; this._showAway(); }
-      }
+      if (!offersDeferred) {
+        if (near) this._farPromptOffered = false;
+        if (near && !this._near && now >= (this.workshop.declinedUntil || 0)) {
+          this.workshop.introduced = true;
+          this._showBench();
+        } else if (!this.workshop.introduced && this.workshop.bench && now >= (this.workshop.declinedUntil || 0)) {
+          this.workshop.introduced = true;
+          this._showIntro();
+        } else if (!near && this._near && this._page !== 'intro') {
+          this.physics.cancelPreview(this.workshop);
+          this._close();
+        }
+        this._near = near;
+        // Field verbs stay reachable through the same deck once the bench falls behind.
+        if (!near && this.activeRig && !this.workshop.prompt && now >= (this.workshop.declinedUntil || 0)) {
+          const body = this.activeRig.partIds.map(id => state.entities.get(id)).find(e => at(e));
+          if (body && dist(body.pos, this.player?.pos) < 150) { this._farPromptOffered = false; this._showField(); }
+          else if (!this._farPromptOffered) { this._farPromptOffered = true; this._showAway(); }
+        }
+      } else if (!this.workshop.prompt) return;
       if (now - this._lastRefresh >= 0.75) {
         this._lastRefresh = now;
         if (this._page === 'field') this._showField();

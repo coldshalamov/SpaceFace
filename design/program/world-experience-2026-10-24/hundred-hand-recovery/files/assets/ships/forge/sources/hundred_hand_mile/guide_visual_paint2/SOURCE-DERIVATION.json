@@ -1,0 +1,45 @@
+{
+  "schema": "spaceface.visualMaterialSuccessor.v1",
+  "assetId": "SF_PROP_HUNDRED_HAND_GUIDE",
+  "modelCountDelta": 0,
+  "status": "source exported; release/compiler/runtime review pending",
+  "recipeSha256": "c709d5312a0e54e900d55ad3b8fbd5e608112a9530215fefe3fb899e8db1fa0d",
+  "originalBlendSha256": "7942d7b3943c888add4e48dc8fe56ba2750d4af5fe3d26c5212a1a424a532755",
+  "successorBlendSha256": "c17f05a90d119ef4d2b0d19080a48b410abc06b4e358b9cc8d6f2bd98cfa1d21",
+  "originalGeometryJsonSha256": "655479bc4ce7705e4038224eb1e974a2df796a3b426073ce065acba2a1b3f07d",
+  "originalSourceBodySha256": "0ed90df75dd8801352412c9785c509718760daea4dc162e1d62ffb5aec7d2b77",
+  "originalFamilyContractSha256": "0218d29c509f685e1996d1402d69a62c870b9109e89f20ae7acb1d788b47e7b7",
+  "originalGuideContractSha256": "407f5305211b86f7a4cb92b5da81d63e6f18e80ae66c0b42202e14447c6c0aa6",
+  "originalGeneratorSha256": "6e466078dcb666d3ef58cca053c9276313920c9186945e27e7f339ef284ee422",
+  "fromHex": "#82715a",
+  "toHex": "#b2a084",
+  "nativeBlendReopenSnapshotEqual": true,
+  "materialGraphWhitelistValidated": true,
+  "materialGraphBeforeSha256": "9eccc800dd26825b4c0a7e03cd0180b3aeff4377444346c8e0f125c00085dd5b",
+  "materialGraphAfterSha256": "1fdf872e90a17d6ba498f06c1df6eeba262bd95e0998e54a235d88419da41dff",
+  "editableGeometrySnapshotSha256": "632f0d3ddfdd23abf92ce3d9ac43491656101880f075159ba4ca7c310ed51de8",
+  "sourceLods": [
+    {
+      "file": "hundred_hand_guide.glb",
+      "sourceSha256": "9e5086e4fe85891831d45c8eaf159aad4419283815084f083fd4f51c5433d5ca",
+      "sha256": "ef9cfc383f7c413ff14bb6cc451f79809c55621417d58a7b5b38a60ac0eff3ea",
+      "bytes": 318296,
+      "binaryPayloadSha256": "338375315ceffc3f6219b1de2e180d2e061a46a9b2cec2a62276f2ee6ec0cc29"
+    },
+    {
+      "file": "hundred_hand_guide_lod1.glb",
+      "sourceSha256": "35f17f9137abd5bf46cb728900eb188ee82dd2fb9c41f9545a7664acf1e98c27",
+      "sha256": "dcf91a355ee9fbbfea59bf3ee2f9f88ff3e81fd5f5796ef22265597f9d7f8b1f",
+      "bytes": 335184,
+      "binaryPayloadSha256": "67f7896cedfa1c9ebee8644f11ababa292e1c1b0b6a1970a769ee7cd06e61794"
+    },
+    {
+      "file": "hundred_hand_guide_lod2.glb",
+      "sourceSha256": "cbb15d1a0508dcd546bebb7f058988cfc178640d7fa4f8a3db550ebbdb32357c",
+      "sha256": "d947a71ee46e6626f4f2a95ab67c4bddc4ff6bd35b53d6b69347bf387ba4c129",
+      "bytes": 279372,
+      "binaryPayloadSha256": "9020974c202a38e9e8198a8334370a0e55bbcde6fbda7dac663e90e00aa10361"
+    }
+  ],
+  "nativeIdentityPolicy": "Original physical source path and certificates unchanged. New visual derivation only."
+}

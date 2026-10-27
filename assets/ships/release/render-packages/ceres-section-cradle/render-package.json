@@ -201,7 +201,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "37419376b733272859ac95dd86c6f2c7ca2928a2599a12519a4dcef500b81fcd",
+  "contentHash": "c00f119d95039a21d235e586910e4b18fa68b193ab07df8ccce953851829aa44",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-armor.dynamic",
@@ -493,18 +493,18 @@
     {
       "bounds": {
         "max": [
-          -1.9998626708984375,
+          -1.999862666707358,
           2.5,
-          32.49992752075195
+          32.49992751853999
         ],
         "min": [
-          -5.0001373291015625,
+          -5.000137333292642,
           -2.5,
-          28.250072479248047
+          28.250072481460005
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b881c57ad0c2db487d66daadbc0f8d5bd5fa056e8429d71295ea22193fe4f33b",
+      "geometryHash": "678647abc9f57293eccc9621c6999e94ab450a1038889727ffe9abb4698c1241",
       "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-port.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -518,18 +518,18 @@
     {
       "bounds": {
         "max": [
-          5.0001373291015625,
+          5.000137333292642,
           2.5,
-          32.49992752075195
+          32.49992751853999
         ],
         "min": [
-          1.9998626708984375,
+          1.999862666707358,
           -2.5,
-          28.250072479248047
+          28.250072481460005
         ]
       },
       "drawMode": 4,
-      "geometryHash": "10c77866649d7fc64bdb986af925640c6a197ec35941fac006fc5bda5d69bd8a",
+      "geometryHash": "678647abc9f57293eccc9621c6999e94ab450a1038889727ffe9abb4698c1241",
       "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-starboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -543,18 +543,18 @@
     {
       "bounds": {
         "max": [
-          -34.99866485595703,
-          9.998397827148438,
+          -34.998664815210425,
+          9.99839777825251,
           32.5
         ],
         "min": [
-          -42.50133514404297,
-          -4.9983978271484375,
+          -42.501335184789575,
+          -4.99839777825251,
           -37.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31fd8ce158b254b685b8b43645127ee4dbde4e3ca90986b7e6a283117a3dcc87",
+      "geometryHash": "daea570447d91d802a75a3f9f385db5ef27819ad30ec418a1a3290929aec874c",
       "id": "sf.render.ceres-section-cradle.node.collision-port-rail.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -569,17 +569,17 @@
       "bounds": {
         "max": [
           42.5,
-          6.99749755859375,
-          37.50068664550781
+          6.997497482222969,
+          37.50068666646321
         ],
         "min": [
           -42.5,
-          -4.99749755859375,
-          32.49931335449219
+          -4.997497482222969,
+          32.49931333353679
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6fd4b2132a20c0c3560c8cc2cbff43631a86a37c0dd3db1c31dae412787ba98",
+      "geometryHash": "c91666fd6a008473214033bd2463a83150a7d276a7522d821ed73b55e627ceef",
       "id": "sf.render.ceres-section-cradle.node.collision-rear-spine.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -593,18 +593,18 @@
     {
       "bounds": {
         "max": [
-          39.99836730957031,
-          2.4983673095703125,
+          39.998367259743034,
+          2.498367259743034,
           27
         ],
         "min": [
-          35.00163269042969,
-          -2.4983673095703125,
+          35.001632740256966,
+          -2.498367259743034,
           -27
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22b6f08a46c597c024c9088da198d4f93379ff3a94a131120c489d1fc8d57447",
+      "geometryHash": "5da2d89a7b809c3c54e60e3ac664abe1302f70d9110cbc195cb0377e2e3564a5",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-1-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -618,18 +618,18 @@
     {
       "bounds": {
         "max": [
-          -35.00163269042969,
-          2.4983673095703125,
+          -35.001632740256966,
+          2.498367259743034,
           27
         ],
         "min": [
-          -39.99836730957031,
-          -2.4983673095703125,
+          -39.998367259743034,
+          -2.498367259743034,
           -27
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89cdbd2cd8ee4644771a0eae68ffad446862c517df8bf57c7e2d73252aebc286",
+      "geometryHash": "5da2d89a7b809c3c54e60e3ac664abe1302f70d9110cbc195cb0377e2e3564a5",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -654,7 +654,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "813006613a223c435944ac9deae80410d729976ef412b349661543bcbf565df4",
+      "geometryHash": "39481d9cb7d330b702538eddf7a03f004d0ecc9c2fc44208c21475754f39ce5e",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -679,7 +679,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65c035422c96c95c8a38f54944c70653b4ef986b45a082563dfc46cdc905250d",
+      "geometryHash": "39481d9cb7d330b702538eddf7a03f004d0ecc9c2fc44208c21475754f39ce5e",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -704,7 +704,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a69337cc160b557b22231a67daa3799388f4d339d9164f344d3576ef12f9b96",
+      "geometryHash": "39481d9cb7d330b702538eddf7a03f004d0ecc9c2fc44208c21475754f39ce5e",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48-4.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -729,7 +729,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e80c19d58ddbef124e06d603081afc8ac8f559506b432bdc9a9f8ba4c14734d",
+      "geometryHash": "39481d9cb7d330b702538eddf7a03f004d0ecc9c2fc44208c21475754f39ce5e",
       "id": "sf.render.ceres-section-cradle.node.collision-retention-ram-1-48.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -743,18 +743,18 @@
     {
       "bounds": {
         "max": [
-          42.50133514404297,
-          9.998397827148438,
+          42.501335184789575,
+          9.99839777825251,
           32.5
         ],
         "min": [
-          34.99866485595703,
-          -4.9983978271484375,
+          34.998664815210425,
+          -4.99839777825251,
           -37.5
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98dabf71a66f9a388d666cd6911b6f0e62e78e2551702aafb1d2fd80316d6e8b",
+      "geometryHash": "daea570447d91d802a75a3f9f385db5ef27819ad30ec418a1a3290929aec874c",
       "id": "sf.render.ceres-section-cradle.node.collision-starboard-rail.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -769,17 +769,17 @@
       "bounds": {
         "max": [
           42.5,
-          8.499778747558594,
-          37.498626708984375
+          8.499778740806299,
+          37.49862666707358
         ],
         "min": [
           -42.5,
-          -4.999778747558594,
-          -37.498626708984375
+          -4.999778740806299,
+          -37.49862666707358
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a2a11d960927e16be161274b099895129d3e68a21652ab2c757469f45e32c5ad",
+      "geometryHash": "20d297876e612908a668d8f27bbcd6cdf18f3bb621e2a2ac3109ed48c21588d6",
       "id": "sf.render.ceres-section-cradle.node.lod0-armor.primitive.0",
       "indexCount": 43680,
       "indexed": true,
@@ -794,17 +794,17 @@
       "bounds": {
         "max": [
           39.125,
-          7.589104652404785,
-          -35.622684478759766
+          7.5891047585933515,
+          -35.622684408093505
         ],
         "min": [
           -39.125,
-          7.550895690917969,
-          -36.377315521240234
+          7.550895584729402,
+          -36.377315591906495
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae35e04c4b3f735e21d5d5b50ded07569b7f44372bcc471a5ed0557578f0d911",
+      "geometryHash": "48faf264771f81962aa4f3c29e7c9b26fe93c65e75e0cfc808a98f45960877c8",
       "id": "sf.render.ceres-section-cradle.node.lod0-beacon-amber.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -819,17 +819,17 @@
       "bounds": {
         "max": [
           42.099998474121094,
-          6.998388290405273,
-          36.688053131103516
+          6.998388388374485,
+          36.68805390168005
         ],
         "min": [
           -42.099998474121094,
-          -0.9983884692192078,
-          -37.500553131103516
+          -0.9983885671884196,
+          -37.50055390168005
         ]
       },
       "drawMode": 4,
-      "geometryHash": "effef833d7098844cc75d3372257259219afc3bec957d0b38b6bfbf54364e2d5",
+      "geometryHash": "81353fb3486395d5609fd563f233fda3abeee68686079ea8501cb50567dbdc01",
       "id": "sf.render.ceres-section-cradle.node.lod0-brushedmetal.primitive.0",
       "indexCount": 5220,
       "indexed": true,
@@ -854,7 +854,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14279095164bb583023b03fce478b3b9bbe59b9ded0c3642f5bfaf06959d457f",
+      "geometryHash": "c91ddc36028fff3b028a15c8b6984a51160e6ad1ac90e117adab24988b752dfa",
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-armor.primitive.0",
       "indexCount": 1452,
       "indexed": true,
@@ -879,7 +879,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a697ca52869e3684e8f9c5fe72822ecc7b752b3d97b464bc02507ac6f3e88a30",
+      "geometryHash": "4aaa4fbd62405a419e84156980ae09632ffc95e61a6360ec9588e27a6aa1e07b",
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-ceres-depth-keeper-brushedmetal.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -919,17 +919,17 @@
       "bounds": {
         "max": [
           27.299999237060547,
-          6.7899956703186035,
+          6.789995657483423,
           35.29999923706055
         ],
         "min": [
           26.700000762939453,
-          6.750004291534424,
+          6.750004304369605,
           34.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b413fd19b68cbaf4a6d6fe7031d88d8e26844d8c958f2d3fb3388d4cd89fd1e",
+      "geometryHash": "b876def9fb1107f0b058be2891a502af0348108cdeb1442d1e21ee4691baa0d0",
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-nav-starboard.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -944,17 +944,17 @@
       "bounds": {
         "max": [
           42.5,
-          6.64846658706665,
-          37.25104904174805
+          6.648466540266264,
+          37.251049073763234
         ],
         "min": [
           -42.5,
-          -4.848466396331787,
-          -36.50104904174805
+          -4.8484663495314,
+          -36.501049073763234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a85c82f6b0dd31aa5cd59001cb0f3dce3f29a928c8c1b547fac8deca8c2b211c",
+      "geometryHash": "357babe69bb0899260f7647c1e22a3debec22fe86dfbf0c362cedfc977bb56b6",
       "id": "sf.render.ceres-section-cradle.node.lod0-hull.primitive.0",
       "indexCount": 5640,
       "indexed": true,
@@ -969,17 +969,17 @@
       "bounds": {
         "max": [
           39.125,
-          9.789104461669922,
-          21.876850128173828
+          9.789104567858487,
+          21.876850184636982
         ],
         "min": [
           -39.125,
-          9.750895500183105,
-          -24.876850128173828
+          9.75089539399454,
+          -24.876850184636982
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0dfba592407e7da3a5673a611c253040bb77d7c0c7add28905fb47f530714e3a",
+      "geometryHash": "76ded9b9a295f20fddf46980e85e14afdc6f20f144035c4ea140026112a31dfd",
       "id": "sf.render.ceres-section-cradle.node.lod0-lights-warm.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -994,17 +994,17 @@
       "bounds": {
         "max": [
           42.27499771118164,
-          7.07499361038208,
-          31.784259796142578
+          7.074993748818674,
+          31.78425942115738
         ],
         "min": [
           -42.27499771118164,
-          -3.8346829414367676,
-          -36.26188278198242
+          -3.8346830798733613,
+          -36.26188240699722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4616135861aa1957827afce221ca791d3b77a23aba72c9a7cabaf2b73cdd19d3",
+      "geometryHash": "1adc504e02672838e01fde6372cd1f90469f76eaacf9a22fe25cc5819dbb29b6",
       "id": "sf.render.ceres-section-cradle.node.lod0-mechanical.primitive.0",
       "indexCount": 2304,
       "indexed": true,
@@ -1019,17 +1019,17 @@
       "bounds": {
         "max": [
           39.256248474121094,
-          9.749099731445312,
-          36.89889907836914
+          9.749099538747519,
+          36.898899048682324
         ],
         "min": [
           -39.256248474121094,
-          -0.8990996479988098,
-          -36.50514602661133
+          -0.8990994553010152,
+          -36.50514599692451
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b065a409ebad7694832fe8ac697171a064a560427fd7af4f4da6b01c9357e7da",
+      "geometryHash": "ccb1e02cd519c2025f8327c5497823595ea5c2489340099030ddaa799a69e7a4",
       "id": "sf.render.ceres-section-cradle.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 6432,
       "indexed": true,
@@ -1054,7 +1054,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "453c79d26200d8896d1044ae71ac696122ac70947465d36cf8b9a834f665d566",
+      "geometryHash": "e48353aba0ebaba7fa2b6353769ebfad1ad5cdb3d8e312a4ca68cfdb24c1c5dc",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1079,7 +1079,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7de460f97f47432812b2ae12a433cb399f6c118756afd13d40c7ff34d9c9e856",
+      "geometryHash": "d121a7a993a082723cbe4faad9c04daccba6198943d49ead8f1e78328fba05cb",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-brushedmetal.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -1104,7 +1104,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ca4099f80c3c40d707232c48e1799fadb8ac8c976e3e3aaa0af2a196bad94b7",
+      "geometryHash": "065bed0d334088e8dcb4b8f73eb892d75ec6cc889d2551bb4128a0d2b97b197c",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-mechanical.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1129,7 +1129,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f557a9ce29d2a1e55a7392d4c58db95966f59b0f3c73703f3fd25b77efbacff",
+      "geometryHash": "3b5d09339014a8a7121279544e5b005af62e22f3f4944ffbea31816faf5c9e0a",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-mechanicaldark.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -1154,7 +1154,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9e5495a37450fec16e83cc87a07935f0b810a56d0df8e19cff066a839ecc2a7",
+      "geometryHash": "64bf3830daf73d5db4bde9953dbd5e1d01dc531f59e54eb3a0099448a694b9ba",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-port-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1179,7 +1179,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4975289aa143af0784def1d0e60172d34030aa264af4178bf0e59987e79cc1ae",
+      "geometryHash": "17297a2c9ad01dc0ed8031c37635c316b8e960be6a2c47cd1b398d013c00348e",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-port-0-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1204,7 +1204,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfc35b99f7528fe345a4962a316ad23143adafd33b874cd28066a9526462a9e3",
+      "geometryHash": "a6434ce1e6313370b272429f6a2e868fc61df33867c4d8a35ea8b071d9b75146",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-port-1-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1229,7 +1229,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b96404304db12c1f4653561ff7f8367897fefc41f56ac4975044ed427407726",
+      "geometryHash": "c6f32a847619b7a0d3fe4024a7f300230651ee9ac8aac264c26053429a525aac",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-starboard-0-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1254,7 +1254,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19ed365de6d08a19fcfef5f84365d9e9e8f31ffa6617d291e8a50aadca010b06",
+      "geometryHash": "38b9afba2ec8345923fd7ee78f568a6fc20c7ba1a7c888bb0efa888a16e73feb",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-ram-starboard-1-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -1279,7 +1279,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ebe1a6edd83d196985bba330d5a53eb12ae84e26d91c156b5725731bc6f5952",
+      "geometryHash": "5be3abc6507968d6834e9f55e229254dffa0a2f6eb325f580aef91b70bdceadf",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1304,7 +1304,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa8fefb6ce6d0c187b0fec0e8b6e148b8a2f285bba0ea566ee51bcf2a087cd0f",
+      "geometryHash": "1a8137208bc8e63ac8fa4549de7551c4e9eb20fe08c728f1b6d90698d1bc0a61",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-brushedmetal.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -1329,7 +1329,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7814dc1e996ab0d25cb4019564497555011c0dbe94877dcd8408ff9b897da55",
+      "geometryHash": "55bdee600e74e3ddca87f31f3cd111c59e0bb39deb9fcd1817c79e3ea2ee6788",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-mechanical.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1354,7 +1354,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6b3121fa2bdb7a355ef155cb65e7ccd730bcdcef7b61100768396efc6917d42",
+      "geometryHash": "9181d8c42fadf775040b9815c915140c74df4e4b4421216ac5f974c078585d8b",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-mechanicaldark.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -1379,7 +1379,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2391c466c14e0e5733a4081c0084dcb1a8e78ad26fa9ee6e3161dc7a06205b07",
+      "geometryHash": "00ff807f341c2d25448a0d3b378ad0f6d30e2191fd2cdb386fdd0f80c0d48bfc",
       "id": "sf.render.ceres-section-cradle.node.lod0-motion-retention-starboard-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1394,17 +1394,17 @@
       "bounds": {
         "max": [
           42.32810974121094,
-          9.648696899414062,
-          37.40129470825195
+          9.648697181158653,
+          37.4012964559321
         ],
         "min": [
           -42.32810974121094,
-          -1.3986976146697998,
-          -37.25129318237305
+          -1.398697896414391,
+          -37.25129493005319
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f773edf346d196358f67f88ee1a78a77b57c95f8800831ac95baf4f17358c831",
+      "geometryHash": "35830d7001e532122c67583566e47bacb048a9dd2bf13199b74e03443122c232",
       "id": "sf.render.ceres-section-cradle.node.lod0-warning.primitive.0",
       "indexCount": 6024,
       "indexed": true,
@@ -1419,17 +1419,17 @@
       "bounds": {
         "max": [
           42.5,
-          8.499778747558594,
-          37.498626708984375
+          8.499778740806299,
+          37.49862666707358
         ],
         "min": [
           -42.5,
-          -4.999778747558594,
-          -37.498626708984375
+          -4.999778740806299,
+          -37.49862666707358
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b7ab20ab11baca69c54d75cd83649cba1aa532f0673314fe3ae5ecb863f177f",
+      "geometryHash": "3480e6e286953c3896d5bdb54673744397fbb9ec77adf416f04d61cf2c3b7d80",
       "id": "sf.render.ceres-section-cradle.node.lod1-armor.primitive.0",
       "indexCount": 15204,
       "indexed": true,
@@ -1444,17 +1444,17 @@
       "bounds": {
         "max": [
           39.125,
-          7.589105129241943,
-          -35.622684478759766
+          7.589104997011931,
+          -35.62268631544214
         ],
         "min": [
           -39.125,
-          7.550895690917969,
-          -36.3773193359375
+          7.5508958231479815,
+          -36.37731749925513
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c40e4b72799810882e4c74b4936de5f6cac4622634bdf81cce14447d7d7099c",
+      "geometryHash": "f1f8e0222009d506c949d3aef8bd1842666a0cd2d1943a27d99895e181f9754b",
       "id": "sf.render.ceres-section-cradle.node.lod1-beacon-amber.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -1469,17 +1469,17 @@
       "bounds": {
         "max": [
           42.099998474121094,
-          6.997862339019775,
-          36.68671417236328
+          6.997862292256678,
+          36.686715930695755
         ],
         "min": [
           -42.099998474121094,
-          -0.9886360764503479,
-          -37.49161148071289
+          -0.9886360296872505,
+          -37.491613239045364
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d1c302c5aeea598a512f0b93bf1de9187e398b440fa3c1f8e57ccf5811d59e5",
+      "geometryHash": "42c251a648e071610de3e481179101a24a9deddfb1d03443c445a11d17bbcb46",
       "id": "sf.render.ceres-section-cradle.node.lod1-brushedmetal.primitive.0",
       "indexCount": 3408,
       "indexed": true,
@@ -1504,7 +1504,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "512e716ffea01adfba4d389caa45f68e86ea13cab13b32fbd60cee8a8e340a4d",
+      "geometryHash": "ea5b9434e5dbd69d948aa49d13938b4e70678747829f06f1a953310811b2fb89",
       "id": "sf.render.ceres-section-cradle.node.lod1-hook-ceres-depth-keeper-armor.primitive.0",
       "indexCount": 420,
       "indexed": true,
@@ -1529,7 +1529,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8772ff12a9bb7209e41bc3b2588a7fdad23ae43a4deeade20a00b499fc19b9ea",
+      "geometryHash": "1d7b9c90d562903acb4e4ea99d54b6921f73e4a2c7ed289a6407783584de8ce2",
       "id": "sf.render.ceres-section-cradle.node.lod1-hook-ceres-depth-keeper-brushedmetal.primitive.0",
       "indexCount": 264,
       "indexed": true,
@@ -1569,17 +1569,17 @@
       "bounds": {
         "max": [
           27.301002502441406,
-          6.789988994598389,
-          35.29998779296875
+          6.7899890383718855,
+          35.29998644547849
         ],
         "min": [
           26.698997497558594,
-          6.750010967254639,
-          34.69900894165039
+          6.750010923481142,
+          34.69901028914065
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40be2d8deb9dbc15211cce1666161731bdc50709ad771b194deda5078682c6cf",
+      "geometryHash": "d9ec5207d80b7bd88c24c2c3d0fdf6d26423267437f3317a9f0557d70741fc36",
       "id": "sf.render.ceres-section-cradle.node.lod1-hook-nav-starboard.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1594,17 +1594,17 @@
       "bounds": {
         "max": [
           42.494266510009766,
-          6.642221927642822,
-          37.25254821777344
+          6.642221890046802,
+          37.25254989763959
         ],
         "min": [
           -42.4901008605957,
-          -4.842222213745117,
-          -36.49635696411133
+          -4.842222176149097,
+          -36.49635864397748
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78ebdcaad00926ba7e809d746bbf8e550d8f7c799eb677c916677e0262e7e9e4",
+      "geometryHash": "50fea207a3036be60a4ada8a8bf58f6d05b8e978e210c32af272d8c544cfb0e4",
       "id": "sf.render.ceres-section-cradle.node.lod1-hull.primitive.0",
       "indexCount": 2472,
       "indexed": true,
@@ -1619,17 +1619,17 @@
       "bounds": {
         "max": [
           39.125,
-          9.789104461669922,
-          21.876850128173828
+          9.789104567858487,
+          21.876850184636982
         ],
         "min": [
           -39.125,
-          9.750895500183105,
-          -24.876850128173828
+          9.75089539399454,
+          -24.876850184636982
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9836f2fce57e10192ce4720fed2252dcf5f22643738c30980a34c08a115bab7",
+      "geometryHash": "c2ddc2f560b50a8b9757b72e3fcf429c8fae22574796893ed515130c6f05d9e2",
       "id": "sf.render.ceres-section-cradle.node.lod1-lights-warm.primitive.0",
       "indexCount": 366,
       "indexed": true,
@@ -1644,17 +1644,17 @@
       "bounds": {
         "max": [
           42.27499771118164,
-          7.07499361038208,
-          31.784259796142578
+          7.074993748818674,
+          31.78425942115738
         ],
         "min": [
           -42.27499771118164,
-          -3.8346829414367676,
-          -36.26188278198242
+          -3.8346830798733613,
+          -36.26188240699722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5050dd9004b0843b29ba3305bba2377f9ff329cfe56795cb70f49f6e3262e7b5",
+      "geometryHash": "7cbe7ca2068d937298737458ac67ba0814e7bf669b886cad46db6082033f5088",
       "id": "sf.render.ceres-section-cradle.node.lod1-mechanical.primitive.0",
       "indexCount": 2304,
       "indexed": true,
@@ -1669,17 +1669,17 @@
       "bounds": {
         "max": [
           39.25252151489258,
-          9.74683952331543,
-          36.89266586303711
+          9.74683918572434,
+          36.89266418905011
         ],
         "min": [
           -39.25252151489258,
-          -0.8907657861709595,
-          -36.50441360473633
+          -0.890765448579871,
+          -36.50441193074933
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2906d24b52c06b3142acbf1cbf2992ce68285ab0d70ab17d94bf9649b3508691",
+      "geometryHash": "062caba19c5a7c23d84516616537feee6c3cf164181a10d2319d152ef10d1254",
       "id": "sf.render.ceres-section-cradle.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 1536,
       "indexed": true,
@@ -1704,7 +1704,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf32fcd76959baa6189bebea457b157050bb8eb22960fee2f0db619a3dbbca3e",
+      "geometryHash": "c7bd60ebdb875f14b73543d5607f715b20627e73322dc3d42f7799afa267e171",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-armor.primitive.0",
       "indexCount": 408,
       "indexed": true,
@@ -1729,7 +1729,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d93059e5d1016acaac00cda8b49b81fbf3d7eee0dd547ecd58e71748c1d48ad4",
+      "geometryHash": "26a9c638136db3816bfda79fb7b5fdb617e08ddc09069ea25acfaa686d29fbc4",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-brushedmetal.primitive.0",
       "indexCount": 1266,
       "indexed": true,
@@ -1754,7 +1754,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f0ce859ed2e15973348a89f910e85e6b13181414f6781b9549a33145bb4105e0",
+      "geometryHash": "9b9d543f81b8751f5b6b1006480520e3371aea8e0db2201671b8fa1c5f41f398",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-mechanical.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -1779,7 +1779,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "723b57645e4c1a6699092e8cae6c774a938b6b032f390676efcfec70cf465456",
+      "geometryHash": "9f29f8a079818e356cb89133cf1a0992748eb03486c506de6ff4b4ea3ff8a8e5",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-mechanicaldark.primitive.0",
       "indexCount": 636,
       "indexed": true,
@@ -1804,7 +1804,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "61103a3b79ee57ba075615d815ed583e8f53b15c5242a6b8d971fde72a1d12cd",
+      "geometryHash": "6e0a32a067793051e8b662b700c3bd98de239f337428f8d0b293cb5e45bafe31",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-port-warning.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -1829,7 +1829,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "128061c83bf5ee8eb36adb4f5acbbad37da96ec58f465c5c1a2f19c9828bec99",
+      "geometryHash": "0ca49e814f70b470a55a40f387ac0f9bbe2e7822824f1a05c049c1fa95131c27",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-port-0-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1854,7 +1854,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2140eba30ed3212e3b186a65fa5b34a2d85c694ff3a71413d34aaa361dd8f79",
+      "geometryHash": "53b4574c5c07d5299a701d3abd60915cbf42531b0132bd5a356829a7a9ce8d7d",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-port-1-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1879,7 +1879,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9af798a60ab026d5d55026500e3b8023bcf8dd20bae4467b624306d1f821e135",
+      "geometryHash": "e91aaa80d8ea99343a2a21092c04505c21b09600e67433063e5db585771d8bfe",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-starboard-0-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1904,7 +1904,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88f99b96aa6c28bdb727936c41e663706ad7658f3c022f41928c809c8b829644",
+      "geometryHash": "fdaa3bdda9722df8eb80742195025451fd8ef266bfa9132420a1397e5ffc9a43",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-ram-starboard-1-brushedmetal.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -1929,7 +1929,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d35a06d0207bd202c6d1bfee4e650ff05797c86f39362385a21ac328ec197730",
+      "geometryHash": "357b182fd1dc37b5b10a34c611d329dae4c25f4aa3df68097a9f99bc9baca449",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-armor.primitive.0",
       "indexCount": 402,
       "indexed": true,
@@ -1954,7 +1954,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "311dda5d673288ae1c75e041f189dc17343cd2004510be039a700b27ab3e5ddb",
+      "geometryHash": "b556fe454953bdba0694087f4169a4c5b7dd47342bd82b4266d67f04c61c723b",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-brushedmetal.primitive.0",
       "indexCount": 1266,
       "indexed": true,
@@ -1979,7 +1979,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30c143f274df45beb9cdb06b96fa670a616d5447f09127454f2b83fd4847e2b6",
+      "geometryHash": "10b30612827a7cc2da3e340af57632d19155dd8f071f250cd01cf969676cbd96",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-mechanical.primitive.0",
       "indexCount": 360,
       "indexed": true,
@@ -2004,7 +2004,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70647e2a737079ae820705ee6a106b94c370618b2b5cd234b0f6ee88d7105852",
+      "geometryHash": "f4a96c94fd8edf0c41da73f6878412d84a4fd53f2848abb0e35849bd42f0e503",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-mechanicaldark.primitive.0",
       "indexCount": 642,
       "indexed": true,
@@ -2029,7 +2029,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6289b47f5192b36ba5a79e65f7daf38241c0e2228b33182c9fa80ea36b4ff344",
+      "geometryHash": "96596472eab355414c03fa71db94a690dc75ab25be0d9848a62eb6a48ca3863b",
       "id": "sf.render.ceres-section-cradle.node.lod1-motion-retention-starboard-warning.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -2044,17 +2044,17 @@
       "bounds": {
         "max": [
           41.993255615234375,
-          9.637325286865234,
-          37.39430236816406
+          9.637325422338606,
+          37.39430272574463
         ],
         "min": [
           -41.99324417114258,
-          -1.39444100856781,
-          -37.241851806640625
+          -1.3944411440411804,
+          -37.24185216422119
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aed0e4cd2ac35cc795783b9850ee6402b0627b355dad363cefb9c52e2bccff5d",
+      "geometryHash": "dba99b772754664f2140ead02cf06987e27dd4b461d649e480bb9c19e9ae2142",
       "id": "sf.render.ceres-section-cradle.node.lod1-warning.primitive.0",
       "indexCount": 2670,
       "indexed": true,
@@ -2069,17 +2069,17 @@
       "bounds": {
         "max": [
           42.47669219970703,
-          8.48388957977295,
-          37.470458984375
+          8.483889270309753,
+          37.470457894694334
         ],
         "min": [
           -42.47669219970703,
-          -4.977153301239014,
-          -37.47529602050781
+          -4.977152991775816,
+          -37.47529493082715
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3bcc604b9125d7b51c48c6f084ca0dfa0507d6f4c6b0c86b337c098ea313c462",
+      "geometryHash": "1861332b73149f092de9be515ab116bf4efee24efb9fe12ea15708fbbb93f81a",
       "id": "sf.render.ceres-section-cradle.node.lod2-armor.primitive.0",
       "indexCount": 6282,
       "indexed": true,
@@ -2094,17 +2094,17 @@
       "bounds": {
         "max": [
           39.12441635131836,
-          7.578885555267334,
-          -35.62746810913086
+          7.578885704283493,
+          -35.627468019546534
         ],
         "min": [
           -39.12441635131836,
-          7.559781551361084,
-          -36.372535705566406
+          7.559781402344925,
+          -36.37253579515073
         ]
       },
       "drawMode": 4,
-      "geometryHash": "014de6cbf255f09d1373978cb358c2d3f01c1ddb90f83a7ca0a17d26cbc9721e",
+      "geometryHash": "a0da2565a6bf38618daa903b8f23ba56018700f44f31b559bc6d7e9cb13f5838",
       "id": "sf.render.ceres-section-cradle.node.lod2-beacon-amber.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -2119,17 +2119,17 @@
       "bounds": {
         "max": [
           36.08415603637695,
-          0.9911112189292908,
-          34.49196243286133
+          0.9911111921365782,
+          34.49196235229947
         ],
         "min": [
           -36.08415603637695,
-          -0.9911112189292908,
-          -37.4825325012207
+          -0.9911111921365782,
+          -37.48253242065884
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc366e90ba86d5cf7d64e35be4c0a486be8f26ac2e88e1a612b8d92e0f8c8d0e",
+      "geometryHash": "52caaca03ce591d3985072107d01c3ece8e67e414b1b6d451b737928e5019766",
       "id": "sf.render.ceres-section-cradle.node.lod2-brushedmetal.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -2218,18 +2218,18 @@
     {
       "bounds": {
         "max": [
-          27.299530029296875,
-          6.790013313293457,
+          27.29953069829794,
+          6.79001348447286,
           35.30173873901367
         ],
         "min": [
-          26.698997497558594,
-          6.74998664855957,
+          26.69899682855753,
+          6.749986477380167,
           34.698997497558594
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f88413062c865209279a6e5327eb47e4c0af6a7e844f1d82806cddfb62d1077",
+      "geometryHash": "9f3702bba3a0c251782373d2fe3c318d052fbd5e512011047cd6e051a279a0db",
       "id": "sf.render.ceres-section-cradle.node.lod2-hook-nav-starboard.primitive.0",
       "indexCount": 54,
       "indexed": true,
@@ -2244,17 +2244,17 @@
       "bounds": {
         "max": [
           42.48873519897461,
-          6.631381988525391,
-          37.2287483215332
+          6.631382332594098,
+          37.22874798467519
         ],
         "min": [
           -42.48873519897461,
-          -4.8313822746276855,
-          -36.483055114746094
+          -4.831382618696393,
+          -36.48305477788808
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e00768a2e0f02032aa6ba3c3ddd68fa0d867d5902c2f32002adfb0f6be7227a",
+      "geometryHash": "2f06b4c646b2584e6efc5730fd51346a4ded2b716fb8db8a03e8dfb15a0e5783",
       "id": "sf.render.ceres-section-cradle.node.lod2-hull.primitive.0",
       "indexCount": 1230,
       "indexed": true,
@@ -2269,17 +2269,17 @@
       "bounds": {
         "max": [
           39.125,
-          9.789104461669922,
-          21.876850128173828
+          9.789104567858487,
+          21.876850184636982
         ],
         "min": [
           -39.125,
-          9.750895500183105,
-          -24.876850128173828
+          9.75089539399454,
+          -24.876850184636982
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66a1e7f3da798e4679aa5540796ec0e3434e8f769e7d7e9fd65602bd2c3114a4",
+      "geometryHash": "5d2227853a97c45628377e55b3b92584829f6fc1dc71d5798eb7bc38d33a06e9",
       "id": "sf.render.ceres-section-cradle.node.lod2-lights-warm.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -2294,17 +2294,17 @@
       "bounds": {
         "max": [
           42.27499771118164,
-          5.835556983947754,
-          31.784259796142578
+          5.835556853587719,
+          31.78425942115738
         ],
         "min": [
           -42.27499771118164,
-          -3.835556983947754,
-          -36.26188278198242
+          -3.835556853587719,
+          -36.26188240699722
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1ed354230d0697b6baa4afd6119b321774684dd8daa98d7141ff8a1acc75f9d",
+      "geometryHash": "2ccee356ef5c4286b0b158fb68f5471508a1692400eff0977424edb06f3a13aa",
       "id": "sf.render.ceres-section-cradle.node.lod2-mechanical.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -2319,17 +2319,17 @@
       "bounds": {
         "max": [
           39.25252151489258,
-          9.74683952331543,
-          36.89266586303711
+          9.74683918572434,
+          36.89266418905011
         ],
         "min": [
           -39.25252151489258,
-          -0.8907657861709595,
-          -36.50441360473633
+          -0.890765448579871,
+          -36.50441193074933
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4395ae0d6939a221b6cef9f2205019b5db715b1df155f2b694e28cd2eb1e7e13",
+      "geometryHash": "0aa4fbdb79324aed66ad11ded156535cc4967d6b11b02eafb0cf30e5810a4c58",
       "id": "sf.render.ceres-section-cradle.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1452,
       "indexed": true,
@@ -2354,7 +2354,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e9c743188efccc2baebe9f47813fe07b899ab853b3091e974769478dd8e6227",
+      "geometryHash": "f3f084aecc192734532bc5b171ceb905597f4b61cb40d6589e574ce63b3282f2",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-armor.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -2379,7 +2379,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8fdac0f5d6de68c3d23ba73962bce326c10051cce2470acf550e1ff986589dd4",
+      "geometryHash": "f0946a4c8c17a17656b7dc6a47e6facea81def3cecbf7d46eecdbdabe0c4172f",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-brushedmetal.primitive.0",
       "indexCount": 654,
       "indexed": true,
@@ -2404,7 +2404,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76245979666be12975c52e4e4536557f2b6500c73d1df890a73eadee817d1f94",
+      "geometryHash": "7834d642ae73567b646d4731151e8036f2db8a4cbec8be6eea3cf24dde6ba85e",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-port-mechanical.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -2554,7 +2554,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "15a84dbea95ec1c314b97877971077e56f5126434feaab16ee5552931bc8e297",
+      "geometryHash": "2b8e516a24ac81c6c41bd270658fb1cea8dc9a9275f04cac208963db47b998ce",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-ram-starboard-1-brushedmetal.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -2579,7 +2579,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a28818fc7a6688d856d326c7fcafee9c988d0a100b00f441af81056fa57e2f1c",
+      "geometryHash": "1d1e28c88ee151219277e24f046ad7d7f975446738958a72e7d2c174a0de6f10",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-armor.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -2604,7 +2604,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc58b27558616267458ba118ab2e1e199d1d135f857380429c36e05143db2c4a",
+      "geometryHash": "6145753d9016d1f5f80811db28da1d9e2c7fee1e21fa3b5f783ff65f3cd8932f",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-brushedmetal.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -2629,7 +2629,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbaf1472546de861c84ce9609528df99727fe034e7390e299aa0e778c7063fc9",
+      "geometryHash": "5a5dbba0be9c3a32bbbd5b5435d4173e0b302383d45ecb39ace919751bf58515",
       "id": "sf.render.ceres-section-cradle.node.lod2-motion-retention-starboard-mechanical.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -2694,17 +2694,17 @@
       "bounds": {
         "max": [
           41.97624206542969,
-          9.633927345275879,
-          37.38766098022461
+          9.633927160268097,
+          37.38766191891
         ],
         "min": [
           -41.97624206542969,
-          -1.3831231594085693,
-          -37.228511810302734
+          -1.383122974400787,
+          -37.22851274898812
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c2b0b7fc46f2e560dedd4620e220fc2608a154b9eccf74581be70026c31e8f9",
+      "geometryHash": "58baa043bfedb7d354d163be7968d1c55483080b5f2699490c3b4b99940275d8",
       "id": "sf.render.ceres-section-cradle.node.lod2-warning.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -2938,21 +2938,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-port",
       "localTransform": [
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
+        -3.5,
         0,
-        0,
-        0,
+        30.375,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -2966,42 +2966,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
+        -3.5,
         0,
-        0,
-        0,
+        30.375,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.collision-depth-keeper-starboard",
       "localTransform": [
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
+        3.5,
         0,
-        0,
-        0,
+        30.375,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3015,42 +3015,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
         0,
         0,
         0,
-        1,
+        2.5,
         0,
+        3.5,
         0,
-        0,
-        0,
+        30.375,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.collision-port-rail",
       "localTransform": [
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
-        0,
-        0,
-        0,
+        -38.75,
+        2.5,
+        -2.5,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3064,42 +3064,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
-        0,
-        0,
-        0,
+        -38.75,
+        2.5,
+        -2.5,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.collision-rear-spine",
       "localTransform": [
+        42.5,
+        0,
+        0,
+        0,
+        0,
+        42.5,
+        0,
+        0,
+        0,
+        0,
+        42.5,
+        0,
+        0,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
+        35,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3113,40 +3113,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
+        42.5,
+        0,
+        0,
+        0,
+        0,
+        42.5,
+        0,
+        0,
+        0,
+        0,
+        42.5,
+        0,
+        0,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
+        35,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.collision-retention-1",
       "localTransform": [
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
-        0,
+        -37.5,
         0,
         0,
         1
@@ -3162,19 +3162,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
-        0,
+        -37.5,
         0,
         0,
         1
@@ -3183,19 +3183,19 @@
     {
       "id": "sf.render.ceres-section-cradle.node.collision-retention-1-2",
       "localTransform": [
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
-        0,
+        37.5,
         0,
         0,
         1
@@ -3211,19 +3211,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
         0,
         0,
         0,
-        1,
+        27,
         0,
-        0,
+        37.5,
         0,
         0,
         1
@@ -3244,9 +3244,9 @@
         0,
         1,
         0,
+        -41,
         0,
-        0,
-        0,
+        -24,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3272,9 +3272,9 @@
         0,
         1,
         0,
+        -41,
         0,
-        0,
-        0,
+        -24,
         1
       ]
     },
@@ -3293,9 +3293,9 @@
         0,
         1,
         0,
+        -41,
         0,
-        0,
-        0,
+        24,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3321,9 +3321,9 @@
         0,
         1,
         0,
+        -41,
         0,
-        0,
-        0,
+        24,
         1
       ]
     },
@@ -3342,9 +3342,9 @@
         0,
         1,
         0,
+        41,
         0,
-        0,
-        0,
+        -24,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3370,9 +3370,9 @@
         0,
         1,
         0,
+        41,
         0,
-        0,
-        0,
+        -24,
         1
       ]
     },
@@ -3391,9 +3391,9 @@
         0,
         1,
         0,
+        41,
         0,
-        0,
-        0,
+        24,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3419,30 +3419,30 @@
         0,
         1,
         0,
+        41,
         0,
-        0,
-        0,
+        24,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.collision-starboard-rail",
       "localTransform": [
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
-        0,
-        0,
-        0,
+        38.75,
+        2.5,
+        -2.5,
         1
       ],
       "materialPipelineKey": "non-render",
@@ -3456,41 +3456,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
         0,
         0,
         0,
-        1,
+        35,
         0,
-        0,
-        0,
-        0,
+        38.75,
+        2.5,
+        -2.5,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-armor",
       "localTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
+        1.75,
         0,
         1
       ],
@@ -3505,20 +3505,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
+        1.75,
         0,
         1
       ]
@@ -3526,21 +3526,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-beacon-amber",
       "localTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        7.570000171661377,
+        -36,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3554,42 +3554,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        7.570000171661377,
+        -36,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-brushedmetal",
       "localTransform": [
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
-        0,
-        0,
+        2.999999910593033,
+        -0.40625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3603,21 +3603,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
-        0,
-        0,
+        2.999999910593033,
+        -0.40625,
         1
       ]
     },
@@ -3771,21 +3771,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.2999992370605469,
         0,
         0,
         0,
         0,
-        1,
+        0.2999992370605469,
         0,
         0,
         0,
         0,
-        1,
+        0.2999992370605469,
         0,
-        0,
-        0,
-        0,
+        27,
+        6.769999980926514,
+        35,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3799,42 +3799,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        0.2999992370605469,
         0,
         0,
         0,
         0,
-        1,
+        0.2999992370605469,
         0,
         0,
         0,
         0,
-        1,
+        0.2999992370605469,
         0,
-        0,
-        0,
-        0,
+        27,
+        6.769999980926514,
+        35,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-hull",
       "localTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
-        0,
+        0.9000000953674316,
+        0.375,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3848,42 +3848,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
-        0,
+        0.9000000953674316,
+        0.375,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-lights-warm",
       "localTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3897,42 +3897,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-mechanical",
       "localTransform": [
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
-        0,
-        0,
+        1.6201553344726562,
+        -2.238811492919922,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3946,42 +3946,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
-        0,
-        0,
+        1.6201553344726562,
+        -2.238811492919922,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-mechanicaldark",
       "localTransform": [
-        1,
+        39.256248474121094,
         0,
         0,
         0,
         0,
-        1,
+        39.256248474121094,
         0,
         0,
         0,
         0,
-        1,
+        39.256248474121094,
         0,
         0,
-        0,
-        0,
+        4.425000041723251,
+        0.19687652587890625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -3995,21 +3995,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.256248474121094,
         0,
         0,
         0,
         0,
-        1,
+        39.256248474121094,
         0,
         0,
         0,
         0,
-        1,
+        39.256248474121094,
         0,
         0,
-        0,
-        0,
+        4.425000041723251,
+        0.19687652587890625,
         1
       ]
     },
@@ -4716,21 +4716,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod0-warning",
       "localTransform": [
-        1,
+        42.32810974121094,
         0,
         0,
         0,
         0,
-        1,
+        42.32810974121094,
         0,
         0,
         0,
         0,
-        1,
+        42.32810974121094,
         0,
         0,
-        0,
-        0,
+        4.124999642372131,
+        0.07500076293945312,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4744,41 +4744,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.32810974121094,
         0,
         0,
         0,
         0,
-        1,
+        42.32810974121094,
         0,
         0,
         0,
         0,
-        1,
+        42.32810974121094,
         0,
         0,
-        0,
-        0,
+        4.124999642372131,
+        0.07500076293945312,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-armor",
       "localTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
+        1.75,
         0,
         1
       ],
@@ -4793,20 +4793,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
         0,
         0,
-        1,
+        42.5,
         0,
         0,
-        0,
+        1.75,
         0,
         1
       ]
@@ -4814,21 +4814,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-beacon-amber",
       "localTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        7.570000410079956,
+        -36.00000190734863,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4842,42 +4842,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        7.570000410079956,
+        -36.00000190734863,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-brushedmetal",
       "localTransform": [
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
-        0,
-        0,
+        3.0046131312847137,
+        -0.4024486541748047,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -4891,21 +4891,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
         0,
         0,
-        1,
+        42.099998474121094,
         0,
         0,
-        0,
-        0,
+        3.0046131312847137,
+        -0.4024486541748047,
         1
       ]
     },
@@ -5059,21 +5059,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.30100250244140625,
         0,
         0,
         0,
         0,
-        1,
+        0.30100250244140625,
         0,
         0,
         0,
         0,
-        1,
+        0.30100250244140625,
         0,
-        0,
-        0,
-        0,
+        27,
+        6.769999980926514,
+        34.99949836730957,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5087,42 +5087,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        0.30100250244140625,
         0,
         0,
         0,
         0,
-        1,
+        0.30100250244140625,
         0,
         0,
         0,
         0,
-        1,
+        0.30100250244140625,
         0,
-        0,
-        0,
-        0,
+        27,
+        6.769999980926514,
+        34.99949836730957,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-hull",
       "localTransform": [
-        1,
+        42.492183685302734,
         0,
         0,
         0,
         0,
-        1,
+        42.492183685302734,
         0,
         0,
         0,
         0,
-        1,
+        42.492183685302734,
         0,
-        0,
-        0,
-        0,
+        0.00208282470703125,
+        0.8999998569488525,
+        0.3780956268310547,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5136,42 +5136,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.492183685302734,
         0,
         0,
         0,
         0,
-        1,
+        42.492183685302734,
         0,
         0,
         0,
         0,
-        1,
+        42.492183685302734,
         0,
-        0,
-        0,
-        0,
+        0.00208282470703125,
+        0.8999998569488525,
+        0.3780956268310547,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-lights-warm",
       "localTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5185,42 +5185,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-mechanical",
       "localTransform": [
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
-        0,
-        0,
+        1.6201553344726562,
+        -2.238811492919922,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5234,42 +5234,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
         0,
         0,
-        1,
+        42.27499771118164,
         0,
         0,
-        0,
-        0,
+        1.6201553344726562,
+        -2.238811492919922,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-mechanicaldark",
       "localTransform": [
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
-        0,
-        0,
+        4.428036868572235,
+        0.19412612915039062,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -5283,21 +5283,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
-        0,
-        0,
+        4.428036868572235,
+        0.19412612915039062,
         1
       ]
     },
@@ -6004,21 +6004,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod1-warning",
       "localTransform": [
-        1,
+        41.99324989318848,
         0,
         0,
         0,
         0,
-        1,
+        41.99324989318848,
         0,
         0,
         0,
         0,
-        1,
+        41.99324989318848,
         0,
-        0,
-        0,
-        0,
+        0.0000057220458984375,
+        4.121442139148712,
+        0.07622528076171875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6032,42 +6032,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        41.99324989318848,
         0,
         0,
         0,
         0,
-        1,
+        41.99324989318848,
         0,
         0,
         0,
         0,
-        1,
+        41.99324989318848,
         0,
-        0,
-        0,
-        0,
+        0.0000057220458984375,
+        4.121442139148712,
+        0.07622528076171875,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-armor",
       "localTransform": [
-        1,
+        42.47669219970703,
         0,
         0,
         0,
         0,
-        1,
+        42.47669219970703,
         0,
         0,
         0,
         0,
-        1,
+        42.47669219970703,
         0,
         0,
-        0,
-        0,
+        1.7533681392669678,
+        -0.00241851806640625,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6081,42 +6081,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.47669219970703,
         0,
         0,
         0,
         0,
-        1,
+        42.47669219970703,
         0,
         0,
         0,
         0,
-        1,
+        42.47669219970703,
         0,
         0,
-        0,
-        0,
+        1.7533681392669678,
+        -0.00241851806640625,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-beacon-amber",
       "localTransform": [
-        1,
+        39.12441635131836,
         0,
         0,
         0,
         0,
-        1,
+        39.12441635131836,
         0,
         0,
         0,
         0,
-        1,
+        39.12441635131836,
         0,
         0,
-        0,
-        0,
+        7.569333553314209,
+        -36.00000190734863,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6130,42 +6130,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.12441635131836,
         0,
         0,
         0,
         0,
-        1,
+        39.12441635131836,
         0,
         0,
         0,
         0,
-        1,
+        39.12441635131836,
         0,
         0,
-        0,
-        0,
+        7.569333553314209,
+        -36.00000190734863,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-brushedmetal",
       "localTransform": [
-        1,
+        36.08415603637695,
         0,
         0,
         0,
         0,
-        1,
+        36.08415603637695,
         0,
         0,
         0,
         0,
-        1,
+        36.08415603637695,
         0,
         0,
         0,
-        0,
+        -1.4952850341796875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6179,21 +6179,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        36.08415603637695,
         0,
         0,
         0,
         0,
-        1,
+        36.08415603637695,
         0,
         0,
         0,
         0,
-        1,
+        36.08415603637695,
         0,
         0,
         0,
-        0,
+        -1.4952850341796875,
         1
       ]
     },
@@ -6347,21 +6347,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-hook-nav-starboard",
       "localTransform": [
-        1,
+        0.30137062072753906,
         0,
         0,
         0,
         0,
-        1,
+        0.30137062072753906,
         0,
         0,
         0,
         0,
-        1,
+        0.30137062072753906,
         0,
-        0,
-        0,
-        0,
+        26.999263763427734,
+        6.769999980926514,
+        35.00036811828613,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6375,42 +6375,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        0.30137062072753906,
         0,
         0,
         0,
         0,
-        1,
+        0.30137062072753906,
         0,
         0,
         0,
         0,
-        1,
+        0.30137062072753906,
         0,
-        0,
-        0,
-        0,
+        26.999263763427734,
+        6.769999980926514,
+        35.00036811828613,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-hull",
       "localTransform": [
-        1,
+        42.48873519897461,
         0,
         0,
         0,
         0,
-        1,
+        42.48873519897461,
         0,
         0,
         0,
         0,
-        1,
+        42.48873519897461,
         0,
         0,
-        0,
-        0,
+        0.8999998569488525,
+        0.3728466033935547,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6424,42 +6424,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        42.48873519897461,
         0,
         0,
         0,
         0,
-        1,
+        42.48873519897461,
         0,
         0,
         0,
         0,
-        1,
+        42.48873519897461,
         0,
         0,
-        0,
-        0,
+        0.8999998569488525,
+        0.3728466033935547,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-lights-warm",
       "localTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6473,42 +6473,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
         0,
         0,
-        1,
+        39.125,
         0,
         0,
-        0,
-        0,
+        9.769999980926514,
+        -1.5,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-mechanical",
       "localTransform": [
+        42.27499771118164,
+        0,
+        0,
+        0,
+        0,
+        42.27499771118164,
+        0,
+        0,
+        0,
+        0,
+        42.27499771118164,
+        0,
+        0,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
+        -2.238811492919922,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6522,42 +6522,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
+        42.27499771118164,
+        0,
+        0,
+        0,
+        0,
+        42.27499771118164,
+        0,
+        0,
+        0,
+        0,
+        42.27499771118164,
+        0,
+        0,
         1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
+        -2.238811492919922,
         1
       ]
     },
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-mechanicaldark",
       "localTransform": [
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
-        0,
-        0,
+        4.428036868572235,
+        0.19412612915039062,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -6571,21 +6571,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
         0,
         0,
-        1,
+        39.25252151489258,
         0,
         0,
-        0,
-        0,
+        4.428036868572235,
+        0.19412612915039062,
         1
       ]
     },
@@ -7292,21 +7292,21 @@
     {
       "id": "sf.render.ceres-section-cradle.node.lod2-warning",
       "localTransform": [
-        1,
+        41.97624206542969,
         0,
         0,
         0,
         0,
-        1,
+        41.97624206542969,
         0,
         0,
         0,
         0,
-        1,
+        41.97624206542969,
         0,
         0,
-        0,
-        0,
+        4.125402092933655,
+        0.0795745849609375,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -7320,21 +7320,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.ceres-section-cradle.body",
       "worldTransform": [
-        1,
+        41.97624206542969,
         0,
         0,
         0,
         0,
-        1,
+        41.97624206542969,
         0,
         0,
         0,
         0,
-        1,
+        41.97624206542969,
         0,
         0,
-        0,
-        0,
+        4.125402092933655,
+        0.0795745849609375,
         1
       ]
     },
@@ -7838,37 +7838,37 @@
       "uri": "place_ceres_section_cradle.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1801576,
-    "sha256": "714499c5a0f51a0a5a435d81ed6affa0dab4ac100d44751bb3155c3310c22843",
+    "bytes": 1042068,
+    "sha256": "7fd3207c5cf7f373d0c90bc5e2d1c0e5162ee98d6f1580bf556423af0ebba0d1",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        2.499309539794922,
-        0.0000667572021484375
+        2.4993095187231056,
+        0.00006638239158007764
       ],
       "max": [
-        42.50133514404297,
-        9.998397827148438,
-        37.50068664550781
+        42.501335184789575,
+        9.99839777825251,
+        37.50068666646321
       ],
       "min": [
-        -42.50133514404297,
-        -4.999778747558594,
-        -37.500553131103516
+        -42.501335184789575,
+        -4.999778740806299,
+        -37.50055390168005
       ],
       "size": [
-        85.00267028808594,
-        14.998176574707031,
-        75.00123977661133
+        85.00267036957915,
+        14.99817651905881,
+        75.00124056814326
       ]
     },
     "hidden": [
@@ -8897,20 +8897,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
-          0,
+          1.75,
           0,
           1
         ],
@@ -8924,21 +8924,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
-          0,
-          0,
+          7.570000171661377,
+          -36,
           1
         ],
         "name": "LOD0_Beacon_Amber",
@@ -8951,21 +8951,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.099998474121094,
           0,
           0,
           0,
           0,
-          1,
+          42.099998474121094,
           0,
           0,
           0,
           0,
-          1,
+          42.099998474121094,
           0,
           0,
-          0,
-          0,
+          2.999999910593033,
+          -0.40625,
           1
         ],
         "name": "LOD0_BrushedMetal",
@@ -9062,21 +9062,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2999992370605469,
           0,
           0,
           0,
           0,
-          1,
+          0.2999992370605469,
           0,
           0,
           0,
           0,
-          1,
+          0.2999992370605469,
           0,
-          0,
-          0,
-          0,
+          27,
+          6.769999980926514,
+          35,
           1
         ],
         "name": "LOD0_HOOK_NAV_STARBOARD",
@@ -9090,21 +9090,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
-          0,
-          0,
+          0.9000000953674316,
+          0.375,
           1
         ],
         "name": "LOD0_Hull",
@@ -9117,21 +9117,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
-          0,
-          0,
+          9.769999980926514,
+          -1.5,
           1
         ],
         "name": "LOD0_Lights_Warm",
@@ -9144,21 +9144,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.27499771118164,
           0,
           0,
           0,
           0,
-          1,
+          42.27499771118164,
           0,
           0,
           0,
           0,
-          1,
+          42.27499771118164,
           0,
           0,
-          0,
-          0,
+          1.6201553344726562,
+          -2.238811492919922,
           1
         ],
         "name": "LOD0_Mechanical",
@@ -9171,21 +9171,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.256248474121094,
           0,
           0,
           0,
           0,
-          1,
+          39.256248474121094,
           0,
           0,
           0,
           0,
-          1,
+          39.256248474121094,
           0,
           0,
-          0,
-          0,
+          4.425000041723251,
+          0.19687652587890625,
           1
         ],
         "name": "LOD0_MechanicalDark",
@@ -9198,21 +9198,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.32810974121094,
           0,
           0,
           0,
           0,
-          1,
+          42.32810974121094,
           0,
           0,
           0,
           0,
-          1,
+          42.32810974121094,
           0,
           0,
-          0,
-          0,
+          4.124999642372131,
+          0.07500076293945312,
           1
         ],
         "name": "LOD0_Warning",
@@ -9225,20 +9225,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
           0,
           0,
-          1,
+          42.5,
           0,
           0,
-          0,
+          1.75,
           0,
           1
         ],
@@ -9252,21 +9252,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
-          0,
-          0,
+          7.570000410079956,
+          -36.00000190734863,
           1
         ],
         "name": "LOD1_Beacon_Amber",
@@ -9279,21 +9279,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.099998474121094,
           0,
           0,
           0,
           0,
-          1,
+          42.099998474121094,
           0,
           0,
           0,
           0,
-          1,
+          42.099998474121094,
           0,
           0,
-          0,
-          0,
+          3.0046131312847137,
+          -0.4024486541748047,
           1
         ],
         "name": "LOD1_BrushedMetal",
@@ -9390,21 +9390,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.30100250244140625,
           0,
           0,
           0,
           0,
-          1,
+          0.30100250244140625,
           0,
           0,
           0,
           0,
-          1,
+          0.30100250244140625,
           0,
-          0,
-          0,
-          0,
+          27,
+          6.769999980926514,
+          34.99949836730957,
           1
         ],
         "name": "LOD1_HOOK_NAV_STARBOARD",
@@ -9418,21 +9418,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.492183685302734,
           0,
           0,
           0,
           0,
-          1,
+          42.492183685302734,
           0,
           0,
           0,
           0,
-          1,
+          42.492183685302734,
           0,
-          0,
-          0,
-          0,
+          0.00208282470703125,
+          0.8999998569488525,
+          0.3780956268310547,
           1
         ],
         "name": "LOD1_Hull",
@@ -9445,21 +9445,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
-          0,
-          0,
+          9.769999980926514,
+          -1.5,
           1
         ],
         "name": "LOD1_Lights_Warm",
@@ -9472,21 +9472,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.27499771118164,
           0,
           0,
           0,
           0,
-          1,
+          42.27499771118164,
           0,
           0,
           0,
           0,
-          1,
+          42.27499771118164,
           0,
           0,
-          0,
-          0,
+          1.6201553344726562,
+          -2.238811492919922,
           1
         ],
         "name": "LOD1_Mechanical",
@@ -9499,21 +9499,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.25252151489258,
           0,
           0,
           0,
           0,
-          1,
+          39.25252151489258,
           0,
           0,
           0,
           0,
-          1,
+          39.25252151489258,
           0,
           0,
-          0,
-          0,
+          4.428036868572235,
+          0.19412612915039062,
           1
         ],
         "name": "LOD1_MechanicalDark",
@@ -9526,21 +9526,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          41.99324989318848,
           0,
           0,
           0,
           0,
-          1,
+          41.99324989318848,
           0,
           0,
           0,
           0,
-          1,
+          41.99324989318848,
           0,
-          0,
-          0,
-          0,
+          0.0000057220458984375,
+          4.121442139148712,
+          0.07622528076171875,
           1
         ],
         "name": "LOD1_Warning",
@@ -9553,21 +9553,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.47669219970703,
           0,
           0,
           0,
           0,
-          1,
+          42.47669219970703,
           0,
           0,
           0,
           0,
-          1,
+          42.47669219970703,
           0,
           0,
-          0,
-          0,
+          1.7533681392669678,
+          -0.00241851806640625,
           1
         ],
         "name": "LOD2_Armor",
@@ -9580,21 +9580,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.12441635131836,
           0,
           0,
           0,
           0,
-          1,
+          39.12441635131836,
           0,
           0,
           0,
           0,
-          1,
+          39.12441635131836,
           0,
           0,
-          0,
-          0,
+          7.569333553314209,
+          -36.00000190734863,
           1
         ],
         "name": "LOD2_Beacon_Amber",
@@ -9607,21 +9607,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          36.08415603637695,
           0,
           0,
           0,
           0,
-          1,
+          36.08415603637695,
           0,
           0,
           0,
           0,
-          1,
+          36.08415603637695,
           0,
           0,
           0,
-          0,
+          -1.4952850341796875,
           1
         ],
         "name": "LOD2_BrushedMetal",
@@ -9718,21 +9718,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.30137062072753906,
           0,
           0,
           0,
           0,
-          1,
+          0.30137062072753906,
           0,
           0,
           0,
           0,
-          1,
+          0.30137062072753906,
           0,
-          0,
-          0,
-          0,
+          26.999263763427734,
+          6.769999980926514,
+          35.00036811828613,
           1
         ],
         "name": "LOD2_HOOK_NAV_STARBOARD",
@@ -9746,21 +9746,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          42.48873519897461,
           0,
           0,
           0,
           0,
-          1,
+          42.48873519897461,
           0,
           0,
           0,
           0,
-          1,
+          42.48873519897461,
           0,
           0,
-          0,
-          0,
+          0.8999998569488525,
+          0.3728466033935547,
           1
         ],
         "name": "LOD2_Hull",
@@ -9773,21 +9773,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
           0,
           0,
-          1,
+          39.125,
           0,
           0,
-          0,
-          0,
+          9.769999980926514,
+          -1.5,
           1
         ],
         "name": "LOD2_Lights_Warm",
@@ -9800,21 +9800,21 @@
       {
         "canopy": false,
         "matrix": [
+          42.27499771118164,
+          0,
+          0,
+          0,
+          0,
+          42.27499771118164,
+          0,
+          0,
+          0,
+          0,
+          42.27499771118164,
+          0,
+          0,
           1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
+          -2.238811492919922,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -9827,21 +9827,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          39.25252151489258,
           0,
           0,
           0,
           0,
-          1,
+          39.25252151489258,
           0,
           0,
           0,
           0,
-          1,
+          39.25252151489258,
           0,
           0,
-          0,
-          0,
+          4.428036868572235,
+          0.19412612915039062,
           1
         ],
         "name": "LOD2_MechanicalDark",
@@ -9854,21 +9854,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          41.97624206542969,
           0,
           0,
           0,
           0,
-          1,
+          41.97624206542969,
           0,
           0,
           0,
           0,
-          1,
+          41.97624206542969,
           0,
           0,
-          0,
-          0,
+          4.125402092933655,
+          0.0795745849609375,
           1
         ],
         "name": "LOD2_Warning",
@@ -11059,20 +11059,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_section_cradle.glb"
   },
-  "runtimeHash": "6ac9c0c79e79014720707ca701952cd88ff61c1f6c02058dacbe5ffc74dd0c9a",
+  "runtimeHash": "b1f00908b7b106f7c41fee7a08121aba792cc32e4e167b06e77bde0666baa6a5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          42.50133514404297,
-          9.998397827148438,
-          37.50068664550781
+          42.501335184789575,
+          9.99839777825251,
+          37.50068666646321
         ],
         "min": [
-          -42.50133514404297,
-          -4.999778747558594,
-          -37.500553131103516
+          -42.501335184789575,
+          -4.999778740806299,
+          -37.50055390168005
         ]
       },
       "id": "sf.render.ceres-section-cradle.body",

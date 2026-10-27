@@ -1,5 +1,5 @@
 import {tallyAssessorOccupancy,validTallyRecordIdentity,validTallyAssessor,tallyAssessorTerminal,decorateTallyAssessorSpec} from '../world/tallyThreeIdentity.js';
-import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint, tallyThreeClaimStatus } from '../data/tallyThree.js';
+import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint, tallyThreeClaimStatus, tallyThreeTowAssessment } from '../data/tallyThree.js';
 import { makeShipEntitySpec } from './ships.js';
 import { deliverTallyThreeCrate } from './cargo.js';
 
@@ -102,6 +102,7 @@ export const tallyThree={
     const speaker=actor?'TALLY-3':'CERES RECEIVER';
     const delivered=source.delivery;
     return {requestId,targetId:availability.targetId,kind:'tally_three',expiresAt,
+      towAdvice:delivered?null:tallyThreeTowAssessment(state).text,
       lines:delivered?[`${speaker} · DELIVERED`,`${TALLY_THREE.manifestId} · one accepted crate; no second payment.`]
         :[`${speaker} · ${tallyThreeClaimStatus(source)} · ${value?.ok?`${value.qty}u / ${value.quoteCr} cr`:'VALUE UNAVAILABLE'}`,
           `${source.claimId===TALLY_THREE.claimId?'Ceres Refinery':source.claimId||'No active claim'} · ${TALLY_THREE.manifestId} · Ceres receiver`],
@@ -128,7 +129,7 @@ export const tallyThree={
       if(result.ok&&!result.duplicate&&actor)actor.data.tallyThree={phase:'receipt',tick:this.state.tick,receiptId:result.receiptId};
     }else return null;
     this._offers.delete(offer.requestId);
-    return {...offer,choice,lines:[`TALLY CLAIM · ${tallyThreeClaimStatus(source)}`,text],actions:[],expiresAt:this.state.simTime+4,
+    return {...offer,choice,towAdvice:source?.delivery?null:tallyThreeTowAssessment(this.state).text,lines:[`TALLY CLAIM · ${tallyThreeClaimStatus(source)}`,text],actions:[],expiresAt:this.state.simTime+4,
       accepted:result?.ok===true,receiptId:result?.receiptId||null};
   },
   _releaseAssessor(){

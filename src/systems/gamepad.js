@@ -141,6 +141,7 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   cloak: Object.freeze(['r1+dDown']),             // RB layer: cloak engages, "drop out of sight"
   cruise: Object.freeze(['r1+dRight']),           // RB layer: the long-burn state, rightward = forward
   deployBeacon: Object.freeze(['r1+view']),       // RB+View: mark the claim while running
+  deployShieldPylon: Object.freeze(['r1+dLeft']),  // RB+D-left: place / link / recall a shield pylon (the HUD pill names which)
   jettisonLot: Object.freeze(['r1+home']),        // RB+Guide: dump the hold lot while running
   // The Gyre Snare is a HELD verb: RB+Y (the combat layer's last free chord — Y is the
   // repulsor hand solo, and holding it under the boost finger reads as "grip the mass").
@@ -347,6 +348,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   cloak: 'flight',
   cruise: 'flight',
   deployBeacon: 'flight',
+  deployShieldPylon: 'flight',
   jettisonLot: 'flight',
   gyreSnare: 'flight',
   cancel: 'modal',
@@ -421,7 +423,14 @@ export function resolveGamepadBindings(settings) {
   // Pass 1: untouched actions keep their shipped defaults (the stock map is internally legal).
   for (const action in ACTION_MAP) {
     if (has(action)) continue;
-    out[action] = place(action, ACTION_MAP[action]);
+    // This newly introduced chord was free before pylons. A valid saved remap already
+    // occupying it keeps its meaning; the new equipment action can be bound in Settings.
+    // Existing actions retain the established default/share policy below.
+    const defaults = action === 'deployShieldPylon'
+      ? ACTION_MAP[action].filter(name => !Object.keys(ACTION_MAP).some(other => has(other)
+        && sanitize(custom[other]).includes(name) && !gamepadShareAllowed(action, other)))
+      : ACTION_MAP[action];
+    out[action] = place(action, defaults);
   }
   // Pass 2: overrides claim buttons in canonical order. An override that loses every button to a
   // disallowed share (corrupt or hand-edited profile) falls back to the action's default, so a

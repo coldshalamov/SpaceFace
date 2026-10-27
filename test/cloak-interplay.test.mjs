@@ -585,3 +585,81 @@ test('non-ship contacts never seed fade-ledger rows', () => {
     assert.ok(tracks && tracks.has(player.id), 'ship contacts still seed the ledger');
   });
 });
+
+
+// Dense broad phases may share a conservative superset, including far cloaked hulls.
+function sharedSensorWorld(world) {
+  const observer = { ...world.hunter, id: 4, pos: { x: 820, z: 20 }, data: { ai: {}, weapons: [], combat: {} } };
+  world.state.entities.set(observer.id, observer); world.state.entityList.push(observer);
+  for (let id = 10; id < 110; id++) {
+    const hazard = { id, type: 'asteroid', alive: true, radius: 8, pos: { x: 10000 + id * 20, z: 10000 }, vel: { x: 0, z: 0 }, data: {} };
+    world.state.entities.set(id, hazard); world.state.entityList.push(hazard);
+  }
+  world.state.entityIndex.collidables = world.state.entityList;
+  world.state.spatialHash = {
+    queryRadius() { return [...world.state.entityList]; },
+    queryRadiusBatch(requests) {
+      const shared = [...world.state.entityList];
+      for (const request of requests) request.out = shared;
+    },
+  };
+  return [world.hunter.id, observer.id];
+}
+
+test('shared sensor supersets preserve player and NPC cloak ghosts beyond ordinary range', () => {
+  withCloakFlag(() => {
+    const world = makeWorld(4242);
+    const ids = sharedSensorWorld(world);
+    world.helpers.aiSensors.liveFramesFor(ids, 0);
+    world.state.simTime = 0.1; world.state.tick = 6;
+    engagePlayerCloak(world);
+    engageEntityCloak(world.npcTarget, 300, 0.1);
+    world.player.pos.x = -3000;
+    world.npcTarget.pos.x = 4000;
+    const unseen = { ...world.npcTarget, id: 5, pos: { x: 5000, z: 5000 }, data: { ai: {}, cloak: { active: true, radius: 300 } } };
+    world.state.entities.set(unseen.id, unseen); world.state.entityList.push(unseen);
+    world.state.simTime = 0.5; world.state.tick = 30;
+    const durable = world.helpers.aiSensors.liveFramesFor(ids, 30);
+    const snapshot = structuredClone([...durable.entries()]);
+    const ephemeral = world.helpers.aiSensors.liveFramesFor(ids, 30, { ephemeral: true });
+    assert.deepEqual(structuredClone([...ephemeral.entries()]), snapshot, 'retained and durable frames keep identical cloak truth');
+    for (const id of ids) {
+      const frame = ephemeral.get(id);
+      for (const target of [world.player, world.npcTarget]) {
+        const ghost = contactOf(frame, target.id);
+        assert.ok(ghost && ghost.visible === false && ghost.confidence > 0, 'established far cloak leaves its original ghost');
+        assert.notEqual(ghost.pos.x, target.pos.x, 'ghost keeps the last real fix, not the hidden current position');
+      }
+      assert.equal(contactOf(frame, unseen.id), null, 'a never-seen far cloak invents no ghost');
+    }
+    world.state.simTime = 2.2; world.state.tick = 132;
+    const expired = world.helpers.aiSensors.liveFramesFor(ids, 132, { ephemeral: true });
+    for (const id of ids) for (const target of [world.player, world.npcTarget]) assert.equal(contactOf(expired.get(id), target.id), null);
+    assert.deepEqual([...durable.entries()], snapshot, 'later retained reads do not mutate a published durable frame');
+  });
+});
+
+test('range filtering keeps revealed or inactive far cloaks absent and reacquires real fixes in range', () => {
+  withCloakFlag(() => {
+    const world = makeWorld(4242); const ids = sharedSensorWorld(world);
+    world.helpers.aiSensors.liveFramesFor(ids, 0);
+    engagePlayerCloak(world); engageEntityCloak(world.npcTarget, 300, 0.1);
+    world.player.pos.x = -3000; world.npcTarget.pos.x = 4000;
+    world.state.simTime = 0.5; world.state.tick = 30;
+    world.state.massline2.cloak.revealUntil = 1;
+    world.npcTarget.data.cloak.active = false;
+    const far = world.helpers.aiSensors.liveFramesFor(ids, 30, { ephemeral: true });
+    for (const id of ids) {
+      assert.equal(contactOf(far.get(id), world.player.id), null, 'scan reveal does not grant unlimited sensor range');
+      assert.equal(contactOf(far.get(id), world.npcTarget.id), null, 'inactive cloak does not revive an out-of-range ghost');
+    }
+    world.player.pos.x = 700; world.npcTarget.pos.x = 850; world.npcTarget.pos.z = 20;
+    world.state.simTime = 0.6; world.state.tick = 36;
+    const near = world.helpers.aiSensors.liveFramesFor(ids, 36, { ephemeral: true });
+    for (const id of ids) for (const target of [world.player, world.npcTarget]) {
+      const contact = contactOf(near.get(id), target.id);
+      assert.ok(contact && contact.visible === true);
+      assert.equal(contact.pos.x, target.pos.x, 'reacquisition replaces the old ghost with the real position');
+    }
+  });
+});

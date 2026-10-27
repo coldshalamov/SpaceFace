@@ -145,28 +145,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ebb24c9532413545d200412fdbc543b8453a4167afa37819c558705c05292f97",
+  "contentHash": "6e2d08239c35ed94967b467a173e5abb1b9c74b7433d2b8ba25fac3d1c56782f",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           265.8795166015625,
-          49.76803207397461,
-          80.86869049072266
+          49.76751171899721,
+          80.85208650903844
         ],
         "min": [
           -223.103759765625,
-          1.6551079750061035,
-          -119.38695526123047
+          1.6556283299834966,
+          -119.37035127954626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d1c0bd49a41b8d2adaebc794a3caca2f80e6e0edc21c5ae6e3eaa9cd97ef5fa",
+      "geometryHash": "36f98f33149189a3afa67189c87982c37d80b5f16c8f1ca0a48f9f1360965a61",
       "id": "sf.render.wreck-cathedral.mesh.lod0-accentconcordblueburned.primitive.0",
       "indexCount": 5640,
       "indexed": true,
-      "materialHash": "6cf2ca59e83ccf1459b400832dfc559e7643b9a7ddf6e3651e5eb1898456d5e8",
+      "materialHash": "8dc498c00cb3d8fbe79315a77ebad6de76e386f296e5eea1b994181aa66a3202",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-accentconcordblueburned",
@@ -177,21 +177,21 @@
       "bounds": {
         "max": [
           300.24310302734375,
-          112.130126953125,
-          113.2235336303711
+          112.11799077486779,
+          113.23585136607528
         ],
         "min": [
           -266.9137878417969,
-          -65.91497802734375,
-          -139.13119506835938
+          -65.90284184908654,
+          -139.14351280406356
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fbb2164b9cb4ed39921888da2bc0dc305818bedf7bd04def2ee8f5cd462361eb",
+      "geometryHash": "dabeda1a391b1cca1328de9bc160c76185dc731b9319f8bfac842cabc147ca43",
       "id": "sf.render.wreck-cathedral.mesh.lod0-armorscorched.primitive.0",
       "indexCount": 90384,
       "indexed": true,
-      "materialHash": "b94e36c64459208b610ae26ee47b7e55c750bacfe304a4e32955eb3dd6a4c04c",
+      "materialHash": "75d794a7f4b1da2dd2e26221a969035d38f84699f478a7f9d8ca39038b3c6b99",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-armorscorched",
@@ -202,17 +202,17 @@
       "bounds": {
         "max": [
           238.4459228515625,
-          55.33051681518555,
-          64.82437896728516
+          55.330516131748546,
+          64.82437785909389
         ],
         "min": [
           -249.0206756591797,
-          -40.7733154296875,
-          -86.81437683105469
+          -40.7733147462505,
+          -86.81437572286342
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0231c59adf7c92332e078158cdb5b4da9143db8fbd0f5649f694d1235d84d9f8",
+      "geometryHash": "185bc9cea19545a4642659a203159abb8a7550678c224007684ad11ec371a839",
       "id": "sf.render.wreck-cathedral.mesh.lod0-conduitcopper.primitive.0",
       "indexCount": 12672,
       "indexed": true,
@@ -227,21 +227,21 @@
       "bounds": {
         "max": [
           228.16111755371094,
-          95.93898010253906,
-          50.9189453125
+          95.94234789791196,
+          50.9121816034818
         ],
         "min": [
           -164.6234588623047,
-          9.062491416931152,
-          -64.61522674560547
+          9.059123621558264,
+          -64.60846303658727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3adb3e62af94ae15528436c89a94409af84ac2f935104bbf2c83646750233390",
+      "geometryHash": "d79e2391bde504b60f591e0173fd8a3acf219059904c3f056aa123be6a23c4e3",
       "id": "sf.render.wreck-cathedral.mesh.lod0-emissivecoldemergency.primitive.0",
       "indexCount": 9588,
       "indexed": true,
-      "materialHash": "66fbc390f03c91611eed2e7e4722b6ce2f3f2bd5fbb569eb15628fd5b9011bbc",
+      "materialHash": "c4730d44688b7c45040f5ce5645d85721b18851d755f4f759993aae3854d3cfd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_EmissiveColdEmergency_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-emissivecoldemergency",
@@ -251,22 +251,22 @@
     {
       "bounds": {
         "max": [
-          143.82786560058594,
+          143.82809545195826,
           146.12355041503906,
-          -15.18885326385498
+          -15.189061785877891
         ],
         "min": [
-          136.72840881347656,
+          136.72817896210424,
           136.19935607910156,
-          -22.287975311279297
+          -22.287766789256388
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7868ce93c8d255640c3f36d7a145379a9b52548c684b65d04fa469420c5aa7c",
+      "geometryHash": "1ae8a42115255ae424156a950de1d944eb7c2f2dbdf858eed04e2680979fd8cc",
       "id": "sf.render.wreck-cathedral.mesh.lod0-emissivemarkeramber.primitive.0",
       "indexCount": 6624,
       "indexed": true,
-      "materialHash": "4aabb479eba750078173c59e8064f05bb6909987480a7a6ae93c517f93329b5e",
+      "materialHash": "359a7dd4783bfe2fea5f272bac886e503a7ad988afbffa4e8440cb0236f093c0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_EmissiveMarkerAmber_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-emissivemarkeramber",
@@ -277,21 +277,21 @@
       "bounds": {
         "max": [
           320.5991516113281,
-          112.9971923828125,
-          85.319580078125
+          113.00576768547344,
+          85.33659641336769
         ],
         "min": [
           -272.6819763183594,
-          -44.38159942626953,
-          -132.5165557861328
+          -44.390174728930475,
+          -132.5335721213755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1f5aa2ec19992207369a7684e6c5d6536346fa916266987cce8f816b58beb60",
+      "geometryHash": "ece631a59763650d34b6728af2cc00b5d570f6a88a7e67d736afbd25cbfed903",
       "id": "sf.render.wreck-cathedral.mesh.lod0-hull.primitive.0",
       "indexCount": 51240,
       "indexed": true,
-      "materialHash": "5ad9e8521641488e4d606ede3d976f221d03de2f57becd412cf26d98a0e0c6f8",
+      "materialHash": "6b8c0c8377af620dcc2a4b279b7213a54d5d3284f811bff324d121f4e91abaf5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-hull",
@@ -302,17 +302,17 @@
       "bounds": {
         "max": [
           249.93272399902344,
-          148.28675842285156,
-          82.36650848388672
+          148.28253711939448,
+          82.37640452049517
         ],
         "min": [
           -287.8531799316406,
-          -72.45237731933594,
-          -113.8570556640625
+          -72.44815601587885,
+          -113.86695170067095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd5b947c1c4e0019ee881cf2a1216ff0bd354c5767d31889eb3fcf0c08e32c1e",
+      "geometryHash": "a8e38674a8c8207de3ec0d452f48982597fcde414b659dc342085e90abb9cb4b",
       "id": "sf.render.wreck-cathedral.mesh.lod0-interiorexposedalloy.primitive.0",
       "indexCount": 171888,
       "indexed": true,
@@ -327,21 +327,21 @@
       "bounds": {
         "max": [
           298.0093994140625,
-          136.2633819580078,
-          84.9115982055664
+          136.27038663884568,
+          84.90584675517071
         ],
         "min": [
           -288.6134033203125,
-          -67.6898193359375,
-          -122.218017578125
+          -67.69682401677537,
+          -122.21226612772931
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef97f1adc8b694ab4b755daa44a3ba6f3633c7a5cc07cda3d49f7e27072846b0",
+      "geometryHash": "7e011ad376eb15be8a99e922e62eb0994f2b3cf89e733585fa5440a6a807424a",
       "id": "sf.render.wreck-cathedral.mesh.lod0-mechanicalexposed.primitive.0",
       "indexCount": 152796,
       "indexed": true,
-      "materialHash": "6c843e053b242a9b6e9bc12cd13f12b645cad58be499f032c6930b40cc0be847",
+      "materialHash": "05825462f37bf2d744b8ce763a0d5c1a2664b5d401f66293619bbe802dfa7412",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod0-mechanicalexposed",
@@ -352,21 +352,21 @@
       "bounds": {
         "max": [
           265.88360595703125,
-          49.74626541137695,
-          80.86629486083984
+          49.72927219151839,
+          80.8526463714813
         ],
         "min": [
           -223.11334228515625,
-          1.658744215965271,
-          -119.3890380859375
+          1.6757374358238302,
+          -119.37538959657896
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9bc692f84a4af532bedfa8f70f4f1f066080e3858d3f4dc83cd81eab659a4327",
+      "geometryHash": "4d00effc57ecbce11064fbb74141284119d14acfba6a4bb2d818de97e501bdb3",
       "id": "sf.render.wreck-cathedral.mesh.lod1-accentconcordblueburned.primitive.0",
       "indexCount": 3240,
       "indexed": true,
-      "materialHash": "6cf2ca59e83ccf1459b400832dfc559e7643b9a7ddf6e3651e5eb1898456d5e8",
+      "materialHash": "8dc498c00cb3d8fbe79315a77ebad6de76e386f296e5eea1b994181aa66a3202",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-accentconcordblueburned",
@@ -377,21 +377,21 @@
       "bounds": {
         "max": [
           300.2601013183594,
-          112.1462631225586,
-          113.21141052246094
+          112.16005807955112,
+          113.19161981739866
         ],
         "min": [
           -266.934326171875,
-          -65.9280014038086,
-          -139.15499877929688
+          -65.94179636080112,
+          -139.13520807423458
         ]
       },
       "drawMode": 4,
-      "geometryHash": "834bebf9c40e0d4a5ce1b22ea98a84943c0016f6b90714d438416a82fa47cbcf",
+      "geometryHash": "0b56358917ac282d26cedb3f997b2845f31ded427554674e3db03c45d2fd3649",
       "id": "sf.render.wreck-cathedral.mesh.lod1-armorscorched.primitive.0",
       "indexCount": 42924,
       "indexed": true,
-      "materialHash": "b94e36c64459208b610ae26ee47b7e55c750bacfe304a4e32955eb3dd6a4c04c",
+      "materialHash": "75d794a7f4b1da2dd2e26221a969035d38f84699f478a7f9d8ca39038b3c6b99",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-armorscorched",
@@ -402,17 +402,17 @@
       "bounds": {
         "max": [
           226.9303741455078,
-          55.32959747314453,
-          64.69049072265625
+          55.329594311266106,
+          64.6904900870092
         ],
         "min": [
           -249.03302001953125,
-          -40.772396087646484,
-          -88.94776916503906
+          -40.77239292576806,
+          -88.94776852939201
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20ef2c9829697f79fe1972ddb301793088bd79362cb71ad7e2465e7a10cc2508",
+      "geometryHash": "0abc099ec1f61c2b4fe49511998f2d0f56c39bbaa80679864f68eaca34236e9f",
       "id": "sf.render.wreck-cathedral.mesh.lod1-conduitcopper.primitive.0",
       "indexCount": 4740,
       "indexed": true,
@@ -427,21 +427,21 @@
       "bounds": {
         "max": [
           227.8128204345703,
-          95.79643249511719,
-          50.91380310058594
+          95.7939095324977,
+          50.91687328156893
         ],
         "min": [
           -158.74256896972656,
-          8.87039566040039,
-          -64.60900115966797
+          8.872918623019885,
+          -64.61207134065097
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1a384beaaa0ead43abf319bd4d08ca160872bb9dd94f8d396f00aaab1e762861",
+      "geometryHash": "b563aa1a623226f3a8bc39c09a1b45c0c76df2b7e47ffaacfcb887050b133cc0",
       "id": "sf.render.wreck-cathedral.mesh.lod1-emissivecoldemergency.primitive.0",
       "indexCount": 4644,
       "indexed": true,
-      "materialHash": "66fbc390f03c91611eed2e7e4722b6ce2f3f2bd5fbb569eb15628fd5b9011bbc",
+      "materialHash": "c4730d44688b7c45040f5ce5645d85721b18851d755f4f759993aae3854d3cfd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_EmissiveColdEmergency_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-emissivecoldemergency",
@@ -451,22 +451,22 @@
     {
       "bounds": {
         "max": [
-          144.15771484375,
+          144.15746652694713,
           146.61277770996094,
-          -14.864508628845215
+          -14.864406781815505
         ],
         "min": [
-          136.3985595703125,
+          136.39880788711537,
           135.7101287841797,
-          -22.612316131591797
+          -22.612417978621504
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f9f3dcf7d006ea599fe59e8a0cfb3d697362754d319b02175430ccc47e7966a",
+      "geometryHash": "44147d278ba547e0ffb612d4c8fd736bb3a7a700c96931a5c89d6c492ac0ccea",
       "id": "sf.render.wreck-cathedral.mesh.lod1-emissivemarkeramber.primitive.0",
       "indexCount": 2184,
       "indexed": true,
-      "materialHash": "4aabb479eba750078173c59e8064f05bb6909987480a7a6ae93c517f93329b5e",
+      "materialHash": "359a7dd4783bfe2fea5f272bac886e503a7ad988afbffa4e8440cb0236f093c0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_EmissiveMarkerAmber_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-emissivemarkeramber",
@@ -477,21 +477,21 @@
       "bounds": {
         "max": [
           320.61029052734375,
-          112.97598266601562,
-          84.92571258544922
+          112.96317420822332,
+          84.90976326400194
         ],
         "min": [
           -272.7197570800781,
-          -44.24126434326172,
-          -132.5597381591797
+          -44.228455885469415,
+          -132.5437888377324
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd83edc7f58fea9ee626eb0444eb35c4afc4b30fd1f181085a59c6e8963f4942",
+      "geometryHash": "5788c1aee09ee683f008f817c43b1d32b7becc57dae5c22b1196e5ab0cf9a128",
       "id": "sf.render.wreck-cathedral.mesh.lod1-hull.primitive.0",
       "indexCount": 28176,
       "indexed": true,
-      "materialHash": "5ad9e8521641488e4d606ede3d976f221d03de2f57becd412cf26d98a0e0c6f8",
+      "materialHash": "6b8c0c8377af620dcc2a4b279b7213a54d5d3284f811bff324d121f4e91abaf5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-hull",
@@ -502,17 +502,17 @@
       "bounds": {
         "max": [
           249.9313201904297,
-          148.28536987304688,
-          82.36246490478516
+          148.2778559205195,
+          82.37519893121774
         ],
         "min": [
           -287.85272216796875,
-          -72.45958709716797,
-          -113.85474395751953
+          -72.4520731446406,
+          -113.86747798395211
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ca1eb3ac49703d5266682e81cb7fffc895e8d081886657d1fa4a6135ed1a226",
+      "geometryHash": "57101dd2a4648efb7a769b8bbc42d41fe2d0a60eae867c7269499186a4647130",
       "id": "sf.render.wreck-cathedral.mesh.lod1-interiorexposedalloy.primitive.0",
       "indexCount": 64026,
       "indexed": true,
@@ -527,21 +527,21 @@
       "bounds": {
         "max": [
           298.0216064453125,
-          136.26669311523438,
-          84.9373550415039
+          136.27989592636442,
+          84.92166601612887
         ],
         "min": [
           -288.62835693359375,
-          -67.68355560302734,
-          -122.22172546386719
+          -67.6967584141574,
+          -122.20603643849215
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e888429ddadc9b28ad4726b716748cc3c6570728d06be8d3a2b36f24463abd08",
+      "geometryHash": "069e1c90233d2e594108a093abbfe18f553fed93d45ae016bca10814bbba8c13",
       "id": "sf.render.wreck-cathedral.mesh.lod1-mechanicalexposed.primitive.0",
       "indexCount": 71400,
       "indexed": true,
-      "materialHash": "6c843e053b242a9b6e9bc12cd13f12b645cad58be499f032c6930b40cc0be847",
+      "materialHash": "05825462f37bf2d744b8ce763a0d5c1a2664b5d401f66293619bbe802dfa7412",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod1-mechanicalexposed",
@@ -552,21 +552,21 @@
       "bounds": {
         "max": [
           265.8871154785156,
-          49.74651336669922,
-          80.86199188232422
+          49.73105256390913,
+          80.84787273334221
         ],
         "min": [
           -223.11871337890625,
-          1.661184310913086,
-          -119.39791870117188
+          1.6766451137031773,
+          -119.38379955218987
         ]
       },
       "drawMode": 4,
-      "geometryHash": "882a50385fee332abfe1f3aa90b72f18b73ebf39810f39db04e5049acf6a03a2",
+      "geometryHash": "34612fe49bff37e3037848119d6c7df04ef7a9122c63f8b587ee85acad0946f3",
       "id": "sf.render.wreck-cathedral.mesh.lod2-accentconcordblueburned.primitive.0",
       "indexCount": 1320,
       "indexed": true,
-      "materialHash": "6cf2ca59e83ccf1459b400832dfc559e7643b9a7ddf6e3651e5eb1898456d5e8",
+      "materialHash": "8dc498c00cb3d8fbe79315a77ebad6de76e386f296e5eea1b994181aa66a3202",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_AccentConcordBlueBurned_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-accentconcordblueburned",
@@ -577,21 +577,21 @@
       "bounds": {
         "max": [
           300.278076171875,
-          112.15677642822266,
-          96.58016967773438
+          112.1754106788264,
+          96.5906229031098
         ],
         "min": [
           -266.9585266113281,
-          -43.554962158203125,
-          -139.1949920654297
+          -43.573596408806864,
+          -139.20544529080513
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6dd465931df1c03ff4fd5f2a5393bd7bb6fd5cc7e581d3b71e262baf898077c8",
+      "geometryHash": "62cbd21f3582c2483b950895c95e8b68600af092345d8d28bee5da1263098740",
       "id": "sf.render.wreck-cathedral.mesh.lod2-armorscorched.primitive.0",
       "indexCount": 11388,
       "indexed": true,
-      "materialHash": "b94e36c64459208b610ae26ee47b7e55c750bacfe304a4e32955eb3dd6a4c04c",
+      "materialHash": "75d794a7f4b1da2dd2e26221a969035d38f84699f478a7f9d8ca39038b3c6b99",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_ArmorScorched_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-armorscorched",
@@ -602,17 +602,17 @@
       "bounds": {
         "max": [
           127.94146728515625,
-          41.83612823486328,
-          35.40232467651367
+          41.83612732200833,
+          35.40232444396697
         ],
         "min": [
           -179.84080505371094,
-          -15.348799705505371,
-          -77.17345428466797
+          -15.34879879265042,
+          -77.17345405212126
         ]
       },
       "drawMode": 4,
-      "geometryHash": "376819af2d115c0fbfd806566a1365e8708b84a76c12dcbfce6ed41ee7e394b0",
+      "geometryHash": "20b6a0af188cadc5036835337db1daa7f52790a5fe86732863f435ebd6deed3b",
       "id": "sf.render.wreck-cathedral.mesh.lod2-conduitcopper.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -627,21 +627,21 @@
       "bounds": {
         "max": [
           226.95933532714844,
-          95.43623352050781,
-          47.715309143066406
+          95.42093179342851,
+          47.71502777983461
         ],
         "min": [
           -148.93692016601562,
-          8.541210174560547,
-          -55.40520477294922
+          8.556511901639858,
+          -55.40492340971742
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24a99a4dd3d6a69430b65b470ae6592a82d592d0748fc296f0dd913cbb06450a",
+      "geometryHash": "c75116875807b0fff209e5717ec38bc1e76473c899ac986887afe7b3d52361aa",
       "id": "sf.render.wreck-cathedral.mesh.lod2-emissivecoldemergency.primitive.0",
       "indexCount": 1056,
       "indexed": true,
-      "materialHash": "66fbc390f03c91611eed2e7e4722b6ce2f3f2bd5fbb569eb15628fd5b9011bbc",
+      "materialHash": "c4730d44688b7c45040f5ce5645d85721b18851d755f4f759993aae3854d3cfd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_EmissiveColdEmergency_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-emissivecoldemergency",
@@ -651,22 +651,22 @@
     {
       "bounds": {
         "max": [
-          144.14837646484375,
+          144.1481500142996,
           146.61277770996094,
-          -14.873144149780273
+          -14.873058306111092
         ],
         "min": [
-          136.40789794921875,
+          136.4081243997629,
           135.7101287841797,
-          -22.603681564331055
+          -22.603767408000238
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1df6e8da1f8c463f6d7505016d21947ef687befb28e5bd2f598d599a990296f8",
+      "geometryHash": "2c6f1c81e44006e5436371b3bfadfc70a83a8fbec0068911e5cfb282d7958032",
       "id": "sf.render.wreck-cathedral.mesh.lod2-emissivemarkeramber.primitive.0",
       "indexCount": 672,
       "indexed": true,
-      "materialHash": "4aabb479eba750078173c59e8064f05bb6909987480a7a6ae93c517f93329b5e",
+      "materialHash": "359a7dd4783bfe2fea5f272bac886e503a7ad988afbffa4e8440cb0236f093c0",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_EmissiveMarkerAmber_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-emissivemarkeramber",
@@ -677,21 +677,21 @@
       "bounds": {
         "max": [
           320.633544921875,
-          113.00321960449219,
-          84.93009948730469
+          113.00182762050532,
+          84.93466114762843
         ],
         "min": [
           -233.602783203125,
-          -42.96786117553711,
-          -132.5977325439453
+          -42.966469191550246,
+          -132.60229420426907
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75a37ecfd21e5ead46f5cdbecd6799e93ff0571a96862f2d7efc53b162fa27f2",
+      "geometryHash": "5b2fc69cdf81133ae45d2193a9fec80e7015fbc67b5516b15f6a8c91d7ebc2a9",
       "id": "sf.render.wreck-cathedral.mesh.lod2-hull.primitive.0",
       "indexCount": 10356,
       "indexed": true,
-      "materialHash": "5ad9e8521641488e4d606ede3d976f221d03de2f57becd412cf26d98a0e0c6f8",
+      "materialHash": "6b8c0c8377af620dcc2a4b279b7213a54d5d3284f811bff324d121f4e91abaf5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-hull",
@@ -702,17 +702,17 @@
       "bounds": {
         "max": [
           222.76034545898438,
-          138.21881103515625,
-          81.91822052001953
+          138.22965499423196,
+          81.92727507029149
         ],
         "min": [
           -287.8465881347656,
-          -52.074222564697266,
-          -112.42996215820312
+          -52.085066523772994,
+          -112.43901670847508
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa67669d9c56e0d522feb46d98b21e74a419d29722d10f7952d65b261af1fafa",
+      "geometryHash": "298ecbf3222819debb6fa8149d28cfadcc8c55c39a009653f817688f50967557",
       "id": "sf.render.wreck-cathedral.mesh.lod2-interiorexposedalloy.primitive.0",
       "indexCount": 11604,
       "indexed": true,
@@ -727,21 +727,21 @@
       "bounds": {
         "max": [
           298.0293273925781,
-          136.2490692138672,
-          84.93333435058594
+          136.25994637426714,
+          84.93030769175147
         ],
         "min": [
           -288.5280456542969,
-          -67.67363739013672,
-          -122.23933410644531
+          -67.68451455053668,
+          -122.23630744761084
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a59b6d75d819e5d1acf196fcf6e29a10a31fae13094611f4c2f51810d49d6940",
+      "geometryHash": "09af1c83603a05f02f9d86c45aa1ff9fc837053342e63cd4e95323860cba8ee0",
       "id": "sf.render.wreck-cathedral.mesh.lod2-mechanicalexposed.primitive.0",
       "indexCount": 17352,
       "indexed": true,
-      "materialHash": "6c843e053b242a9b6e9bc12cd13f12b645cad58be499f032c6930b40cc0be847",
+      "materialHash": "05825462f37bf2d744b8ce763a0d5c1a2664b5d401f66293619bbe802dfa7412",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalExposed_Mesh",
       "nodeId": "sf.render.wreck-cathedral.mesh.lod2-mechanicalexposed",
@@ -754,10 +754,42 @@
   "lods": [],
   "materials": [
     {
-      "hash": "4aabb479eba750078173c59e8064f05bb6909987480a7a6ae93c517f93329b5e",
-      "id": "material:4aabb479eba750078173c59e",
+      "hash": "05825462f37bf2d744b8ce763a0d5c1a2664b5d401f66293619bbe802dfa7412",
+      "id": "material:05825462f37bf2d744b8ce76",
+      "name": "Material_Mechanical_Exposed",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_Exposed_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_Exposed_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_Exposed_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_Exposed_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "359a7dd4783bfe2fea5f272bac886e503a7ad988afbffa4e8440cb0236f093c0",
+      "id": "material:359a7dd4783bfe2fea5f272b",
       "name": "Material_Emissive_MarkerAmber",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -792,10 +824,10 @@
       ]
     },
     {
-      "hash": "5ad9e8521641488e4d606ede3d976f221d03de2f57becd412cf26d98a0e0c6f8",
-      "id": "material:5ad9e8521641488e4d606ede",
+      "hash": "6b8c0c8377af620dcc2a4b279b7213a54d5d3284f811bff324d121f4e91abaf5",
+      "id": "material:6b8c0c8377af620dcc2a4b27",
       "name": "Material_Hull_ConcordGray",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -824,102 +856,32 @@
       ]
     },
     {
-      "hash": "66fbc390f03c91611eed2e7e4722b6ce2f3f2bd5fbb569eb15628fd5b9011bbc",
-      "id": "material:66fbc390f03c91611eed2e7e",
-      "name": "Material_Emissive_ColdEmergency",
-      "pipelineKey": "opaque:double",
+      "hash": "75d794a7f4b1da2dd2e26221a969035d38f84699f478a7f9d8ca39038b3c6b99",
+      "id": "material:75d794a7f4b1da2dd2e26221",
+      "name": "Material_Armor_Scorched",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Emissive_ColdEmergency_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Emissive_ColdEmergency_emissive",
-          "slot": "emissive",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Emissive_ColdEmergency_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Emissive_ColdEmergency_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Emissive_ColdEmergency_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6c843e053b242a9b6e9bc12cd13f12b645cad58be499f032c6930b40cc0be847",
-      "id": "material:6c843e053b242a9b6e9bc12c",
-      "name": "Material_Mechanical_Exposed",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_Exposed_basecolor",
+          "name": "Material_Armor_Scorched_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_orm",
+          "name": "Material_Armor_Scorched_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_normal",
+          "name": "Material_Armor_Scorched_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Mechanical_Exposed_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "6cf2ca59e83ccf1459b400832dfc559e7643b9a7ddf6e3651e5eb1898456d5e8",
-      "id": "material:6cf2ca59e83ccf1459b40083",
-      "name": "Material_Accent_ConcordBlue_Burned",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Accent_ConcordBlue_Burned_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "name": "Material_Armor_Scorched_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -958,6 +920,38 @@
       ]
     },
     {
+      "hash": "8dc498c00cb3d8fbe79315a77ebad6de76e386f296e5eea1b994181aa66a3202",
+      "id": "material:8dc498c00cb3d8fbe79315a7",
+      "name": "Material_Accent_ConcordBlue_Burned",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Accent_ConcordBlue_Burned_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_ConcordBlue_Burned_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "b2cff154c71331aa448bc63348734161bb07930f8a9baefdbfc564546ad2bfd8",
       "id": "material:b2cff154c71331aa448bc633",
       "name": "Material_Conduit_Copper",
@@ -990,32 +984,38 @@
       ]
     },
     {
-      "hash": "b94e36c64459208b610ae26ee47b7e55c750bacfe304a4e32955eb3dd6a4c04c",
-      "id": "material:b94e36c64459208b610ae26e",
-      "name": "Material_Armor_Scorched",
-      "pipelineKey": "opaque:double",
+      "hash": "c4730d44688b7c45040f5ce5645d85721b18851d755f4f759993aae3854d3cfd",
+      "id": "material:c4730d44688b7c45040f5ce5",
+      "name": "Material_Emissive_ColdEmergency",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "Material_Armor_Scorched_basecolor",
+          "name": "Material_Emissive_ColdEmergency_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
+          "colorSpace": "srgb",
+          "name": "Material_Emissive_ColdEmergency_emissive",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_orm",
+          "name": "Material_Emissive_ColdEmergency_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_normal",
+          "name": "Material_Emissive_ColdEmergency_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "Material_Armor_Scorched_orm",
+          "name": "Material_Emissive_ColdEmergency_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1026,21 +1026,21 @@
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-accentconcordblueburned",
       "localTransform": [
-        1,
+        244.49163818359375,
         0,
         0,
         0,
         0,
-        1,
+        244.49163818359375,
         0,
         0,
         0,
         0,
-        1,
+        244.49163818359375,
         0,
-        0,
-        0,
-        0,
+        21.38787841796875,
+        25.711570024490356,
+        -19.259132385253906,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1055,42 +1055,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        244.49163818359375,
         0,
         0,
         0,
         0,
-        1,
+        244.49163818359375,
         0,
         0,
         0,
         0,
-        1,
+        244.49163818359375,
         0,
-        0,
-        0,
-        0,
+        21.38787841796875,
+        25.711570024490356,
+        -19.259132385253906,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-armorscorched",
       "localTransform": [
-        1,
+        283.5784454345703,
         0,
         0,
         0,
         0,
-        1,
+        283.5784454345703,
         0,
         0,
         0,
         0,
-        1,
+        283.5784454345703,
         0,
-        0,
-        0,
-        0,
+        16.664657592773438,
+        23.107574462890625,
+        -12.95383071899414,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1105,42 +1105,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        283.5784454345703,
         0,
         0,
         0,
         0,
-        1,
+        283.5784454345703,
         0,
         0,
         0,
         0,
-        1,
+        283.5784454345703,
         0,
-        0,
-        0,
-        0,
+        16.664657592773438,
+        23.107574462890625,
+        -12.95383071899414,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-conduitcopper",
       "localTransform": [
-        1,
+        243.7332992553711,
         0,
         0,
         0,
         0,
-        1,
+        243.7332992553711,
         0,
         0,
         0,
         0,
-        1,
+        243.7332992553711,
         0,
-        0,
-        0,
-        0,
+        -5.287376403808594,
+        7.278600692749023,
+        -10.994998931884766,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1155,42 +1155,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        243.7332992553711,
         0,
         0,
         0,
         0,
-        1,
+        243.7332992553711,
         0,
         0,
         0,
         0,
-        1,
+        243.7332992553711,
         0,
-        0,
-        0,
-        0,
+        -5.287376403808594,
+        7.278600692749023,
+        -10.994998931884766,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-emissivecoldemergency",
       "localTransform": [
-        1,
+        196.3922882080078,
         0,
         0,
         0,
         0,
-        1,
+        196.3922882080078,
         0,
         0,
         0,
         0,
-        1,
+        196.3922882080078,
         0,
-        0,
-        0,
-        0,
+        31.768829345703125,
+        52.50073575973511,
+        -6.848140716552734,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1205,42 +1205,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        196.3922882080078,
         0,
         0,
         0,
         0,
-        1,
+        196.3922882080078,
         0,
         0,
         0,
         0,
-        1,
+        196.3922882080078,
         0,
-        0,
-        0,
-        0,
+        31.768829345703125,
+        52.50073575973511,
+        -6.848140716552734,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-emissivemarkeramber",
       "localTransform": [
-        1,
+        4.96209716796875,
         0,
         0,
         0,
         0,
-        1,
+        4.96209716796875,
         0,
         0,
         0,
         0,
-        1,
+        4.96209716796875,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.73841428756714,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1255,42 +1255,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        4.96209716796875,
         0,
         0,
         0,
         0,
-        1,
+        4.96209716796875,
         0,
         0,
         0,
         0,
-        1,
+        4.96209716796875,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.73841428756714,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-hull",
       "localTransform": [
-        1,
+        296.64056396484375,
         0,
         0,
         0,
         0,
-        1,
+        296.64056396484375,
         0,
         0,
         0,
         0,
-        1,
+        296.64056396484375,
         0,
-        0,
-        0,
-        0,
+        23.958587646484375,
+        34.307796478271484,
+        -23.598487854003906,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1305,42 +1305,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        296.64056396484375,
         0,
         0,
         0,
         0,
-        1,
+        296.64056396484375,
         0,
         0,
         0,
         0,
-        1,
+        296.64056396484375,
         0,
-        0,
-        0,
-        0,
+        23.958587646484375,
+        34.307796478271484,
+        -23.598487854003906,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-interiorexposedalloy",
       "localTransform": [
-        1,
+        268.89295196533203,
         0,
         0,
         0,
         0,
-        1,
+        268.89295196533203,
         0,
         0,
         0,
         0,
-        1,
+        268.89295196533203,
         0,
-        0,
-        0,
-        0,
+        -18.960227966308594,
+        37.91719055175781,
+        -15.74527359008789,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1355,42 +1355,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        268.89295196533203,
         0,
         0,
         0,
         0,
-        1,
+        268.89295196533203,
         0,
         0,
         0,
         0,
-        1,
+        268.89295196533203,
         0,
-        0,
-        0,
-        0,
+        -18.960227966308594,
+        37.91719055175781,
+        -15.74527359008789,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod0-mechanicalexposed",
       "localTransform": [
-        1,
+        293.3114013671875,
         0,
         0,
         0,
         0,
-        1,
+        293.3114013671875,
         0,
         0,
         0,
         0,
-        1,
+        293.3114013671875,
         0,
-        0,
-        0,
-        0,
+        4.697998046875,
+        34.286781311035156,
+        -18.653209686279297,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1405,42 +1405,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        293.3114013671875,
         0,
         0,
         0,
         0,
-        1,
+        293.3114013671875,
         0,
         0,
         0,
         0,
-        1,
+        293.3114013671875,
         0,
-        0,
-        0,
-        0,
+        4.697998046875,
+        34.286781311035156,
+        -18.653209686279297,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-accentconcordblueburned",
       "localTransform": [
-        1,
+        244.49847412109375,
         0,
         0,
         0,
         0,
-        1,
+        244.49847412109375,
         0,
         0,
         0,
         0,
-        1,
+        244.49847412109375,
         0,
-        0,
-        0,
-        0,
+        21.3851318359375,
+        25.702504813671112,
+        -19.261371612548828,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1455,42 +1455,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        244.49847412109375,
         0,
         0,
         0,
         0,
-        1,
+        244.49847412109375,
         0,
         0,
         0,
         0,
-        1,
+        244.49847412109375,
         0,
-        0,
-        0,
-        0,
+        21.3851318359375,
+        25.702504813671112,
+        -19.261371612548828,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-armorscorched",
       "localTransform": [
-        1,
+        283.5972137451172,
         0,
         0,
         0,
         0,
-        1,
+        283.5972137451172,
         0,
         0,
         0,
         0,
-        1,
+        283.5972137451172,
         0,
-        0,
-        0,
-        0,
+        16.662887573242188,
+        23.109130859375,
+        -12.971794128417969,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1505,42 +1505,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        283.5972137451172,
         0,
         0,
         0,
         0,
-        1,
+        283.5972137451172,
         0,
         0,
         0,
         0,
-        1,
+        283.5972137451172,
         0,
-        0,
-        0,
-        0,
+        16.662887573242188,
+        23.109130859375,
+        -12.971794128417969,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-conduitcopper",
       "localTransform": [
-        1,
+        237.98169708251953,
         0,
         0,
         0,
         0,
-        1,
+        237.98169708251953,
         0,
         0,
         0,
         0,
-        1,
+        237.98169708251953,
         0,
-        0,
-        0,
-        0,
+        -11.051322937011719,
+        7.278600692749023,
+        -12.128639221191406,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1555,42 +1555,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        237.98169708251953,
         0,
         0,
         0,
         0,
-        1,
+        237.98169708251953,
         0,
         0,
         0,
         0,
-        1,
+        237.98169708251953,
         0,
-        0,
-        0,
-        0,
+        -11.051322937011719,
+        7.278600692749023,
+        -12.128639221191406,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-emissivecoldemergency",
       "localTransform": [
-        1,
+        193.27769470214844,
         0,
         0,
         0,
         0,
-        1,
+        193.27769470214844,
         0,
         0,
         0,
         0,
-        1,
+        193.27769470214844,
         0,
-        0,
-        0,
-        0,
+        34.535125732421875,
+        52.33341407775879,
+        -6.847599029541016,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1605,42 +1605,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        193.27769470214844,
         0,
         0,
         0,
         0,
-        1,
+        193.27769470214844,
         0,
         0,
         0,
         0,
-        1,
+        193.27769470214844,
         0,
-        0,
-        0,
-        0,
+        34.535125732421875,
+        52.33341407775879,
+        -6.847599029541016,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-emissivemarkeramber",
       "localTransform": [
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.738412380218506,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1655,42 +1655,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.738412380218506,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-hull",
       "localTransform": [
-        1,
+        296.66502380371094,
         0,
         0,
         0,
         0,
-        1,
+        296.66502380371094,
         0,
         0,
         0,
         0,
-        1,
+        296.66502380371094,
         0,
-        0,
-        0,
-        0,
+        23.945266723632812,
+        34.36735916137695,
+        -23.817012786865234,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1705,42 +1705,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        296.66502380371094,
         0,
         0,
         0,
         0,
-        1,
+        296.66502380371094,
         0,
         0,
         0,
         0,
-        1,
+        296.66502380371094,
         0,
-        0,
-        0,
-        0,
+        23.945266723632812,
+        34.36735916137695,
+        -23.817012786865234,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-interiorexposedalloy",
       "localTransform": [
-        1,
+        268.8920211791992,
         0,
         0,
         0,
         0,
-        1,
+        268.8920211791992,
         0,
         0,
         0,
         0,
-        1,
+        268.8920211791992,
         0,
-        0,
-        0,
-        0,
+        -18.96070098876953,
+        37.91289138793945,
+        -15.746139526367188,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1755,42 +1755,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        268.8920211791992,
         0,
         0,
         0,
         0,
-        1,
+        268.8920211791992,
         0,
         0,
         0,
         0,
-        1,
+        268.8920211791992,
         0,
-        0,
-        0,
-        0,
+        -18.96070098876953,
+        37.91289138793945,
+        -15.746139526367188,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod1-mechanicalexposed",
       "localTransform": [
-        1,
+        293.3249816894531,
         0,
         0,
         0,
         0,
-        1,
+        293.3249816894531,
         0,
         0,
         0,
         0,
-        1,
+        293.3249816894531,
         0,
-        0,
-        0,
-        0,
+        4.696624755859375,
+        34.291568756103516,
+        -18.64218521118164,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1805,42 +1805,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        293.3249816894531,
         0,
         0,
         0,
         0,
-        1,
+        293.3249816894531,
         0,
         0,
         0,
         0,
-        1,
+        293.3249816894531,
         0,
-        0,
-        0,
-        0,
+        4.696624755859375,
+        34.291568756103516,
+        -18.64218521118164,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-accentconcordblueburned",
       "localTransform": [
-        1,
+        244.50291442871094,
         0,
         0,
         0,
         0,
-        1,
+        244.50291442871094,
         0,
         0,
         0,
         0,
-        1,
+        244.50291442871094,
         0,
-        0,
-        0,
-        0,
+        21.384201049804688,
+        25.703848838806152,
+        -19.267963409423828,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1855,42 +1855,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        244.50291442871094,
         0,
         0,
         0,
         0,
-        1,
+        244.50291442871094,
         0,
         0,
         0,
         0,
-        1,
+        244.50291442871094,
         0,
-        0,
-        0,
-        0,
+        21.384201049804688,
+        25.703848838806152,
+        -19.267963409423828,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-armorscorched",
       "localTransform": [
-        1,
+        283.61830139160156,
         0,
         0,
         0,
         0,
-        1,
+        283.61830139160156,
         0,
         0,
         0,
         0,
-        1,
+        283.61830139160156,
         0,
-        0,
-        0,
-        0,
+        16.659774780273438,
+        34.300907135009766,
+        -21.307411193847656,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1905,42 +1905,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        283.61830139160156,
         0,
         0,
         0,
         0,
-        1,
+        283.61830139160156,
         0,
         0,
         0,
         0,
-        1,
+        283.61830139160156,
         0,
-        0,
-        0,
-        0,
+        16.659774780273438,
+        34.300907135009766,
+        -21.307411193847656,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-conduitcopper",
       "localTransform": [
-        1,
+        153.8911361694336,
         0,
         0,
         0,
         0,
-        1,
+        153.8911361694336,
         0,
         0,
         0,
         0,
-        1,
+        153.8911361694336,
         0,
-        0,
-        0,
-        0,
+        -25.949668884277344,
+        13.243664264678955,
+        -20.88556480407715,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1955,42 +1955,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        153.8911361694336,
         0,
         0,
         0,
         0,
-        1,
+        153.8911361694336,
         0,
         0,
         0,
         0,
-        1,
+        153.8911361694336,
         0,
-        0,
-        0,
-        0,
+        -25.949668884277344,
+        13.243664264678955,
+        -20.88556480407715,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-emissivecoldemergency",
       "localTransform": [
-        1,
+        187.94812774658203,
         0,
         0,
         0,
         0,
-        1,
+        187.94812774658203,
         0,
         0,
         0,
         0,
-        1,
+        187.94812774658203,
         0,
-        0,
-        0,
-        0,
+        39.011207580566406,
+        51.98872184753418,
+        -3.8449478149414062,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2005,42 +2005,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        187.94812774658203,
         0,
         0,
         0,
         0,
-        1,
+        187.94812774658203,
         0,
         0,
         0,
         0,
-        1,
+        187.94812774658203,
         0,
-        0,
-        0,
-        0,
+        39.011207580566406,
+        51.98872184753418,
+        -3.8449478149414062,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-emissivemarkeramber",
       "localTransform": [
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.738412857055664,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2055,42 +2055,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
         0,
         0,
         0,
-        1,
+        5.451324462890625,
         0,
-        0,
-        0,
-        0,
+        140.27813720703125,
+        141.1614532470703,
+        -18.738412857055664,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-hull",
       "localTransform": [
-        1,
+        277.1181640625,
         0,
         0,
         0,
         0,
-        1,
+        277.1181640625,
         0,
         0,
         0,
         0,
-        1,
+        277.1181640625,
         0,
-        0,
-        0,
-        0,
+        43.515380859375,
+        35.01767921447754,
+        -23.833816528320312,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2105,42 +2105,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        277.1181640625,
         0,
         0,
         0,
         0,
-        1,
+        277.1181640625,
         0,
         0,
         0,
         0,
-        1,
+        277.1181640625,
         0,
-        0,
-        0,
-        0,
+        43.515380859375,
+        35.01767921447754,
+        -23.833816528320312,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-interiorexposedalloy",
       "localTransform": [
-        1,
+        255.303466796875,
         0,
         0,
         0,
         0,
-        1,
+        255.303466796875,
         0,
         0,
         0,
         0,
-        1,
+        255.303466796875,
         0,
-        0,
-        0,
-        0,
+        -32.543121337890625,
+        43.07229423522949,
+        -15.255870819091797,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2155,42 +2155,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        255.303466796875,
         0,
         0,
         0,
         0,
-        1,
+        255.303466796875,
         0,
         0,
         0,
         0,
-        1,
+        255.303466796875,
         0,
-        0,
-        0,
-        0,
+        -32.543121337890625,
+        43.07229423522949,
+        -15.255870819091797,
         1
       ]
     },
     {
       "id": "sf.render.wreck-cathedral.mesh.lod2-mechanicalexposed",
       "localTransform": [
-        1,
+        293.2786865234375,
         0,
         0,
         0,
         0,
-        1,
+        293.2786865234375,
         0,
         0,
         0,
         0,
-        1,
+        293.2786865234375,
         0,
-        0,
-        0,
-        0,
+        4.750640869140625,
+        34.287715911865234,
+        -18.652999877929688,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2205,21 +2205,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.wreck-cathedral.body",
       "worldTransform": [
-        1,
+        293.2786865234375,
         0,
         0,
         0,
         0,
-        1,
+        293.2786865234375,
         0,
         0,
         0,
         0,
-        1,
+        293.2786865234375,
         0,
-        0,
-        0,
-        0,
+        4.750640869140625,
+        34.287715911865234,
+        -18.652999877929688,
         1
       ]
     },
@@ -2282,37 +2282,37 @@
       "uri": "place_landmark_wreck_cathedral.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 9880196,
-    "sha256": "cd3419a09bba9c95ec673e6b6581cff4a4d2274b1bd3177a5874868487f13b31",
+    "bytes": 5136928,
+    "sha256": "59d10b23d743b98731eb5d0ee7b8f9d1528aabef7b71ca58ac646df261d06cfc",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         16.002593994140625,
-        37.9135856628418,
-        -12.985729217529297
+        37.91523198737694,
+        -12.984796962364925
       ],
       "max": [
         320.633544921875,
-        148.28675842285156,
-        113.2235336303711
+        148.28253711939448,
+        113.23585136607528
       ],
       "min": [
         -288.62835693359375,
-        -72.45958709716797,
-        -139.1949920654297
+        -72.4520731446406,
+        -139.20544529080513
       ],
       "size": [
         609.2619018554688,
-        220.74634552001953,
-        252.41852569580078
+        220.73461026403507,
+        252.4412966568804
       ]
     },
     "hidden": [],
@@ -2579,21 +2579,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          244.49163818359375,
           0,
           0,
           0,
           0,
-          1,
+          244.49163818359375,
           0,
           0,
           0,
           0,
-          1,
+          244.49163818359375,
           0,
-          0,
-          0,
-          0,
+          21.38787841796875,
+          25.711570024490356,
+          -19.259132385253906,
           1
         ],
         "name": "LOD0_AccentConcordBlueBurned",
@@ -2607,21 +2607,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          283.5784454345703,
           0,
           0,
           0,
           0,
-          1,
+          283.5784454345703,
           0,
           0,
           0,
           0,
-          1,
+          283.5784454345703,
           0,
-          0,
-          0,
-          0,
+          16.664657592773438,
+          23.107574462890625,
+          -12.95383071899414,
           1
         ],
         "name": "LOD0_ArmorScorched",
@@ -2635,21 +2635,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          243.7332992553711,
           0,
           0,
           0,
           0,
-          1,
+          243.7332992553711,
           0,
           0,
           0,
           0,
-          1,
+          243.7332992553711,
           0,
-          0,
-          0,
-          0,
+          -5.287376403808594,
+          7.278600692749023,
+          -10.994998931884766,
           1
         ],
         "name": "LOD0_ConduitCopper",
@@ -2663,21 +2663,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          196.3922882080078,
           0,
           0,
           0,
           0,
-          1,
+          196.3922882080078,
           0,
           0,
           0,
           0,
-          1,
+          196.3922882080078,
           0,
-          0,
-          0,
-          0,
+          31.768829345703125,
+          52.50073575973511,
+          -6.848140716552734,
           1
         ],
         "name": "LOD0_EmissiveColdEmergency",
@@ -2691,21 +2691,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          4.96209716796875,
           0,
           0,
           0,
           0,
-          1,
+          4.96209716796875,
           0,
           0,
           0,
           0,
-          1,
+          4.96209716796875,
           0,
-          0,
-          0,
-          0,
+          140.27813720703125,
+          141.1614532470703,
+          -18.73841428756714,
           1
         ],
         "name": "LOD0_EmissiveMarkerAmber",
@@ -2719,21 +2719,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          296.64056396484375,
           0,
           0,
           0,
           0,
-          1,
+          296.64056396484375,
           0,
           0,
           0,
           0,
-          1,
+          296.64056396484375,
           0,
-          0,
-          0,
-          0,
+          23.958587646484375,
+          34.307796478271484,
+          -23.598487854003906,
           1
         ],
         "name": "LOD0_Hull",
@@ -2747,21 +2747,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          268.89295196533203,
           0,
           0,
           0,
           0,
-          1,
+          268.89295196533203,
           0,
           0,
           0,
           0,
-          1,
+          268.89295196533203,
           0,
-          0,
-          0,
-          0,
+          -18.960227966308594,
+          37.91719055175781,
+          -15.74527359008789,
           1
         ],
         "name": "LOD0_InteriorExposedAlloy",
@@ -2775,21 +2775,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          293.3114013671875,
           0,
           0,
           0,
           0,
-          1,
+          293.3114013671875,
           0,
           0,
           0,
           0,
-          1,
+          293.3114013671875,
           0,
-          0,
-          0,
-          0,
+          4.697998046875,
+          34.286781311035156,
+          -18.653209686279297,
           1
         ],
         "name": "LOD0_MechanicalExposed",
@@ -2803,21 +2803,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          244.49847412109375,
           0,
           0,
           0,
           0,
-          1,
+          244.49847412109375,
           0,
           0,
           0,
           0,
-          1,
+          244.49847412109375,
           0,
-          0,
-          0,
-          0,
+          21.3851318359375,
+          25.702504813671112,
+          -19.261371612548828,
           1
         ],
         "name": "LOD1_AccentConcordBlueBurned",
@@ -2831,21 +2831,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          283.5972137451172,
           0,
           0,
           0,
           0,
-          1,
+          283.5972137451172,
           0,
           0,
           0,
           0,
-          1,
+          283.5972137451172,
           0,
-          0,
-          0,
-          0,
+          16.662887573242188,
+          23.109130859375,
+          -12.971794128417969,
           1
         ],
         "name": "LOD1_ArmorScorched",
@@ -2859,21 +2859,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          237.98169708251953,
           0,
           0,
           0,
           0,
-          1,
+          237.98169708251953,
           0,
           0,
           0,
           0,
-          1,
+          237.98169708251953,
           0,
-          0,
-          0,
-          0,
+          -11.051322937011719,
+          7.278600692749023,
+          -12.128639221191406,
           1
         ],
         "name": "LOD1_ConduitCopper",
@@ -2887,21 +2887,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          193.27769470214844,
           0,
           0,
           0,
           0,
-          1,
+          193.27769470214844,
           0,
           0,
           0,
           0,
-          1,
+          193.27769470214844,
           0,
-          0,
-          0,
-          0,
+          34.535125732421875,
+          52.33341407775879,
+          -6.847599029541016,
           1
         ],
         "name": "LOD1_EmissiveColdEmergency",
@@ -2915,21 +2915,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.451324462890625,
           0,
           0,
           0,
           0,
-          1,
+          5.451324462890625,
           0,
           0,
           0,
           0,
-          1,
+          5.451324462890625,
           0,
-          0,
-          0,
-          0,
+          140.27813720703125,
+          141.1614532470703,
+          -18.738412380218506,
           1
         ],
         "name": "LOD1_EmissiveMarkerAmber",
@@ -2943,21 +2943,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          296.66502380371094,
           0,
           0,
           0,
           0,
-          1,
+          296.66502380371094,
           0,
           0,
           0,
           0,
-          1,
+          296.66502380371094,
           0,
-          0,
-          0,
-          0,
+          23.945266723632812,
+          34.36735916137695,
+          -23.817012786865234,
           1
         ],
         "name": "LOD1_Hull",
@@ -2971,21 +2971,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          268.8920211791992,
           0,
           0,
           0,
           0,
-          1,
+          268.8920211791992,
           0,
           0,
           0,
           0,
-          1,
+          268.8920211791992,
           0,
-          0,
-          0,
-          0,
+          -18.96070098876953,
+          37.91289138793945,
+          -15.746139526367188,
           1
         ],
         "name": "LOD1_InteriorExposedAlloy",
@@ -2999,21 +2999,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          293.3249816894531,
           0,
           0,
           0,
           0,
-          1,
+          293.3249816894531,
           0,
           0,
           0,
           0,
-          1,
+          293.3249816894531,
           0,
-          0,
-          0,
-          0,
+          4.696624755859375,
+          34.291568756103516,
+          -18.64218521118164,
           1
         ],
         "name": "LOD1_MechanicalExposed",
@@ -3027,21 +3027,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          244.50291442871094,
           0,
           0,
           0,
           0,
-          1,
+          244.50291442871094,
           0,
           0,
           0,
           0,
-          1,
+          244.50291442871094,
           0,
-          0,
-          0,
-          0,
+          21.384201049804688,
+          25.703848838806152,
+          -19.267963409423828,
           1
         ],
         "name": "LOD2_AccentConcordBlueBurned",
@@ -3055,21 +3055,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          283.61830139160156,
           0,
           0,
           0,
           0,
-          1,
+          283.61830139160156,
           0,
           0,
           0,
           0,
-          1,
+          283.61830139160156,
           0,
-          0,
-          0,
-          0,
+          16.659774780273438,
+          34.300907135009766,
+          -21.307411193847656,
           1
         ],
         "name": "LOD2_ArmorScorched",
@@ -3083,21 +3083,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          153.8911361694336,
           0,
           0,
           0,
           0,
-          1,
+          153.8911361694336,
           0,
           0,
           0,
           0,
-          1,
+          153.8911361694336,
           0,
-          0,
-          0,
-          0,
+          -25.949668884277344,
+          13.243664264678955,
+          -20.88556480407715,
           1
         ],
         "name": "LOD2_ConduitCopper",
@@ -3111,21 +3111,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          187.94812774658203,
           0,
           0,
           0,
           0,
-          1,
+          187.94812774658203,
           0,
           0,
           0,
           0,
-          1,
+          187.94812774658203,
           0,
-          0,
-          0,
-          0,
+          39.011207580566406,
+          51.98872184753418,
+          -3.8449478149414062,
           1
         ],
         "name": "LOD2_EmissiveColdEmergency",
@@ -3139,21 +3139,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          5.451324462890625,
           0,
           0,
           0,
           0,
-          1,
+          5.451324462890625,
           0,
           0,
           0,
           0,
-          1,
+          5.451324462890625,
           0,
-          0,
-          0,
-          0,
+          140.27813720703125,
+          141.1614532470703,
+          -18.738412857055664,
           1
         ],
         "name": "LOD2_EmissiveMarkerAmber",
@@ -3167,21 +3167,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          277.1181640625,
           0,
           0,
           0,
           0,
-          1,
+          277.1181640625,
           0,
           0,
           0,
           0,
-          1,
+          277.1181640625,
           0,
-          0,
-          0,
-          0,
+          43.515380859375,
+          35.01767921447754,
+          -23.833816528320312,
           1
         ],
         "name": "LOD2_Hull",
@@ -3195,21 +3195,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          255.303466796875,
           0,
           0,
           0,
           0,
-          1,
+          255.303466796875,
           0,
           0,
           0,
           0,
-          1,
+          255.303466796875,
           0,
-          0,
-          0,
-          0,
+          -32.543121337890625,
+          43.07229423522949,
+          -15.255870819091797,
           1
         ],
         "name": "LOD2_InteriorExposedAlloy",
@@ -3223,21 +3223,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          293.2786865234375,
           0,
           0,
           0,
           0,
-          1,
+          293.2786865234375,
           0,
           0,
           0,
           0,
-          1,
+          293.2786865234375,
           0,
-          0,
-          0,
-          0,
+          4.750640869140625,
+          34.287715911865234,
+          -18.652999877929688,
           1
         ],
         "name": "LOD2_MechanicalExposed",
@@ -3253,20 +3253,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb"
   },
-  "runtimeHash": "67b9d04d62b9ae25937e733e7cc2e8c97dcf7a6a3ae8efee353154e7deda78f2",
+  "runtimeHash": "bb9540bfbb495d28f6918fdfbde5f5158ae717d3ae3043cde8f0a80bd3e5582f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           320.633544921875,
-          148.28675842285156,
-          113.2235336303711
+          148.28253711939448,
+          113.23585136607528
         ],
         "min": [
           -288.62835693359375,
-          -72.45958709716797,
-          -139.1949920654297
+          -72.4520731446406,
+          -139.20544529080513
         ]
       },
       "id": "sf.render.wreck-cathedral.body",

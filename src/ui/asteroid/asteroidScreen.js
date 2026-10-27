@@ -538,6 +538,9 @@ export const asteroidScreen = {
     guideToggle.className = drawerBtn.className;
     guideToggle.textContent = 'Guide';
     guideToggle.setAttribute('aria-label', 'Toggle mining guidance');
+    // F6's rule for the crest: advice needs a session to teach, so the toggle stands down with
+    // the hold scale and the yield on a sessionless screen instead of toggling nothing.
+    guideToggle.hidden = true;
     crestRight.prepend(guideToggle);
     crest.append(nameEl, claimChip, assayChip, industryChip, alertEl, crestRight);
     wrap.appendChild(crest);
@@ -883,7 +886,10 @@ export const asteroidScreen = {
         sw = src.width; sh = sw / want; sx = 0; sy = (src.height - sh) * 0.35;
       }
       g.drawImage(src, sx, sy, sw, sh, 0, 0, emptyRock.width, emptyRock.height);
-      g.fillStyle = 'rgba(5, 7, 10, 0.62)';
+      // Staged, not blank — but readable: the flat wash sits over the vignette (.aw-empty::after),
+      // so the two stacked dims kept the honest cross-section under black. 0.45 keeps the
+      // "dimly behind the one Lamp Key" staging while the strata and ore specks still read.
+      g.fillStyle = 'rgba(5, 7, 10, 0.45)';
       g.fillRect(0, 0, emptyRock.width, emptyRock.height);
     }
     paintEmptyRock();
@@ -918,6 +924,11 @@ export const asteroidScreen = {
     guideAction.type = 'button';
     guideAction.className = 'aw-verb-btn';
     guide.append(guideTitle, guideDetail, guideAction);
+    // Cold screens carry no advice: updateGuide() only runs on a live session's HUD tick, so
+    // without this the section mounts as an empty dark card on the staged rock (the bench's
+    // asteroid-works still showed exactly that box). startSession() -> updateHud() re-opens it
+    // the moment there is a step to teach.
+    guide.hidden = true;
     stage.appendChild(guide);
     let guideDismissed = state.settings?.gameplay?.tutorialHints === false;
     let guideStep = null;
@@ -1322,7 +1333,11 @@ export const asteroidScreen = {
       // Typing into a drawer control is not driving: while focus lives inside the sheet, the
       // rig keys belong to the sheet.
       if (drawerTab !== null && drawer.contains(event.target)) return;
-      if (!boardReady() && event.code !== 'Escape') {
+      // While the board loads, rig keys wait — but the mode toggle is UI, not work: B may arm
+      // BUILD (the palette's live ring is honest the moment it lights, and every acting verb is
+      // still individually gated — commitPlacement/commitRemoval answer boardReady() themselves,
+      // and the frame loop cancels held drive keys until the scene is up).
+      if (!boardReady() && event.code !== 'Escape' && event.code !== 'KeyB') {
         event.preventDefault();
         event.stopImmediatePropagation();
         return;
@@ -2415,7 +2430,10 @@ export const asteroidScreen = {
     }
 
     // Rebuild + place. Returns false when there is nothing to describe, which closes the card.
+    // A not-yet-ready board also closes it: the card's anchor is the renderer's own cell
+    // projection, and a half-up scene produced a clamped, clipped card in the walk.
     function renderLens() {
+      if (!boardReady()) { hideLens(); return false; }
       const model = lensModel();
       if (!model) { hideLens(); return false; }
       const subject = lensSubject();
@@ -2463,9 +2481,11 @@ export const asteroidScreen = {
       const readiness = renderer3d?.readiness?.();
       if (readiness && !readiness.ready) {
         controller.cancel();
+        // Name the actual stage: once terrain is up the wait is the rig docking, not the rock.
         showBanner('equipment', readiness.failed
           ? 'Mining equipment unavailable — leave and reopen'
-          : 'Loading mining equipment…', readiness.failed ? 'bad' : 'warn');
+          : (readiness.terrain && !readiness.rover ? 'Docking the mining rig…' : 'Loading mining equipment…'),
+        readiness.failed ? 'bad' : 'warn');
       } else clearBanner('equipment');
       controller.tick(dt);
       pumpWorkbench(dt);
@@ -2528,6 +2548,7 @@ export const asteroidScreen = {
       controller.setMode(MODES.DRIVE);
       wrap.dataset.mode = 'drive'; // setMode is a no-op when it is already DRIVE
       wrap.dataset.session = 'live'; // the hold scale + yield only exist once a session does (F6)
+      guideToggle.hidden = false;    // advice has a session to teach again
       delete wrap.dataset.cursor;    // a new session has aimed at nothing yet
       hudElapsed = 0;
       inspElapsed = 0;
@@ -2617,6 +2638,7 @@ export const asteroidScreen = {
       cancelAnimationFrame(rafId);
       controller.cancel();
       delete wrap.dataset.session;
+      guideToggle.hidden = true; // the cold screen teaches nothing (F6)
       emptyLayer.hidden = false;
       emptyRock.style.display = '';
       hideLens();

@@ -35,7 +35,6 @@ import {
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
-  swarmPressureIsHolding,
   swarmPressureSuppressing,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
@@ -161,7 +160,6 @@ export function collectContentCatalogIssues(opts = {}) {
   return issues;
 }
 
-const SWARM_STRAGGLER_MAX = 2;
 const SWARM_STRAGGLER_LEASH_WU = 1800;
 const SWARM_STRAGGLER_GRACE_TICKS = 8 * 60;
 // The pack's last few lights kept their orbiting pursuit long after the round clock ran out, so a
@@ -1329,8 +1327,10 @@ export const survivalWave = {
     if (remaining <= 0) return;
     const want = Math.min(remaining, swarmReinforceCount(target - alive));
     if (want <= 0) {
-      // A zero under `holding` is the breath refusing a top-up the stream asked for.
-      if (swarmPressureIsHolding()) this._stallSuppressed = true;
+      // A zero consult is the running breath refusing a top-up — the same predicate the
+      // dispatch clamp reads. A hold whose clock is already out spends inside the consult
+      // instead (and clears `holding` there), so it never stands here refusing anything.
+      if (swarmPressureSuppressing()) this._stallSuppressed = true;
       return;
     }
 
@@ -1481,11 +1481,12 @@ export const survivalWave = {
   },
 
   /**
-   * The pack's last one or two bodies, left far behind a pilot who has outrun them (no drag:
-   * a new pilot drifts thousands of units without meaning to), would otherwise hold a won
-   * round open forever. Once they have stayed past the leash — well off screen — for the
-   * grace window, they break off and leave the field: removed out of sight, resolved by the
-   * destroyed receipt, never paid out as a kill.
+   * Pack bodies left far behind a pilot who has outrun them (no drag: a new pilot drifts
+   * thousands of units without meaning to) would otherwise hold a won round open forever.
+   * Once a body has stayed past the leash — well off screen — for the grace window, it breaks
+   * off and leaves the field: removed out of sight, resolved by the destroyed receipt, never
+   * paid out as a kill. There is no head-count gate: three or five stranded hulls are just
+   * as far off screen as one, and a count gate left exactly those rounds open forever.
    */
   _releaseStragglers() {
     if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
@@ -1502,13 +1503,10 @@ export const survivalWave = {
     if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false || !player.pos) return;
-    const actionable = [];
-    for (const [id, member] of this._cohort.entries()) {
-      if (this._isCohortMemberActionable(id, member)) actionable.push([id, member]);
-      if (actionable.length > SWARM_STRAGGLER_MAX) return;
-    }
     const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
-    for (const [id, member] of actionable) {
+    // Range first (two subtractions), the heavier actionable read only for bodies already past
+    // the leash — the whole cohort is walked each tick now that no head-count gate cuts it short.
+    for (const [id, member] of this._cohort.entries()) {
       if (this._bossIds && this._bossIds.has(id)) continue;
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || !entity.pos) continue;
@@ -1517,6 +1515,7 @@ export const survivalWave = {
       const dx = entity.pos.x - player.pos.x;
       const dz = entity.pos.z - player.pos.z;
       if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
+      if (!this._isCohortMemberActionable(id, member)) continue;
       member.strayTicks = (member.strayTicks || 0) + 1;
       if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
     }

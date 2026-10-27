@@ -52,6 +52,10 @@ const COMPACT_R = 100;
 const EXPAND_SIZE = 290;
 const EXPAND_C = EXPAND_SIZE / 2;
 const EXPAND_R = 141;
+/* Self-mark clearance for the on-dial objective bracket: the player hull's non-rotating centre
+   brackets reach 22 px and the objective bracket reaches 12 px around its point, so below this
+   the two marks overlap (the corridor grammar already goes quiet at 34 px). */
+const OBJECTIVE_SELF_CLEARANCE_PX = 34;
 
 export const SWARM_DENSITY_THRESHOLD = 8;
 
@@ -1155,33 +1159,10 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
   };
 }
 
-function drawObjectiveLabel(g, cue) {
-  if (!cue) return;
-  g.save();
-  g.font = canvasFont(700, 12, 'data');
-  const text = cue.resolved
-    ? `${cue.label}  ${formatRadarDistance(cue.distance)}`
-    : `${cue.label}  ROUTE`;
-  const measured = g.measureText ? g.measureText(text).width : text.length * 7;
-  const placement = placeRadarObjectiveLabel(
-    measured,
-    cue.x,
-    cue.y,
-    cue.metrics.size,
-    cue.metrics.center,
-    cue.metrics.radius,
-  );
-  g.fillStyle = 'rgba(11,13,16,0.95)';
-  g.fillRect(placement.x, placement.y, placement.width, placement.height);
-  g.strokeStyle = 'rgba(217,160,84,0.6)';
-  g.lineWidth = 1;
-  g.strokeRect(placement.x + 0.5, placement.y + 0.5, placement.width - 1, placement.height - 1);
-  g.textAlign = 'left';
-  g.textBaseline = 'middle';
-  g.fillStyle = TACTICAL_MAP_PALETTE.objective;
-  g.fillText(text, placement.x + 5, placement.y + placement.height / 2 + 0.5);
-  g.restore();
-}
+// The old drawObjectiveLabel canvas chip (filled + amber-stroked box beside the bracket) is gone:
+// a bordered rectangle on the dial broke the instrument law, and the rim Hand plus the objective
+// key plate carry the name and distance without it. placeRadarObjectiveLabel stays exported —
+// the label solver is shared grammar.
 
 // Range plate layout is a pure function of (range, expanded, metrics.size). Cache it so
 // settled flight does not re-measureText + lift-search every HUD frame (cpu-profile-flight:
@@ -1432,29 +1413,39 @@ function createRadarFrame(size, center, radius) {
     viewBox: `${-FRAME_PAD} ${-FRAME_PAD} ${size + FRAME_PAD * 2} ${size + FRAME_PAD * 2}`,
     'aria-hidden': 'true',
   });
-  root.appendChild(orrRing({ cx: center, cy: center, r: radius + 1, tone: 'hi', width: 2.4, bloom: 10 }));
+  const rim = orrRing({ cx: center, cy: center, r: radius + 1, tone: 'hi', width: 2.4, bloom: 10 });
+  root.appendChild(rim);
   root.appendChild(orbitRing({ cx: center, cy: center, r: radius + 5, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false }).el);
   root.appendChild(orrSvg('path', {
     d: `M ${center - 4.5} ${center - radius - 13} L ${center} ${center - radius - 19} L ${center + 4.5} ${center - radius - 13}`,
     class: 'orr-core orr-hi', 'stroke-width': 1.2, fill: 'none',
   }));
-  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 8 });
+  const north = orrSvg('text', { x: center, y: center - radius - 22, 'text-anchor': 'middle', 'font-size': 12 });
   north.textContent = 'N';
   root.appendChild(north);
   const objective = orrHand({ cx: center, cy: center, r0: radius - 18, r1: radius + 13, width: 1.5, pip: 4 });
   objective.el.setAttribute('opacity', '0');
   root.appendChild(objective.el);
+  // Hover/focus emphasis: a dashed reach-ring outside the rim — the instrument's way of saying
+  // "the scope reaches further; activate". Never lit at rest, and a plain static stroke either
+  // way, so reduced motion needs no separate path.
+  const hintRing = orrSvg('circle', {
+    cx: center, cy: center, r: radius + 10, class: 'orr-core orr-rest', fill: 'none',
+    'stroke-width': 1, 'stroke-dasharray': '2 5', opacity: 0,
+  });
+  root.appendChild(hintRing);
   let rangeText = null;
   let rangeNode = null;
   let bearingNow = null;
+  let hintNow = false;
   return {
     el: root,
     setRange(text) {
       if (text === rangeText) return;
       rangeText = text;
       if (rangeNode) rangeNode.remove();
-      rangeNode = circularText(center, center, radius + 17, `RANGE  ${text}`.toUpperCase(),
-        { startDeg: 270, size: 7, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
+      rangeNode = circularText(center, center, radius + 19, `RANGE  ${text}`.toUpperCase(),
+        { startDeg: 270, size: 12, className: 'orr-micro orr-micro--hi', anchor: 'middle', upright: true });
       root.appendChild(rangeNode);
     },
     /** bearing in degrees (0 = up, clockwise) or null for no objective */
@@ -1464,6 +1455,13 @@ function createRadarFrame(size, center, radius) {
       if (bearingNow == null) { objective.el.setAttribute('opacity', '1'); objective.pointTo(bearing, { instant: true }); }
       else objective.pointTo(bearing);
       bearingNow = bearing;
+    },
+    /** pointer/keyboard emphasis on the dial: light the reach-ring (idempotent). */
+    setEmphasis(on) {
+      const next = !!on;
+      if (next === hintNow) return;
+      hintNow = next;
+      hintRing.setAttribute('opacity', next ? '0.75' : '0');
     },
     dispose() { objective.dispose(); root.remove(); },
   };
@@ -1539,6 +1537,13 @@ export function createRadar(ctx) {
   dial.className = 'sf-radar';
   dial.title = 'Local tactical radar — click for expanded sensor range';
   dial.style.position = 'relative';
+  // The dial is a control (click: expand / set course), so it takes the full interaction
+  // contract: keyboard reach, pressed state, and an expanded announcement. Hover and
+  // focus-visible light the frame's reach-ring — the authored hover state.
+  dial.setAttribute('role', 'button');
+  dial.setAttribute('tabindex', '0');
+  dial.setAttribute('aria-expanded', 'false');
+  dial.setAttribute('aria-label', 'Local tactical radar. Activate to expand sensor range; with a route set the amber hand marks the objective bearing.');
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
   const canvas = document.createElement('canvas');
@@ -1638,15 +1643,41 @@ export function createRadar(ctx) {
 
   const parityTeardown = installMapParityBridge();
 
+  // Where the wrap lives while expanded. The right dock is overflow:hidden + contain:layout
+  // (hudStyles .sf-rightdock), and layout containment makes a fixed-position descendant's
+  // containing block the dock itself — the moment the wrap goes position:fixed the dock collapses
+  // to 0 height and clips the expanded scope to nothing. While expanded the wrap re-parents to
+  // #hud (full-viewport box, still a #hud descendant, so every #hud-scoped skin rule keeps
+  // applying) and moves home on collapse.
+  let expandedHome = null;
+
   function setExpanded(value) {
     expanded = !!value;
     dial.classList.toggle('sf-radar--expanded', expanded);
     wrap.classList.toggle('sf-radar-wrap--expanded', expanded);
+    dial.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    dial.setAttribute('aria-label', expanded
+      ? 'Local tactical radar, expanded. Activate to collapse to the flight dial.'
+      : 'Local tactical radar. Activate to expand sensor range; with a route set the amber hand marks the objective bearing.');
+    if (expanded) {
+      if (!expandedHome) {
+        expandedHome = wrap.parentElement || null;
+        const host = wrap.closest('#hud') || document.body;
+        host.appendChild(wrap);
+      }
+    } else if (expandedHome && wrap.parentElement !== expandedHome) {
+      expandedHome.appendChild(wrap);
+      expandedHome = null;
+    }
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     wrap.style.cssText = expanded
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
+    // Resizing a canvas clears its bitmap, and the background plate only blits inside draw() —
+    // without a repaint here the scope sits blank until the next HUD frame (a visible flash on
+    // the live route, a permanent blank on a still page). One draw settles the new size.
+    draw();
   }
 
   const onDialClick = (ev) => {
@@ -1669,6 +1700,20 @@ export function createRadar(ctx) {
     setExpanded(!expanded);
   };
   dial.addEventListener('click', onDialClick);
+  dial.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
+    ev.preventDefault();
+    setExpanded(!expanded);
+  });
+  // Authored hover/focus states: the frame lights its reach-ring. focus-visible is matched so
+  // mouse activation never flashes the ring — keyboard arrival does.
+  const dialEmphasis = (on) => { if (frame) frame.setEmphasis(on); };
+  dial.addEventListener('mouseenter', () => dialEmphasis(true));
+  dial.addEventListener('mouseleave', () => dialEmphasis(false));
+  dial.addEventListener('focus', () => {
+    try { dialEmphasis(dial.matches(':focus-visible')); } catch (_) { dialEmphasis(true); }
+  });
+  dial.addEventListener('blur', () => dialEmphasis(false));
 
   let contactList = [];
   let asteroidList = [];
@@ -1927,9 +1972,10 @@ export function createRadar(ctx) {
     if (waypoint) {
       const label = waypointLabel(waypoint);
       const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
-      // The diamond alone keys the objective: the corner-bracket glyphs meant to picture the
-      // scope's four-corner bracket rendered as stray marks at caption size.
-      const nextText = `◆  OBJECTIVE  ${distance}  ·  ${label}`;
+      // The diamond alone keys the objective (the amber Hand on the rim points the same bearing),
+      // so the plate leads with the NAME — the thing a pilot scans for — then the distance. The
+      // old "OBJECTIVE 457 WU · BEACON" buried the name and wrapped past the dial's width.
+      const nextText = `◆ ${label} · ${distance}`;
       if (objectiveReadout.textContent !== nextText) objectiveReadout.textContent = nextText;
       objectiveKey.title = `The amber diamond marks your objective (${label}). ${distance}.`;
       setObjectiveKeyMode('objective');
@@ -2005,12 +2051,13 @@ export function createRadar(ctx) {
     g.lineWidth = 1;
     // Graduated two-tone: a major dash plus a minor tick riding each gap, the instrument-grammar
     // way of making the engagement ring read as a measurement rather than a decorative circle.
-    g.strokeStyle = 'rgba(242,185,80,0.15)';
+    // Amber routed through the shared objective lamp so the dial carries exactly one amber.
+    g.strokeStyle = `rgba(${glowRgbOf(TACTICAL_MAP_PALETTE.objective)},0.15)`;
     g.setLineDash([3, 4]);
     g.beginPath();
     g.arc(center, center, weaponRingRadius, 0, Math.PI * 2);
     g.stroke();
-    g.strokeStyle = 'rgba(242,185,80,0.07)';
+    g.strokeStyle = `rgba(${glowRgbOf(TACTICAL_MAP_PALETTE.objective)},0.07)`;
     g.setLineDash([1, 6]);
     g.lineDashOffset = 4.5;
     g.stroke();
@@ -2179,6 +2226,12 @@ export function createRadar(ctx) {
       }
     }
 
+    // Self is the bracketed filled hull at the centre — painted BEFORE the contact passes, so a
+    // contact sitting on top of you (a hostile at 100 WU reads as zero separation on the dial)
+    // bleeds over the hull instead of vanishing under it. A YOU caption under it collided with
+    // the nearest contacts at every radar size, so the scope draws none.
+    drawPlayerHull(g, center, center, player.rot, { label: false });
+
     // Paint trails + neutral glyphs from retained marks (live colour / pulse).
     for (let i = 0; i < hostileMarks.length; i += 1) {
       const mark = hostileMarks[i];
@@ -2206,7 +2259,7 @@ export function createRadar(ctx) {
         const beaconPath = glyphPathFor('beacon');
         g.save();
         g.globalAlpha = 0.7 + 0.3 * pulse;
-        g.fillStyle = '#ffd98c';
+        g.fillStyle = TACTICAL_MAP_PALETTE.objective;
         g.translate(x, y);
         if (!reducedMotion) g.rotate((now * 0.0008) % (Math.PI * 2));
         if (beaconPath) {
@@ -2321,7 +2374,7 @@ export function createRadar(ctx) {
       g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.strokeStyle = '#ffd24a';
+      g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
       g.lineWidth = 1;
       const pulse = reducedMotion ? 0.7 : 0.5 + 0.5 * Math.sin(now * 0.015);
       g.globalAlpha = 0.5 + 0.5 * pulse;
@@ -2357,7 +2410,8 @@ export function createRadar(ctx) {
           const leadPoint = projectRadarPoint(player.pos, lead.aimPoint, range, metrics, projectScratch);
           if (leadPoint) {
             g.save();
-            g.strokeStyle = 'rgba(255,220,90,0.92)';
+            g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
+            g.globalAlpha = 0.92;
             g.lineWidth = 1.2;
             g.beginPath();
             g.moveTo(leadPoint.x - 3.5, leadPoint.y);
@@ -2414,10 +2468,21 @@ export function createRadar(ctx) {
 
     drawObjectiveCorridor(g, cue);
     if (cue) {
-      drawGlow(g, cue.x, cue.y, cue.offRange ? 13 : 18, GLOW_RGB.objective, 0.45 + (reducedMotion ? 0 : 0.15 * Math.sin(now * 0.0042)));
-      if (cue.offRange) drawWaypointEdgeArrow(g, cue, now, reducedMotion);
-      else drawWaypointDiamond(g, cue, now, reducedMotion);
-      if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
+      // The self mark owns the centre: its hull plus non-rotating brackets reach 22 px, and the
+      // objective bracket's own corners + backing plate reach 12 px around its point. Inside
+      // 34 px the two marks fuse into one unreadable knot (and the plate disc bites the hull),
+      // so the dial hands the job to the amber Hand on the rim and the objective key plate —
+      // both of which already name the bearing and the distance. Off-range cues pin to the rim
+      // and always draw.
+      const bracketClear = cue.offRange || cue.markerDistancePx >= OBJECTIVE_SELF_CLEARANCE_PX;
+      if (bracketClear) {
+        drawGlow(g, cue.x, cue.y, cue.offRange ? 13 : 18, GLOW_RGB.objective, 0.45 + (reducedMotion ? 0 : 0.15 * Math.sin(now * 0.0042)));
+        if (cue.offRange) drawWaypointEdgeArrow(g, cue, now, reducedMotion);
+        else drawWaypointDiamond(g, cue, now, reducedMotion);
+      }
+      // The old expanded-dial objective label was a canvas chip (fill + amber stroke box) — a
+      // bordered rectangle, which the instrument law bans. The rim Hand plus the key plate
+      // ("◆ BEACON · 457 WU") carry the name and distance in every mode now.
     }
     updateObjectiveKey(cueOwner, cue);
     if (frame) {
@@ -2432,8 +2497,8 @@ export function createRadar(ctx) {
       const beaconPulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.006);
       const beaconGlyph = glyphPathFor('beacon');
       g.save();
-      g.strokeStyle = '#ffd24a';
-      g.fillStyle = '#ffd24a';
+      g.strokeStyle = TACTICAL_MAP_PALETTE.objective;
+      g.fillStyle = TACTICAL_MAP_PALETTE.objective;
       g.lineWidth = 1.2;
       for (const beacon of beacons) {
         if (!beacon || beacon.alive === false) continue;
@@ -2469,9 +2534,6 @@ export function createRadar(ctx) {
       g.restore();
     }
 
-    // Self is the bracketed filled hull at the centre; a YOU caption under it collided with the
-    // nearest contacts at every radar size, so the scope draws none.
-    drawPlayerHull(g, center, center, player.rot, { label: false });
     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
     if (frame) frame.setRange(formatRadarDistance(range));
     else drawRangePlate(g, metrics, range, expanded);

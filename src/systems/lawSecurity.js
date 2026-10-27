@@ -1,3 +1,4 @@
+import { massDiscrepancy } from './cargoCustody.js';
 // lawSecurity.js — jurisdiction, motive, and response authority for live space.
 //
 // This system closes the gap between the tactical AI's final fire gate and authored encounter
@@ -1884,6 +1885,14 @@ export const lawSecurity = {
       // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
       // authored slot: a late, stacked response beats none, and crime must never go unanswered.
       spec.pos = clearPos || pos;
+      // D207: sector ownership rides the body — an unstamped reserve roams untagged past residency
+      // teardown, and the durable kill/capture chain (worldRecords ambient-ship lane) needs it too.
+      const homeSectorId = station?.data?.sectorId || station?.sectorId || currentSectorId(state);
+      if (homeSectorId) {
+        spec.homeSectorId = homeSectorId;
+        spec.data.homeSectorId = homeSectorId;
+        if (spec.data.sectorId == null) spec.data.sectorId = homeSectorId;
+      }
       let spawned;
       try {
         spawned = this.helpers.spawnEntity(spec);
@@ -3615,43 +3624,47 @@ export const lawSecurity = {
    */
   _fileMassSlipsAt(stationId) {
     const state = this.state;
-    const ms = state && state.economyContracts && state.economyContracts.massScale;
-    if (!ms || !ms.slips || typeof ms.slips !== 'object' || !stationId) return;
+    if (!state || !stationId || state.playerId == null || this._filingMassSlip) return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    const ms = state.economyContracts?.massScale;
+    if (!ms?.slips || typeof ms.slips !== 'object' || Array.isArray(ms.slips)) return;
     const outcomes = {
       weight_audit: { outcome: 'mass_discrepancy_filed', statusText: 'WEIGHT SLIP FILED', stationId: 'station_helios' },
       carrier_frame: { outcome: 'mass_frame_disputed', statusText: 'ISSUER DISPUTED', stationId: 'station_ceres' },
     };
-    const slip = Object.keys(ms.slips).map((k) => ms.slips[k])
-      .filter((s) => s && outcomes[s.kind]
-        && String(outcomes[s.kind].stationId) === String(stationId)
-        && String(s.issuingStationId) === String(stationId)
-        && !(s.filedAtStations && s.filedAtStations[stationId]))
-      .sort((a, b) => {
-        const ta = Number.isFinite(Number(a.weighedTick)) ? Number(a.weighedTick) : Infinity;
-        const tb = Number.isFinite(Number(b.weighedTick)) ? Number(b.weighedTick) : Infinity;
-        return ta - tb || String(a.slipId).localeCompare(String(b.slipId));
-      })[0];
+    const slip = Object.keys(ms.slips).filter(key => {
+      const row = ms.slips[key], spec = row && outcomes[row.kind];
+      return spec && spec.stationId === stationId && row.issuingStationId === stationId
+        && row.slipId === key && typeof row.sourceOfferId === 'string' && row.sourceOfferId
+        && typeof row.missionId === 'string' && row.missionId
+        && Number.isSafeInteger(row.targetSlot) && row.targetSlot >= 0
+        && key === `mass-slip:${row.sourceOfferId}:${row.targetSlot}`
+        && typeof row.issuer === 'string' && row.issuer
+        && massDiscrepancy(row.declaredMassT, row.measuredMassT)?.discrepant
+        && !row.filedAtStations?.[stationId];
+    }).map(key => ms.slips[key]).sort((a, b) => {
+      const ta = Number.isFinite(Number(a.weighedTick)) ? Number(a.weighedTick) : Infinity;
+      const tb = Number.isFinite(Number(b.weighedTick)) ? Number(b.weighedTick) : Infinity;
+      return ta - tb || String(a.slipId).localeCompare(String(b.slipId));
+    })[0];
     if (!slip) return;
     const spec = outcomes[slip.kind];
     const text = slip.kind === 'carrier_frame'
-      ? `WEIGHT SLIP — ${slip.issuer || 'the issuer'} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. The issuer's declaration is disputed, not the carrier's papers.`
-      : `WEIGHT SLIP — ${slip.issuer || 'the issuer'} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. Manifest discrepancy filed with customs.`;
-    this._recordReceipt({
-      cause: 'mass_manifest',
-      outcome: spec.outcome,
-      attackerId: null, targetId: state.playerId,
-      stationId,
-      statusText: spec.statusText,
-      text,
-    });
-    // The toast feed is invisible while docked (hud is transparent under ui-modal-open and
-    // the card expires unseen) — the filing instead rides the acknowledgment payload so the
-    // mass-scale owner can re-present it on the first flight frame after undocking. The law
-    // receipt above stays the dock-side record.
-    this._emit('customs:massSlipFiled', {
-      slipId: slip.slipId, stationId, outcome: spec.outcome,
-      text, statusText: spec.statusText,
-    });
+      ? `WEIGHT SLIP — ${slip.issuer} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. The issuer's declaration is disputed, not the carrier's papers.`
+      : `WEIGHT SLIP — ${slip.issuer} declared ${slip.declaredMassT} t; the tether scale read ${slip.measuredMassT} t. Manifest discrepancy filed with customs.`;
+    this._filingMassSlip = true;
+    try {
+      // The evidence owner files first. A refused notification cannot become a law-card success.
+      this._emit('customs:massSlipFiled', { slipId: slip.slipId, stationId,
+        outcome: spec.outcome, text, statusText: spec.statusText });
+      const kept = state.economyContracts?.massScale?.slips?.[slip.slipId];
+      if (kept?.filedAtStations?.[stationId]?.outcome !== spec.outcome
+          || kept.missionId !== slip.missionId || kept.sourceOfferId !== slip.sourceOfferId
+          || kept.declaredMassT !== slip.declaredMassT || kept.measuredMassT !== slip.measuredMassT) return;
+      this._recordReceipt({ cause: 'mass_manifest', outcome: spec.outcome,
+        attackerId: null, targetId: state.playerId, stationId, slipId: slip.slipId,
+        statusText: spec.statusText, text });
+    } finally { this._filingMassSlip = false; }
   },
 
   // LAW-12: remember an actual clean read, never just a submit click or a missed contraband roll.

@@ -80,5 +80,7 @@ test('ordinary pickups are their category\'s authored solid: one glowing mesh, n
   assert.equal(root.userData.visualLanguage, undefined);
   assert.equal(root.userData.pickupShape, 'refined', 'refined metals read as the ingot stack (GFX-16 pickup kit)');
   assert.equal(root.userData.gem?.geometry?.type, 'BufferGeometry');
-  assert.deepEqual(ordinaryMeshes.map((mesh) => mesh.geometry?.type), ['BufferGeometry']);
+  // fb541110ece added the collectible beacon ring (pickup:halo torus) so takeable cargo
+  // answers light — the authored solid is now body + halo.
+  assert.deepEqual(ordinaryMeshes.map((mesh) => mesh.geometry?.type), ['BufferGeometry', 'TorusGeometry']);
 });

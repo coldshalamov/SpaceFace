@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6e2f85eb409800bcc6ed85b2ee6c032d09ec3153d56326e0768297b62dbc5401",
+  "contentHash": "cd6b4acf6353e9fc7e970034ee5299620b8c68b013afb312d6d085316be754ee",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.143462896347046,
-          5.349898815155029,
+          3.1434629117252513,
+          5.349898742807975,
           3.1499998569488525
         ],
         "min": [
-          -3.143462657928467,
-          4.400101661682129,
+          -3.143462673306672,
+          4.4001017340291835,
           -3.1499998569488525
         ]
       },
       "drawMode": 4,
-      "geometryHash": "31da3fbbc6c868bd5ea9dbd66d1759d73700fa9b8a13325db74d20f690bc16b9",
+      "geometryHash": "9a9fd5ec7940d5875596ce63a46fb9e01039cbc799588952ed88a9a4dca94ad0",
       "id": "sf.render.observation-blister.mesh.balcony.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -85,17 +85,17 @@
       "bounds": {
         "max": [
           1.600000023841858,
-          0.800061047077179,
+          0.8000610489407904,
           1.600000023841858
         ],
         "min": [
           -1.600000023841858,
-          -0.00006103515625,
+          -0.00006103701986154286,
           -1.600000023841858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "843f049447a5fa4723d6b840d240e5d7c5491084c74704df55f655d96b9ed873",
+      "geometryHash": "8be07c0920ec731367432806edeac2f53911f01d7e843a8a395a74b982f4e68b",
       "id": "sf.render.observation-blister.mesh.base.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -110,17 +110,17 @@
       "bounds": {
         "max": [
           2.5500004291534424,
-          7.450000762939453,
+          7.450000882148743,
           2.5500004291534424
         ],
         "min": [
           -2.5500011444091797,
-          2.34999942779541,
+          2.3499993085861206,
           -2.5500011444091797
         ]
       },
       "drawMode": 4,
-      "geometryHash": "991f37cc4add64826475142ffb8800e9373723bd789ec2d1361c84147ab2b42d",
+      "geometryHash": "08ba1dfcc72c57ff964a92b72d8f1254777727657b80a524ad22b4511181b4f7",
       "id": "sf.render.observation-blister.mesh.dome.primitive.0",
       "indexCount": 1320,
       "indexed": true,
@@ -135,21 +135,21 @@
       "bounds": {
         "max": [
           2.569999933242798,
-          5.074944496154785,
+          5.074944507694806,
           2.569999933242798
         ],
         "min": [
           -2.569999933242798,
-          4.625055313110352,
+          4.625055301570331,
           -2.569999933242798
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f154b65db832c9432b76897cf6f5c22aaafd8ae2069a7f14987000a01cfd7aa6",
+      "geometryHash": "0e89f802ceee69e22b02bb3b7b8e0ae32a3295a9c7a691571ce9afbd998913aa",
       "id": "sf.render.observation-blister.mesh.glow-band.primitive.0",
       "indexCount": 228,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.observation-blister.mesh.glow-band",
@@ -159,22 +159,22 @@
     {
       "bounds": {
         "max": [
-          1.9697256088256836,
-          4.524953365325928,
+          1.9697256385998108,
+          4.5249532685381855,
           2
         ],
         "min": [
-          -1.9697256088256836,
-          4.375046253204346,
+          -1.9697256385998108,
+          4.375046349992088,
           -2
         ]
       },
       "drawMode": 4,
-      "geometryHash": "484aff0e7d2c4f88b579c04e8c6498fb0856386f22ff185a5e2b5cbef8669228",
+      "geometryHash": "6e84d3c4d2e816d9b001c20e9c5f988aaa3b190053dd3f77935ae144dd3a9d4d",
       "id": "sf.render.observation-blister.mesh.glow.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.022",
       "nodeId": "sf.render.observation-blister.mesh.glow",
@@ -184,22 +184,22 @@
     {
       "bounds": {
         "max": [
-          0.1331467628479004,
-          7.739999771118164,
+          0.13314676407893902,
+          7.739999905228615,
           0.14000000059604645
         ],
         "min": [
-          -0.1331467628479004,
-          7.460000038146973,
+          -0.13314676407893902,
+          7.459999904036522,
           -0.14000000059604645
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2e15416e7db7a8210ecca9387b95cc4798eff153127ed4ba747a21c7c49b70e",
+      "geometryHash": "40c35818bcbd99f09ec00025f2e002aab740b12279d6339c6f290cb8e4117e15",
       "id": "sf.render.observation-blister.mesh.nav.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.003",
       "nodeId": "sf.render.observation-blister.mesh.nav",
@@ -210,17 +210,17 @@
       "bounds": {
         "max": [
           2.9000000953674316,
-          4.400018215179443,
+          4.400018126948488,
           2.9000000953674316
         ],
         "min": [
           -2.9000000953674316,
-          3.99998140335083,
+          3.9999814915817846,
           -2.9000000953674316
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c59b52b40c6aff44022c28062105505f64248d39044242a7877307ffde878234",
+      "geometryHash": "050e566cdd6c0a5160ad1f8ad4017c372e098aba200566e5872085e091da609f",
       "id": "sf.render.observation-blister.mesh.ring.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -234,18 +234,18 @@
     {
       "bounds": {
         "max": [
-          1.0999358892440796,
+          1.099935886544617,
           4,
-          1.0999358892440796
+          1.099935886544617
         ],
         "min": [
-          -1.0999358892440796,
+          -1.099935886544617,
           0.8000000715255737,
-          -1.0999358892440796
+          -1.099935886544617
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4d25fc738b5cde676b6fa065c5e5eb5233d66bab6bd219cbb1a0f44841cc89d6",
+      "geometryHash": "62f387eec94f45e5f5a80ea79d160d95fcedf4504c50c9bcf9dfd2c05d7eacb1",
       "id": "sf.render.observation-blister.mesh.stalk.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -262,16 +262,16 @@
   "lods": [],
   "materials": [
     {
-      "hash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
-      "id": "material:12fb5c7a19cd2d7af38baeab",
-      "name": "esk_light_cabin",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "id": "material:143624083cd581b0939afdce",
       "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
+      "id": "material:1bf5cc68ef723c852f79aebc",
+      "name": "esk_light_cabin",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -290,10 +290,10 @@
       "textures": []
     },
     {
-      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
-      "id": "material:a090cc581cc4edd9c4d71310",
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
       "name": "esk_light_nav_green",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -308,20 +308,20 @@
     {
       "id": "sf.render.observation-blister.mesh.balcony",
       "localTransform": [
-        1,
+        3.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        3.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        3.1499998569488525,
         0,
-        0,
-        0,
+        1.1920928955078125e-7,
+        4.875000238418579,
         0,
         1
       ],
@@ -336,20 +336,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        3.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        3.1499998569488525,
         0,
         0,
         0,
         0,
-        1,
+        3.1499998569488525,
         0,
-        0,
-        0,
+        1.1920928955078125e-7,
+        4.875000238418579,
         0,
         1
       ]
@@ -357,20 +357,20 @@
     {
       "id": "sf.render.observation-blister.mesh.base",
       "localTransform": [
-        1,
+        1.600000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.600000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.600000023841858,
         0,
         0,
-        0,
+        0.4000000059604645,
         0,
         1
       ],
@@ -385,20 +385,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        1.600000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.600000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.600000023841858,
         0,
         0,
-        0,
+        0.4000000059604645,
         0,
         1
       ]
@@ -406,21 +406,21 @@
     {
       "id": "sf.render.observation-blister.mesh.dome",
       "localTransform": [
-        1,
+        2.550000786781311,
         0,
         0,
         0,
         0,
-        1,
+        2.550000786781311,
         0,
         0,
         0,
         0,
-        1,
+        2.550000786781311,
         0,
-        0,
-        0,
-        0,
+        -3.5762786865234375e-7,
+        4.900000095367432,
+        -3.5762786865234375e-7,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -434,41 +434,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        2.550000786781311,
         0,
         0,
         0,
         0,
-        1,
+        2.550000786781311,
         0,
         0,
         0,
         0,
-        1,
+        2.550000786781311,
         0,
-        0,
-        0,
-        0,
+        -3.5762786865234375e-7,
+        4.900000095367432,
+        -3.5762786865234375e-7,
         1
       ]
     },
     {
       "id": "sf.render.observation-blister.mesh.glow",
       "localTransform": [
-        1,
+        2,
         0,
         0,
         0,
         0,
-        1,
+        2,
         0,
         0,
         0,
         0,
-        1,
+        2,
         0,
         0,
-        0,
+        4.449999809265137,
         0,
         1
       ],
@@ -483,20 +483,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        2,
         0,
         0,
         0,
         0,
-        1,
+        2,
         0,
         0,
         0,
         0,
-        1,
+        2,
         0,
         0,
-        0,
+        4.449999809265137,
         0,
         1
       ]
@@ -504,20 +504,20 @@
     {
       "id": "sf.render.observation-blister.mesh.glow-band",
       "localTransform": [
-        1,
+        2.569999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.569999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.569999933242798,
         0,
         0,
-        0,
+        4.849999904632568,
         0,
         1
       ],
@@ -532,20 +532,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        2.569999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.569999933242798,
         0,
         0,
         0,
         0,
-        1,
+        2.569999933242798,
         0,
         0,
-        0,
+        4.849999904632568,
         0,
         1
       ]
@@ -553,20 +553,20 @@
     {
       "id": "sf.render.observation-blister.mesh.nav",
       "localTransform": [
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
-        0,
+        7.599999904632568,
         0,
         1
       ],
@@ -581,20 +581,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.14000000059604645,
         0,
         0,
-        0,
+        7.599999904632568,
         0,
         1
       ]
@@ -602,20 +602,20 @@
     {
       "id": "sf.render.observation-blister.mesh.ring",
       "localTransform": [
-        1,
+        2.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        2.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        2.9000000953674316,
         0,
         0,
-        0,
+        4.199999809265137,
         0,
         1
       ],
@@ -630,20 +630,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        2.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        2.9000000953674316,
         0,
         0,
         0,
         0,
-        1,
+        2.9000000953674316,
         0,
         0,
-        0,
+        4.199999809265137,
         0,
         1
       ]
@@ -651,20 +651,20 @@
     {
       "id": "sf.render.observation-blister.mesh.stalk",
       "localTransform": [
-        1,
+        1.5999999642372131,
         0,
         0,
         0,
         0,
-        1,
+        1.5999999642372131,
         0,
         0,
         0,
         0,
-        1,
+        1.5999999642372131,
         0,
         0,
-        0,
+        2.400000035762787,
         0,
         1
       ],
@@ -679,20 +679,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.observation-blister.body",
       "worldTransform": [
-        1,
+        1.5999999642372131,
         0,
         0,
         0,
         0,
-        1,
+        1.5999999642372131,
         0,
         0,
         0,
         0,
-        1,
+        1.5999999642372131,
         0,
         0,
-        0,
+        2.400000035762787,
         0,
         1
       ]
@@ -756,36 +756,36 @@
       "uri": "place_observation_blister.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 36168,
-    "sha256": "06c40384a9765d076cafbb107756ac968530143d4330b78e5c406c1c3c70cec3",
+    "bytes": 24620,
+    "sha256": "eb8e9e3a891cf5415270e9b801bf5af758e0761e183b9dae67ac73066be011ad",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         1.1920928955078125e-7,
-        3.869969367980957,
+        3.8699694341043767,
         0
       ],
       "max": [
-        3.143462896347046,
-        7.739999771118164,
+        3.1434629117252513,
+        7.739999905228615,
         3.1499998569488525
       ],
       "min": [
-        -3.143462657928467,
-        -0.00006103515625,
+        -3.143462673306672,
+        -0.00006103701986154286,
         -3.1499998569488525
       ],
       "size": [
-        6.286925554275513,
-        7.740060806274414,
+        6.2869255850319234,
+        7.740060942248476,
         6.299999713897705
       ]
     },
@@ -882,20 +882,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          3.1499998569488525,
           0,
           0,
           0,
           0,
-          1,
+          3.1499998569488525,
           0,
-          0,
-          0,
+          1.1920928955078125e-7,
+          4.875000238418579,
           0,
           1
         ],
@@ -909,20 +909,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.600000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.600000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.600000023841858,
           0,
           0,
-          0,
+          0.4000000059604645,
           0,
           1
         ],
@@ -936,21 +936,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.550000786781311,
           0,
           0,
           0,
           0,
-          1,
+          2.550000786781311,
           0,
           0,
           0,
           0,
-          1,
+          2.550000786781311,
           0,
-          0,
-          0,
-          0,
+          -3.5762786865234375e-7,
+          4.900000095367432,
+          -3.5762786865234375e-7,
           1
         ],
         "name": "dome",
@@ -963,20 +963,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2,
           0,
           0,
           0,
           0,
-          1,
+          2,
           0,
           0,
           0,
           0,
-          1,
+          2,
           0,
           0,
-          0,
+          4.449999809265137,
           0,
           1
         ],
@@ -990,20 +990,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.569999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.569999933242798,
           0,
           0,
           0,
           0,
-          1,
+          2.569999933242798,
           0,
           0,
-          0,
+          4.849999904632568,
           0,
           1
         ],
@@ -1017,20 +1017,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.14000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.14000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.14000000059604645,
           0,
           0,
-          0,
+          7.599999904632568,
           0,
           1
         ],
@@ -1044,20 +1044,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          2.9000000953674316,
           0,
           0,
           0,
           0,
-          1,
+          2.9000000953674316,
           0,
           0,
-          0,
+          4.199999809265137,
           0,
           1
         ],
@@ -1071,20 +1071,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5999999642372131,
           0,
           0,
           0,
           0,
-          1,
+          1.5999999642372131,
           0,
           0,
           0,
           0,
-          1,
+          1.5999999642372131,
           0,
           0,
-          0,
+          2.400000035762787,
           0,
           1
         ],
@@ -1100,19 +1100,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "e070043abcb262ace8a57534cea3299e6ae4db24861ba14000b72f6666a05d91",
+  "runtimeHash": "8cb2507fc9064a74fc8b063028d2933c453a788e555304a79eeb7378205a2294",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.143462896347046,
-          7.739999771118164,
+          3.1434629117252513,
+          7.739999905228615,
           3.1499998569488525
         ],
         "min": [
-          -3.143462657928467,
-          -0.00006103515625,
+          -3.143462673306672,
+          -0.00006103701986154286,
           -3.1499998569488525
         ]
       },

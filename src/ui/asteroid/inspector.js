@@ -15,6 +15,7 @@
 //   - no tutorial copy. It prints once elsewhere (the announcer), never here.
 //   - the card is pointer-transparent, so it can never steal the hover that created it.
 import { SITE_MACHINE_BY_ID } from '../../data/sites.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { arcGauge } from '../orrery/instruments.js';
 import { injectOrrery } from '../orrery/tokens.js';
@@ -26,7 +27,7 @@ const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
 export function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
-  return (c && c.name) || String(id || '').replace(/^cmdty_/, '').replace(/_/g, ' ');
+  return (c && c.name) || (id ? commodityDisplayName(id) : '');
 }
 
 /**

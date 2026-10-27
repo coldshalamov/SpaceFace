@@ -14,6 +14,7 @@
 // Export: missionLogScreen  (id 'missionLog').
 
 import { SECTORS } from '../../data/sectors.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { starterRamSentence } from '../../data/starterJobs.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { confirm } from '../confirm.js';
@@ -46,6 +47,7 @@ import {
 import { el, rows, hero, settle, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
+import { injectMissionLogLayouts } from '../orrery/mission-logLayouts.js';
 import { missionDialSvg, missionDialGhostSvg, createLadderHand, archiveZoom } from '../orrery/archiveInstruments.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { createSpring } from '../orrery/motion.js';
@@ -331,8 +333,7 @@ function getManager(ctx) {
 }
 
 function cmdtyName(id) {
-  const c = CMDTY_BY_ID.get(id);
-  return c ? c.name : (id || 'cargo').replace('cmdty_', '').replace(/_/g, ' ');
+  return id ? commodityDisplayName(id) : 'cargo';
 }
 
 function prettyType(t) {
@@ -371,7 +372,8 @@ function fmtTime(s) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
-  if (h >= 1) return h + 'h ' + m + 'm';
+  // A whole-hour span reads "2h", not "2h 0m" ("1h 30m left of 2h" — the zero tail said nothing).
+  if (h >= 1) return m > 0 ? h + 'h ' + m + 'm' : h + 'h';
   if (m >= 1) return m + 'm ' + sec + 's';
   return sec + 's';
 }
@@ -1714,7 +1716,7 @@ function postEndingStoryAction(state) {
     });
     return {
       tone: 'primary',
-      label: 'AFTER 47-A',
+      label: 'EPILOGUE',
       title: 'Choose the consequence you will carry',
       body: `${chain.choicePrompt} ${options.join(' · ')}. Dock at either board to commit.`,
       meta: 'TWO ROUTES · ONE PERSISTENT OUTCOME',
@@ -1739,7 +1741,7 @@ function postEndingStoryAction(state) {
         : 'Next route';
     return {
       tone: run && run.status === 'recovering' ? 'warn' : 'primary',
-      label: 'AFTER 47-A',
+      label: 'EPILOGUE',
       title: descriptor.stage.title || chain.title,
       body: `${descriptor.stage.instruction} ${stateLabel}: dock at ${station ? station.name : stationId} and open Missions.`,
       meta: `${chain.title.toUpperCase()} · ${(Number(run && run.stageIndex) || 0) + 1}/3`,
@@ -1832,7 +1834,7 @@ export function storyActionForBeat(beat, state) {
         tone: 'primary',
         label: 'STORY',
         title: 'Follow the anomaly',
-        body: 'Mine the 47-A signal, then dock at Helios before the manifest rolls over.',
+        body: 'Mine the anomalous ore deposit, then dock at Helios Station.',
         meta: 'Mining',
       };
     case 1:
@@ -2167,6 +2169,7 @@ export const missionLogScreen = {
 
     injectDeckplate();
     injectArchiveLayouts();
+    injectMissionLogLayouts();
     this._ctx = ctx;
     this._rootEl = rootEl;
     if (this._hand) { try { this._hand.dispose(); } catch (_) { /* detached */ } }

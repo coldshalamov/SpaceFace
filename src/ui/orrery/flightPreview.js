@@ -3,8 +3,8 @@
 // The bench mounts it as `--shot=orrery-flight`; the live HUD adopts the same instruments in Phase 1.
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
-import { POWER_SLOT, RAIL_SLOTS, railSlotTip, slotDescription } from '../powerRail.js';
-import { buildOrdnanceGroups } from './hudAdapter.js';
+import { RAIL_SLOTS, SUPPORT_SLOTS } from '../powerRail.js';
+import { buildOrdnanceGroups, readOrdnanceModel } from './hudAdapter.js';
 import { PILOT_BINDINGS } from '../../systems/input.js';
 import { mountWhyReveal } from '../whyReveal.js';
 import {
@@ -91,8 +91,28 @@ const box = (cls) => {
 // The preview's ordnance shelf IS the live HUD's rank: the same adapter (hudAdapter.buildOrdnanceGroups)
 // builds it from the shipped Pilot keys, so the bench cannot drift from the game — the drive lamp, the
 // five powers on 1–5 (owner 2026-10-22) and the Line, each explained by the one tip bank (powerRail.js).
-const tipFor = (id, name, keys, why) => railSlotTip({ name, keys, description: slotDescription(id), why });
-const PREVIEW_BINDINGS = Object.freeze(Object.fromEntries(RAIL_SLOTS.map((s) => [s.action, PILOT_BINDINGS[s.action] || []])));
+const PREVIEW_BINDINGS = Object.freeze(Object.fromEntries([...RAIL_SLOTS, ...SUPPORT_SLOTS].map((s) => [s.action, PILOT_BINDINGS[s.action] || []])));
+
+// The preview's ordnance is the live adapter's own read of a fixture GameState (the 47-A opening, a
+// charge aboard, two armed, the Gyre holding a ball, a cloak fitted), so the bench cannot show words the
+// game would not say. Cooldown and armed values are simulated through the same fields the rail reads.
+export function previewOrdnanceState() {
+  const hull = { id: 1, alive: true, type: 'ship', cap: 80, capMax: 100, pos: { x: 0, z: 0 }, flags: {}, data: { impulseCharges: { throwCdT: 0 } } };
+  const armedCharges = [1, 2].map((n) => ({ id: 10 + n, alive: true, type: 'charge', data: { ownerId: 1, armed: true } }));
+  return {
+    mode: 'flight', playerId: 1, simTime: 100, tick: 6000,
+    entities: new Map([[1, hull]]), entityList: [hull, ...armedCharges],
+    settings: {}, runtime: { features: { massline2: { enabled: true, cloak: true } } },
+    player: {
+      cargo: { items: { cmdty_impulse_charge: 3 } }, massSeed: { cooldownUntil: 0 }, tether: { active: true },
+      activeShipIndex: 0, ownedShips: [{ fittings: ['wpn_pulse_laser_s', 'mod_cloak_mk1'] }],
+    },
+    fields: { cooldowns: { well: 100.8 }, coneActive: false },
+    gyreSnare: { phase: 'holding', liveBalls: 0 },
+    massline2: { cloak: { available: true, active: false, energy: 0.8, radius: 320, baseRadius: 320 } },
+    bombs: { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 4 }] } },
+  };
+}
 
 export const ORDNANCE_LAYOUT = Object.freeze(buildOrdnanceGroups(PREVIEW_BINDINGS));
 
@@ -135,15 +155,7 @@ export const orreryFlightScreen = {
       hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armor: 20, armorMax: 30,
       energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, speedMax: 405, boost: 0.7, drift: 24,
       tether: { state: 'Payload', mass: 960, strain: 0.62 },
-      ordnance: {
-        0: { state: 'ready', tip: tipFor(0, 'Burn', 'F8 · Num Lock', 'Drive latched off') },
-        [POWER_SLOT.pull]: { state: 'cooldown', cooldown: 0.3, tip: tipFor(POWER_SLOT.pull, 'Pull', '1', 'Recharging — 2s') },
-        [POWER_SLOT.shove]: { state: 'armed', tip: tipFor(POWER_SLOT.shove, 'Shove', '2 · R', 'Armed — Shove sets them off') },
-        [POWER_SLOT.pin]: { state: 'ready', tip: tipFor(POWER_SLOT.pin, 'Pin', '3', 'Ready') },
-        [POWER_SLOT.bomb]: { state: 'ready', count: 3, consumable: true, arsenalId: 'power_charge', tip: tipFor(POWER_SLOT.bomb, 'Charge ×3', '4 · Y', 'Ready · up to 4') },
-        [POWER_SLOT.rig]: { state: 'ready', tip: tipFor(POWER_SLOT.rig, 'Rig', '5', 'Ready — the clearing cone') },
-        [POWER_SLOT.line]: { state: 'armed', tip: tipFor(POWER_SLOT.line, 'Line', 'Space · F', 'Line is live') },
-      },
+      ordnance: readOrdnanceModel(previewOrdnanceState(), null, PREVIEW_BINDINGS),
     });
     radar.setContacts([
       { x: 0.34, y: -0.42, kind: 'objective' },

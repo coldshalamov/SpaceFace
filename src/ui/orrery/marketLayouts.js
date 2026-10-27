@@ -168,7 +168,9 @@ ${M} .sx-mkt-row .sx-mkt-row__name { position:relative; padding-left:46px !impor
 ${M} .sx-mkt-row .sx-mkt-row__name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* a 2px tick on the rail for every good */
 ${M} .sx-mkt-row .sx-mkt-row__name::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); }
-${M} .sx-mkt-row:is(:hover, :focus-visible):not(.is-active) .sx-mkt-row__name::before { background:rgb(248 244 234) !important; box-shadow:0 0 5px rgb(248 244 234 / .5); }
+${M} .sx-mkt-row:not(.is-active):is(:hover, :focus-visible) .sx-mkt-row__name::before { left:2px !important; width:11px !important; height:2px !important; background:rgb(248 244 234) !important; box-shadow:0 0 8px rgb(${BONE} / .45) !important; }
+${M} .sx-mkt-row:is(:hover, :focus-visible) .sx-mkt-row__name { color:rgb(255 250 240) !important; text-shadow:0 0 10px rgb(255 250 236 / .3); }
+${M} .sx-mkt-row:active:not(.is-active) .sx-mkt-row__name::before { background:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .55) !important; }
 /* the Hand: the shared arm and bead at the chosen good; the one amber at rest */
 ${M} .sx-mkt-row.is-active .sx-mkt-row__name::before { left:31px !important; width:5px !important; height:5px !important; margin-top:-2.5px !important;
   border-radius:50% !important; background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 6px 1px rgb(255 217 140 / .7) !important; }
@@ -186,7 +188,9 @@ ${M} .sx-mkt-row .sx-mkt-row__name > .of-commodity-icon { margin-right:8px !impo
 ${M} .sx-mkt-row.is-active .sx-mkt-row__commodity, ${M} .sx-mkt-row.is-active .sx-mkt-row__name > .of-commodity-icon { color:rgb(250 247 238) !important;
   filter:drop-shadow(0 0 4px rgb(248 244 234 / .55)) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__price { color:rgb(248 244 234) !important; font-weight:620; white-space:nowrap; }
-${M} .sx-mkt-row .sx-mkt-row__tr { font-size:12px !important; margin-left:6px; color:var(--dp-ice, #8fcbff) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr { font-size:12px !important; margin-left:6px; color:rgb(${BONE} / .7) !important; font-variant-numeric:tabular-nums; }
+${M} .sx-mkt-row .sx-mkt-row__tr.is-up { color:rgb(248 244 234) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr.is-down { color:rgb(${BONE} / .55) !important; }
 /* an unmoved price says nothing: the flat 0% keeps its words for readers, off the glass */
 ${M} .sx-mkt-row .sx-mkt-row__tr:is(.is-flat, [aria-label='History unavailable']) { visibility:hidden; }
 ${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .48) !important; }
@@ -303,7 +307,10 @@ ${M} .orr-mkt-tape__run { display:flex !important; width:max-content; animation:
 ${M} .orr-mkt-tape__half { display:inline-flex !important; align-items:baseline; white-space:nowrap; }
 ${M} .orr-mkt-tape__it { ${LABEL} font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; padding:0 4px 0 22px !important; }
 ${M} .orr-mkt-tape__p { ${NUMERAL} color:rgb(248 244 234) !important; letter-spacing:.02em !important; }
-${M} .orr-mkt-tape__t { color:var(--dp-ice, #8fcbff) !important; }
+${M} .orr-mkt-tape__t { color:rgb(${BONE} / .7) !important; }
+${M} .sx-mkt-chain__dock { color:rgb(${BONE} / .72) !important; }
+${M} .sx-mkt-instrument__y { color:rgb(${BONE} / .6) !important; }
+${M} .sx-mkt-instrument__avg { color:rgb(${BONE} / .6) !important; }
 @keyframes orr-mkt-tape { from { transform:translateX(0); } to { transform:translateX(-50%); } }
 ${M} .orr-mkt-tape:hover .orr-mkt-tape__run { animation-play-state:paused; }
 html.sf-reduce-motion ${M} .orr-mkt-tape__run { animation:none; flex-wrap:wrap; width:auto; }
@@ -878,6 +885,13 @@ const CSS_TAIL = `
    the name ~0px. Each good reads on two lines there, its name across the whole register and its
    BUY / SELL / STOCK under it, and the families close up so they take four lines, not seven. */
 @media (max-width:480px) and (min-height:801px) {
+  /* the find stood beside the legend at ~70px ("Find a com", legend on two lines): it takes its
+     own full-width line under the legend instead */
+  ${MD} .sx-mkt-browser { grid-template-rows:auto auto auto minmax(0, 1fr) !important; }
+  ${MD} .sx-mkt-browser__mode { padding-right:0 !important; min-height:0 !important; letter-spacing:.12em !important; white-space:nowrap; flex-wrap:wrap !important; row-gap:2px; }
+  ${MD} .orr-mkt-find { position:relative !important; top:auto; right:auto; grid-column:1; grid-row:2; width:100% !important; }
+  ${MD} .sx-mkt-browser__filters { grid-row:3; }
+  ${MD} .sx-mkt-browser__rail, ${MD} .sx-mkt-browser__empty { grid-row:4; }
   ${MD} .sx-mkt-browser__filters { column-gap:10px !important; }
   ${MD} .sx-mkt-filter { letter-spacing:.04em !important; }
   ${MD} .sx-mkt-table, ${MD} .sx-mkt-table > :is(thead, tbody) { display:block !important; width:100% !important; }

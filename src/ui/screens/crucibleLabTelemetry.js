@@ -9,10 +9,12 @@
 // Spatial-hash queries ship as the always-on cumulative SpatialHash.diagnostics.queries total.
 //
 // The DOM layer is kit rows (styles/kit.css, src/ui/kit/) — Frontend Task D §1.4: static rows at
-// data size, 62 %, no plate. This file owns no CSS. It is an instrument, not a debug dump.
+// data size, 62 %, no plate. The block's own presentation (air, the live tick's weight) lives in
+// the layout home src/ui/orrery/crucible-labLayouts.js. It is an instrument, not a debug dump.
 
 import { isHostileToPlayer } from '../../systems/scanner.js';
-import { el } from '../kit/index.js';
+import { el, stamp } from '../kit/index.js';
+import { injectCrucibleLabLayouts } from '../orrery/crucible-labLayouts.js';
 
 export const CRUCIBLE_LAB_TELEMETRY_REFRESH_MS = 250;
 
@@ -226,6 +228,9 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
     return emptyDispose();
   }
+  // The block's own presentation (air above the readings, the live tick's weight) — idempotent,
+  // and a no-op under the tests' fake documents.
+  injectCrucibleLabLayouts();
 
   // A column of static kit rows: the first is the caps label, then one row per figure. The kit's
   // `k-span` fills the host's grid; `.sf-lab-tel` is the hook that sizes the rows to data size.
@@ -256,11 +261,23 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
   }
 
   let detailsOpen = false;
+  // Arrival choreography only on real DOM: the kit's stamp needs classList/dataset/style and
+  // transitionend, which the tests' fake nodes do not carry. Without them the rows still reveal.
+  const choreograph = valueEls.length > 0 && valueEls[0].rowEl
+    && typeof valueEls[0].rowEl.addEventListener === 'function'
+    && typeof valueEls[0].rowEl.classList?.add === 'function'
+    && !!valueEls[0].rowEl.dataset
+    && typeof valueEls[0].rowEl.style?.setProperty === 'function';
   function applyDetails() {
     for (const { rowEl } of valueEls) rowEl.hidden = !detailsOpen;
     detailsBtn.textContent = detailsOpen ? 'Hide details' : 'Show details';
     detailsBtn.setAttribute('aria-expanded', detailsOpen ? 'true' : 'false');
     detailsBtn.setAttribute('aria-label', detailsOpen ? 'Hide detailed telemetry' : 'Show detailed telemetry');
+    // The readings tick in staggered (28 ms, the scales' rhythm) instead of just appearing;
+    // under reduced motion the kit's stamp resolves every row at once.
+    if (detailsOpen && choreograph) {
+      stamp(valueEls.map(({ rowEl }) => rowEl), { gap: 28, state: 'lab-telemetry' });
+    }
   }
   if (typeof detailsBtn.addEventListener === 'function') {
     detailsBtn.addEventListener('click', () => {
@@ -271,6 +288,9 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
 
   hostEl.appendChild(root);
 
+  // The instrument writes DOM only on change: a 250 ms cadence that re-writes eleven unchanged
+  // strings is layout churn for nothing. The cache keys each row's painted text.
+  const painted = new Map();
   function paint() {
     let snapshot = MISSING;
     try {
@@ -279,10 +299,15 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
       snapshot = MISSING;
     }
     for (const { row, valueEl } of valueEls) {
-      valueEl.textContent = formatRow(row, snapshot);
+      const text = formatRow(row, snapshot);
+      if (painted.get(valueEl) !== text) {
+        painted.set(valueEl, text);
+        valueEl.textContent = text;
+      }
       if (row.key === 'liveHostiles') {
         const foe = telemetryHostilesRole(snapshot.liveHostiles) === 'foe';
-        valueEl.className = 'k-row__num sf-lab-tel-v sf-fig' + (foe ? ' is-foe k-bad' : '');
+        const className = 'k-row__num sf-lab-tel-v sf-fig' + (foe ? ' is-foe k-bad' : '');
+        if (valueEl.className !== className) valueEl.className = className;
       }
     }
   }

@@ -6,6 +6,8 @@ import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { classifyPickIntent } from '../combat/targetAcquisition.js';
+import { DENIAL, denialText, intentDenial } from '../combat/contactClassifier.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
@@ -453,7 +455,16 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       return { sling: true, text: 'RMB select · hold to aim sling', beam: false };
     }
     if (lane !== 'beam') {
-      return { sling: false, text: 'RMB select', beam: false };
+      // Packet 02: say what the press COMMITS to before it happens — an attack target takes the guns,
+      // a prop only selects a tool subject, a friendly or neutral hull only informs.
+      const intent = classifyPickIntent(entity, !!(player && isHostileToPlayer(entity, player.team, state)));
+      const word = intent === 'attack' ? 'RMB lock target' : intent === 'info' ? 'RMB inspect' : 'RMB select';
+      return { sling: false, text: word, beam: false };
+    }
+    // Packet 02: say WHY at the point of intent, in the shared denial vocabulary, in the order the
+    // player can fix it — you cannot beam what your sensors do not hold.
+    if (intentDenial(state, entity, null) === DENIAL.UNOBSERVED) {
+      return { sling: false, text: `RMB select · ${denialText(DENIAL.UNOBSERVED)}`, beam: false };
     }
     if (!isBeamTargetEligible(entity, state)) {
       const depleted = !!(entity && entity.data && entity.data.respawnAt != null);
@@ -467,7 +478,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (range != null && player && player.pos && entity.pos) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       if (d > range + (entity.radius || 0)) {
-        return { sling: false, text: `RMB select · ${beamVerbWord(entity)} out of range`, beam: false };
+        return { sling: false, text: `RMB select · ${beamVerbWord(entity)} ${denialText(DENIAL.OUT_OF_RANGE)}`, beam: false };
       }
     }
     return { sling: false, text: 'RMB select · hold ' + beamVerbWord(entity), beam: true };

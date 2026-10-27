@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
+import { MeshoptDecoder } from 'meshoptimizer';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = path.join(ROOT, '.devshots', 'asset-audit');
@@ -126,7 +127,14 @@ async function main() {
   const files = await findGlbFiles(TARGET_DIR);
   console.log(`[perf:gltf] Found ${files.length} 3D model files to inspect.`);
 
-  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS);
+  // The live release tree is EXT_meshopt_compression. Without the decoder registered,
+  // every shipped body failed to read and the audit reported 796 false error rows while
+  // scoring only the 18 uncompressed stragglers - a blind spot that let the released
+  // package payload drift to 1.75x its sources unnoticed. `scripts/asset-census.mjs`
+  // is the reporting tool; this stays as the quick per-file inspector.
+  const io = new NodeIO()
+    .registerExtensions(ALL_EXTENSIONS)
+    .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
   const results = [];
 
   let idx = 0;

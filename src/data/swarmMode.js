@@ -370,7 +370,10 @@ export function swarmDoctrineStamp(enemyId, { swarm = false, champion = false } 
  * elite and hand the fight to `capitalBossEncounters`, so wave ten is the Iron Maw's own script,
  * wave twenty is the Foreman's committed charge and wave thirty is the Regent's wider crown —
  * the same bosses the scored arc teaches, arrived at by the roster clock. They recur inside the
- * rotation, so the comp room stays varied past wave forty.
+ * rotation, so the comp room stays varied past wave forty. A capital row may also carry
+ * `escort` — attendant champions that fold in beside the hull through `bossPackagesFor`, spent
+ * out of the wave's own opening chaff; the command colossi (waves 90–140) use it where a
+ * carrier, furnace, audit or hive arriving with attendants is the authored read.
  *
  * A compositional row may also carry `trickId` (FB-027): each champion body materialized for
  * it is stamped as a bounty hunter of the crucible's own contract, so the champion telegraphs
@@ -469,6 +472,15 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   // ascending order of weight. Same `enemyId`+`scoreId` contract: one real hull through the
   // ordinary package path, handed to its authored score — and on row 547's framework their
   // plates are live: rope tears and act sheds both leave tetherable slabs as ammunition.
+  //
+  // The COMMAND rows among them also carry `escort` — an attendant package that folds in
+  // beside the hull through the exact `bossPackagesFor` contract the wrap guard already
+  // spends. An escorted colossus arrives with attendants, which is a different fight than
+  // the same hull solo; a lone silhouette (the Casket Worm's grave-work, the Yardmaster's
+  // wreck-ball) fields nothing, because a thing with no crew commands nothing. Every
+  // escort picks a role the score's own mid-fight wing does NOT already field — the Nest
+  // Carrier and the Hive-Hulk both vent wasp hoards at act II, the Furnace Maw calls
+  // corsair tenders — so the attendant reads as a new problem, never more of the flood.
   {
     id: 'nest_carrier',
     label: 'Nest Carrier',
@@ -476,6 +488,10 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     room: 'nest_berth',
     enemyId: 'nest_carrier',
     scoreId: 'capital_boss_nest_carrier',
+    // A carrier is never alone: its tenders seed the berth while the belly works. Mines on
+    // the flanks are area denial on the water the launch already washes — dodging wasps
+    // into a seeded field is not the solo fight.
+    escort: [{ enemyId: 'mine_layer_jackal', count: 2, role: 'disruptor', sameGate: true }],
   },
   {
     id: 'casket_worm',
@@ -492,6 +508,10 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     room: 'maw_feed',
     enemyId: 'furnace_maw',
     scoreId: 'capital_boss_furnace_maw',
+    // The furnace keeps tenders of its own: two committed heavies stand in the feeding
+    // corridor the fight runs on, so the "cross the committed pass" answer has to be won,
+    // not taken for free. Anchors, not more tenders — the score calls its own at act II.
+    escort: [{ enemyId: 'bruiser_brawler', count: 2, role: 'anchor', sameGate: true }],
   },
   {
     id: 'yardmaster',
@@ -508,6 +528,11 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     room: 'seal_gate',
     enemyId: 'adjudicator_44c',
     scoreId: 'capital_boss_adjudicator',
+    // An audit arrives with bailiffs: two plated duelists press the pilot while the seal
+    // work wants doing, so the emitters and the clamp stop being a free teardown. The
+    // roster's duelist — plated enough to shrug the thrown answer, committed enough to
+    // keep pressing — is exactly the attendant a closing gate wants.
+    escort: [{ enemyId: 'patrol_lawman', count: 2, role: 'elite', sameGate: true }],
   },
   {
     id: 'hive_hulk',
@@ -516,37 +541,52 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
     room: 'hive_shaft',
     enemyId: 'hive_hulk',
     scoreId: 'capital_boss_hive_hulk',
+    // Whatever moved in keeps tenders on the rope: two tether raiders contest the line the
+    // whole teardown runs on — the bay doors only answer the rope — while the bays vomit.
+    // Control, not more hoard: the wasps are the score's own act-II call.
+    escort: [{ enemyId: 'tether_control_raider', count: 2, role: 'control', sameGate: true }],
   },
 ]);
 
-/** The one-hull package a capital champion row implies when it carries no explicit packages. */
+/**
+ * The package list a champion row fields.
+ *
+ * A compositional row (`packages`) speaks for itself. A capital row (`enemyId`+`scoreId`)
+ * implies the one hull its score flies, then folds in the row's optional `escort` — the
+ * attendant champions an escorted colossus arrives with. The hull stays package zero, so
+ * the score binding (`entry.enemyId === bossEnemyId` in the wave owner) and every fold
+ * consumer — opening chaff accounting, the wrap guard, prewarm, the catalog check — sees
+ * one contract: escort bodies are owed champion packages exactly like the wrap's wardens.
+ *
+ * `escort` reads only on a capital row: a compositional row expresses attendants inside
+ * `packages` directly, and carrying both is an authoring defect the catalog check reports.
+ */
 export function bossPackagesFor(boss) {
   if (boss && Array.isArray(boss.packages)) return boss.packages;
+  const out = [];
   if (boss && typeof boss.enemyId === 'string') {
-    return [{ enemyId: boss.enemyId, count: 1, role: 'elite' }];
+    out.push({ enemyId: boss.enemyId, count: 1, role: 'elite' });
   }
-  return [];
+  if (boss && Array.isArray(boss.escort)) {
+    for (const pkg of boss.escort) {
+      if (pkg && typeof pkg.enemyId === 'string') out.push(pkg);
+    }
+  }
+  return out;
 }
 
-const BOSS_ROOM_NOTES = Object.freeze({
-  flank_berm: 'a flank berm — throw the swarm into it',
-  mirror_lane: 'a mirrored lane — cross the committed pass, work the stern',
-  crown_furnace: 'the furnace wears a crown — the middle shoves, the rim is plate to bank off',
-  wing_bank: 'bank stone on the wing\'s bearing',
-  screen_wall: 'a screen wall between you and the brawlers',
-  hold_close: 'the room holds you; close on the ghosts',
-  brood_nest: 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back',
-  coil_field: 'the weave field — a slow cross-breeze, and rocks to feed the committed pass',
-  nest_berth: 'the berth pulls toward the belly — a vent-breeze rakes the launch lanes',
-  casket_field: 'the grave drifts two ways — rocks to feed the middle cut',
-  maw_feed: 'the mouth shoves — the rim orbit is free, and the cavity eats what you feed it',
-  wreck_magnet: 'the magnet drags the whole yard inward — everything loose ends up inside the pile',
-  seal_gate: 'the gate is welding shut — rails on the flanks, mines at the mouth, one honest corridor',
-  hive_shaft: 'the shaft pulls long and rakes crosswise — the hulk is the only cover',
-});
-
-export function bossRoomNote(room) {
-  return BOSS_ROOM_NOTES[room] || null;
+/**
+ * How many attendant bodies a row's own `escort` authors — 0 for solo capital rows and for
+ * compositional rows (a wing's bodies are the boss composition, not an entourage). The wrap
+ * guard tops this up rather than stacking on it.
+ */
+function swarmAuthoredEscortCount(row) {
+  if (!row || !Array.isArray(row.escort)) return 0;
+  let total = 0;
+  for (const pkg of row.escort) {
+    total += Math.max(0, Math.trunc(Number(pkg && pkg.count) || 0));
+  }
+  return total;
 }
 
 /**
@@ -559,6 +599,15 @@ export function bossRoomNote(room) {
  * through the exact multi-package contract the wing rows already use. Every guard body is
  * `champion: true`, so requireBoss owes it, the boss bar counts it, the affix pass can trick
  * it, and its seats come out of the opening chaff — the room stays exactly as full.
+ *
+ * THE GUARD SHARES THE ESCORT BUDGET A COMMAND ROW ALREADY AUTHORS. A row carrying `escort`
+ * brings its own attendants, so the wrap tops the entourage UP TO the cycle's escort target —
+ * `min(cycle, SWARM_WRAP_ESCORT_MAX)` — instead of stacking on it: the wardens are the
+ * shortfall, never fewer than one, so the numeral's guard always reads as wardens. With an
+ * authored entourage of three or fewer the total escort count never exceeds
+ * SWARM_WRAP_ESCORT_MAX — the same escort ceiling every wrapped solo row already flies.
+ * Compositional rows carry no `escort`: a wing's bodies are the boss composition itself, and
+ * the guard stacks on them exactly as it always has.
  */
 export const SWARM_WRAP_ESCORT_ENEMY = 'warden_escort';
 /** A guard, not a second wing — deeper cycles harden the same escort rather than flooding it. */
@@ -576,6 +625,11 @@ export function swarmCycleNumeral(cycle) {
 
 /** The escalated row a wrap wears: same id, score, room and line — plus numeral and guard. */
 function swarmEscalatedBoss(row, cycle) {
+  // The warden guard fills the escort seats the row's own attendants leave under the cycle's
+  // target — a wrapped command row keeps its authored entourage AND wears the guard, bounded
+  // by the shared cap. Always at least one warden, so the honor guard is never absent.
+  const guard = Math.max(1,
+    Math.min(cycle, SWARM_WRAP_ESCORT_MAX) - swarmAuthoredEscortCount(row));
   return {
     ...row,
     cycle,
@@ -584,7 +638,7 @@ function swarmEscalatedBoss(row, cycle) {
       ...bossPackagesFor(row),
       {
         enemyId: SWARM_WRAP_ESCORT_ENEMY,
-        count: Math.min(cycle, SWARM_WRAP_ESCORT_MAX),
+        count: guard,
         role: 'support',
         sameGate: true,
       },
@@ -603,9 +657,45 @@ export function swarmBossFor(wave) {
 }
 
 /**
+ * How far out the combat net names the champion a run is sailing toward. One fixed lead,
+ * never a countdown: the warning lands once, on the wave exactly this many rounds before
+ * the boss wave, so "Iron Maw II waits at wave 150" is a named goal and not a chorus.
+ */
+export const SWARM_CHAMPION_LEAD_WAVES = 3;
+
+/**
+ * The champion a run is sailing toward: the boss wave AT-OR-AFTER `wave` (asking on a boss
+ * wave names the fight on the field). Returns the rotation row exactly as swarmBossFor
+ * resolves it — the cycle numeral and wrap escort ride along — plus the `wave` it lands on
+ * and the `distance` out, so a preview speaks without redoing the wrap math. Null past the
+ * last legal boss wave: there is no champion beyond wave 990 to promise.
+ */
+export function swarmNextBossFor(wave) {
+  const w = swarmWaveOf(wave);
+  const at = Math.ceil(w / SWARM_BOSS_EVERY) * SWARM_BOSS_EVERY;
+  if (at > SWARM_WAVE_MAX) return null;
+  const boss = swarmBossFor(at);
+  if (!boss) return null;
+  return { ...boss, wave: at, distance: at - w };
+}
+
+/**
  * The room rotation. Never `idle` — see rule 3. Ordered so the first four waves teach the four
  * things a room can do (drag you, shove you, give you geometry, rake you) before repeating.
  * Boss waves override this with the arc's own `boss` room.
+ *
+ * OWNERSHIP: these entries are room-state TOKENS in the shared SURVIVAL_ARENA_PHASES vocabulary
+ * (src/data/survivalWaves.js), not Helios machinery forced onto every arena. The wave plan is
+ * deliberately arena-blind — survivalArena.planArenaInstallBody dispatches on `run.arenaId`,
+ * and a law arena's own module (lagrangeCrucible, cinderSluiceArena, cryoDriftArena,
+ * stormLatticeArena, asteroidMillArena, theHiveArena) translates each token into its own
+ * machinery, so the same wave plays a DIFFERENT room in every arena: 'furnace_active' is the
+ * Foundry's centre shove, the Crucible's pylon repulse, the Sluice at full push, the Drift's
+ * three hot quadrants, the Lattice gone live, the Mill's lit crusher plate, the Hive's seething
+ * heart. Arenas without a law module (helios_core's generic table plus the catalog's law-less
+ * rooms) read the generic phase table in survivalArena — that fallback is the intent, not an
+ * override. Mid-wave flips (sluice surges, hive growth, shutter slides, crusher bites) are each
+ * module's own clocks and are never scheduled here.
  */
 export const SWARM_ARENA_PHASE_CYCLE = Object.freeze([
   'loose_plate',          // geometry first: cover to throw things into, plus a soft sag
@@ -710,19 +800,12 @@ export function swarmQuota(wave) {
  * `makeEnemySpawnSpec` → `scaleCombatant` raises hull, armor and shield by 12% per level
  * (`src/systems/combat.js`). That is hit-point inflation, which this mode is forbidden to use.
  * Swarm materialization still passes `swarmLevel` into that path, so the only legal return is 1
- * at every wave. Count, composition, mass, hazards and bearings carry the difficulty curve.
- * `SWARM_LEVEL_CAP` remains the wave at which every OTHER dial (concurrency, roster) is maxed.
+ * at every wave. Count, composition, mass, hazards and bearings carry the difficulty curve —
+ * the roster's own `fromWave` unlocks and the concurrency ramp are the intensity dials.
  */
-export const SWARM_LEVEL_CAP = 8;
-
 export function swarmLevel(wave) {
   swarmWaveOf(wave);
   return 1;
-}
-
-/** The wave at which every dial this mode has is at its maximum. */
-export function swarmFullIntensityWave() {
-  return 1 + (SWARM_LEVEL_CAP - 1) * 3;
 }
 
 /** The archetypes legal at this wave, in roster order. */
@@ -781,6 +864,21 @@ export function swarmCatalogIssues() {
     }
     if (boss && boss.trickId != null && !hunterTrickById(boss.trickId)) {
       issues.push({ path: `bossRotation[${i}].trickId`, message: `unknown trickId ${JSON.stringify(boss.trickId)}` });
+    }
+    // `escort` is a capital-row field — on a packages row bossPackagesFor never reads it, so
+    // carrying both is dead authoring and belongs inside `packages` outright.
+    if (boss && Array.isArray(boss.packages) && Array.isArray(boss.escort)) {
+      issues.push({ path: `bossRotation[${i}].escort`, message: 'escort on a packages row is ignored — fold attendants into packages' });
+    }
+    // The wrap's shared escort budget is bounded by the authored entourage staying under the
+    // guard ceiling — keep every attendant count inside the same band the fold can cap.
+    if (boss && !Array.isArray(boss.packages) && Array.isArray(boss.escort)) {
+      const total = swarmAuthoredEscortCount(boss);
+      if (!(total > 0)) {
+        issues.push({ path: `bossRotation[${i}].escort`, message: 'escort authors no attendant bodies' });
+      } else if (total > SWARM_WRAP_ESCORT_MAX) {
+        issues.push({ path: `bossRotation[${i}].escort`, message: `escort authors ${total} attendants — over the shared escort cap ${SWARM_WRAP_ESCORT_MAX}` });
+      }
     }
   });
   return issues;
@@ -1022,7 +1120,12 @@ export function swarmActPackages(wave) {
 }
 
 /**
- * The room for this wave. Boss waves get the arc's loudest room; everything else walks the cycle.
+ * The room-state token for this wave. Boss waves get the arc's loudest room; everything else
+ * walks the cycle. This names WHICH state the wave plays, never WHAT gets built — the arena's
+ * own law module owns the translation at install (see SWARM_ARENA_PHASE_CYCLE's ownership note).
+ * The signature stays wave-only on purpose: authored act rounds override the token outright,
+ * and pact mutators wrap it through applyMutators; the arena arrives later, at the install
+ * dispatch in survivalArena.
  */
 export function swarmArenaPhase(wave) {
   const w = swarmWaveOf(wave);

@@ -283,14 +283,14 @@ for (const seed of [4242, 8008]) {
     assert.equal(stationBerthAdmits(rec, 0, state), false, 'berth refused');
     assert.deepEqual(stationBerthRefusal(rec, 0, state), {
       kind: 'structural', reason: 'grudge',
-      text: 'Dock control: pay your note before you come through our ring again',
+      text: 'Dock control: pay the 450 cr on your note before you come through our ring again',
     });
     const deny = resolveDockDeny(state, CERES);
     assert.equal(deny.reason, 'grudge');
-    assert.equal(deny.text, 'Dock control: pay your note before you come through our ring again');
+    assert.equal(deny.text, 'Dock control: pay the 450 cr on your note before you come through our ring again');
     assert.ok(stationBerthAdmits(recordOf(HELIOS), 0, state), 'another berth still admits');
     assert.equal(resolveDockDeny(state, HELIOS), null);
-    assert.match(stationConditionLine(state, CERES), /Pay your note before you come through our ring again\./);
+    assert.match(stationConditionLine(state, CERES), /Pay the 450 cr on your note before you come through our ring again\./);
 
     // A fourth slam deepens the grudge without a second receipt.
     fire();

@@ -196,27 +196,55 @@ export async function checkServedSample(baseUrl, entries, samplePath = 'assets/s
   return { ok: true, problems: [] };
 }
 
-export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = null, sourceOverlay = null }) {
-  const entries = readHeadTree(root, rev).filter((entry) => isRouteServed(entry.path) && !isHarnessOutput(entry.path));
+/** Replace only explicitly pinned candidate assets; all other assets retain their Git-tree expectations. */
+export function candidateAssetTree(entries, overlayEntries) {
+  const candidate = [...overlayEntries.values()].filter((entry) => isRouteServed(entry.path));
+  const byPath = new Map(entries.map((entry) => [entry.path, entry]));
+  for (const entry of candidate) {
+    byPath.set(entry.path, { path: entry.path, size: entry.bytes, oid: gitBlobOid(entry.body) });
+  }
+  return { entries: [...byPath.values()], candidatePaths: candidate.map((entry) => entry.path) };
+}
+
+export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = null, sourceOverlay = null, candidateAssets = false }) {
+  const headEntries = readHeadTree(root, rev).filter((entry) => isRouteServed(entry.path) && !isHarnessOutput(entry.path));
   const overlay = loadSourceOverlayManifest(sourceOverlay);
+  if (candidateAssets && (!overlay || !baseUrl)) throw new Error('candidate assets require a validated source overlay and a running server');
+  if (candidateAssets) {
+    try {
+      execFileSync('git', ['merge-base', '--is-ancestor', overlay.identity.sourceCommit, rev], { cwd: root, stdio: 'ignore' });
+    } catch {
+      throw new Error('candidate source base is not an ancestor of the checked Git tree');
+    }
+  }
+  const composed = candidateAssets ? candidateAssetTree(headEntries, overlay.entries) : { entries: headEntries, candidatePaths: [] };
+  const entries = composed.entries;
   const disk = assessTree(entries, { root, overlayEntries: overlay?.entries });
-  const headPaths = new Set(entries.map((entry) => entry.path));
-  const extraOverlay = [...(overlay?.entries.values() || [])]
+  const headPaths = new Set(headEntries.map((entry) => entry.path));
+  const extraOverlay = candidateAssets ? [] : [...(overlay?.entries.values() || [])]
     .filter((entry) => isRouteServed(entry.path) && !headPaths.has(entry.path))
     .map((entry) => ({ path: entry.path, kind: 'hash', expected: `listed in ${rev}`, served: 'overlay asset absent from Git tree' }));
   const served = baseUrl ? await checkServedSample(baseUrl, entries) : { ok: true, problems: [] };
-  const problems = [...disk.problems, ...extraOverlay, ...served.problems];
-  return { ok: problems.length === 0, problems, hashed: disk.hashed, checked: entries.length, banner: problems.length ? STALE_BANNER : null };
+  // A candidate is not a Git baseline: verify every explicitly replaced/new asset through
+  // the same HTTP route the browser will use, rather than trusting only its manifest.
+  const candidateProblems = [];
+  for (const assetPath of composed.candidatePaths) {
+    const result = await checkServedSample(baseUrl, entries, assetPath);
+    candidateProblems.push(...result.problems);
+  }
+  const problems = [...disk.problems, ...extraOverlay, ...served.problems, ...candidateProblems];
+  return { ok: problems.length === 0, problems, hashed: disk.hashed, checked: entries.length, candidateAssets: composed.candidatePaths.length, banner: problems.length ? STALE_BANNER : null };
 }
 
-export function renderEnvironmentAbort({ problems, commit, checked, hashed }) {
+export function renderEnvironmentAbort({ problems, commit, checked, hashed, candidateAssets = false }) {
   const shown = problems.slice(0, 12);
   const lines = [
     '# Player-truth verdict: ENVIRONMENT — harness',
     '',
-    STALE_BANNER,
+    candidateAssets ? 'HARNESS ENVIRONMENT: assets differ from the pinned candidate' : STALE_BANNER,
     '',
-    `This is not a gameplay FAIL. Served assets/ do not match ${commit || 'HEAD'}.`,
+    candidateAssets ? 'This is not a gameplay FAIL. Served assets/ do not match the pinned candidate and its Git base.'
+      : `This is not a gameplay FAIL. Served assets/ do not match ${commit || 'HEAD'}.`,
     `Checked ${checked == null ? '?' : checked} blobs, hashed ${hashed == null ? '?' : hashed}. The browser was not started.`,
     '',
     ...shown.map((p) => `- ${p.path}: ${p.kind} expected ${p.expected} served ${p.served}`),

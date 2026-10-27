@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "54a41f7dbd5c88d8112be032ac7e1ae7b2c880d85736c4979f8530804ca2592e",
+  "contentHash": "0cc69b84e36fa5b385f08ac07ea904c77dad0c03bcd77f3a6e5f7b8d38d4f798",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           11.497049331665039,
-          1.6302671432495117,
-          6.464213848114014
+          1.6302671283101504,
+          6.464213868567355
         ],
         "min": [
           4.662465572357178,
-          -0.19753091037273407,
-          4.967434406280518
+          -0.19753088441041544,
+          4.967434393583584
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3024468b8f3826547f1591fed0c8f8e134fae3ad862446ba25012e60073357e",
+      "geometryHash": "b75a1322861045475a6edc4eb928bfe132b5d36ec1115082cdb60f57165a4d0a",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -37,18 +37,18 @@
     {
       "bounds": {
         "max": [
-          8.353833198547363,
-          1.6515424251556396,
-          6.447944641113281
+          8.353833292330043,
+          1.6515424218508898,
+          6.447944526447966
         ],
         "min": [
-          7.8069329261779785,
-          -0.21171441674232483,
-          4.953250885009766
+          7.8069330995475115,
+          -0.21171441343757502,
+          4.953250864556424
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a81d08dd01c88d9eb82f1c27af31240bdcc7ecb7c605e4162fa2c19378e537b",
+      "geometryHash": "f94c7721a8140c3fb49462996c90960180a2be87adb425a5d7d449e718d437d4",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -63,17 +63,17 @@
       "bounds": {
         "max": [
           11.497049331665039,
-          1.6302670240402222,
-          -4.967434406280518
+          1.630267024002022,
+          -4.967434393583584
         ],
         "min": [
           4.662465572357178,
-          -0.19753099977970123,
-          -6.464213848114014
+          -0.1975309887185438,
+          -6.464213868567355
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b813481bb9b454a5d4319afa57029cbf595dbd5e4460f95889d00d5d62227eb8",
+      "geometryHash": "95e5301628f759efe18eb963d860171f75bb564768847012cdf9814654d62088",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -87,18 +87,18 @@
     {
       "bounds": {
         "max": [
-          8.353833198547363,
-          1.65154230594635,
-          -4.953250885009766
+          8.353833292330043,
+          1.6515423175427615,
+          -4.953250864556424
         ],
         "min": [
-          7.8069329261779785,
-          -0.211714506149292,
-          -6.447944641113281
+          7.8069330995475115,
+          -0.21171451774570338,
+          -6.447944526447966
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b0978d94313039e13317976f1079f7cac28ff04b53b6ac097899567aa855674",
+      "geometryHash": "332aa8f73f23a5ef607316f1229725ebecb9bb440e0eafbd34c714d8c89f70ca",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -113,17 +113,17 @@
       "bounds": {
         "max": [
           4.081697463989258,
-          1.6304117441177368,
-          6.464416980743408
+          1.630411738174235,
+          6.464417205228103
         ],
         "min": [
           -1.802206039428711,
-          -0.19741053879261017,
-          4.9673590660095215
+          -0.19741057577856835,
+          4.967359082482792
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3d9b7c9a37b3ea6cd1da02f8a78ac61131ad1238e6d16c49a52ff299e96a6c70",
+      "geometryHash": "1f899464ce3d6b09cae66299aeea1e980c6a999631f23c3120b3ca055cbab9b3",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          1.4141255617141724,
-          1.65160071849823,
-          6.448256015777588
+          1.4141255625327425,
+          1.6516007580235748,
+          6.448256088393861
         ],
         "min": [
-          0.8668023943901062,
-          -0.2117759734392166,
-          4.952993869781494
+          0.8668024057464037,
+          -0.2117760129645614,
+          4.952993645296799
         ]
       },
       "drawMode": 4,
-      "geometryHash": "be6a6c73d88828f927e1330aeb95f053890b95027e4d32792237655683c8ea09",
+      "geometryHash": "1fca0c69ac5037695b91a61f2f9b58c3d52877bb6fa0dd28aa2b67cfce124708",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -163,17 +163,17 @@
       "bounds": {
         "max": [
           4.081697463989258,
-          1.6304117441177368,
-          -4.9673590660095215
+          1.6304117083719125,
+          -4.967359082482792
         ],
         "min": [
           -1.802206039428711,
-          -0.19741059839725494,
-          -6.464416980743408
+          -0.19741060558089074,
+          -6.464417205228103
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bca40b6cdbe991e42fc847747b8f1ca30cd8e01601d5e598faacf2ada811c2cc",
+      "geometryHash": "46ffea1294a252b028f23cebb917f5be71c015cd16e8ec77869efb38e54b5b9d",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -187,18 +187,18 @@
     {
       "bounds": {
         "max": [
-          1.4141255617141724,
-          1.65160071849823,
-          -4.952993869781494
+          1.4141255625327425,
+          1.6516007282212524,
+          -4.952993645296799
         ],
         "min": [
-          0.8668023943901062,
-          -0.2117760330438614,
-          -6.448256015777588
+          0.8668024057464037,
+          -0.21177604276688378,
+          -6.448256088393861
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3539838a58b27ec90c18c1f91c12dc80b3e24ab198d14a94ec512745f3c41e5",
+      "geometryHash": "96547cce255eb90dfef3cdce4203057177e886a81b01cedc9380fa85b9685fcb",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -213,17 +213,17 @@
       "bounds": {
         "max": [
           -2.3829708099365234,
-          1.6305290460586548,
-          6.464317321777344
+          1.630529041203624,
+          6.464317151616606
         ],
         "min": [
           -8.076738357543945,
-          -0.19730813801288605,
-          4.967329025268555
+          -0.19730813746035114,
+          4.967329101974041
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a53414486f5090ed73ce1d9de9148eb3b3ba9664928371d2571c6e8ec4cd314a",
+      "geometryHash": "a63de6a51e8680ab7a1e72176a3521007b269a4615e236fa5769cd6f386ce8b0",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -237,18 +237,18 @@
     {
       "bounds": {
         "max": [
-          -4.955652713775635,
-          1.6517283916473389,
-          6.448330879211426
+          -4.95565294214581,
+          1.6517284076640295,
+          6.448330744121874
         ],
         "min": [
-          -5.502665996551514,
-          -0.2119044065475464,
-          4.953080177307129
+          -5.502666102943813,
+          -0.21190442256423692,
+          4.953080347467867
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79a42b87588d1c594e3d62ad837487ad72047fe77c952388e2901a86526672ca",
+      "geometryHash": "f5c689242647c7957b877a3c4c8a3350e3f78182575d769cd1325ecd127b5e4e",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -263,17 +263,17 @@
       "bounds": {
         "max": [
           -2.3829708099365234,
-          1.6305289268493652,
-          -4.967329025268555
+          1.6305289219943344,
+          -4.967329101974041
         ],
         "min": [
           -8.076738357543945,
-          -0.1976557821035385,
-          -6.464317321777344
+          -0.19765578726735222,
+          -6.464317151616606
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e133d285c0032e0c31391dd0a652b3db26d915c932497cf6056fcb640087cbbd",
+      "geometryHash": "99151ce917bcfd16bd19566ff3cff344e3905ad58b8637348e11c12ef576926f",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -287,18 +287,18 @@
     {
       "bounds": {
         "max": [
-          -4.955652713775635,
-          1.6517282724380493,
-          -4.953080177307129
+          -4.95565294214581,
+          1.65172828845474,
+          -4.953080347467867
         ],
         "min": [
-          -5.502665996551514,
-          -0.21190452575683594,
-          -6.448330879211426
+          -5.502666102943813,
+          -0.21190454177352647,
+          -6.448330744121874
         ]
       },
       "drawMode": 4,
-      "geometryHash": "768cea8c3ecac9910553fb49378dc7bb79b37677e7438cc2b5b4143f42c8923d",
+      "geometryHash": "68b14218ba48b08e12dbd721cdf2dd174b426ddb44c80cc2c66fa99fb17b00db",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2.primitive.1",
       "indexCount": 1548,
       "indexed": true,
@@ -313,21 +313,21 @@
       "bounds": {
         "max": [
           -7.936622619628906,
-          -1.6751973628997803,
-          5.304977893829346
+          -1.6751974005249055,
+          5.3049779794044944
         ],
         "min": [
           -11.049299240112305,
-          -3.039409875869751,
-          3.8811092376708984
+          -3.0394098382446257,
+          3.8811091520957492
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dc35a00b68251830ca8d34a870c7a1c4f54f34e8a0c11e46897c06604c903207",
+      "geometryHash": "c970faa50635bfa98a0cf0315a04a2de68c8ae2302ccb607dc78639302eca114",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "beltTear_tear0",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear0",
@@ -338,21 +338,21 @@
       "bounds": {
         "max": [
           -7.903379440307617,
-          4.248155117034912,
-          4.676217555999756
+          4.248155041861062,
+          4.676217490223092
         ],
         "min": [
           -9.953123092651367,
-          3.4461357593536377,
-          3.125413417816162
+          3.446135834527488,
+          3.1254134835928262
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33afa8d0a30ae379fc04c9b2e3337e9dc9b62b922cba2451746e5d2b0cd1d8c8",
+      "geometryHash": "c5c3fa33d5d978d892f28be74394ed0442005a37f1c8883e702162bc46aaec42",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "beltTear_tear1",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear1",
@@ -363,21 +363,21 @@
       "bounds": {
         "max": [
           -7.86534309387207,
-          5.700801849365234,
-          -1.4218271970748901
+          5.700801793917107,
+          -1.421827238416324
         ],
         "min": [
           -11.497049331665039,
-          3.763197183609009,
-          -3.061398506164551
+          3.7631972390571358,
+          -3.061398464823117
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a8e9f5c26d5f93fd7a74637932a70d3d3d5435af7d6f4896c6700a71be12395",
+      "geometryHash": "0c80ed4991d2cd633e09ce3fe3e75e6239ab8708acc31664e0de204d85d94b09",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "beltTear_tear2",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear2",
@@ -388,21 +388,21 @@
       "bounds": {
         "max": [
           -7.836597442626953,
-          -0.050006426870822906,
-          -4.278570175170898
+          -0.050006420162753695,
+          -4.278570154914014
         ],
         "min": [
           -10.396381378173828,
-          -1.2022099494934082,
-          -6.305257797241211
+          -1.2022099562014774,
+          -6.305257817498095
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d1e547cec8fbafdc833440fb69d09cd124960770be2a8456438b8e969308193",
+      "geometryHash": "4dce93b3903e9f1582bfa63a5e224a7e4e9947040184638cc3f2103ae3de2afa",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "beltTear_tear3",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear3",
@@ -413,21 +413,21 @@
       "bounds": {
         "max": [
           -8.043190002441406,
-          -5.000088214874268,
-          -0.47404274344444275
+          -5.000088292343753,
+          -0.4740427144284025
         ],
         "min": [
           -9.060369491577148,
-          -5.700848579406738,
-          -1.481412649154663
+          -5.700848501937253,
+          -1.4814126781707033
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ddaaff92c14e3c29383203253bb1128120954ec5a78bc9e11507247de5078d5b",
+      "geometryHash": "49a46d25dd6f64f16600e86e9da35add34c89d97d6ad16122f03dd04123c0756",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "beltTear_tear4",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear4",
@@ -437,22 +437,22 @@
     {
       "bounds": {
         "max": [
-          -3.0380876064300537,
-          0.40584230422973633,
+          -3.038087638030502,
+          0.405842309401281,
           6.0843939781188965
         ],
         "min": [
-          -3.6174299716949463,
-          -0.1437901258468628,
+          -3.617429940094498,
+          -0.14379013101840749,
           -6.0843939781188965
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96675fe8c28f664abce801ef112e3d27c27af1f99df2564c44d29406c8dfcf2b",
+      "geometryHash": "81bccd2c3692734d1ab6426f305d82d30783447156c080e992d6ed74c05901a7",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "BeltTie0",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie0",
@@ -462,22 +462,22 @@
     {
       "bounds": {
         "max": [
-          3.046306848526001,
-          0.40584230422973633,
+          3.0463068169255525,
+          0.405842309401281,
           6.0843939781188965
         ],
         "min": [
-          2.4669644832611084,
-          -0.1437901258468628,
+          2.466964514861557,
+          -0.14379013101840749,
           -6.0843939781188965
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39c10627bf638a9722d415125f9fc5351ae59acd5ea596d32319f77b4573cd66",
+      "geometryHash": "19882191e4a81c306bdd96802741a474bc8d8cc83ab96210679cbde140464569",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "BeltTie1",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie1",
@@ -487,22 +487,22 @@
     {
       "bounds": {
         "max": [
-          8.37015151977539,
-          0.40584230422973633,
+          8.370151726593521,
+          0.405842309401281,
           6.0843939781188965
         ],
         "min": [
-          7.790809631347656,
-          -0.1437901258468628,
+          7.790809424529526,
+          -0.14379013101840749,
           -6.0843939781188965
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60cceb4c6ccd2ec30597cf7ff37034bf6f3fd7b446595101a66cf0787f9b1918",
+      "geometryHash": "e744efdf533d9641e07b2d83ab0616704647b758b405f46a7c39f8bcea3fec96",
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "BeltTie2",
       "nodeId": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie2",
@@ -514,6 +514,38 @@
   "kind": "place",
   "lods": [],
   "materials": [
+    {
+      "hash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
+      "id": "material:11ed44a130019ebcdc096ccd",
+      "name": "Forge_bastion_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
     {
       "hash": "37885cdf4e6b5e498b4175dd3403cc250771377d1407b98b140610f10cb6b576",
       "id": "material:37885cdf4e6b5e498b4175dd",
@@ -579,42 +611,10 @@
       ]
     },
     {
-      "hash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
-      "id": "material:6e405ab1041812afcb8616f6",
-      "name": "Forge_bastion_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
-      "id": "material:b88e000b1a54b9b404041016",
+      "hash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
+      "id": "material:a0b9525a2334f9c031ad55fd",
       "name": "Forge_bastion_wk_torn",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -647,21 +647,21 @@
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0",
       "localTransform": [
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
-        0,
-        0,
-        0,
+        8.079757452011108,
+        0.719913899898529,
+        -5.70873236656189,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -675,42 +675,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
-        0,
-        0,
-        0,
+        8.079757452011108,
+        0.719913899898529,
+        -5.70873236656189,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt0-m",
       "localTransform": [
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
-        0,
-        0,
-        0,
+        8.079757452011108,
+        0.7199140042066574,
+        5.70873236656189,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -724,42 +724,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
         0,
         0,
         0,
-        1,
+        3.4172918796539307,
         0,
-        0,
-        0,
-        0,
+        8.079757452011108,
+        0.7199140042066574,
+        5.70873236656189,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1",
       "localTransform": [
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
-        0,
-        0,
-        0,
+        1.1397457122802734,
+        0.7199123427271843,
+        -5.708705425262451,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -773,42 +773,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
-        0,
-        0,
-        0,
+        1.1397457122802734,
+        0.7199123427271843,
+        -5.708705425262451,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt1-m",
       "localTransform": [
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
-        0,
-        0,
-        0,
+        1.1397457122802734,
+        0.7199123725295067,
+        5.708705425262451,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -822,42 +822,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
         0,
         0,
         0,
-        1,
+        2.9419517517089844,
         0,
-        0,
-        0,
-        0,
+        1.1397457122802734,
+        0.7199123725295067,
+        5.708705425262451,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2",
       "localTransform": [
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
-        0,
-        0,
-        0,
+        -5.229854583740234,
+        0.7199118733406067,
+        -5.708698749542236,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -871,42 +871,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
-        0,
-        0,
-        0,
+        -5.229854583740234,
+        0.7199118733406067,
+        -5.708698749542236,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belt2-m",
       "localTransform": [
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
-        0,
-        0,
-        0,
+        -5.229854583740234,
+        0.7199119925498962,
+        5.708698749542236,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -920,42 +920,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
         0,
         0,
         0,
-        1,
+        2.846883773803711,
         0,
-        0,
-        0,
-        0,
+        -5.229854583740234,
+        0.7199119925498962,
+        5.708698749542236,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear0",
       "localTransform": [
-        1,
+        1.5563383102416992,
         0,
         0,
         0,
         0,
-        1,
+        1.5563383102416992,
         0,
         0,
         0,
         0,
-        1,
+        1.5563383102416992,
         0,
-        0,
-        0,
-        0,
+        -9.492960929870605,
+        -2.3573036193847656,
+        4.593043565750122,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -969,42 +969,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        1.5563383102416992,
         0,
         0,
         0,
         0,
-        1,
+        1.5563383102416992,
         0,
         0,
         0,
         0,
-        1,
+        1.5563383102416992,
         0,
-        0,
-        0,
-        0,
+        -9.492960929870605,
+        -2.3573036193847656,
+        4.593043565750122,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear1",
       "localTransform": [
-        1,
+        1.024871826171875,
         0,
         0,
         0,
         0,
-        1,
+        1.024871826171875,
         0,
         0,
         0,
         0,
-        1,
+        1.024871826171875,
         0,
-        0,
-        0,
-        0,
+        -8.928251266479492,
+        3.847145438194275,
+        3.900815486907959,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1018,42 +1018,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        1.024871826171875,
         0,
         0,
         0,
         0,
-        1,
+        1.024871826171875,
         0,
         0,
         0,
         0,
-        1,
+        1.024871826171875,
         0,
-        0,
-        0,
-        0,
+        -8.928251266479492,
+        3.847145438194275,
+        3.900815486907959,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear2",
       "localTransform": [
-        1,
+        1.8158531188964844,
         0,
         0,
         0,
         0,
-        1,
+        1.8158531188964844,
         0,
         0,
         0,
         0,
-        1,
+        1.8158531188964844,
         0,
-        0,
-        0,
-        0,
+        -9.681196212768555,
+        4.731999516487122,
+        -2.2416128516197205,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1067,42 +1067,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        1.8158531188964844,
         0,
         0,
         0,
         0,
-        1,
+        1.8158531188964844,
         0,
         0,
         0,
         0,
-        1,
+        1.8158531188964844,
         0,
-        0,
-        0,
-        0,
+        -9.681196212768555,
+        4.731999516487122,
+        -2.2416128516197205,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear3",
       "localTransform": [
-        1,
+        1.2798919677734375,
         0,
         0,
         0,
         0,
-        1,
+        1.2798919677734375,
         0,
         0,
         0,
         0,
-        1,
+        1.2798919677734375,
         0,
-        0,
-        0,
-        0,
+        -9.11648941040039,
+        -0.6261081881821156,
+        -5.291913986206055,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1116,42 +1116,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        1.2798919677734375,
         0,
         0,
         0,
         0,
-        1,
+        1.2798919677734375,
         0,
         0,
         0,
         0,
-        1,
+        1.2798919677734375,
         0,
-        0,
-        0,
-        0,
+        -9.11648941040039,
+        -0.6261081881821156,
+        -5.291913986206055,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttear-tear4",
       "localTransform": [
-        1,
+        0.5085897445678711,
         0,
         0,
         0,
         0,
-        1,
+        0.5085897445678711,
         0,
         0,
         0,
         0,
-        1,
+        0.5085897445678711,
         0,
-        0,
-        0,
-        0,
+        -8.551779747009277,
+        -5.350468397140503,
+        -0.9777276962995529,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1165,41 +1165,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        0.5085897445678711,
         0,
         0,
         0,
         0,
-        1,
+        0.5085897445678711,
         0,
         0,
         0,
         0,
-        1,
+        0.5085897445678711,
         0,
-        0,
-        0,
-        0,
+        -8.551779747009277,
+        -5.350468397140503,
+        -0.9777276962995529,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie0",
       "localTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        -3.3277587890625,
+        0.13102608919143677,
         0,
         1
       ],
@@ -1214,20 +1214,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        -3.3277587890625,
+        0.13102608919143677,
         0,
         1
       ]
@@ -1235,20 +1235,20 @@
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie1",
       "localTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        2.7566356658935547,
+        0.13102608919143677,
         0,
         1
       ],
@@ -1263,20 +1263,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        2.7566356658935547,
+        0.13102608919143677,
         0,
         1
       ]
@@ -1284,20 +1284,20 @@
     {
       "id": "sf.render.aftermath-deb-corvette-armor-belt.mesh.belttie2",
       "localTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        8.080480575561523,
+        0.13102608919143677,
         0,
         1
       ],
@@ -1312,20 +1312,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-deb-corvette-armor-belt.body",
       "worldTransform": [
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
         0,
         0,
         0,
-        1,
+        6.0843939781188965,
         0,
-        0,
-        0,
+        8.080480575561523,
+        0.13102608919143677,
         0,
         1
       ]
@@ -1389,37 +1389,37 @@
       "uri": "place_aftermath_deb_corvette_armor_belt.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 302020,
-    "sha256": "a12d4ab1b25881abfecc61893ab34fc15e2fc61f0a32b222951f0ab1498d31af",
+    "bytes": 222168,
+    "sha256": "bf1dc7eeddfbd85db1e1ef962395fbfff94db1ffec7a071f3e59841ee625f7ec",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        -0.000023365020751953125,
+        -0.00002335401007291793,
         0
       ],
       "max": [
         11.497049331665039,
-        5.700801849365234,
-        6.464416980743408
+        5.700801793917107,
+        6.464417205228103
       ],
       "min": [
         -11.497049331665039,
-        -5.700848579406738,
-        -6.464416980743408
+        -5.700848501937253,
+        -6.464417205228103
       ],
       "size": [
         22.994098663330078,
-        11.401650428771973,
-        12.928833961486816
+        11.40165029585436,
+        12.928834410456206
       ]
     },
     "hidden": [],
@@ -1537,21 +1537,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
-          0,
-          0,
-          0,
+          8.079757452011108,
+          0.719913899898529,
+          -5.70873236656189,
           1
         ],
         "name": "Belt0_1",
@@ -1564,21 +1564,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
-          0,
-          0,
-          0,
+          8.079757452011108,
+          0.719913899898529,
+          -5.70873236656189,
           1
         ],
         "name": "Belt0_2",
@@ -1591,21 +1591,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
-          0,
-          0,
-          0,
+          8.079757452011108,
+          0.7199140042066574,
+          5.70873236656189,
           1
         ],
         "name": "Belt0_M_1",
@@ -1618,21 +1618,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
           0,
           0,
           0,
-          1,
+          3.4172918796539307,
           0,
-          0,
-          0,
-          0,
+          8.079757452011108,
+          0.7199140042066574,
+          5.70873236656189,
           1
         ],
         "name": "Belt0_M_2",
@@ -1645,21 +1645,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
-          0,
-          0,
-          0,
+          1.1397457122802734,
+          0.7199123427271843,
+          -5.708705425262451,
           1
         ],
         "name": "Belt1_1",
@@ -1672,21 +1672,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
-          0,
-          0,
-          0,
+          1.1397457122802734,
+          0.7199123427271843,
+          -5.708705425262451,
           1
         ],
         "name": "Belt1_2",
@@ -1699,21 +1699,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
-          0,
-          0,
-          0,
+          1.1397457122802734,
+          0.7199123725295067,
+          5.708705425262451,
           1
         ],
         "name": "Belt1_M_1",
@@ -1726,21 +1726,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
           0,
           0,
           0,
-          1,
+          2.9419517517089844,
           0,
-          0,
-          0,
-          0,
+          1.1397457122802734,
+          0.7199123725295067,
+          5.708705425262451,
           1
         ],
         "name": "Belt1_M_2",
@@ -1753,21 +1753,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
-          0,
-          0,
-          0,
+          -5.229854583740234,
+          0.7199118733406067,
+          -5.708698749542236,
           1
         ],
         "name": "Belt2_1",
@@ -1780,21 +1780,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
-          0,
-          0,
-          0,
+          -5.229854583740234,
+          0.7199118733406067,
+          -5.708698749542236,
           1
         ],
         "name": "Belt2_2",
@@ -1807,21 +1807,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
-          0,
-          0,
-          0,
+          -5.229854583740234,
+          0.7199119925498962,
+          5.708698749542236,
           1
         ],
         "name": "Belt2_M_1",
@@ -1834,21 +1834,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
           0,
           0,
           0,
-          1,
+          2.846883773803711,
           0,
-          0,
-          0,
-          0,
+          -5.229854583740234,
+          0.7199119925498962,
+          5.708698749542236,
           1
         ],
         "name": "Belt2_M_2",
@@ -1861,21 +1861,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.5563383102416992,
           0,
           0,
           0,
           0,
-          1,
+          1.5563383102416992,
           0,
           0,
           0,
           0,
-          1,
+          1.5563383102416992,
           0,
-          0,
-          0,
-          0,
+          -9.492960929870605,
+          -2.3573036193847656,
+          4.593043565750122,
           1
         ],
         "name": "beltTear_tear0",
@@ -1888,21 +1888,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.024871826171875,
           0,
           0,
           0,
           0,
-          1,
+          1.024871826171875,
           0,
           0,
           0,
           0,
-          1,
+          1.024871826171875,
           0,
-          0,
-          0,
-          0,
+          -8.928251266479492,
+          3.847145438194275,
+          3.900815486907959,
           1
         ],
         "name": "beltTear_tear1",
@@ -1915,21 +1915,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.8158531188964844,
           0,
           0,
           0,
           0,
-          1,
+          1.8158531188964844,
           0,
           0,
           0,
           0,
-          1,
+          1.8158531188964844,
           0,
-          0,
-          0,
-          0,
+          -9.681196212768555,
+          4.731999516487122,
+          -2.2416128516197205,
           1
         ],
         "name": "beltTear_tear2",
@@ -1942,21 +1942,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2798919677734375,
           0,
           0,
           0,
           0,
-          1,
+          1.2798919677734375,
           0,
           0,
           0,
           0,
-          1,
+          1.2798919677734375,
           0,
-          0,
-          0,
-          0,
+          -9.11648941040039,
+          -0.6261081881821156,
+          -5.291913986206055,
           1
         ],
         "name": "beltTear_tear3",
@@ -1969,21 +1969,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5085897445678711,
           0,
           0,
           0,
           0,
-          1,
+          0.5085897445678711,
           0,
           0,
           0,
           0,
-          1,
+          0.5085897445678711,
           0,
-          0,
-          0,
-          0,
+          -8.551779747009277,
+          -5.350468397140503,
+          -0.9777276962995529,
           1
         ],
         "name": "beltTear_tear4",
@@ -1996,20 +1996,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
-          0,
-          0,
+          -3.3277587890625,
+          0.13102608919143677,
           0,
           1
         ],
@@ -2023,20 +2023,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
-          0,
-          0,
+          2.7566356658935547,
+          0.13102608919143677,
           0,
           1
         ],
@@ -2050,20 +2050,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
           0,
           0,
           0,
-          1,
+          6.0843939781188965,
           0,
-          0,
-          0,
+          8.080480575561523,
+          0.13102608919143677,
           0,
           1
         ],
@@ -2079,20 +2079,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_armor_belt.glb"
   },
-  "runtimeHash": "607d46bc5de68cf2c8add6d1b529ac41b025054f88cdef18a80b8025f0ef97df",
+  "runtimeHash": "64dbacba500c3adf9b99249b3734ba08d404e15733a8eba5aba7802cedd1db92",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           11.497049331665039,
-          5.700801849365234,
-          6.464416980743408
+          5.700801793917107,
+          6.464417205228103
         ],
         "min": [
           -11.497049331665039,
-          -5.700848579406738,
-          -6.464416980743408
+          -5.700848501937253,
+          -6.464417205228103
         ]
       },
       "id": "sf.render.aftermath-deb-corvette-armor-belt.body",

@@ -1,5 +1,7 @@
+import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
 import {TALLY_THREE} from '../data/tallyThree.js';
 import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
+import { handlePayloadSectorTransition } from '../combat/industrialBeam.js';
 // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
 //
 // Owns: the sector graph (loaded copy of SECTORS), the active sector's live contents
@@ -82,6 +84,7 @@ import {
   orrinWitnessSource,
 } from '../data/orrinWitnessCase.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
+import { spawnRestoredCatalogStation } from '../save/catalogStationRestore.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
@@ -129,6 +132,7 @@ import {
   apertureHazardZones,
   ashfallBurnProgramSeed,
   killMachineHazardZones,
+  killMachinesForSector,
   metronomeHazardZone,
   movingHazardTick,
   pallasReefHazardZone,
@@ -183,7 +187,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
@@ -468,6 +472,7 @@ const DRESSING_RADIUS = Object.freeze({
   place_mining_drone: 8,
   place_station_billboard: 28,
   place_conveyor_barge: 48,
+  place_charon_colony_service_barge: 48,
   place_dead_hulk: 42,
   place_rhea_slag_hauler: 42,
   place_proteus_funnel: 40,
@@ -1080,6 +1085,16 @@ export const world = {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
+    // Producer identity for the whole generator. The restore lane drives this across
+    // awaited paint frames; a route/listener that resets the world or enters another
+    // sector inside one of those gaps must not let this stale producer publish later.
+    const producerWorld = state.world;
+
+    // Capture the pre-transition occupant cohort before exit listeners, residency
+    // materialization, or any yield can mint arrivals. Tick/time cannot distinguish
+    // two bodies created within the same simulation beat. Invalid counters fail closed.
+    const payloadGenerationCutoff = Number.isSafeInteger(state.nextOccupantGeneration)
+      && state.nextOccupantGeneration > 0 ? state.nextOccupantGeneration : null;
 
     this._ensureResidencyState();
     const fromSectorId = opts.fromSectorId != null ? opts.fromSectorId : (state.world.currentSectorId || null);
@@ -1090,15 +1105,34 @@ export const world = {
 
     const prevSectorId = state.world.currentSectorId || null;
     if (prevSectorId && prevSectorId !== sectorId) {
-      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
-      // Bump the epoch NOW: the deferred-enter FIFO holds entries minted under the
+      // Bump before cleanup and exit: the deferred-enter FIFO holds entries minted under the
       // outgoing epoch, and the residency collect below yields (enter-pre-emit) — a
       // hold beat inside that gap would still see the old epoch as live and mint into
       // the departing sector. A run-scoped monotonic minted at exit keeps every
       // pre-gap payload dead for the rest of the enter.
       state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
       state.world.enterSerial = state.enterSerialSeq;
+      const departingWorld = state.world;
+      const enterEpoch = state.world.enterSerial;
+      // Retire only the captured departing cohort before exit listeners or destination
+      // residency can see it. The later enter listener keeps its generation fence for
+      // sliced delivery and arrivals minted after this boundary.
+      handlePayloadSectorTransition(state, this.helpers, { enterEpoch, payloadGenerationCutoff });
+      // Canonical removal can synchronously reset or re-enter the world. Never continue
+      // this now-stale transition over the replacement run or sector.
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
+      this.bus.emit('sector:exit', { sectorId: prevSectorId, continuous, noTeleport });
+      if (state.world !== departingWorld || state.world.enterSerial !== enterEpoch
+        || state.world.currentSectorId !== prevSectorId) return null;
     }
+
+    // The serial is final for this producer: sector-changing enters minted it at the
+    // departure boundary, same-sector refresh/Continue mints at the emit below. Any
+    // later reset, replacement world or nested enter changes it.
+    const producerEpoch = state.world.enterSerial;
+    const superseded = () => state.world !== producerWorld
+      || state.world.enterSerial !== producerEpoch;
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
     // Free-flight membership jitter must not inflate visitedCount.
@@ -1139,8 +1173,15 @@ export const world = {
     if (this._applyResidencyPlan !== world._applyResidencyPlan) {
       this._applyResidencyPlan(sectorId, planOpts);
     } else {
-      yield* this._applyResidencyPlanChunks(sectorId, planOpts);
+      // Resume-gated delegation: each paint point re-checks the producer before the
+      // stale generator can run the next materialization brick or write the residency
+      // queue under the replacement run.
+      for (const step of this._applyResidencyPlanChunks(sectorId, planOpts)) {
+        yield step;
+        if (superseded()) return null;
+      }
     }
+    if (superseded()) return null;
 
     const active = state.world.sectorContents[sectorId]
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
@@ -1163,6 +1204,9 @@ export const world = {
     // One paint point before the atomic emit tail — sector:enter listeners see a fully
     // materialized world either way, but the restore lane gets to paint between spawn bricks.
     yield 'enter-pre-emit';
+    // The paint gap can host a nested reset/enter; never publish the stale emitter's
+    // membership or sector:enter payload under the replacement world's current serial.
+    if (superseded()) return null;
 
     if (firstVisit) {
       this.bus.emit('sector:discovered', { sectorId });
@@ -1170,6 +1214,8 @@ export const world = {
     }
     // Reveal direct neighbors on the map ("see one hop ahead") without marking them visited.
     for (const nb of (sector.neighbors || [])) this._discoveryFor(nb);
+    // Discovery/toast listeners can synchronously start another route.
+    if (superseded()) return null;
 
     this.bus.emit('world:membership', {
       sectorId,
@@ -1178,6 +1224,9 @@ export const world = {
       tick: state.tick | 0,
       noTeleport,
     });
+    // A membership listener may have started a newer route; the serial mint and the
+    // sector:enter tail below belong to this producer only while it still owns the world.
+    if (superseded()) return null;
     // A per-emit serial lets replay-suppression (traffic's cook dedupe) distinguish the
     // sliced re-dispatch of THIS emit from a genuinely new same-sector enter under a
     // frozen simTime — the replay carries this payload verbatim, a new enter mints +1.
@@ -1193,6 +1242,9 @@ export const world = {
     const enterPayload = {
       sectorId, sector, entryPoint, firstVisit, continuous, noTeleport,
       enterEpoch: state.world.enterSerial,
+      // A same-sector refresh or Continue is not a departure; pre-existing
+      // payloads in that sector must not be treated as an outgoing cohort.
+      payloadGenerationCutoff: prevSectorId && prevSectorId !== sectorId ? payloadGenerationCutoff : null,
       // Tail-drain listeners run ~1-5 presented frames late (32-listener slice at
       // 4/frame); state.simTime has advanced by then. Carry the emit's sim time so
       // stamps that want the enter's own clock don't wobble by the window length.
@@ -1860,7 +1912,7 @@ export const world = {
       }
       return aliveConvoyRecords;
     };
-    forEachLivingWorldActor(state, (e) => {
+    const capture = (e) => {
       // The bounded entrance run lives under its rumor record, never in two save owners.
       if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
       const home = e.homeSectorId || (e.data && e.data.homeSectorId);
@@ -1912,7 +1964,13 @@ export const world = {
       // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
       // so every lookup takes the self-heal walk and the lane never bumps.
       registerEntityWorldRecordId(state && state.entityIndex, e);
-    });
+    };
+    forEachLivingWorldActor(state, capture);
+    // The authored starter buoy is a payload, outside the actor view. Keep every other
+    // payload on its existing persistence path, and never capture a future actor twice.
+    for (const e of indexedTypeScan(state, 'payloads')) {
+      if (e?.type === 'payload' && !isLivingWorldActor(e) && starterBuoyRecordMarker(e)) capture(e);
+    }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
   },
@@ -2498,6 +2556,24 @@ export const world = {
   _arrangerForSector(sector, active) {
     if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
     const reservations = [];
+    // Machine adapters materialize after scatter; reserve the same authored envelopes
+    // used by ladder bedrock before any native body can be born inside their skins.
+    for (const machine of killMachinesForSector(sector.id)) {
+      reservations.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      reservations.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    // Authored bedrock materializes after scatter. Reserve its native skin first, so
+    // mapping a free rock cannot put it inside a landmark that has not spawned yet.
+    for (const field of sector.fields || []) {
+      for (const boulder of field.boulders || []) {
+        if (!boulder || !boulder.id || !boulder.pos) continue;
+        const def = AST_BY_ID.get(boulder.type || field.type) || AST_BY_ID.get('ast_common_rock');
+        const radius = Math.max(1, Number(boulder.radius) || (def.sizeRange || [6, 14])[1]);
+        reservations.push({ pos: this._toGlobal(boulder.pos, sector.id),
+          radius: asteroidColliderRadius(def.id, radius) });
+      }
+    }
     if (sector.id === CERES_ACTIVITY_SECTOR_ID) {
       const asteroidRadiusFor = (fieldId) => {
         const field = (sector.fields || []).find((row) => row.id === fieldId);
@@ -2560,7 +2636,11 @@ export const world = {
       const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
         ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
         : null;
-      const ent = this.helpers.spawnEntity({
+      // During Continue the envelope may carry earned station recoil/attachment state.
+      // Materialize that exact carrier at the catalog's normal slot, so its bag/anchors
+      // and the later persistent pass all refer to one body rather than a fresh twin.
+      const ent = spawnRestoredCatalogStation(this.state, this.helpers, st.id, sector.id, pos)
+        || this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
@@ -2593,7 +2673,7 @@ export const world = {
         },
       });
       this._stampHomeSector(ent, sector.id);
-      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: pos.x, z: pos.z } });
+      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: ent.pos.x, z: ent.pos.z } });
     });
   },
 
@@ -2756,7 +2836,7 @@ export const world = {
       : scatteredPos;
     // Map positions only, after every legacy draw. Pinned geology/activity/collision slots win.
     const pos = arrangement
-      ? arrangement.place(originalPos, size, slotIndex, !!(positionBinding || authoredGeologyPlaceId))
+      ? arrangement.place(originalPos, asteroidColliderRadius(def.id, size), slotIndex, !!(positionBinding || authoredGeologyPlaceId))
       : originalPos;
 
     const data = environmentSurfaceData(adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, slotIndex), {
@@ -2887,18 +2967,49 @@ export const world = {
       const r = Math.max(1, Number(b && b.radius) || szHi);
       counts[Math.min(4, rockTierForRadius(r))] += 1;
     }
+    // Logical field rows include dormant rocks, so the result is independent of promotion order.
+    // Reserve machine geometry from authored data too: its adapters materialize after the field.
+    const blockers = (this.state.world?.asteroidField?.rocks || [])
+      .filter(rock => rock && rock.alive !== false && rock.pos)
+      .map(rock => ({ pos: rock.pos,
+        radius: asteroidColliderRadius(rock.data?.typeId, rock.radius) }));
+    for (const machine of killMachinesForSector(sector.id)) {
+      blockers.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      blockers.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
     for (let tier = 0; tier <= 4; tier++) {
       for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
         const ang = k * 2.399963 + tier * 1.31;
-        const cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        let cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        const ux = Math.cos(ang), uz = Math.sin(ang);
+        const radius = asteroidColliderRadius(def.id, ROCK_LADDER_RADII[tier]);
+        const intervals = [];
+        for (const blocker of blockers) {
+          const dx = blocker.pos.x - center.x, dz = blocker.pos.z - center.z;
+          const along = dx * ux + dz * uz, across = dx * uz - dz * ux;
+          const reach = radius + blocker.radius + 4;
+          if (Math.abs(across) >= reach) continue;
+          const half = Math.sqrt(Math.max(0, reach * reach - across * across));
+          if (along + half >= cr) intervals.push([along - half, along + half]);
+        }
+        intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        // Advance along this rung's authored spoke through the finite union of occupied
+        // intervals. No retries, dropped rungs, extra RNG or post-physics pose correction.
+        for (const [start, end] of intervals) if (cr >= start && cr <= end) cr = end + 1;
         const ent = this._spawnAuthoredBoulder(sector, fdef, params, {
           id: `ladder_${fdef.id}_${tier}_${k}`,
-          pos: { x: (centerLocal ? centerLocal.x : 0) + Math.cos(ang) * cr,
-                 z: (centerLocal ? centerLocal.z : 0) + Math.sin(ang) * cr },
+          pos: { x: (centerLocal ? centerLocal.x : 0) + ux * cr,
+                 z: (centerLocal ? centerLocal.z : 0) + uz * cr },
           radius: ROCK_LADDER_RADII[tier],
           type: fdef.type,
         });
-        if (ent) { this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++; }
+        if (ent) {
+          this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++;
+          blockers.push({ pos: ent.pos,
+            radius: asteroidColliderRadius(ent.data?.typeId, ent.radius) });
+        }
       }
     }
   },

@@ -1,0 +1,70 @@
+# Retail smoke: build the bundle players actually receive, serve it, and boot it.
+#
+# Every other browser job in check.yml boots the raw-ES-module dev route. The route a player gets is the
+# esbuild bundle (`npm run build:bundle` -> build/web: minified, code-split, SF_DEBUG_ONLY stripped), and a
+# bundle can build green yet throw on its first line, 404 a chunk, or leak window.SF. This job builds the
+# exact Vercel artifact and demands the title menu in headless Chromium on SOFTWARE GL (no GPU).
+# See scripts/check-retail-boot.mjs for the checks and the reasons behind each choice.
+#
+# It is deliberately NOT part of the `check` chain or check.yml's four groups: the build is ~900 MB and takes
+# minutes, so it runs as its own job. Do not set VERCEL_URL here - it would pin chunk URLs to /_releases/....
+name: retail-smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retail-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  retail-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # The build container (and this job) has no use for the Electron binary; Playwright's Chromium is
+        # installed explicitly below. Mirrors scripts/vercel-install.mjs.
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build the retail bundle, serve it, boot it to the title menu
+        run: npm run check:retail-boot
+
+      - name: Upload the retail boot report and picture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: retail-boot
+          path: .devshots/retail-boot/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -25,7 +25,7 @@ ${D} .orr-prep-tab::after { content:''; position:absolute; left:0; bottom:-1px; 
 ${D} .orr-prep-tab[aria-selected=true] { color:rgb(${BONE} / .96); background:none !important; box-shadow:none !important; border:0 !important; outline:none; }
 ${D} .orr-prep-tab[aria-selected=true]::after { opacity:1; }
 ${D} .orr-prep-tab:focus:not(:focus-visible) { outline:none !important; }
-${D} .orr-prep-tab:focus-visible { outline:2px solid var(--dp-hand-hot) !important; outline-offset:3px !important; }
+${D} .orr-prep-tab:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
 ${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.08em; color:rgb(${BONE} / .55); }
 ${D} .orr-prep-tab[aria-selected=true] .orr-prep-step { color:var(--dp-hand); }
 ${D} .orr-prep-nextstep { display:inline-flex; align-items:center; gap:10px; margin:0; padding:14px 0; min-height:48px; font:600 16px var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .42); pointer-events:none; user-select:none; }
@@ -105,7 +105,7 @@ ${D} .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !
 ${D} .k-foot .sf-back.k-word :is(.k-kbd, .dp-kbd, kbd) { display:none !important; }
 ${D} .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
 ${D} .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
-${D} :is(button,summary,input):focus-visible, ${A} :is(button,input,summary):focus-visible { outline:2px solid var(--dp-hand-hot) !important; outline-offset:3px !important; }
+${D} :is(button,summary,input):focus-visible, ${A} :is(button,input,summary):focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
 /* The armory's three planes: catalog, object/ship, transaction. */
 ${A} { display:grid !important; grid-template-columns:minmax(320px,.9fr) minmax(0,1.55fr) !important; grid-template-rows:auto minmax(0,1fr) auto !important; gap:24px 38px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
 ${A} > .k-title { grid-column:1 / -1 !important; grid-row:1; padding:0 !important; margin:0 !important; position:relative; }

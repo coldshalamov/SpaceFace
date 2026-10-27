@@ -25,7 +25,10 @@ const raw = {
   'vector-mine': [C(12,12,4), P('M12 2V6 M12 18V22 M2 12H6 M18 12H22 M8 4 12 2 16 4 M20 8 22 12 20 16 M8 20 12 22 16 20 M4 8 2 12 4 16')],
   carom: [P('M4 19 11 12 4 5 M11 12 18 19 M11 12 18 5'), C(18,12,2)],
   swarm: [P('M5 19V9L7 5 9 9V19Z M11 19V9L13 5 15 9V19Z M17 19V9L19 5 21 9V19Z M3 22H9 M11 22H17 M17 22H23')],
-  cone: [P('M12 3 5 21 M12 3 12 21 M12 3 19 21 M7 12 17 12')],
+  // The plasma fan is a WEAPON (a spread of bolts); the Rig's forward plow below keeps `cone`. They were
+  // both literally `cone`, the later literal silently replaced the earlier, and two different jobs
+  // wore one symbol. Distinct keys, distinct drawings.
+  'plasma-fan': [P('M12 2 3 21 M12 2 21 21 M3 21Q12 17 21 21'), C(12,12,1.4), C(8.6,17.2,1.2), C(15.4,17.2,1.2)],
   knot: [P('M12 12m-7 0a7 7 0 1 0 7-7 5 5 0 1 0-5 5 3 3 0 1 0 3-3'), C(12,12,1.5)],
   ring: [C(12,12,7), C(12,5,2), C(12,19,2), C(5,12,2), C(19,12,2)],
   return: [P('M6 4Q20 6 20 12Q20 18 6 20L10 12Z M6 4 10 12 M6 20 10 12')],
@@ -83,6 +86,8 @@ const raw = {
   flail: [C(17,6,4), P('M14 9 4 19 M2 18 6 22 M16 1V3 M20 3 22 1 M20 9 22 11')],
   swing: [C(16,7,2), P('M15 9 6 19 M3 8A9 9 0 0 0 19 19 M15 18 19 19 20 15 M4 18 8 22')],
   boost: [P('M6 15V7L12 2 18 7V15L12 19Z M8 19V22 M12 21V24 M16 19V22')],
+  // The travel-drive latch: two chevrons driving at the held-speed bar. Not the afterburner's `boost`.
+  travel: [P('M2 6 8 12 2 18 M9 6 15 12 9 18 M20 4V20 M16 12H20')],
   magnet: [P('M5 4H9V13A3 3 0 0 0 15 13V4H19V13A7 7 0 0 1 5 13Z M5 8H9 M15 8H19 M10 2H14')],
   split: [P('M12 22V13L4 5 M12 13 20 5 M2 9V3H8 M16 3H22V9')],
   pierce: [P('M2 20 22 2 M6 5 19 18 M3 9 15 21 M18 2H22V6')],
@@ -92,6 +97,10 @@ const raw = {
   gyros: [C(12,12,5), C(4,8,2), C(20,16,2), P('M4 12Q3 22 14 21 M20 12Q21 2 10 3 M12 8V16 M9 10 15 14 M9 14 15 10')],
   fan: [P('M12 22V3 M12 22 4 6 M12 22 20 6 M8 6 12 3 16 6 M2 10 4 6 8 7 M16 7 20 6 22 10')],
   capacitor: [C(4,18,2), C(20,6,2), P('M6 16 10 12 M14 8 18 4 M8 8 16 16 M11 5 19 13')],
+  // Swarm call-in charges (the Bomb key's second-tier payloads): a fused sphere that clears the room,
+  // and a column landing on a marked ring. Neither shares a drawing with a weapon.
+  'smart-bomb': [C(12,14,6), C(12,14,1.5), P('M12 8V4 M10 4H14 M2 14H5 M19 14H22 M4.8 6.8 6.8 8.8 M19.2 6.8 17.2 8.8')],
+  'orbital-lance': [P('M12 1V15 M9 4 12 1 15 4 M6 15H18 M3 19Q12 24 21 19 M3 19Q12 14 21 19')],
   // Saucer intrinsics. A disc with a crosshair is the death ray; a cored burst is the annihilator.
   'death-ray': [C(12,12,7), P('M12 4V20 M4 12H20 M8 8 16 16 M16 8 8 16')],
   annihilator: [C(12,12,3), C(12,12,8), P('M12 1V4 M12 20V23 M1 12H4 M20 12H23 M5 5 7 7 M17 17 19 19 M5 19 7 17 M17 7 19 5')],
@@ -111,6 +120,7 @@ const variants = {
 for (const [id, [base, extra]] of Object.entries(variants)) raw[id] = [...raw[base], P(extra)];
 
 const equipment = {
+  callin_smart_bomb: 'smart-bomb', callin_orbital_lance: 'orbital-lance',
   mod_mining_laser_s: 'mining', mod_mining_beam_m: 'mining', mod_mining_pulverizer_l: 'mining', mod_mining_industrial_l: 'mining',
   mod_repulsion_trap_s: 'trap', mod_tractor_beam_m: 'tractor', unique_tideline_tractor: 'tractor',
   mod_elastic_whip_m: 'whip', unique_broken_ring_whip: 'whip', mod_frame_coupler_m: 'coupler',
@@ -143,6 +153,11 @@ const equipmentTrim = Object.freeze({
   mod_deep_scoop_array_m: 'M2 2 5 2 M19 2H22',
 });
 
+// A module that MODIFIES a weapon's shots shares that weapon's family drawing; the small corner plus
+// marks it as the upgrade and not the gun, so a payload and the weapon it names are never one symbol.
+const MODIFIER_MARK = 'M19 2V7 M16.5 4.5H21.5';
+const MODIFIER_IDS = new Set(['mod_bank_shot', 'mod_ion_payload', 'mod_incendiary_payload', 'mod_gravity_tag', 'mod_conductive_path']);
+
 export function arsenalGlyph(id) {
   const key = typeof id === 'string' ? id : id?.defId || id?.id;
   const identity = arsenalIdentity(key);
@@ -154,7 +169,31 @@ export function arsenalGlyph(id) {
     : /_l$/.test(key) ? 'M2 2H8 M2 5H6 M16 22H22 M18 19H22'
       : /_m$|mk2$/.test(key) ? 'M2 2H7 M17 22H22' : '';
   const extra = equipmentTrim[key] || '';
-  return trim || extra ? [...raw[kind], P([trim, extra].filter(Boolean).join(' '))] : raw[kind];
+  const modifier = MODIFIER_IDS.has(key) ? MODIFIER_MARK : '';
+  return trim || extra || modifier ? [...raw[kind], P([trim, extra, modifier].filter(Boolean).join(' '))] : raw[kind];
+}
+
+/**
+ * Where a mark comes from. `authored`: an authored drawing for this exact id (identity table or the
+ * equipment map). `none`: nothing authored — a surface may fall back to a generic FAMILY mark
+ * (equipmentGlyphs.js) but must say so, never present it as the item's own drawing.
+ */
+export function arsenalGlyphSource(id) {
+  return arsenalGlyph(id) ? 'authored' : 'none';
+}
+
+/** The family a mark belongs to: tier/unique variants resolve to their base drawing's key. */
+export function arsenalGlyphFamily(id) {
+  const key = arsenalGlyphKey(id);
+  return variants[key] ? variants[key][0] : key;
+}
+
+/** The authored glyph key an id resolves to ('' for none) — what a contract test pins. */
+export function arsenalGlyphKey(id) {
+  const key = typeof id === 'string' ? id : id?.defId || id?.id;
+  const identity = arsenalIdentity(key);
+  if (identity) return identity.glyph;
+  return equipment[key] || '';
 }
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

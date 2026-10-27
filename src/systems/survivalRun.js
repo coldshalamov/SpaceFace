@@ -38,7 +38,7 @@ import {
   isSwarmRefitWave,
   isSwarmRuleset,
 } from './survivalSwarm.js';
-import { isExtractionWindow } from './survivalExtraction.js';
+import { isExtractionWindow, partialBankOffer } from './survivalExtraction.js';
 import { summarizeRunBuild } from '../data/runModifiers.js';
 import { planWave } from './survivalWavePlanner.js';
 import {
@@ -144,6 +144,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
+    this._unsubs.push(this.bus.on('run:partialBankRequested', () => this._onPartialBankRequested()));
     // SWARM-08 B5 — Circuit choices travel the ordinary draft-pick intent, then this internal
     // simulation event. This owner is the sole writer of `run.telemetry.circuit`.
     this._unsubs.push(this.bus.on('run:circuitChoiceRequested', (payload) => this._onCircuitChoiceRequested(payload)));
@@ -312,9 +313,11 @@ export const survivalRun = {
     this._phaseTicks = 0;
     this._clearReceiptLatches();
 
-    // FOUR WAVES OUT OF FIVE, THE SWARM DOES NOT STOP. `cleanup` may only lead to draft, refit or
-    // victory, so a swarm run still passes THROUGH `draft` between waves -- it just resolves it on
-    // arrival and never opens the surface. The player fights, the wave rolls, nothing is clicked.
+    // EVERY WAVE OPENS THE ARMORY NOW — SWARM_DRAFT_EVERY is 1, so the swarm leg of this latch is
+    // dormant. It stays written because `cleanup` may still only lead to draft, refit or victory:
+    // if the armory cadence ever thins again, a swarm run passes THROUGH `draft` on the off waves
+    // and must resolve it on arrival rather than flash a menu. The legs that still fire today are
+    // draftless contracts and the boss circuit.
     if (phase === 'draft' && (
       compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
       || isBossCircuitRuleset(run.ruleset)
@@ -997,6 +1000,48 @@ export const survivalRun = {
     this._emit('run:endRequested', {
       outcome: 'aborted',
       reason: 'extracted',
+      tick: this._runTick,
+    });
+  },
+
+  /**
+   * The window's middle seat: bank half the purse and keep flying the rest. The spend moves
+   * the banked part out of the run wallet through the ordinary purse owner, and the secured
+   * stamp rides telemetry the way the stake, threats and hangar already do — the run state
+   * schema is closed to a new top-level field. Settlement reads the stamp in
+   * hangarBankInput: banked-now means banked forever, and only the remainder answers to the
+   * ending's fraction, so a later death or cash-out can never pay the same salvage twice.
+   *
+   * The window and phase gates are extraction's own, and the offer's refusal is honest —
+   * a purse too thin to halve into a whole credit banks nothing and stamps nothing.
+   */
+  _onPartialBankRequested() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    if (run.phase !== 'cleanup' && run.phase !== 'refit') return;
+    if (!isExtractionWindow(run.wave)) return;
+    const offer = partialBankOffer(run);
+    if (!offer) return;
+    const before = Number.isFinite(run.credits) ? run.credits : 0;
+    this._emit('run:spendRequested', { credits: offer.amount, reason: 'partial_bank' });
+    const paid = liveSurvivalRun(this.state);
+    if (!paid || paid.credits !== before - offer.amount) return;
+    if ((paid.phase !== 'cleanup' && paid.phase !== 'refit') || !isExtractionWindow(paid.wave)) {
+      // The window closed between the ask and the spend landing — hand the salvage back
+      // rather than stamp a bank the run was no longer selling. Same repair the Circuit's
+      // salvage uses when the card leaves the table mid-payment.
+      this._emit('run:awardRequested', { credits: offer.amount, reason: 'partial_bank_refund' });
+      return;
+    }
+    if (!paid.telemetry || typeof paid.telemetry !== 'object') paid.telemetry = {};
+    const secured = (Number.isFinite(paid.telemetry.securedBounty)
+      ? Math.trunc(paid.telemetry.securedBounty) : 0) + offer.amount;
+    paid.telemetry.securedBounty = secured;
+    this._emit('run:partialBanked', {
+      credits: offer.amount,
+      secured,
+      remaining: paid.credits,
+      wave: Number.isInteger(paid.wave) ? paid.wave : 0,
       tick: this._runTick,
     });
   },

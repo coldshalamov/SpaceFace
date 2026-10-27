@@ -835,7 +835,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
 #screens .sx-berth .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts {
   position: absolute; right: 0; top: 100%; width: max-content; justify-content: flex-end;
 }
-#screens .sx-berth .sxb-crown .sxb-vital__ok { font-size: var(--dp-fs-etch, 12px); color: #c2cfdb; }
+#screens .sx-berth .sxb-crown .sxb-vital__ok { font-size: var(--dp-fs-etch, 12px); color: var(--dp-ink-mute, #9a968c); }
 /* The hold's head is its manifest button: it reads as the same gauge, and says it opens. */
 #screens .sx-berth .sxb-crown .sxb-vital__head[data-hold] { cursor: pointer; }
 #screens .sx-berth .sxb-crown .sxb-vital__head[data-hold]:is(:hover, :focus-visible) .sxb-vital__label { color: var(--dp-ink, #e8e2d4); }
@@ -1162,7 +1162,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: linear-gradient(90deg, rgba(7, 8, 10, 0), rgba(7, 8, 10, 0.88) 40px, rgba(7, 8, 10, 0.88) calc(100% - 40px), rgba(7, 8, 10, 0));
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg) 88%, transparent) 40px, color-mix(in srgb, var(--bg) 88%, transparent) calc(100% - 40px), transparent);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

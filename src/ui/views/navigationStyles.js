@@ -1,4 +1,7 @@
-// Original native chart layout, shared with production-backed fixtures. Orbital overrides are in styles/orbital.css.
+// Original native chart layout, shared with production-backed fixtures. The ORRERY composition
+// (src/ui/orrery/chartLayouts.js) and the deckplate CHART block (src/ui/deckplate/screens.js)
+// ride after this sheet, and src/ui/map/mapWorkbenchCss.js is injected last. styles/orbital.css
+// is NOT loaded by any runtime path (its bytes are read only by tests) — not a live override layer.
 export const CSS = `
 /* THE CHART — the frontend kit's stage screen (design/frontend/direction/KIT_SPEC.md; DIRECTION_SHEET
    §2 "The chart"). This is the chart's one permitted local LAYOUT block: kit tokens only. No plates,
@@ -201,7 +204,11 @@ export const CSS = `
 #sf-galaxymap .gm-left-rail { grid-area: hang; }
 /* The inspector is as tall as what it says, up to the stage: a column stretched to the full stage
    height left a dead band between the no-selection note and the engage key. */
-#sf-galaxymap .gm-right-inspector { grid-area: inspector; align-self: start; max-height: 100%; display: flex; flex-direction: column; gap: var(--k-pad); }
+/* The inspector fills the stage row (stretch, not start): a start-hung column let the pinned
+   action band ride up with short tab bodies, so the primary verb's position jumped between tabs
+   (chart --19-missions put ENGAGE ROUTE mid-air ~340px above its Overview spot). Stretching the
+   column and growing the detail area pins the band to the stage bottom on every tab. */
+#sf-galaxymap .gm-right-inspector { grid-area: inspector; max-height: 100%; display: flex; flex-direction: column; gap: var(--k-pad); }
 
 /* ---- The hang (.gm-left-rail): five disclosures of words -------------------------------------- */
 #sf-galaxymap .gm-rail-sec { border-top: 1px solid var(--k-hair); padding: calc(6px * var(--k-s)) 0; }
@@ -289,7 +296,9 @@ export const CSS = `
   display: flex;
   flex-direction: column;
   gap: var(--k-pad);
-  flex: 0 1 auto;
+  /* Grow into the spare column height: short tab bodies leave the detail area open instead of
+     pulling the pinned action band (and the lamp key with it) up out of its resting place. */
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden auto;
   scrollbar-width: thin;

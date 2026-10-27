@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ce6b47ae2cff32ea8fedfad835556479a61695c7baf458551cdd76d8726dbc4d",
+  "contentHash": "aecf8cb8bd236178a67841b1447bf9099b6a15df3216e6998b76f19fec2901fe",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          6.1300163641572,
+          6.130016363242448,
           0.28999999165534973,
-          0.2856101989746094
+          0.2856102093786368
         ],
         "min": [
-          5.969984017312527,
+          5.9699840182272785,
           -0.28999999165534973,
-          -0.2856101989746094
+          -0.2856102093786368
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a14d8c7ac2dd340621be1ea4f0479de4bd05de9197901ef37bb4f55faeb89308",
+      "geometryHash": "64ab5a6ab99518d5029e87bf1e276783269b34b010cfac55ac4312be663c462b",
       "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -85,21 +85,21 @@
       "bounds": {
         "max": [
           6.065700054168701,
-          0.42623183131217957,
-          0.5210896134376526
+          0.4262318443374507,
+          0.5210896194350437
         ],
         "min": [
           1.725450038909912,
-          -0.3812318742275238,
-          -0.5210896134376526
+          -0.38123188725279494,
+          -0.5210896194350437
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d92987250e2bae2a65064692c4e5fb0feb7144cb1affac02f5bbb972def9c2f",
+      "geometryHash": "d2b2647ee1c9b005157afbb0dd75c7a54f2f772fe27d56a6b98ea4cb1cbe1ec3",
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 1056,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_HeavyRecessedBore",
       "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
@@ -109,22 +109,22 @@
     {
       "bounds": {
         "max": [
-          1.33292555809021,
-          0.3065343499183655,
+          1.3329255120115284,
+          0.3065343555252019,
           0.4732249975204468
         ],
         "min": [
-          0.4768253564834595,
-          0.022515589371323586,
+          0.476825402562141,
+          0.022515583764487118,
           -0.47322502732276917
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e30ac75c33a7f6995a50aac500dc3ed2f2bc86643205d5dd4eee5962cf9e109",
+      "geometryHash": "56a46f09c2b772eebdef60d96c3f63e711ca2aa3f25390a69f5199842e2dceb0",
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 684,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_RecoilClevis-1",
       "nodeId": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
@@ -135,17 +135,17 @@
       "bounds": {
         "max": [
           4.177994251251221,
-          0.55997633934021,
-          0.5601080060005188
+          0.5599762891072846,
+          0.5601080198861982
         ],
         "min": [
-          2.072105646133423,
-          -0.5598980784416199,
-          -0.5601080060005188
+          2.0721056255500203,
+          -0.5598980963892266,
+          -0.5601080198861982
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8846e62899cb12adad075435f03c211a08204f9388ba291752b9bb236fd168b7",
+      "geometryHash": "84eb61f2f0dd2000389dbe778d67e02bbea4900ad6d517adb4d742077149f3da",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.0",
       "indexCount": 3360,
       "indexed": true,
@@ -159,22 +159,22 @@
     {
       "bounds": {
         "max": [
-          2.099984645843506,
-          0.7226037383079529,
-          0.8249583840370178
+          2.0999846144622527,
+          0.7226037244286402,
+          0.8249584145524058
         ],
         "min": [
           -0.30000001192092896,
-          -0.7250537872314453,
-          -0.8249583840370178
+          -0.7250537733521326,
+          -0.8249584145524058
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e517774ed671df63110b86b3a9e9687866b4135b29389fc91de45c69124cf87",
+      "geometryHash": "27d5f8d9218539dfa80c19220dd2d7d3baed0595179105247ba928b6cca87699",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged.primitive.1",
       "indexCount": 1116,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_heavy_cannon_Material_Hull_Merged.001",
       "nodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
@@ -185,17 +185,17 @@
       "bounds": {
         "max": [
           6.099999904632568,
-          0.7700236439704895,
-          0.849827766418457
+          0.7700236327769966,
+          0.8498277865551706
         ],
         "min": [
           -0.11500000208616257,
-          -0.5000236630439758,
-          -0.849827766418457
+          -0.5000236518504829,
+          -0.8498277865551706
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd57f70c8c4405a460f0ebdc3e22fc742b8eb6f175a567af3b443d079e2dde88",
+      "geometryHash": "f956ac3a339af5fc5831f571ee0fbf72ae01409e9fa48e2295042aac5e52362a",
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged.primitive.0",
       "indexCount": 2736,
       "indexed": true,
@@ -212,38 +212,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "id": "material:3e89ecd14466b59bdaf35c00",
       "name": "Material_Accent",
@@ -251,42 +219,10 @@
       "textures": []
     },
     {
-      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
-      "id": "material:9b606ffef39761a1e7cc390d",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -322,6 +258,38 @@
       "textures": []
     },
     {
+      "hash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
+      "id": "material:dc94a28d84c8ece3128cbf01",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "fd5cd111187e5e081661850337b4cc777991e0e7eeacd898f17f132e3e7a2262",
       "id": "material:fd5cd111187e5e0816618503",
       "name": "Material_Hull",
@@ -348,6 +316,38 @@
         {
           "colorSpace": "linear",
           "name": "orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
           "slot": "occlusion",
           "uri": null
         }
@@ -456,17 +456,17 @@
     {
       "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
       "localTransform": [
-        1,
+        0.28999999165534973,
         0,
         0,
         0,
         0,
-        1,
+        0.28999999165534973,
         0,
         0,
         0,
         0,
-        1,
+        0.28999999165534973,
         0,
         0,
         0,
@@ -485,17 +485,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
-        1,
+        0.28999999165534973,
         0,
         0,
         0,
         0,
-        1,
+        0.28999999165534973,
         0,
         0,
         0,
         0,
-        1,
+        0.28999999165534973,
         0,
         6.050000190734863,
         0,
@@ -849,20 +849,20 @@
     {
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
-        1,
+        2.1701250076293945,
         0,
         0,
         0,
         0,
-        1,
+        2.1701250076293945,
         0,
         0,
         0,
         0,
-        1,
+        2.1701250076293945,
         0,
-        0,
-        0,
+        3.8955750465393066,
+        0.02249997854232788,
         0,
         1
       ],
@@ -876,20 +876,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
-        1,
+        2.1701250076293945,
         0,
         0,
         0,
         0,
-        1,
+        2.1701250076293945,
         0,
         0,
         0,
         0,
-        1,
+        2.1701250076293945,
         0,
-        0,
-        0,
+        3.8955750465393066,
+        0.02249997854232788,
         0,
         1
       ]
@@ -897,21 +897,21 @@
     {
       "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
       "localTransform": [
-        1,
+        0.47322501242160797,
         0,
         0,
         0,
         0,
-        1,
+        0.47322501242160797,
         0,
         0,
         0,
         0,
-        1,
+        0.47322501242160797,
         0,
-        0,
-        0,
-        0,
+        0.9048754572868347,
+        0.16452496964484453,
+        -1.4901161193847656e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -924,21 +924,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
-        1,
+        0.47322501242160797,
         0,
         0,
         0,
         0,
-        1,
+        0.47322501242160797,
         0,
         0,
         0,
         0,
-        1,
+        0.47322501242160797,
         0,
-        0,
-        0,
-        0,
+        0.9048754572868347,
+        0.16452496964484453,
+        -1.4901161193847656e-8,
         1
       ]
     },
@@ -1434,20 +1434,20 @@
     {
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
       "localTransform": [
-        1,
+        2.238997131586075,
         0,
         0,
         0,
         0,
-        1,
+        2.238997131586075,
         0,
         0,
         0,
         0,
-        1,
+        2.238997131586075,
         0,
-        0,
-        0,
+        1.9389971196651459,
+        -0.0012250244617462158,
         0,
         1
       ],
@@ -1462,20 +1462,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
-        1,
+        2.238997131586075,
         0,
         0,
         0,
         0,
-        1,
+        2.238997131586075,
         0,
         0,
         0,
         0,
-        1,
+        2.238997131586075,
         0,
-        0,
-        0,
+        1.9389971196651459,
+        -0.0012250244617462158,
         0,
         1
       ]
@@ -1483,20 +1483,20 @@
     {
       "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged",
       "localTransform": [
-        1,
+        3.1074999533593655,
         0,
         0,
         0,
         0,
-        1,
+        3.1074999533593655,
         0,
         0,
         0,
         0,
-        1,
+        3.1074999533593655,
         0,
-        0,
-        0,
+        2.992499951273203,
+        0.13499999046325684,
         0,
         1
       ],
@@ -1511,20 +1511,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
       "worldTransform": [
-        1,
+        3.1074999533593655,
         0,
         0,
         0,
         0,
-        1,
+        3.1074999533593655,
         0,
         0,
         0,
         0,
-        1,
+        3.1074999533593655,
         0,
-        0,
-        0,
+        2.992499951273203,
+        0.13499999046325684,
         0,
         1
       ]
@@ -1540,37 +1540,37 @@
       "uri": "weapon_heavy_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 478376,
-    "sha256": "22bc2dc0435a7cd7cad46ae0a9ed773353ae8eebf962d9ed7ede9c91d14561cb",
+    "bytes": 439636,
+    "sha256": "0f8f739a1ea890c86e15f6a8783c5f6b3b0c49e2dbcb94bd0ca4fb73e990f50f",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.9150081761181355,
-        0.022484928369522095,
+        2.9150081756607595,
+        0.02248492971243199,
         0
       ],
       "max": [
-        6.1300163641572,
-        0.7700236439704895,
-        0.849827766418457
+        6.130016363242448,
+        0.7700236327769966,
+        0.8498277865551706
       ],
       "min": [
         -0.30000001192092896,
-        -0.7250537872314453,
-        -0.849827766418457
+        -0.7250537733521326,
+        -0.8498277865551706
       ],
       "size": [
-        6.430016376078129,
-        1.4950774312019348,
-        1.699655532836914
+        6.430016375163377,
+        1.4950774061291292,
+        1.699655573110341
       ]
     },
     "hidden": [],
@@ -1703,17 +1703,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.28999999165534973,
           0,
           0,
           0,
           0,
-          1,
+          0.28999999165534973,
           0,
           0,
           0,
           0,
-          1,
+          0.28999999165534973,
           0,
           6.050000190734863,
           0,
@@ -1729,20 +1729,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.238997131586075,
           0,
           0,
           0,
           0,
-          1,
+          2.238997131586075,
           0,
           0,
           0,
           0,
-          1,
+          2.238997131586075,
           0,
-          0,
-          0,
+          1.9389971196651459,
+          -0.0012250244617462158,
           0,
           1
         ],
@@ -1755,20 +1755,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.238997131586075,
           0,
           0,
           0,
           0,
-          1,
+          2.238997131586075,
           0,
           0,
           0,
           0,
-          1,
+          2.238997131586075,
           0,
-          0,
-          0,
+          1.9389971196651459,
+          -0.0012250244617462158,
           0,
           1
         ],
@@ -1781,20 +1781,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.1074999533593655,
           0,
           0,
           0,
           0,
-          1,
+          3.1074999533593655,
           0,
           0,
           0,
           0,
-          1,
+          3.1074999533593655,
           0,
-          0,
-          0,
+          2.992499951273203,
+          0.13499999046325684,
           0,
           1
         ],
@@ -1807,21 +1807,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.47322501242160797,
           0,
           0,
           0,
           0,
-          1,
+          0.47322501242160797,
           0,
           0,
           0,
           0,
-          1,
+          0.47322501242160797,
           0,
-          0,
-          0,
-          0,
+          0.9048754572868347,
+          0.16452496964484453,
+          -1.4901161193847656e-8,
           1
         ],
         "name": "Remaster_Material_Mechanical_ShadowEnamel",
@@ -1835,20 +1835,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.1701250076293945,
           0,
           0,
           0,
           0,
-          1,
+          2.1701250076293945,
           0,
           0,
           0,
           0,
-          1,
+          2.1701250076293945,
           0,
-          0,
-          0,
+          3.8955750465393066,
+          0.02249997854232788,
           0,
           1
         ],
@@ -1865,20 +1865,20 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-  "runtimeHash": "34067002597a6da6fa59fe9af941d8b9013931d3245f79bd7842a9266552ecfd",
+  "runtimeHash": "1dc2a2605b535a657fd56fe1dc63c8f20e309c6ee4df92dd037d2e815ef3fc0d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          6.1300163641572,
-          0.7700236439704895,
-          0.849827766418457
+          6.130016363242448,
+          0.7700236327769966,
+          0.8498277865551706
         ],
         "min": [
           -0.30000001192092896,
-          -0.7250537872314453,
-          -0.849827766418457
+          -0.7250537733521326,
+          -0.8498277865551706
         ]
       },
       "id": "sf.render.weapon-heavy-cannon.body",

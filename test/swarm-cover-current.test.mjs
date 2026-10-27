@@ -305,8 +305,15 @@ test('the sluice window: field strength cycles warning->surge->calm inside a swa
   const h = bootCinderSwarm(2); // furnace_active — a cycled room
   assert.equal(h.plan.arenaPhase, 'furnace_active');
   assert.equal(h.system._cycleMachinery, true, 'machinery window bound for this room');
+  // Later swarm rounds hold their room law through the ~4 s arrival breath so a rock the
+  // field would sling is not already flying into the fresh pack: the field is absent
+  // until the breath ends, then installs on the next update.
+  assert.equal(h.fields.live.get(ARENA_FIELD_SLOT_IDS[0]), undefined,
+    'the arrival breath holds the room field back');
+  h.state.simTime = 4;
+  h.system.update(1 / 60, h.state);
   const field = h.fields.live.get(ARENA_FIELD_SLOT_IDS[0]);
-  assert.ok(field, 'the room field is installed');
+  assert.ok(field, 'the room field installs once the arrival breath passes');
 
   const strengthAt = (simTime) => {
     h.state.simTime = simTime;
@@ -314,12 +321,14 @@ test('the sluice window: field strength cycles warning->surge->calm inside a swa
     return h.fields.live.get(ARENA_FIELD_SLOT_IDS[0]).strength;
   };
 
-  // Unregulated machinery: 2s warning, 7s surge, 3s calm, 12s period.
-  assert.equal(strengthAt(0.5), 0, 'warning: geometry before force');
-  assert.equal(strengthAt(5), CINDER_CURRENT_STRENGTH, 'surge is the authored strength');
-  assert.equal(strengthAt(10.5), 0, 'calm: the throw window closes');
-  assert.equal(strengthAt(13.5), 0, 'period wraps back into warning');
-  assert.equal(strengthAt(17), CINDER_CURRENT_STRENGTH, 'and surges again — deterministic');
+  // Unregulated machinery: 2s warning, 7s surge, 3s calm, 12s period. The cycle anchors
+  // to the wave's planned clock, not the deferred install — these are the same cycle
+  // offsets one period later, keeping simTime monotonic past the breath.
+  assert.equal(strengthAt(12.5), 0, 'warning: geometry before force');
+  assert.equal(strengthAt(17), CINDER_CURRENT_STRENGTH, 'surge is the authored strength');
+  assert.equal(strengthAt(22.5), 0, 'calm: the throw window closes');
+  assert.equal(strengthAt(25.5), 0, 'period wraps back into warning');
+  assert.equal(strengthAt(29), CINDER_CURRENT_STRENGTH, 'and surges again — deterministic');
   h.system.destroy();
 });
 
@@ -338,6 +347,11 @@ test('a steady cinder room does not cycle — the window is bound to the phase, 
 
 test('the window is one physical law: surge carries both teams downstream, the wedge edge is safe', () => {
   const h = bootCinderSwarm(2);
+  // Same arrival breath as the cycle above: a later round's field installs ~4 s in.
+  assert.equal(h.fields.live.get(ARENA_FIELD_SLOT_IDS[0]), undefined,
+    'the arrival breath holds the room field back');
+  h.state.simTime = 4;
+  h.system.update(1 / 60, h.state);
   const record = h.fields.live.get(ARENA_FIELD_SLOT_IDS[0]);
   assert.ok(record, 'installed field');
   const field = normalizeField(record);

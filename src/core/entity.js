@@ -214,6 +214,21 @@ function v3(src) {
   return new SimVector3(src && src.x || 0, 0, src && src.z || 0);
 }
 
+/** Stamp transient ordnance with its original shooter's existing occupant identity.
+ * Split/optic children copy data, so an inherited (including unknown) source is never rebound.
+ */
+export function stampAttackSource(state, entity) {
+  if (!entity || (entity.type !== 'projectile' && entity.type !== 'vectormine')) return;
+  const data = entity.data || (entity.data = {});
+  if (Object.prototype.hasOwnProperty.call(data, 'attackSource')) return;
+  const id = entity.ownerId ?? data.ownerId ?? null;
+  const source = id != null && state?.entities?.get ? state.entities.get(id) : null;
+  data.attackSource = {
+    id, life: source?.alive !== false ? occupantGenerationOf(source) : null,
+    team: source?.team ?? entity.team ?? null,
+  };
+}
+
 /** Build a fully-formed simulation entity from a partial spec. Does not assign or insert an id. */
 export function makeEntity(spec = {}) {
   const e = Object.assign(Object.create(ENTITY_PROTO), {

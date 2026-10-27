@@ -99,28 +99,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1b550db8d1b67305b2309876e92f04e1fc654d203ff917e2aa55e30b2ded58f6",
+  "contentHash": "121cb9990f8cac87708577d52676ab8a72bd6d841f47adae1ce880bc14021311",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           3.89739990234375,
-          0.7206449508666992,
-          1.8463454246520996
+          0.7206672214990962,
+          1.846342931094414
         ],
         "min": [
           2.8561997413635254,
-          0.6176085472106934,
-          1.2075817584991455
+          0.6175862765782963,
+          1.2075842520568312
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64ee94c278e779ecf2f2a5627348dd217f633d1577a795c53a4c49b8bfa0f107",
+      "geometryHash": "41fff99a3431ae479068261e7aa2a6c282e4622cfacd90a2e5e223841801ab7a",
       "id": "sf.render.hull-frigate.mesh.lod0-det-authority-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "84d40ef17e59b71690e3daa6a4d99f5258425a1a76ce253d59a9369eff7beb47",
+      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-authority-stencil",
@@ -131,17 +131,17 @@
       "bounds": {
         "max": [
           1.684849739074707,
-          1.493417501449585,
-          1.0478909015655518
+          1.493491706892129,
+          1.047950183151588
         ],
         "min": [
           -0.6578502655029297,
-          0.8751994967460632,
-          0.30266666412353516
+          0.8751252913035192,
+          0.3026073825374988
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa170253546bbec8a36307532178bcf667325dd312ea42d9e225c59d8cd4cbe5",
+      "geometryHash": "5c5d70e8c3f53b62dbd01d51a82897acefd6e122a4ec06093281a3ac5ce125b6",
       "id": "sf.render.hull-frigate.mesh.lod0-det-bridge-super.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -156,17 +156,17 @@
       "bounds": {
         "max": [
           0.18812477588653564,
-          -0.5157912373542786,
-          -0.06994548439979553
+          -0.5157179575409259,
+          -0.06996264544234604
         ],
         "min": [
           -3.0656251907348633,
-          -0.9279366135597229,
-          -0.3893273174762726
+          -0.9280098933730756,
+          -0.3893101564337221
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f14ae261ddbca07f1e8ce987910c1d12947e689ecb5b3e70a920c0eb42a67078",
+      "geometryHash": "ebf1ea8a43ede81cb82420c15dffa9f085c09ac7fd238ea25f210f8f8fa8a6b7",
       "id": "sf.render.hull-frigate.mesh.lod0-det-disciplined-wear.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -181,21 +181,21 @@
       "bounds": {
         "max": [
           1.9451497793197632,
-          -0.0006094872951507568,
-          -1.5337789058685303
+          -0.000631526861548215,
+          -1.53385670349458
         ],
         "min": [
           -0.9181503057479858,
-          -0.4127548635005951,
-          -1.7999303340911865
+          -0.41273282393419763,
+          -1.7998525364651368
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee11fa431ee5fb60264982db2a23b2aba78d5bd28880abc42840c37f88d95c9c",
+      "geometryHash": "0c0529e92173d87c649b61daaa0bee2cfd4910a5e3c5cf3840a9da7f5a8548c9",
       "id": "sf.render.hull-frigate.mesh.lod0-det-engine-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "7e5b0d832e568d35dbc925cfd8b7703d9014b974e63a8c7f92908ab1f8ecd421",
+      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-engine-vent",
@@ -206,21 +206,21 @@
       "bounds": {
         "max": [
           -2.7402503490448,
-          0.3857768177986145,
-          1.101121187210083
+          0.38576258538995684,
+          1.1011057857651516
         ],
         "min": [
           -3.5211503505706787,
-          0.23122228682041168,
-          0.8881999850273132
+          0.23123651922906935,
+          0.8882153864722447
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40b1b562d680162c5975d49b9b1df81dc03e896cc909757d641b8ba86e9e98a6",
+      "geometryHash": "b3302f822819ac63b1f123ad00afb4dc34cfa9d60e4fb574166596ae13b45cd1",
       "id": "sf.render.hull-frigate.mesh.lod0-det-field-insignia.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "84d40ef17e59b71690e3daa6a4d99f5258425a1a76ce253d59a9369eff7beb47",
+      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-field-insignia",
@@ -231,21 +231,21 @@
       "bounds": {
         "max": [
           -0.13725030422210693,
-          2.060117483139038,
-          0.4623575508594513
+          2.0601027059912314,
+          0.4623523077189651
         ],
         "min": [
           -0.9181503057479858,
-          1.3388630151748657,
-          0.14297571778297424
+          1.3388777923226725,
+          0.1429809609234604
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b45d225ce8fd3a11899353d4ad62a270e380a5d3a5a7f78b6774f0c74b4b9e67",
+      "geometryHash": "08162b4d83a104cbabe48ad6ae60a5d9083d5028210dbd5d95004a3a33c5620c",
       "id": "sf.render.hull-frigate.mesh.lod0-det-sensor-mast.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "7e5b0d832e568d35dbc925cfd8b7703d9014b974e63a8c7f92908ab1f8ecd421",
+      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-sensor-mast",
@@ -256,21 +256,21 @@
       "bounds": {
         "max": [
           3.832324981689453,
-          0.5660904049873352,
-          2.1391122341156006
+          0.5661667705720936,
+          2.1392228474429134
         ],
         "min": [
           -3.325925350189209,
-          0.36001771688461304,
-          1.9794213771820068
+          0.3599413512998546,
+          1.979310763854694
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e346a38a6efa7fe6a13e81ba3f524d1d820b13e1c9c3e402e6a67e6496a8d54",
+      "geometryHash": "7a2ab25f42f61c2898d025e51f837555acafc9435816312377f4a7734d3a5162",
       "id": "sf.render.hull-frigate.mesh.lod0-det-squadron-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "84d40ef17e59b71690e3daa6a4d99f5258425a1a76ce253d59a9369eff7beb47",
+      "materialHash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-squadron-stripe",
@@ -281,21 +281,21 @@
       "bounds": {
         "max": [
           1.2943997383117676,
-          1.1327903270721436,
-          2.4851090908050537
+          1.132761847353667,
+          2.4850783475198357
         ],
         "min": [
           -0.26740026473999023,
-          0.8236812353134155,
-          2.0592668056488037
+          0.823709715031892,
+          2.0592975489340217
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ac24b5c27bc9c70b11a8f4dfd1c1a3f1453b614bc010b159af567e0f3b8b80a",
+      "geometryHash": "98b148089331d9bdc8fe0c7fe6d6355436e032a55ff9c0a0dc312a3868d57066",
       "id": "sf.render.hull-frigate.mesh.lod0-det-turret-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "7e5b0d832e568d35dbc925cfd8b7703d9014b974e63a8c7f92908ab1f8ecd421",
+      "materialHash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-frigate.mesh.lod0-det-turret-collar",
@@ -306,17 +306,17 @@
       "bounds": {
         "max": [
           7.020999908447266,
-          2.6265416145324707,
-          2.6979432106018066
+          2.626541782855973,
+          2.697943071659518
         ],
         "min": [
           -5.994000434875488,
-          -2.524724245071411,
-          -2.624912977218628
+          -2.5247244133949134,
+          -2.624912838276339
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54e7636ca88f7fbfc4c84fc10270a3324299d9f89d3322f226e089bc2dbb2b67",
+      "geometryHash": "6dc3bee5d0bf9cba8ddb8040c4429edd4d3422c61d55131bd38b105d9a01c7b7",
       "id": "sf.render.hull-frigate.mesh.lod0-hull-frigate-main.primitive.0",
       "indexCount": 7308,
       "indexed": true,
@@ -331,17 +331,17 @@
       "bounds": {
         "max": [
           7.020999908447266,
-          2.6265416145324707,
-          2.6979432106018066
+          2.626541782855973,
+          2.697943071659518
         ],
         "min": [
           -5.994000434875488,
-          -2.524724245071411,
-          -2.624912977218628
+          -2.5247244133949134,
+          -2.624912838276339
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3174971ec86f11ff7445e58996ffdee631aa243a115ebf4241f48268e240029",
+      "geometryHash": "0ff5587662e53a1e9abcf673f3bb85297ef385bebe935ecf8b7fc8284d0d7914",
       "id": "sf.render.hull-frigate.mesh.lod1-hull-frigate-silhouette.primitive.0",
       "indexCount": 4017,
       "indexed": true,
@@ -356,17 +356,17 @@
       "bounds": {
         "max": [
           7.050034523010254,
-          2.6573100090026855,
-          2.722377300262451
+          2.6573099687399453,
+          2.7223773184492623
         ],
         "min": [
           -5.937488079071045,
-          -2.5893051624298096,
-          -2.861936330795288
+          -2.5893051221670693,
+          -2.8619363489820993
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7053e9fbb66772bfefce2eb4c2432bfac37f4ce8391fec61db9e274a0b1b1bf5",
+      "geometryHash": "da877cd424521c5371faf25855aa0002649bd34500d37fea042fcd5d45b4d345",
       "id": "sf.render.hull-frigate.mesh.lod2-hull-frigate-silhouette.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "7e5b0d832e568d35dbc925cfd8b7703d9014b974e63a8c7f92908ab1f8ecd421",
-      "id": "material:7e5b0d832e568d35dbc925cf",
+      "hash": "a03634ff614b440bfe3a73f82e43c6f1e910c2da35140cf12fee3edc9cc4ce05",
+      "id": "material:a03634ff614b440bfe3a73f8",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -409,38 +409,6 @@
         {
           "colorSpace": "linear",
           "name": "hull_frigate_mechanical_orm_1k",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "84d40ef17e59b71690e3daa6a4d99f5258425a1a76ce253d59a9369eff7beb47",
-      "id": "material:84d40ef17e59b71690e3daa6",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_frigate_baseColor_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_accent_orm_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_neutral_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_frigate_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -477,27 +445,59 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "ed9b8848b90c173d5711b63a15a37c2adc8926d7d717763bd5519497edf3760e",
+      "id": "material:ed9b8848b90c173d5711b63a",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_frigate_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_frigate_accent_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-authority-stencil",
       "localTransform": [
-        1,
+        0.5206000804901123,
         0,
         0,
         0,
         0,
-        1,
+        0.5206000804901123,
         0,
         0,
         0,
         0,
-        1,
+        0.5206000804901123,
         0,
-        0,
-        0,
-        0,
+        3.3767998218536377,
+        0.6691267490386963,
+        1.5269635915756226,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -511,42 +511,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        0.5206000804901123,
         0,
         0,
         0,
         0,
-        1,
+        0.5206000804901123,
         0,
         0,
         0,
         0,
-        1,
+        0.5206000804901123,
         0,
-        0,
-        0,
-        0,
+        3.3767998218536377,
+        0.6691267490386963,
+        1.5269635915756226,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-bridge-super",
       "localTransform": [
-        1,
+        1.1713500022888184,
         0,
         0,
         0,
         0,
-        1,
+        1.1713500022888184,
         0,
         0,
         0,
         0,
-        1,
+        1.1713500022888184,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        1.184308499097824,
+        0.6752787828445435,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -560,42 +560,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        1.1713500022888184,
         0,
         0,
         0,
         0,
-        1,
+        1.1713500022888184,
         0,
         0,
         0,
         0,
-        1,
+        1.1713500022888184,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        1.184308499097824,
+        0.6752787828445435,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-disciplined-wear",
       "localTransform": [
-        1,
+        1.6268749833106995,
         0,
         0,
         0,
         0,
-        1,
+        1.6268749833106995,
         0,
         0,
         0,
         0,
-        1,
+        1.6268749833106995,
         0,
-        0,
-        0,
-        0,
+        -1.4387502074241638,
+        -0.7218639254570007,
+        -0.22963640093803406,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -609,42 +609,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        1.6268749833106995,
         0,
         0,
         0,
         0,
-        1,
+        1.6268749833106995,
         0,
         0,
         0,
         0,
-        1,
+        1.6268749833106995,
         0,
-        0,
-        0,
-        0,
+        -1.4387502074241638,
+        -0.7218639254570007,
+        -0.22963640093803406,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-engine-vent",
       "localTransform": [
-        1,
+        1.4316500425338745,
         0,
         0,
         0,
         0,
-        1,
+        1.4316500425338745,
         0,
         0,
         0,
         0,
-        1,
+        1.4316500425338745,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        -0.20668217539787292,
+        -1.6668546199798584,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -658,42 +658,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        1.4316500425338745,
         0,
         0,
         0,
         0,
-        1,
+        1.4316500425338745,
         0,
         0,
         0,
         0,
-        1,
+        1.4316500425338745,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        -0.20668217539787292,
+        -1.6668546199798584,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-field-insignia",
       "localTransform": [
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
-        0,
-        0,
-        0,
+        -3.1307003498077393,
+        0.3084995523095131,
+        0.9946605861186981,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -707,42 +707,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
-        0,
-        0,
-        0,
+        -3.1307003498077393,
+        0.3084995523095131,
+        0.9946605861186981,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-sensor-mast",
       "localTransform": [
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
-        0,
-        0,
-        0,
+        -0.5277003049850464,
+        1.699490249156952,
+        0.30266663432121277,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -756,42 +756,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
         0,
         0,
         0,
-        1,
+        0.39045000076293945,
         0,
-        0,
-        0,
-        0,
+        -0.5277003049850464,
+        1.699490249156952,
+        0.30266663432121277,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-squadron-stripe",
       "localTransform": [
-        1,
+        3.579125165939331,
         0,
         0,
         0,
         0,
-        1,
+        3.579125165939331,
         0,
         0,
         0,
         0,
-        1,
+        3.579125165939331,
         0,
-        0,
-        0,
-        0,
+        0.25319981575012207,
+        0.4630540609359741,
+        2.0592668056488037,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -805,42 +805,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        3.579125165939331,
         0,
         0,
         0,
         0,
-        1,
+        3.579125165939331,
         0,
         0,
         0,
         0,
-        1,
+        3.579125165939331,
         0,
-        0,
-        0,
-        0,
+        0.25319981575012207,
+        0.4630540609359741,
+        2.0592668056488037,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-det-turret-collar",
       "localTransform": [
-        1,
+        0.7809000015258789,
         0,
         0,
         0,
         0,
-        1,
+        0.7809000015258789,
         0,
         0,
         0,
         0,
-        1,
+        0.7809000015258789,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.9782357811927795,
+        2.2721879482269287,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -854,42 +854,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        0.7809000015258789,
         0,
         0,
         0,
         0,
-        1,
+        0.7809000015258789,
         0,
         0,
         0,
         0,
-        1,
+        0.7809000015258789,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.9782357811927795,
+        2.2721879482269287,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod0-hull-frigate-main",
       "localTransform": [
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.050908684730529785,
+        0.036515116691589355,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -903,42 +903,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.050908684730529785,
+        0.036515116691589355,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod1-hull-frigate-silhouette",
       "localTransform": [
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.050908684730529785,
+        0.036515116691589355,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -952,42 +952,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
         0,
         0,
         0,
-        1,
+        6.507500171661377,
         0,
-        0,
-        0,
-        0,
+        0.5134997367858887,
+        0.050908684730529785,
+        0.036515116691589355,
         1
       ]
     },
     {
       "id": "sf.render.hull-frigate.mesh.lod2-hull-frigate-silhouette",
       "localTransform": [
-        1,
+        6.493761301040649,
         0,
         0,
         0,
         0,
-        1,
+        6.493761301040649,
         0,
         0,
         0,
         0,
-        1,
+        6.493761301040649,
         0,
-        0,
-        0,
-        0,
+        0.5562732219696045,
+        0.03400242328643799,
+        -0.06977951526641846,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1001,21 +1001,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hull-frigate.body",
       "worldTransform": [
-        1,
+        6.493761301040649,
         0,
         0,
         0,
         0,
-        1,
+        6.493761301040649,
         0,
         0,
         0,
         0,
-        1,
+        6.493761301040649,
         0,
-        0,
-        0,
-        0,
+        0.5562732219696045,
+        0.03400242328643799,
+        -0.06977951526641846,
         1
       ]
     },
@@ -1078,14 +1078,14 @@
       "uri": "hull_frigate.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3356348,
-    "sha256": "99b04b65bc9aa1235620626937306622111be99afde2e8b518c27eabe6f75421",
+    "bytes": 3218716,
+    "sha256": "e89dbe2651b6ffa20d524b3166e1fb63523d7f0970e5c303ebce349132c74ba8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1097,18 +1097,18 @@
       ],
       "max": [
         7.050034523010254,
-        2.6573100090026855,
-        2.722377300262451
+        2.6573099687399453,
+        2.7223773184492623
       ],
       "min": [
         -5.994000434875488,
-        -2.5893051624298096,
-        -2.861936330795288
+        -2.5893051221670693,
+        -2.8619363489820993
       ],
       "size": [
         13.044034957885742,
-        5.246615171432495,
-        5.584313631057739
+        5.246615090907015,
+        5.584313667431362
       ]
     },
     "hidden": [],
@@ -1413,21 +1413,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.5206000804901123,
           0,
           0,
           0,
           0,
-          1,
+          0.5206000804901123,
           0,
           0,
           0,
           0,
-          1,
+          0.5206000804901123,
           0,
-          0,
-          0,
-          0,
+          3.3767998218536377,
+          0.6691267490386963,
+          1.5269635915756226,
           1
         ],
         "name": "LOD0_DET_authority_stencil",
@@ -1442,21 +1442,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.1713500022888184,
           0,
           0,
           0,
           0,
-          1,
+          1.1713500022888184,
           0,
           0,
           0,
           0,
-          1,
+          1.1713500022888184,
           0,
-          0,
-          0,
-          0,
+          0.5134997367858887,
+          1.184308499097824,
+          0.6752787828445435,
           1
         ],
         "name": "LOD0_DET_bridge_super",
@@ -1471,21 +1471,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.6268749833106995,
           0,
           0,
           0,
           0,
-          1,
+          1.6268749833106995,
           0,
           0,
           0,
           0,
-          1,
+          1.6268749833106995,
           0,
-          0,
-          0,
-          0,
+          -1.4387502074241638,
+          -0.7218639254570007,
+          -0.22963640093803406,
           1
         ],
         "name": "LOD0_DET_disciplined_wear",
@@ -1500,21 +1500,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4316500425338745,
           0,
           0,
           0,
           0,
-          1,
+          1.4316500425338745,
           0,
           0,
           0,
           0,
-          1,
+          1.4316500425338745,
           0,
-          0,
-          0,
-          0,
+          0.5134997367858887,
+          -0.20668217539787292,
+          -1.6668546199798584,
           1
         ],
         "name": "LOD0_DET_engine_vent",
@@ -1529,21 +1529,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.39045000076293945,
           0,
           0,
           0,
           0,
-          1,
+          0.39045000076293945,
           0,
           0,
           0,
           0,
-          1,
+          0.39045000076293945,
           0,
-          0,
-          0,
-          0,
+          -3.1307003498077393,
+          0.3084995523095131,
+          0.9946605861186981,
           1
         ],
         "name": "LOD0_DET_field_insignia",
@@ -1558,21 +1558,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.39045000076293945,
           0,
           0,
           0,
           0,
-          1,
+          0.39045000076293945,
           0,
           0,
           0,
           0,
-          1,
+          0.39045000076293945,
           0,
-          0,
-          0,
-          0,
+          -0.5277003049850464,
+          1.699490249156952,
+          0.30266663432121277,
           1
         ],
         "name": "LOD0_DET_sensor_mast",
@@ -1587,21 +1587,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.579125165939331,
           0,
           0,
           0,
           0,
-          1,
+          3.579125165939331,
           0,
           0,
           0,
           0,
-          1,
+          3.579125165939331,
           0,
-          0,
-          0,
-          0,
+          0.25319981575012207,
+          0.4630540609359741,
+          2.0592668056488037,
           1
         ],
         "name": "LOD0_DET_squadron_stripe",
@@ -1616,21 +1616,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.7809000015258789,
           0,
           0,
           0,
           0,
-          1,
+          0.7809000015258789,
           0,
           0,
           0,
           0,
-          1,
+          0.7809000015258789,
           0,
-          0,
-          0,
-          0,
+          0.5134997367858887,
+          0.9782357811927795,
+          2.2721879482269287,
           1
         ],
         "name": "LOD0_DET_turret_collar",
@@ -1645,21 +1645,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.507500171661377,
           0,
           0,
           0,
           0,
-          1,
+          6.507500171661377,
           0,
           0,
           0,
           0,
-          1,
+          6.507500171661377,
           0,
-          0,
-          0,
-          0,
+          0.5134997367858887,
+          0.050908684730529785,
+          0.036515116691589355,
           1
         ],
         "name": "LOD0_HULL_FRIGATE_MAIN",
@@ -1674,21 +1674,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.507500171661377,
           0,
           0,
           0,
           0,
-          1,
+          6.507500171661377,
           0,
           0,
           0,
           0,
-          1,
+          6.507500171661377,
           0,
-          0,
-          0,
-          0,
+          0.5134997367858887,
+          0.050908684730529785,
+          0.036515116691589355,
           1
         ],
         "name": "LOD1_HULL_FRIGATE_SILHOUETTE",
@@ -1703,21 +1703,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          6.493761301040649,
           0,
           0,
           0,
           0,
-          1,
+          6.493761301040649,
           0,
           0,
           0,
           0,
-          1,
+          6.493761301040649,
           0,
-          0,
-          0,
-          0,
+          0.5562732219696045,
+          0.03400242328643799,
+          -0.06977951526641846,
           1
         ],
         "name": "LOD2_HULL_FRIGATE_SILHOUETTE",
@@ -1734,20 +1734,20 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_frigate.glb"
   },
-  "runtimeHash": "91429830b8d525884a2fe27eb21cb8c0c3282750f79b4897277fc3fe78ebd4cf",
+  "runtimeHash": "4bef782b2bb726c29a9b0e725084358c5bd6fbf3ab1caa0523cf981a61952298",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           7.050034523010254,
-          2.6573100090026855,
-          2.722377300262451
+          2.6573099687399453,
+          2.7223773184492623
         ],
         "min": [
           -5.994000434875488,
-          -2.5893051624298096,
-          -2.861936330795288
+          -2.5893051221670693,
+          -2.8619363489820993
         ]
       },
       "id": "sf.render.hull-frigate.body",

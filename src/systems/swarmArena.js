@@ -402,10 +402,25 @@ export function debrisLayoutForArena(arenaId) {
   });
 }
 
-/** Reef is a tighter inner obstacle recipe, not Helios Core's default annulus. */
+/**
+ * Reef is a tighter inner obstacle recipe — the INNER edge is the part that keeps it packed
+ * against the fight, twice as close in as the default annulus lets anything spawn. The first
+ * band (58-168) was too narrow to hold the authored sixteen: under the reef's surface-gap law,
+ * sixteen 16-44 wu bodies need roughly a kilometre of rim the 168 edge could not give, so
+ * placement honestly saturated near nine. Widening the OUTER edge to the default field's own
+ * rim — still well inside the 400 wu fight census — lets the ring carry its ask even where an
+ * optic lattice already holds part of the band: fifteen to sixteen placed across seeds.
+ */
 export const REEF_DEBRIS_INNER = 58;
-export const REEF_DEBRIS_OUTER = 168;
+export const REEF_DEBRIS_OUTER = 340;
 export const REEF_DEBRIS_TARGET = 16;
+/**
+ * The reef packs at 0.7x the field separation, floored at the live spawn clearance —
+ * swarmPlacementIsClear asks 24 wu of open water around every fresh rock — so a spot the plan
+ * accepts is always a spot the field accepts. The bare 0.7x figure used to sit a hair under
+ * that recheck and silently dropped an authored rock on some seeds.
+ */
+export const REEF_DEBRIS_SEPARATION = Math.max(24, SWARM_DEBRIS_SEPARATION * 0.7);
 export const REEF_LAYOUT_ID = CRUCIBLE_REEF_LAYOUT_ID;
 
 export const SLALOM_WELL_COUNT = CRUCIBLE_SLALOM_WELL_COUNT;
@@ -609,7 +624,7 @@ export function planReefLayout({ anchor, existing = [], want = 0, rng } = {}) {
       for (const other of placed) {
         const dx = x - other.x;
         const dz = z - other.z;
-        const min = size + (other.radius || 0) + SWARM_DEBRIS_SEPARATION * 0.7;
+        const min = size + (other.radius || 0) + REEF_DEBRIS_SEPARATION;
         if (dx * dx + dz * dz < min * min) { clear = false; break; }
       }
       if (!clear) continue;
@@ -761,12 +776,16 @@ export const swarmArena = {
       if (this._brood) this._brood.spawnWave(state);
     }
     if (this._brood) this._brood.step(state);
+    // Core's lifetime clock keeps moving through the short, still-visible inter-wave phases.
+    // Preserve drawn debris there too; terminal runs keep their ordinary release deadlines.
+    if (run && state.mode === 'flight' && run.phase !== 'ended' && run.phase !== 'victory') {
+      this._holdInViewReleases(state);
+    }
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
     // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
     // The law's own machinery flips mid-wave off the same pure clocks — name each new state once.
     this._lawPhaseTick(state);
-    this._holdInViewReleases(state);
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
     this._nextTerrainCheck = (state.simTime || 0) + 2;
     const anchor = playerAnchor(state);
@@ -1110,7 +1129,22 @@ export const swarmArena = {
     const anchor = playerAnchor(state);
     this._lastTerrainAnchor = anchor;
     const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
-    const fightSq = SWARM_DEBRIS_FIGHT_RADIUS * SWARM_DEBRIS_FIGHT_RADIUS;
+    const reef = runHasMutator(run, 'reef');
+    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
+    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
+    const ladderTier = swarmArenaTierForRun({
+      wave: Number.isInteger(wave) ? wave : 1,
+      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
+    // The fight band follows the room this tier actually builds. The fixed census radius (400)
+    // sat inside the wider ladder rooms (outer 391 / 459 / 544): rocks the top-up placed past it
+    // were never counted, so the field kept spawning toward the cap. Same 60 WU margin as before.
+    const fightRadius = Math.max(
+      SWARM_DEBRIS_FIGHT_RADIUS,
+      (Number(layout && layout.outer) || 0) + (SWARM_DEBRIS_FIGHT_RADIUS - SWARM_DEBRIS_OUTER),
+    );
+    const fightSq = fightRadius * fightRadius;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
 
     // Census: every solid the field must not grow into, and how many of OUR rocks are still in
@@ -1162,17 +1196,9 @@ export const swarmArena = {
     }
     this._ids = surviving;
 
-    const reef = runHasMutator(run, 'reef');
     // Row 481 — Wreck Ballast: the debris field comes in as dead hulls, not rock. Same plan,
     // same counts, same physics verbs; only the material the room hands you changes.
     const ballast = runHasMutator(run, 'wreck_ballast');
-    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
-    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
-    const ladderTier = swarmArenaTierForRun({
-      wave: Number.isInteger(wave) ? wave : 1,
-      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
-    });
-    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
     const target = reef ? REEF_DEBRIS_TARGET : layout.target;
     const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
       SWARM_DEBRIS_MAX * 2 - surviving.length);
@@ -1194,7 +1220,7 @@ export const swarmArena = {
       });
     const spawnedIds = [];
     const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
-      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= SWARM_DEBRIS_FIGHT_RADIUS).map(environmentMaterialOf));
+      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
     const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
     if (spots.length < Math.min(want, missingMaterials.length)) {
       // Tight arena lanes can exhaust their placement search. Their missing toys sit on

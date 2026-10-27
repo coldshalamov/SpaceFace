@@ -165,7 +165,7 @@ export function createHullRing({ host, anchor } = {}) {
           const [x, y] = pt(mid % 360, 18);
           for (const [node, ny] of [[seg.num, y], [seg.label, y - 30], [seg.gloss, y - 18]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', 'middle'); }
         } else {
-          const [x, y] = pt(mid, 20);
+          const [x, y] = pt(mid, 27);
           const side = def.side === 'left' ? 'end' : 'start';
           for (const [node, ny] of [[seg.num, y + 6], [seg.label, y + 24], [seg.gloss, y + 36]]) { setAttr(node, 'x', f(x)); setAttr(node, 'y', f(ny)); setAttr(node, 'text-anchor', side); }
         }

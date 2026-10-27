@@ -64,6 +64,7 @@ ${S} .sxb-berth__name.fh-hero, ${S} .sxb-berth__name.fh-title {
   font-size:clamp(30px, 2.35vw, 46px) !important; line-height:1 !important; letter-spacing:.01em; }
 ${S} .so-station-title { width:max-content !important; max-width:100%; }
 ${S} .sxb-berth__lamp { display:none !important; }
+${S} .sxb-signs:empty { display:none !important; }
 ${S} .sxb-berth__name, ${S} .sxb-berth__ident .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; }
 ${S} .sxb-berth__ident .sf-entity-link { font:inherit !important; letter-spacing:inherit !important; text-transform:inherit !important; color:inherit !important; }
 ${S} :is(.sxb-berth__name, .sxb-berth__ident .sf-entity-link):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important;
@@ -75,7 +76,9 @@ ${S} .sxb-next__w { color:rgb(${BONE} / .78) !important; }
 ${S} .sxb-event__badge { color:rgb(248 244 234) !important; background:none !important; border:0 !important; }
 ${S} :is(.sxb-event__badge, .sxb-event__title, .sxb-next__t) { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112% !important;
   font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; font-size: 12px !important; letter-spacing:.2em !important; text-transform:uppercase; }
-${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; box-shadow:none !important; }
+${S} .sxb-next { color:rgb(${BONE} / .78) !important; }
+${S} .sxb-next:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; }
+${S} .sxb-next__bead { background:rgb(${BONE} / .85) !important; color:rgb(${BONE} / .85) !important; box-shadow:none !important; }
 ${S} :is(.sxb-next__n, .sxb-next__x) { color:rgb(${BONE} / .7) !important; }
 ${S} .sxb-next__x:is(:hover, :focus-visible) { color:rgb(248 244 234) !important; outline:none !important; }
 ${S} .so-command-trigger > .so-icon { display:none !important; }
@@ -83,6 +86,7 @@ ${S} .dp-title__rule { background:linear-gradient(90deg, rgb(${BONE} / .6), rgb(
 ${S} .so-command-trigger { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   min-height:0 !important; height:auto !important; padding:4px 0 !important; gap:9px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-weight:650; font-size: 12px !important; letter-spacing:.22em; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
+${S} .so-command-trigger * { color:inherit !important; }
 ${S} .so-command-trigger::before, ${S} .so-command-trigger::after { display:none !important; }
 ${S} .so-command-trigger .so-icon { width:14px; height:14px; }
 /* the key hint is a word after a dot, never a drawn key cap */
@@ -173,7 +177,7 @@ ${S} .sxb-vital [data-vital-act]:is(:hover, :focus-visible) { color:var(--dp-han
 ${S} .sxb-vital [data-vital-act]:is(:hover, :focus-visible)::before { color:var(--dp-hand, #f2b950); }
 ${S} .sxb-vital [data-vital-act]:is(:hover, :focus-visible) .orr-act__cost { color:rgb(255 217 140 / .8); }
 ${S} .sxb-vital [data-vital-act]:is(.is-disabled, [aria-disabled='true'], :disabled) { color:rgb(${BONE} / .6) !important; }
-${S} .sxb-vital__ok { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+${S} :is(.sxb-vital__ok, .sxb-crown .sxb-vital__ok) { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0); white-space:nowrap; color:rgb(${BONE} / .6) !important; }
 /* a reading that is a word (CREDIT LINE OPEN) is wider than any ring: it stands on the numerals' line
    and the empty ring under it steps aside, so the word never crosses a scale */
 ${S} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) > .orr-vdial-bare { visibility:hidden; }
@@ -258,7 +262,7 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):focus-visible { color:var(--dp-h
 ${S} .sxb-ops .sx-comms__count { background:none !important; border:0 !important; color:rgb(248 244 234) !important; font-weight:700; }
 /* the receipt is a line of light over the foot, not a card: the arrow, what cleared, the sum */
 ${S} .sxb-ops .sx-receipt { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  top:0 !important; bottom:auto !important; left:calc(100% + 40px) !important; right:auto !important; width:max-content !important; max-width:min(560px, 36vw) !important; padding:6px 0 !important;
+  top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; right:auto !important; width:max-content !important; max-width:min(560px, 36vw) !important; padding:6px 0 !important;
   flex-wrap:nowrap !important; gap:12px !important; white-space:nowrap !important; isolation:isolate; }
 ${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-26px; bottom:-26px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(7 8 10 / .85), rgb(7 8 10 / 0)); }

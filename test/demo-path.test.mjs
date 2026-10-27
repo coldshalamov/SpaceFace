@@ -173,7 +173,8 @@ test('the end card mounts the headline and its way-out words', () => {
   assert.equal(emitted[0].event, 'ui:popScreen');
   const menu = buttons.find((b) => b.textContent === 'Main menu');
   assert.ok(menu);
-  // Feedback/Store hide when the config carries no URL for them.
-  assert.equal(textLines(root).includes('Feedback'), false);
+  // Feedback points at the public issue tracker; the Store word hides until the config
+  // carries a store URL for it.
+  assert.equal(textLines(root).includes('Feedback'), true);
   assert.equal(textLines(root).includes('Store page'), false);
 });

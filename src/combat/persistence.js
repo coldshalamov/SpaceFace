@@ -1,5 +1,6 @@
+import { hasOrchardWorkDamage, isCanonicalOrchardDamageActor } from './orchardWorkDamage.js';
 import { COMBAT_SCHEMA_VERSION } from '../data/combatDefs.js';
-import { ensureCombatState, entityKey, createCombatCatalog, resolveCombatProfile } from './runtime.js';
+import { ensureCombatState, ensureCombatant, entityKey, createCombatCatalog, resolveCombatProfile } from './runtime.js';
 import { CERES_WORKFLEET_CONTRACT as CERES } from '../data/ceresWorkfleet.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
@@ -71,6 +72,14 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
     ? state.entities.get(id) || null
     : null;
   restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
+  // World records own Orchard wounds across residency. The save reset removed
+  // spawn-time runtime, so rehydrate only already-materialized originals here.
+  // This does not enroll any actor into action/attachment reference persistence.
+  const orchardCatalog = createCombatCatalog();
+  for (const entity of state.entities?.values?.() || []) {
+    if (!combat.entities[entity.id] && isCanonicalOrchardDamageActor(state, entity) && hasOrchardWorkDamage(state, entity))
+      ensureCombatant(state, entity, orchardCatalog);
+  }
   yield 'combat-entities-restored';
   restoreAttachments(state, combat, payload.attachments, resolveEntityRef, entityFor, summary);
   yield 'combat-attachments-restored';
@@ -94,6 +103,38 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
   return summary;
 }
 
+// Ordinary worker combat follows its durable world/job identity, never a recycled live id.
+// Finite site custody and the specialized Ceres workfleet retain their existing owners.
+export function resolveWorldJobCombatRef(state, ref, jobs = state?.npcJobs) {
+  if (ref?.kind !== 'worldJob' || typeof ref.recordId !== 'string'
+    || ref.jobId !== `job:${ref.recordId}` || typeof ref.sectorId !== 'string'
+    || typeof ref.shipDefId !== 'string') return null;
+  const record = state.world?.records?.byId?.[ref.recordId], entry = jobs?.byId?.[ref.jobId];
+  if (!record || record.recordId !== ref.recordId || record.alive !== true || !(record.hull > 0)
+    || ['defeated', 'destroyed', 'removed', 'consumed'].includes(record.outcome)
+    || record.sectorId !== ref.sectorId || record.shipDefId !== ref.shipDefId
+    || record.jobId !== ref.jobId || record.type !== 'ship'
+    || !entry || entry.worldRecordId !== ref.recordId || entry.sectorId !== ref.sectorId
+    || entry.job?.id !== ref.jobId || entry.job.corrupt) return null;
+  const matches = [...(state.entities?.values?.() || [])].filter(entity => entity?.alive !== false
+    && entity?.data?.worldRecordId === ref.recordId);
+  if (matches.length !== 1) return null;
+  const entity = matches[0];
+  if (state.entities.get(entity.id) !== entity || entity.type !== 'ship' || !(entity.hull > 0) || entity.data.jobId !== ref.jobId
+    || entity.data.defId !== ref.shipDefId || entity.data.sectorId !== ref.sectorId
+    || entity.data.worldSiteId || (entity.data.persistenceOwner != null
+      && entity.data.persistenceOwner !== 'worldRecords') || ceresAttachmentRef(entity)) return null;
+  return entity.id;
+}
+
+function worldJobCombatRef(state, entity) {
+  const recordId = entity.data?.worldRecordId, jobId = entity.data?.jobId;
+  const entry = state.npcJobs?.byId?.[jobId];
+  if (!entry || entry.entityId !== entity.id) return null;
+  const ref = { kind: 'worldJob', recordId, jobId, sectorId: entry.sectorId, shipDefId: entity.data?.defId };
+  return resolveWorldJobCombatRef(state, ref) === entity.id ? ref : null;
+}
+
 function buildEntityRefs(state) {
   const refs = new Map(), incomingOwners=ceresWorkfleetHostileAttachmentOwners(state), stuntBodies=pendingStuntBodyIds(state);
   const list = state && (state.entityList || (state.entities && [...state.entities.values()])) || [];
@@ -105,6 +146,7 @@ function buildEntityRefs(state) {
     // The save owner captures these transient bodies for a pending physical stunt. Their
     // combat statuses must travel with them: a saved tumbling hull is still a projectile.
     else if (entity.flags && entity.flags.persistent || incomingOwners.has(entity.id) || stuntBodies.has(entity.id)) ref = { kind: 'persistent', saveId: String(entity.id) };
+    else ref = worldJobCombatRef(state, entity);
     if (ref) refs.set(entityKey(entity.id), ref);
   }
   return refs;

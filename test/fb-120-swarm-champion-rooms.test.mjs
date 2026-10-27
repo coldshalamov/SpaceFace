@@ -22,7 +22,7 @@ import {
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { createProductionCapitalBossEncounters } from '../src/systems/capitalBossRuntime.js';
-import { bossRoomNote, SWARM_BOSS_ROTATION, SWARM_RULESET } from '../src/data/swarmMode.js';
+import { SWARM_BOSS_ROTATION, SWARM_RULESET } from '../src/data/swarmMode.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 
 const DT = 1 / 60;
@@ -45,7 +45,9 @@ test('every champion room is a distinct recipe — all inside the two-field budg
     assert.ok(install.fields.length <= ARENA_FIELD_SLOT_IDS.length,
       `${boss.room} stays inside the field budget`);
     assert.ok(install.mines.length <= ARENA_MINE_MAX);
-    assert.ok(typeof bossRoomNote(boss.room) === 'string' && bossRoomNote(boss.room),
+    // The room's authored hint rides the install itself — survivalArena:installed carries it
+    // and swarmArena's room alert speaks it verbatim, once per distinct room.
+    assert.ok(typeof install.note === 'string' && install.note.length > 0,
       `${boss.room} carries a real room note`);
     const sig = JSON.stringify({
       kinds: install.fields.map((f) => f.kind),

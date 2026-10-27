@@ -1692,10 +1692,12 @@ export class Sg02DynamicBodyOwner {
         closePreStepYaw(rec);
         continue;
       }
-      // resetForces/resetTorques carry a wake arg, so they are only safe to skip when the body
-      // is provably awake (canSleep=false steady state) and the force accumulator is provably
-      // zero — i.e. no addForce/addTorque landed since the last reset (rec._forcesDirty).
-      if (rec._forcesDirty === true || rec._sleepAllowed !== false) resetBodyForces(rec.body);
+      // user_force/user_torque persist across world.step() until reset. Every owner write of
+      // those channels funnels through _applyCommand (which marks _forcesDirty) or a snapshot
+      // restore (which re-marks it), so a clean flag proves the accumulators are already zero
+      // and the reset is a native no-op — skip it rather than pay two WASM calls per
+      // sleep-eligible record every fixed step (D191).
+      if (rec._forcesDirty === true) resetBodyForces(rec.body);
       rec._forcesDirty = false;
       this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) {
@@ -4255,8 +4257,10 @@ async function loadRapierCompat() {
 
 function resetBodyForces(body) {
   if (!body) return;
-  if (typeof body.resetForces === 'function') body.resetForces(true);
-  if (typeof body.resetTorques === 'function') body.resetTorques(true);
+  // Clearing the user-force accumulators is bookkeeping, not work — the writes that fill
+  // those channels already carry their own wake=true, so the clear never needs to wake a body.
+  if (typeof body.resetForces === 'function') body.resetForces(false);
+  if (typeof body.resetTorques === 'function') body.resetTorques(false);
 }
 
 function worldPoint(source, fallback = zero3()) {

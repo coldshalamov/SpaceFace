@@ -25,7 +25,8 @@ export function mountTravelVectorHud(root, state, helpers) {
   svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;color:var(--dp-phosphor,#bdf6ff)';
   const line = doc.createElementNS(svg.namespaceURI, 'path');
   line.setAttribute('fill', 'none'); line.setAttribute('stroke', 'currentColor'); line.setAttribute('stroke-width', '1');
-  const arc = line.cloneNode();
+  const arc = doc.createElementNS(svg.namespaceURI, 'path');
+  arc.setAttribute('fill', 'none'); arc.setAttribute('stroke', 'currentColor'); arc.setAttribute('stroke-width', '1');
   svg.append(line, arc); root.appendChild(svg);
   const a = { x: 0, y: 0, z: 0 }, b = { x: 0, y: 0, z: 0 };
   const pa = {}, pb = {};

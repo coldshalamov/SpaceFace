@@ -21,4 +21,5 @@
 // v20: GOLD-CREW/GOLD-LONG-BERTH — crew roster (data.crew) and the Long Berth yard
 //      (data.longBerth) persist across Continue.
 // v21: physical industry experiences retain original bodies, progress and settlement receipts.
-export const CURRENT_VERSION = 21;
+// v22: loss-owned survey custody and scanner-sidecar recognition survive Continue.
+export const CURRENT_VERSION = 22;

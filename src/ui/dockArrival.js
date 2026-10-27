@@ -12,6 +12,7 @@ import { cardsForStation } from './marketNews.js';
 import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automationPayoff.js';
 import { CHRONICLER_DIGEST_WEEK_S, chroniclerDigestWeek, selectWeeklyDigest } from '../systems/chronicler.js';
 import { LONG_BERTH_STATION_ID, BERTH_STAGES } from '../data/longBerth.js';
+import { crewVetRankLabel } from '../data/crew.js';
 
 /** One sim day. A loaded save older than this may speak the offline summary. */
 const SIM_DAY_S = 600;
@@ -250,6 +251,7 @@ export function leftoverRumorLine(state, stationId) {
     entry
     && entry.kind === 'piracy'
     && entry.source === 'pirateRumor:headline'
+    && leftoverRumorMatchesBerth(entry, state)
     && leftoverLine(entry.text)
   ));
   return rec ? leftoverLine(rec.text) : null;
@@ -507,15 +509,24 @@ function longBerthHomeCard(state) {
   const hull = activeHullIdentity(state);
   const hullName = (hull && (hull.name || hull.defId)) || 'your ship';
   const crew = Array.isArray(lb.crew) ? lb.crew.filter(Boolean) : [];
-  const roster = (state && state.crew && Array.isArray(state.crew.members) ? state.crew.members : [])
+  const crewSlice = state && state.crew;
+  const roster = (crewSlice && Array.isArray(crewSlice.members) ? crewSlice.members : [])
     .filter(Boolean);
+  const striking = crewSlice && Number.isFinite(crewSlice.strikeSince);
   const crewNames = (roster.length ? roster : crew)
     .map((c) => {
       if (!c) return null;
-      const name = c.name || c.id;
+      // The fallback rows are bare ids; the live roster carries the people fields.
+      const name = (typeof c === 'string' ? c : (c.name || c.id));
+      if (name == null) return null;
       if (c.status === 'injured') return `${name} (hurt)`;
-      if (c.loyalty) return `${name} ◆`;
-      return name;
+      if (striking && c.loyalty !== 1) return `${name} (out)`;
+      if (c.demandPending === true) return `${name} (wants pay)`;
+      const tags = [];
+      if (Number.isFinite(c.vet) && c.vet >= 2) tags.push(crewVetRankLabel(c.vet));
+      if (Number.isFinite(c.morale) && c.morale <= 2) tags.push('unhappy');
+      if (c.loyalty === 1 || c.loyalty === true) tags.push('◆');
+      return tags.length ? `${name} (${tags.join(' · ')})` : name;
     }).filter(Boolean).slice(0, 4);
   const trophies = Array.isArray(lb.trophies) ? lb.trophies.filter(Boolean) : [];
   const trophyNames = trophies.map((t) => t && t.label).filter(Boolean).slice(-3);

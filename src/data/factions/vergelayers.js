@@ -46,7 +46,7 @@ export const VERGE_MACHINE_BODIES = Object.freeze({
   auditor:         Object.freeze({ shape: 'lattice',    radius: 16, hull: 900,  speed: 0,  p: 1 }),
   measure:         Object.freeze({ shape: 'monolith',   radius: 12, hull: 500,  speed: 0,  p: 1 }),
   debris_sorter:   Object.freeze({ shape: 'sieve_ring', radius: 20, hull: 600,  speed: 30, p: 1 }),
-  executor:        Object.freeze({ shape: 'prism',      radius: 18, hull: 1200, speed: 44, p: 2 }),
+  executor:        Object.freeze({ shape: 'prism',      radius: 18, hull: 1200, speed: 55, p: 2 }),
   appeals_clerk:   Object.freeze({ shape: 'vault',      radius: 15, hull: 800,  speed: 0,  p: 2 }),
   witness:         Object.freeze({ shape: 'monolith',   radius: 10, hull: 450,  speed: 0,  p: 2 }),
   sleeping_jury:   Object.freeze({ shape: 'ossuary',    radius: 34, hull: 2000, speed: 0,  p: 2 }),

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { packagedConvexSpec, measurePackagedConvex } from './lib/modelTruthPackagedConvex.mjs';
 import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
 import { authoredCompoundMeasurement, authoredCompoundCoverage, extractAuthoredConvexSource, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
 import { authoredWorldSiteMeasurement, measureWorldSiteAssetChain } from './lib/modelTruthWorldSite.mjs';
@@ -59,8 +60,15 @@ const CHECK = process.argv.includes('--check');
 const ONLY = (process.argv.find((arg) => arg.startsWith('--only=')) || '').slice('--only='.length);
 
 const UPDATE_SELECTED = process.argv.includes('--update-selected');
+const APPEND_SELECTED = process.argv.includes('--append-selected');
 const ONLY_IDS = new Set(ONLY.split(',').filter(Boolean));
 if (UPDATE_SELECTED && !ONLY_IDS.size) throw new Error('--update-selected requires explicit --only IDs or family');
+if (APPEND_SELECTED && (UPDATE_SELECTED || CHECK || ONLY_IDS.size !== 1)) throw new Error('--append-selected requires one explicit new catalog ID, without --update-selected or --check');
+if (APPEND_SELECTED && (process.argv.filter(arg => arg.startsWith('--only=')).length !== 1
+  || ONLY.split(',').length !== 1 || !ONLY.trim()
+  || process.argv.filter(arg => arg === '--append-selected').length !== 1)) {
+  throw new Error('--append-selected requires one unambiguous --only=ID and one append flag');
+}
 
 const AST_DISPLACE = {
   ast_common_rock: { detail: 2, displace: 0.20 },
@@ -566,9 +574,13 @@ async function measureRow(row) {
 
   const authoredWorldSite = authoredWorldSiteMeasurement(row);
   const worldSiteEvidence = authoredWorldSite ? await measureWorldSiteAssetChain(ROOT, row, authoredWorldSite) : null;
+  const packagedSpec = packagedConvexSpec(row);
+  const packagedConvex = await measurePackagedConvex(ROOT, row, io);
   const authoredCompound = authoredCompoundMeasurement(row);
   const authoredPlace = row.fit === 'authored-place-origin';
-  const measured = await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
+  const measured = packagedSpec
+    ? { ...await measureGlb(resolve(ROOT, packagedSpec.geometry.url), { excludeHelpers: true }), bounds: packagedConvex.bounds, url: packagedSpec.geometry.url }
+    : await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
   if (measured.missing) {
     const status = rowStatus(row, { missing: true, overTolerance: false, throatSealed: false, lod: null });
     return {
@@ -608,11 +620,12 @@ async function measureRow(row) {
       dockRadius: size?.dockRadius || row.dockRadius,
       placeScale: row.placeScale,
     };
-    const fit = authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
+    const fit = packagedConvex?.fit || authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
       : drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec));
     const world = applyFit(measured.points, fit);
-    const collider = authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
+    const collider = packagedConvex?.collider || authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
+    if (packagedConvex) Object.assign(evaluated, packagedConvex.evaluated);
     if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, compoundCertificate));
     if (worldSiteEvidence) Object.assign(evaluated, worldSiteEvidence);
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
@@ -668,7 +681,7 @@ async function measureRow(row) {
     ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
     : (worst.entityRadius || row.entityRadius || 1);
   let skin = null;
-  if (row.solid && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
+  if (row.solid && !packagedConvex && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
     skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
     const fitted = scaleProxyPrimitives(skin.primitives, reference);
     const opening = skin.mouthBearingDeg == null ? null : {
@@ -678,7 +691,8 @@ async function measureRow(row) {
     const gap = radialGap(worstEval.outline, fitted, worstEval.toleranceWu, opening);
     const throatSealed = row.opening === 'gate-throat'
       && !throatOpen(fitted, Math.max(4, worstEval.silhouetteRadius * 0.2));
-    skin = { ...skin, adopted: gap.gapWu <= 2.5 && !throatSealed, gapWu: roundWu(gap.gapWu) };
+    // A declared runtime physics owner cannot be replaced by an inferred render silhouette.
+    skin = { ...skin, adopted: row.runtimeColliderFixed !== true && gap.gapWu <= 2.5 && !throatSealed, gapWu: roundWu(gap.gapWu) };
     if (skin.adopted) {
       worstEval = {
         ...worstEval,
@@ -724,6 +738,7 @@ async function measureRow(row) {
       entityRadius: worst.entityRadius,
       dockRadius: worst.dockRadius,
       colliderKind: worstCollider.kind,
+      ...(row.runtimeColliderFixed === true ? { runtimeColliderFixed: true, collisionAuthority: row.runtimeCollisionAuthority } : {}),
       colliderId: worstCollider.id,
       ballFactor: worstCollider.factor || null,
       proportions: proportions ? {
@@ -761,6 +776,7 @@ async function measureRow(row) {
         coverageMetric: worstEval.coverageMetric,
         sourceCompoundParity: worstEval.sourceCompoundParity,
       } : {}),
+      ...(packagedConvex ? { packagedRuntimeEvidence: packagedConvex.evidence } : {}),
       ...(worldSiteEvidence ? { worldSiteEvidence } : {}),
       gapWu: worstEval.gapWu,
       toleranceWu: worstEval.toleranceWu,
@@ -779,7 +795,11 @@ async function measureRow(row) {
     solid: row.solid === true,
     status: status.status,
     reasons: status.reasons,
-    note: status.note,
+    note: packagedConvex
+      ? 'Explicit lastShift.physicsBody runtime convex union; legacy query OBBs are approximate. XZ vertex coverage and sampled reverse residual do not establish full 3D surface equivalence. No inferred skin adopted.'
+      : row.runtimeColliderFixed === true
+      ? `Fixed runtime collider owned by ${row.runtimeCollisionAuthority}; proposed skin is diagnostic only.`
+      : status.note,
     tasteBudget: null,
   };
   return withTaste(built, measured, status);
@@ -787,6 +807,14 @@ async function measureRow(row) {
 
 async function buildCensus() {
   const fullCatalog = liveSolidGlbCatalog();
+  if (APPEND_SELECTED) {
+    const id = [...ONLY_IDS][0];
+    if (fullCatalog.filter(row => row.id === id).length !== 1 || fullCatalog.some(row => row.family === id)) {
+      throw new Error('--append-selected rejects unknown, ambiguous or family selection');
+    }
+    const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+    if (previous.rows.some(row => row.id === id)) throw new Error('--append-selected refuses an existing census row');
+  }
   if ([...ONLY_IDS].some(id => !fullCatalog.some(row => row.id === id || row.family === id))) throw new Error('Unknown --only selection');
   const catalog = fullCatalog.filter((row) => !ONLY || ONLY_IDS.has(row.family) || ONLY_IDS.has(row.id));
   const rows = [];
@@ -830,6 +858,17 @@ async function buildCensus() {
 }
 
 let census = stable(await buildCensus());
+if (APPEND_SELECTED) {
+  const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+  if (census.rows.length !== 1 || census.rows[0].status !== 'green'
+    || previous.rows.some(row => row.id === census.rows[0].id)) {
+    throw new Error('Append selected requires one passing measured new row');
+  }
+  const rows = [...previous.rows, census.rows[0]];
+  const red = rows.filter(row => row.status === 'red').length;
+  census = { ...previous, counts: { ...previous.counts, rows: rows.length, red, green: rows.length - red }, rows };
+  console.log('[model-truth] appended one passing measured row; preserved every prior row without remeasurement');
+}
 if (UPDATE_SELECTED) {
   const previous = JSON.parse(readFileSync(OUT, 'utf8'));
   const selected = new Map(census.rows.map(row => [row.id, row]));

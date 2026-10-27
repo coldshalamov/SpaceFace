@@ -5,10 +5,17 @@ import { runInNewContext } from 'node:vm';
 import { devices } from 'playwright';
 
 const source = readFileSync(new URL('../scripts/probe-deployed-mobile.mjs', import.meta.url), 'utf8');
-const flightSource = source.slice(source.indexOf('  const waitForFlight = '), source.indexOf('\n  await waitForMenu();'));
+// Fail at a missing/misordered boundary instead of accidentally executing the probe.
+function fragment(startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
+  assert.ok(start >= 0 && end > start, `Missing probe fragment: ${startMarker} → ${endMarker}`);
+  return source.slice(start, end);
+}
+const flightSource = fragment('  const waitForFlight = ', '\n  await waitForMenu();');
 const state = (mode, loading = []) => ({ loading, alerts: [], runtime: { frame: { mode } } });
 
-async function replay(states, { errors = [], menuVisible = true, click = null, baseline = [] } = {}) {
+async function replay(states, { errors = [], menuVisible = true, click = null, baseline = [], route = 'continue' } = {}) {
   let now = 0, index = 0;
   const report = { observations: [], console: errors, continueClick: click,
     stages: [{ stage: 'continue-menu', simLaneEvents: baseline }] };
@@ -17,7 +24,7 @@ async function replay(states, { errors = [], menuVisible = true, click = null, b
     page: { waitForTimeout: async ms => { now += ms; } },
     snapshot: async () => states[Math.min(index++, states.length - 1)], visible: async () => menuVisible };
   const wait = runInNewContext(`${flightSource}\nwaitForFlight`, scope);
-  try { return { result: await wait('continue', 0), now, report }; }
+  try { return { result: await wait(route, 0), now, report }; }
   catch (error) { return { error, now, report }; }
 }
 
@@ -58,6 +65,39 @@ test('playable flight and explicit startup failures retain their existing verdic
   assert.equal(failed.now, 2000);
 });
 
+test('Continue rejects frozen flight and accepts only observed tick or simTime advancement', async () => {
+  const frame = values => ({ ...state('flight'), flight: '1',
+    runtime: { frame: { mode: 'flight', ...values }, post: { firstPlayableFrameAt: 123 } } });
+  for (const values of [{ tick: 10, simTime: 5 }, {}, { tick: 'invalid', simTime: 'invalid' }]) {
+    const frozen = await replay([frame(values)]);
+    assert.match(frozen.error.message, /did not observe an advancing simulation/);
+    assert.equal(frozen.now, 300000);
+  }
+  for (const key of ['tick', 'simTime', 'time']) {
+    const advanced = await replay([frame({ [key]: 10 }), frame({ [key]: 11 })]);
+    assert.equal(advanced.error, undefined, `${key} must supply real advancing evidence`);
+    assert.equal(advanced.result, 4000);
+  }
+  const backwards = await replay([frame({ tick: 10 }), frame({ tick: 9 })]);
+  assert.match(backwards.error.message, /did not observe an advancing simulation/);
+  assert.equal(backwards.now, 300000);
+});
+
+test('advancing Continue still requires flight UI, cleared loading, and playable-frame evidence', async () => {
+  for (const missing of ['flight', 'loading', 'playable']) {
+    const states = [10, 11].map(tick => ({ ...state('flight'),
+      flight: missing === 'flight' ? '0' : '1', loading: missing === 'loading' ? ['Restoring'] : [],
+      runtime: { frame: { mode: 'flight', tick },
+        post: missing === 'playable' ? {} : { firstPlayableFrameAt: 123 } } }));
+    const result = await replay(states);
+    assert.match(result.error.message, /within five minutes/);
+    assert.equal(result.now, 300000);
+  }
+  const newGame = await replay([state('menu')], { route: 'new-game' });
+  assert.match(newGame.error.message, /New Game.*within five minutes/);
+  assert.equal(newGame.now, 300000);
+});
+
 test('a new post-click save rejection fails promptly with the existing hidden feedback', async () => {
   const baseline = ['save:store-synced'];
   const click = { action: 'continue', isTrusted: true, disabled: false, ariaDisabled: null,
@@ -81,11 +121,10 @@ test('requested iPhone touch profile is reported against effective runtime capab
   assert.doesNotMatch(source, /navigator\.maxTouchPoints\s*=|Object\.defineProperty\([^\n]*maxTouchPoints/,
     'the probe observes capabilities without manufacturing browser identity');
 
-  const start = source.indexOf('function recordMobileCapabilities(');
-  const end = source.indexOf('\nconst MAX_RENDERER_ERROR_SAMPLES', start);
+  const helper = fragment('function recordMobileCapabilities(', '\nconst MAX_RENDERER_ERROR_SAMPLES');
   const report = { mobileProfile: { requested: { hasTouch: true, isMobile: true }, effective: null, mismatches: [] },
     acceptance: { mobileCapabilities: 'pending' } };
-  runInNewContext(`${source.slice(start, end)}\nrecordMobileCapabilities`, { report })({
+  runInNewContext(`${helper}\nrecordMobileCapabilities`, { report })({
     touchPoints: 0, touchEvents: true, coarse: true, anyCoarse: true, mobileUserAgent: true,
     userAgent: 'iPhone UA', platform: 'iPhone', width: 390, height: 664, dpr: 3,
   });
@@ -376,22 +415,22 @@ const finalizeRendererHealth = runInNewContext(
   {});
 
 test('observed invalid draws fail renderer health independently of console emission', () => {
-  const start = source.indexOf('  const contextFailures = new Set();');
-  const end = source.indexOf('  // Persist diagnostics', start);
-  const health = source.slice(start, end);
+  const helpers = fragment('const MAX_RENDERER_ERROR_SAMPLES = ', '\nlet browser;');
+  const health = fragment('  const contextFailures = new Set();', '  // Persist diagnostics');
   for (const drawErrors of [{ invalidDraws: 3, witnesses: [] }, { witnesses: [{}] }]) {
     const report = { stages: [{ drawErrors }], observations: [], passed: true,
-      rendererErrorCount: 0, acceptance: { startupAndControls: 'passed' } };
-    const notes = [], process = {};
-    runInNewContext(health, { report, process, drawErrorProbe: true, finalizeRendererHealth,
-      activeRoute: 'new-game', actorStage: 'fixture',
-      noteRendererError(target, text, route, stage, source) {
-        target.rendererErrorCount++; notes.push({ text, source });
-      } });
+      rendererErrorCount: 0, rendererErrors: [], acceptance: { startupAndControls: 'passed' } };
+    const process = {};
+    runInNewContext(helpers + '\n' + health, { report, process, drawErrorProbe: true,
+      activeRoute: 'continue', actorStage: 'continue-flight-controls' });
     assert.equal(report.acceptance.rendererHealth, 'failed');
     assert.equal(report.passed, false);
     assert.equal(process.exitCode, 1);
-    assert.equal(notes[0].source, 'draw-observer');
+    assert.equal(report.rendererErrorCount, 1);
+    assert.equal(report.rendererErrors[0].source, 'draw-observer');
+    assert.equal(report.rendererErrors[0].route, 'continue');
+    assert.equal(report.rendererErrors[0].actorStage, 'continue-flight-controls');
+    assert.match(report.rendererErrors[0].text, /INVALID_OPERATION/);
   }
 });
 

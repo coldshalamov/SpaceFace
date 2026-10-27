@@ -9,10 +9,8 @@ import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import {
   SWARM_DEBRIS_FIGHT_RADIUS,
-  SWARM_DEBRIS_INNER,
   SWARM_DEBRIS_KEEP_RADIUS,
   SWARM_DEBRIS_MAX,
-  SWARM_DEBRIS_OUTER,
   SWARM_DEBRIS_SAFE_RADIUS,
   SWARM_DEBRIS_SEPARATION,
   SWARM_DEBRIS_TAG,
@@ -26,6 +24,19 @@ import { compileSwarmOptic } from '../src/data/opticStructures.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import {
+  OPENING_THROWABLE_SEPARATION_WU,
+  swarmArenaDebrisLayout,
+  swarmArenaTierForRun,
+} from '../src/data/swarmArenaLadder.js';
+
+// §33 row 485 — wave 1's room is the arena ladder's pebble tier (wave band 1–3, rating 0 t): the
+// band, safe radius and separation are the TIER's law now, not the fixed monolith defaults. The
+// tier also installs its authored opening pocket (up to five pebbles) on top of the seeded field,
+// which is why the wave-1 ceiling carries the openers and the loosest gap law in play is the
+// pocket's, not the field's.
+const TIER1 = swarmArenaDebrisLayout(swarmArenaTierForRun({ wave: 1, ratingT: 0 }));
+const WAVE1_GAP_MIN = Math.min(TIER1.separation, OPENING_THROWABLE_SEPARATION_WU) - 1;
 
 const SEED = 4242;
 const ARENA = 'helios_core';
@@ -96,9 +107,10 @@ test('a swarm wave installs a real debris field, not three landmarks', () => {
   h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
   const field = rocks(h);
   // "About fourteen": placement is a seeded search in a deliberately crowded band, so it can come
-  // up one short. What must never happen is a silently thin arena.
-  assert.ok(field.length >= SWARM_DEBRIS_TARGET - 1, `field is dense (${field.length})`);
-  assert.ok(field.length <= SWARM_DEBRIS_TARGET);
+  // up one short. What must never happen is a silently thin arena. The wave-1 ladder tier adds
+  // its authored opening pocket (up to five pebbles) on top of the seeded field.
+  assert.ok(field.length >= TIER1.target - 1, `field is dense (${field.length})`);
+  assert.ok(field.length <= TIER1.target + 5);
   // terrainAnchors caps at three rocks and refuses to add any when two are present. This is the
   // whole reason this system exists, so assert the difference outright.
   assert.ok(field.length > 3, 'more than terrainAnchors would ever give the fight');
@@ -117,16 +129,16 @@ test('nothing spawns on the player, or inside another rock', () => {
   const field = rocks(h);
   for (const rock of field) {
     const d = Math.hypot(rock.pos.x - h.player.pos.x, rock.pos.z - h.player.pos.z);
-    assert.ok(d >= SWARM_DEBRIS_SAFE_RADIUS, `rock at ${d.toFixed(0)} clears the safe radius`);
-    assert.ok(d <= SWARM_DEBRIS_OUTER + 1, 'and stays inside the band');
-    assert.ok(d >= SWARM_DEBRIS_INNER - 1);
+    assert.ok(d >= TIER1.safeRadius, `rock at ${d.toFixed(0)} clears the safe radius`);
+    assert.ok(d <= TIER1.outer + 1, 'and stays inside the band');
+    assert.ok(d >= TIER1.inner - 1);
   }
   for (let i = 0; i < field.length; i++) {
     for (let j = i + 1; j < field.length; j++) {
       const a = field[i];
       const b = field[j];
       const gap = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z) - a.radius - b.radius;
-      assert.ok(gap >= SWARM_DEBRIS_SEPARATION - 1, `rocks ${i}/${j} keep a gap (${gap.toFixed(0)})`);
+      assert.ok(gap >= WAVE1_GAP_MIN, `rocks ${i}/${j} keep a gap (${gap.toFixed(0)})`);
     }
   }
 });
@@ -145,14 +157,16 @@ test('a destroyed rock is replaced on the next wave', () => {
   const h = boot();
   h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
   const field = rocks(h);
-  for (let i = 0; i < 5; i++) {
+  // The pocket's openers mean wave 1 stands above the field target, so take out enough that the
+  // loss is real against the target, not merely against the opener surplus.
+  for (let i = 0; i < 8; i++) {
     field[i].alive = false;
     h.state.entities.delete(field[i].id);
   }
   const thinned = rocks(h).length;
   h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
   assert.ok(rocks(h).length > thinned, 'the field came back toward strength');
-  assert.ok(rocks(h).length >= SWARM_DEBRIS_TARGET - 1);
+  assert.ok(rocks(h).length >= TIER1.target - 1);
 });
 
 test('the field follows the fight: drifting far re-anchors it around the player', () => {

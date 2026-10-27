@@ -8,7 +8,7 @@ import { configureRacingCorridorSession, isRacingCorridorSession } from '../src/
 import {
   createRacingOpponents, racingTakedownReceipts, clearRacingTakedownReceipts, RACING_TAKEDOWN_LOSS_S,
 } from '../src/missions/racingOpponents.js';
-import { renderRacingRecognition } from '../src/ui/racingRecognition.js';
+import { renderRacingRecognition, racingTakedownText } from '../src/ui/racingRecognition.js';
 import { fakeDom, textLines } from './helpers/fake-dom.mjs';
 
 const SEED = 4242;
@@ -100,8 +100,12 @@ test('seed 4242: shoving Rook into the shutter costs 2s and posts one receipt', 
   state.simTime = now;
   pack.update(mission);
   const hit = pack.inspect().rivals[0];
+  // Row 394 done-when: the shove costs the rival ≥2 s and the rival is back on its line
+  // within 6 s — the held window itself sits inside that bound end to end.
+  assert.ok(hit.lostS >= 2, `takedown costs at least 2s (got ${hit.lostS})`);
   assert.ok(hit.lostS >= RACING_TAKEDOWN_LOSS_S);
   assert.ok(hit.resumeAt - now >= RACING_TAKEDOWN_LOSS_S - 1e-9);
+  assert.ok(hit.resumeAt - now <= 6, `rival is back on its line within 6s (got ${(hit.resumeAt - now).toFixed(2)}s)`);
   assert.equal(rook.data.intent.brake, true);
   assert.equal(rook.data.intent.moveZ, 0);
   assert.equal(hit.pace, 1);
@@ -129,6 +133,21 @@ test('seed 4242: shoving Rook into the shutter costs 2s and posts one receipt', 
     globalThis.document = previousDocument;
     clearRacingTakedownReceipts();
   }
+});
+
+test('racingTakedownText voices both receipt shapes and refuses foreign payloads', () => {
+  // The shutter-hold receipt carries an authored lostS; the set-piece-impact receipt's cost
+  // is the physical rejoin, so it voices the crash without inventing a figure.
+  assert.equal(racingTakedownText({ name: 'Rook Six', lostS: 2, shutter: 'Tally customs shutter' }),
+    'Takedown · Rook Six lost 2.00s in the Tally customs shutter.');
+  assert.equal(racingTakedownText({ missionId: 'al-race-1', rivalId: 'mira', name: 'Mira Vale',
+    setPieceName: 'Textile workfleet crossing', cause: 'crossing' }),
+    'Takedown · Mira Vale into the Textile workfleet crossing.');
+  assert.equal(racingTakedownText({ rivalId: 'rook', setPieceName: 'Tally customs shutter' }),
+    'Takedown · rook into the Tally customs shutter.');
+  assert.equal(racingTakedownText(null), null);
+  assert.equal(racingTakedownText('takedown'), null);
+  assert.equal(racingTakedownText({ name: 'Mira Vale' }), null, 'no place, no line');
 });
 
 test('seed 4242: Rook hitting the shutter by himself posts no receipt and loses no time', () => {

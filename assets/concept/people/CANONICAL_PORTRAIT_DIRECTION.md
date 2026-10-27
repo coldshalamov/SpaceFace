@@ -60,3 +60,33 @@ This brief governs their live portraits in `assets/portraits/` and future portra
 | Slate | `bc3d4128d85e4125fb21786a88575cae31e52019fd8e53d59b018deafdac80f5` | `7208c624dbc3c3e48d26c3c6d53e7d5c1fc46ebdd9794d478d30b7cfaf7b0c12` |
 | Drift | `9ee502a77edd5e57fdb02fdeb8d2842f48ff94e425fb43b2c899dce81a3df7d1` | `9589da2dfb11b06707b8b168af723bebc428d78d14b4604be23ed732a647f4b7` |
 | Quinn | `45cd936866a622eae0d6d8bc7235260ccd0b647613163adf23afd1b108b95807` | `dcd7efae3597975fb6a465229ae206cbff1a983f2f8f608e331f0db68acf1eee` |
+
+## W-FACES expansion (build_map §34.8 row 543)
+
+The same laws govern the cast extension — the rest of the canon cast, the eleven new faces of
+[`design/expansion/03_PEOPLES_CREATURES_MACHINES.md`](../../../design/expansion/03_PEOPLES_CREATURES_MACHINES.md)
+§4.2, and the authored recurring contacts that still had no face. Briefs and per-person capture
+devices live in [`tools/art/cast_portrait_briefs.py`](../../../tools/art/cast_portrait_briefs.py);
+provenance per file in `assets/portraits/manifest.json`. Kurtz is deliberately absent: he is the
+Witness, shown only in the terminal register (05 §6). Elroy is memory only; Vale is never shown.
+
+| Character | Life-specific visual evidence | Capture source |
+|---|---|---|
+| Sula Dree | Pressed grey Concord uniform, gate lanyard, hair pinned severe and softening at the temples | Gate 3 customs-lane compliance scanner, rolling-shutter skew |
+| Callum Oakes | Exchange-booth clothes, quiet collar pin, silver at the temples, warm credible eyes | Meridian Exchange booth's own glass-front camera, faint ticker reflection |
+| Wex | Worn thermal jacket, nineteen years of badge clips, smooth-worn stylus | Bay 7 depot cage camera through wire mesh, flat fluorescent |
+| Sump | Chalk-pale skin, dust-grey sweeper's coverall, faded intake-number tattoo, mid-wave | Hangar-deck floodlight camera through chalk haze, high and wide |
+| Ma Sprocket | Rust-and-gold Pitborn wraps, layered junk jewellery, cracked loudspeaker mic | Cull broadcast drone camera, harsh arena light |
+| Clatter | Rust-and-gold flight leathers, painted tally numbers, magnet-scored chin scar | Arena gate camera, crowd strobes at the frame edge |
+| Moss-Keeps-Moss | Moss-dyed wraps, grown lichen-textured breathing mask, spores in silver hair | Garden dome condensation-beaded pane camera, soft green light |
+| Brother Index | Archive robes with ink-darkened cuffs, sealed-archive key, stained fingertips | Reading-room desk-lamp camera, low tungsten |
+| Addendum Seroy | Nacre-weave collar, etched cuff script, white gloves, clause tablet | Contract-desk document camera, cool white overhead |
+| Cantor Lise | Bronze ornaments at throat and wrist, bell charm, regrowing shaved temples | Shrine votive-lamp camera, warm flicker, incense haze |
+| Adjudicator Mael Ost | Immaculate high-collared coat, polished adjudication seal, cold correct eyes | Audit-hearing evidence camera, flat grey institutional |
+| Commander Petra Lusk | Relief captain's regulation jacket, service pins, spine-straight tired posture | Cutter duty-log camera, cool bridge light |
+| Nine-Finger Abe | Hi-vis over a miner's thermal, claim-tag cord, raised four-fingered left hand | Claim-office window camera, dusty midday glare |
+| Tamsin | Patched work jacket, hand-drawn family insignia, homemade pilot badge | Homestead hatch webcam, grow lamp on one side |
+| Clerk 0003 | White routing-clerk uniform, headset still on, blank-patient service face | Routing desk customer-facing camera, flat overexposed white |
+| Sallow | Plain undyed jacket, no insignia, hair the colour of nothing, payout stylus | Mercenary-booth window camera through scratched glass |
+| Ferrow | Writ clerk's vest over hi-vis, bounty-tag stamp ring, ink-scarred knuckles | Bounty-board scanner camera, cool terminal light |
+| Settlement Courier | Sealed packet under one arm, pressure-suit liner under road-worn jacket | Dockside parcel-window camera, flat light through reinforced glass |

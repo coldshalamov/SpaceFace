@@ -32,7 +32,8 @@ import { CAPITAL_PLATE_FULL_PULL } from '../src/combat/capitalPlates.js';
 import { capitalBossReadouts } from '../src/presentation/capitalBossPresentation.js';
 import { wreckPackagedFile } from '../src/render/visualFactory.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
-import { SWARM_BOSS_ROTATION, bossRoomNote, swarmCatalogIssues } from '../src/data/swarmMode.js';
+import { SWARM_BOSS_ROTATION, swarmCatalogIssues } from '../src/data/swarmMode.js';
+import { planArenaInstall } from '../src/systems/survivalArena.js';
 import { LAST_ARGUMENT } from '../src/data/lastArgument.js';
 import { survivalHud } from '../src/ui/survivalHud.js';
 
@@ -155,7 +156,14 @@ test('the §5 roster is catalogued — six new colossi plus the four established
     const row = rotationByEnemy.get(enemyId);
     assert.ok(row, `${enemyId} rides the boss rotation`);
     assert.equal(NEW_COLOSSI.includes(row.scoreId), true, `${enemyId} names its own score`);
-    assert.equal(typeof bossRoomNote(row.room), 'string', `${enemyId} room carries a note`);
+    // The room's authored hint is the install's own note — the field survivalArena:installed
+    // carries and the swarm room alert speaks verbatim.
+    const roomNote = planArenaInstall({
+      arenaPhase: 'boss', arenaId: 'helios_core', wave: 20, seed: SEED,
+      anchor: { x: 0, z: 0 }, laneGate: 'front', bossRoom: row.room,
+    }).note;
+    assert.equal(typeof roomNote, 'string', `${enemyId} room carries a note`);
+    assert.ok(roomNote.length > 0, `${enemyId} room note is authored, not empty`);
   }
   assert.deepEqual(swarmCatalogIssues(), [], 'the wave catalogs audit clean');
 });

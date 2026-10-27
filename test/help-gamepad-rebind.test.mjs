@@ -59,6 +59,7 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
     ['cruise', 'Cruise drive'], ['deployBeacon', 'Deploy nav beacon'],
     ['jettisonLot', 'Jettison cargo lot'],
     ['gyreSnare', 'Gyre Snare (hold: lash; release: bowl)'],
+    ['deployShieldPylon', 'Shield pylons (place / link / recall)'],
     ['steeringView', 'Chase / overhead camera'],
   ];
   assert.deepEqual(taught.map(([action]) => action).sort(), Object.keys(GAMEPAD_DEFAULT_BINDINGS).sort());

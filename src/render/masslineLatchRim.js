@@ -6,8 +6,15 @@
 // No sim writes. The plan is pure for headless proof; the matter owns one resident ring mesh.
 
 import * as THREE from 'three';
+import { MASSLINE_LINE_COLOR } from './masslinePresentation.js';
 
-export const MASSLINE_LATCH_RIM_COLOR = Object.freeze({ r: 0.49, g: 1.0, b: 0.66 });
+// Row 492: the rim wears the Line's OWN colour (the neutral cyan the swing trace, the release
+// annulus and the release wake share) — the old green-cyan drift was not the Line's colour, so a
+// glance down the rope could not match rim to line. Drawn as light (additive, untone-mapped):
+// cyan added over a hull reads against bright arcade sectors and black neon-noir space alike.
+export const MASSLINE_LATCH_RIM_COLOR = Object.freeze({
+  r: MASSLINE_LINE_COLOR.r, g: MASSLINE_LINE_COLOR.g, b: MASSLINE_LINE_COLOR.b,
+});
 export const MASSLINE_LATCH_RIM_RADIUS_PAD = 1.16;   // rim sits just off the hull edge
 export const MASSLINE_LATCH_RIM_BAND_FRAC = 0.16;    // band thickness as a fraction of radius
 const RIM_SEGMENTS = 48;
@@ -49,6 +56,10 @@ export function createMasslineLatchRim() {
     opacity: 0,
     side: THREE.DoubleSide,
     depthWrite: false,
+    // Light, not paint (LOOK.md): additive and untone-mapped, same grammar as the swing trace,
+    // so the rim survives bright sector fills where a normally-blended cyan would wash out.
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;

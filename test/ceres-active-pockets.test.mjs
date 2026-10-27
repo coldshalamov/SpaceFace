@@ -87,7 +87,9 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
     sourceFieldId: 'f_ceres_2',
     sourceIndex: 2,
     offset: Object.freeze({ x: 150, z: 20 }),
-    evidenceEntityId: 38,
+    // ATT 464+450 (d13289ff700): the eight new Ceres POI bodies allocate ids before this
+    // anchor mints — same rock (radius/hash unchanged), the numeric id drifts 38 → 62.
+    evidenceEntityId: 62,
     evidenceRadius: 12.386358419433236,
   }),
 ]);
@@ -99,8 +101,14 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
 // the authored ambient population (the density-funded belt-shadow pack adds two live ships,
 // eco_14 → eco_12-class signatures). Positions, mining, and physical stats are unchanged —
 // the unaffected-position hash below still pins the exact seed-47 rock layout.
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'b5128153029d66e27debb1c41986fd74e473d1fd5cf212e294ac4fbd9b68224f';
-const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = 'b02b8d1186a1bdd1354ca2e27b28d3e46fbd9b69b3a71bc683d662e4dbab863b';
+// rock-core (1edfe576233, rows 486/511): ROCK_PLACE_SUBSTANCES remaps place ids per rock
+// substance and W-LADDER pins 24 durable bedrock rungs onto each stocked field — the rock
+// census legitimately gains the ladder bodies and new place skins, so the invariant hash
+// moves to the new fingerprint. Ladder rocks carry zero scatter rng and deterministic poses.
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '1a91c928f0df2107defc137c3ee2ddf4bfd1f8d38f6e9a35df61db3c45e0a539';
+// The signature hashes [entity.id, pos] rows, so the W-LADDER bodies and the +24-per-field
+// id shift move the fingerprint even though no scatter rock moved — deterministic re-pin.
+const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = '0dc4282e909c68aa94b61dd26b87557d9b659b4a23404e59c884af0492606028';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
   assert.deepEqual(CERES_ACTIVITY_POCKET_ORDER, EXPECTED_POCKETS);
@@ -399,8 +407,17 @@ test('R5A route bearings are taken from Ceres geography rather than chosen', () 
   const spawnToMark = bearingDeg(
     tender.spawnOffset.x, tender.spawnOffset.z, clientMark.offset.x, clientMark.offset.z,
   );
+  // West staging and berth clear the actual station/anvil neighborhood. Retain the
+  // original >0.5-radian live-client distinction rather than the rejected spawn's relaxation.
+  assert.deepEqual(hull, { x: -65, z: -65 });
+  assert.deepEqual(clientMark.offset, { x: 90, z: -75 });
+  const berth = tender.route.marks.find((mark) => mark.id === 'refinery_tender_berth');
+  assert.deepEqual(berth.offset, { x: -120, z: 15 });
+  assert.ok(separationDeg(bearingDeg(0, 0, tender.spawnOffset.x, tender.spawnOffset.z),
+    bearingDeg(0, 0, berth.offset.x, berth.offset.z)) < 10,
+  'the collision-clear staging position remains on the berth side of the station');
   assert.ok(separationDeg(spawnToHull, spawnToMark) / DEG > 0.5,
-    'the tender approaches its authored mark and its real client on distinct headings');
+    'the tender approaches its authored mark and its real client on causally distinct headings');
 });
 
 // The `activity:` namespace means "abstract choreography — no object is or ever will be this". That
@@ -566,9 +583,14 @@ test('R5B materializes six inert object slots and two existing-budget collision 
 // Census re-pinned 2026-10-18 (D229) — the driller and its zone move west of Belt Outpost's
 // 1100 WU protection bubble, so seed 47 now materializes one Reach derelict contact: +1 body,
 // +23 measured-skin primitives, total 46 → 47. The six activity slots still reuse existing bodies.
+// Census re-pinned 2026-10-28 (ATT 464+450) — delta traced to authored work:
+//   fx 16 → 24, total 47 → 55   d13289ff700 — "every thin sector carries a physical law"
+//                 lands eight authored Ceres POI bodies (ash pin, claim tag, lapsed cache,
+//                 restake, shaft seven, short ration, three lamp, vigil). POI dressing is
+//                 non-colliding, so collidable/colliders/ship/enemy counts are unchanged.
 assert.deepEqual(first.census, {
-  total: 47,
-  byType: { asteroid: 6, fauna: 12, fx: 16, ship: 6, station: 6, wreck: 1 },
+  total: 55,
+  byType: { asteroid: 6, fauna: 12, fx: 24, ship: 6, station: 6, wreck: 1 },
   collidable: 21,
   colliders: 402,
   opticCells: 0,
@@ -655,13 +677,18 @@ assert.deepEqual(first.census, {
     }
   }
 
-  assert.deepEqual(first.fieldAsteroidIds.map((row) => row.length), [32, 32, 26]);
+  // rock-core (1edfe576233, row 511/W-LADDER): every stocked field now carries six pinned
+  // bedrock rungs on each radius tier T0–T4; Ceres scatter coverage fills one band, so each
+  // field tops up with 24 durable ladder bodies on top of the seeded 32/32/26 mint.
+  assert.deepEqual(first.fieldAsteroidIds.map((row) => row.length), [56, 56, 50]);
   assert.equal(first.fieldAsteroidIds[0][0], 4);
   assert.equal(first.fieldAsteroidIds[0][1], first.activityBySlot.ceres_seam_ore_clast.id);
   assert.equal(first.entityById[4].data.authoredGeologySkin, true);
-  assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
+  assert.equal(first.entityById[4].data.placeId, 'place_rock_junk_pebble');
 
-  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [107, 108, 109, 110, 111, 112, 113]);
+  // rock-core (1edfe576233) + ATT 464+450 (d13289ff700): 72 ladder bodies and 8 new POI bodies
+  // mint before the dressing stream — every dressing handle drifts +80 (107–113 → 187–193).
+  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [187, 188, 189, 190, 191, 192, 193]);
   assert.ok(first.dressing.length > 7, 'additive kit/one-off/aftermath dressing stays off the combat list');
   // The i=0 prospecting drone is the ambient prop the tender's disabled client re-points; no prop is
   // added, so the dressing list keeps its length, ids and RNG cadence.
@@ -674,23 +701,27 @@ assert.deepEqual(first.census, {
     'place_ceres_grave_shard',
     'place_conveyor_barge',
   ]);
-  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 107, 108, 110, 112, 113]);
+  assert.deepEqual(first.activity.map((row) => row.id).sort((a, b) => a - b), [5, 187, 188, 190, 192, 193]);
   // 499 → 501 (D90/D145): SOLSTICE / SL-9 (5103e8668) added poi_solstice_lantern — a fixed-pos
   // POI still consumes its two unconditional _spawnPOIs draws inside this content stream.
   // D196: 501 + 8 POI draws + 8 planZoneSpawns draws after the authored POIs shift its stream.
   // ceres-ambush-pack-dart (2026-10-18): 517 + 8 planZoneSpawns draws — the density-funded
   // pack plans two more belt-shadow ships (4 placed + the derelict row the Outpost bubble
   // skips → 6 planned vs 4) at four draws apiece.
-  assert.equal(first.ceresRngDraws, 525,
+  // d13289ff700 (ATT 464+450): 525 + 8 POI draws + 12 planZoneSpawns draws after the authored
+  // POIs shift the ambient placement stream.
+  assert.equal(first.ceresRngDraws, 545,
     'Ceres materialization must retain the complete pre-R5B content-stream draw count');
 
   // Buoy positions re-pinned 2026-10-05 (D90/D145): the Star Lantern POI's two stream draws
   // (5103e8668) legitimately shifted the dressing cadence these ambient props ride on.
   // D196's two live markers shift the dressing handles by two; its eight POI draws shift
   // the unbound buoys' positions. Keep sampling those buoys, rather than the now-bound id 107.
+  // Re-pinned again for d13289ff700/1edfe576233: +20 stream draws shift the ambient buoy cadence
+  // and +80 pre-minted ids move the sampling handles 109/111 → 189/191.
   assert.deepEqual(first.unaffectedRngSignature, [
-    [109, -12847.798251, 8727.702857],
-    [111, -11430.363664, 8746.830856],
+    [189, -13000.195379, 8139.496161],
+    [191, -11505.73859, 9337.289889],
   ], 'unaffected tail positions fingerprint the asteroid/dressing layout cadence');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
@@ -922,7 +953,7 @@ function captureCeresActivityState(state, formationModel) {
     };
   }));
   const unaffectedAsteroidPositionHash = hashJson(asteroids
-    .filter((entity) => entity.id !== 9 && entity.id !== 38)
+    .filter((entity) => entity.id !== 9 && entity.id !== 62)
     .map((entity) => [entity.id, entity.pos.x - origin.x, entity.pos.z - origin.z]));
   const entityById = Object.fromEntries([4].map((id) => {
     const entity = resolveWorldPresentationEntity(state, id);
@@ -953,10 +984,11 @@ function captureCeresActivityState(state, formationModel) {
     fields: active.fields.map((field) => ({ id: field.id, asteroidIds: [...field.asteroidIds] })),
     fieldAsteroidIds: active.fields.map((field) => [...field.asteroidIds]),
     dressing: active.dressing.map((row) => ({ id: row.id, placeId: row.placeId })),
-    // 107/108/110/112/113 are the dressing props claimed by an activity slot; 109 and 111 are the
+    // 187/188/190/192/193 are the dressing props claimed by an activity slot; 189 and 191 are the
     // ambient buoys nothing binds, so they are what still fingerprints the untouched RNG cadence.
-    unaffectedRngSignature: [109, 111].map(pointSignature),
-    numericTail: [111, 112, 113].map((id) => {
+    // (Ids drifted +80 with the rock-core ladder + ATT 464+450 POI bodies, d13289ff700/1edfe576233.)
+    unaffectedRngSignature: [189, 191].map(pointSignature),
+    numericTail: [191, 192, 193].map((id) => {
       const entity = resolveWorldPresentationEntity(state, id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];
     }),

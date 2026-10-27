@@ -92,7 +92,7 @@ ${SL} .sf-save-actions > .k-words { display:flex !important; flex-direction:row 
   margin:0; padding:0; list-style:none; background:none !important; }
 ${SL} .sf-save-actions > .k-words > li { margin:0; padding:0; }
 ${SL} .sf-save-actions .k-word.orr-lampkey { font-size:max(12.5px, calc(15px * var(--sv))) !important; min-height:calc(44px * var(--sv)) !important; padding:0 calc(30px * var(--sv)) 0 calc(24px * var(--sv)) !important; }
-${SL} .sf-save-actions .k-word.sf-save-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:0 !important; min-width:0 !important; height:auto !important; width:auto !important;
+${SL} .sf-save-actions .k-word.sf-save-verb { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:var(--dp-row, 34px) !important; min-width:0 !important; height:auto !important; width:auto !important;
   padding:6px 0 !important; font-size:max(12px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); cursor:pointer; }
 ${SL} .sf-save-actions .k-word.sf-save-verb::after { display:none !important; content:none !important; }
 ${SL} .sf-save-actions .k-word.sf-save-verb::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }

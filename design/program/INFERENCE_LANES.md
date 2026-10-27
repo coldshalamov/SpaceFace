@@ -443,16 +443,76 @@ when current route evidence genuinely supports that stronger claim.
 Return a compact production ledger:
 
 ```text
-Requested production units:
-Completed production units:
-Accepted:
-Implemented / focused green:
-Implemented / route unproven:
-Support-only commits:
-CONSIDERED         three ideas in one line; why this one won (per unit)
+Requested production units: 30
+Completed production units: 30
+Accepted: 0
+Implemented / focused green: 30
+Implemented / route unproven: 0
+Support-only commits: 30 memory rows, not counted — 83ff382cbf, d091d6cf67, 9a2dbb2a8a, 6d787d8791, d13e3e298d, 8491f7ae74, 5aae764cc2, c915645e1c, 7b9824e84c, 45e11497fb, 5d42446e4d, 36673ed57e, 1151303770, 40f5393b18, 229369d31e, 6276558484, 8c86516dde, a716821313, 0ce4e27b83, 9071269dc2, 2d456c58fa, 6994f9a64a, b27142d48f, 88fcc966c3, c294540bec, bcfa66ed3a, b827ac3ba4, a278a80570, d8b9ffd93a, 9dd74e1fb3
+CONSIDERED         the taken sentence won because it was still false. The other two lost.
+seed-sc-09: open mouth in the ice. A second stock prop, and a caption on the closed sheet, lost.
+seed-sc-12: sixty fragments in a hollow sphere. A second stock prop, and a caption on the empty shrine, lost.
+inf-clamp-stern-bolt: a dead-center stern shot hits the clamp and the load lets go. A new weapon, and a damage retune, lost.
+inf-veil-planet: the veil step stops on the world's skin. A new blink mode, and a scenery pass, lost.
+inf-pilgrim-call: the spine plays its own call. A migrant caption, and a new voice system, lost.
+inf-pod-buyer: only the fence who buys pods takes a towed mayday pod. Paying every black market, and changing the lawful rescue fee, lost.
+inf-hunter-dock: the ledger and the capture count only at the dock that choice names. Changing the posted pays, and retuning heat, lost.
+inf-yard-starved: a thin hopper is named when the price jumps. Editing the economy writer, and changing the starve fill, lost.
+inf-berth-goods: the yard names Composite Alloys and Fuel Cells. Changing the stage prices, and a new good, lost.
+inf-trader-ports: the hired trader's card names the ports on its route. Undoing the automation polish, and a new trader system, lost.
+inf-forty-tag: rocks beside the claim carry the Drift stake, and flying onto that face says the stamp is live. A map pin with no verb, and a second stake type, lost.
+inf-bounty-standing: helping the hunter kill the quarry pays guild standing with the collector's cut. Changing the cut, and paying a surrender, lost.
+inf-airlock-line: the scratched line stays readable when the dock opens. Adding graffiti, and lengthening the hold, lost.
+inf-berth-gone: the nearer empty berth says the hauler is gone. Offering a second berth inside reach, and a new scan system, lost.
+inf-weep-dry: an empty tank on a cracked hull does not seal the weep. Changing the hull fraction, and changing the weep rate, lost.
+inf-nozzle-light: the warm light stays behind the nozzles when the ship turns. Moving the light's parent, and a second light pass, lost.
+inf-printer-follow: the kill printer follows the ship through the wreck yard. Writing the wreck's velocity, and putting a position on the player, lost.
+inf-solstice-crystal: scooping a bloom puts two Phosphor Crystals in the hold. Changing the amount, and editing the character sheet, lost.
+inf-auction-lots: the middle-dud win spills Platinoid Ore with the Refined Metals. Counting every dud, and changing the lot amounts, lost.
+inf-fine-again: a new warrant at the same desk offers the scan fine again. Clearing the fine while heat stays up, and changing the fine formula, lost.
+inf-gate-quote: the chart quotes a gate hop as no fuel and a three-second align. Changing route weights, and editing sector data, lost.
+inf-surveyor-mark: scanning the seam surveyor points at the mark that ship is working. Another worker destination, and a new job runner, lost.
+inf-void-deposit: a voided contract says the deposit came back only when a deposit was charged. A new mission runner, and rewriting the older void pin, lost.
+inf-chart-hold: the Economy tab counts the ore already in the hold. Reading a hull field the ship does not have, and a second chart, lost.
+inf-repair-points: a short repair names the hull points the weld puts back. Unpicking the foreign sweep, and rounding the refuel quote the same way, lost.
+inf-repair-price: the market repair choice names the price the yard charges. A partial-repair choice, and farming the ammo and refuel lists, lost.
+inf-grudge-note: a berth that refuses the dock-slam note names the credits still owed. A second note sentence, and a punctuation pass, lost.
+inf-berth-rumor: a berth keeps a pirate rumor in the sector it came from. Retuning rumor heat, and another wrong-sector headline, lost.
+inf-relay-shelved: a launched hauler off the map is not paid as if it docked. Paying on the clock, and booking a freight loss while it is only shelved, lost.
+inf-drone-recall: the recall names the credits the cap actually paid. Raising the passive cap, and holding the ore when the bucket is empty, lost.
 Production commits and player-facing changes:
-Checks run once:
-Remaining blockers or next units:
+seed-sc-09 5c0734cd9b8affc13f941930a9cd047ae8f2fff3 — Haumea's fissure is a cracked ice sheet with an open mouth.
+seed-sc-12 1af8e31616be8da51e3c1937adaa619a5a7ecb46 — Phoebe's shrine sits in a hollow sphere of sixty crystal fragments.
+inf-clamp-stern-bolt cb51917ef47cdd2d8ded1378c9e5d12d070197ff — A dead-center shot into the tug's stern hits the clamp and the load lets go.
+inf-veil-planet 46b17dc9983dc2b78c106e20e36bd7cd3f593d7a — The veil step stops on the world's skin.
+inf-pilgrim-call ec222ba6a9691eebfb501aa902072cf2dd2b1d2f — A Pilgrim Spine plays its own call.
+inf-pod-buyer d5067163de58fc190975db363d3bb297eebc50cc — Only the fence who buys pods takes a towed mayday pod.
+inf-hunter-dock edf9aec1f925124f3a71d17644542e67bc24e5b7 — Filing a hunter ledger or finishing a capture only counts at the dock that choice names.
+inf-yard-starved 5ddcbdd39df54432076e4ffe678b2479955e66c0 — A thin hopper at a yard is named when the price jumps.
+inf-berth-goods 7d75d98a52406b56eec7193ac7658c05eba65875 — The Long Berth yard card and refusal name Composite Alloys and Fuel Cells.
+inf-trader-ports d5d2ba8931387d14f0b5cd848d4476145885ee7e — A hired trader card names the ports on its route and on the last delivery.
+inf-forty-tag 160f5fc1008ea6e5f4d58e5a0e159c7daf7b047c — Rocks beside Claim Forty-Tag carry the Drift stake, and flying onto that face says the stamp is live.
+inf-bounty-standing a68d2a27a4523f5c7edbb6e60aff73e17e9ad44f — Helping a bounty hunter kill the quarry pays the guild standing with the collector cut.
+inf-airlock-line cf6ece9d547ff794fec3170e2a03b0605809ea57 — A line scratched on the airlock stays readable, including THEY KNEW THE MASS.
+inf-berth-gone 33469628691631b05a9eb210847173bb8af0a3ee — Standing at the nearer empty berth, the scan says the hauler is gone.
+inf-weep-dry 88b1ef869b9d86ea8e99fa29098b6d57858da8bc — An empty tank on a cracked hull does not seal the weep.
+inf-nozzle-light 3b512c0b15f00f62238d4bccb4b03c1f4a3d1c10 — The warm light stays behind the nozzles when the ship turns.
+inf-printer-follow 847893aef07bb18eeaad23737f1fc7a4fdb67325 — The kill printer follows the ship through the wreck yard.
+inf-solstice-crystal 20f04f85191f76445880e54b0a5d7cc01efaef8f — Scooping a Solstice bloom crystal puts two Phosphor Crystals in the hold.
+inf-auction-lots fc7e1f3b89ea912f9db32717741cb3d3ce66be75 — Winning the platinoid crate at the middle-dud Drift Auction spills six Platinoid Ore.
+inf-fine-again 95e18bf9fa29cf8d3f02a3b12ac18be68fe9d7e0 — A new warrant at the same desk offers the scan fine again.
+inf-gate-quote ad1b3ba4acbbcbc1942238efcd14001187121785 — The chart quotes a gate hop as no fuel and a three-second align.
+inf-surveyor-mark c6a40ea73cfb62b135fcb01c43382dbe7dca91b4 — Scanning the seam surveyor points at the mark that ship is working.
+inf-void-deposit 090d61caa576a6f4caaf228defc2422aaf7ac079 — A voided contract says the deposit came back only when a deposit was charged.
+inf-chart-hold daf38fa41dcfb9dfe01a6444837787ac3ef20276 — The chart Economy tab counts the ore already in the hold.
+inf-repair-points e0a4c7eb51582499d76df1cfafea336e74cc5b31 — A short repair names the hull points that weld will put back.
+inf-repair-price a459ec64052a023b7cf749ed1063b1efb45e2566 — The market repair choice names the price the yard charges.
+inf-grudge-note f1e9927cde5432b980d564c9654fe4feaf9c6d50 — A berth that refuses a dock-slam note names the credits still owed.
+inf-berth-rumor 8ccbb59fcef3e12b6bc00894925c64257aa3b3bf — A berth arrival does not repeat a pirate rumor from another sector.
+inf-relay-shelved 158c8604baeb3b3ca7bc1853ca1e26e9b6432d4e — A launched relay hauler that is off the map is not paid as if it docked.
+inf-drone-recall 0c7a49433fc31a9c2e0e45445ce4300f0d2ac2e2 — Recalling a mining drone names the credits that recall paid.
+Checks run once: 89 focused tests, 89 pass, 0 fail, exit 0, on the clean checkout. check:baseline on that checkout: 17/17 checks passed; exit 1 is wall time 105313ms against a 90000ms budget (massline alone 105312ms). That budget fingerprint predates this batch. These thirty do not edit that owner.
+Remaining blockers or next units: none. RC-49 stays released to ORRERY and was not taken.
 ```
 
 The governing sentence:

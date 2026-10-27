@@ -9,7 +9,7 @@ import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
-import { STATION_CONDITION_LAW, stationGrudge } from '../economy/stationConditions.js';
+import { stationGrudge, stationGrudgeRefusal } from '../economy/stationConditions.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
@@ -153,7 +153,7 @@ export function stationBerthAdmits(st, rep, state) {
 export function stationBerthRefusal(st, rep, state) {
   if (stationBerthAdmits(st, rep, state)) return null;
   if (state && st && st.id && stationGrudge(state, st.id)) {
-    return { kind: 'structural', reason: 'grudge', text: STATION_CONDITION_LAW.grudge.refusal };
+    return { kind: 'structural', reason: 'grudge', text: stationGrudgeRefusal(state, st.id) };
   }
   const deny = dockDenyReason(st, { rep });
   const floor = stationMinRepFor(st);

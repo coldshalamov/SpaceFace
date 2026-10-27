@@ -6,24 +6,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5044cc73c977087f526d047f15091f486f09207f7a8d47e3b976bfa432a6343a",
+  "contentHash": "24197e5cf59f90952245739f1e61d62066450310fb8de42a9ebb64801f0816fc",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.20003052055835724,
+          0.200030521490163,
           0.41200000047683716,
-          -0.4850093126296997
+          -0.48500930792201147
         ],
         "min": [
-          -0.20003052055835724,
+          -0.200030521490163,
           -0.3880000114440918,
-          -0.5149906873703003
+          -0.5149906920779885
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68000d1969f4a00c533e472533edbed29335f706532faf73208def375abc54bd",
+      "geometryHash": "129b31a835c58c09b44f429187b33547ab62536ec25b93c38a8d383a2363e043",
       "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -38,17 +38,17 @@
       "bounds": {
         "max": [
           0.2800000011920929,
-          0.33438840508461,
+          0.33438841488653354,
           0.2800000011920929
         ],
         "min": [
           -0.2800000011920929,
-          0.28961166739463806,
+          0.2896116575927145,
           -0.2800000011920929
         ]
       },
       "drawMode": 4,
-      "geometryHash": "267c443af87c18ead8cfac1c90fbb34870d77e55d3f6d0ed331f454dde59126c",
+      "geometryHash": "09d1fc15f9a4934684feb81cd31a52092ba629643984eb11d589fa8a1022edab",
       "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -62,18 +62,18 @@
     {
       "bounds": {
         "max": [
-          0.18999145925045013,
+          0.18999146137373032,
           0.41200000047683716,
-          0.2399914562702179
+          0.23999145839349809
         ],
         "min": [
-          0.11000855267047882,
+          0.11000855054719863,
           -0.18800000846385956,
-          0.16000854969024658
+          0.1600085475669664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a8a02809e2c38eccfbdde4688ac45e87b24c417c0b5fec56c7f413c5ce18238f",
+      "geometryHash": "952e9ff5506ac21d504b3beed377fb7468a21ce100dc0a2a94c724ea1fa35122",
       "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -87,18 +87,18 @@
     {
       "bounds": {
         "max": [
-          0.5350401401519775,
+          0.5350401454558578,
           1.0399999618530273,
-          0.9843928217887878
+          0.984392798146661
         ],
         "min": [
-          0.46495988965034485,
+          0.4649598843464646,
           -1.0399999618530273,
-          -0.9843928217887878
+          -0.984392798146661
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dae224af5d30c066d3469cb4c92d6328bd56aa6068012e0219f91c4c0c0f8e4",
+      "geometryHash": "c9f57dbe451e8804f686978111e6f89a1fb5f9838aa59b796237cb55c3aa2694",
       "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged.primitive.0",
       "indexCount": 2400,
       "indexed": true,
@@ -114,16 +114,16 @@
         "max": [
           0.26999998092651367,
           0.3199999928474426,
-          0.31199193000793457
+          0.311991936139935
         ],
         "min": [
           -0.3700000047683716,
           -0.3199999928474426,
-          -0.31199193000793457
+          -0.311991936139935
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1b3d826d19d3f361b8b23635cbb73b05a477d0db03c304b823e4ff0a9f03029",
+      "geometryHash": "5887ce80cfd94944c105962677264c86fcf392f570dcdc0d56743ba06f91b638",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core.primitive.0",
       "indexCount": 630,
       "indexed": true,
@@ -137,18 +137,18 @@
     {
       "bounds": {
         "max": [
-          0.3192928731441498,
+          0.31929287816039353,
           0.6299999952316284,
           0.6299999952316284
         ],
         "min": [
-          0.18070711195468903,
+          0.18070710693844527,
           -0.6299999952316284,
           -0.6299999952316284
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bde42459acbb2f5db7ed63f7829dfd22abd01be82cf8c3e5d66a925cabab0da6",
+      "geometryHash": "99e83e1583e67109ee8e982db8a0a0edd572c6343ca4c5871949cf101933d9db",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -162,18 +162,18 @@
     {
       "bounds": {
         "max": [
-          -0.17000289261341095,
+          -0.17000289052810333,
           0.3400000035762787,
           0.3400000035762787
         ],
         "min": [
-          -0.29999709129333496,
+          -0.29999709337864255,
           -0.3400000035762787,
           -0.3400000035762787
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d8b812468074bd97e1582bfabe44a43bfeda7fb5036d189d17206983f6d907c",
+      "geometryHash": "9853339b3ace7ae0c03c70f54418876db2342be5990978b8545be763bbc72338",
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-plume.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -188,17 +188,17 @@
       "bounds": {
         "max": [
           2.4000000953674316,
-          0.9483322501182556,
-          0.9483322501182556
+          0.9483322011404712,
+          0.9483322011404712
         ],
         "min": [
           0,
-          -0.9483322501182556,
-          -0.9483322501182556
+          -0.9483322011404712,
+          -0.9483322011404712
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6df4200df95c71c0fda76b2d522fed17e50c92393f1bb1efcd72d1f8a5d05b2",
+      "geometryHash": "6948ef39c1ded0ef74d1d40cff4fdf093ce809ad17b315b5b28e1fda625f54a6",
       "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main.primitive.0",
       "indexCount": 960,
       "indexed": true,
@@ -212,18 +212,18 @@
     {
       "bounds": {
         "max": [
-          0.4685460031032562,
+          0.46854599680208464,
           1.0386087894439697,
           1.0386087894439697
         ],
         "min": [
-          0.23145398497581482,
+          0.2314539912769864,
           -1.0386087894439697,
           -1.0386087894439697
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b36bea34d3b9a800f52ce1e67c579a79b3484d81d47dc117f4a2f61500c654a",
+      "geometryHash": "4f156d52b98ad27fadfcb5c236e423d65e19687d36484f3160b0ed5495e88298",
       "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer.primitive.0",
       "indexCount": 4032,
       "indexed": true,
@@ -276,21 +276,21 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.det-corporate-polish-band",
       "localTransform": [
-        1,
+        0.4000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.4000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.4000000059604645,
         0,
         0,
-        0,
-        0,
+        0.01199999451637268,
+        -0.5,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -304,41 +304,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.4000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.4000000059604645,
         0,
         0,
         0,
         0,
-        1,
+        0.4000000059604645,
         0,
         0,
-        0,
-        0,
+        0.01199999451637268,
+        -0.5,
         1
       ]
     },
     {
       "id": "sf.render.engine-plasma-ring.mesh.det-fusion-coil-ring",
       "localTransform": [
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
-        0,
+        0.312000036239624,
         0,
         1
       ],
@@ -353,20 +353,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
         0,
         0,
-        1,
+        0.2800000011920929,
         0,
         0,
-        0,
+        0.312000036239624,
         0,
         1
       ]
@@ -374,21 +374,21 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.det-lattice-strut-a",
       "localTransform": [
-        1,
+        0.30000000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.30000000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.30000000447034836,
         0,
-        0,
-        0,
-        0,
+        0.15000000596046448,
+        0.1119999960064888,
+        0.20000000298023224,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -402,40 +402,40 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.30000000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.30000000447034836,
         0,
         0,
         0,
         0,
-        1,
+        0.30000000447034836,
         0,
-        0,
-        0,
-        0,
+        0.15000000596046448,
+        0.1119999960064888,
+        0.20000000298023224,
         1
       ]
     },
     {
       "id": "sf.render.engine-plasma-ring.mesh.engine-plasma-ring-material-mechanical-merged",
       "localTransform": [
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
-        0,
+        0.5000000149011612,
         0,
         0,
         1
@@ -451,19 +451,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
         0,
         0,
         0,
-        1,
+        1.0399999618530273,
         0,
-        0,
+        0.5000000149011612,
         0,
         0,
         1
@@ -472,19 +472,19 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-core",
       "localTransform": [
-        1,
+        0.3199999928474426,
         0,
         0,
         0,
         0,
-        1,
+        0.3199999928474426,
         0,
         0,
         0,
         0,
-        1,
+        0.3199999928474426,
         0,
-        0,
+        -0.050000011920928955,
         0,
         0,
         1
@@ -500,19 +500,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.3199999928474426,
         0,
         0,
         0,
         0,
-        1,
+        0.3199999928474426,
         0,
         0,
         0,
         0,
-        1,
+        0.3199999928474426,
         0,
-        0,
+        -0.050000011920928955,
         0,
         0,
         1
@@ -521,19 +521,19 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-fan",
       "localTransform": [
-        1,
+        0.6299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        0.6299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        0.6299999952316284,
         0,
-        0,
+        0.2499999925494194,
         0,
         0,
         1
@@ -549,19 +549,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.6299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        0.6299999952316284,
         0,
         0,
         0,
         0,
-        1,
+        0.6299999952316284,
         0,
-        0,
+        0.2499999925494194,
         0,
         0,
         1
@@ -570,19 +570,19 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.hook-drive-plume",
       "localTransform": [
-        1,
+        0.3400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        0.3400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        0.3400000035762787,
         0,
-        0,
+        -0.23499999195337296,
         0,
         0,
         1
@@ -598,19 +598,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        0.3400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        0.3400000035762787,
         0,
         0,
         0,
         0,
-        1,
+        0.3400000035762787,
         0,
-        0,
+        -0.23499999195337296,
         0,
         0,
         1
@@ -619,19 +619,19 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.lod0-engine-plasma-ring-main",
       "localTransform": [
-        1,
+        1.2000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.2000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.2000000476837158,
         0,
-        0,
+        1.2000000476837158,
         0,
         0,
         1
@@ -647,19 +647,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        1.2000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.2000000476837158,
         0,
         0,
         0,
         0,
-        1,
+        1.2000000476837158,
         0,
-        0,
+        1.2000000476837158,
         0,
         0,
         1
@@ -668,19 +668,19 @@
     {
       "id": "sf.render.engine-plasma-ring.mesh.plasma-ring-outer",
       "localTransform": [
-        1,
+        1.0386087894439697,
         0,
         0,
         0,
         0,
-        1,
+        1.0386087894439697,
         0,
         0,
         0,
         0,
-        1,
+        1.0386087894439697,
         0,
-        0,
+        0.3499999940395355,
         0,
         0,
         1
@@ -696,19 +696,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.engine-plasma-ring.body",
       "worldTransform": [
-        1,
+        1.0386087894439697,
         0,
         0,
         0,
         0,
-        1,
+        1.0386087894439697,
         0,
         0,
         0,
         0,
-        1,
+        1.0386087894439697,
         0,
-        0,
+        0.3499999940395355,
         0,
         0,
         1
@@ -773,14 +773,14 @@
       "uri": "engine_plasma_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 105856,
-    "sha256": "b10e1d3c2c841401f588eea92946cb3fe7b45217f57c86f6aaf02bf386cbae90",
+    "bytes": 62536,
+    "sha256": "4a6f034bc017ae096b2a2de695c59e511395dc69d6ad84a75b1217b3f327c607",
     "uri": "render.glb"
   },
   "runtime": {
@@ -864,21 +864,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.4000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.4000000059604645,
           0,
           0,
           0,
           0,
-          1,
+          0.4000000059604645,
           0,
           0,
-          0,
-          0,
+          0.01199999451637268,
+          -0.5,
           1
         ],
         "name": "DET_corporate_polish_band",
@@ -890,20 +890,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2800000011920929,
           0,
           0,
           0,
           0,
-          1,
+          0.2800000011920929,
           0,
           0,
           0,
           0,
-          1,
+          0.2800000011920929,
           0,
           0,
-          0,
+          0.312000036239624,
           0,
           1
         ],
@@ -916,21 +916,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.30000000447034836,
           0,
           0,
           0,
           0,
-          1,
+          0.30000000447034836,
           0,
           0,
           0,
           0,
-          1,
+          0.30000000447034836,
           0,
-          0,
-          0,
-          0,
+          0.15000000596046448,
+          0.1119999960064888,
+          0.20000000298023224,
           1
         ],
         "name": "DET_lattice_strut_a",
@@ -942,19 +942,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          1.0399999618530273,
           0,
           0,
           0,
           0,
-          1,
+          1.0399999618530273,
           0,
-          0,
+          0.5000000149011612,
           0,
           0,
           1
@@ -968,19 +968,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3199999928474426,
           0,
           0,
           0,
           0,
-          1,
+          0.3199999928474426,
           0,
           0,
           0,
           0,
-          1,
+          0.3199999928474426,
           0,
-          0,
+          -0.050000011920928955,
           0,
           0,
           1
@@ -991,19 +991,19 @@
           "canopy": false,
           "drive": "core",
           "driveAnchorMatrix": [
-            1,
+            0.3199999928474426,
             0,
             0,
             0,
             0,
-            1,
+            0.3199999928474426,
             0,
             0,
             0,
             0,
-            1,
+            0.3199999928474426,
             0,
-            0,
+            -0.050000011920928955,
             0,
             0,
             1
@@ -1013,19 +1013,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.6299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          0.6299999952316284,
           0,
           0,
           0,
           0,
-          1,
+          0.6299999952316284,
           0,
-          0,
+          0.2499999925494194,
           0,
           0,
           1
@@ -1036,19 +1036,19 @@
           "canopy": false,
           "drive": "fan",
           "driveAnchorMatrix": [
-            1,
+            0.6299999952316284,
             0,
             0,
             0,
             0,
-            1,
+            0.6299999952316284,
             0,
             0,
             0,
             0,
-            1,
+            0.6299999952316284,
             0,
-            0,
+            0.2499999925494194,
             0,
             0,
             1
@@ -1058,19 +1058,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.3400000035762787,
           0,
           0,
           0,
           0,
-          1,
+          0.3400000035762787,
           0,
           0,
           0,
           0,
-          1,
+          0.3400000035762787,
           0,
-          0,
+          -0.23499999195337296,
           0,
           0,
           1
@@ -1081,19 +1081,19 @@
           "canopy": false,
           "drive": "plume",
           "driveAnchorMatrix": [
-            1,
+            0.3400000035762787,
             0,
             0,
             0,
             0,
-            1,
+            0.3400000035762787,
             0,
             0,
             0,
             0,
-            1,
+            0.3400000035762787,
             0,
-            0,
+            -0.23499999195337296,
             0,
             0,
             1
@@ -1103,19 +1103,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.2000000476837158,
           0,
           0,
           0,
           0,
-          1,
+          1.2000000476837158,
           0,
           0,
           0,
           0,
-          1,
+          1.2000000476837158,
           0,
-          0,
+          1.2000000476837158,
           0,
           0,
           1
@@ -1132,19 +1132,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.0386087894439697,
           0,
           0,
           0,
           0,
-          1,
+          1.0386087894439697,
           0,
           0,
           0,
           0,
-          1,
+          1.0386087894439697,
           0,
-          0,
+          0.3499999940395355,
           0,
           0,
           1
@@ -1160,7 +1160,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_plasma_ring.glb"
   },
-  "runtimeHash": "9c49453762e7d7a3a774fa20d9b2fb401650c18546216e8de880f91e9e62e51d",
+  "runtimeHash": "9864cdd5a402f220c85cde8903709a50f4bdf224241112355aee9b435b2845ed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

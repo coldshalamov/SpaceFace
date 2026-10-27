@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5d117a0bfb7ee7726473ed45945d00e53d64648b4fa29483027babcef208b56b",
+  "contentHash": "e7fb3e54b02357da73905982bdf0e341fe0d023a6cbcde6d53bc63a235bff660",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           1.1959209442138672,
-          -2.3516290187835693,
-          0.23474599421024323
+          -2.3516289976353533,
+          0.234745998396093
         ],
         "min": [
           -1.4190198183059692,
-          -2.7535223960876465,
-          -1.0268769264221191
+          -2.7535224172358626,
+          -1.026876930607969
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cfae6febe79b3c8b8c575cae71f59fbb8fdd05dd015612fa82f62171b7d85beb",
+      "geometryHash": "a606e6c847c28948d3761d2d7e42f71c5eeb76de7ceb54a74d9d9d490e252de5",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib0",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib0",
@@ -38,21 +38,21 @@
       "bounds": {
         "max": [
           0.8453259468078613,
-          -0.4211380183696747,
-          -1.067660927772522
+          -0.42113803499165237,
+          -1.0676610035266476
         ],
         "min": [
           -2.182130813598633,
-          -1.283815860748291,
-          -2.9999780654907227
+          -1.2838158441263134,
+          -2.999977989736597
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3ca7251e6f68a72a21f5d46078d33d17d32d01055e84fbd0a6f550e9a2bfcdea",
+      "geometryHash": "75ded98bbcc2f2fb97a299e0b226f5078e5bc75975d3e22a36d78a138568423e",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib1",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib1",
@@ -63,21 +63,21 @@
       "bounds": {
         "max": [
           1.1079471111297607,
-          2.446387767791748,
-          -0.3379156291484833
+          2.4463877655916133,
+          -0.3379156566592638
         ],
         "min": [
           -2.4102368354797363,
-          0.7021664977073669,
-          -2.379014253616333
+          0.7021664999075018,
+          -2.3790142261055527
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b77aac44774a7f3de946611d700c33905f956c68dfbe39a5221524239190144",
+      "geometryHash": "668200f7b8ee92f5a1a6a1b7bfe2f5195cd1ab070954c91f3453e53036fce204",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib2",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib2",
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           0.977186918258667,
-          2.753464937210083,
-          1.6181161403656006
+          2.7534649217736678,
+          1.6181161283417138
         ],
         "min": [
           -1.840110421180725,
-          1.2679073810577393,
-          0.5917762517929077
+          1.2679073964941545,
+          0.5917762638167946
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f94abc147d720f4c54d544dba4c05dd0a0f279c3bbcd298565788c1b28418b2c",
+      "geometryHash": "b78be9c555869990b48e7e3216f9e0f2de0a73fba7175b7e8245f96e91df7bbc",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib3",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib3",
@@ -113,21 +113,21 @@
       "bounds": {
         "max": [
           2.4102368354797363,
-          0.9949941635131836,
-          2.9999730587005615
+          0.9949941782383522,
+          2.999973089740744
         ],
         "min": [
           -1.115389108657837,
-          -0.2855159044265747,
-          2.2222630977630615
+          -0.28551591915174335,
+          2.222263066722879
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fee3f0c0bd8071ee5f6ceaccdea274f64af9cacdb24b377f35e6248968c4221",
+      "geometryHash": "a5fd76e27e6a451efc52843d622c321a3a1b6c8320f0e921c72bea342ba64a69",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib4",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib4",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           1.7917025089263916,
-          -1.7944259643554688,
-          2.254864454269409
+          -1.7944259207456859,
+          2.25486446958031
         ],
         "min": [
           -0.8793426752090454,
-          -2.2460262775421143,
-          1.4966812133789062
+          -2.246026321151897,
+          1.4966811980680053
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a3d381c0ba8e79b38740111408112b6e7baf03e65b297c4432421504e921d04",
+      "geometryHash": "8027c8020166919f1262f995bae772057831e4aa32c76f0639e4fa16a1299a05",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribFan_rib5",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib5",
@@ -162,22 +162,22 @@
     {
       "bounds": {
         "max": [
-          -0.8375564217567444,
+          -0.8375564455434852,
           0.8603193759918213,
-          1.1840697526931763
+          1.1840697738234294
         ],
         "min": [
-          -2.2589025497436523,
+          -2.2589025259569118,
           -1.9819390773773193,
-          0.23676596581935883
+          0.23676594468910567
         ]
       },
       "drawMode": 4,
-      "geometryHash": "00e0a8a7d9ada13dda586334aa69df3c251857927b4a532da75184b605f0bb04",
+      "geometryHash": "fc66cc74cbc33e4828b8ba30d1b58fbbd43f227f9a8cf265d42dc22a0a96f8da",
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribhub.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "ribHub",
       "nodeId": "sf.render.aftermath-frag-rib-cluster.mesh.ribhub",
@@ -190,10 +190,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
       "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -226,21 +226,21 @@
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib0",
       "localTransform": [
-        1,
+        1.3074703812599182,
         0,
         0,
         0,
         0,
-        1,
+        1.3074703812599182,
         0,
         0,
         0,
         0,
-        1,
+        1.3074703812599182,
         0,
-        0,
-        0,
-        0,
+        -0.11154943704605103,
+        -2.552575707435608,
+        -0.39606546610593796,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -254,42 +254,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.3074703812599182,
         0,
         0,
         0,
         0,
-        1,
+        1.3074703812599182,
         0,
         0,
         0,
         0,
-        1,
+        1.3074703812599182,
         0,
-        0,
-        0,
-        0,
+        -0.11154943704605103,
+        -2.552575707435608,
+        -0.39606546610593796,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib1",
       "localTransform": [
-        1,
+        1.513728380203247,
         0,
         0,
         0,
         0,
-        1,
+        1.513728380203247,
         0,
         0,
         0,
         0,
-        1,
+        1.513728380203247,
         0,
-        0,
-        0,
-        0,
+        -0.6684024333953857,
+        -0.8524769395589828,
+        -2.0338194966316223,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -303,42 +303,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.513728380203247,
         0,
         0,
         0,
         0,
-        1,
+        1.513728380203247,
         0,
         0,
         0,
         0,
-        1,
+        1.513728380203247,
         0,
-        0,
-        0,
-        0,
+        -0.6684024333953857,
+        -0.8524769395589828,
+        -2.0338194966316223,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib2",
       "localTransform": [
-        1,
+        1.7590919733047485,
         0,
         0,
         0,
         0,
-        1,
+        1.7590919733047485,
         0,
         0,
         0,
         0,
-        1,
+        1.7590919733047485,
         0,
-        0,
-        0,
-        0,
+        -0.6511448621749878,
+        1.5742771327495575,
+        -1.3584649413824081,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -352,42 +352,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.7590919733047485,
         0,
         0,
         0,
         0,
-        1,
+        1.7590919733047485,
         0,
         0,
         0,
         0,
-        1,
+        1.7590919733047485,
         0,
-        0,
-        0,
-        0,
+        -0.6511448621749878,
+        1.5742771327495575,
+        -1.3584649413824081,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib3",
       "localTransform": [
-        1,
+        1.408648669719696,
         0,
         0,
         0,
         0,
-        1,
+        1.408648669719696,
         0,
         0,
         0,
         0,
-        1,
+        1.408648669719696,
         0,
-        0,
-        0,
-        0,
+        -0.43146175146102905,
+        2.010686159133911,
+        1.1049461960792542,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -401,42 +401,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.408648669719696,
         0,
         0,
         0,
         0,
-        1,
+        1.408648669719696,
         0,
         0,
         0,
         0,
-        1,
+        1.408648669719696,
         0,
-        0,
-        0,
-        0,
+        -0.43146175146102905,
+        2.010686159133911,
+        1.1049461960792542,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib4",
       "localTransform": [
-        1,
+        1.7628129720687866,
         0,
         0,
         0,
         0,
-        1,
+        1.7628129720687866,
         0,
         0,
         0,
         0,
-        1,
+        1.7628129720687866,
         0,
-        0,
-        0,
-        0,
+        0.6474238634109497,
+        0.35473912954330444,
+        2.6111180782318115,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -450,42 +450,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.7628129720687866,
         0,
         0,
         0,
         0,
-        1,
+        1.7628129720687866,
         0,
         0,
         0,
         0,
-        1,
+        1.7628129720687866,
         0,
-        0,
-        0,
-        0,
+        0.6474238634109497,
+        0.35473912954330444,
+        2.6111180782318115,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribfan-rib5",
       "localTransform": [
-        1,
+        1.3355225920677185,
         0,
         0,
         0,
         0,
-        1,
+        1.3355225920677185,
         0,
         0,
         0,
         0,
-        1,
+        1.3355225920677185,
         0,
-        0,
-        0,
-        0,
+        0.4561799168586731,
+        -2.0202261209487915,
+        1.8757728338241577,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -499,42 +499,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.3355225920677185,
         0,
         0,
         0,
         0,
-        1,
+        1.3355225920677185,
         0,
         0,
         0,
         0,
-        1,
+        1.3355225920677185,
         0,
-        0,
-        0,
-        0,
+        0.4561799168586731,
+        -2.0202261209487915,
+        1.8757728338241577,
         1
       ]
     },
     {
       "id": "sf.render.aftermath-frag-rib-cluster.mesh.ribhub",
       "localTransform": [
-        1,
+        1.4211292266845703,
         0,
         0,
         0,
         0,
-        1,
+        1.4211292266845703,
         0,
         0,
         0,
         0,
-        1,
+        1.4211292266845703,
         0,
-        0,
-        0,
-        0,
+        -1.5482294857501984,
+        -0.560809850692749,
+        0.7104178592562675,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -548,21 +548,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.aftermath-frag-rib-cluster.body",
       "worldTransform": [
-        1,
+        1.4211292266845703,
         0,
         0,
         0,
         0,
-        1,
+        1.4211292266845703,
         0,
         0,
         0,
         0,
-        1,
+        1.4211292266845703,
         0,
-        0,
-        0,
-        0,
+        -1.5482294857501984,
+        -0.560809850692749,
+        0.7104178592562675,
         1
       ]
     },
@@ -625,37 +625,37 @@
       "uri": "place_aftermath_frag_rib_cluster.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 51756,
-    "sha256": "694d535234642daf510fdbdf0735560e2d1ad26a8d7e3914097a7525dc5bbfbe",
+    "bytes": 50232,
+    "sha256": "4a0842cbd14e8f146a2b2b34e88d62a062190758dd0a1202236f8046d97982e2",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         0,
-        -0.00002872943878173828,
-        -0.0000025033950805664062
+        -0.000028747731097400475,
+        -0.000002449997926534664
       ],
       "max": [
         2.4102368354797363,
-        2.753464937210083,
-        2.9999730587005615
+        2.7534649217736678,
+        2.999973089740744
       ],
       "min": [
         -2.4102368354797363,
-        -2.7535223960876465,
-        -2.9999780654907227
+        -2.7535224172358626,
+        -2.999977989736597
       ],
       "size": [
         4.820473670959473,
-        5.5069873332977295,
-        5.999951124191284
+        5.50698733900953,
+        5.999951079477341
       ]
     },
     "hidden": [],
@@ -706,21 +706,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3074703812599182,
           0,
           0,
           0,
           0,
-          1,
+          1.3074703812599182,
           0,
           0,
           0,
           0,
-          1,
+          1.3074703812599182,
           0,
-          0,
-          0,
-          0,
+          -0.11154943704605103,
+          -2.552575707435608,
+          -0.39606546610593796,
           1
         ],
         "name": "ribFan_rib0",
@@ -733,21 +733,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.513728380203247,
           0,
           0,
           0,
           0,
-          1,
+          1.513728380203247,
           0,
           0,
           0,
           0,
-          1,
+          1.513728380203247,
           0,
-          0,
-          0,
-          0,
+          -0.6684024333953857,
+          -0.8524769395589828,
+          -2.0338194966316223,
           1
         ],
         "name": "ribFan_rib1",
@@ -760,21 +760,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7590919733047485,
           0,
           0,
           0,
           0,
-          1,
+          1.7590919733047485,
           0,
           0,
           0,
           0,
-          1,
+          1.7590919733047485,
           0,
-          0,
-          0,
-          0,
+          -0.6511448621749878,
+          1.5742771327495575,
+          -1.3584649413824081,
           1
         ],
         "name": "ribFan_rib2",
@@ -787,21 +787,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.408648669719696,
           0,
           0,
           0,
           0,
-          1,
+          1.408648669719696,
           0,
           0,
           0,
           0,
-          1,
+          1.408648669719696,
           0,
-          0,
-          0,
-          0,
+          -0.43146175146102905,
+          2.010686159133911,
+          1.1049461960792542,
           1
         ],
         "name": "ribFan_rib3",
@@ -814,21 +814,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.7628129720687866,
           0,
           0,
           0,
           0,
-          1,
+          1.7628129720687866,
           0,
           0,
           0,
           0,
-          1,
+          1.7628129720687866,
           0,
-          0,
-          0,
-          0,
+          0.6474238634109497,
+          0.35473912954330444,
+          2.6111180782318115,
           1
         ],
         "name": "ribFan_rib4",
@@ -841,21 +841,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3355225920677185,
           0,
           0,
           0,
           0,
-          1,
+          1.3355225920677185,
           0,
           0,
           0,
           0,
-          1,
+          1.3355225920677185,
           0,
-          0,
-          0,
-          0,
+          0.4561799168586731,
+          -2.0202261209487915,
+          1.8757728338241577,
           1
         ],
         "name": "ribFan_rib5",
@@ -868,21 +868,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.4211292266845703,
           0,
           0,
           0,
           0,
-          1,
+          1.4211292266845703,
           0,
           0,
           0,
           0,
-          1,
+          1.4211292266845703,
           0,
-          0,
-          0,
-          0,
+          -1.5482294857501984,
+          -0.560809850692749,
+          0.7104178592562675,
           1
         ],
         "name": "ribHub",
@@ -897,20 +897,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb"
   },
-  "runtimeHash": "14e71f892946fbf0fd4270110da64d9fcf8297d78c4f3504171fceeb75bf2cfd",
+  "runtimeHash": "2be172f05c5122c7c6f9964dd5211be507e92ae7b87756ad09d381959587e3ee",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           2.4102368354797363,
-          2.753464937210083,
-          2.9999730587005615
+          2.7534649217736678,
+          2.999973089740744
         ],
         "min": [
           -2.4102368354797363,
-          -2.7535223960876465,
-          -2.9999780654907227
+          -2.7535224172358626,
+          -2.999977989736597
         ]
       },
       "id": "sf.render.aftermath-frag-rib-cluster.body",

@@ -10,12 +10,13 @@ import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js'
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
+import { voiceArbiter } from '../src/ui/voiceArbiter.js';
 import { save } from '../src/save/saveSystem.js';
 function fixture(memory) {
  const bus=createBus(),events=[],state={simTime:0,tick:0,mode:'flight',timeScale:1,run:{kind:'adventure'},
   world:{currentSectorId:C.sectorId},entities:new Map(),entityList:[],player:{tether:{active:false}},vesper:memory};
  let id=0;const helpers={spawnEntity(spec){const e=makeEntity({...spec,id:++id});state.entities.set(e.id,e);state.entityList.push(e);return e;},
-  removeEntity(id){const e=state.entities.get(id);if(e)e.alive=false;},voice:{say(p){events.push(['voice',p]);return true;}}};
+  removeEntity(id){const e=state.entities.get(id);if(e)e.alive=false;},voice:{say(p){events.push(['voice',p]);bus.emit('voice:surface',p);return true;}}};
  const player=helpers.spawnEntity({type:'ship',team:0,pos:{x:C.anchor.x+90,z:C.anchor.z},vel:{x:0,z:0},isPlayer:true,
   radius:4,mass:12,hull:100,hullMax:100,physicsBody:{shape:'ball',dynamic:true,radius:4,mass:12,useMeasuredSkin:false,material:'ship',contact:{linearDamping:0}}});
  state.playerId=player.id;for(const type of ['vesper:note','vesper:voice','vesper:met','vesper:performance','vesper:phraseProgress','audio:cue','comms:log','toast'])bus.on(type,p=>events.push([type,p]));
@@ -120,13 +121,14 @@ test('saved bell motion persists, destroyed bodies never resurrect; surviving be
  f.pluck(0);f.step();assert.equal(f.bell(0).data.vesperPose.simTime,f.state.simTime);assert.deepEqual(impulse(f.bell(0)),{x:0,z:0});
  f.bus.emit('game:newGame',{});f.step();assert.equal(alive(f).length,4);assert.equal(f.state.vesper.met,false);
 });
-test('reverse, simultaneous resonance, quiet and returning visitor Easter eggs are one-time',()=>{
+test('reverse, simultaneous resonance and quiet Easter eggs are remembered',()=>{
  const f=fixture();f.scan();for(const i of C.reverse){f.pluck(i);f.wait(1.5);}assert.equal(f.state.vesper.reverseHeard,true);
  const g=fixture();g.scan();for(const i of [0,1,2])g.bus.emit('physics:impact',{aId:g.bell(i).id,bId:888,impulse:300,preSolveClosingSpeed:20});
  assert.equal(g.state.vesper.unisonHeard,true);assert.equal(g.state.vesper.performances,0);
  const q=fixture();q.scan();q.wait(C.quietSeconds+.1);assert.equal(q.state.vesper.quietHeard,true);
  q.player.pos.x+=500;q.step();q.wait(8);q.player.pos.x-=500;q.step();assert.equal(q.state.vesper.visits,2);
- assert.ok(q.events.some(x=>x[0]==='vesper:voice'&&x[1].key==='welcome'));
+ assert.equal(q.events.some(x=>x[0]==='vesper:voice'&&x[1].key==='welcome'),false,
+  'deliberate narrative policy: an unperformed visit has no learned part');
 });
 test('malformed saves normalize to finite bounded whitelist; both capture and restore routes wired',async()=>{
  const n=normalizeVesperMemory({version:1,met:true,performances:Infinity,visits:1e99,evil:42,mutedUntil:1e99,
@@ -166,4 +168,103 @@ test('real Rapier consumes bounded bell return and preserves ballistic flight',a
   for(let i=0;i<60;i++){f.step();owner.syncFromEntities(alive(f));owner.step(1/60);}
   assert.ok(b.pos.x<before-15);assert.ok(b.vel.x<-15);assert.ok(Number.isFinite(b.pos.z));
  }finally{owner.dispose();f.system.destroy();}
+});
+
+const welcomes=f=>f.events.filter(([type,p])=>type==='vesper:voice'&&p.key==='welcome').length;
+function reload(f) { const saved=JSON.parse(JSON.stringify(f.system.serialize()));
+ f.bus.emit('save:restoring',{});f.system.deserialize(saved);f.bus.emit('sector:exit',{});f.bus.emit('sector:enter',{});f.bus.emit('save:loaded',{});f.step();return saved; }
+function depart(f) { f.player.pos.x=C.anchor.x+500;f.step();f.wait(8); }
+function returnToVesper(f) { f.player.pos.x=f.hub().pos.x+90;f.player.pos.z=f.hub().pos.z;f.step(); }
+test('Continue beside Vesper neither invents visits nor claims an unplayed part',()=>{
+ const f=fixture();f.scan();reload(f);reload(f);
+ assert.equal(f.state.vesper.visits,1);assert.equal(f.state.vesper.performances,0);assert.equal(welcomes(f),0);
+ f.phrase();reload(f);reload(f);assert.equal(f.state.vesper.visits,1);assert.equal(welcomes(f),0);
+});
+test('earned remembered return survives away saves and is heard once across later visits',()=>{
+ const f=fixture();f.scan();f.phrase();f.scan();assert.equal(f.system._following,true);
+ depart(f);assert.equal(f.state.vesper.returnPending,true);reload(f);reload(f);
+ assert.equal(f.system._following,false);assert.equal(f.state.vesper.visits,1);
+ returnToVesper(f);assert.equal(f.state.vesper.visits,2);assert.equal(welcomes(f),1);
+ assert.equal(f.state.vesper.returnHeard,true);assert.equal(f.state.vesper.returnPending,false);
+ reload(f);depart(f);reload(f);returnToVesper(f);assert.equal(f.state.vesper.visits,3);assert.equal(welcomes(f),1);
+});
+test('hysteresis and repeated sector enter do not invent a departure; sector exit does',()=>{
+ const f=fixture();f.scan();f.phrase();f.player.pos.x=C.anchor.x+C.discoverRadius+49;f.step();
+ f.bus.emit('sector:enter',{});returnToVesper(f);assert.equal(f.state.vesper.visits,1);assert.equal(welcomes(f),0);
+ f.bus.emit('sector:exit',{});f.state.world.currentSectorId='other';f.step();reload(f);
+ assert.equal(f.state.vesper.returnPending,true);
+ f.state.world.currentSectorId=C.sectorId;f.bus.emit('sector:enter',{});returnToVesper(f);
+ assert.equal(f.state.vesper.visits,2);assert.equal(welcomes(f),1);
+});
+test('demonstrations, environmental impacts and weak pulls never earn the learned-part return',()=>{
+ for(const play of [f=>f.wait(4),f=>{for(const i of C.phrase){f.pluck(i,8,10);f.wait(1);}},
+  f=>{for(const i of C.phrase){f.bus.emit('physics:impact',{aId:f.bell(i).id,bId:999,impulse:400,preSolveClosingSpeed:20});f.wait(1);}}]){
+  const f=fixture();f.scan();play(f);depart(f);reload(f);returnToVesper(f);
+  assert.equal(f.state.vesper.performances,0);assert.equal(welcomes(f),0);assert.equal(f.state.vesper.returnHeard,false);
+ }
+});
+test('legacy and malformed memory cannot fabricate a departure or earned return',()=>{
+ const legacy=freshVesperMemory();delete legacy.visitPresence;delete legacy.returnPending;delete legacy.returnHeard;
+ legacy.met=true;legacy.visits=12;legacy.performances=1;
+ const f=fixture(legacy);assert.equal(f.state.vesper.visits,12);assert.equal(welcomes(f),0);
+ depart(f);returnToVesper(f);assert.equal(f.state.vesper.visits,13);assert.equal(welcomes(f),1);
+ for(const raw of [{visitPresence:{},returnPending:true,performances:0},{visitPresence:'inside',returnPending:'yes',performances:1}]){
+  const n=normalizeVesperMemory({...freshVesperMemory(),...raw});assert.equal(n.returnPending,false);
+ }
+ const n=normalizeVesperMemory({...freshVesperMemory(),met:true,visitPresence:'away',returnPending:true,returnHeard:true,performances:1});
+ assert.equal(n.returnPending,false);assert.equal(n.returnHeard,true);
+});
+test('missing bell retains an earned memory; dead conductor stays silent across Continue and return',()=>{
+ const f=fixture();f.scan();f.phrase();const bell=f.bell(2);bell.alive=false;f.bus.emit('entity:killed',{id:bell.id});
+ depart(f);reload(f);returnToVesper(f);assert.equal(welcomes(f),1);assert.equal(f.bell(2),null);
+ const hub=f.hub();hub.alive=false;f.bus.emit('entity:killed',{id:hub.id});const voiceCount=f.events.filter(([t])=>t==='vesper:voice').length;
+ depart(f);reload(f);f.player.pos.x=C.anchor.x+90;f.step();f.scan();
+ assert.equal(f.events.filter(([t])=>t==='vesper:voice').length,voiceCount);assert.equal(f.hub(),null);
+ assert.equal(f.state.vesper.performances,1);assert.equal(f.state.vesper.returnHeard,true);assert.equal(alive(f).length,2);
+});
+
+test('queue admission does not spend return memory; stale death/departure offers cannot surface',()=>{
+ for(const invalidate of [f=>depart(f),f=>{const h=f.hub();h.alive=false;f.bus.emit('entity:killed',{id:h.id});},f=>reload(f)]){
+  const f=fixture();f.scan();f.phrase();depart(f);const queued=[];
+  f.helpers.voice={say:p=>{queued.push(p);return true;},cancel:()=>true};returnToVesper(f);
+  const offered=queued.find(p=>p.id==='vesper:welcome');assert.ok(offered);assert.equal(f.state.vesper.returnHeard,false);
+  invalidate(f);assert.equal(offered.valid(),false);
+  if(!f.hub()||f.state.vesper.visitPresence==='away')f.bus.emit('voice:surface',offered);
+  assert.equal(f.state.vesper.returnHeard,false);
+ }
+});
+test('return waits through shyness and an occupied voice floor, then remembers delivery',()=>{
+ const f=fixture();f.scan();f.phrase();depart(f);const queued=[];f.helpers.voice={say:p=>{queued.push(p);return true;}};
+ f.state.vesper.mutedUntil=f.state.simTime+5;returnToVesper(f);assert.equal(queued.length,0);
+ f.wait(5.1);const offer=queued.find(p=>p.id==='vesper:welcome');assert.ok(offer);assert.equal(f.state.vesper.returnHeard,false);
+ f.bus.emit('voice:surface',offer);assert.equal(f.state.vesper.returnHeard,true);assert.equal(welcomes(f),1);
+ f.wait(10);assert.equal(welcomes(f),1);
+});
+
+test('real voice arbiter holds delivered return for its readable TTL, then never repeats it',()=>{
+ const f=fixture();f.scan();f.phrase();depart(f);
+ const voice=Object.create(voiceArbiter);voice.init({state:f.state,bus:f.bus,helpers:f.helpers});
+ f.helpers.voice.say({id:'busy',channel:'story',priority:100,text:'Busy floor',ttl:2});voice.update(1/60);
+ returnToVesper(f);voice.update(1/60);assert.equal(f.state.vesper.returnHeard,false);
+ f.wait(2.1);voice.update(1/60);assert.equal(voice.queue.active.id,'vesper:welcome');assert.equal(welcomes(f),1);
+ f.wait(1);voice.update(1/60);assert.equal(voice.queue.active.id,'vesper:welcome','delivery must not invalidate its own active line');
+ f.wait(10);voice.update(1/60);assert.equal(voice.queue.active,null);assert.equal(welcomes(f),1);
+ reload(f);depart(f);returnToVesper(f);voice.update(1/60);assert.equal(welcomes(f),1);
+});
+test('solver-owned LOW HIGH MIDDLE pulls earn the later remembered return without teleporting',async()=>{
+ const f=fixture();f.scan();const owner=await createSg02DynamicBodyOwner({publishTelemetry:false});
+ const tick=()=>{f.step();owner.syncFromEntities(alive(f));owner.step(1/60);};
+ try {
+  owner.syncFromEntities(alive(f));
+  for(const i of C.phrase){const b=f.bell(i),start=b.pos.x;f.bus.emit('tether:latched',{targetId:b.id});
+   queuePhysicsImpulse(b,{x:(20-b.vel.x)*b.mass,y:0,z:0});for(let n=0;n<36;n++)tick();
+   assert.ok(b.pos.x-start>=C.pluckTravel);assert.ok(b.vel.x>=C.pluckSpeed);
+   const releaseX=b.pos.x;f.bus.emit('tether:released',{targetId:b.id});assert.equal(b.pos.x,releaseX);
+   for(let n=0;n<42;n++)tick();
+  }
+  assert.equal(f.state.vesper.performances,1);
+  assert.deepEqual(f.events.filter(([t,p])=>t==='vesper:note'&&p.playerPlayed).map(([,p])=>p.index),C.phrase);
+  depart(f);const saved=reload(f);assert.deepEqual(f.hub().pos.x,saved.hub.x);returnToVesper(f);
+  assert.equal(welcomes(f),1);assert.equal(f.state.vesper.returnHeard,true);
+ } finally {owner.dispose();f.system.destroy();}
 });

@@ -1,3 +1,5 @@
+import { isOriginalMassScaleTow } from './cargoCustody.js';
+import { isOriginalStarterBuoyTow } from '../missions/starterWorkday.js';
 // Tether gameplay system (GDD 2.0 §4.3, BUILD_PLAN WS-D1).
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
@@ -2969,6 +2971,16 @@ function isNamedAceEntity(entity) {
     || data.isAce === true;
 }
 
+// The cooldown ledger is keyed actor:attachment and attachment ids only ever grow, so an entry
+// that has outlived the cooldown can never block a cut again — a missing key already reads as
+// "ready". Dropping the expired ones on every write bounds the map to the cuts of the last
+// cooldown window instead of one row per bridle ever cut in the session.
+function pruneExpiredBridleCuts(ticks, currentTick) {
+  for (const [key, lastTick] of ticks) {
+    if (!Number.isFinite(lastTick) || currentTick - lastTick >= NPC_BRIDLE_CUT_COOLDOWN_TICKS) ticks.delete(key);
+  }
+}
+
 function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {}) {
   const state = host && host.state;
   const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -3007,6 +3019,7 @@ function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {})
   const result = attachments.breakAttachment(nearest, reason || 'specialist_cut', actor.id);
   if (!result || !result.ok) return null;
   if (!host._npcBridleCutTicks) host._npcBridleCutTicks = new Map();
+  pruneExpiredBridleCuts(host._npcBridleCutTicks, currentTick);
   host._npcBridleCutTicks.set(key, currentTick);
   if (host.bus && typeof host.bus.emit === 'function') {
     host.bus.emit('massline:npcCounterplay', {
@@ -3243,6 +3256,10 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
 function recoveryTowRequiredTier(state, entity) {
   // Preserve the scorer's existing scripted teaching catch across fresh/nearest admission.
   if (entity?.data?.onboarding === true) return 0;
+  // Accepted recovery cargo consents to towing; its actual mass/forces still apply.
+  if (isOriginalStarterBuoyTow(state,entity)) return 0;
+  // Issued manifest recovery is consenting cargo; only the owner-registered original qualifies.
+  if (isOriginalMassScaleTow(state,entity)) return 0;
   const ordinary = lineThrowTierForBody(entity);
   if (!isBlackFlagAdventure(state) || entity?.type !== 'ship' || !entity.alive || !(entity.hull > 0)
     || state.entities?.get(entity.id) !== entity) return ordinary;

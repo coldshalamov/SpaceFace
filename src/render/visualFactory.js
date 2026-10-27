@@ -1,3 +1,5 @@
+import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
+export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
 import { isOrchardFrame, ORCHARD_FRAME_FILE } from '../data/anvilOrchardIdentity.js';
 import { isLatchActor } from './latchNineVisuals.js';
@@ -103,6 +105,8 @@ import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../d
 import { foundryPlateShape } from '../data/foundryPlate.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { engineGlowForSilhouette } from '../data/enemyEngineGlow.js';
+import { SWARM_BROOD_FAMILIES, swarmBroodFamily } from '../data/swarmBrood.js';
+import { SWARM_BROOD_LATE_FAMILIES, swarmBroodLateFamily } from '../data/swarmBroodLate.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -3588,6 +3592,115 @@ function buildCreditChip(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// SWARM REPAIR CELL (PQ-135 glance identity) — the one drop on the table that buys hull back.
+// Chips spend, commodities sell, remains latch and throw; a repair cell is medicine, so the
+// silhouette says medicine: a squat canister standing UPRIGHT on its foot flange — the
+// vent-dropped patch kit — wearing clamp bands, the white-hot weld seam where the lid seats,
+// and the luminous cross on the crown the top-down camera reads as the heal mark. Nothing
+// else stands on Y or carries a cross: the cargo canister and the eel lie along X, the chip
+// is flat, the bottle is a sphere, the remains are carapace. The pickup contract is intact —
+// userData.gem is still the body the tumble / transponder strobe / tractor intake poses and
+// the halo is still the takeable ring — only the recipe and paint are the cell's own: pale
+// ceramic shell, gunmetal clamps, and the repair verb's mint (actionVfx 'beam:repaired'
+// 0x84ffd2) so the eye learns "mint = hull back" from the welding beam to the drop.
+// Deterministic poses, shared-cache primitives, noDispose recipes — same law as the remains.
+// ---------------------------------------------------------------------------------------------
+const SWARM_REPAIR_GLOW = '#84ffd2';
+
+function isSwarmRepairEntity(e) {
+  const d = (e && e.data) || {};
+  return d.kind === 'swarm_repair' || d.swarmRepair === true;
+}
+
+function buildSwarmRepairCell(e) {
+  const R = Math.max(1.4, Number(e && e.radius) || 2.2);
+  const g = new THREE.Group();
+  g.name = 'SF_SwarmRepairCell';
+  const shell = getMaterial('swarmrepair:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0xc2d2c6, emissive: 0x16281e, emissiveIntensity: 0.3,
+    metalness: 0.42, roughness: 0.48, flatShading: true,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const band = getMaterial('swarmrepair:band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x38423c, emissive: 0x0a140f, emissiveIntensity: 0.3,
+    metalness: 0.72, roughness: 0.42,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const weld = getMaterial('swarmrepair:weld', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x202b25, emissive: new THREE.Color('#f2fff8'), emissiveIntensity: 2.4,
+    metalness: 0.1, roughness: 0.3,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  // The crown cross is the heal mark; the material is cloned per drop so the breathe below
+  // never paints a sibling cell (same per-entity clone convention as the gem glint).
+  const cross = getMaterial('swarmrepair:cross', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x0c2218, emissive: new THREE.Color(SWARM_REPAIR_GLOW), emissiveIntensity: 2.0,
+    metalness: 0.15, roughness: 0.4,
+  }), SHARED_MATERIAL_ROLE.HULL)).clone();
+
+  const body = new THREE.Group();
+  body.name = 'SwarmRepairCellBody';
+  const add = (geoKey, geoBuild, material, name, pos) => {
+    const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+    m.name = name;
+    if (pos) m.position.set(pos[0], pos[1], pos[2]);
+    m.frustumCulled = false;
+    body.add(m);
+    return m;
+  };
+  // Squat barrel on a planted flange — the upright stance is half the identity at a glance.
+  add('swarmrepair:barrel', () => new THREE.CylinderGeometry(0.46, 0.54, 0.66, 10),
+    shell, 'SwarmRepairBarrel', [0, -0.02, 0]);
+  add('swarmrepair:flange', () => new THREE.CylinderGeometry(0.64, 0.7, 0.12, 10),
+    band, 'SwarmRepairFootFlange', [0, -0.37, 0]);
+  add('swarmrepair:lid', () => new THREE.CylinderGeometry(0.5, 0.45, 0.18, 10),
+    shell, 'SwarmRepairLid', [0, 0.37, 0]);
+  add('swarmrepair:band-lo', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
+    band, 'SwarmRepairClampBandLo', [0, -0.16, 0]);
+  add('swarmrepair:band-hi', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
+    band, 'SwarmRepairClampBandHi', [0, 0.14, 0]);
+  // The weld seam where the lid seats — white-hot, the mark of a fresh patch kit.
+  add('swarmrepair:weldseam', () => new THREE.TorusGeometry(0.475, 0.032, 6, 18).rotateX(Math.PI / 2),
+    weld, 'SwarmRepairWeldSeam', [0, 0.27, 0]);
+  // The crown cross — two perpendicular bars sharing one cached geometry.
+  const crossBar = () => new THREE.BoxGeometry(0.58, 0.1, 0.17);
+  const barA = add('swarmrepair:crossbar', crossBar, cross, 'SwarmRepairCrossBarA', [0, 0.51, 0]);
+  const barB = add('swarmrepair:crossbar', crossBar, cross, 'SwarmRepairCrossBarB', [0, 0.51, 0]);
+  barB.rotation.y = Math.PI / 2;
+  body.scale.setScalar(R);
+  g.add(body);
+
+  // The takeable ring every scoopable drop carries — mint here, not a commodity tint.
+  const halo = new THREE.Mesh(
+    getGeometry('pickup:halo', () => new THREE.TorusGeometry(1.55, 0.05, 6, 28)),
+    getMaterial(`pickuphalo:${SWARM_REPAIR_GLOW}`, () => new THREE.MeshBasicMaterial({
+      color: new THREE.Color(SWARM_REPAIR_GLOW), transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })),
+  );
+  halo.material = halo.material.clone();
+  halo.scale.setScalar(R);
+  halo.userData.baseScale = R;
+  halo.frustumCulled = false;
+  g.add(halo);
+
+  g.userData.kind = 'pickup';
+  g.userData.interactionKind = 'pickup';
+  g.userData.gem = body;
+  g.userData.pickupHalo = halo;
+  g.userData.pickupShape = 'repair_cell';
+  g.userData.pickupVisual = 'swarm_repair';
+  g.userData.visualLanguage = 'swarm-repair-cell';
+  g.userData.pickupRole = null;
+  // Heal pulse: the cross breathes on the gem's own glint beat, phased per drop so two cells
+  // on one field never pulse in lockstep. Cosmetic wall-clock is fine — this only paints.
+  const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
+  for (const bar of [barA, barB]) {
+    bar.onBeforeRender = () => {
+      cross.emissiveIntensity = 1.8 * (1 + 0.55 * Math.sin(nowSec() * 2.6 + ph));
+    };
+  }
+  return g;
+}
+
 function buildPickup(e) {
   // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
   // the warning regardless of which spawn path dropped it.
@@ -3621,6 +3734,9 @@ function buildPickup(e) {
     chip.userData.pickupRole = PICKUP_ROLE.CHIP;
     return chip;
   }
+  // A vent-dropped repair cell is the swarm run's only way back to hull — it wears the
+  // patch-kit silhouette, never the fallback octahedron next to a credit chip.
+  if (isSwarmRepairEntity(e)) return buildSwarmRepairCell(e);
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
@@ -3875,6 +3991,8 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  const evidence = lastShiftPackagedFile(e);
+  if (evidence) return evidence;
   if (isOrchardFrame(e)) return ORCHARD_FRAME_FILE;
   if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
   if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
@@ -5102,7 +5220,7 @@ function buildWreck(e) {
     roughness: 0.68, metalness: 0.72, emissive: 0x230900, emissiveIntensity: 0.1,
     materialRole: 'torn-exposed-metal',
   });
-  const rnd = mulberryLite(hashId(e.id));
+  const rnd = mulberryLite(hashId(lastShiftPackagedFile(e) ? e.data.lastShiftBodyKey : e.id));
 
   // A long, broken load-bearing spine gives wrecks an unmistakable manufactured axis. The old
   // five-box clump plus a broad orange halo read as a molten asteroid at flight scale.
@@ -6422,10 +6540,262 @@ function buildVolatilePod(e) {
   return g;
 }
 
+// ---------------------------------------------------------------------------------------------
+// W-BLOOM-LOW REMAINS — a brood death leaves latchable ammunition, and the kind IS the read:
+// throw selection happens at glance range (the sac splashes, the leech pins, the eel whips,
+// the plate is just heavy). Every kind keeps the payload interaction contract — userData.kind
+// and interactionKind 'payload', pickupRole POD, the ordnance tumble — so latch, hold and
+// release flow through the same machinery as the sealed canister; only silhouette and paint
+// are family-authored. Children are shared-cached primitives in deterministic poses (no RNG,
+// no wall clock); paint is the dying family's own bodyColor/bodyEmissive so the remain reads
+// as a piece of the thing it was. A kind with no authored recipe falls through to the generic
+// canister — the body still latches, throws and retires.
+// ---------------------------------------------------------------------------------------------
+
+// kind -> family: `remains.kind` is authored once per family (swarmBroodIssues validates the
+// spec), so the kind alone resolves the family paint — base roster plus the late folds.
+const REMAIN_FAMILY_OF_KIND = (() => {
+  const map = new Map();
+  for (const family of [...SWARM_BROOD_FAMILIES, ...SWARM_BROOD_LATE_FAMILIES]) {
+    const kind = family && family.remains && family.remains.kind;
+    if (kind && !map.has(kind)) map.set(kind, family);
+  }
+  return map;
+})();
+
+function broodRemainFamily(e, kind) {
+  const familyId = e && e.data && e.data.broodRemain && e.data.broodRemain.familyId;
+  return swarmBroodFamily(familyId) || swarmBroodLateFamily(familyId)
+    || REMAIN_FAMILY_OF_KIND.get(kind) || null;
+}
+
+function remainChannel(family, slot, fallback) {
+  const c = family && Array.isArray(family[slot]) && family[slot].length === 3 ? family[slot] : fallback;
+  return new THREE.Color(c[0], c[1], c[2]);
+}
+
+// Carapace/skin paint for the remain's main mass — the family's own colors, flatted facets.
+function remainShellMaterial(kind, family) {
+  const col = remainChannel(family, 'bodyColor', [0.42, 0.38, 0.3]);
+  const emi = remainChannel(family, 'bodyEmissive', [0, 0, 0]);
+  return getMaterial(`remain:${kind}:shell:${col.getHexString()}:${emi.getHexString()}`,
+    () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: col, emissive: emi, emissiveIntensity: 0.55,
+      roughness: 0.74, metalness: 0.12, flatShading: true,
+    }), SHARED_MATERIAL_ROLE.HULL));
+}
+
+// The hot spot a kind's authored consequence earns (the sac's bloom bead). Shared-cache,
+// keyed on the resolved emissive so a family retune cannot paint a stale recipe.
+function remainGlowMaterial(kind, family, intensity) {
+  const emi = remainChannel(family, 'bodyEmissive', [0.3, 0.6, 0.3]);
+  return getMaterial(`remain:${kind}:glow:${emi.getHexString()}:${intensity}`,
+    () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: emi.clone().multiplyScalar(0.35), emissive: emi, emissiveIntensity: intensity,
+      roughness: 0.5, metalness: 0.05,
+    }), SHARED_MATERIAL_ROLE.HULL));
+}
+
+// Silicate glass: the grazer's shell reads through, not just lit — translucent and sharp.
+function remainGlassMaterial(kind, family) {
+  const col = remainChannel(family, 'bodyColor', [0.55, 0.62, 0.58]);
+  const emi = remainChannel(family, 'bodyEmissive', [0.2, 0.3, 0.26]);
+  return getMaterial(`remain:${kind}:glass:${col.getHexString()}:${emi.getHexString()}`,
+    () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: col, emissive: emi, emissiveIntensity: 0.6,
+      roughness: 0.14, metalness: 0.05, transparent: true, opacity: 0.5, flatShading: true,
+    }), SHARED_MATERIAL_ROLE.HULL));
+}
+
+function remainMesh(parent, geoKey, geoBuild, material, name, pos, rotY, extra = null) {
+  const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
+  m.name = name;
+  if (pos) m.position.set(pos[0], pos[1], pos[2]);
+  if (extra && extra.rotation) m.rotation.set(extra.rotation[0], extra.rotation[1], extra.rotation[2]);
+  else if (rotY != null) m.rotation.y = rotY;
+  if (extra && extra.scale) m.scale.set(extra.scale[0], extra.scale[1], extra.scale[2]);
+  parent.add(m);
+  return m;
+}
+
+// husk_shards — a mite's chipped carapace: a scatter of thin jagged flakes plus one splinter.
+// Small, flat and irregular — the lightest read on the field.
+function buildRemainHuskShards(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const flake = () => new THREE.TetrahedronGeometry(0.52, 0).scale(1, 0.26, 0.7);
+  const poses = [
+    { p: [0.14, 0.02, 0.10], ry: 0.5, s: [1.0, 1.0, 1.0] },
+    { p: [-0.16, 0.07, -0.10], ry: 2.4, s: [0.8, 0.8, 0.8] },
+    { p: [-0.02, 0.12, 0.04], ry: 4.3, s: [0.62, 0.62, 0.62] },
+  ];
+  let i = 0;
+  for (const pose of poses) {
+    remainMesh(g, `remain:husk_shards:flake`, flake, shell,
+      `BroodRemain_HuskShard_Flake_${i++}`, pose.p, pose.ry, { scale: pose.s });
+  }
+  remainMesh(g, 'remain:husk_shards:splinter', () => new THREE.BoxGeometry(0.52, 0.09, 0.18),
+    shell, 'BroodRemain_HuskShard_Splinter', [0.05, 0.05, -0.18], null,
+    { rotation: [0.1, -0.7, 0.35] });
+}
+
+// acid_sac — the spitter's thrown sac: a drooping membrane bulb, a tied neck stem, and the
+// hot bead at the knot that telegraphs "this one bursts".
+function buildRemainAcidSac(g, kind, family) {
+  const shell = remainGlowMaterial(kind, family, 1.15);
+  const bead = remainGlowMaterial(kind, family, 2.4);
+  remainMesh(g, 'remain:acid_sac:body', () =>
+    new THREE.SphereGeometry(0.6, 14, 10).scale(1, 0.85, 0.92).translate(0, 0.05, 0),
+    shell, 'BroodRemain_AcidSac_Body');
+  remainMesh(g, 'remain:acid_sac:neck', () =>
+    new THREE.CylinderGeometry(0.08, 0.15, 0.34, 7),
+    shell, 'BroodRemain_AcidSac_Neck', [0.12, 0.56, 0.05], null, { rotation: [0.1, 0, -0.55] });
+  remainMesh(g, 'remain:acid_sac:bead', () =>
+    new THREE.SphereGeometry(0.13, 8, 6),
+    bead, 'BroodRemain_AcidSac_Bead', [0.22, 0.7, 0.08]);
+}
+
+// horn_plate — the charger's heavy wedge: a flat triangular plate broken off the skull boss.
+// The biggest, bluntest silhouette — "this one is just heavy".
+function buildRemainHornPlate(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  remainMesh(g, 'remain:horn_plate:wedge', () =>
+    new THREE.ConeGeometry(0.66, 1.4, 3).rotateZ(-Math.PI / 2).scale(1, 0.42, 1),
+    shell, 'BroodRemain_HornPlate_Wedge');
+  remainMesh(g, 'remain:horn_plate:boss', () =>
+    new THREE.BoxGeometry(0.42, 0.4, 0.8),
+    shell, 'BroodRemain_HornPlate_Boss', [-0.5, 0.04, 0], null, { rotation: [0, 0.12, 0.06] });
+}
+
+// leech_glue — the still-sticky leech curled in on itself: a C-curl of body with a head bulb
+// at the open end. The only ring-crescent silhouette on the field.
+function buildRemainLeechGlue(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const headMat = remainGlowMaterial(kind, family, 0.9);
+  remainMesh(g, 'remain:leech_glue:curl', () =>
+    new THREE.TorusGeometry(0.44, 0.14, 7, 18, 4.4).rotateX(Math.PI / 2),
+    shell, 'BroodRemain_LeechGlue_Curl', [0, 0.12, 0]);
+  // Torus arc starts at local +X; after rotateX(PI/2) the open end sits at (+X, Z-plane).
+  remainMesh(g, 'remain:leech_glue:head', () =>
+    new THREE.SphereGeometry(0.19, 9, 7).scale(1.25, 0.8, 1),
+    headMat, 'BroodRemain_LeechGlue_Head', [0.52, 0.14, 0]);
+  remainMesh(g, 'remain:leech_glue:tail', () =>
+    new THREE.SphereGeometry(0.1, 7, 5),
+    shell, 'BroodRemain_LeechGlue_Tail', [-0.16, 0.12, -0.44]);
+}
+
+// glass_shards — the grazer's shell broken into translucent spikes: tall sharp crystals
+// leaning off a shared stump. The only see-through silhouette — it reads brittle.
+function buildRemainGlassShards(g, kind, family) {
+  const glass = remainGlassMaterial(kind, family);
+  const spike = () => new THREE.OctahedronGeometry(0.3, 0).scale(0.5, 2.1, 0.5);
+  const poses = [
+    { p: [0, 0.1, 0], r: [0.12, 0, -0.06], s: [1, 1.15, 1] },
+    { p: [-0.3, 0.02, 0.14], r: [0.2, 0.3, 0.5], s: [0.72, 0.72, 0.72] },
+    { p: [0.3, 0.0, -0.15], r: [0.34, -0.2, -0.48], s: [0.6, 0.6, 0.6] },
+  ];
+  let i = 0;
+  for (const pose of poses) {
+    remainMesh(g, 'remain:glass_shards:spike', spike, glass,
+      `BroodRemain_GlassShards_Spike_${i++}`, pose.p, null, { rotation: pose.r, scale: pose.s });
+  }
+}
+
+// eel_body — the wake eel dead and slack: a long tapered body, blunt head, paddle tail.
+// The longest silhouette on the field — held on the line it reads as the whip it is.
+function buildRemainEelBody(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  remainMesh(g, 'remain:eel_body:body', () =>
+    new THREE.CylinderGeometry(0.09, 0.24, 2.2, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_EelBody_Body');
+  remainMesh(g, 'remain:eel_body:head', () =>
+    new THREE.SphereGeometry(0.24, 9, 7).scale(1.35, 0.75, 0.85),
+    shell, 'BroodRemain_EelBody_Head', [-1.08, 0, 0]);
+  remainMesh(g, 'remain:eel_body:fin', () =>
+    new THREE.ConeGeometry(0.15, 0.46, 4).rotateZ(-Math.PI / 2).scale(1, 0.5, 1.4),
+    shell, 'BroodRemain_EelBody_Fin', [1.24, 0, 0]);
+}
+
+// cracked_shell — the burrower's burst-open carapace: a shallow bowl split into two
+// offset dish halves with a kicked-up flake at the seam. The only broken-dish silhouette
+// — "it shatters on impact" reads as the pieces it already is.
+function buildRemainCrackedShell(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const dish = (phiStart) => () => new THREE
+    .SphereGeometry(0.62, 10, 5, phiStart, Math.PI * 0.92, 0, Math.PI * 0.42)
+    .scale(1, 0.55, 1);
+  remainMesh(g, 'remain:cracked_shell:dish_a', dish(0), shell,
+    'BroodRemain_CrackedShell_DishA', [-0.16, 0.18, 0], null, { rotation: [0.22, 0.4, -0.12] });
+  remainMesh(g, 'remain:cracked_shell:dish_b', dish(Math.PI * 1.04), shell,
+    'BroodRemain_CrackedShell_DishB', [0.2, 0.12, 0.1], null, { rotation: [-0.14, -2.3, 0.3] });
+  remainMesh(g, 'remain:cracked_shell:flake', () =>
+    new THREE.TetrahedronGeometry(0.24, 0).scale(1, 0.4, 0.8),
+    shell, 'BroodRemain_CrackedShell_Flake', [0.02, 0.36, -0.3], 1.1);
+}
+
+// spent_charge — the remora's dead-fuse casing: a stubby dart-canister, blunt nose, tail
+// fins, and a faint ember at the nozzle — the "it still pops, weakly" tell. The only
+// stubby-ordnance silhouette (the eel is long and limber, the horn a flat wedge).
+function buildRemainSpentCharge(g, kind, family) {
+  const shell = remainShellMaterial(kind, family);
+  const ember = remainGlowMaterial(kind, family, 0.9);
+  remainMesh(g, 'remain:spent_charge:body', () =>
+    new THREE.CylinderGeometry(0.24, 0.28, 0.72, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Body');
+  remainMesh(g, 'remain:spent_charge:nose', () =>
+    new THREE.ConeGeometry(0.24, 0.34, 9).rotateZ(-Math.PI / 2),
+    shell, 'BroodRemain_SpentCharge_Nose', [-0.52, 0, 0]);
+  remainMesh(g, 'remain:spent_charge:fin_v', () =>
+    new THREE.BoxGeometry(0.26, 0.05, 0.34),
+    shell, 'BroodRemain_SpentCharge_FinV', [0.34, 0.14, 0], null, { rotation: [0, 0, 0.18] });
+  remainMesh(g, 'remain:spent_charge:fin_h', () =>
+    new THREE.BoxGeometry(0.26, 0.34, 0.05),
+    shell, 'BroodRemain_SpentCharge_FinH', [0.34, 0, 0.14], null, { rotation: [0.18, 0, 0] });
+  remainMesh(g, 'remain:spent_charge:ember', () =>
+    new THREE.SphereGeometry(0.11, 8, 6),
+    ember, 'BroodRemain_SpentCharge_Ember', [0.46, 0, 0]);
+}
+
+const REMAIN_BUILDERS = Object.freeze({
+  husk_shards: buildRemainHuskShards,
+  acid_sac: buildRemainAcidSac,
+  horn_plate: buildRemainHornPlate,
+  leech_glue: buildRemainLeechGlue,
+  glass_shards: buildRemainGlassShards,
+  eel_body: buildRemainEelBody,
+  cracked_shell: buildRemainCrackedShell,
+  spent_charge: buildRemainSpentCharge,
+});
+
+function buildBroodRemainVisual(e) {
+  const rem = e && e.data && e.data.broodRemain;
+  const kind = rem && typeof rem.kind === 'string' ? rem.kind : null;
+  const builder = kind && REMAIN_BUILDERS[kind];
+  if (!builder) return null;
+  const family = broodRemainFamily(e, kind);
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  g.name = `SF_BroodRemain_${kind}`;
+  builder(g, kind, family);
+  g.scale.setScalar(R);
+  g.userData.kind = 'payload';
+  g.userData.interactionKind = 'payload';
+  g.userData.visualLanguage = `brood-remain-${kind}`;
+  g.userData.broodRemainKind = kind;
+  g.userData.pickupRole = PICKUP_ROLE.POD;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
   // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
   // the silhouette is the hazard warning at chase distance.
   if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
+  // W-BLOOM-LOW: a brood remain is ammunition the kill left behind, not cargo — the family's
+  // authored kind IS the silhouette the throw-selection reads. Unknown kinds keep the canister.
+  if (e && e.data && e.data.payloadType === 'brood_remains') {
+    const remain = buildBroodRemainVisual(e);
+    if (remain) return remain;
+  }
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const commodityId = payloadCommodityId(e && e.data);

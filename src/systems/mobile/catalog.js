@@ -1,22 +1,25 @@
 // Input action IDs, not key codes. Rebinding the desktop cannot break the phone.
+// The five powers' words are the arsenal's own sentences (src/data/arsenalWords.js), never retyped here.
+import { staticVerbSentence } from '../../data/arsenalWords.js';
 const power = (id, label, symbol, description, kind = 'pulse') => Object.freeze({ id, label, symbol, description, kind });
 export const POWER_PAGES = Object.freeze([
   // The five powers (owner 2026-10-22, src/systems/powerVerbs.js): one page, one job each.
   { name: 'Powers', powers: [
-    power('pull', 'PULL', 'well', 'Drop a gravity well at your aim. It grips your locked target three times as hard.'),
-    power('shove', 'SHOVE', 'repel', 'Blast everything outward from your ship, and set off every armed charge and bomb.'),
-    power('pin', 'PIN', 'seed', 'Fire an anchor that locks where it lands, ready for your Line.'),
-    power('bomb', 'BOMB', 'bomb', 'Throw a sticky charge — or the drift bomb the cycle chose.'),
+    power('pull', 'PULL', 'well', staticVerbSentence('pull')),
+    power('shove', 'SHOVE', 'repel', staticVerbSentence('shove')),
+    power('pin', 'PIN', 'seed', staticVerbSentence('pin')),
+    power('bomb', 'BOMB', 'bomb', staticVerbSentence('bomb')),
     power('cycleBomb', 'NEXT BOMB', 'cycle', 'Select the next ordnance: the sticky charge, then your loaded bombs.'),
-    power('rig', 'RIG', 'cone', 'Toggle your rig: the clearing cone, or the skim scoop in a planet band.'),
+    power('rig', 'RIG', 'cone', staticVerbSentence('rig')),
     // Same hold-to-toggle contract as the desktop latch: tap lashes the beam,
     // tap again bowls the clump straight ahead. It stays on the first page (gyre wave-63 reachability).
-    power('gyreSnare', 'GYRE', 'gyre', 'Snare a body in the cone, then tap again to bowl it.', 'toggle'),
+    power('gyreSnare', 'GYRE', 'gyre', 'Tap to gather loose rocks and wrecks into one growing ball, then tap again to throw it.', 'toggle'),
   ] },
   { name: 'Gear', powers: [
     power('countermeasure', 'DECOY', 'decoy', 'Deploy the equipped countermeasure.'),
-    power('cloak', 'CLOAK', 'cloak', 'Toggle your cloak.'),
+    power('cloak', 'CLOAK', 'cloak', staticVerbSentence('cloak')),
     power('deployBeacon', 'BEACON', 'beacon', 'Drop a claim beacon in open space.'),
+    power('deployShieldPylon', 'PYLON', 'pylon', 'Place a shield pylon, then link a second: hostile ships and shots stop at the wall between them. Aim at a pylon to recall its pair. Needs a Pylon Projector.'),
   ] },
   { name: 'Flight', powers: [
     power('scanPulse', 'SCAN', 'scan', 'Pulse the scanner.'),
@@ -52,6 +55,7 @@ const paths = {
   cone: 'M3 12l18-9v18z M11 8v8 M16 5v14',
   skim: 'M3 5l4 13h10l4-13 M6 13h12 M9 8h6 M9 21h6',
   beacon: 'M12 7v15 M8 22h8 M8 4a6 6 0 0 0 0 9 M16 4a6 6 0 0 1 0 9 M4 1a10 10 0 0 0 0 15 M20 1a10 10 0 0 1 0 15',
+  pylon: 'M5 4v16 M19 4v16 M3 4h4 M3 20h4 M17 4h4 M17 20h4 M5 12h14',
   scan: 'M12 12l8-8 M12 3a9 9 0 1 0 9 9 M12 8a4 4 0 1 0 4 4',
   cruise: 'M3 7l7 5-7 5 M10 7l7 5-7 5 M20 5v14',
   boost: 'M3 8l7 4-7 4 M10 8l7 4-7 4 M17 8l5 4-5 4',

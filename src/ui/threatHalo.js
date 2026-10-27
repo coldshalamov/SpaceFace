@@ -4,6 +4,7 @@ import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../
 import { countermeasureReadiness } from '../systems/countermeasures.js';
 import { countArmedOwnerMines } from '../systems/mines.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { INK_SHADOW } from './hudBrackets.js';
 import {
   OCCUPATIONAL_ROLE_IDS,
   OCCUPATIONAL_SILHOUETTE_TOKENS,
@@ -435,6 +436,8 @@ function buildMissileGlyph() {
 // The CM ring rides the chevron: a faint full circle is the socket ("the answer exists"), the
 // stroke refills from empty as the recharge runs (dashoffset driven per tick by the slot state).
 // Same stroke/token language as the chevron itself — currentColor on the --k-signal amber.
+// Bloom is geometry, never a filter: a wider faint arc under the core stroke (the flight floor
+// bans live blur/drop-shadow filters on HUD surfaces).
 function buildCmRing() {
   const el = document.createElement('div');
   el.className = 'sf-threat-halo__cmring';
@@ -442,6 +445,9 @@ function buildCmRing() {
   const c = CM_RING_CIRCUMFERENCE.toFixed(2);
   el.innerHTML = '<svg viewBox="0 0 30 30" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
     + `<circle cx="15" cy="15" r="${r}" fill="none" stroke="currentColor" stroke-opacity="0.18" stroke-width="2"/>`
+    + `<circle class="sf-threat-halo__cmring-bloom" cx="15" cy="15" r="${r}" fill="none" stroke="currentColor"`
+    + ` stroke-opacity="0.22" stroke-width="5" stroke-linecap="round" transform="rotate(-90 15 15)"`
+    + ` stroke-dasharray="${c}" stroke-dashoffset="0"/>`
     + `<circle class="sf-threat-halo__cmring-fill" cx="15" cy="15" r="${r}" fill="none" stroke="currentColor"`
     + ` stroke-opacity="0.8" stroke-width="2" stroke-linecap="round" transform="rotate(-90 15 15)"`
     + ` stroke-dasharray="${c}" stroke-dashoffset="0"/></svg>`;
@@ -453,23 +459,30 @@ function buildCmRing() {
   s.height = '30px';
   s.margin = '-15px 0 0 -15px';
   s.color = 'var(--k-signal, #e6b478)';
-  s.filter = 'drop-shadow(0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent))';
   return el;
 }
 
-// The filled circle inside the ring SVG. Browsers parse the innerHTML above, so this resolves
-// once and caches; the DOM-mock test harness does not parse HTML, so it degrades to null and the
-// test reads the slot's data-cm-frac attribute instead (same number the circle would draw).
-function cmRingCircle(ring) {
-  if (ring._sfCircle !== undefined) return ring._sfCircle;
-  ring._sfCircle = typeof ring.querySelector === 'function'
-    ? ring.querySelector('.sf-threat-halo__cmring-fill')
-    : null;
-  return ring._sfCircle;
+// The filled circles inside the ring SVG (bloom under core). Browsers parse the innerHTML above,
+// so this resolves once and caches; the DOM-mock test harness does not parse HTML, so it degrades
+// to null and the test reads the slot's data-cm-frac attribute instead (same number the circles
+// would draw).
+function cmRingCircles(ring) {
+  if (ring._sfCircles === undefined) {
+    const query = typeof ring.querySelector === 'function' ? ring.querySelector.bind(ring) : null;
+    ring._sfCircles = query
+      ? {
+        fill: query('.sf-threat-halo__cmring-fill'),
+        bloom: query('.sf-threat-halo__cmring-bloom'),
+      }
+      : { fill: null, bloom: null };
+  }
+  return ring._sfCircles;
 }
 
 // The live-effect word ('JAMMING 4s'): micro-label in the slot's own amber, positioned per edge
-// by applyCountermeasureRead (toward frame center, where the halo owns the band).
+// by applyCountermeasureRead (toward frame center, where the halo owns the band). Legibility
+// comes from the house black scrim (hudBrackets INK_SHADOW), the same per-glyph scrim every
+// chromeless flight readout wears — never a colour glow filter.
 function buildCmLabel() {
   const el = document.createElement('div');
   el.className = 'sf-threat-halo__cmlabel';
@@ -482,7 +495,7 @@ function buildCmLabel() {
   s.fontSize = '12px';
   s.letterSpacing = '0.08em';
   s.color = 'var(--k-signal, #e6b478)';
-  s.textShadow = '0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent)';
+  s.textShadow = INK_SHADOW;
   return el;
 }
 
@@ -1483,12 +1496,14 @@ export function createThreatHalo(root, busOrOpts) {
       return;
     }
     setDisplay(slot._sfCmRing, true, 'block');
-    const circle = cmRingCircle(slot._sfCmRing);
-    if (circle) {
-      const offset = Math.round(CM_RING_CIRCUMFERENCE * (1 - clamp(cmState.frac, 0, 1)) * 10);
+    const circles = cmRingCircles(slot._sfCmRing);
+    const offset = Math.round(CM_RING_CIRCUMFERENCE * (1 - clamp(cmState.frac, 0, 1)) * 10);
+    const next = (offset / 10).toFixed(1);
+    for (const circle of [circles.fill, circles.bloom]) {
+      if (!circle) continue;
       if (circle._sfDash !== offset) {
         circle._sfDash = offset;
-        circle.setAttribute('stroke-dashoffset', (offset / 10).toFixed(1));
+        circle.setAttribute('stroke-dashoffset', next);
       }
     }
     if (slot._sfChev) setOpacity(slot._sfChev, cmState.mode === 'cooling' ? '0.45' : '1');

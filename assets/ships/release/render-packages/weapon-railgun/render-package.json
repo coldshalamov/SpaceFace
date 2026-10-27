@@ -53,24 +53,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "fa3e0917a51aca9ca7d40f9057518163bc6e78642851e844da79a05690ddcd33",
+  "contentHash": "7810fe92514d0eb946482396cda572736f3eda68712d3622d9f3150e0bc2968a",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           6.100000202655792,
-          0.05998718738555908,
-          0.20001220703125
+          0.05998718460969654,
+          0.20001221535156147
         ],
         "min": [
           5.500000178813934,
-          -0.05998718738555908,
-          -0.20001220703125
+          -0.05998718460969654,
+          -0.20001221535156147
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5727e659a1ba7fa7451148e1a4c4215219c92128d6b2c77ad0d9eef788850c9d",
+      "geometryHash": "5679d0c579c762b5e76dd1950113cb8a92f1c0bae71cdd7e03719abf0566c53f",
       "id": "sf.render.weapon-railgun.node.rail-accent-slit.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -85,21 +85,21 @@
       "bounds": {
         "max": [
           2,
-          0.4500106871128082,
-          0.4500106871128082
+          0.4500106912320354,
+          0.4500106912320354
         ],
         "min": [
           -0.20000004768371582,
-          -0.4500106871128082,
-          -0.4500106871128082
+          -0.4500106912320354,
+          -0.4500106912320354
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b6c9e6bb776841959ae654932d65c88f333b59f78db426b7d15f566777802133",
+      "geometryHash": "5757d75b61404f86695910eab24fcbd6d13564fe3c4d9e27d30fa1f46d2005fc",
       "id": "sf.render.weapon-railgun.node.rail-breech.primitive.0",
       "indexCount": 996,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "TEMP_castReceiver.001",
       "nodeId": "sf.render.weapon-railgun.node.rail-breech",
@@ -110,21 +110,21 @@
       "bounds": {
         "max": [
           4.959700107574463,
-          0.3550185561180115,
-          0.32001855969429016
+          0.35501854278168365,
+          0.32001854635796234
         ],
         "min": [
           2.231800079345703,
-          -0.28501856327056885,
-          -0.32001855969429016
+          -0.28501854993424103,
+          -0.32001854635796234
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12ab0ba595aa18f87c66d40b5fca6bca420bdf9d038962b204dd903520f43c93",
+      "geometryHash": "c584a9572696476b85ec00684b86397242f12004b3471e344a6ada61a105372c",
       "id": "sf.render.weapon-railgun.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
+      "materialHash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_InsulatedRailClamp0",
       "nodeId": "sf.render.weapon-railgun.node.remaster-material-hull-vitreousceramic",
@@ -135,21 +135,21 @@
       "bounds": {
         "max": [
           5.755251407623291,
-          0.2288336455821991,
-          0.28189119696617126
+          0.2289228479016362,
+          0.281906348968202
         ],
         "min": [
           1.814247727394104,
-          0.025509189814329147,
-          -0.2819209396839142
+          0.025419987494892063,
+          -0.2819360916859449
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f24fc8d9c5e8c0cd492b14490b9d7bb6d744560b176859944930f0519e81227",
+      "geometryHash": "3e6a250c7422c461c6d5d99fa696cb39d1f4a1cd4cdcf4a4077c89a5122f1a46",
       "id": "sf.render.weapon-railgun.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
+      "materialHash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_AccelerationRail-1",
       "nodeId": "sf.render.weapon-railgun.node.remaster-material-mechanical-brushednickel",
@@ -159,22 +159,22 @@
     {
       "bounds": {
         "max": [
-          0.8419037461280823,
-          0.1824810802936554,
+          0.8419037320914222,
+          0.1824810776840081,
           0.26235002279281616
         ],
         "min": [
-          0.5884329676628113,
-          0.1418078988790512,
+          0.5884329816994713,
+          0.1418079014886985,
           -0.2623499631881714
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3e834c782504a1317f24e2144d64e6ac8dc2058fd39a220d9edf992469a001a6",
+      "geometryHash": "0ac4ddd76111ed1f60719407930fb7b217867fbc43b29528bceea8fb126ee855",
       "id": "sf.render.weapon-railgun.node.remaster-material-mechanical-shadowenamel.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
+      "materialHash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
       "materialPipelineKey": "opaque",
       "meshName": "Remaster_ServiceWell_Inner",
       "nodeId": "sf.render.weapon-railgun.node.remaster-material-mechanical-shadowenamel",
@@ -185,17 +185,17 @@
       "bounds": {
         "max": [
           4.543301105499268,
-          0.3699793517589569,
-          0.3699793517589569
+          0.3699793586540467,
+          0.3699793586540467
         ],
         "min": [
           1.756698727607727,
-          -0.3699793517589569,
-          -0.3699793517589569
+          -0.3699793586540467,
+          -0.3699793586540467
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37f0fbcf73aeab28f5bb4af5d2b0cf228dd4b93a8952999ee040dab9ae593148",
+      "geometryHash": "a9345cb22a69d24b4873dea0631d18759b6eb248ae6c1f58c448d91a2b5a2fa6",
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-accent-merged.primitive.0",
       "indexCount": 2880,
       "indexed": true,
@@ -210,17 +210,17 @@
       "bounds": {
         "max": [
           5.050000190734863,
-          0.5199767351150513,
-          0.4628043472766876
+          0.51997672759421,
+          0.46280436375632505
         ],
         "min": [
           0.1550000011920929,
-          -0.17497676610946655,
-          -0.4628043472766876
+          -0.17497675858862533,
+          -0.46280436375632505
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77aec49aa99ed8c70514bdde27e86c37e8eda6729d82c6bdd61382b54d5d2aac",
+      "geometryHash": "a52e68a834234825961a5f3ef1dbb3f3b00079dce5e3e752de43b66a90609b05",
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-mechanical-merged.primitive.0",
       "indexCount": 1764,
       "indexed": true,
@@ -237,38 +237,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "09306e58ed6387f8ee509fc5b8292d4be98c1673a17e73719de6f6f72b2c1599",
-      "id": "material:09306e58ed6387f8ee509fc5",
-      "name": "Material_Mechanical_BrushedNickel",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Mechanical_BrushedNickel_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "id": "material:3e89ecd14466b59bdaf35c00",
       "name": "Material_Accent",
@@ -276,42 +244,10 @@
       "textures": []
     },
     {
-      "hash": "9b606ffef39761a1e7cc390ded1d30087d0f6d476ef7ff2ac71a32750d3d7b48",
-      "id": "material:9b606ffef39761a1e7cc390d",
-      "name": "Material_Hull_VitreousCeramic",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "Material_Hull_VitreousCeramic_base",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d543b5ad38ffaf4a55e27bfe6611c62834ae46748109622fa01b01e2f2cbb502",
-      "id": "material:d543b5ad38ffaf4a55e27bfe",
+      "hash": "a3835271b1d8aa0e92a83e88144470e27803661fa3c16b9c7844fe3323fb7261",
+      "id": "material:a3835271b1d8aa0e92a83e88",
       "name": "Material_Mechanical_ShadowEnamel",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -345,6 +281,70 @@
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": []
+    },
+    {
+      "hash": "dc94a28d84c8ece3128cbf014a6a74eca4e04bc090ab179f8762d37b4dba933f",
+      "id": "material:dc94a28d84c8ece3128cbf01",
+      "name": "Material_Hull_VitreousCeramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_VitreousCeramic_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_VitreousCeramic_ao-Material_Hull_VitreousCeramic_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ffe807b15567637e0a14ecd2b181338323291a386eb295a45d3db0af1b78eefb",
+      "id": "material:ffe807b15567637e0a14ecd2",
+      "name": "Material_Mechanical_BrushedNickel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_BrushedNickel_base",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_BrushedNickel_ao-Material_Mechanical_BrushedNickel_rough",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -400,17 +400,17 @@
     {
       "id": "sf.render.weapon-railgun.node.rail-accent-slit",
       "localTransform": [
-        1,
+        0.30000001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.30000001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.30000001192092896,
         0,
         0,
         0,
@@ -429,17 +429,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        0.30000001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.30000001192092896,
         0,
         0,
         0,
         0,
-        1,
+        0.30000001192092896,
         0,
         5.800000190734863,
         0,
@@ -450,19 +450,19 @@
     {
       "id": "sf.render.weapon-railgun.node.rail-breech",
       "localTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
-        0,
+        0.8999999761581421,
         0,
         0,
         1
@@ -478,19 +478,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
         0,
         0,
         0,
-        1,
+        1.100000023841858,
         0,
-        0,
+        0.8999999761581421,
         0,
         0,
         1
@@ -793,20 +793,20 @@
     {
       "id": "sf.render.weapon-railgun.node.remaster-material-hull-vitreousceramic",
       "localTransform": [
-        1,
+        1.3639500141143799,
         0,
         0,
         0,
         0,
-        1,
+        1.3639500141143799,
         0,
         0,
         0,
         0,
-        1,
+        1.3639500141143799,
         0,
-        0,
-        0,
+        3.595750093460083,
+        0.034999996423721313,
         0,
         1
       ],
@@ -820,20 +820,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        1.3639500141143799,
         0,
         0,
         0,
         0,
-        1,
+        1.3639500141143799,
         0,
         0,
         0,
         0,
-        1,
+        1.3639500141143799,
         0,
-        0,
-        0,
+        3.595750093460083,
+        0.034999996423721313,
         0,
         1
       ]
@@ -841,21 +841,21 @@
     {
       "id": "sf.render.weapon-railgun.node.remaster-material-mechanical-brushednickel",
       "localTransform": [
-        1,
+        1.9705018401145935,
         0,
         0,
         0,
         0,
-        1,
+        1.9705018401145935,
         0,
         0,
         0,
         0,
-        1,
+        1.9705018401145935,
         0,
-        0,
-        0,
-        0,
+        3.7847495675086975,
+        0.12717141769826412,
+        -0.000014871358871459961,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -868,42 +868,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        1.9705018401145935,
         0,
         0,
         0,
         0,
-        1,
+        1.9705018401145935,
         0,
         0,
         0,
         0,
-        1,
+        1.9705018401145935,
         0,
-        0,
-        0,
-        0,
+        3.7847495675086975,
+        0.12717141769826412,
+        -0.000014871358871459961,
         1
       ]
     },
     {
       "id": "sf.render.weapon-railgun.node.remaster-material-mechanical-shadowenamel",
       "localTransform": [
-        1,
+        0.2623499929904938,
         0,
         0,
         0,
         0,
-        1,
+        0.2623499929904938,
         0,
         0,
         0,
         0,
-        1,
+        0.2623499929904938,
         0,
-        0,
-        0,
-        0,
+        0.7151683568954468,
+        0.1621444895863533,
+        2.9802322387695312e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -916,21 +916,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        0.2623499929904938,
         0,
         0,
         0,
         0,
-        1,
+        0.2623499929904938,
         0,
         0,
         0,
         0,
-        1,
+        0.2623499929904938,
         0,
-        0,
-        0,
-        0,
+        0.7151683568954468,
+        0.1621444895863533,
+        2.9802322387695312e-8,
         1
       ]
     },
@@ -1328,19 +1328,19 @@
     {
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-accent-merged",
       "localTransform": [
-        1,
+        1.3933011889457703,
         0,
         0,
         0,
         0,
-        1,
+        1.3933011889457703,
         0,
         0,
         0,
         0,
-        1,
+        1.3933011889457703,
         0,
-        0,
+        3.1499999165534973,
         0,
         0,
         1
@@ -1356,19 +1356,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        1.3933011889457703,
         0,
         0,
         0,
         0,
-        1,
+        1.3933011889457703,
         0,
         0,
         0,
         0,
-        1,
+        1.3933011889457703,
         0,
-        0,
+        3.1499999165534973,
         0,
         0,
         1
@@ -1377,20 +1377,20 @@
     {
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-mechanical-merged",
       "localTransform": [
-        1,
+        2.447500094771385,
         0,
         0,
         0,
         0,
-        1,
+        2.447500094771385,
         0,
         0,
         0,
         0,
-        1,
+        2.447500094771385,
         0,
-        0,
-        0,
+        2.602500095963478,
+        0.17249998450279236,
         0,
         1
       ],
@@ -1405,20 +1405,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.weapon-railgun.body",
       "worldTransform": [
-        1,
+        2.447500094771385,
         0,
         0,
         0,
         0,
-        1,
+        2.447500094771385,
         0,
         0,
         0,
         0,
-        1,
+        2.447500094771385,
         0,
-        0,
-        0,
+        2.602500095963478,
+        0.17249998450279236,
         0,
         1
       ]
@@ -1434,37 +1434,37 @@
       "uri": "weapon_railgun.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 99824,
-    "sha256": "36ef27ba80447d779f98ca8c3faeef8858f51b6297fa88806cefdef414251905",
+    "bytes": 62180,
+    "sha256": "273a87490a4668f4b20544cd3d9807512a91009456d979071815667c3de44fb2",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         2.950000077486038,
-        0.03498302400112152,
+        0.03498301818108729,
         0
       ],
       "max": [
         6.100000202655792,
-        0.5199767351150513,
-        0.4628043472766876
+        0.51997672759421,
+        0.46280436375632505
       ],
       "min": [
         -0.20000004768371582,
-        -0.4500106871128082,
-        -0.4628043472766876
+        -0.4500106912320354,
+        -0.46280436375632505
       ],
       "size": [
         6.300000250339508,
-        0.9699874222278595,
-        0.9256086945533752
+        0.9699874188262454,
+        0.9256087275126501
       ]
     },
     "hidden": [],
@@ -1602,17 +1602,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.30000001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.30000001192092896,
           0,
           0,
           0,
           0,
-          1,
+          0.30000001192092896,
           0,
           5.800000190734863,
           0,
@@ -1628,19 +1628,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
           0,
           0,
           0,
-          1,
+          1.100000023841858,
           0,
-          0,
+          0.8999999761581421,
           0,
           0,
           1
@@ -1654,19 +1654,19 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3933011889457703,
           0,
           0,
           0,
           0,
-          1,
+          1.3933011889457703,
           0,
           0,
           0,
           0,
-          1,
+          1.3933011889457703,
           0,
-          0,
+          3.1499999165534973,
           0,
           0,
           1
@@ -1680,20 +1680,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          2.447500094771385,
           0,
           0,
           0,
           0,
-          1,
+          2.447500094771385,
           0,
           0,
           0,
           0,
-          1,
+          2.447500094771385,
           0,
-          0,
-          0,
+          2.602500095963478,
+          0.17249998450279236,
           0,
           1
         ],
@@ -1706,21 +1706,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.2623499929904938,
           0,
           0,
           0,
           0,
-          1,
+          0.2623499929904938,
           0,
           0,
           0,
           0,
-          1,
+          0.2623499929904938,
           0,
-          0,
-          0,
-          0,
+          0.7151683568954468,
+          0.1621444895863533,
+          2.9802322387695312e-8,
           1
         ],
         "name": "Remaster_Material_Mechanical_ShadowEnamel",
@@ -1734,21 +1734,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.9705018401145935,
           0,
           0,
           0,
           0,
-          1,
+          1.9705018401145935,
           0,
           0,
           0,
           0,
-          1,
+          1.9705018401145935,
           0,
-          0,
-          0,
-          0,
+          3.7847495675086975,
+          0.12717141769826412,
+          -0.000014871358871459961,
           1
         ],
         "name": "Remaster_Material_Mechanical_BrushedNickel",
@@ -1762,20 +1762,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          1.3639500141143799,
           0,
           0,
           0,
           0,
-          1,
+          1.3639500141143799,
           0,
           0,
           0,
           0,
-          1,
+          1.3639500141143799,
           0,
-          0,
-          0,
+          3.595750093460083,
+          0.034999996423721313,
           0,
           1
         ],
@@ -1792,20 +1792,20 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_railgun.glb"
   },
-  "runtimeHash": "4e0200dea9e2f92047d9f0aa3c967c73fd8a1bc01de6dd437a2025cd118dbc93",
+  "runtimeHash": "c4a08f24d9a2ef2d4ad7c0fb576d9ec0605bb462ae67bdd7b5601d4c800bc8d3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           6.100000202655792,
-          0.5199767351150513,
-          0.4628043472766876
+          0.51997672759421,
+          0.46280436375632505
         ],
         "min": [
           -0.20000004768371582,
-          -0.4500106871128082,
-          -0.4628043472766876
+          -0.4500106912320354,
+          -0.46280436375632505
         ]
       },
       "id": "sf.render.weapon-railgun.body",

@@ -20,11 +20,20 @@ const STATION_NAME = 'Helios Station';
 
 const CAMPAIGN_RETELL = [
   'sampling the variance',
+  'watching the lane take the sample',
   'docking the sample',
-  'knocking the variance tower',
-  'pulling the pods under fire',
-  'towing the slag core',
+  'flying the sealed alloys to Tethys',
+  'weighing the crate on Scale 4',
+  'feeding the infested hauler to the furnace',
+  'clearing the cinder marks',
+  'running the compost to the understory',
+  'holding the Nest',
+  'answering the register on Elroy',
+  'delivering VARIANCE ADJUSTMENT',
+  'feeding the furnace maw',
+  "settling the Foreman's yard feud",
   "taking the traders' intro",
+  'running Spine Break',
   "finished the traders' proving runs",
 ];
 
@@ -35,22 +44,39 @@ function freshStory() {
   };
 }
 
-/** Fixed sim times. The sidecar writer is the same one missions calls. */
+/** Fixed sim times. The sidecar writer is the same one missions calls — the book
+ *  route's ordered lists (W-BOOKS-0-2 / W-BOOKS-3-4), planted per step. */
 function playedCampaign() {
   const state = freshStory();
   assert.equal(recordBeatStep(state, 'mining:yield', {}, 12).ok, true);
+  assert.equal(recordBeatStep(state, 'story:skimResolved', {}, 26).ok, true);
   assert.equal(recordBeatStep(state, 'dock:docked', {}, 40).ok, true);
   state.story.beatIndex = 1;
   assert.equal(recordBeatStep(state, 'mission:completed', {
-    storyTag: 'campaign47a:b1:honest_work',
+    storyTag: 'campaign47a:b1:alloy_run',
+  }, 60).ok, true);
+  assert.equal(recordBeatStep(state, 'kesslerPod:weighed', { variance: true }, 70).ok, true);
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b1:infested',
   }, 80).ok, true);
   state.story.beatIndex = 2;
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b2:cinder',
+  }, 100).ok, true);
+  assert.equal(recordBeatStep(state, 'understory:gardenFed', { byPlayer: true }, 105).ok, true);
+  assert.equal(recordBeatStep(state, 'encounter:resolved', { shape: 'the_nest' }, 110).ok, true);
   assert.equal(recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b2:elroy',
   }, 120).ok, true);
   state.story.beatIndex = 3;
   assert.equal(recordBeatStep(state, 'mission:completed', {
-    storyTag: 'campaign47a:b3:bigger_boat',
+    storyTag: 'campaign47a:b3:berth',
+  }, 140).ok, true);
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b3:maw',
+  }, 150).ok, true);
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b3:foreman',
   }, 160).ok, true);
   state.story.beatIndex = 4;
   state.story.branch = 'traders';
@@ -60,6 +86,9 @@ function playedCampaign() {
     factionId: 'faction_mts',
     branch: 'traders',
   }, 200).ok, true);
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b4:operation',
+  }, 210).ok, true);
   state.story.beatIndex = 5;
   state.story.chainProgress = 3;
   assert.equal(recordBeatStep(state, 'mission:completed', {
@@ -123,7 +152,7 @@ test('sidecar receipts retell the campaign in order, seed 17803', () => {
   const line = leftoverLedgerLine(state);
   const told = retellLedger(line);
   assert.deepEqual(told, CAMPAIGN_RETELL);
-  assert.equal(told.length, 7);
+  assert.equal(told.length, 16);
   assert.match(line, /^I was .+ so I .+\.$/);
   assert.equal(retellLedger(line).join(' > '), CAMPAIGN_RETELL.join(' > '));
   const card = leftoverLedgerCard(state);
@@ -162,11 +191,21 @@ test('a completion method replaces the generic beat, and a hitch stays a second 
   const told = retellLedger(leftoverLedgerLine(state));
   assert.deepEqual(told, [
     'sampling the variance',
+    'watching the lane take the sample',
     'docking the sample',
+    'flying the sealed alloys to Tethys',
+    'weighing the crate on Scale 4',
     'knocking the variance tower with thrown mass',
+    'clearing the cinder marks',
+    'running the compost to the understory',
+    'holding the Nest',
     'pulling the pods into the yard dock',
+    'delivering VARIANCE ADJUSTMENT',
+    'feeding the furnace maw',
+    "settling the Foreman's yard feud",
     'slinging the slag core',
     "taking the traders' intro",
+    'running Spine Break',
     "finished the traders' proving runs",
     'hitching the false-mass spindle',
     'the line took',
@@ -184,9 +223,15 @@ test('beat flags retell a save whose receipt ring is empty', () => {
   }));
   assert.deepEqual(told, [
     'sampling the variance',
+    'watching the lane take the sample',
     'docking the sample',
-    'knocking the variance tower',
-    'pulled the pods under fire',
+    'flying the sealed alloys to Tethys',
+    'weighing the crate on Scale 4',
+    'feeding the infested hauler to the furnace',
+    'clearing the cinder marks',
+    'running the compost to the understory',
+    'holding the Nest',
+    'answered the register',
   ]);
 });
 
@@ -216,16 +261,18 @@ test('an ending receipt names the choice the player filed', () => {
   ]);
 });
 
-test('a miss stays in the retelling ahead of the later knock', () => {
+test('a miss stays in the retelling ahead of the later completion', () => {
   const state = freshStory();
   state.story.beatIndex = 1;
   failEncounter(state, 'encounter_failed', 50);
   assert.equal(recoverEncounter(state, 70).ok, true);
-  assert.equal(recordBeatStep(state, 'mission:completed', {}, 80).ok, true);
+  assert.equal(recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b1:alloy_run',
+  }, 80).ok, true);
   assert.deepEqual(retellLedger(leftoverLedgerLine(state)), [
-    'missing the variance tower',
+    'missing the honest work',
     'the attempt failed',
-    'knocked the variance tower',
+    'flew the sealed alloys to Tethys',
   ]);
 });
 

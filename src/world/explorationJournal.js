@@ -3,6 +3,7 @@
 
 import { SECTORS } from '../data/sectors.js';
 import { UNIQUE_WRECKS } from '../data/uniqueWrecks.js';
+import { shardSphereSongProgress, SHARD_SPHERE_SONG } from '../data/landmarkMissions.js';
 import { borrowedVoiceJournalPlate } from '../data/borrowedVoice.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -143,6 +144,8 @@ export function explorationDiscoveryPlates(state) {
         record.defeatedAt,
         record.triangulatedAt,
       );
+      const song = sector.id === SHARD_SPHERE_SONG.sectorId && poi.id === SHARD_SPHERE_SONG.poiId
+        ? shardSphereSongProgress(state) : null;
       plates.push({
         id: `${sector.id}:${poi.id}`,
         sectorId: sector.id,
@@ -151,7 +154,7 @@ export function explorationDiscoveryPlates(state) {
           ? poi.discoveryPlate.title.trim()
           : (poi.name || record.name || poi.id),
         meta: `${sector.name} · ${record.investigated ? 'SOURCE INVESTIGATED' : (record.defeated ? 'SITE RESOLVED' : 'PHYSICALLY IDENTIFIED')}`,
-        body: plateBody(sector, poi, record),
+        body: [plateBody(sector, poi, record), song?.text].filter(Boolean).join(' '),
         note: record.landmarkArtifact && record.landmarkArtifact.id
           ? `Recovered ${record.landmarkArtifact.id} · ${progress.found}/${progress.total} authored sites found · ${progress.percent}% sector exploration`
           : progress.total > 0

@@ -6,6 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { debrisCacheFor } from '../src/data/scanReveal.js';
+import { lossLedger } from '../src/systems/lossLedger.js';
 import { scanReveal } from '../src/systems/scanReveal.js';
 import { mining } from '../src/systems/mining.js';
 
@@ -19,6 +20,7 @@ function scanRig(seed = 47) {
     player: {},
   };
   const bus = createBus();
+  const ledger = Object.create(lossLedger); ledger.init({ state, bus });
   const sys = Object.create(scanReveal);
   sys.init({ state, bus });
   const spawns = [];
@@ -144,6 +146,7 @@ test('a loss-linked wreck keeps its story read: no cache either way', () => {
     lossId: 'loss-keep', kind: 'trader', factionId: 'faction_drift',
     sectorId: 'sector_test', simDay: 1,
   });
+  ctx.state.lossLedger.entries.push(ctx.state.lossLedger.bySector.sector_test.at(-1));
   const id = findCacheId(47, true, false); // would cache if it were generic
   const wreck = placeWreck(ctx.state, id, 100, 0, {
     pool: { cmdty_scrap_metal: 20 }, lossId: 'loss-keep',

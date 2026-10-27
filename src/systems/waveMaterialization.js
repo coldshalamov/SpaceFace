@@ -19,6 +19,9 @@ import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
 import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
 import { STORM_BOSS_ROLE } from './stormLatticeArena.js';
+// The Mill/Hive arena systems predate the module-library fold and export no role — their
+// authored bossRole rows live on the library itself (arenaModuleLibrary.js).
+import { HIVE_BOSS_ROLE, MILL_BOSS_ROLE } from '../data/arenaModuleLibrary.js';
 
 /** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
 export const SURVIVAL_SPAWN_DISTANCE = 260;
@@ -110,6 +113,10 @@ const LAW_ARENA_BOSS_ROLES = Object.freeze({
   [CINDER_BOSS_ROLE.law]: CINDER_BOSS_ROLE,
   [CRYO_BOSS_ROLE.law]: CRYO_BOSS_ROLE,
   [STORM_BOSS_ROLE.law]: STORM_BOSS_ROLE,
+  // SWARM-07 B4 — the library-fold arenas dress their wave-10 boss too: seam_crusher for the
+  // Mill's grind, queen_warden for the Hive's brood heart.
+  [MILL_BOSS_ROLE.law]: MILL_BOSS_ROLE,
+  [HIVE_BOSS_ROLE.law]: HIVE_BOSS_ROLE,
 });
 
 export function lawArenaBossDressing(arenaId, enemyId, role) {

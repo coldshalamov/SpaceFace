@@ -35,7 +35,7 @@
 //
 // Single-writer law holds: it never writes state.run (the blast and the chip request travel as
 // intents), never writes Adventure credits, never touches the profile.
-import { SWARM_PASSIVE_STACK_MAX, swarmPassiveCount } from '../data/swarmDraft.js';
+import { swarmPassiveHullBonus } from '../data/swarmDraft.js';
 
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
@@ -525,7 +525,9 @@ export const swarmElites = {
    * SEED-SW-14 — the armory's stacking passive applies once per copy: the plated-hull stack
    * tops the player's frame by the held count, and buying a plate heals the plate it added.
    * The stack rides the run's own ledger (never the Hangar profile) and caps at the rack cap;
-   * the elite plating above is the same weld for the same reason.
+   * the elite plating above is the same weld for the same reason. The grant itself is the
+   * catalog's — `swarmPassiveHullBonus` reads count × perCopyHull from the plated_hull row, so
+   * no second copy of the number lives here.
    */
   _maintainPassiveStack(state) {
     const run = liveSwarmRun(state);
@@ -534,30 +536,29 @@ export const swarmElites = {
     const player = playerId != null && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(playerId) : null;
     if (!player || player.alive === false || !Number.isFinite(player.hullMax)) return;
-    const stacks = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'plated_hull'));
-    const wanted = state.swarmPassiveHullStacks;
-    if (wanted === stacks) return;
-    const perCopy = 14;
-    if (wanted == null) {
-      state.swarmPassiveHullStacks = stacks;
+    const bonus = swarmPassiveHullBonus(run);
+    const applied = state.swarmPassiveHullApplied;
+    if (applied === bonus) return;
+    if (applied == null) {
+      state.swarmPassiveHullApplied = bonus;
       state.swarmPassiveHullBase = player.hullMax;
-      if (stacks > 0) {
-        player.hullMax += perCopy * stacks;
-        player.hull = Math.min(player.hullMax, player.hull + perCopy * stacks);
+      if (bonus > 0) {
+        player.hullMax += bonus;
+        player.hull = Math.min(player.hullMax, player.hull + bonus);
       }
       return;
     }
-    const delta = stacks - wanted;
+    const delta = bonus - applied;
     if (delta !== 0) {
       if (delta > 0) {
-        player.hullMax += perCopy * delta;
-        player.hull = Math.min(player.hullMax, player.hull + perCopy * delta);
+        player.hullMax += delta;
+        player.hull = Math.min(player.hullMax, player.hull + delta);
       } else {
-        player.hullMax = Math.max(state.swarmPassiveHullBase || 0, player.hullMax + perCopy * delta);
+        player.hullMax = Math.max(state.swarmPassiveHullBase || 0, player.hullMax + delta);
         player.hull = Math.min(player.hull, player.hullMax);
       }
     }
-    state.swarmPassiveHullStacks = stacks;
+    state.swarmPassiveHullApplied = bonus;
   },
 
   _onImpact(payload) {

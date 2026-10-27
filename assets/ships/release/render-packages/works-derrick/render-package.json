@@ -6,28 +6,28 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2818a8acb9e45924f76e6b699c99315c4dc234ebae252b37950c0d06e11b5495",
+  "contentHash": "d8d662889f59bcb675f030c91863636cab76860592b06f953ee7bb24f1a82eed",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          0.038165122270584106,
+          0.03816512224375318,
           6.4894092082977295,
-          0.1848023384809494
+          0.18480234270977408
         ],
         "min": [
-          -0.8360921144485474,
+          -0.8360921144217164,
           0.019945144653320312,
-          -0.1848023384809494
+          -0.18480234270977408
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9223d8971b2e63781136cfdc15afc4a6948036eb57e5f41c8ef1e970cdeb430d",
+      "geometryHash": "50f23c6f3bb8ae4570cee99536e5c855c9fc0574f5ed3a6f3c9c4de0aee5da81",
       "id": "sf.render.works-derrick.mesh.lod0-cable.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.049",
       "nodeId": "sf.render.works-derrick.mesh.lod0-cable",
@@ -37,47 +37,47 @@
     {
       "bounds": {
         "max": [
-          1.0601437091827393,
+          1.0601436300906661,
           6.490000247955322,
-          0.8501945734024048
+          0.8501945879802307
         ],
         "min": [
-          -1.0601437091827393,
+          -1.0601436300906661,
           0,
-          -0.8501945734024048
+          -0.8501945879802307
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6f16b26f7a3b7be1daaf2e73992a3a95fb4cb971325ce44bed3953244dada20",
+      "geometryHash": "396cdb348464cb29c8de20e64b713c20a12571c0f18bc741a48fdac0db39e0f1",
       "id": "sf.render.works-derrick.mesh.lod0-derrick.primitive.0",
       "indexCount": 16116,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "leg_P_X_Mesh",
       "nodeId": "sf.render.works-derrick.mesh.lod0-derrick",
       "primitiveIndex": 0,
-      "vertexCount": 8903
+      "vertexCount": 9337
     },
     {
       "bounds": {
         "max": [
-          -0.374969944357872,
-          1.625030055642128,
+          -0.3749699505276176,
+          1.6250300494723824,
           0.44999998807907104
         ],
         "min": [
-          -0.8650300651788712,
-          1.1349699348211288,
+          -0.8650300590091256,
+          1.1349699409908744,
           -0.44999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4819e449b4e70cdc13a92105aa14e5051d32a65550afa5e65b2bf8d9bc1371d",
+      "geometryHash": "eb28dc431dcd1a9b992edbf5564f5edf7b7aed76b243925d6e805554f374e65c",
       "id": "sf.render.works-derrick.mesh.lod0-drum.primitive.0",
       "indexCount": 2148,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
       "nodeId": "sf.render.works-derrick.mesh.lod0-drum",
@@ -88,21 +88,21 @@
       "bounds": {
         "max": [
           0.20304583385586739,
-          6.257213618606329,
-          -0.2228671908378601
+          6.257213620518202,
+          -0.2228671899344201
         ],
         "min": [
           0.04058259353041649,
-          6.117200821638107,
-          -0.3665291778743267
+          6.117200819726234,
+          -0.3665291787777667
         ]
       },
       "drawMode": 4,
-      "geometryHash": "24416ab6af16d80acd9c8a718e0ab8f7af775069e94c515e9f28f05828f18a7d",
+      "geometryHash": "94a5a8e97405c65fe9e4687e133cb392f8027906ac57e3ccb2f751447f3065d2",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l-lens.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
+      "materialHash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.054",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-l-lens",
@@ -112,22 +112,22 @@
     {
       "bounds": {
         "max": [
-          0.3123854584991932,
-          6.361451491713524,
+          0.3123854514257234,
+          6.361451497867125,
           -0.1094461977481842
         ],
         "min": [
-          -0.03999543562531471,
-          6.009199768304825,
+          -0.039995428551844875,
+          6.009199762151224,
           -0.4620853662490845
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f02e2173880233c91070241c4624959ad62d059c5fd0527af2ac6e56ccefc46",
+      "geometryHash": "71457bb552a945236ad5ed7ab650d9122cf3c531b62949ec06b74467eb2ca4af",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l.primitive.0",
       "indexCount": 984,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.037",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-l",
@@ -138,21 +138,21 @@
       "bounds": {
         "max": [
           0.20304583385586739,
-          6.257213622331619,
-          0.3665291741490364
+          6.257213622380847,
+          0.36652916946454095
         ],
         "min": [
           0.04058259353041649,
-          6.117200821638107,
-          0.2228671759366989
+          6.117200821588879,
+          0.22286718062119434
         ]
       },
       "drawMode": 4,
-      "geometryHash": "836e2258c64946de3564be14f8d5518370d94aaa5548eebd79fbcbcaf8ddc838",
+      "geometryHash": "f707e8566bc7946114008ae29538abd1f53d35b9b78180c5c7628f13509b5306",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r-lens.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
+      "materialHash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.056",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-r-lens",
@@ -162,22 +162,22 @@
     {
       "bounds": {
         "max": [
-          0.3123854584991932,
-          6.361451491713524,
+          0.3123854514257234,
+          6.361451497867125,
           0.4620853662490845
         ],
         "min": [
-          -0.03999543562531471,
-          6.009199768304825,
+          -0.039995428551844875,
+          6.009199762151224,
           0.1094461977481842
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e7ac867f68e8922f69de0ea08c7f9417e96ede6a15988293d29eecf10714cc4",
+      "geometryHash": "6067defc547329a11f7a2d96b3080dd592b19323a5135cf7d592395b793e830c",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r.primitive.0",
       "indexCount": 984,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.038",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-r",
@@ -187,22 +187,22 @@
     {
       "bounds": {
         "max": [
-          0.03818383812904358,
+          0.038183860012608706,
           6.47818922996521,
-          0.18487627804279327
+          0.18487627122728675
         ],
         "min": [
-          -0.8361350297927856,
+          -0.8361350516763508,
           0.019936800003051758,
-          -0.18487627804279327
+          -0.18487627122728675
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39bc2b8134a7cefcfe81da8ba7205d29fc9eb34b60e3bbd524d3c75d72be22f0",
+      "geometryHash": "7c11e24921da6460e219ba5befd9fb01b77c34a9c612097ec0415839ec64adb9",
       "id": "sf.render.works-derrick.mesh.lod1-cable.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.works-derrick.mesh.lod1-cable",
@@ -212,22 +212,22 @@
     {
       "bounds": {
         "max": [
-          1.079950213432312,
+          1.079950143497311,
           6.490000247955322,
-          0.8700011372566223
+          0.8700011013868756
         ],
         "min": [
-          -1.079950213432312,
+          -1.079950143497311,
           0,
-          -0.8700011372566223
+          -0.8700011013868756
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0ac6a53886a500416adba470eb01652030922135b982798eccdf1a34f22e5d64",
+      "geometryHash": "faa31df7d9cbec4ac12e7fd83c3a2e25f187bcb12b2cc5e46c4840e8df2bc421",
       "id": "sf.render.works-derrick.mesh.lod1-derrick.primitive.0",
       "indexCount": 2088,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "leg_P_X_Mesh.001",
       "nodeId": "sf.render.works-derrick.mesh.lod1-derrick",
@@ -237,22 +237,22 @@
     {
       "bounds": {
         "max": [
-          -0.374969944357872,
-          1.625030055642128,
+          -0.3749699505276176,
+          1.6250300494723824,
           0.44999998807907104
         ],
         "min": [
-          -0.8650300651788712,
-          1.1349699348211288,
+          -0.8650300590091256,
+          1.1349699409908744,
           -0.44999998807907104
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e2f8839e6238cce83b1982f322e2de9a77817afe67b8fe4b263bdbc61c429e9",
+      "geometryHash": "96071c62e0cf377eaf4f9589d387acca433c07417126c51e3c8bc16ba52df2a4",
       "id": "sf.render.works-derrick.mesh.lod1-drum.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.works-derrick.mesh.lod1-drum",
@@ -263,21 +263,21 @@
       "bounds": {
         "max": [
           0.19756794348359108,
-          6.2659608237445354,
-          -0.23210443556308746
+          6.265960824171954,
+          -0.23210443056963864
         ],
         "min": [
           0.03492126241326332,
-          6.1259487718343735,
-          -0.3736254535615444
+          6.1259487714069545,
+          -0.37362545855499324
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa7459656cca80be58aefd52771235450e622a4c281d84bce3d9500667f75ac8",
+      "geometryHash": "64dc823e995834c4e267332f89b328a139ca9547ab05658ce1d81dfd87f03a50",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
+      "materialHash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-l-lens",
@@ -287,22 +287,22 @@
     {
       "bounds": {
         "max": [
-          0.2967808432877064,
-          6.367053546011448,
+          0.2967808413237063,
+          6.367053553745686,
           -0.10999998450279236
         ],
         "min": [
-          -0.04000769928097725,
-          6.016111582517624,
+          -0.0400076973169772,
+          6.016111574783386,
           -0.4678439497947693
         ]
       },
       "drawMode": 4,
-      "geometryHash": "940d249692c5fc137c24bcfb11729d3168df0c24ac55f7a03761513e08c5c6a7",
+      "geometryHash": "99c7cc88e90506a6524aa2ff83b5a67740a3f592de082ce49294fb3505d513e1",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.020",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-l",
@@ -313,21 +313,21 @@
       "bounds": {
         "max": [
           0.19756792858242989,
-          6.265960816293955,
-          0.3736254405230284
+          6.265960818276657,
+          0.37362544231146216
         ],
         "min": [
           0.03492126986384392,
-          6.125948786735535,
-          0.23210443556308746
+          6.125948784752833,
+          0.23210443377465367
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c2ace8ee47d1ca0aec5a0ddea5a1a0992e8a19529c2bf8a90dafd5ccca3b34b9",
+      "geometryHash": "40d857781e09581dd53d87e7ae6d22e24702310948b769b8490724198d72b13c",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
+      "materialHash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-r-lens",
@@ -337,22 +337,22 @@
     {
       "bounds": {
         "max": [
-          0.2967808432877064,
-          6.367053546011448,
+          0.2967808413237063,
+          6.367053553745686,
           0.4678439497947693
         ],
         "min": [
-          -0.04000769928097725,
-          6.016111582517624,
+          -0.0400076973169772,
+          6.016111574783386,
           0.10999998450279236
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3cb6e41d895c4c105cdd15355c3c3684e95f3e9e8b11491f41076ae595e2fcf",
+      "geometryHash": "e8379a1d8b221656adf46c2e9ee4c68c4724e84589bfea3e7ba78262124e7f4e",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.021",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-r",
@@ -365,47 +365,15 @@
   "lods": [],
   "materials": [
     {
-      "hash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
-      "id": "material:983435dd3209d15cf78446e5",
-      "name": "DerrickAtlas_LOD0",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "derrick_atlas_lod0_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "derrick_atlas_lod0_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "derrick_atlas_lod0_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
-      "id": "material:c205b21a2a0b50ce7ea26296",
-      "name": "DerrickAtlas_LOD1_Lamp",
-      "pipelineKey": "opaque:double",
+      "hash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
+      "id": "material:28547b3d7f3de765ceb47c9e",
+      "name": "DerrickAtlas_LOD1",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
           "name": "derrick_lod1_site_basecolor",
           "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "srgb",
-          "name": "derrick_lod1_site_basecolor",
-          "slot": "emissive",
           "uri": null
         },
         {
@@ -423,10 +391,10 @@
       ]
     },
     {
-      "hash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
-      "id": "material:f2053667b642b68fa2010872",
+      "hash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
+      "id": "material:42c6f9ffe39a8f179bd91f25",
       "name": "DerrickAtlas_LOD0_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -455,15 +423,47 @@
       ]
     },
     {
-      "hash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
-      "id": "material:f85560103aae97041a8c0504",
-      "name": "DerrickAtlas_LOD1",
-      "pipelineKey": "opaque:double",
+      "hash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
+      "id": "material:68da316a3f65b9c92cebb126",
+      "name": "DerrickAtlas_LOD0",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "derrick_atlas_lod0_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "derrick_atlas_lod0_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "derrick_atlas_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
+      "id": "material:88aaba52566dd210da5f99fc",
+      "name": "DerrickAtlas_LOD1_Lamp",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
           "name": "derrick_lod1_site_basecolor",
           "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "derrick_lod1_site_basecolor",
+          "slot": "emissive",
           "uri": null
         },
         {
@@ -485,20 +485,20 @@
     {
       "id": "sf.render.works-derrick.mesh.lod0-cable",
       "localTransform": [
-        1,
+        3.2347320318222046,
         0,
         0,
         0,
         0,
-        1,
+        3.2347320318222046,
         0,
         0,
         0,
         0,
-        1,
+        3.2347320318222046,
         0,
-        0,
-        0,
+        0.06503652036190033,
+        1.750677227973938,
         0,
         1
       ],
@@ -514,20 +514,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        3.2347320318222046,
         0,
         0,
         0,
         0,
-        1,
+        3.2347320318222046,
         0,
         0,
         0,
         0,
-        1,
+        3.2347320318222046,
         0,
-        -0.46400001645088196,
-        1.503999948501587,
+        -0.39896349608898163,
+        3.254677176475525,
         0,
         1
       ]
@@ -535,20 +535,20 @@
     {
       "id": "sf.render.works-derrick.mesh.lod0-derrick",
       "localTransform": [
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
-        0,
+        3.245000123977661,
         0,
         1
       ],
@@ -563,20 +563,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
-        0,
+        3.245000123977661,
         0,
         1
       ]
@@ -584,17 +584,17 @@
     {
       "id": "sf.render.works-derrick.mesh.lod0-drum",
       "localTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
@@ -613,17 +613,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         -0.6200000047683716,
         1.3799999952316284,
@@ -634,21 +634,21 @@
     {
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l",
       "localTransform": [
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
-        0,
-        0,
-        0,
+        0.08619501069188118,
+        -0.11467456072568893,
+        0.11423422396183014,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -663,42 +663,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        -0.4000000059604645,
+        0.13619501143693924,
+        6.185325630009174,
+        -0.28576578199863434,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l-lens",
       "localTransform": [
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
-        0,
-        0,
-        0,
+        0.07181421294808388,
+        -0.11279297061264515,
+        0.10530182160437107,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -713,42 +713,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        -0.4000000059604645,
+        0.12181421369314194,
+        6.187207220122218,
+        -0.2946981843560934,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r",
       "localTransform": [
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
-        0,
-        0,
-        0,
+        0.08619501069188118,
+        -0.11467456072568893,
+        -0.11423422396183014,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -763,42 +763,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
         0,
         0,
         0,
-        1,
+        0.17631958425045013,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        0.4000000059604645,
+        0.13619501143693924,
+        6.185325630009174,
+        0.28576578199863434,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r-lens",
       "localTransform": [
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
-        0,
-        0,
-        0,
+        0.07181421294808388,
+        -0.11279296875,
+        -0.10530183091759682,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -813,41 +813,41 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
         0,
         0,
         0,
-        1,
+        0.08123162016272545,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        0.4000000059604645,
+        0.12181421369314194,
+        6.187207221984863,
+        0.29469817504286766,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod1-cable",
       "localTransform": [
-        1,
+        3.229126214981079,
         0,
         0,
         0,
         0,
-        1,
+        3.229126214981079,
         0,
         0,
         0,
         0,
-        1,
+        3.229126214981079,
         0,
-        0,
-        0,
+        0.06502442061901093,
+        1.745063066482544,
         0,
         1
       ],
@@ -863,20 +863,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        3.229126214981079,
         0,
         0,
         0,
         0,
-        1,
+        3.229126214981079,
         0,
         0,
         0,
         0,
-        1,
+        3.229126214981079,
         0,
-        -0.46400001645088196,
-        1.503999948501587,
+        -0.39897559583187103,
+        3.249063014984131,
         0,
         1
       ]
@@ -884,20 +884,20 @@
     {
       "id": "sf.render.works-derrick.mesh.lod1-derrick",
       "localTransform": [
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
-        0,
+        3.245000123977661,
         0,
         1
       ],
@@ -912,20 +912,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
         0,
         0,
-        1,
+        3.245000123977661,
         0,
         0,
-        0,
+        3.245000123977661,
         0,
         1
       ]
@@ -933,17 +933,17 @@
     {
       "id": "sf.render.works-derrick.mesh.lod1-drum",
       "localTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
@@ -962,17 +962,17 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         0,
         0,
         0,
-        1,
+        0.44999998807907104,
         0,
         -0.6200000047683716,
         1.3799999952316284,
@@ -983,21 +983,21 @@
     {
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l",
       "localTransform": [
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
-        0,
-        0,
-        0,
+        0.0783865712583065,
+        -0.10841762647032738,
+        0.11107803881168365,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1012,42 +1012,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        -0.4000000059604645,
+        0.12838657200336456,
+        6.191582564264536,
+        -0.2889219671487808,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l-lens",
       "localTransform": [
-        1,
+        0.08132334053516388,
         0,
         0,
         0,
         0,
-        1,
+        0.08132334053516388,
         0,
         0,
         0,
         0,
-        1,
+        0.08132334053516388,
         0,
-        0,
-        0,
-        0,
+        0.06624460220336914,
+        -0.10404539294540882,
+        0.09713506139814854,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1062,42 +1062,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.08132334053516388,
         0,
         0,
         0,
         0,
-        1,
+        0.08132334053516388,
         0,
         0,
         0,
         0,
-        1,
+        0.08132334053516388,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        -0.4000000059604645,
+        0.1162446029484272,
+        6.1959547977894545,
+        -0.30286494456231594,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r",
       "localTransform": [
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
-        0,
-        0,
-        0,
+        0.0783865712583065,
+        -0.10841762647032738,
+        -0.11107803881168365,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1112,42 +1112,42 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
         0,
         0,
         0,
-        1,
+        0.17892198264598846,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        0.4000000059604645,
+        0.12838657200336456,
+        6.191582564264536,
+        0.2889219671487808,
         1
       ]
     },
     {
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r-lens",
       "localTransform": [
-        1,
+        0.08132332935929298,
         0,
         0,
         0,
         0,
-        1,
+        0.08132332935929298,
         0,
         0,
         0,
         0,
-        1,
+        0.08132332935929298,
         0,
-        0,
-        0,
-        0,
+        0.06624459847807884,
+        -0.10404538922011852,
+        -0.09713506791740656,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1162,21 +1162,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.works-derrick.body",
       "worldTransform": [
-        1,
+        0.08132332935929298,
         0,
         0,
         0,
         0,
-        1,
+        0.08132332935929298,
         0,
         0,
         0,
         0,
-        1,
+        0.08132332935929298,
         0,
-        0.05000000074505806,
-        6.300000190734863,
-        0.4000000059604645,
+        0.1162445992231369,
+        6.195954801514745,
+        0.3028649380430579,
         1
       ]
     },
@@ -1234,19 +1234,19 @@
       "sha256": "0d68bb5267bb34fe9aa04f74e9c356f4b2a0ff7cd2cc10db29e10fa14eb9773b"
     },
     "sourceGlb": {
-      "bytes": 4055056,
-      "sha256": "ce35018eb7a5cdc6e5b70d19a5db7f6b5964e59cfafa952cb43abfc6814afc82",
+      "bytes": 1017920,
+      "sha256": "ec97abd6345e414912fc172f7ac103aaa1396b29197a814164274c5f6d073596",
       "uri": "place_works_derrick.glb"
     },
     "sourceManifest": {
-      "bytes": 320050,
-      "sha256": "ca7fe2c7915239f68b07b9995954c2d225cabe3e6b33eb2eefbb61ea963b02fc",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4174592,
-    "sha256": "a3af1ac4fd4995c193a4b3bb2b07d4d5bbcf7bd7c0977388f40efaff1f30d6cc",
+    "bytes": 1010556,
+    "sha256": "477b7f33a6c8248d27520e77ef60c93df200a9e57c43d0e691c6603d0ff36d1c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1257,19 +1257,19 @@
         0
       ],
       "max": [
-        1.079950213432312,
+        1.079950143497311,
         6.490000247955322,
-        0.8700011372566223
+        0.8700011013868756
       ],
       "min": [
-        -1.079950213432312,
+        -1.079950143497311,
         0,
-        -0.8700011372566223
+        -0.8700011013868756
       ],
       "size": [
-        2.159900426864624,
+        2.159900286994622,
         6.490000247955322,
-        1.7400022745132446
+        1.7400022027737512
       ]
     },
     "hidden": [],
@@ -1501,20 +1501,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.2347320318222046,
           0,
           0,
           0,
           0,
-          1,
+          3.2347320318222046,
           0,
           0,
           0,
           0,
-          1,
+          3.2347320318222046,
           0,
-          -0.46400001645088196,
-          1.503999948501587,
+          -0.39896349608898163,
+          3.254677176475525,
           0,
           1
         ],
@@ -1528,20 +1528,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.229126214981079,
           0,
           0,
           0,
           0,
-          1,
+          3.229126214981079,
           0,
           0,
           0,
           0,
-          1,
+          3.229126214981079,
           0,
-          -0.46400001645088196,
-          1.503999948501587,
+          -0.39897559583187103,
+          3.249063014984131,
           0,
           1
         ],
@@ -1555,17 +1555,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           -0.6200000047683716,
           1.3799999952316284,
@@ -1582,17 +1582,17 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           0,
           0,
           0,
-          1,
+          0.44999998807907104,
           0,
           -0.6200000047683716,
           1.3799999952316284,
@@ -1609,21 +1609,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.17631958425045013,
           0,
           0,
           0,
           0,
-          1,
+          0.17631958425045013,
           0,
           0,
           0,
           0,
-          1,
+          0.17631958425045013,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          -0.4000000059604645,
+          0.13619501143693924,
+          6.185325630009174,
+          -0.28576578199863434,
           1
         ],
         "name": "LOD0_lamp_L",
@@ -1636,21 +1636,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08123162016272545,
           0,
           0,
           0,
           0,
-          1,
+          0.08123162016272545,
           0,
           0,
           0,
           0,
-          1,
+          0.08123162016272545,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          -0.4000000059604645,
+          0.12181421369314194,
+          6.187207220122218,
+          -0.2946981843560934,
           1
         ],
         "name": "LOD0_lamp_L_lens",
@@ -1663,21 +1663,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.17892198264598846,
           0,
           0,
           0,
           0,
-          1,
+          0.17892198264598846,
           0,
           0,
           0,
           0,
-          1,
+          0.17892198264598846,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          -0.4000000059604645,
+          0.12838657200336456,
+          6.191582564264536,
+          -0.2889219671487808,
           1
         ],
         "name": "LOD1_lamp_L",
@@ -1690,21 +1690,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08132334053516388,
           0,
           0,
           0,
           0,
-          1,
+          0.08132334053516388,
           0,
           0,
           0,
           0,
-          1,
+          0.08132334053516388,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          -0.4000000059604645,
+          0.1162446029484272,
+          6.1959547977894545,
+          -0.30286494456231594,
           1
         ],
         "name": "LOD1_lamp_L_lens",
@@ -1717,21 +1717,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.17631958425045013,
           0,
           0,
           0,
           0,
-          1,
+          0.17631958425045013,
           0,
           0,
           0,
           0,
-          1,
+          0.17631958425045013,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          0.4000000059604645,
+          0.13619501143693924,
+          6.185325630009174,
+          0.28576578199863434,
           1
         ],
         "name": "LOD0_lamp_R",
@@ -1744,21 +1744,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08123162016272545,
           0,
           0,
           0,
           0,
-          1,
+          0.08123162016272545,
           0,
           0,
           0,
           0,
-          1,
+          0.08123162016272545,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          0.4000000059604645,
+          0.12181421369314194,
+          6.187207221984863,
+          0.29469817504286766,
           1
         ],
         "name": "LOD0_lamp_R_lens",
@@ -1771,21 +1771,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.17892198264598846,
           0,
           0,
           0,
           0,
-          1,
+          0.17892198264598846,
           0,
           0,
           0,
           0,
-          1,
+          0.17892198264598846,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          0.4000000059604645,
+          0.12838657200336456,
+          6.191582564264536,
+          0.2889219671487808,
           1
         ],
         "name": "LOD1_lamp_R",
@@ -1798,21 +1798,21 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          0.08132332935929298,
           0,
           0,
           0,
           0,
-          1,
+          0.08132332935929298,
           0,
           0,
           0,
           0,
-          1,
+          0.08132332935929298,
           0,
-          0.05000000074505806,
-          6.300000190734863,
-          0.4000000059604645,
+          0.1162445992231369,
+          6.195954801514745,
+          0.3028649380430579,
           1
         ],
         "name": "LOD1_lamp_R_lens",
@@ -1825,20 +1825,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.245000123977661,
           0,
           0,
           0,
           0,
-          1,
+          3.245000123977661,
           0,
           0,
           0,
           0,
-          1,
+          3.245000123977661,
           0,
           0,
-          0,
+          3.245000123977661,
           0,
           1
         ],
@@ -1852,20 +1852,20 @@
       {
         "canopy": false,
         "matrix": [
-          1,
+          3.245000123977661,
           0,
           0,
           0,
           0,
-          1,
+          3.245000123977661,
           0,
           0,
           0,
           0,
-          1,
+          3.245000123977661,
           0,
           0,
-          0,
+          3.245000123977661,
           0,
           1
         ],
@@ -1881,20 +1881,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_derrick.glb"
   },
-  "runtimeHash": "1a1b96db6813a51e59399766193629a3d56b07eddf000a89c7f46ae21c154137",
+  "runtimeHash": "466eb3e01bb326e55542b64795fcb1b203e8a53a68b3962eef4fed827d637cc3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.079950213432312,
+          1.079950143497311,
           6.490000247955322,
-          0.8700011372566223
+          0.8700011013868756
         ],
         "min": [
-          -1.079950213432312,
+          -1.079950143497311,
           0,
-          -0.8700011372566223
+          -0.8700011013868756
         ]
       },
       "id": "sf.render.works-derrick.body",

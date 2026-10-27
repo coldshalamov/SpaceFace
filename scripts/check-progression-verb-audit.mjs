@@ -61,6 +61,7 @@ const VERB_MOD_KEYS = Object.freeze({
   cloakRechargePerS: ['activated stealth cloak (energy bar)', 'systems/cloak.js', { file: 'src/systems/cloak.js', symbol: 'cloakRechargePerS' }],
   impulseChargeCapacity: ['impulse charge carry + throw', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'impulseChargeCapacity' }],
   bombPropulsion: ['propelled bomb / vector charge', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'bombPropulsion' }],
+  pullCollector: ['Pull drops a collector: loose mass binds into a knot you aim and throw (hold Pull, release)', 'systems/fields.js collectorFitted', { file: 'src/systems/fields.js', symbol: 'pullCollector' }],
   repulsionTrap: ['drop-a-trap radial shove', 'systems/impulseCharges.js', { file: 'src/systems/impulseCharges.js', symbol: 'repulsionTrap' }],
   droneBay: ['launch drones from a bay', 'ships.js droneBayCountForFittings', { file: 'src/systems/ships.js', symbol: 'droneBay' }],
   jumpDriveTier: ['jump verb', 'ships.js derived fold (jumpDriveTier)', { file: 'src/systems/ships.js', symbol: 'jumpDriveTier' }],

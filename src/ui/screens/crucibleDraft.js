@@ -33,7 +33,13 @@ import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft
 import { SWARM_CATEGORIES, catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
-import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
+import {
+  canExtract,
+  partialBankOffer,
+  requestSurvivalExtraction,
+  requestSurvivalPartialBank,
+  securedBountyOf,
+} from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
 import {
   circuitBossFor,
@@ -57,7 +63,9 @@ import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { createVisualArmory } from '../orrery/crucibleArmory.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
+import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
 
 /**
  * Show or hide a footer word. `.k-word { display: inline-block }` beats the `hidden`
@@ -214,31 +222,6 @@ function fittingName(defId) {
 const SLOT_WORD = Object.freeze({
   weapon: 'Weapon', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
 });
-
-/**
- * The rail's compact voice: at 1500px and under the verb column holds short words, so long verbs
- * abbreviate by dictionary instead of mid-word ellipsis. Verbs of six letters or fewer ("Screen",
- * "Volume") still fit and stay whole; the card's aria-label keeps the full verb either way.
- */
-const RAIL_VERB_SHORT = Object.freeze({
-  SIDEARM: 'SID', CHARGES: 'CHG', SCRAMBLE: 'SRM', UNSTEER: 'UNS', SUSTAIN: 'SUS', CADENCE: 'CAD',
-});
-
-function railCompact() {
-  try {
-    return typeof matchMedia === 'function' && matchMedia('(max-width: 1500px)').matches;
-  } catch {
-    return false;
-  }
-}
-
-function railVerbDisplay(verb, compact) {
-  const full = String(verb || '');
-  if (!compact || full.length < 7) return full;
-  const known = RAIL_VERB_SHORT[full.toUpperCase()];
-  if (known) return known;
-  return full.slice(0, 3).toUpperCase();
-}
 
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
 export function offerCardLines(offer, state) {
@@ -588,10 +571,12 @@ export function extractionPreviewLines(run) {
   const wave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 0;
   // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
   const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
+  const banked = securedBountyOf(run);
   return {
     secured: `Keeps score ${score}, salvage ${salvage} cr and ${unit} ${wave} — recorded as the run's final result.`,
     risk: `Fly on to ${unit} ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
-    amounts: 'Salvage and score are run-only — never campaign credits.',
+    amounts: 'Salvage and score are run-only — never campaign credits.'
+      + (banked > 0 ? ` ${banked} cr already sits in the hangar chest — banked salvage cannot be lost.` : ''),
   };
 }
 
@@ -615,7 +600,7 @@ export function refitFootLines(run) {
     // The swarm armory's "Rearrange loadout" opened this screen over the open draft.
     return {
       primary: 'Back to armory', primaryNote: '', finishes: false,
-      cont: '', contNote: '', extract: '', extractNote: '',
+      cont: '', contNote: '', extract: '', extractNote: '', bank: '', bankNote: '',
     };
   }
   let finishes = false;
@@ -624,6 +609,10 @@ export function refitFootLines(run) {
   const extractOk = !finishes && canExtract(r);
   const contOk = canContinueSurvivalEndless({ run: r });
   const preview = extractOk ? extractionPreviewLines(r) : null;
+  // The window's middle seat (partialBankOffer shares the extraction gate): secure half the
+  // purse in the hangar chest and fly on with the rest still at risk. No purse, no offer —
+  // a dead button is never drawn.
+  const offer = extractOk ? partialBankOffer(r) : null;
   return {
     primary: finishes ? 'Take the win' : `Launch ${unit} ${wave + 1}`,
     primaryNote: finishes
@@ -636,6 +625,11 @@ export function refitFootLines(run) {
       : '',
     extract: extractOk ? 'Extract — end the run here' : '',
     extractNote: preview ? `${preview.secured} ${preview.amounts}` : '',
+    bank: offer ? `Bank ${offer.amount} cr, keep flying` : '',
+    bankNote: offer
+      ? `${offer.amount} cr moves to the hangar chest now — it cannot be lost. `
+        + `${offer.remaining} cr stays in the purse: the shop still spends it, and death still halves it.`
+      : '',
   };
 }
 
@@ -1028,6 +1022,9 @@ export const crucibleDraftScreen = {
       ? ctx.bus.on('run:draftOffered', () => { if (this._ctx) this.refresh(this._ctx); })
       : null;
     this.refresh(ctx);
+    // The door unit's composition sheet lands last in the mount so it wins the cascade against
+    // the armory sheet (crucible-doorLayouts.js documents what it carries).
+    injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     rootEl.dataset.kReady = '1';
   },
 
@@ -1717,7 +1714,12 @@ export const crucibleDraftScreen = {
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
     head.appendChild(key);
-    head.appendChild(el('p', 'k-caps sf-cru-verb', visualShop ? (offer.category || lines.verb) : railVerbDisplay(lines.verb, railCompact())));
+    // The shop's verb line names the offer's category (the visual armory's narrow rail). The
+    // plain cards — the scored rearm, the refit-family drafts — have no narrow verb column, so
+    // their verb is the authored word, whole; the aria-label carries the full sentence either
+    // way. (A former ≤1500px abbreviation dictionary is gone with its only caller: a wide plain
+    // card reading "SRM"/"UNS" was jargon, and the words always fit.)
+    head.appendChild(el('p', 'k-caps sf-cru-verb', visualShop ? (offer.category || lines.verb) : lines.verb));
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
@@ -1777,6 +1779,7 @@ export const crucibleRefitScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
     injectOrreryScreens();
     injectCruciblePreparation();
+    injectCrucibleRefitLayouts(rootEl.ownerDocument || document);
     rootEl.classList.add('orr-crucible');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';
@@ -1882,6 +1885,28 @@ export const crucibleRefitScreen = {
       });
     }
 
+    // BANK HALF, KEEP FLYING — the window's middle seat, sat BETWEEN launch and the walk-away:
+    // the foot escalates left to right, and Extract stays last so its hold cap keeps the tail
+    // position it has always had. Unlike Extract this commits nothing about how the run ends:
+    // half the purse becomes hangar bounty on the spot and the rest stays in the wallet for
+    // the shop and the death law. A tap, not a hold — the pilot is buying certainty, not
+    // ending a run — and the offer is simply not drawn when the purse cannot halve into a
+    // whole credit.
+    {
+      const bank = addWord(words, word('Bank half, keep flying', 'k-word--emph'));
+      this._bank = bank;
+      bank.addEventListener('click', () => {
+        if (!refitFootLines(ctx.state && ctx.state.run).bank) { cue('deny'); return; }
+        cue('confirm');
+        requestSurvivalPartialBank(ctx.bus);
+        // The run stays benched here — nothing closes this screen — so reprice the foot off
+        // the live purse the way a fit or a sale does: a smaller offer, or no offer once the
+        // purse cannot halve into a whole credit, instead of a word still selling the last one.
+        this.refresh(ctx);
+      });
+      this._bankNote = keyNote(bank.parentElement);
+    }
+
     // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
     // from a bus event — "No UI", says its own header — so no player has ever been offered it.
     // An endless run needs it more than the arc ever did: without a voluntary end, the ONLY way a
@@ -1946,6 +1971,17 @@ export const crucibleRefitScreen = {
         const a = document.activeElement;
         const tag = a && a.tagName;
         if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') this._feedEndHold(true);
+      }
+      // B taps the window's middle seat where it is offered — same guard as F so a spare
+      // <select> keeps its own keys.
+      if (event.key === 'b' || event.key === 'B') {
+        const a = document.activeElement;
+        const tag = a && a.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && this._bank
+          && refitFootLines(ctx.state && ctx.state.run).bank) {
+          event.preventDefault();
+          this._bank.click();
+        }
       }
       // Left/Right walk the spare words of the focused hardpoint, choosing as they go.
       if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement
@@ -2103,6 +2139,11 @@ export const crucibleRefitScreen = {
     setNote(this._extractPreview, lines.extractNote);
     // The button's description carries the same settlement, so the offer reads whole to AT.
     if (this._extract && this._extract.title !== lines.extractNote) this._extract.title = lines.extractNote;
+
+    setWordShown(this._bank, !!lines.bank);
+    if (this._bank && lines.bank) setKeyLabel(this._bank, lines.bank, 'B', 'b');
+    setNote(this._bankNote, lines.bankNote);
+    if (this._bank && this._bank.title !== lines.bankNote) this._bank.title = lines.bankNote;
   },
 
   refresh(ctx) {

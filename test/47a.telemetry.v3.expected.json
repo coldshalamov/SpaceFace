@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce",
+    "authoritativeHash": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777",
     "authoritativeHashByReloadAt": {
-      "60": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce",
-      "600": "2e14459059d11fdd8927440f52471fdb2f341827f3107cdc48d3b9cfcddf16ce"
+      "60": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777",
+      "600": "80d5254ea25b5fea552156bd90415692318560d47d499562734b5381dad02777"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -270,6 +270,8 @@
     "The prior authoritativeHash (reload60 and reload600) was 310df6cc57795b7912a55d484a558bd4b232d769d15d870bfa7f26197c3e4e2f; reload60 and reload600 both reproduce the new hash.",
     "2026-10-25 deliberate re-record over 86656026fe..HEAD, paired with the legacy-leg re-record. Same landed causes: 5a3c1298f0 mission leaves, save bumps to v21, dda2c2cc96 row-482 retune (dmg 8->5, packet x5/8, warden regen 8.984->46.865).",
     "Paired v3 final snapshots differ in 30 leaves: meta.version 18->21, giverId/clientId nulls, 27 pulse dmg/packet leaves (fewer bolts in flight at reload-60), warden shield mid-regen. ZERO pos/vel/rot diffs; reload-60 and reload-600 hash identically.",
-    "The prior authoritativeHash (reload60 and reload600) was b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2."
+    "The prior authoritativeHash (reload60 and reload600) was b7020035c027d347f9e2e58c2dc8464a330f6e728b38665982830f193e626df2.",
+    "2026-10-26 deliberate update: save v21->22 and original-life attackSource {id:1,life:1,team:0} on 7 surviving projectiles. Every other final canonical field, metric and event count matches clean master 0d1a8f792bea.",
+    "Seed47/tick720 canonicalization at 60 and 600 (identical snapshots). Normalizing only those metadata fields reproduces the exact prior hash. Ordinary repeat/reload checks remain required; bounds, repeat minimum, input tape and event families are unchanged."
   ]
 }

@@ -5,6 +5,8 @@
 // creates one scratch object at init, and then reuses its typed arrays every frame. Simulation,
 // physics, damage, save, camera, and DOM ownership stay with their existing modules.
 
+import { MASSLINE_LINE_COLOR } from './masslinePresentation.js';
+
 const TAU = Math.PI * 2;
 const MIN_RADIUS = 1;
 const MIN_BAND_WIDTH = 0.15;
@@ -26,6 +28,27 @@ const APPROACHING_PROFILE = Object.freeze({
   colorR: 0.49,
   colorG: 0.89,
   colorB: 1,
+});
+
+// Row 492: while the Line is HELD — latched, carried, no aiming window yet — the annulus is still
+// drawn, quiet and steady, in the Line's own colour. "This body is bound and will be slung from
+// here" must read the whole time the line is on, not only in the last second of aiming; but it
+// must not shout over the approaching ladder, so brightness sits below the approaching floor and
+// the cadence is a slow breath. The armed aiming window and the post-release rating each still
+// win over this state when they exist.
+const HELD_PROFILE = Object.freeze({
+  shape: 'held-band',
+  bandWidth: 4.6,
+  laneCount: 1,
+  segmentCount: 14,
+  dashDuty: 0.52,
+  dashTaper: 0.3,
+  laneGap: 0,
+  cadenceHz: 0.35,
+  brightness: 0.24,
+  colorR: MASSLINE_LINE_COLOR.r,
+  colorG: MASSLINE_LINE_COLOR.g,
+  colorB: MASSLINE_LINE_COLOR.b,
 });
 
 // The ladder is intentionally redundant. Width, topology, segment cadence, and brightness all
@@ -170,9 +193,11 @@ export function createMasslineReleaseArcScratch(segmentCapacity = MASSLINE_RELEA
 /**
  * Resolve a read-only presentation plan into caller-owned scratch.
  *
- * Expected input is already-existing truth: `releaseTarget`, its optional `liveTarget`, and either
- * a valid pre-release `predictor` or an exact post-release `classification`. This function never
- * invents a destination, rating, trajectory, or outcome.
+ * Expected input is already-existing truth: `releaseTarget`, its optional `liveTarget`, and one of
+ * a valid pre-release `predictor`, an exact post-release `classification`, or `held: true` (row
+ * 492: the line is latched and carried — a quiet annulus rides the live target until a predictor
+ * or a rating takes over). This function never invents a destination, rating, trajectory, or
+ * outcome.
  */
 export function resolveMasslineReleaseArcPlan(out, input) {
   resetPlan(out);
@@ -182,11 +207,17 @@ export function resolveMasslineReleaseArcPlan(out, input) {
     ? input.classification
     : (input.quality != null ? input.quality : null);
   const hasQuality = rawQuality != null && rawQuality !== '';
-  const profile = hasQuality ? profileForQuality(rawQuality) : APPROACHING_PROFILE;
+  const hasPredictor = !!(input.predictor && input.predictor.valid === true);
+  // Held (row 492): a latched, carried line with no aiming window and no rating yet. Only ever the
+  // fallback — an armed predictor or a post-release classification is more specific news and wins.
+  const held = input.held === true && !hasQuality && !hasPredictor;
+  const profile = hasQuality
+    ? profileForQuality(rawQuality)
+    : (held ? HELD_PROFILE : APPROACHING_PROFILE);
   if (hasQuality && !profile) return fail(out, 'unsupported-quality');
 
   const predictor = input.predictor;
-  if (!hasQuality && !(predictor && predictor.valid === true)) return fail(out, 'no-live-predictor');
+  if (!hasQuality && !hasPredictor && !held) return fail(out, 'no-live-predictor');
 
   const releaseTarget = input.releaseTarget;
   const liveTarget = input.liveTarget;
@@ -232,7 +263,7 @@ export function resolveMasslineReleaseArcPlan(out, input) {
 
   out.visible = true;
   out.reason = 'ready';
-  out.stage = hasQuality ? 'released' : 'approaching';
+  out.stage = hasQuality ? 'released' : (held ? 'held' : 'approaching');
   out.quality = hasQuality ? rawQuality : null;
   out.shape = hasQuality
     ? profile.shape
@@ -258,7 +289,7 @@ export function resolveMasslineReleaseArcPlan(out, input) {
   out.predictedX = out.hasPrediction ? predictor.predicted.x : 0;
   out.predictedZ = out.hasPrediction ? predictor.predicted.z : 0;
 
-  if (hasQuality) {
+  if (hasQuality || held) {
     applyProfile(out, profile);
   } else {
     applyApproachingProfile(out, profile, proximity, windowOpen);

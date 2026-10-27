@@ -17,8 +17,17 @@
 //   BOSS — the wave-10 boss of a law arena is a ROLE over the shared dreadnought hull
 //   (`bossRole` in the arena module); materializeWaveBatch stamps data.bossDressing with the
 //   role id. tidal_engine gets paired counter-rotating tide vanes around the spine; chain_tug
-//   gets the aft winch array. Same lifecycle contract as forgeRegentCrown.js: lazy bind under
-//   mesh.userData.hull, build-in, idle motion, kill release, mesh rebind, prune, done latch.
+//   gets the aft winch array; manifold_warden its four coolant arms; grid_tyrant a relay-drone
+//   ring; the Asteroid Mill's seam_crusher wears the opposed grind wheels and their ore train;
+//   the Hive's queen_warden carries the brood clutch and its attendant ring. Same lifecycle
+//   contract as forgeRegentCrown.js: lazy bind under mesh.userData.hull, build-in, idle
+//   motion, kill release, mesh rebind, prune, done latch.
+//
+//   AFFIX — swarmElites stamps data.swarmAffix / data.swarmAffix2 on elite and champion
+//   hulls (SWARM-06 §6.4); each stamp hangs a small per-trick machine on the spine —
+//   a shielded dome, splitter pod twins, a volatile charge, a magnetic claw, a commander
+//   mast, hasted fins — so the wave's named tricks are read off the body mid-chaos, not
+//   only off the wave banner. Same lifecycle contract again.
 //
 // PURE RENDER-ONLY PRESENTATION: never mutates sim state; room props never become physics bodies
 // (the law-arena toys are deliberately non-solid — a solid port would change the field digests).
@@ -45,12 +54,16 @@ import {
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 
 const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
-const BOSS_DRESSING_KINDS = new Set(['tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant']);
+const BOSS_DRESSING_KINDS = new Set([
+  'tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant', 'seam_crusher', 'queen_warden',
+]);
 
 // Cold polarity for pull machinery (wells, tide vanes); furnace ember for push/heat (repulsor,
 // sluice throat, crusher faces). Two hues keep the room readable: cyan drags, orange shoves.
+// The brood green is the Hive's own authored hue (broodPresentation.js marker rings).
 const TIDE_HEX = 0x59d8e8;
 const AMBER_HEX = 0xffb347;
+const BROOD_HEX = 0x6cff9a;
 
 // --- choreography (seconds / rad·s⁻¹) ---
 const PYLON_SPIN = 0.22;
@@ -66,6 +79,11 @@ const WINCH_RATE_REDUCED = 0.12;
 const GIMBAL_RATE = 0.5;          // manifold_warden arm tumble
 const ORBIT_RATE = 0.4;           // grid_tyrant drone ring
 const RELAY_SPARK_RATE = 5.0;     // storm relay beam flicker cadence
+const GRIND_RATE = 0.55;          // seam_crusher mill wheels — a heavy turn, not a fan
+const GRIND_RATE_REDUCED = 0.14;
+const BROOD_ORBIT_RATE = 0.4;     // queen_warden attendant ring
+const BROOD_ORBIT_RATE_REDUCED = 0.1;
+const SAC_PULSE_RATE = 1.6;       // queen_warden sac bellows cadence (rad·s⁻¹ of the seethe)
 const BUILD_S = 0.9;
 const RELEASE_S = 0.55;
 const RELEASE_FLING_WU = 26;
@@ -104,10 +122,16 @@ function sharedAssets() {
     emissiveIntensity: 0.08,
     metalness: 0.4, roughness: 0.5,
   });
-  for (const res of [boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat]) {
+  const broodMat = new THREE.MeshStandardMaterial({
+    color: 0x0c1a10,
+    emissive: new THREE.Color(BROOD_HEX),
+    emissiveIntensity: 0.08,
+    metalness: 0.25, roughness: 0.62,
+  });
+  for (const res of [boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat]) {
     res.userData.spacefaceSharedAsset = true;
   }
-  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat };
+  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat };
   return _shared;
 }
 
@@ -818,12 +842,182 @@ function buildGridTyrant(radiusWu, sink) {
   };
 }
 
+/**
+ * Seam Crusher (Asteroid Mill): the grind pair worn as hardware — two opposed mill wheels
+ * riding the flanks, teeth on the rims, an ore train marching the trough between them into
+ * the grind. `method: 'thrown_mass'` — the room hurls the mass; the boss carries the mill
+ * that fed it.
+ */
+function buildSeamCrusher(radiusWu, sink) {
+  const shared = sharedAssets();
+  const seamMat = cloneEmissive(shared.emberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'seam_crusher_dressing';
+  const drums = [];
+  for (const side of [-1, 1]) {
+    const wheel = new THREE.Group();
+    wheel.name = 'seam_grind_wheel';
+    wheel.position.set(radiusWu * -0.06, radiusWu * 0.4, side * radiusWu * 0.5);
+    const cone = mesh(shared.cylGeo, shared.metalMat, 'seam_grind_cone');
+    cone.rotation.x = Math.PI / 2; // cylinder axis -> Z: the wheel face stands outboard
+    cone.scale.set(radiusWu * 0.24, radiusWu * 0.09, radiusWu * 0.24);
+    wheel.add(cone);
+    const face = mesh(shared.cylGeo, shared.darkMat, 'seam_grind_face');
+    face.rotation.x = Math.PI / 2;
+    face.scale.set(radiusWu * 0.15, radiusWu * 0.12, radiusWu * 0.15);
+    face.position.z = side * radiusWu * 0.04;
+    wheel.add(face);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const tooth = mesh(shared.boxGeo, shared.plateMat, 'seam_grind_tooth');
+      tooth.position.set(Math.cos(a) * radiusWu * 0.2, Math.sin(a) * radiusWu * 0.2, 0);
+      tooth.rotation.z = a;
+      tooth.scale.set(radiusWu * 0.07, radiusWu * 0.05, radiusWu * 0.1);
+      wheel.add(tooth);
+    }
+    group.add(wheel);
+    // Opposed turn — the room's two grind cones are written as counter-pushing currents,
+    // so the wheels the boss carries counter-rotate too.
+    drums.push({ drum: wheel, axis: 'z', dir: side });
+  }
+  // The ore train: a trough of broken rock riding the spine — the seam feeding itself.
+  const trough = mesh(shared.boxGeo, shared.darkMat, 'seam_ore_trough');
+  trough.scale.set(radiusWu * 0.86, radiusWu * 0.05, radiusWu * 0.18);
+  trough.position.set(radiusWu * 0.02, radiusWu * 0.14, 0);
+  group.add(trough);
+  const oreTrain = new THREE.Group();
+  oreTrain.name = 'seam_ore_train';
+  oreTrain.position.copy(trough.position);
+  group.add(oreTrain);
+  const ore = [];
+  for (let i = 0; i < 5; i++) {
+    const lump = mesh(shared.boxGeo, i % 2 ? shared.plateMat : shared.darkMat, 'seam_ore_lump');
+    lump.scale.set(radiusWu * 0.05, radiusWu * 0.045, radiusWu * 0.05);
+    lump.position.y = radiusWu * 0.05;
+    oreTrain.add(lump);
+    ore.push({ lump, u: i / 5 });
+  }
+  const seam = mesh(shared.torusGeo, seamMat, 'seam_crusher_seam');
+  seam.rotation.y = Math.PI / 2;
+  seam.position.set(radiusWu * -0.3, radiusWu * 0.12, 0);
+  seam.scale.setScalar(radiusWu * 0.32);
+  group.add(seam);
+  return {
+    group, drums, seamMat,
+    tick(rec, simTime, dt, reduced) {
+      // Ore lumps march aft-to-nose down the trough and tumble — the mill at work.
+      const rate = reduced ? 0.05 : 0.18;
+      for (const o of ore) {
+        o.u = (o.u + rate * dt) % 1;
+        o.lump.position.x = radiusWu * (-0.42 + o.u * 0.84);
+        o.lump.rotation.x += dt * (reduced ? 0.4 : 1.3);
+        o.lump.rotation.y += dt * (reduced ? 0.25 : 0.8);
+      }
+    },
+  };
+}
+
+/**
+ * Queen Warden (the Hive): the brood heart riding the hull — a clutch of sacs amidships
+ * swelling off-phase (the room's breath worn as organs), a ring of attendant pods orbiting
+ * the spine, and the green seam the walls bleed. `method: 'machinery'` — the living room
+ * is the machine; the warden carries its working set.
+ */
+function buildQueenWarden(radiusWu, sink) {
+  const shared = sharedAssets();
+  const seamMat = cloneEmissive(shared.broodMat, sink);
+  const group = new THREE.Group();
+  group.name = 'queen_warden_dressing';
+
+  // The sac clutch amidships: three organ pods bulging off a collar — the brood heart.
+  const clutch = new THREE.Group();
+  clutch.name = 'queen_sac_clutch';
+  clutch.position.set(radiusWu * 0.04, radiusWu * 0.46, 0);
+  group.add(clutch);
+  const collar = mesh(shared.torusGeo, shared.darkMat, 'queen_clutch_collar');
+  collar.rotation.y = Math.PI / 2;
+  collar.scale.setScalar(radiusWu * 0.34);
+  clutch.add(collar);
+  const sacs = [];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
+    const sac = mesh(shared.cylGeo, shared.darkMat, 'queen_sac');
+    const r = radiusWu * (0.13 + (i === 0 ? 0.03 : 0));
+    sac.scale.set(r, radiusWu * 0.2, r);
+    sac.position.set(0, Math.cos(a) * radiusWu * 0.3, Math.sin(a) * radiusWu * 0.3);
+    sac.rotation.x = a; // pod axis points radially out of the collar ring
+    clutch.add(sac);
+    const glow = mesh(shared.cylGeo, seamMat, 'queen_sac_glow');
+    // Child of the scaled sac: unit-local coords, a cap just past the pod's outer face.
+    glow.scale.set(0.4, 0.14, 0.4);
+    glow.position.y = 0.55;
+    sac.add(glow);
+    sacs.push({ sac, phase: i * 2.1, baseY: sac.scale.y });
+  }
+
+  // Attendant pods on a slow ring — the warden's honour brood riding the hull.
+  const ringGroup = new THREE.Group();
+  ringGroup.name = 'queen_attendant_ring';
+  ringGroup.position.set(radiusWu * -0.1, radiusWu * 0.38, 0);
+  group.add(ringGroup);
+  const attendants = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const holder = new THREE.Group();
+    holder.rotation.x = a;
+    ringGroup.add(holder);
+    const pod = mesh(shared.cylGeo, shared.darkMat, 'queen_attendant');
+    const r = radiusWu * 0.55;
+    pod.scale.set(radiusWu * 0.07, radiusWu * 0.11, radiusWu * 0.07);
+    pod.position.y = r;
+    holder.add(pod);
+    const tip = mesh(shared.cylGeo, seamMat, 'queen_attendant_glow');
+    tip.scale.set(radiusWu * 0.028, radiusWu * 0.03, radiusWu * 0.028);
+    tip.position.y = r * 1.12;
+    holder.add(tip);
+    attendants.push({ pod, phase: a });
+  }
+  const drums = [{ drum: ringGroup, dir: 1 }];
+  const seam = mesh(shared.torusGeo, seamMat, 'queen_warden_seam');
+  seam.rotation.y = Math.PI / 2;
+  seam.position.set(radiusWu * -0.34, radiusWu * 0.12, 0);
+  seam.scale.setScalar(radiusWu * 0.36);
+  group.add(seam);
+  return {
+    group, drums, seamMat,
+    tick(rec, simTime, dt, reduced, calmFlash) {
+      // Seething: every sac breathes off-phase; attendants bob on their berths.
+      const rate = reduced ? 0.5 : SAC_PULSE_RATE;
+      for (const s of sacs) {
+        const swell = 1 + (reduced ? 0.04 : 0.16) * Math.sin(simTime * rate + s.phase);
+        s.sac.scale.y = s.baseY * swell;
+      }
+      for (const a of attendants) {
+        a.pod.position.y = radiusWu * (0.55 + 0.035 * Math.sin(simTime * rate * 0.8 + a.phase));
+      }
+      void calmFlash;
+    },
+  };
+}
+
 const BOSS_BUILDERS = {
   tidal_engine: buildTidalVanes,
   chain_tug: buildChainTug,
   manifold_warden: buildManifoldWarden,
   grid_tyrant: buildGridTyrant,
+  seam_crusher: buildSeamCrusher,
+  queen_warden: buildQueenWarden,
 };
+
+// Per-kind [normal, reduced] drum rates — the kind's own motion signature. Kinds absent
+// here ride the default vane rates (tidal_engine, manifold_warden both do).
+const VANE_SPIN = Object.freeze([VANE_RATE, VANE_RATE_REDUCED]);
+const BOSS_SPIN_RATES = Object.freeze({
+  chain_tug: Object.freeze([WINCH_RATE, WINCH_RATE_REDUCED]),
+  grid_tyrant: Object.freeze([ORBIT_RATE, ORBIT_RATE * 0.3]),
+  seam_crusher: Object.freeze([GRIND_RATE, GRIND_RATE_REDUCED]),
+  queen_warden: Object.freeze([BROOD_ORBIT_RATE, BROOD_ORBIT_RATE_REDUCED]),
+});
 
 function driveBossDrums(rec) {
   for (const d of rec.drums) {
@@ -836,11 +1030,229 @@ function easeOutCubic(t) {
   return 1 - u * u * u;
 }
 
+// ---------------------------------------------------------------------------
+// Elite affix marks (SWARM-06 §6.4) — the stamped trick, worn as hardware.
+//
+// swarmElites stamps data.swarmAffix (and data.swarmAffix2 on the veteran band); this layer
+// hangs a distinct little machine on the spine per stamp so mid-chaos the trick is read off
+// the hull, not off a wave banner. Same lifecycle as the boss dressing above: lazy bind
+// under mesh.userData.hull, build-in, idle motion on sim time, fling release on kill, mesh
+// rebind, prune. A champion boss can carry both — the records run side by side. Only
+// entity-backed bodies ever carry affixes (the stamp pass never reaches the buffer-drawn
+// brood), so a mesh-bound mark covers every hull the trick can land on.
+//
+// The silhouette carries the identity; the law hues back it:
+//   shielded  — a squat dome with a cold rim, the bubble's wall made metal   (tide cyan)
+//   splitter  — twin pods on a yoke, the two wasps it becomes                (brood green)
+//   volatile  — a charge drum with a hot collar; the drum shivers            (ember)
+//   magnetic  — a two-prong claw that pinches over the field                 (tide cyan — the drag hue)
+//   commander — a mast, pennant and rally lamp                               (brood green — feeds the cohort)
+//   hasted    — swept fins raked aft with hot tips                           (ember — it runs hot)
+// A veteran's pair is joined by a dark collar so two tricks read as double-marked at a
+// glance. Mark meshes ride the 'sf-swarm-threat' name prefix on purpose: that is the
+// hostile repaint's own exemption in tintSwarmHostileHull — without it a re-tint pass
+// (LOD child swap) would crimson the seams and erase the per-affix hue the mark carries.
+// ---------------------------------------------------------------------------
+
+const AFFIX_MARK_ROOT = 'sf-swarm-threat-affix';
+const AFFIX_VETERAN_BAND_NAME = 'sf-swarm-threat-affix-band';
+// Spine anchors in radiusWu fractions: the primary rides forward, the veteran second rides
+// aft — a late second stamp never shifts the primary's mark.
+const AFFIX_ANCHOR_PRIMARY = 0.26;
+const AFFIX_ANCHOR_SECOND = -0.38;
+const AFFIX_MARK_DECK = 0.55;       // deck height the marks mount at
+const AFFIX_MARK_DECK_VETERAN = 0.5;
+const AFFIX_VOLATILE_SHIVER = 21;   // the charge's nervous tremble (rad·s⁻¹)
+
+/** Shielded: the bubble's wall made metal — a squat dome with a cold rim at its foot. */
+function buildAffixShielded(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-shielded';
+  const rim = mesh(shared.torusGeo, seam, 'sf-swarm-threat-affix-shielded-rim');
+  rim.rotation.x = Math.PI / 2; // ring lies flat — the wall's foundation
+  rim.scale.setScalar(r * 0.2);
+  rim.position.y = -r * 0.05;
+  group.add(rim);
+  const dome = mesh(shared.cylGeo, shared.darkMat, 'sf-swarm-threat-affix-shielded-dome');
+  dome.scale.set(r * 0.16, r * 0.11, r * 0.16);
+  group.add(dome);
+  const crown = mesh(shared.boxGeo, shared.plateMat, 'sf-swarm-threat-affix-shielded-crown');
+  crown.scale.set(r * 0.05, r * 0.05, r * 0.05);
+  crown.position.y = r * 0.08;
+  group.add(crown);
+  return { group };
+}
+
+/** Splitter: the two wasps it bursts into, carried as pods on a yoke — twin bumps, one hull. */
+function buildAffixSplitter(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.broodMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-splitter';
+  const yoke = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-splitter-yoke');
+  yoke.scale.set(r * 0.07, r * 0.05, r * 0.5);
+  group.add(yoke);
+  const pods = [];
+  for (const side of [-1, 1]) {
+    const pod = mesh(shared.cylGeo, shared.darkMat, 'sf-swarm-threat-affix-splitter-pod');
+    pod.rotation.z = Math.PI / 2; // axis -> X: a little hull nose-forward
+    pod.scale.set(r * 0.07, r * 0.24, r * 0.07);
+    pod.position.set(0, r * 0.05, side * r * 0.21);
+    group.add(pod);
+    const tip = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-splitter-tip');
+    tip.scale.set(r * 0.05, r * 0.05, r * 0.05);
+    tip.position.set(r * 0.13, 0, 0); // the pod's nose, child of the turned pod
+    pod.add(tip);
+    pods.push({ pod, side, baseY: pod.position.y });
+  }
+  return {
+    group,
+    tick(mark, simTime, dt, reduced) {
+      if (reduced) return;
+      // The pods strain on their berths, off-phase — two bodies already trying to leave.
+      for (const p of pods) {
+        p.pod.position.y = p.baseY + Math.sin(simTime * 3.2 + p.side * 1.7) * r * 0.02;
+      }
+    },
+  };
+}
+
+/** Volatile: the death-charge as a drum on the spine — hot collar, nervous shiver. */
+function buildAffixVolatile(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.emberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-volatile';
+  const drum = mesh(shared.cylGeo, shared.metalMat, 'sf-swarm-threat-affix-volatile-drum');
+  drum.scale.set(r * 0.1, r * 0.24, r * 0.1);
+  group.add(drum);
+  const collar = mesh(shared.torusGeo, seam, 'sf-swarm-threat-affix-volatile-collar');
+  collar.rotation.x = Math.PI / 2;
+  collar.scale.setScalar(r * 0.12);
+  group.add(collar);
+  const tip = mesh(shared.cylGeo, seam, 'sf-swarm-threat-affix-volatile-tip');
+  tip.scale.set(r * 0.045, r * 0.06, r * 0.045);
+  tip.position.y = r * 0.15;
+  group.add(tip);
+  return {
+    group,
+    tick(mark, simTime, dt, reduced) {
+      if (reduced) return;
+      // The charge shivers on its mount — the throw-me read is that it cannot sit still.
+      drum.position.x = Math.sin(simTime * AFFIX_VOLATILE_SHIVER) * r * 0.006;
+      drum.position.z = Math.cos(simTime * AFFIX_VOLATILE_SHIVER * 0.8) * r * 0.006;
+    },
+  };
+}
+
+/** Magnetic: a two-prong claw reaching past the nose — the pinch that drags chips in. */
+function buildAffixMagnetic(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.tideMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-magnetic';
+  const base = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-magnetic-base');
+  base.scale.set(r * 0.16, r * 0.05, r * 0.12);
+  group.add(base);
+  const prongs = [];
+  for (const side of [-1, 1]) {
+    const prong = new THREE.Group();
+    prong.name = 'sf-swarm-threat-affix-magnetic-prong';
+    prong.position.set(r * 0.04, r * 0.04, side * r * 0.05);
+    prong.rotation.y = -side * 0.5; // arms splay outboard — a claw opening forward
+    group.add(prong);
+    const arm = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-magnetic-arm');
+    arm.scale.set(r * 0.3, r * 0.04, r * 0.05);
+    arm.position.x = r * 0.15;
+    prong.add(arm);
+    const tip = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-magnetic-tip');
+    tip.scale.set(r * 0.05, r * 0.07, r * 0.07);
+    tip.position.x = r * 0.3;
+    prong.add(tip);
+    prongs.push({ prong, side });
+  }
+  return {
+    group,
+    tick(mark, simTime, dt, reduced) {
+      // A slow pinch — the pull is always working at something.
+      const pinch = reduced ? 0.5 : 0.5 + Math.sin(simTime * 2.6) * 0.12;
+      for (const p of prongs) p.prong.rotation.y = -p.side * pinch;
+    },
+  };
+}
+
+/** Commander: the rally mast — pennant forward, a lamp the cohort reads over the pack. */
+function buildAffixCommander(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.broodMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-commander';
+  const mast = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-commander-mast');
+  mast.scale.set(r * 0.045, r * 0.52, r * 0.045);
+  mast.position.y = r * 0.26;
+  group.add(mast);
+  const pennant = mesh(shared.boxGeo, shared.plateMat, 'sf-swarm-threat-affix-commander-pennant');
+  pennant.scale.set(r * 0.2, r * 0.035, r * 0.06);
+  pennant.position.set(r * 0.11, r * 0.44, 0);
+  group.add(pennant);
+  const lamp = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-commander-lamp');
+  lamp.scale.set(r * 0.08, r * 0.08, r * 0.08);
+  lamp.position.y = r * 0.55;
+  group.add(lamp);
+  return { group };
+}
+
+/** Hasted: swept fins raked aft with hot tips — the third-again legs worn as wings. */
+function buildAffixHasted(r, sink) {
+  const shared = sharedAssets();
+  const seam = cloneEmissive(shared.emberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'sf-swarm-threat-affix-hasted';
+  const keel = mesh(shared.boxGeo, shared.darkMat, 'sf-swarm-threat-affix-hasted-keel');
+  keel.scale.set(r * 0.3, r * 0.045, r * 0.05);
+  group.add(keel);
+  const fins = [];
+  for (const side of [-1, 1]) {
+    const fin = mesh(shared.boxGeo, shared.metalMat, 'sf-swarm-threat-affix-hasted-fin');
+    fin.scale.set(r * 0.26, r * 0.025, r * 0.09);
+    fin.position.set(-r * 0.05, r * 0.05, side * r * 0.11);
+    fin.rotation.y = side * 0.6; // swept back — the chevron opens aft
+    group.add(fin);
+    const tip = mesh(shared.boxGeo, seam, 'sf-swarm-threat-affix-hasted-tip');
+    tip.scale.set(r * 0.05, r * 0.03, r * 0.05);
+    tip.position.set(-r * 0.14, 0, 0); // hot trailing edge, child of the swept fin
+    fin.add(tip);
+    fins.push({ fin, side });
+  }
+  return {
+    group,
+    tick(mark, simTime, dt, reduced) {
+      const flutter = reduced ? 0.6 : 0.6 + Math.sin(simTime * 7.5) * 0.06;
+      for (const f of fins) f.fin.rotation.y = f.side * flutter;
+    },
+  };
+}
+
+// Per-affix builder + the seam's breath cadence (rad·s⁻¹). Volatile races; commander is the
+// slow steady heartbeat the cohort flies on.
+const AFFIX_MARKS = Object.freeze({
+  shielded: Object.freeze({ build: buildAffixShielded, pulse: 2.0 }),
+  splitter: Object.freeze({ build: buildAffixSplitter, pulse: 2.6 }),
+  volatile: Object.freeze({ build: buildAffixVolatile, pulse: 4.8 }),
+  magnetic: Object.freeze({ build: buildAffixMagnetic, pulse: 3.1 }),
+  commander: Object.freeze({ build: buildAffixCommander, pulse: 1.5 }),
+  hasted: Object.freeze({ build: buildAffixHasted, pulse: 3.9 }),
+});
+
 export function createLawArenaDressing() {
   const bossRecords = new Map();
+  const affixRecords = new Map();
   // Mesh → record side index: boundMesh is already the boundary root identity,
   // so releases probe the index instead of scanning every record per batch.
   const boundIndex = new Map();
+  const affixBoundIndex = new Map();
   const room = {
     root: null, parts: [], clones: [], installedAtSim: 0, arenaId: null,
     relayWires: [], pylonPositions: [],
@@ -1012,6 +1424,148 @@ export function createLawArenaDressing() {
     }
   }
 
+  // ---- affix marks (entity-driven, same lifecycle as the boss dressing) ----
+
+  function detachAffix(rec) {
+    if (!rec) return;
+    if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
+    if (rec.boundMesh && affixBoundIndex.get(rec.boundMesh) === rec) {
+      affixBoundIndex.delete(rec.boundMesh);
+    }
+    rec.boundMesh = null;
+  }
+
+  function disposeAffix(rec) {
+    detachAffix(rec);
+    for (const mark of rec.marks) {
+      for (const mat of mark.mats) mat.dispose();
+    }
+    rec.marks = [];
+    rec.group = null;
+  }
+
+  /**
+   * (Re)build the mark set inside the record's group: the primary rides the forward anchor,
+   * the veteran second the aft anchor, and a dark collar joins a pair. Old marks release
+   * their clone materials — a late second stamp never re-clones the primary's seams.
+   */
+  function rebuildAffixMarks(rec, entity) {
+    if (!rec.group) {
+      rec.group = new THREE.Group();
+      rec.group.name = AFFIX_MARK_ROOT;
+      rec.group.scale.setScalar(0.0001);
+    }
+    for (const mark of rec.marks) {
+      if (mark.group && mark.group.parent) mark.group.parent.remove(mark.group);
+      for (const mat of mark.mats) mat.dispose();
+    }
+    rec.marks = [];
+    const staleBand = rec.group.getObjectByName(AFFIX_VETERAN_BAND_NAME);
+    if (staleBand) rec.group.remove(staleBand);
+
+    const ids = [];
+    if (AFFIX_MARKS[rec.affix1]) ids.push(rec.affix1);
+    if (rec.affix2 && rec.affix2 !== rec.affix1 && AFFIX_MARKS[rec.affix2]) ids.push(rec.affix2);
+    const r = Math.max(8, entity.radius || entity.collisionRadius || 40);
+    const anchors = ids.length > 1 ? [AFFIX_ANCHOR_PRIMARY, AFFIX_ANCHOR_SECOND] : [AFFIX_ANCHOR_PRIMARY];
+    const deck = ids.length > 1 ? AFFIX_MARK_DECK_VETERAN : AFFIX_MARK_DECK;
+    for (let i = 0; i < ids.length; i++) {
+      const spec = AFFIX_MARKS[ids[i]];
+      const mats = [];
+      const built = spec.build(r, mats);
+      built.group.position.set(anchors[i] * r, deck * r, 0);
+      rec.group.add(built.group);
+      rec.marks.push({ id: ids[i], group: built.group, mats, tick: built.tick || null, pulse: spec.pulse });
+    }
+    if (ids.length > 1) {
+      const shared = sharedAssets();
+      const band = mesh(shared.torusGeo, shared.darkMat, AFFIX_VETERAN_BAND_NAME);
+      band.rotation.x = Math.PI / 2;
+      band.scale.setScalar(r * 0.52);
+      band.position.y = r * 0.28;
+      rec.group.add(band);
+    }
+  }
+
+  /**
+   * The per-frame half, driven from updateBossDressing's visit: read the stamps the elites
+   * runtime wrote, keep the mark set honest, animate, release on kill. Reads entity.data
+   * only — presentation never rewrites the stamp.
+   */
+  function updateAffixMarks(entity, mesh_, simTime, frameDt, options) {
+    const data = entity.data;
+    const affix1 = data && typeof data.swarmAffix === 'string' ? data.swarmAffix : null;
+    const affix2 = data && typeof data.swarmAffix2 === 'string' ? data.swarmAffix2 : null;
+    let rec = affixRecords.get(entity.id);
+    if (!affix1 && !affix2) {
+      if (rec) { disposeAffix(rec); affixRecords.delete(entity.id); }
+      return;
+    }
+    if (!rec) {
+      rec = {
+        affix1: null, affix2: null,
+        boundMesh: null, group: null, marks: [],
+        phase: 'build', clock: 0, releaseClock: 0,
+      };
+      affixRecords.set(entity.id, rec);
+    }
+    if (rec.affix1 !== affix1 || rec.affix2 !== affix2) {
+      rec.affix1 = affix1;
+      rec.affix2 = affix2;
+      rebuildAffixMarks(rec, entity);
+    }
+    if (rec.phase === 'done' || !rec.group) return;
+    if (rec.boundMesh !== mesh_) {
+      detachAffix(rec);
+      const parent = (mesh_.userData && mesh_.userData.hull) || mesh_;
+      parent.add(rec.group);
+      recordMountedRootForUnreadyScan(rec.group);
+      rec.boundMesh = mesh_;
+      const displaced = affixBoundIndex.get(mesh_);
+      // A mesh re-seat steals the index entry — clear the displaced owner's bound field.
+      if (displaced && displaced !== rec) displaced.boundMesh = null;
+      affixBoundIndex.set(mesh_, rec);
+    }
+
+    const reduced = !!(options && options.motionReduce);
+    const calmFlash = !!(options && options.flashReduce);
+    const dt = Math.max(0, frameDt || 0);
+    const simNow = Number.isFinite(simTime) ? simTime : 0;
+    rec.clock += dt;
+    if (rec.phase !== 'release' && entity.alive === false) {
+      rec.phase = 'release';
+      rec.releaseClock = 0;
+    }
+
+    if (rec.phase === 'build' || rec.phase === 'spin') {
+      const buildT = Math.min(1, rec.clock / BUILD_S);
+      rec.group.scale.setScalar(Math.max(0.0001, easeOutCubic(buildT)));
+      for (let i = 0; i < rec.marks.length; i++) {
+        const mark = rec.marks[i];
+        if (mark.tick) mark.tick(mark, simNow, dt, reduced);
+        for (const mat of mark.mats) {
+          mat.emissiveIntensity = calmFlash
+            ? 0.7
+            : 0.7 + (reduced ? 0 : 0.4 * Math.sin(simNow * mark.pulse + i * 1.7));
+        }
+      }
+      if (rec.phase === 'build' && buildT >= 1) rec.phase = 'spin';
+    } else if (rec.phase === 'release') {
+      rec.releaseClock += dt;
+      const rt = Math.min(1, rec.releaseClock / RELEASE_S);
+      for (const mark of rec.marks) {
+        if (mark.tick) mark.tick(mark, simNow, dt, reduced);
+        for (const mat of mark.mats) mat.emissiveIntensity = Math.max(0.08, 1.1 * (1 - rt));
+      }
+      rec.group.scale.setScalar(Math.max(0.0001, 1 - rt));
+      rec.group.position.y += RELEASE_FLING_WU * dt * rt;
+      if (rt >= 1) {
+        detachAffix(rec);
+        rec.phase = 'done';
+      }
+    }
+  }
+
   // ---- boss dressing (entity-driven, crown-style lifecycle) ----
 
   function detachBoss(rec) {
@@ -1032,6 +1586,8 @@ export function createLawArenaDressing() {
 
   function updateBossDressing(entity, mesh_, simTime, frameDt, options) {
     if (!entity || entity.id == null || !mesh_) return;
+    // The elite's affix marks ride this same visit — a champion boss can carry both layers.
+    updateAffixMarks(entity, mesh_, simTime, frameDt, options);
     const kind = bossDressingKindFor(entity);
     let rec = bossRecords.get(entity.id);
     if (!kind) {
@@ -1077,9 +1633,8 @@ export function createLawArenaDressing() {
       rec.phase = 'release';
       rec.releaseClock = 0;
     }
-    const spinRate = reduced
-      ? (kind === 'chain_tug' ? WINCH_RATE_REDUCED : kind === 'grid_tyrant' ? ORBIT_RATE * 0.3 : VANE_RATE_REDUCED)
-      : (kind === 'chain_tug' ? WINCH_RATE : kind === 'grid_tyrant' ? ORBIT_RATE : VANE_RATE);
+    const spin = BOSS_SPIN_RATES[kind] || VANE_SPIN;
+    const spinRate = reduced ? spin[1] : spin[0];
 
     if (rec.phase === 'build' || rec.phase === 'spin') {
       const buildT = Math.min(1, rec.clock / BUILD_S);
@@ -1116,11 +1671,14 @@ export function createLawArenaDressing() {
   function releaseEntityMesh(entityId) {
     const rec = bossRecords.get(entityId);
     if (rec) detachBoss(rec);
+    const affixRec = affixRecords.get(entityId);
+    if (affixRec) detachAffix(affixRec);
   }
 
   function releaseMesh(mesh_) {
     if (!mesh_) return;
     detachBoss(boundIndex.get(mesh_));
+    detachAffix(affixBoundIndex.get(mesh_));
   }
 
   // Batched twin for mass-despawn sweeps: O(pending.size) via the index.
@@ -1128,6 +1686,7 @@ export function createLawArenaDressing() {
     if (!meshes || meshes.size === 0) return;
     for (const mesh_ of meshes) {
       detachBoss(boundIndex.get(mesh_));
+      detachAffix(affixBoundIndex.get(mesh_));
     }
   }
 
@@ -1137,6 +1696,12 @@ export function createLawArenaDressing() {
       if (!activeEntityIds.has(id)) {
         disposeBoss(bossRecords.get(id));
         bossRecords.delete(id);
+      }
+    }
+    for (const id of affixRecords.keys()) {
+      if (!activeEntityIds.has(id)) {
+        disposeAffix(affixRecords.get(id));
+        affixRecords.delete(id);
       }
     }
   }
@@ -1152,10 +1717,14 @@ export function createLawArenaDressing() {
     return bossRecords.get(entityId) || null;
   }
 
+  function peekAffix(entityId) {
+    return affixRecords.get(entityId) || null;
+  }
+
   return {
     handleInstall, handleReleased, updateRoom,
     updateBossDressing, releaseEntityMesh, releaseMesh, releaseMeshSet, prune,
-    peekRoom, peekBoss,
+    peekRoom, peekBoss, peekAffix,
   };
 }
 

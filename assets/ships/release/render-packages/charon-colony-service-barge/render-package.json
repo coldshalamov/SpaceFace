@@ -1,0 +1,5179 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-barge-bridge",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Barge_Bridge",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        5.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-container-aft",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Aft",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        32,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-container-fore",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Fore",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        12,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-container-mid",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Container_Mid",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        22,
+        5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-drive-plume",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Drive_Plume",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.199999809265137,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        26,
+        6.199999809265137,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-status-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Port",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        -7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-status-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ],
+      "nodeName": "SOCKET_Status_Starboard",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        44,
+        0,
+        7.5,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.852500915527344,
+        3.012500047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        33.852500915527344,
+        3.012500047683716,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        45
+      ],
+      "parentNodeId": "sf.render.charon-colony-service-barge.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.5,
+        2.200000047683716,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.charon-colony-service-barge",
+  "collisions": [
+    {
+      "id": "sf.render.charon-colony-service-barge.collision",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "60a843dd393401d14b24aa11de4acecaa2747bec546ef28e312ed47395ca7b25",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port"
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port"
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard"
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port"
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          72.29350280761719,
+          11.097285223597892,
+          8.298559386463813
+        ],
+        "min": [
+          -1,
+          0.002715262179963318,
+          -8.298559386463813
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18d5d52daae3651b4b4400f2b3743f6e492235a13739c1c9ba46e875243b9260",
+      "id": "sf.render.charon-colony-service-barge.mesh.collision-hull.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 748
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.093690189754508,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c576d50fd4cea9dc4ed353d2eda96c9d5b25df4b0e8abc7961f7ca808e0e4c8",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-armor.primitive.0",
+      "indexCount": 12456,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Armor",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 4248
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756001140926742,
+          5.600397505947773
+        ],
+        "min": [
+          1.7519989013671875,
+          5.861500117923356,
+          -4.2483977462737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f246833c3a944b3c41c5679e8585ed3264b6f259fbffee35a6df85acd147a62",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Beacon_Amber",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 248
+    },
+    {
+      "bounds": {
+        "max": [
+          1.720001220703125,
+          7.944994293257654,
+          4.440031587027956
+        ],
+        "min": [
+          -0.8800010681152344,
+          6.730887569382727,
+          2.4999682317739236
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d5b9cc6afcb2b10934bbae1ed87ba7022b3fdffeced99182ed21da60ee367132",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal.primitive.0",
+      "indexCount": 2364,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_BrushedMetal",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 720
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8997335758436646,
+          8.389938551807628,
+          5.987500190734863
+        ],
+        "min": [
+          0.10026454661002493,
+          6.750061791515126,
+          -1.6800000667572021
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a770590194074909795cc4c019bb870d606900838eb1b0e7fa31da3fc5e65fbd",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-canopy.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_CANOPY",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c150478e8737a0964b33bcb5d8410f02e3351ee81606c5e6d7e3e871ae56c61",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_PORT",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b3b9b51ce772a2ff6831444b69b404b806b9cd9d9ff3989004bf8dedb414425",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          70.00000922619581,
+          3.0994139580533515,
+          8.100000381469727
+        ],
+        "min": [
+          66.99999077380419,
+          0.7005857558443536,
+          -8.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0ace2ce909a89dbd5d45f8e228a2ec4a93c6ea7a78e541ca27acd96c4c9a1b76",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged.primitive.0",
+      "indexCount": 1128,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull_aged",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 346
+    },
+    {
+      "bounds": {
+        "max": [
+          72.17097473144531,
+          11.098254127985872,
+          5.951363712335472
+        ],
+        "min": [
+          -0.48614501953125,
+          4.40174539517697,
+          -6.288612514520531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98301b2a6921aafa3e9906bb1e7f4207dbec766904c8625845c3569f461f5952",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull.primitive.0",
+      "indexCount": 2604,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Hull",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 756
+    },
+    {
+      "bounds": {
+        "max": [
+          4.125085291523563,
+          8.83999824435884,
+          5.944999694824219
+        ],
+        "min": [
+          -0.6500868174024697,
+          4.150002003596482,
+          -4.315874099731445
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "78af34b205e8edd28a529fb9ee6dd972b2cfdc7556b955174dd1edf8786cc5a6",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 5580,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Mechanical",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1818
+    },
+    {
+      "bounds": {
+        "max": [
+          72.30000305175781,
+          9.699374935230214,
+          6.998327834258296
+        ],
+        "min": [
+          -0.7299995422363281,
+          1.8006253031883652,
+          -6.998327834258296
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "81130f1dbcf0afc84f0b1c47bf7eed5bf19d6fa12de847792b6a5fb6a3946ca5",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark.primitive.0",
+      "indexCount": 7512,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MechanicalDark",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2490
+    },
+    {
+      "bounds": {
+        "max": [
+          56.5,
+          5.999031037324137,
+          4.999298074282052
+        ],
+        "min": [
+          5.5,
+          5.500968962675863,
+          -4.999298074282052
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e50606e815a4f9dc421aa8b7e48a540d47ad588e601467ff8d82ae9e2dddf38",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-stone.primitive.0",
+      "indexCount": 2256,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Stone",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 680
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          7.544286319889861,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7507135179855053,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f244d8a17de5a19f654590064c7e8058ac322704b2e893a8da17667f30cc710b",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-warning.primitive.0",
+      "indexCount": 924,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Warning",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 412
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.093690189754508,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "98c07757f22d97ac34164a9117e91e2a15f82338c3d0838d93d1c0a1dd069e1a",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-armor.primitive.0",
+      "indexCount": 6246,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 2439
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756015740101013,
+          5.600278830533353
+        ],
+        "min": [
+          1.7515678405761719,
+          5.861484565074768,
+          -4.248577094083157
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e5781784b0c6315027cf1ef1d9f696acebe8922a5fbdd315d7c5a6f00c54e90c",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 172
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7175178527832031,
+          7.940074137431766,
+          4.435196902410889
+        ],
+        "min": [
+          -0.8752479553222656,
+          6.733461209553098,
+          2.5030653217864995
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30a8e473dfed4a575d549937b7251adb18d78506ea04fe6ff5a04c43c84d462c",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_BrushedMetal",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.8997335758436646,
+          8.389938551807628,
+          5.987500190734863
+        ],
+        "min": [
+          0.10026454661002493,
+          6.750061791515126,
+          -1.6800000667572021
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5497b4613c813ae1bb2e9c71c88c9afad61a565195187ec420d902e0f8047d62",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-canopy.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38361ffd7e577d5abc4c48d738c4b8647578030d1408fe1da1e5bfe90be85339",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14953a913224715b98e9391d38ea6890329b1ec4284566e71a423da37f4feaea",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          69.99514586793008,
+          3.095718280341797,
+          8.094786643981934
+        ],
+        "min": [
+          67.00486176146445,
+          0.7042815527651975,
+          -8.095338821411133
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d43bb33c2d5724b3270ee21c4b913a78f64a46d6e77c0d552dd0ae8cb18e4f6",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull_aged",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 243
+    },
+    {
+      "bounds": {
+        "max": [
+          72.17097473144531,
+          11.098254127985872,
+          5.951363712335472
+        ],
+        "min": [
+          -0.48614501953125,
+          4.40174539517697,
+          -6.288612514520531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d00f7187248dc7d503d4968e0b3fd6ab3b2a25a512c9e31d3cad6daf16c76fd",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull.primitive.0",
+      "indexCount": 1830,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 539
+    },
+    {
+      "bounds": {
+        "max": [
+          4.120332200608248,
+          8.838188041979864,
+          5.9424357414245605
+        ],
+        "min": [
+          -0.6497834516382159,
+          4.153225074475214,
+          -4.315645217895508
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "75beb34c9f7dcdc8090d3511b259da072cc0b26bd4cfc59e4e1a13a1252d4a81",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanical.primitive.0",
+      "indexCount": 2004,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 865
+    },
+    {
+      "bounds": {
+        "max": [
+          72.29763793945312,
+          9.695143814304036,
+          6.99810118999313
+        ],
+        "min": [
+          -0.7299995422363281,
+          1.8055647657130547,
+          -6.99810118999313
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "366a6ce485a1616febb41e309dbb002c4476b73177caf29b34efe031264043c4",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark.primitive.0",
+      "indexCount": 1752,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 848
+    },
+    {
+      "bounds": {
+        "max": [
+          56.49488067626953,
+          5.995869008594063,
+          4.996027885468678
+        ],
+        "min": [
+          5.505121231079102,
+          5.504131468243095,
+          -4.994336067231373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "958b470f63e034257f4ffb659d5119653d6b09945fa452e514412b3e87170978",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-stone.primitive.0",
+      "indexCount": 558,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Stone",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 215
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          7.542667457737761,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7490946558334057,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a26b886bd638677c992a7e7163e7ecd6905330ffe1709e423651c85f852b735f",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-warning.primitive.0",
+      "indexCount": 396,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 264
+    },
+    {
+      "bounds": {
+        "max": [
+          70.39094543457031,
+          11.092205359805781,
+          8.281222706991866
+        ],
+        "min": [
+          -0.9796028137207031,
+          0.01862928343896275,
+          -8.281222706991866
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd25a7be40f82bbe4d24028de6d77c29a086cc919c4c6eb6730c5e369b920ced",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-armor.primitive.0",
+      "indexCount": 2166,
+      "indexed": true,
+      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 1219
+    },
+    {
+      "bounds": {
+        "max": [
+          71.7249984741211,
+          10.756082391289222,
+          5.5984422280208
+        ],
+        "min": [
+          1.7496757507324219,
+          5.861418867560874,
+          -4.25922218102373
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "45139b5fe4a11f63de01f8c01bde081581fba694ce9f41c05b936fdf631c91ba",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber.primitive.0",
+      "indexCount": 246,
+      "indexed": true,
+      "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Beacon_Amber",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 153
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7175178527832031,
+          7.26132730447104,
+          2.9142685840807045
+        ],
+        "min": [
+          0.582489013671875,
+          6.733388386141753,
+          2.50313368337535
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "49b40769d6ff176faf86616b811a1d75f7be57d51ffee78fc055163640ef6d2d",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          7.176766254731114
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          6.823233745268886
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "38361ffd7e577d5abc4c48d738c4b8647578030d1408fe1da1e5bfe90be85339",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_PORT",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          67.67499923706055,
+          4.523325389365883,
+          -6.823233745268886
+        ],
+        "min": [
+          0.3250007629394531,
+          4.27667480136898,
+          -7.176766254731114
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "14953a913224715b98e9391d38ea6890329b1ec4284566e71a423da37f4feaea",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          69.989302370078,
+          3.0896282422943493,
+          8.08474349975586
+        ],
+        "min": [
+          67.0157254009181,
+          0.7103717696265799,
+          -8.089757919311523
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b84640b2ad586f3ea18a57f624139bfb5124e86122e15bf067d6cc4889ce383",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged.primitive.0",
+      "indexCount": 168,
+      "indexed": true,
+      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull_aged",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged",
+      "primitiveIndex": 0,
+      "vertexCount": 78
+    },
+    {
+      "bounds": {
+        "max": [
+          72.1607894897461,
+          11.088691709381175,
+          5.949565225129642
+        ],
+        "min": [
+          -0.4728202819824219,
+          4.412083151000905,
+          -6.268717103486575
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6beb0c3f80799bc0eaea1f7ab6dbec9583df568542a63685b6fcf7659b019b6d",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull.primitive.0",
+      "indexCount": 690,
+      "indexed": true,
+      "materialHash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 235
+    },
+    {
+      "bounds": {
+        "max": [
+          4.106023730591968,
+          8.838204396030422,
+          5.735569477081299
+        ],
+        "min": [
+          -0.6500338929454834,
+          4.169261920192723,
+          -4.315494060516357
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8131472cb892f17b7e35841395ce3cd9a2923775664f77bf47491def4c08ad2b",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanical.primitive.0",
+      "indexCount": 444,
+      "indexed": true,
+      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Mechanical",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 252
+    },
+    {
+      "bounds": {
+        "max": [
+          72.2841567993164,
+          9.683340973597506,
+          5.9491869559180195
+        ],
+        "min": [
+          -0.7300033569335938,
+          4.950467162388821,
+          -5.299187337387746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "47ed7c2d19b9188abd8d76cac071d902450c5fc6bfdc7d09f8003a43a5756907",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 270
+    },
+    {
+      "bounds": {
+        "max": [
+          56.48415756225586,
+          5.983321551215453,
+          4.983748333962082
+        ],
+        "min": [
+          5.515842437744141,
+          5.516678448784547,
+          -4.983748333962082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a426c5a77e2e81899e9391c1b370caf38b5df24fc7132a5a05b36d849e7bbc5d",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-stone.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Stone",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          68,
+          7.528645450145458,
+          7.201147495956298
+        ],
+        "min": [
+          0,
+          3.7516747173960456,
+          -7.201147495956298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5ccc59b5d52c75f373947968e7ba2b3a28222533b027617a37409058ad9c371",
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-warning.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Warning",
+      "nodeId": "sf.render.charon-colony-service-barge.mesh.lod2-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 248
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "139067918fee2c91b39f7ea9d74cc6ea38b7bb83e885f77e86c7d04b446f2a69",
+      "id": "material:139067918fee2c91b39f7ea9",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "id": "material:18d0ea13c3be0a94dbbd42b5",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
+      "id": "material:5ef013365e942f1ac873c307",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "98b096766a0680120cab62183d970ab98c99a47cde4a9e05aee6028a57c333e3",
+      "id": "material:98b096766a0680120cab6218",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "id": "material:ab17b13dc8559ae23c6f811c",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "id": "material:eb6bbae95702790bb530b9a9",
+      "name": "Material_Hull_aged",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "id": "material:f543c846d70e4889bb87a4e1",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.collision-hull",
+      "localTransform": [
+        36.646751403808594,
+        0,
+        0,
+        0,
+        0,
+        36.646751403808594,
+        0,
+        0,
+        0,
+        0,
+        36.646751403808594,
+        0,
+        35.646751403808594,
+        5.5500002428889275,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.646751403808594,
+        0,
+        0,
+        0,
+        0,
+        36.646751403808594,
+        0,
+        0,
+        0,
+        0,
+        36.646751403808594,
+        0,
+        35.646751403808594,
+        5.5500002428889275,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-armor",
+      "localTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Armor",
+      "nodeName": "LOD0_Armor",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber",
+      "localTransform": [
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Beacon_Amber",
+      "nodeName": "LOD0_Beacon_Amber",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        0,
+        0,
+        0,
+        34.98649978637695,
+        0,
+        36.73849868774414,
+        8.308750629425049,
+        0.6759998798370361,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal",
+      "localTransform": [
+        1.3000011444091797,
+        0,
+        0,
+        0,
+        0,
+        1.3000011444091797,
+        0,
+        0,
+        0,
+        0,
+        1.3000011444091797,
+        0,
+        0.4200000762939453,
+        7.33794093132019,
+        3.46999990940094,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_BrushedMetal",
+      "nodeName": "LOD0_BrushedMetal",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        1.3000011444091797,
+        0,
+        0,
+        0,
+        0,
+        1.3000011444091797,
+        0,
+        0,
+        0,
+        0,
+        1.3000011444091797,
+        0,
+        0.4200000762939453,
+        7.33794093132019,
+        3.46999990940094,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-canopy",
+      "localTransform": [
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_CANOPY",
+      "nodeName": "LOD0_CANOPY",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+      "nodeName": "LOD0_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD0_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull",
+      "localTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged",
+      "localTransform": [
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        68.5,
+        1.8999998569488525,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_aged",
+      "nodeName": "LOD0_Hull_aged",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        0,
+        0,
+        0,
+        8.100000381469727,
+        0,
+        68.5,
+        1.8999998569488525,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanical",
+      "localTransform": [
+        5.130436897277832,
+        0,
+        0,
+        0,
+        0,
+        5.130436897277832,
+        0,
+        0,
+        0,
+        0,
+        5.130436897277832,
+        0,
+        1.7374992370605469,
+        6.495000123977661,
+        0.8145627975463867,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        5.130436897277832,
+        0,
+        0,
+        0,
+        0,
+        5.130436897277832,
+        0,
+        0,
+        0,
+        0,
+        5.130436897277832,
+        0,
+        1.7374992370605469,
+        6.495000123977661,
+        0.8145627975463867,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark",
+      "localTransform": [
+        36.51500129699707,
+        0,
+        0,
+        0,
+        0,
+        36.51500129699707,
+        0,
+        0,
+        0,
+        0,
+        36.51500129699707,
+        0,
+        35.78500175476074,
+        5.7500001192092896,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_MechanicalDark",
+      "nodeName": "LOD0_MechanicalDark",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.51500129699707,
+        0,
+        0,
+        0,
+        0,
+        36.51500129699707,
+        0,
+        0,
+        0,
+        0,
+        36.51500129699707,
+        0,
+        35.78500175476074,
+        5.7500001192092896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-stone",
+      "localTransform": [
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Stone",
+      "nodeName": "LOD0_Stone",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        0,
+        0,
+        0,
+        25.5,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod0-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.647499918937683,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.647499918937683,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-armor",
+      "localTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        0,
+        0,
+        0,
+        35.695472717285156,
+        0,
+        34.695472717285156,
+        5.5466047966328915,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber",
+      "localTransform": [
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        0,
+        0,
+        0,
+        34.98671531677246,
+        0,
+        36.73828315734863,
+        8.30875015258789,
+        0.6758508682250977,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal",
+      "localTransform": [
+        1.2963829040527344,
+        0,
+        0,
+        0,
+        0,
+        1.2963829040527344,
+        0,
+        0,
+        0,
+        0,
+        1.2963829040527344,
+        0,
+        0.42113494873046875,
+        7.336767673492432,
+        3.469131112098694,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_BrushedMetal",
+      "nodeName": "LOD1_BrushedMetal",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        1.2963829040527344,
+        0,
+        0,
+        0,
+        0,
+        1.2963829040527344,
+        0,
+        0,
+        0,
+        0,
+        1.2963829040527344,
+        0,
+        0.42113494873046875,
+        7.336767673492432,
+        3.469131112098694,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-canopy",
+      "localTransform": [
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        0,
+        0,
+        0,
+        3.8337501287460327,
+        0,
+        1.9999990612268448,
+        7.570000171661377,
+        2.1537500619888306,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull",
+      "localTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        0,
+        0,
+        0,
+        36.32855987548828,
+        0,
+        35.84241485595703,
+        7.749999761581421,
+        -0.1686244010925293,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged",
+      "localTransform": [
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull_aged",
+      "nodeName": "LOD1_Hull_aged",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        0,
+        0,
+        0,
+        8.095062732696533,
+        0,
+        68.50000381469727,
+        1.8999999165534973,
+        -0.0002760887145996094,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanical",
+      "localTransform": [
+        5.129040479660034,
+        0,
+        0,
+        0,
+        0,
+        5.129040479660034,
+        0,
+        0,
+        0,
+        0,
+        5.129040479660034,
+        0,
+        1.7352743744850159,
+        6.495706558227539,
+        0.8133952617645264,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        5.129040479660034,
+        0,
+        0,
+        0,
+        0,
+        5.129040479660034,
+        0,
+        0,
+        0,
+        0,
+        5.129040479660034,
+        0,
+        1.7352743744850159,
+        6.495706558227539,
+        0.8133952617645264,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark",
+      "localTransform": [
+        36.51381874084473,
+        0,
+        0,
+        0,
+        0,
+        36.51381874084473,
+        0,
+        0,
+        0,
+        0,
+        36.51381874084473,
+        0,
+        35.7838191986084,
+        5.750354290008545,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.51381874084473,
+        0,
+        0,
+        0,
+        0,
+        36.51381874084473,
+        0,
+        0,
+        0,
+        0,
+        36.51381874084473,
+        0,
+        35.7838191986084,
+        5.750354290008545,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-stone",
+      "localTransform": [
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        31.000000953674316,
+        5.750000238418579,
+        0.0008459091186523438,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Stone",
+      "nodeName": "LOD1_Stone",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        0,
+        0,
+        0,
+        25.494879722595215,
+        0,
+        31.000000953674316,
+        5.750000238418579,
+        0.0008459091186523438,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod1-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.6458810567855835,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.6458810567855835,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-armor",
+      "localTransform": [
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        34.705671310424805,
+        5.555417321622372,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        0,
+        0,
+        0,
+        35.68527412414551,
+        0,
+        34.705671310424805,
+        5.555417321622372,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber",
+      "localTransform": [
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Beacon_Amber",
+      "nodeName": "LOD2_Beacon_Amber",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        0,
+        0,
+        0,
+        34.987661361694336,
+        0,
+        36.73733711242676,
+        8.308750629425049,
+        0.6696100234985352,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal",
+      "localTransform": [
+        0.5675144195556641,
+        0,
+        0,
+        0,
+        0,
+        0.5675144195556641,
+        0,
+        0,
+        0,
+        0,
+        0.5675144195556641,
+        0,
+        1.150003433227539,
+        6.9973578453063965,
+        2.7087011337280273,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        0.5675144195556641,
+        0,
+        0,
+        0,
+        0,
+        0.5675144195556641,
+        0,
+        0,
+        0,
+        0,
+        0.5675144195556641,
+        0,
+        1.150003433227539,
+        6.9973578453063965,
+        2.7087011337280273,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+      "nodeName": "LOD2_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard",
+      "localTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD2_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        0,
+        0,
+        0,
+        33.67499923706055,
+        0,
+        34,
+        4.400000095367432,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull",
+      "localTransform": [
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        35.843984603881836,
+        7.75038743019104,
+        -0.1595759391784668,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        0,
+        0,
+        0,
+        36.31680488586426,
+        0,
+        35.843984603881836,
+        7.75038743019104,
+        -0.1595759391784668,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged",
+      "localTransform": [
+        8.087250709533691,
+        0,
+        0,
+        0,
+        0,
+        8.087250709533691,
+        0,
+        0,
+        0,
+        0,
+        8.087250709533691,
+        0,
+        68.50251388549805,
+        1.9000000059604645,
+        -0.0025072097778320312,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull_aged",
+      "nodeName": "LOD2_Hull_aged",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        8.087250709533691,
+        0,
+        0,
+        0,
+        0,
+        8.087250709533691,
+        0,
+        0,
+        0,
+        0,
+        8.087250709533691,
+        0,
+        68.50251388549805,
+        1.9000000059604645,
+        -0.0025072097778320312,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanical",
+      "localTransform": [
+        5.025531768798828,
+        0,
+        0,
+        0,
+        0,
+        5.025531768798828,
+        0,
+        0,
+        0,
+        0,
+        5.025531768798828,
+        0,
+        1.7279949188232422,
+        6.503733158111572,
+        0.7100377082824707,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Mechanical",
+      "nodeName": "LOD2_Mechanical",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        5.025531768798828,
+        0,
+        0,
+        0,
+        0,
+        5.025531768798828,
+        0,
+        0,
+        0,
+        0,
+        5.025531768798828,
+        0,
+        1.7279949188232422,
+        6.503733158111572,
+        0.7100377082824707,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark",
+      "localTransform": [
+        36.507080078125,
+        0,
+        0,
+        0,
+        0,
+        36.507080078125,
+        0,
+        0,
+        0,
+        0,
+        36.507080078125,
+        0,
+        35.777076721191406,
+        7.316904067993164,
+        0.3249998092651367,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        36.507080078125,
+        0,
+        0,
+        0,
+        0,
+        36.507080078125,
+        0,
+        0,
+        0,
+        0,
+        36.507080078125,
+        0,
+        35.777076721191406,
+        7.316904067993164,
+        0.3249998092651367,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-stone",
+      "localTransform": [
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Stone",
+      "nodeName": "LOD2_Stone",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        0,
+        0,
+        0,
+        25.48415756225586,
+        0,
+        31,
+        5.75,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.mesh.lod2-warning",
+      "localTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.640160083770752,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Warning",
+      "nodeName": "LOD2_Warning",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.charon-colony-service-barge.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        34,
+        5.640160083770752,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.charon-colony-service-barge.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_CHARON_COLONY_SERVICE_BARGE_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.charon-colony-service-barge.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "300eaef171de302c0da140c7c05eb354f68fba5fd735b16d9834b94fc1367b3e"
+    },
+    "sourceGlb": {
+      "bytes": 498992,
+      "sha256": "24613d199704a08cf171cae45d5bd9999cd9e880479af97ecb584e87de3e5aaf",
+      "uri": "place_charon_colony_service_barge.glb"
+    },
+    "sourceManifest": {
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 507968,
+    "sha256": "464463f23ff6dd82686a40468c1f28a91c03a05fe7a608e00f09d242f20d9274",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        35.650001525878906,
+        5.548886765748573,
+        0
+      ],
+      "max": [
+        72.30000305175781,
+        11.098254127985872,
+        8.301019382479717
+      ],
+      "min": [
+        -1,
+        -0.00048059648872467164,
+        -8.301019382479717
+      ],
+      "size": [
+        73.30000305175781,
+        11.098734724474596,
+        16.602038764959435
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          5.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Barge_Bridge",
+        "planIndex": 38,
+        "tags": {
+          "socket": true,
+          "socketRole": "bridge_zone"
+        },
+        "userData": {
+          "name": "SOCKET_Barge_Bridge",
+          "role": "bridge_zone",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "bridge_zone"
+          },
+          "spaceface.semanticRole": "bridge_zone",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Barge_Bridge",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-barge-bridge"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          32,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Aft",
+        "planIndex": 39,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Aft",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Aft",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-container-aft"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          12,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Fore",
+        "planIndex": 40,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Fore",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Fore",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-container-fore"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          22,
+          5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Container_Mid",
+        "planIndex": 41,
+        "tags": {
+          "socket": true,
+          "socketRole": "container_row"
+        },
+        "userData": {
+          "name": "SOCKET_Container_Mid",
+          "role": "container_row",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "container_row"
+          },
+          "spaceface.semanticRole": "container_row",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Container_Mid",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-container-mid"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Drive_Plume",
+        "planIndex": 42,
+        "tags": {
+          "socket": true,
+          "socketRole": "drive_plume"
+        },
+        "userData": {
+          "name": "SOCKET_Drive_Plume",
+          "role": "drive_plume",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "drive_plume"
+          },
+          "spaceface.semanticRole": "drive_plume",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Drive_Plume",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-drive-plume"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          26,
+          6.199999809265137,
+          0,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 43,
+        "tags": {
+          "socket": true,
+          "socketRole": "emissive"
+        },
+        "userData": {
+          "name": "SOCKET_Emissive",
+          "role": "emissive",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "emissive"
+          },
+          "spaceface.semanticRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          -7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Port",
+        "planIndex": 44,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Port",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Port",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-status-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          44,
+          0,
+          7.5,
+          1
+        ],
+        "name": "SOCKET_Status_Starboard",
+        "planIndex": 45,
+        "tags": {
+          "socket": true,
+          "socketRole": "status_light"
+        },
+        "userData": {
+          "name": "SOCKET_Status_Starboard",
+          "role": "status_light",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "status_light"
+          },
+          "spaceface.semanticRole": "status_light",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Status_Starboard",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-status-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          33.852500915527344,
+          3.012500047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 46,
+        "tags": {
+          "socket": true,
+          "socketRole": "structure_core"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "role": "structure_core",
+          "spaceface": {
+            "semanticMarker": true,
+            "semanticRole": "structure_core"
+          },
+          "spaceface.semanticRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.5,
+          2.200000047683716,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 47,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Trail_Main",
+          "role": "vfx",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.charon-colony-service-barge.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 3,
+      "glass": 2,
+      "hull": 10,
+      "mechanical": 9,
+      "signal": 9,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "warning"
+      }
+    ],
+    "nodeCount": 48,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          34.695472717285156,
+          5.5466047966328915,
+          0,
+          1
+        ],
+        "name": "LOD0_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.98649978637695,
+          0,
+          0,
+          0,
+          0,
+          34.98649978637695,
+          0,
+          0,
+          0,
+          0,
+          34.98649978637695,
+          0,
+          36.73849868774414,
+          8.308750629425049,
+          0.6759998798370361,
+          1
+        ],
+        "name": "LOD0_Beacon_Amber",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3000011444091797,
+          0,
+          0,
+          0,
+          0,
+          1.3000011444091797,
+          0,
+          0,
+          0,
+          0,
+          1.3000011444091797,
+          0,
+          0.4200000762939453,
+          7.33794093132019,
+          3.46999990940094,
+          1
+        ],
+        "name": "LOD0_BrushedMetal",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          3.8337501287460327,
+          0,
+          0,
+          0,
+          0,
+          3.8337501287460327,
+          0,
+          0,
+          0,
+          0,
+          3.8337501287460327,
+          0,
+          1.9999990612268448,
+          7.570000171661377,
+          2.1537500619888306,
+          1
+        ],
+        "name": "LOD0_CANOPY",
+        "planIndex": 6,
+        "tags": {
+          "canopy": true,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_PORT",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD0_HOOK_NAV_STARBOARD",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          35.84241485595703,
+          7.749999761581421,
+          -0.1686244010925293,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.100000381469727,
+          0,
+          0,
+          0,
+          0,
+          8.100000381469727,
+          0,
+          0,
+          0,
+          0,
+          8.100000381469727,
+          0,
+          68.5,
+          1.8999998569488525,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_aged",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.130436897277832,
+          0,
+          0,
+          0,
+          0,
+          5.130436897277832,
+          0,
+          0,
+          0,
+          0,
+          5.130436897277832,
+          0,
+          1.7374992370605469,
+          6.495000123977661,
+          0.8145627975463867,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.51500129699707,
+          0,
+          0,
+          0,
+          0,
+          36.51500129699707,
+          0,
+          0,
+          0,
+          0,
+          36.51500129699707,
+          0,
+          35.78500175476074,
+          5.7500001192092896,
+          0,
+          1
+        ],
+        "name": "LOD0_MechanicalDark",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.5,
+          0,
+          0,
+          0,
+          0,
+          25.5,
+          0,
+          0,
+          0,
+          0,
+          25.5,
+          0,
+          31,
+          5.75,
+          0,
+          1
+        ],
+        "name": "LOD0_Stone",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          5.647499918937683,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          0,
+          0,
+          0,
+          35.695472717285156,
+          0,
+          34.695472717285156,
+          5.5466047966328915,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.98671531677246,
+          0,
+          0,
+          0,
+          0,
+          34.98671531677246,
+          0,
+          0,
+          0,
+          0,
+          34.98671531677246,
+          0,
+          36.73828315734863,
+          8.30875015258789,
+          0.6758508682250977,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.2963829040527344,
+          0,
+          0,
+          0,
+          0,
+          1.2963829040527344,
+          0,
+          0,
+          0,
+          0,
+          1.2963829040527344,
+          0,
+          0.42113494873046875,
+          7.336767673492432,
+          3.469131112098694,
+          1
+        ],
+        "name": "LOD1_BrushedMetal",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          3.8337501287460327,
+          0,
+          0,
+          0,
+          0,
+          3.8337501287460327,
+          0,
+          0,
+          0,
+          0,
+          3.8337501287460327,
+          0,
+          1.9999990612268448,
+          7.570000171661377,
+          2.1537500619888306,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 18,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          0,
+          0,
+          0,
+          36.32855987548828,
+          0,
+          35.84241485595703,
+          7.749999761581421,
+          -0.1686244010925293,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.095062732696533,
+          0,
+          0,
+          0,
+          0,
+          8.095062732696533,
+          0,
+          0,
+          0,
+          0,
+          8.095062732696533,
+          0,
+          68.50000381469727,
+          1.8999999165534973,
+          -0.0002760887145996094,
+          1
+        ],
+        "name": "LOD1_Hull_aged",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.129040479660034,
+          0,
+          0,
+          0,
+          0,
+          5.129040479660034,
+          0,
+          0,
+          0,
+          0,
+          5.129040479660034,
+          0,
+          1.7352743744850159,
+          6.495706558227539,
+          0.8133952617645264,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.51381874084473,
+          0,
+          0,
+          0,
+          0,
+          36.51381874084473,
+          0,
+          0,
+          0,
+          0,
+          36.51381874084473,
+          0,
+          35.7838191986084,
+          5.750354290008545,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.494879722595215,
+          0,
+          0,
+          0,
+          0,
+          25.494879722595215,
+          0,
+          0,
+          0,
+          0,
+          25.494879722595215,
+          0,
+          31.000000953674316,
+          5.750000238418579,
+          0.0008459091186523438,
+          1
+        ],
+        "name": "LOD1_Stone",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          5.6458810567855835,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          35.68527412414551,
+          0,
+          0,
+          0,
+          0,
+          35.68527412414551,
+          0,
+          0,
+          0,
+          0,
+          35.68527412414551,
+          0,
+          34.705671310424805,
+          5.555417321622372,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34.987661361694336,
+          0,
+          0,
+          0,
+          0,
+          34.987661361694336,
+          0,
+          0,
+          0,
+          0,
+          34.987661361694336,
+          0,
+          36.73733711242676,
+          8.308750629425049,
+          0.6696100234985352,
+          1
+        ],
+        "name": "LOD2_Beacon_Amber",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.5675144195556641,
+          0,
+          0,
+          0,
+          0,
+          0.5675144195556641,
+          0,
+          0,
+          0,
+          0,
+          0.5675144195556641,
+          0,
+          1.150003433227539,
+          6.9973578453063965,
+          2.7087011337280273,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_PORT",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          0,
+          0,
+          0,
+          33.67499923706055,
+          0,
+          34,
+          4.400000095367432,
+          -7,
+          1
+        ],
+        "name": "LOD2_HOOK_NAV_STARBOARD",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.31680488586426,
+          0,
+          0,
+          0,
+          0,
+          36.31680488586426,
+          0,
+          0,
+          0,
+          0,
+          36.31680488586426,
+          0,
+          35.843984603881836,
+          7.75038743019104,
+          -0.1595759391784668,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          8.087250709533691,
+          0,
+          0,
+          0,
+          0,
+          8.087250709533691,
+          0,
+          0,
+          0,
+          0,
+          8.087250709533691,
+          0,
+          68.50251388549805,
+          1.9000000059604645,
+          -0.0025072097778320312,
+          1
+        ],
+        "name": "LOD2_Hull_aged",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.025531768798828,
+          0,
+          0,
+          0,
+          0,
+          5.025531768798828,
+          0,
+          0,
+          0,
+          0,
+          5.025531768798828,
+          0,
+          1.7279949188232422,
+          6.503733158111572,
+          0.7100377082824707,
+          1
+        ],
+        "name": "LOD2_Mechanical",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          36.507080078125,
+          0,
+          0,
+          0,
+          0,
+          36.507080078125,
+          0,
+          0,
+          0,
+          0,
+          36.507080078125,
+          0,
+          35.777076721191406,
+          7.316904067993164,
+          0.3249998092651367,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          25.48415756225586,
+          0,
+          0,
+          0,
+          0,
+          25.48415756225586,
+          0,
+          0,
+          0,
+          0,
+          25.48415756225586,
+          0,
+          31,
+          5.75,
+          0,
+          1
+        ],
+        "name": "LOD2_Stone",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          0,
+          0,
+          0,
+          34,
+          0,
+          34,
+          5.640160083770752,
+          0,
+          1
+        ],
+        "name": "LOD2_Warning",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_charon_colony_service_barge.glb"
+  },
+  "runtimeHash": "c0fdbb02d39a221fbb00cc4335c8e318cad7a44ae4a7502b6ba5dd1c046a6de8",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          72.30000305175781,
+          11.098254127985872,
+          8.301019382479717
+        ],
+        "min": [
+          -1,
+          -0.00048059648872467164,
+          -8.301019382479717
+        ]
+      },
+      "id": "sf.render.charon-colony-service-barge.body",
+      "nodeIds": [
+        "sf.render.charon-colony-service-barge.mesh.collision-hull",
+        "sf.render.charon-colony-service-barge.mesh.lod0-armor",
+        "sf.render.charon-colony-service-barge.mesh.lod0-beacon-amber",
+        "sf.render.charon-colony-service-barge.mesh.lod0-brushedmetal",
+        "sf.render.charon-colony-service-barge.mesh.lod0-canopy",
+        "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-port",
+        "sf.render.charon-colony-service-barge.mesh.lod0-hook-nav-starboard",
+        "sf.render.charon-colony-service-barge.mesh.lod0-hull",
+        "sf.render.charon-colony-service-barge.mesh.lod0-hull-aged",
+        "sf.render.charon-colony-service-barge.mesh.lod0-mechanical",
+        "sf.render.charon-colony-service-barge.mesh.lod0-mechanicaldark",
+        "sf.render.charon-colony-service-barge.mesh.lod0-stone",
+        "sf.render.charon-colony-service-barge.mesh.lod0-warning",
+        "sf.render.charon-colony-service-barge.mesh.lod1-armor",
+        "sf.render.charon-colony-service-barge.mesh.lod1-beacon-amber",
+        "sf.render.charon-colony-service-barge.mesh.lod1-brushedmetal",
+        "sf.render.charon-colony-service-barge.mesh.lod1-canopy",
+        "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-port",
+        "sf.render.charon-colony-service-barge.mesh.lod1-hook-nav-starboard",
+        "sf.render.charon-colony-service-barge.mesh.lod1-hull",
+        "sf.render.charon-colony-service-barge.mesh.lod1-hull-aged",
+        "sf.render.charon-colony-service-barge.mesh.lod1-mechanical",
+        "sf.render.charon-colony-service-barge.mesh.lod1-mechanicaldark",
+        "sf.render.charon-colony-service-barge.mesh.lod1-stone",
+        "sf.render.charon-colony-service-barge.mesh.lod1-warning",
+        "sf.render.charon-colony-service-barge.mesh.lod2-armor",
+        "sf.render.charon-colony-service-barge.mesh.lod2-beacon-amber",
+        "sf.render.charon-colony-service-barge.mesh.lod2-brushedmetal",
+        "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-port",
+        "sf.render.charon-colony-service-barge.mesh.lod2-hook-nav-starboard",
+        "sf.render.charon-colony-service-barge.mesh.lod2-hull",
+        "sf.render.charon-colony-service-barge.mesh.lod2-hull-aged",
+        "sf.render.charon-colony-service-barge.mesh.lod2-mechanical",
+        "sf.render.charon-colony-service-barge.mesh.lod2-mechanicaldark",
+        "sf.render.charon-colony-service-barge.mesh.lod2-stone",
+        "sf.render.charon-colony-service-barge.mesh.lod2-warning",
+        "sf.render.charon-colony-service-barge.root"
+      ]
+    }
+  ]
+}

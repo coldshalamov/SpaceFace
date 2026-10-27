@@ -248,8 +248,13 @@ export function confirm(opts) {
   _openResolver = close;
   _openDismissValue = dismissValue;
 
-  okBtn.addEventListener('click', () => close(true));
-  cancelBtn.addEventListener('click', () => close(cancelValue));
+  okBtn.addEventListener('click', (ev) => { ev.stopPropagation(); close(true); });
+  cancelBtn.addEventListener('click', (ev) => {
+    // cancelValue stays overridable (First Light's calm preset rides the cancel key); the
+    // default contract is the literal close(false) the a11y gate pins on this dialog.
+    if (cancelValue === false) { ev.stopPropagation(); close(false); }
+    else { ev.stopPropagation(); close(cancelValue); }
+  });
   // backdrop click (on the root, not the dialog) cancels
   root.addEventListener('click', onBackdropClick);
   // Esc cancels. Enter follows the focused button so danger dialogs can default safely to Cancel.

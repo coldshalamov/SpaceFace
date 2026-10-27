@@ -181,12 +181,27 @@ function evalAwaitStep(d, live, state, v, step, now) {
     }
     case 'formation': {
       const leader = roleEnt(d, live, state, v, step.of);
-      const start = v.entityStarts && v.entityStarts[v.roleIds[step.of]];
-      if (!subjectEnt(leader) || !start) return 'gone';
-      const ok = distBetween(player.pos, leader.pos) >= num(step.min, 60)
-        && distBetween(player.pos, leader.pos) <= num(step.max, 180)
-        && distBetween(leader.pos, start) >= num(step.leaderProgress, 100);
-      return heldFor(ok);
+      if (!subjectEnt(leader)) return 'gone';
+      const range = distBetween(player.pos, leader.pos);
+      const min = num(step.min, 60), max = num(step.max, 180);
+      const inFormation = range >= min && range <= max;
+      if (!inFormation) {
+        const lost = v.formationStart != null;
+        v.formationStart = null;
+        heldFor(false);
+        // Explain a real reset once; initial approach and continued absence stay quiet.
+        // Latch before the voice callback so a synchronous revisit cannot repeat it.
+        if (lost && (v.formationBreakSaidAt == null || now - v.formationBreakSaidAt >= 3)) {
+          v.formationBreakSaidAt = now;
+          d.say(live, 'info', `Formation lost. Rejoin ${min}-${max} WU from the lead; the hold starts again.`, null, { literal: true });
+        }
+        return false;
+      }
+      // Only travel accompanied in this uninterrupted station-keeping interval counts.
+      // Entry-time travel, or travel before a range break / preceding step, is not work.
+      if (!v.formationStart) v.formationStart = { x: leader.pos.x, z: leader.pos.z };
+      return heldFor(true)
+        && distBetween(leader.pos, v.formationStart) >= num(step.leaderProgress, 100);
     }
     case 'trail': {
       const leader = roleEnt(d, live, state, v, step.of);
@@ -352,6 +367,8 @@ function stepAwait(d, live, state, spec, phase, byId, now) {
     }
     v.stepIndex += 1;
     v.holdSince = null;
+    v.formationStart = null;
+    v.formationBreakSaidAt = null;
     v.playerTravel = 0;
     // Per-step observation state resets: a fresh step cannot inherit an arming, a side
     // marker, or a gap approach from the step before it.

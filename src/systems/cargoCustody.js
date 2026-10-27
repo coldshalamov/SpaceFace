@@ -1,3 +1,4 @@
+import { occupantGenerationOf } from '../core/entity.js';
 // PQ-177.06 — operation-owned cargo and one-commit sales.
 // Production adapter for tools/reference/.../transferPlan.mjs semantics. That file is never imported.
 // Canonical writers stay economy→credits and cargo→player cargo. An operation hold is NOT the
@@ -132,6 +133,7 @@ export function ensureCommittedIntents(state) {
  */
 export function massDeclarationForTarget(state, target) {
   if (!state || !target || target.alive === false || target.destroyed === true) return null;
+  if (!state.entities?.get || state.entities.get(target.id) !== target) return null;
   const data = target.data && typeof target.data === 'object' ? target.data : null;
   if (!data) return null;
   const missionId = data.missionId != null && data.missionId !== ''
@@ -142,6 +144,8 @@ export function massDeclarationForTarget(state, target) {
   if (!active) return null;
   const mission = active.find((m) => m && String(m.id) === String(missionId));
   if (!mission || mission.status !== 'active' || mission.type !== 'tow_recovery') return null;
+  if (!Array.isArray(mission.targetEntityIds)
+      || !mission.targetEntityIds.some(id => String(id) === String(target.id))) return null;
   const decl = mission.params && mission.params.massDeclaration;
   if (!decl || typeof decl !== 'object') return null;
   const declaredMassT = Number(decl.declaredMassT);
@@ -162,6 +166,36 @@ export function massDeclarationForTarget(state, target) {
   };
 }
 
+// A mission owner grants this transient lease only while stamping the actual original
+// recovery body. Saved declaration fields alone never grant a Line-tier exception.
+const massScaleTowLeases = new WeakMap();
+const MASS_SCALE_ISSUERS = Object.freeze({ weight_audit: 'station_helios', sealed_recovery: 'station_smuggler', carrier_frame: 'station_ceres' });
+function activeMassScaleTowMission(state, target) {
+  if (!target || target.alive !== true || !(target.hull > 0) || target.type !== 'asteroid'
+    || state?.entities?.get(target.id) !== target || target.data?.physicalRole !== 'slag_core') return null;
+  const data=target.data,mission=state.missions?.active?.find(m=>m?.status==='active'
+    &&m.type==='tow_recovery'&&m.id===data.missionId&&m.id===data.missionTag);
+  const decl=mission?.params?.massDeclaration,stationId=MASS_SCALE_ISSUERS[decl?.kind];
+  if (!mission || !stationId || decl.version!==1 || decl.targetSlot!==0
+    || mission.destStationId!==stationId
+    || mission.sourceOfferId!==`eco_mass_scale_${decl.kind}_${stationId}`
+    || data.missionTargetSlot!==0 || data.identityKey!==`mission:${mission.id}:0`
+    || !data.worldRecordId || !Number.isFinite(decl.declaredMassT) || !(decl.declaredMassT>0)) return null;
+  return mission;
+}
+export function registerMassScaleTow(state, target, mission) {
+  const generation=occupantGenerationOf(target);
+  if (generation==null || activeMassScaleTowMission(state,target)!==mission) return false;
+  massScaleTowLeases.set(target,{state,generation,mission,recordId:target.data.worldRecordId,identity:target.data.identityKey});
+  return true;
+}
+export function isOriginalMassScaleTow(state, target) {
+  const lease=target&&massScaleTowLeases.get(target),mission=activeMassScaleTowMission(state,target);
+  return !!(lease&&mission&&lease.state===state&&lease.mission===mission
+    &&lease.generation===occupantGenerationOf(target)&&lease.recordId===target.data.worldRecordId
+    &&lease.identity===target.data.identityKey&&massDeclarationForTarget(state,target));
+}
+
 // Mirror of missions.js's missionTargetSlotOf (module-private there): explicit
 // data.missionTargetSlot first, then the `mission:<id>:<slot>` identityKey tail.
 function massTargetSlotOf(data, missionId) {
@@ -176,15 +210,15 @@ function massTargetSlotOf(data, missionId) {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
-/**
- * The authored mass stamped on the live body — `target.mass`, never `physicsBody.mass`:
- * tumble normalization re-derives the physics body after a knock-loose, so the durable
- * slip reads the entity stamp missions wrote at spawn. Rejects missing, dead, invalid.
+/** Read the native-normalized body mass when published; entity mass is the pre-body fallback.
+ * A mission's declaration and pre-physics spawn hint never override the mass the line moves.
  */
 export function physicalMassT(target) {
   if (!target || target.alive === false || target.destroyed === true) return null;
-  const m = Number(target.mass);
-  return Number.isFinite(m) && m > 0 ? m : null;
+  const bodyMass = Number(target.physicsBody?.mass);
+  if (Number.isFinite(bodyMass) && bodyMass > 0) return bodyMass;
+  const mass = Number(target.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : null;
 }
 
 /** Declared vs measured. Pure arithmetic over two positive masses; null on invalid input. */

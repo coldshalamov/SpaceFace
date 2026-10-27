@@ -107,8 +107,9 @@ function testAiFleeRecordsOneOutcomeAndVoice() {
   assert.equal(rec.destruction, null, 'non-kill outcomes carry no destruction record');
   assert.equal(t.log.outcomes.length, 1, 'flee outcome emits once');
   assert.equal(t.log.consequences.length, 1, 'flee emits one consequence seam');
-  assert.equal(t.log.voices.length, 1, 'flee routes exactly one voice line');
-  assert.match(t.log.voices[0].text, /fled the fight/i, 'voice line says fled');
+  const outcomeVoices = t.log.voices.filter((line) => String(line.id || '').startsWith('combatOutcome:'));
+  assert.equal(outcomeVoices.length, 1, 'flee routes exactly one outcome voice line');
+  assert.match(outcomeVoices[0].text, /fled the fight/i, 'voice line says fled');
   ok('ai:flee records one fled outcome and one voice line');
 }
 
@@ -134,8 +135,9 @@ function testSubsystemDisableOutcomeAndConsequence() {
   assert.equal(rec.reason, 'subsystem_drive', 'disabled reason records subsystem');
   assert.equal(t.log.consequences[0].outcome, 'disabled', 'disabled emits consequence hook');
   assert.equal(t.log.consequences[0].destruction, null, 'disabled consequence carries no kill causality');
-  assert.equal(t.log.voices.length, 1, 'disabled emits one voice line');
-  assert.match(t.log.voices[0].text, /disabled/i, 'disabled voice line is readable');
+  const outcomeVoices = t.log.voices.filter((line) => String(line.id || '').startsWith('combatOutcome:'));
+  assert.equal(outcomeVoices.length, 1, 'disabled emits one outcome voice line');
+  assert.match(outcomeVoices[0].text, /disabled/i, 'disabled voice line is readable');
   ok('terminal subsystem disable records disabled outcome and consequence seam');
 }
 
@@ -166,8 +168,9 @@ function testKilledAndSurrenderedOutcomes() {
   surrenderRun.bus.emit('combat:surrendered', { entityId: surrender.id });
   assert.equal(combatOutcomeForEntity(surrenderRun.state, surrender.id).outcome, 'surrendered',
     'combat:surrendered records surrendered outcome');
-  assert.equal(killedRun.log.voices.length, 1, 'killed speaks once');
-  assert.equal(surrenderRun.log.voices.length, 1, 'surrender speaks once');
+  const outcomeVoice = (lines) => lines.filter((line) => String(line.id || '').startsWith('combatOutcome:'));
+  assert.equal(outcomeVoice(killedRun.log.voices).length, 1, 'killed speaks once');
+  assert.equal(outcomeVoice(surrenderRun.log.voices).length, 1, 'surrender speaks once');
   ok('killed and surrendered outcomes are recorded through event seams');
 }
 

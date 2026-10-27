@@ -49,6 +49,7 @@ import {
 import { raceLeaseActive } from './racingSteer.js';
 import { tickEarlyTrailerEncounters } from './trailerEncounterStaging.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { isGuidedOnboardingActive } from '../onboarding/opportunityAdmission.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -131,7 +132,11 @@ import {
   tickLootSweeps,
 } from '../ai/lootSweep.js';
 import { tickTowedLurePursuits } from '../ai/towedLure.js';
-import { tickImpoundGrudge } from './impoundGrudge.js';
+import {
+  tickImpoundGrudge,
+  noteImpoundGrudgeKill,
+  noteImpoundGrudgeSaveLoaded,
+} from './impoundGrudge.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
@@ -330,14 +335,14 @@ export const encounterDirector = {
         // here would mint loss/news while saveSystem is merely clearing the outgoing entity set.
         clearAllPredationBindings(this.state, 'save_restoring');
       });
-      this.bus.on('save:loaded', () => this._onSaveLoaded());
+      this.bus.on('save:loaded', () => { this._onSaveLoaded(); noteImpoundGrudgeSaveLoaded(this.state); });
       this.bus.on('save:error', () => { this._saveRestoring = false; });
       // Canonical fresh-run boundary. encounterDirector is intentionally not in the central reset
       // list, so its own event owner must clear transient live pairings before numeric IDs recycle.
       this.bus.on('game:new', () => this.newGame());
       // Budget bookkeeping + script event routing.
       this.bus.on('entity:destroyed', (p) => this._onEntityGone(p));
-      this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+      this.bus.on('entity:killed', (p) => { this._onEntityKilled(p); noteImpoundGrudgeKill(this.state, p); });
       this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
       this.bus.on('pickup:collected', (p) => {
         this._routeToScript('convoy', 'pickupCollected', p);
@@ -355,6 +360,7 @@ export const encounterDirector = {
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
       this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
       this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
       this.bus.on('moralMemory:vengefulReturn', (p) => markMoralDebtReturned(this.state, (p || {}).id));
@@ -521,6 +527,7 @@ export const encounterDirector = {
   _impoundGrudgeCtx() {
     return {
       helpers: this.helpers,
+      bus: this.bus,
       emit: (name, payload) => this.emit(name, payload),
       makeEnemySpec: (archetype, level, pos, opts) => makeEnemySpawnSpec(archetype, level, pos, opts),
     };
@@ -1514,6 +1521,10 @@ export const encounterDirector = {
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
     const shape = ENCOUNTERS[payload.shapeId];
     if (!shape) return { ok: false, reason: 'missing_shape' };
+    // Admission protects the guide's floor even for forced authored requests, before any fire receipt.
+    if (shape.gates?.deferDuringGuidedOnboarding && isGuidedOnboardingActive(state)) {
+      return { ok: false, reason: 'onboarding' };
+    }
     if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
     if (payload.respectPacing) {
       const reason = encounterPacingBlockReason(dir, state, shape, state.simTime || 0);
@@ -3822,6 +3833,10 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
     return true;
   });
 
+  // Guaranteed beats are splice-immune: the cap budgets organic draws, not authored promises.
+  // Without the shield each new same-tier guarantee evicts the previously-placed guarantee —
+  // four day-0 ambient promises then collapse to whichever one pushes last.
+  const guaranteedIds = new Set(guaranteed.map((e) => e.id));
   for (const enc of guaranteed) {
     // An organic pick of the same shape already holds the beat — a second copy would fire two
     // copies of the same authored opening inside the rail (combat_busy is bypassed there). But
@@ -3849,7 +3864,7 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
     const currentTierItems = out.filter((x) => x.tier === item.tier);
     if (currentTierItems.length >= maxForTier) {
       for (let i = out.length - 1; i >= 0; i--) {
-        if (out[i].tier === item.tier) {
+        if (out[i].tier === item.tier && !guaranteedIds.has(out[i].shapeId)) {
           if (shapeCounts) {
             const dropEnc = (encounterCatalog || ENCOUNTERS)[out[i].shapeId];
             if (dropEnc) {
@@ -5225,8 +5240,7 @@ function encounterEngagesPlayer(live, state, now) {
 }
 
 function isTutorialActive(state) {
-  const ob = state.onboarding;
-  return !!(ob && ob.active && !ob.finished);
+  return isGuidedOnboardingActive(state);
 }
 
 /** Items whose shape pins earlyWindowGuaranteeDay are the authored opening beats themselves:

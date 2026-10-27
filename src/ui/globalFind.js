@@ -15,8 +15,13 @@
 // Keyboard contract: type to search, ↑/↓ moves the row, Enter opens the dossier, Esc closes.
 // While the input has focus the global key router already ignores letter keys (textEntry); the
 // palette's own Esc stops propagation so one keypress never also opens Pause.
+//
+// ONE PANE, not three loose parts: field, results and hint sit in a single .sf-find__pane
+// (chrome: orrery/popupsLayouts.js) so the palette reads as one instrument — the shared sheet's
+// per-slab glass and the floating hint were two unrelated boxes and a stray caption.
 
 import { searchEntities, findRowOpens } from './entityResolver.js';
+import { ensurePopupsLayout } from './orrery/popupsLayouts.js';
 
 const MAX_ROWS = 12;
 
@@ -29,12 +34,14 @@ function el(tag, className, opts = {}) {
 }
 
 export function createGlobalFind(ctx) {
+  ensurePopupsLayout();
   const state = ctx && ctx.state;
   const bus = ctx && ctx.bus;
   const screensRoot = typeof document !== 'undefined' ? document.getElementById('screens') : null;
   if (!screensRoot) return { open() {}, close() {}, isOpen: () => false, destroy() {} };
 
   let panel = null;
+  let pane = null;         // .sf-find__pane — the one glass the field, results and hint share
   let input = null;
   let listEl = null;
   let rows = [];
@@ -103,7 +110,9 @@ export function createGlobalFind(ctx) {
     });
     listEl = el('div', 'sf-find__results', { attrs: { role: 'listbox', 'aria-label': 'Find results' } });
     const hint = el('div', 'sf-find__hint k-t-fine', { text: '↑↓ pick · Enter opens the dossier · Esc closes' });
-    panel.append(input, listEl, hint);
+    pane = el('div', 'sf-find__pane');
+    pane.append(input, listEl, hint);
+    panel.appendChild(pane);
     (host || screensRoot).appendChild(panel);
     if (bare) {
       // screenManager parks #screens at display:none + inert whenever the stack is empty, so a
@@ -164,6 +173,7 @@ export function createGlobalFind(ctx) {
     rows = [];
     selIdx = 0;
     p.removeEventListener('keydown', onKey);
+    pane = null;                                     // the pane dies with its panel
     const wasBareHost = p.classList.contains('sf-find--host');
     if (p.parentNode) p.parentNode.removeChild(p);
     if (wasBareHost) {
@@ -181,6 +191,12 @@ export function createGlobalFind(ctx) {
   }
 
   const off = bus && bus.on ? bus.on('ui:globalFind', () => open()) : null;
+  // A dossier opened from a row (or anywhere) paints under this palette's z 4500 scrim; while it
+  // is up the palette steps back so the drawer reads in front — "the palette waits behind the
+  // drawer". entityLinks announces it (ui:entityDrawer); the class carries the recede look.
+  const offDrawer = bus && bus.on ? bus.on('ui:entityDrawer', (ev) => {
+    if (panel) panel.classList.toggle('sf-find--recede', !!(ev && ev.open));
+  }) : null;
 
   return {
     open,
@@ -192,6 +208,7 @@ export function createGlobalFind(ctx) {
       destroyed = true;
       close();
       if (typeof off === 'function') off();
+      if (typeof offDrawer === 'function') offDrawer();
     },
   };
 }
