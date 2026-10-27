@@ -1566,7 +1566,13 @@ export const footprintScreen = {
 
   _onClick(event) {
     const target = event.target;
-    const node = target && target.closest && target.closest('.fp-node');
+    let node = target && target.closest && target.closest('.fp-node');
+    // The receipt's stamp line (its stage, cycle, station, ace) is part of the same receipt: a click
+    // there latches the node too, so the whole beam row is the target and not just its line of text.
+    if (!node) {
+      const row = target && target.closest && target.closest('.fp-row');
+      node = row ? row.querySelector('.fp-node') : null;
+    }
     if (!node) return;
     const chainId = node.getAttribute('data-chain-id');
     const nodeIndex = asInteger(node.getAttribute('data-node-index'), -1);
@@ -1581,7 +1587,14 @@ export const footprintScreen = {
       // Escape lifts the node latch; with nothing latched it falls through to the screen manager.
       if (this._selectedNodeIndex == null) return;
       event.preventDefault();
+      // The seat the latch is lifted from comes back: unlatching rebuilds the verbs (a focused
+      // verb's button dies with the rebuild), so focus returns to the receipt that was latched.
+      const unlatchedKey = `${this._selectedChainId}:${this._selectedNodeIndex}`;
       this._setSelection(this._selectedChainId, null);
+      const again = this._nodeButtons.get(unlatchedKey);
+      if (again && typeof again.focus === 'function' && again !== document.activeElement) {
+        try { again.focus({ preventScroll: true }); } catch (_) { again.focus(); }
+      }
       return;
     }
     const active = document.activeElement;

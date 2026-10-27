@@ -52,6 +52,7 @@ import {
 } from './fhChrome.js';
 import { bindStationMarkup, stationControlAttrs } from '../stationBindingMap.js';
 import { createRouteOrrery, sectorOfStation } from '../../orrery/routeOrrery.js';
+import { injectOrreryStationContracts } from '../../orrery/station-contractsLayouts.js';
 import { arcGauge } from '../../orrery/instruments.js';
 import { polar } from '../../orrery/svg.js';
 import { createCounter, decrypt } from '../../orrery/text.js';
@@ -377,14 +378,15 @@ export function consequenceScalesSvg(m, { compact = false } = {}) {
   const rx0 = compact ? 84 : 96; const rx1 = compact ? 300 : 336; const ry = compact ? 14 : 20;
   const rxc = rx0 + ((rx1 - rx0) * r) / 5;
   out += `<text class="orr-ct-scale__key" x="0" y="${ry + 4}">RISK</text>`;
-  out += `<path class="orr-ct-scale__band" d="M ${rx0} ${ry} L ${rx1} ${ry}" fill="none" stroke="rgb(236 230 216 / .27)" stroke-width="7" stroke-linecap="butt"/>`;
+  // the band and the blade take their colour from the sheet (station-contractsLayouts.js):
+  // bone track under the lit stretch; the blade threat-red only at the high stops
+  out += `<path class="orr-ct-scale__band" d="M ${rx0} ${ry} L ${rx1} ${ry}" fill="none" stroke-width="7" stroke-linecap="butt"/>`;
   out += `<path class="orr-ct-scale__fill${high ? ' is-high' : ''}" d="M ${rx0} ${ry} L ${f(rxc)} ${ry}" stroke-width="3.5" opacity=".6" stroke-linecap="butt"/>`;
   out += `<path class="orr-core orr-ct-scale__rule" d="M ${rx0} ${ry} L ${rx1} ${ry}" stroke-width="1.5"/>`;
   let ticks = '';
   for (let i = 0; i <= 5; i += 1) { const x = rx0 + ((rx1 - rx0) * i) / 5; ticks += `M ${f(x)} ${ry - 4} L ${f(x)} ${ry + 5} `; }
   out += `<path class="orr-core orr-ct-scale__tick" d="${ticks}" stroke-width="1"/>`;
-  const blade = high ? 'rgb(255 80 56)' : 'rgb(248 244 234)';
-  out += `<g class="orr-ct-scale__blade"><rect x="${f(rxc - 5)}" y="${ry - 11}" width="10" height="22" fill="${blade}" opacity=".16"/><rect x="${f(rxc - 2)}" y="${ry - 9}" width="4" height="18" fill="${blade}"/></g>`;
+  out += `<g class="orr-ct-scale__blade${high ? ' is-high' : ''}"><rect x="${f(rxc - 5)}" y="${ry - 11}" width="10" height="22" opacity=".16"/><rect x="${f(rxc - 2)}" y="${ry - 9}" width="4" height="18"/></g>`;
   // the reading rides above its own cursor tick, never in a column 150px away
   out += `<text class="orr-ct-scale__word" x="${f(rxc)}" y="${ry - 12}" text-anchor="middle">${escapeHtml(String(RISK_LABEL[r] || '').toUpperCase())}</text>`;
   if (!compact) out += `<text class="orr-ct-scale__end" x="${rx0}" y="${ry + 20}" text-anchor="start">ROUTINE</text><text class="orr-ct-scale__end" x="${rx1}" y="${ry + 20}" text-anchor="end">SEVERE</text>`;
@@ -517,6 +519,9 @@ export function contractAcceptHoldNote(state, collateral) {
 }
 
 export function createContractsScreen(ctx) {
+  // this tab's layout home: the commit word rests in flow under its terms (never a pinned band
+  // over them) and the consequence scales' paint lives in the sheet, not in svg attributes
+  injectOrreryStationContracts();
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
   el.innerHTML = contractsFrameHtml();
@@ -1319,8 +1324,11 @@ export function createContractsScreen(ctx) {
         return n;
       };
       const id = `sx-ct-flyhome-${Date.now() % 100000}`;
-      const trail = mk('path', { d: dd, fill: 'none', stroke: '#f2b950', 'stroke-width': '2', 'stroke-linejoin': 'round', opacity: '.8', id });
-      const dot = mk('circle', { r: '3', fill: '#ffd98c' });
+      // the Hand's amber through the tokens, as the tether above paints it (no colour literals)
+      const trail = mk('path', { d: dd, fill: 'none', 'stroke-width': '2', 'stroke-linejoin': 'round', opacity: '.8', id });
+      trail.style.stroke = 'var(--dp-hand, #f2b950)';
+      const dot = mk('circle', { r: '3' });
+      dot.style.fill = 'var(--dp-hand-hot, #ffd98c)';
       const motion = mk('animateMotion', { dur: '.45s', repeatCount: '1', calcMode: 'spline', keyPoints: '0;1', keyTimes: '0;1', keySplines: '.4 0 .2 1' });
       motion.appendChild(mk('mpath', { href: `#${id}` }));
       dot.appendChild(motion);

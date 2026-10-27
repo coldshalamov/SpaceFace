@@ -49,29 +49,39 @@ export function createMasslineCadenceReadout(parent) {
   const doc = parent.ownerDocument, root = doc.createElement('section');
   root.className = 'ml-cadence'; root.setAttribute('aria-label', 'Massline release instrument');
   root.innerHTML = `<style>
-  .ml-cadence{--ml-ink:#eef7f4;--ml-muted:#91aaa7;--ml-accent:#85e9ca;--ml-warn:#f2bc72;
-    box-sizing:border-box;width:min(330px,100%);padding:15px 17px 13px;border:1px solid #45615c;
-    border-left:3px solid var(--ml-accent);border-radius:3px;background:#0c191bf2;color:var(--ml-ink);
-    font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;pointer-events:none}
+  /* ORRERY register (no second token root): flight glass, etched legends, warm bone rest light.
+     State rides the 2px left edge and the words — open reads phos (the solution holds), field
+     reads lamp-hot (the model is an approximation), a whip under 1s reads danger-hot. */
+  .ml-cadence{
+    box-sizing:border-box;width:min(330px,100%);padding:14px 16px 12px;border:0;
+    border-left:2px solid var(--dp-lamp-dim, #8a6b3a);border-radius:var(--dp-r-instrument, 3px);
+    background:var(--dp-glass-flight, rgb(18 23 29 / .82));color:var(--dp-ink, #e8e2d4);
+    font-family:var(--dp-face-read, system-ui);font-size:12px;line-height:1.4;pointer-events:none;
+    text-shadow:var(--dp-etch-shadow, none)}
   .ml-cadence[hidden]{display:none}.ml-cadence__top{display:flex;justify-content:space-between;gap:14px;
-    color:var(--ml-muted);font-size: 12px;letter-spacing:.13em}.ml-cadence__phase{color:var(--ml-accent)}
-  .ml-cadence__status{margin:9px 0 2px;font:600 23px/1.1 system-ui,sans-serif;letter-spacing:-.04em}
-  .ml-cadence__hint{font:12px/1.5 system-ui,sans-serif;color:var(--ml-muted);min-height:17px}
+    font-family:var(--dp-face-etch, system-ui);font-weight:700;font-variation-settings:"wght" 720, "wdth" 68;
+    text-transform:uppercase;color:var(--dp-ink-dim, #a9a696);font-size: 12px;letter-spacing:.13em}
+  .ml-cadence__phase{color:var(--dp-phos, #dfeeff)}
+  .ml-cadence__status{margin:9px 0 2px;font:700 23px/1.1 var(--dp-face-read, system-ui);letter-spacing:-.01em;
+    color:var(--dp-ink, #e8e2d4);font-variant-numeric:tabular-nums}
+  .ml-cadence__hint{font:400 12px/1.5 var(--dp-face-read, system-ui);color:var(--dp-ink-dim, #a9a696);min-height:17px}
   .ml-cadence__bar{width:100%;height:19px;margin:9px 0 2px;display:block}
-  .ml-cadence__stats{display:flex;justify-content:space-between;gap:14px;border-top:1px solid #34504a;padding-top:9px}
-  .ml-cadence__value{font-size:15px}.ml-cadence__label{display:block;font-size: 12px;letter-spacing:.12em;color:var(--ml-muted)}
-  .ml-cadence[data-open="true"]{border-color:var(--ml-accent)}
-  .ml-cadence[data-open="true"] .ml-cadence__status{color:var(--ml-accent)}
-  .ml-cadence[data-field="true"] .ml-cadence__status{color:var(--ml-warn)}
-  .ml-cadence[data-whip="soon"] [data-ml="whip"]{color:var(--ml-warn)}
+  .ml-cadence__stats{display:flex;justify-content:space-between;gap:14px;border-top:1px solid var(--dp-metal-4, #2f3542);padding-top:9px}
+  .ml-cadence__value{font-size:15px;font-variant-numeric:tabular-nums;color:var(--dp-ink, #e8e2d4)}
+  .ml-cadence__label{display:block;font-family:var(--dp-face-etch, system-ui);font-weight:700;
+    font-variation-settings:"wght" 720, "wdth" 68;text-transform:uppercase;font-size: 12px;letter-spacing:.12em;color:var(--dp-ink-dim, #a9a696)}
+  .ml-cadence[data-open="true"]{border-left-color:var(--dp-lamp, #f2b950)}
+  .ml-cadence[data-open="true"] .ml-cadence__status{color:var(--dp-phos, #dfeeff)}
+  .ml-cadence[data-field="true"] .ml-cadence__status{color:var(--dp-lamp-hot, #ffd98c)}
+  .ml-cadence[data-whip="soon"] [data-ml="whip"]{color:var(--dp-danger-hot, #ff8a70)}
   @media(max-width:600px){.ml-cadence{padding:11px 13px;width:280px}.ml-cadence__status{font-size:20px}}
   </style>
   <div class="ml-cadence__top"><span>MASSLINE / CADENCE</span><span class="ml-cadence__phase"></span></div>
   <div class="ml-cadence__status"></div><div class="ml-cadence__hint"></div>
   <svg class="ml-cadence__bar" viewBox="0 0 296 19" aria-label="Conditional coast window over the next 1.5 seconds">
-    <path d="M0 9.5H296 M1 4V15 M99 7V12 M197 7V12 M295 4V15" fill="none" stroke="#45615c"/>
-    <rect class="ml-cadence__window" x="0" y="5" width="0" height="9" fill="#85e9ca"/>
-    <path d="M1 1V18" stroke="#eef7f4" stroke-width="2"/>
+    <path d="M0 9.5H296 M1 4V15 M99 7V12 M197 7V12 M295 4V15" fill="none" stroke="var(--dp-metal-4, #2f3542)"/>
+    <rect class="ml-cadence__window" x="0" y="5" width="0" height="9" fill="var(--dp-phos, #dfeeff)" opacity=".85"/>
+    <path d="M1 1V18" stroke="var(--dp-ink, #e8e2d4)" stroke-width="2"/>
   </svg>
   <div class="ml-cadence__stats">
     <span><span class="ml-cadence__value" data-ml="speed"></span><span class="ml-cadence__label">RELEASE SPEED</span></span>

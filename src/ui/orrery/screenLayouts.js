@@ -746,7 +746,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 #screens .orr-newgame .orr-ng-key--small::before { content:"↻"; margin-right:8px; font-size:13px; letter-spacing:0; color:rgb(232 226 212 / .7); }
 /* choice words on the dials: engraved capitals; the chosen one is lit */
 #screens .orr-newgame .orr-stopscale .k-word { background:none !important; border:0 !important; box-shadow:none !important; border-image:none !important;
-  min-width:0 !important; min-height:0 !important; padding:2px 4px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+  min-width:0 !important; min-height:0 !important; padding:8px 10px !important; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-weight:650; font-size:12px !important; letter-spacing:.2em; text-transform:uppercase; color:rgb(232 226 212 / .6) !important;
   text-shadow:0 1px 0 rgb(0 0 0 / .5); white-space:nowrap; }
 #screens .orr-newgame .orr-stopscale .k-word[aria-pressed="true"] { color:var(--dp-ink, #e8e2d4) !important;
@@ -827,12 +827,12 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 }
 /* ================================ FRONT DOOR r1 craft ======================================== */
 /* the gauges read thin (a reading, not a label) */
-#screens .orr-newgame .orr-ng-stat b { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:26px !important; letter-spacing:-.01em; }
+#screens .orr-newgame .orr-ng-stat b { font-variation-settings:"wght" 250, "wdth" 100 !important; font-weight:250 !important; font-size:26px !important; letter-spacing:-.01em; font-variant-numeric: tabular-nums; }
 #screens .orr-newgame .orr-ng-stat b i { font-size: 12px !important; color:rgb(232 226 212 / .6) !important; }
 /* the back key's hint passes contrast */
 #screens .orr-newgame .sf-ng-footer .sf-back :is(.k-kbd, .dp-kbd, kbd) { color:rgb(232 226 212 / .6) !important; }
 /* the four difficulty stops fit a 1280 column */
-@media (max-width:1366px) { #screens .orr-newgame .orr-stopscale .k-word { letter-spacing:.08em !important; padding:2px 2px !important; } }
+@media (max-width:1366px) { #screens .orr-newgame .orr-stopscale .k-word { letter-spacing:.08em !important; padding:8px 6px !important; } }
 /* a short screen: the first-15-minutes steps keep their titles only, and the footnote wraps before the list */
 @media (max-height:800px) {
   #screens .orr-newgame .sf-ng-route__step .k-row__sub { display:none !important; }

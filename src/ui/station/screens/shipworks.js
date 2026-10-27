@@ -1,5 +1,6 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
+import { injectOrreryStationShipworks } from '../../orrery/station-shipworksLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
 import { createBlackFlagRegistry } from '../../blackFlagRegistry.js';
@@ -477,8 +478,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let host = initialHost;
   const el = document.createElement('div');
   el.className = 'k-panel sx-sw';
-  // ORRERY: the dock host's composition (src/ui/orrery/shipworksLayouts.js); THE SHIP keeps its sheet
+  // ORRERY: the dock host's composition (src/ui/orrery/shipworksLayouts.js); THE SHIP keeps its sheet.
+  // The dock-only refinements (the record ledger's seat) live in station-shipworksLayouts.js so the
+  // shared sheet stays exactly what the flight host reads.
   injectOrreryShipworks(document);
+  injectOrreryStationShipworks(document);
   // The kit panel: the hulls down the hang column, the stage to its right. The canvas fills the
   // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
   // four bands along the foot and the verbs all sit on top. The chooser is a third child that
@@ -1282,8 +1286,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ['Thrust', `${fmt(forwardAccelFor(d))}`],
       ['Fight speed', `${fmt(governedFightSpeedFor(d))}`],
     ];
+    // The kit's ruled row (.k-row is the grid; kit.css 251), the same shape the band detail's
+    // staticRow uses — the old display:contents divs bypassed every row style and read as prose.
     return entries.map(([k, v]) =>
-      `<div class="sx-sw-record__row"><span>${escapeHtml(k)}</span><b>${escapeHtml(String(v))}</b></div>`
+      `<li class="k-row k-row--static"><span class="k-row__name k-62">${escapeHtml(k)}</span><span class="k-row__num">${escapeHtml(String(v))}</span></li>`
     ).join('');
   }
 
@@ -1641,7 +1647,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // The selected band explains itself in rows beneath the four heroes.
   function bandDetailHtml(model) {
     if (selectedBand === 'handling') {
-      const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
+      // The hero numeral directly above is the top-speed reading (barValueText of the same bar),
+      // so the row repeated the number the screen already led with — and its row was the one the
+      // readings column cut at its fold (a scrolled column with no fold mask). The bars keep the
+      // shape readings the hero does not carry; a preset ghost still speaks through ghostLine.
+      const bars = model.handling && Array.isArray(model.handling.bars)
+        ? model.handling.bars.filter((bar) => bar && bar.id !== 'topSpeed')
+        : [];
       const rows = bars.map((bar) => {
         const ghost = ghostBandModel && ghostBandModel.handling && Array.isArray(ghostBandModel.handling.bars)
           ? ghostBandModel.handling.bars.find((row) => row.id === bar.id)
@@ -1796,7 +1808,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         heroHtml(
           'capability',
           (model.capability && model.capability.lead && model.capability.lead.value) || fmt(model.derived.cargoCap),
-          (model.capability && model.capability.lead && model.capability.lead.word) || 'hold',
+          // the word is one phrase ("A PELICAN"): its spaces do not wrap, or the column orphans
+          // its first word between the hero and the rest of the phrase
+          ((model.capability && model.capability.lead && model.capability.lead.word) || 'hold').replace(/ /g, '\u00a0'),
           {
             selected: selectedBand === 'capability',
             why: (model.capability && model.capability.lead && model.capability.lead.why) || '',
@@ -1807,7 +1821,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? heroHtml('identity', model.identity.label, 'build', { selected: selectedBand === 'identity', why: model.identity.summary })
           : '') +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
-          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.def.name}`))}</button></li>` +
+          `<li><button type="button" ${stationControlAttrs('range')} class="k-word k-word--body sx-sw-verb" data-verb="range">${escapeHtml(String(stationControlLabel('range')).replace(/\bit\b/i, `the ${model.hullName || model.def.name}`))}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('record')} class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">${stationControlLabel('record')}</button></li>` +
           `<li><button type="button" ${stationControlAttrs('fit')} class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
           (makeActiveVisible
@@ -1822,12 +1836,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             : '') +
         `</ul>` +
       `</div>` +
-      `<section class="sx-sw-band sx-sw-band--${escapeHtml(selectedBand)}" aria-live="polite">${bandDetailHtml(model)}</section>` +
-      renderPresetRail(model, activePresetRailModel) +
-      renderPresetDrawer(activePresetRailModel) +
+      // The Record verb swaps the column's reading. The record used to hang under the preset
+      // drawer: ten rows that started 3px inside a stats box with 185px of hidden scroll, so the
+      // press read as nothing until the player discovered a fold. The record replaces the selected
+      // band's detail in place, and the verb carries is-active/aria-pressed for the state.
       (recordOpen
-        ? `<section class="sx-sw-record"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
-        : '');
+        ? `<section class="sx-sw-record" aria-live="polite"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
+        : `<section class="sx-sw-band sx-sw-band--${escapeHtml(selectedBand)}" aria-live="polite">${bandDetailHtml(model)}</section>`) +
+      // The record takes the column below the heroes, so the presets fold with it — a one-run
+      // sliver of BUILDS at the scroll fold reads as a broken block. They return on close.
+      (recordOpen ? '' : renderPresetRail(model, activePresetRailModel)) +
+      renderPresetDrawer(activePresetRailModel);
     dressApron();
     paintPendingPresetRejection();
   }
@@ -2149,7 +2168,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const want = g && host === 'dock' && mode === 'fleet' && jigCaption && jigHost && jigHost.classList.contains('orr-hull--on')
       && !jigHost.querySelector('.orr-micro');
     if (!want) { if (fleetCap) { fleetCap.remove(); fleetCap = null; } return; }
-    if (!fleetCap) { fleetCap = orrSvg('svg', { class: 'orr-svg sx-sw__fleetcap', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(fleetCap); }
+    // The caption paints above the jig host: the shared sheet seats this svg at z2 while the jig
+    // (whose dark pool wash spans the dial) sits at z3, so at every tall stage the caption was
+    // buried under the wash exactly where it crosses the pool's box. Inline z wins — the sheet's
+    // z2 is not !important — and the pool's own dark wash becomes the caption's ground, not its lid.
+    if (!fleetCap) { fleetCap = orrSvg('svg', { class: 'orr-svg sx-sw__fleetcap', style: 'z-index:5', 'aria-hidden': 'true', focusable: 'false' }); stageEl.appendChild(fleetCap); }
     fleetCap.setAttribute('viewBox', `0 0 ${g.W} ${g.H}`);
     fleetCap.textContent = '';
     const len = hullLengthM(jigCaption.defId);
@@ -3186,7 +3209,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<span class="sx-hardpoint__copy"><b>${escapeHtml(label)}</b><em>${escapeHtml(sub)}</em></span>` +
       `</button>`;
     }).join('');
-    syncJig(def, slots, fittings, ship.name);
+    syncJig(def, slots, fittings,
+      // one name for the hull on this screen: the crest resolves the owned record's canon or
+      // hand-typed word, so the dial's caption and engraving say what the nameplate says
+      (hullNameForOwnedShip(ship, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)) || ship.name);
     scheduleSpatialProjection();
   }
 
@@ -3746,12 +3772,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       railListEl.innerHTML = o.length ? o.map((s, i) => {
         const def = SHIP_BY_ID.get(s.defId) || {};
         const roleLabel = describeHullRole(s.defId)?.roleLabel || def.role || 'ship';
+        // The row is narrow: "STARTER SCOUT · T0" wrapped to an orphaned "· T0" line — a line
+        // opening on a middot. Every middot glues to the word BEFORE it, so a wrap can end a
+        // line on the separator but never open one with it.
+        const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${def.tier != null ? def.tier : '?'}`;
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
           `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
-              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${def.tier != null ? def.tier : '?'}</span></span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
           `</button>`
         );
@@ -3764,13 +3794,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         if (!yard.listed) return '';
         const on = s.id === buyId ? ' is-active' : '';
         const roleLabel = describeHullRole(s.id)?.roleLabel || s.role || 'ship';
+        // the roster row's glue (see the fleet rail): every middot glues to the word before it,
+        // so a wrap ends a line on the separator and never opens one with it
+        const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${s.tier}` +
+          (yard.usedHull ? `\u00a0\u00b7 used\u00a0hull` : yard.offer ? `\u00a0\u00b7 yard\u00a0offer` : '');
         const hullLabel = yard.usedHull ? `Used ${s.name}${yard.usedHull.callsign ? ' \u00b7 ' + yard.usedHull.callsign : ''}` : s.name;
         const price = yard.price;
         const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
         return (
           `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(hullLabel)}</span>` +
-              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(roleLabel)} · T${s.tier}${yard.usedHull ? ' · used hull' : yard.offer ? ' · yard offer' : ''}</span></span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
           `</button>`
         );
@@ -4414,7 +4448,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
-          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} · ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? ' · ring' : (slot.facing ? ' · ' + escapeHtml(slot.facing) : '')}</p>` +
+          // the roster rows' rule: every middot glues left, so a wrap ends a line on the
+          // separator and never opens one with it ("… · S" / "· FRONT" would lead with a middot)
+          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type}\u00a0· ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? `\u00a0· ring` : (slot.facing ? `\u00a0· ${escapeHtml(slot.facing)}` : '')}</p>` +
           `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
         `</header>` +
         (hardpoint === 'ring'
@@ -4551,7 +4587,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-chooser__panel" role="region" aria-label="Rack socket ${i + 1} ordnance">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
-          `<p class="k-caps sx-chooser__kicker">Bomb rack · socket ${i + 1} of ${rack.sockets}</p>` +
+          // the count travels with its phrase ("1 OF 2"): the narrow column wrapped a lone "2"
+          // onto its own line — an orphaned digit under the socket's name
+          `<p class="k-caps sx-chooser__kicker">Bomb rack · socket\u00a0${i + 1}\u00a0of\u00a0${rack.sockets}</p>` +
           `<h3 class="k-t-sub">Ordnance <span class="k-38">${catalogue.length}</span></h3>` +
         `</header>` +
         (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
@@ -4657,9 +4695,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function paintSwatchChip(hex) {
     // Fully inline: the chip answers from the catalog row itself and adds no stylesheet surface.
+    // A round draw of the paint (a dab of the colour itself), never a bordered square — straight
+    // edges are for scales and the Lamp Key's cut; the edge is the ink token at rest strength.
+    // The stock row (no hex) reads as a dashed empty circle: an unset swatch, not a box.
     const bg = hex ? escapeHtml(hex) : 'transparent';
-    const border = hex ? 'solid' : 'dashed';
-    return `<span aria-hidden="true" style="display:inline-block;flex:0 0 auto;width:13px;height:13px;margin-right:9px;border:1px ${border} rgba(255,255,255,0.55);background:${bg};"></span>`;
+    const edge = hex ? 'solid' : 'dashed';
+    return `<span aria-hidden="true" style="display:inline-block;flex:0 0 auto;width:13px;height:13px;margin-right:9px;border-radius:50%;border:1px ${edge} color-mix(in srgb, var(--dp-ink) 55%, transparent);background:${bg};"></span>`;
   }
 
   function paintGroupHtml(kicker, rows) {
@@ -4736,11 +4777,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       );
     });
 
+    // The rack names the hull the crest names — the owned record's word, not the class.
+    const viewed = viewedShip();
+    const hullLabel = (viewed && hullNameForOwnedShip(viewed, viewIdx, ctx.state && ctx.state.meta && ctx.state.meta.seed)) || def.name || def.id;
     chooserEl.innerHTML =
-      `<div class="sx-chooser__panel" role="region" aria-label="Paint rack for the ${escapeHtml(def.name || def.id)}">` +
+      `<div class="sx-chooser__panel" role="region" aria-label="Paint rack for the ${escapeHtml(hullLabel)}">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
-          `<p class="k-caps sx-chooser__kicker">Paint rack · ${escapeHtml(def.name || def.id)}</p>` +
+          `<p class="k-caps sx-chooser__kicker">Paint rack\u00a0· ${escapeHtml(hullLabel)}</p>` +
           `<h3 class="k-t-sub">The yard mixes while you dock</h3>` +
         `</header>` +
         (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.hullLabel)}</p>`) +
@@ -5193,6 +5237,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       recordOpen = !recordOpen;
       rememberShipView();
       if (activeBandModel) renderApron(activeBandModel);
+      // renderApron rebuilt the verbs rack: its seat lives in the projection pass, so schedule
+      // one now or the row falls back to its CSS seat over the BUILDS block until a stage change
+      // happens to fire it (racy at best).
+      scheduleSpatialProjection();
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
       return true;
     }

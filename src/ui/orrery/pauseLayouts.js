@@ -69,8 +69,8 @@ ${BOTH} .orr-brief__read b { color:var(--dp-phos, rgb(223 238 255)) !important;
   text-shadow:0 0 10px rgb(160 200 255 / .35) !important; }
 ${BOTH} .orr-brief__track { stroke:rgb(${BONE} / .45) !important; }
 ${BOTH} .sf-pause-brief :is(a, [data-entity], .sf-entity, .sf-entity-link) {
-  color:rgb(${HOT}) !important;
-  box-shadow:0 1.5px 0 rgb(242 185 80 / .7) !important; }
+  color:rgb(${BONE} / .95) !important;
+  box-shadow:0 1.5px 0 rgb(${BONE} / .7) !important; }
 
 /* desktop brief: a touch more air under the kicker */
 ${P} > .sf-pause-brief.orr-brief { top:clamp(88px, 11.5vh, 140px) !important;

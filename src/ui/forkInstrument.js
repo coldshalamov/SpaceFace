@@ -339,25 +339,33 @@ export function createForkInstrument() {
       const style = document.createElement('style');
       style.id = STYLE_ID;
       // Own lease: this block styles only .sf-fork-inst*. It never redefines a shared selector.
+      // ORRERY lease (design/frontend/ORRERY.md §3): one instrument on --dp-glass, edge implied
+      // by the system's leading bracket (--dp-bracket, a 2px bone bar — never a border box);
+      // words in the etched/numeral faces, readings in phosphor, threat in danger red. Colour
+      // only ever reinforces the words (GRAMMAR above).
       style.textContent = `
   .sf-fork-inst { display:flex; flex-direction:column; gap:4px; min-width:210px;
-    padding:9px 11px; border-left:2px solid var(--sf-edge);
-    background:rgba(6,12,22,.62); color:var(--sf-paper); }
-  .sf-fork-inst--caution { border-left-color:var(--sf-foe); }
-  .sf-fork-inst__kicker { font-family:var(--sf-subhead-face); font-weight:600; font-size:12px;
-    letter-spacing:.08em; text-transform:uppercase; color:var(--sf-calm); }
-  .sf-fork-inst__title { font-family:var(--sf-subhead-face); font-weight:600; font-size:13px;
-    color:var(--sf-paper); }
-  .sf-fork-inst__status { font-family:var(--sf-data-face); font-weight:600; font-size:13px;
-    color:var(--sf-goal, #e3a13d); }
-  .sf-fork-inst--caution .sf-fork-inst__status { color:var(--sf-foe); }
+    padding:8px 12px 8px 14px;
+    background:var(--dp-bracket, linear-gradient(90deg, var(--dp-ink, #e8e2d4) 2px, transparent 0)), var(--dp-glass, rgb(8 11 16 / .62));
+    color:var(--dp-ink, #e8e2d4); }
+  .sf-fork-inst--caution { background:linear-gradient(90deg, var(--dp-danger, #ff5038) 2px, transparent 0), var(--dp-glass, rgb(8 11 16 / .62)); }
+  .sf-fork-inst__kicker { font-family:var(--dp-face-etch, "Archivo", sans-serif); font-stretch:112%;
+    font-weight:600; font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--dp-ink-mute, #b0aea6); }
+  .sf-fork-inst__title { font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+    font-weight:500; font-size:13px; color:var(--dp-ink, #e8e2d4); }
+  .sf-fork-inst__status { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:600; font-size:13px; font-variant-numeric:tabular-nums;
+    color:var(--dp-phos, #dfeeff); }
+  .sf-fork-inst--caution .sf-fork-inst__status { color:var(--dp-danger, #ff5038); }
   .sf-fork-inst__row { display:flex; align-items:baseline; gap:8px; }
-  .sf-fork-inst__speed { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--sf-paper); }
-  .sf-fork-inst__align { font-family:var(--sf-subhead-face); font-weight:500; font-size:12px;
-    color:var(--sf-calm); }
-  .sf-fork-inst__guidance { font-family:var(--sf-subhead-face); font-weight:500; font-size:12px;
-    color:var(--sf-paper); }
+  .sf-fork-inst__speed { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:500; font-size:12px; font-variant-numeric:tabular-nums;
+    color:var(--dp-ink, #e8e2d4); }
+  .sf-fork-inst__align { font-family:var(--dp-face-etch, "Archivo", sans-serif); font-stretch:112%;
+    font-weight:500; font-size:12px; color:var(--dp-ink-dim, #b7b4a6); }
+  .sf-fork-inst__guidance { font-family:var(--dp-face-read, "Instrument Sans", sans-serif);
+    font-weight:500; font-size:12px; color:var(--dp-ink, #e8e2d4); }
   /* No animation or transition anywhere: the surface is static text, so reduced-motion has nothing
      to suppress and reduced-flash has no strobe to dull. The classes only record the honored setting. */
   @media (forced-colors: active) {

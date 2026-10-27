@@ -1,10 +1,11 @@
 import { industryFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/industry.js — "Industry" fabrication as a kit panel (Frontend Task C §1.7).
 // Left: the processes under a k-caps per category — each blueprint a row (output × qty, the tier
-// and its one-line readiness as the sub-line, the readiness as the name's colour only). Right: the
-// output's name, the quantity at hero size ("per run"), the time as a hero ("seconds"), the inputs
-// as static rows (have / need at emphasis; a missing input's name in k-bad with a "Source in
-// market" word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
+// and its one-line readiness as the sub-line, the readiness carried by the row's is-* state class
+// and its why word, never by the name's colour — a blocked recipe is a fact, not a threat).
+// Right: the output's name, the quantity at hero size ("per run"), the time as a hero ("seconds"),
+// the inputs as static rows (have / need at emphasis; a short input keeps a "Source in market"
+// word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
 // system: ctx.crafting.build(bpId, stationId); a committed timed run scraps through
 // ctx.crafting.cancel(stationId) — the one-slot line only holds timed work, instant refines run
 // beside it. `.sx-ind`, `.sx-ind-row[data-bp]`, `.sx-ind-row__name`, `.sx-ind-row__process`,
@@ -24,7 +25,7 @@ import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { industryPictogram } from '../../orrery/industryGlyphs.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
-import { reducedMotion } from '../../orrery/motion.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { buildDuration } from '../../../systems/crafting.js';
 import { sellableCargoQuantity } from '../../../systems/cargo.js';
 import { techDisplayName } from '../../../data/tech.js';
@@ -80,10 +81,10 @@ function shortBlockLabel(bp, r) {
   return r.label;
 }
 
-/** The readiness as the row name's colour only: a gain · a signal · against you. */
-function toneClass(r) {
-  return r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad');
-}
+// The readiness is carried by the row's is-ready / is-materials / is-blocked state class and the
+// why sub-line — never by the name's colour: a facility mismatch or a shortfall is a fact, not a
+// threat, so the red channel stays free (ORRERY.md §3.3). The state class is what the station tab
+// layout (src/ui/orrery/stationTabsLayouts.js) tones in bone alphas.
 
 function ownsModule(state, defId) {
   const player = state && state.player;
@@ -146,6 +147,7 @@ export function createIndustryScreen(ctx) {
   const stageEl = el.querySelector('.sx-ind__stage');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
   let picked = false; // land on a recipe buildable at THIS station on first open
+  let arriving = false; // the ladder staggers in on show only (ORRERY §4 #25); a re-render is silent
   // ORRERY (design/frontend/ORRERY.md §6 Industry): the blueprint as a production chain -- inputs
   // as nodes, beams into the process, one beam out to the product, pulses when the line can run.
   let chain = null;
@@ -172,6 +174,13 @@ export function createIndustryScreen(ctx) {
 
   function renderList(state) {
     renderListBody(state);
+    // the ladder arrives item by item on show (library Stagger: .orr-rise + --orr-delay); a
+    // selection re-render is silent, so the list never replays its entrance
+    if (arriving && !reducedMotion()) {
+      const rows = listEl.querySelectorAll('.sx-ind-row');
+      stagger(rows, { base: 60, step: 22 });
+      for (const row of rows) row.classList.add('orr-rise');
+    }
     syncScrollExtent(listEl);
     fitLadderWindow();
   }
@@ -204,7 +213,7 @@ export function createIndustryScreen(ctx) {
           const notReady = whys.filter((w, bi) => readiness[bi].state !== 'ready');
           const sharedWhy = !allStation && notReady.length >= 2 && notReady[0] && notReady.every((w) => w === notReady[0]) ? notReady[0] : '';
           return `<section class="sx-ind-process${allStation ? ' is-blocked' : ''}" data-process="${category}">` +
-            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}${groupTier ? `<span class="sx-ind-process__tier">T${groupTier}</span>` : ''}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block">No ${facility} here</span>` : sharedWhy ? `<span class="sx-ind-process__block">${escapeHtml(sharedWhy)}</span>` : ''}</p>` +
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}${groupTier ? `<span class="sx-ind-process__tier">T${groupTier}</span>` : ''}<span class="sx-ind-process__count">${compactHead ? `${readyCount}/${blueprints.length}` : `${readyCount} of ${blueprints.length} ready`}</span>${allStation ? `<span class="sx-ind-process__block" style="display:inline-block;white-space:nowrap">No ${facility} here</span>` : sharedWhy ? `<span class="sx-ind-process__block" style="display:inline-block;white-space:nowrap">${escapeHtml(sharedWhy)}</span>` : ''}</p>` +
             `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp, bi) => {
               const r = readiness[bi];
               const stateCls = r.state === 'ready' ? ' is-ready' : r.state === 'materials' ? ' is-materials' : ' is-blocked';
@@ -217,7 +226,7 @@ export function createIndustryScreen(ctx) {
               return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}${stateCls}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
                 `<span class="sx-ind-row__body">` +
-                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(outputName)}${qtyHtml}${bp.category === 'augment' && bp.fromModule ? `<span class="sx-ind-row__from">from ${escapeHtml(niceName(bp.fromModule, 'module'))}</span>` : ''}</span>` +
+                  `<span class="k-row__name sx-ind-row__name">${escapeHtml(outputName)}${qtyHtml}${bp.category === 'augment' && bp.fromModule ? `<span class="sx-ind-row__from">from ${escapeHtml(niceName(bp.fromModule, 'module'))}</span>` : ''}</span>` +
                   ((!groupTier || why) ? `<span class="k-row__sub sx-ind-row__tier">${groupTier ? '' : `T${bp.tier}`}${why ? `<span class="sx-ind-row__why">${groupTier ? '' : ' · '}${escapeHtml(why)}</span>` : ''}</span>` : '') +
                 `</span>` +
                 `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
@@ -243,9 +252,9 @@ export function createIndustryScreen(ctx) {
       const ok = have >= need;
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
-          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
+          `<span class="k-row__name sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
           (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">${stationControlLabel('source-market')}</button>`) +
-          `<span class="k-row__num sx-fab-in__q${ok ? '' : ' k-bad'}">${have} <span class="k-62">/ ${need}</span></span>` +
+          `<span class="k-row__num sx-fab-in__q">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
       );
     }).join('');
@@ -253,7 +262,9 @@ export function createIndustryScreen(ctx) {
     // Notes that confirm a MATCHING facility, owned source or researched tech; a mismatch is already
     // the status sentence, so the requirement is never printed three times.
     const notes = [];
-    if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
+    // Notes CONFIRM a satisfied requirement (matching facility, owned source, researched tech) —
+    // a lack is the chain's blocked plate's job, which names it once with its own remedy.
+    if (bp.requiresTech && researched(state).has(bp.requiresTech)) notes.push({ ok: true, text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
     if (bp.stationType && (!stn || bp.stationType === stn)) notes.push({ ok: true, text: `${facilityName(bp.stationType)} online` });
     if (bp.category === 'augment' && bp.fromModule && ownsModule(state, bp.fromModule)) {
       notes.push({ ok: true, text: `${niceName(bp.fromModule, 'module')} ready to augment` });
@@ -264,14 +275,15 @@ export function createIndustryScreen(ctx) {
     // A queued job still blocks a timed rung, and says so; an instant rung stays live beside it.
     const instantRung = buildDuration(bp) <= 0;
     const lineHolds = !!queue && !instantRung;
-    const statusClass = queue ? 'k-signal' : (r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad'));
     const status = queue
       ? `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining.`
         + (r.state === 'ready' && instantRung ? ' Instant processes are not queued — this one still runs.' : '')
       : (r.state === 'ready' ? 'One build slot, idle.' : `${escapeHtml(r.label)}.`);
     const canBuild = r.state === 'ready' && !lineHolds;
     // the reason lives on the instrument and on the ladder; the sentence stays only for a running line or a note
-    const showStatus = !!queue || notes.length > 0;
+    // — and never restates what the chain's blocked plate already says (one fact, one carrier)
+    const blocker = !queue ? industryBlocker(bp, r) : null;
+    const showStatus = !!queue || (notes.length > 0 && !blocker);
 
     stageEl.innerHTML =
       `<div class="sx-fab">` +
@@ -284,8 +296,8 @@ export function createIndustryScreen(ctx) {
         `</div>` +
         `<p class="k-caps sx-fab-col-k">Needs</p>` +
         (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
-        (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
-        (showStatus ? `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` : '') +
+        (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : ''} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
+        (showStatus ? `<p class="k-sentence sx-fab-status">${status}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
           `<button type="button" ${stationControlAttrs('fabricate')} class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? ` aria-label="Fabricate: hold to run"` : ` disabled aria-disabled="true" aria-label="Fabricate: ${escapeHtml(lineHolds && r.state === 'ready' ? 'Line occupied' : r.label)}"`}>` +
             `${lineHolds && r.state === 'ready' ? 'Line occupied' : 'Fabricate'}${canBuild ? '<span class="dp-holdring" aria-hidden="true"></span>' : ''}` +
@@ -294,11 +306,11 @@ export function createIndustryScreen(ctx) {
         (queue ? `<li><button type="button" ${stationControlAttrs('scrap-run')} class="k-word k-word--fine k-bad sx-fab-scrap" data-ind-scrap="1" aria-label="Scrap the running fabrication — its committed materials are not returned">${stationControlLabel('scrap-run')}</button></li>` : '') +
         `</ul>` +
       `</div>`;
-    composeStage(bp, state, r, canBuild, queue, progress);
+    composeStage(bp, state, r, canBuild, queue, progress, blocker);
   }
 
   /** The chain beside the words, the verb as the Lamp Key, the labels resolving. */
-  function composeStage(bp, state, r, canBuild, queue = null, progress = 0) {
+  function composeStage(bp, state, r, canBuild, queue = null, progress = 0, blocker = null) {
     if (footRo) { footRo.disconnect(); footRo = null; }
     if (chain) { chain.dispose(); chain = null; }
     const fab = stageEl.querySelector('.sx-fab');
@@ -325,7 +337,6 @@ export function createIndustryScreen(ctx) {
       for (const el of fab.querySelectorAll(':scope > .sx-fab-head__cat, :scope > .sx-fab-head__name, :scope > .sx-fab-head__desc')) footRo.observe(el);
     }
     chain = createChainBeam(host, { onLayout: (g) => { lastG = g; seatFoot(); } });
-    const blocker = !queue ? industryBlocker(bp, r) : null;
     chain.set({
       inputs: Object.keys(bp.inputs || {}).map((id) => {
         const have = Math.floor(freeQty(state, id));
@@ -610,7 +621,9 @@ export function createIndustryScreen(ctx) {
         if (b) selectedId = b.id;
         picked = true;
       }
+      arriving = true;
       renderAll(st);
+      arriving = false;
     },
     onHide() { visible = false; retirePresentation(); },
     refresh(c) { renderAll((c || ctx).state || {}); },

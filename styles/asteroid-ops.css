@@ -390,7 +390,13 @@
   display: block;
   outline: none;
 }
-.ast-canvas:focus-visible { box-shadow: none; border-radius: 4px; }
+.ast-canvas:focus-visible {
+  /* The board is a focusable control (it owns the rig keys), so keyboard focus must be seen:
+     a 2px bone bracket inset from the frame — the rubric's focus bracket, not chrome. */
+  outline: 2px solid rgb(236 230 216 / .55);
+  outline-offset: -6px;
+  border-radius: 4px;
+}
 
 /* ---------------------------------------------------------------- empty state
    ORRERY Surface 1 (F1/F2): with no claim the rock stages dimly behind the screen's
@@ -404,8 +410,23 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  /* The staged rock is the empty screen's hero: it arrives with the glass, it does not pop when
+     a claim is abandoned and the layer returns. */
+  animation: aw-empty-in 240ms var(--k-ease) both;
+}
+@keyframes aw-empty-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .aw-empty[hidden] { display: none !important; }
+.aw-guide[hidden] { display: none !important; }
+/* The card arrives, it does not pop: one quiet rise when the section is first shown (display
+   flipping from none restarts the animation, and repeat `hidden=false` writes do not). */
+.aw-guide:not([hidden]) { animation: aw-guide-in 200ms var(--k-ease) both; }
+@keyframes aw-guide-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .aw-guide {
   position: absolute;
   left: 16px;
@@ -413,15 +434,23 @@
   z-index: 5;
   width: min(340px, calc(100% - 170px));
   padding: 12px 16px;
-  border-left: 2px solid var(--orr-hand);
+  /* The edge is a scale tick in bone — the screen's rule language (.aw-key, .aw-crest-name) —
+     never amber: amber on this screen is the one verb's channel, and the verb word below carries
+     it. */
+  border-left: 2px solid rgb(236 230 216 / .55);
   background: var(--dp-glass-deep);
   color: var(--dp-ink);
   pointer-events: auto;
 }
-.aw-guide[hidden] { display: none !important; }
 .aw-guide h2 { margin: 0 0 8px; font: 600 16px var(--dp-face-label); }
-.aw-guide p { margin: 0 0 8px; font: 14px/1.45 var(--dp-face-label); }
+.aw-guide p { margin: 0 0 8px; font: 14px/1.45 var(--aw-font); }
 .ast-screen .aw-guide button { min-height: 40px; color: var(--orr-hand); }
+.ast-screen .aw-guide button { transition: color 120ms var(--k-ease); }
+.ast-screen .aw-guide button:hover { color: var(--orr-hand-hot); }
+/* In build mode the palette's armed key carries the Hand, and this screen keeps exactly one
+   amber leader: the guide's verb steps down to bone (its hover still brightens it). */
+.ast-screen[data-mode="build"] .aw-guide button { color: var(--orr-bone); }
+.ast-screen[data-mode="build"] .aw-guide button:hover { color: var(--orr-bone-hot); }
 @media (max-width: 600px) {
   .aw-guide { left: 8px; top: 8px; padding: 8px; }
   .aw-guide p { font-size: 12px; }
@@ -437,7 +466,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgb(5 7 10 / .55) 100%);
+  background: radial-gradient(120% 90% at 50% 45%, transparent 46%, rgb(5 7 10 / .45) 100%);
   pointer-events: none;
 }
 /* The one primary verb: an amber field, dark ink, one 45° cut, a sheen crossing every
@@ -1097,7 +1126,7 @@ html:not([data-locale="en-US"]) .aw-alert {
   .ast-screen .aw-leave, .ast-screen .sf-btn, .ast-summary-box .sf-btn { transition: none; }
   .aw-leave:hover, .aw-build-key:hover,
   .ast-screen .sf-btn:hover, .ast-summary-box .sf-btn:hover { transform: none; }
-  .aw-palette.settle { animation: none; }
+  .aw-palette.settle, .aw-guide:not([hidden]), .aw-empty { animation: none; }
   .aw-arc-ghost, .aw-arc-value { transition: none; }
   .aw-stake-key::after { animation: none; }
 }
@@ -1111,6 +1140,8 @@ html.sf-reduce-motion .aw-gauge-fill,
 html.sf-reduce-motion .aw-arc-ghost,
 html.sf-reduce-motion .aw-arc-value { transition: none; }
 html.sf-reduce-motion .aw-palette.settle,
+html.sf-reduce-motion .aw-guide:not([hidden]),
+html.sf-reduce-motion .aw-empty,
 html.sf-reduce-motion .aw-stake-key::after { animation: none; }
 html.sf-reduce-motion .aw-build-key:hover,
 html.sf-reduce-motion .ast-screen .sf-btn:hover,
@@ -1259,7 +1290,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  min-height: 30px;
+  min-height: 34px;
   padding: 0 2px;
   box-sizing: border-box;
   background: none;
@@ -1337,6 +1368,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   box-shadow: none;
 }
 .aw-drawer-key svg { display: block; }
+/* The crest's Guide toggle stands down on a sessionless screen (F6); its inline-flex base rule
+   would out-rank the UA [hidden] sheet exactly like .aw-lens[hidden] above. */
+.ast-screen .aw-drawer-key[hidden] { display: none !important; }
 .aw-drawer-label {
   font: 500 12px/1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
@@ -1504,7 +1538,8 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 .ast-screen .aw-verb-chip,
 .ast-screen .aw-verb-btn,
 .ast-screen .aw-verb-step {
-  min-height: 30px;
+  /* the shared row height (--dp-row 34px): the drawer's verbs stay palm-sized, not thumb-fiddly */
+  min-height: 34px;
   box-sizing: border-box;
   background: none;
   border: 0;
@@ -1538,7 +1573,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
+  width: 34px;
   padding: 0;
   font-family: var(--aw-mono);
   font-size: 15px;

@@ -1200,7 +1200,7 @@ export const settingsScreen = {
       build.header('Accessibility checklist');
       for (const row of CHECKLIST_ITEMS) {
         const live = checklist.rows.find((item) => item.id === row.id);
-        build.note(`${row.label}: ${live && live.ok ? 'ready' : 'off'}`);
+        build.checklistRow(row.label, !!(live && live.ok));
       }
       rowSelect('Caption size', () => ac.captionSize || 'medium',
         [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],

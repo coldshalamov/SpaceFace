@@ -41,13 +41,10 @@ ${H} > .k-title > .sf-help-now::after { content:""; width:72px; height:1.5px; ba
 /* ------------------------------------------------ the section ladder --------------------------- */
 ${H} > .k-hang { ${PLAIN} overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
 ${H} .orr-help__tabs { ${PLAIN} position:relative !important; display:flex !important; flex-direction:column !important; gap:0 !important; margin:0 !important; padding:6px 0 !important;
-  counter-reset:orrhelp; background:${SPINE} !important; }
-${H} .orr-help__tabs > li { position:relative !important; counter-increment:orrhelp; width:100% !important; list-style:none !important; margin:0 !important; }
-${H} .orr-help__tabs > li::before { content:counter(orrhelp, decimal-leading-zero); position:absolute; left:40px; top:50%; transform:translateY(-50%); pointer-events:none;
-  ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.14em; color:rgb(${BONE} / .82); font-variant-numeric:tabular-nums; }
-${H} .orr-help__tabs > li:has(> .sf-tab[aria-selected="true"])::before { color:rgb(${HOT}); }
+  background:${SPINE} !important; }
+${H} .orr-help__tabs > li { position:relative !important; width:100% !important; list-style:none !important; margin:0 !important; }
 ${H} .orr-help__tabs .sf-tab { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
-  width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 72px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
+  width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 40px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
   letter-spacing:.2em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${H} .orr-help__tabs .sf-tab::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
   height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .72) !important;
@@ -169,6 +166,8 @@ ${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width
   background:linear-gradient(rgb(${BONE} / .7) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
     repeating-linear-gradient(90deg, rgb(${BONE} / .55) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
 ${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .78) !important; }
+${H} .orr-help-search .sf-lc__search:hover:not(:focus) { background:linear-gradient(rgb(${BONE} / .95) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+  repeating-linear-gradient(90deg, rgb(${BONE} / .75) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
 ${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
   repeating-linear-gradient(90deg, rgb(255 255 255 / .8) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
 ${H} .orr-help-search { position:relative; }

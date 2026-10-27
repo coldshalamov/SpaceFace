@@ -17,6 +17,8 @@ import { entitySpanHtml } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
 import { drawGlyph, glyphSvg } from '../glyphs.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { dressLampKey } from '../orrery/lampKey.js';
 
 const FACTION_NAME = Object.create(null);
 const FACTION_COLOR = Object.create(null);
@@ -66,13 +68,17 @@ export function canvasRoles() {
   try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
   const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
   return {
-    you: read('--sf-you', fallback.you),
-    foe: read('--sf-foe', fallback.foe),
-    goal: read('--sf-goal', fallback.goal),
-    calm: read('--sf-calm', fallback.calm),
-    paper: read('--sf-paper', fallback.paper),
-    surface: read('--sf-surface', fallback.surface),
-    edge: read('--sf-edge', fallback.edge),
+    // ORRERY roles (design/frontend/ORRERY.md §3.3), deckplate tokens first, the seven grammar
+    // hexes behind them for headless probes: readings are phosphor, the course is the Hand's
+    // amber, threat is danger, rest light is warm bone, data in motion is ice.
+    you: read('--dp-phos', read('--sf-you', fallback.you)),
+    foe: read('--dp-danger', read('--sf-foe', fallback.foe)),
+    goal: read('--dp-lamp', read('--sf-goal', fallback.goal)),
+    calm: read('--dp-ink-dim', read('--sf-calm', fallback.calm)),
+    paper: read('--dp-ink', read('--sf-paper', fallback.paper)),
+    surface: read('--dp-void', read('--sf-surface', fallback.surface)),
+    edge: read('--dp-line', read('--sf-edge', fallback.edge)),
+    motion: read('--dp-ice', fallback.calm),
   };
 }
 
@@ -127,14 +133,14 @@ const DRIVER_LABEL = Object.freeze({
 });
 
 const STYLE_ID = 'sf-starmap-style';
+/* ORRERY composition (design/frontend/ORRERY.md): the chart is a full-bleed instrument over the
+   world — no floating panel, no borders, no box shadows, no backdrop blur over the live sim.
+   Glass carries corner ticks; the head and foot stand on dissolving veils; the one amber leader
+   is the course (Lamp Key + goal kicker + route line); red stays threat; readings are phosphor. */
 const CSS = `
 #sf-starmap {
-  width: min(94vw, 1120px); height: min(90vh, 760px); display: flex; flex-direction: column;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--sf-surface) 96%, black) 0%, color-mix(in srgb, var(--sf-surface) 90%, black) 100%);
-  border: 1px solid var(--sf-edge); border-radius: 6px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  overflow: hidden; pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
+  position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden;
+  pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
 }
 #sf-starmap .sf-fig,
 #sf-starmap .sm-stats b,
@@ -149,212 +155,219 @@ const CSS = `
 }
 #sf-starmap .sm-head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--dp-veil-head, linear-gradient(180deg, rgb(8 9 12 / .78) 0%, rgb(8 9 12 / .34) 46%, transparent 86%));
 }
 #sf-starmap .sm-title {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
   display: flex; align-items: center; gap: 8px;
 }
 #sf-starmap .sm-title::before {
-  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--sf-calm); border-radius: 1px;
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--dp-line-hi, var(--sf-calm)); border-radius: 1px;
 }
 #sf-starmap .sm-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
 #sf-starmap .sm-commodity {
   display: flex; align-items: center; gap: var(--sp-2);
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
 }
 #sf-starmap .sm-commodity .sf-select__field {
-  max-width: 190px; background: var(--sf-surface); border: 1px solid var(--sf-edge);
-  color: var(--sf-paper); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
+  max-width: 190px; background: transparent; border: 0; border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
+  color: var(--dp-ink, var(--sf-paper)); border-radius: 0; padding: var(--sp-1) var(--sp-2);
   font-family: var(--sf-body-face); font-size: 13px; text-transform: none; letter-spacing: 0;
 }
 #sf-starmap .sm-commodity .sf-select__field:focus-visible {
-  outline: 2px solid var(--sf-goal); outline-offset: 2px; border-color: var(--sf-goal); box-shadow: none;
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px; border-bottom-color: var(--dp-line-hi, var(--sf-calm)); box-shadow: none;
 }
-#sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
-#sf-starmap .sm-stats b { color: var(--sf-paper); }
+#sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+#sf-starmap .sm-stats b { color: var(--dp-phos, var(--sf-paper)); }
 #sf-starmap .sm-close {
-  background: color-mix(in srgb, var(--sf-calm) 8%, transparent); border: 1px solid var(--sf-edge); color: var(--sf-paper);
-  padding: var(--sp-1) var(--sp-3); border-radius: 4px; cursor: pointer;
-  font-family: var(--sf-body-face); font-size: 13px; font-weight: 500; letter-spacing: 0;
-  transition: all 0.15s ease;
+  /* A ghost key at rest: the field carries it, no rectangle (glass never has a border). The lamp
+     border is the pinned hover/focus signal (INST kit contract), so the border track stays. */
+  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 8%, transparent)); border: 1px solid transparent; color: var(--dp-ink, var(--sf-paper));
+  min-height: 40px; padding: var(--sp-2) var(--sp-3); border-radius: 0; cursor: pointer;
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
+  transition: color 160ms var(--dp-ease-out, ease-out), border-color 160ms var(--dp-ease-out, ease-out), background-color 160ms var(--dp-ease-out, ease-out);
 }
 #sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
-  border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 12%, transparent);
-  translate: 0 -1px; box-shadow: none;
+  border-color: var(--dp-lamp, var(--sf-you)); color: var(--dp-lamp-hot, var(--sf-you));
+  background: var(--dp-field-ink-hi, color-mix(in srgb, var(--sf-you) 12%, transparent));
 }
 #sf-starmap .sm-close:active {
   translate: 0 1px;
 }
+#sf-starmap .sm-close:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px;
+}
 #sf-starmap .sm-body { flex: 1; display: flex; min-height: 0; }
 #sf-starmap .sm-canvas-wrap { flex: 1; position: relative; min-width: 0; }
 #sf-starmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; display: block; }
+/* The inspector: one glass column, its left edge dissolved into the chart — no border. It is a
+   pinned rail, not a scroller: the reading (objective) holds the top, the verb (actions) holds
+   the foot, and only the field ladder between them scrolls. The old single-scroll column put
+   the Lamp Key below the fold and buried the transit rows under the foot veil. */
 #sf-starmap .sm-side {
-  width: 316px; border-left: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 84%, transparent);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); overflow-y: auto;
-  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--sf-calm) 25%, transparent) transparent;
+  width: 340px;
+  background: var(--dp-glass-deep, color-mix(in srgb, var(--sf-surface) 84%, transparent));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 20px); mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 20px);
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 18px); display: flex; flex-direction: column; gap: var(--sp-2);
 }
-#sf-starmap .sm-sel-head { border-left: var(--sf-rail-w) solid var(--sf-calm); padding-left: var(--sp-2); }
-#sf-starmap .sm-sel-head.is-here { border-left-color: var(--sf-you); }
+/* The field ladder: the only scrolling part of the column. Its bottom edge dissolves (the mask,
+   not a rule), so a row cut by the fold reads as continuation — and the last row, fully scrolled,
+   clears the fade over padding, never dying inside it. */
+#sf-starmap .sm-side > [data-sel] {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--dp-rule-hi, color-mix(in srgb, var(--sf-calm) 25%, transparent)) transparent;
+  padding-bottom: 26px;
+  -webkit-mask-image: linear-gradient(180deg, rgb(0 0 0) 0, rgb(0 0 0) calc(100% - 26px), transparent 100%);
+  mask-image: linear-gradient(180deg, rgb(0 0 0) 0, rgb(0 0 0) calc(100% - 26px), transparent 100%);
+}
+#sf-starmap .sm-sel-head { padding-left: var(--sp-2); }
 #sf-starmap .sm-sel-name {
   display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2);
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; color: var(--sf-paper);
-  padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: 1px solid var(--sf-edge);
+  font-family: var(--dp-face-display, var(--sf-display-face)); font-stretch: 118%; font-weight: 750; font-size: 19px; color: var(--dp-ink, var(--sf-paper));
+  padding-bottom: var(--sp-2); margin-bottom: var(--sp-2); border-bottom: 1px solid var(--dp-rule, var(--sf-edge));
 }
 #sf-starmap .sm-sel-fac {
-  font-family: var(--sf-body-face); font-size: 13px; margin-top: var(--sp-1); color: var(--sf-calm);
+  font-family: var(--sf-body-face); font-size: 13px; margin-top: var(--sp-1); color: var(--dp-ink-mute, var(--sf-calm));
 }
-#sf-starmap .sm-section { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--sf-edge); }
+#sf-starmap .sm-section { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px solid var(--dp-rule, var(--sf-edge)); }
 #sf-starmap .sm-section-title {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-  color: var(--sf-calm); margin-bottom: var(--sp-1);
+  color: var(--dp-ink-dim, var(--sf-calm)); margin-bottom: var(--sp-1);
 }
 #sf-starmap .sm-kv {
   display: flex; justify-content: space-between; gap: var(--sp-2);
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); padding: 2px 0;
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); padding: 2px 0;
 }
-#sf-starmap .sm-kv b { color: var(--sf-paper); font-weight: 500; text-align: right; }
-#sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
-#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; }
+#sf-starmap .sm-kv b { color: var(--dp-ink, var(--sf-paper)); font-weight: 500; text-align: right; }
+#sf-starmap .sm-driver { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.35; margin: var(--sp-1) 0 var(--sp-2); }
+#sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.5; }
 #sf-starmap .sm-objective {
-  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
-  border-radius: 4px; padding: var(--sp-2) var(--sp-3);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), -2px 0 12px color-mix(in srgb, var(--sf-goal) 20%, transparent);
+  border: 0; border-radius: 0; padding: var(--sp-2) var(--sp-3);
+  background: var(--dp-field, color-mix(in srgb, var(--sf-surface) 88%, transparent));
 }
 #sf-starmap .sm-objective[hidden] { display: none; }
 #sf-starmap .sm-objective-k {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-goal);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-lamp, var(--sf-goal));
 }
 #sf-starmap .sm-objective-title {
-  margin-top: var(--sp-1); font-family: var(--sf-display-face); font-weight: 700; font-size: 28px;
-  line-height: 1.1; color: var(--sf-paper); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere;
+  margin-top: var(--sp-1); font-family: var(--dp-face-display, var(--sf-display-face)); font-weight: 800; font-stretch: 125%; font-size: 28px;
+  line-height: 1.05; color: var(--dp-ink, var(--sf-paper)); letter-spacing: -0.01em; text-transform: none; overflow-wrap: anywhere;
 }
 #sf-starmap .sm-objective-body {
-  margin-top: var(--sp-1); font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-calm); line-height: 1.45;
+  margin-top: var(--sp-1); font-family: var(--sf-body-face); font-size: 14px; color: var(--dp-ink-dim, var(--sf-calm)); line-height: 1.45;
 }
-#sf-starmap .sm-objective-meta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); color: var(--sf-calm); }
-#sf-starmap .sm-objective-meta span {
-  border: 1px solid var(--sf-edge); border-radius: 2px; padding: 2px var(--sp-2);
-  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
-}
-#sf-starmap .sm-objective-meta .hot { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
+#sf-starmap .sm-objective-meta { display: flex; flex-wrap: wrap; column-gap: var(--sp-3); row-gap: var(--sp-1); margin-top: var(--sp-2); color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-starmap .sm-objective-meta .hot { color: var(--dp-phos, var(--sf-goal)); }
+/* The objective's own verb is a quiet word; the screen's Lamp Key is the course (sm-actions). */
 #sf-starmap .sm-objective button {
-  width: 100%; margin-top: var(--sp-2); padding: var(--sp-2);
-  border: 1px solid var(--sf-goal-edge); border-radius: 4px; color: var(--sf-goal);
-  background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
-  font-weight: 600; cursor: pointer; transition: all 0.15s ease;
+  min-height: 40px; margin-top: var(--sp-2); padding: var(--sp-2) var(--sp-1);
+  border: 0; border-radius: 0; color: var(--dp-ink-dim, var(--sf-goal));
+  background: transparent;
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; cursor: pointer;
+  transition: color 160ms var(--dp-ease-out, ease-out);
 }
-#sf-starmap .sm-objective button:hover, #sf-starmap .sm-objective button:focus-visible {
-  border-color: var(--sf-goal); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 20%, transparent);
-  translate: 0 -1px; box-shadow: none;
+#sf-starmap .sm-objective button:hover {
+  color: var(--dp-ink, var(--sf-paper));
+  background: linear-gradient(90deg, var(--dp-line-hi, var(--sf-goal)) 0 2px, transparent 2px) 0 50% / 2px 70% no-repeat;
+}
+#sf-starmap .sm-objective button:focus-visible {
+  outline: 2px solid var(--dp-line-hi, var(--sf-calm)); outline-offset: 2px; color: var(--dp-ink, var(--sf-paper));
 }
 #sf-starmap .sm-objective button:active {
   translate: 0 1px;
 }
 #sf-starmap .sm-route {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-you); margin-top: var(--sp-2);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-lamp, var(--sf-you)); margin-top: var(--sp-2);
 }
 #sf-starmap .sm-route-leg {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
-  padding: 2px 0 2px var(--sp-2); border-left: var(--sf-rail-w) solid var(--sf-you);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
+  padding: 2px 0 2px var(--sp-2);
 }
-#sf-starmap .sm-route-leg b { color: var(--sf-paper); font-weight: 600; }
-#sf-starmap .sm-route-leg .sm-interdict { color: var(--sf-foe); }
-#sf-starmap .sm-route-total { color: var(--sf-you); padding: var(--sp-1) 0; }
+#sf-starmap .sm-route-leg b { color: var(--dp-ink, var(--sf-paper)); font-weight: 600; }
+#sf-starmap .sm-route-leg .sm-interdict { color: var(--dp-danger, var(--sf-foe)); }
+#sf-starmap .sm-route-total { color: var(--dp-lamp, var(--sf-you)); padding: var(--sp-1) 0; }
+/* A quantity is a lit band over a ghost track — no bordered bar. */
 #sf-starmap .sm-bar {
-  height: var(--sf-rail-w); border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-calm) 18%, transparent); overflow: hidden; margin: var(--sp-1) 0;
-  border: 1px solid var(--sf-edge);
+  height: 3px; border-radius: 0;
+  background: var(--dp-field-ink, color-mix(in srgb, var(--sf-calm) 18%, transparent)); overflow: hidden; margin: var(--sp-1) 0;
+  border: 0;
 }
-#sf-starmap .sm-bar > i { display: block; height: 100%; border-radius: inherit; background: var(--sf-calm); }
+#sf-starmap .sm-bar > i { display: block; height: 100%; border-radius: 0; background: var(--dp-phos-dim, var(--sf-calm)); }
 #sf-starmap .sm-influence-row {
   display: grid; grid-template-columns: 1fr 42px; gap: var(--sp-2); align-items: center;
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin: var(--sp-1) 0;
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); margin: var(--sp-1) 0;
 }
-#sf-starmap .sm-influence-row b { text-align: right; color: var(--sf-paper); }
+#sf-starmap .sm-influence-row b { text-align: right; color: var(--dp-ink, var(--sf-paper)); }
+/* the rail separates by structure, not by washes: the transit-consequence rungs hang on a 2px
+   left rule like every other block's hairline, never a filled slab (the no-box grammar) */
 #sf-starmap .sm-risk {
-  border: 1px solid var(--sf-edge); border-radius: 4px; padding: var(--sp-2); margin-top: var(--sp-1);
-  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  border: 0; border-radius: 0; padding: var(--sp-2); margin-top: var(--sp-1);
+  border-left: 2px solid var(--dp-rule-hi, var(--sf-edge));
+  background: none;
 }
-#sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); }
-#sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin-top: var(--sp-1); }
+#sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); }
+#sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm)); line-height: 1.35; margin-top: var(--sp-1); }
 #sf-starmap .sm-pips { display: inline-flex; gap: 3px; align-items: center; }
 #sf-starmap .sm-pip {
   width: 7px; height: 7px; border-radius: 50%; display: inline-block;
   border: 1.2px solid currentColor; box-sizing: border-box;
 }
 #sf-starmap .sm-pip--on { background: currentColor; }
-#sf-starmap .sm-pips--you { color: var(--sf-you); }
-#sf-starmap .sm-pips--calm { color: var(--sf-calm); }
-#sf-starmap .sm-pips--goal { color: var(--sf-goal); }
-#sf-starmap .sm-pips--foe { color: var(--sf-foe); }
+#sf-starmap .sm-pips--you { color: var(--dp-phos, var(--sf-you)); }
+#sf-starmap .sm-pips--calm { color: var(--dp-ink-dim, var(--sf-calm)); }
+/* LOW security reads bright bone: the filled-pip count and the word carry the band, and the Hand's
+   amber is never spent on a security tier (ORRERY §3.3 — one amber leader, the course). */
+#sf-starmap .sm-pips--goal { color: var(--dp-ink, var(--sf-paper)); }
+#sf-starmap .sm-pips--foe { color: var(--dp-danger, var(--sf-foe)); }
 #sf-starmap .sm-pips-word {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm));
 }
 #sf-starmap .sm-market-memory { display: flex; flex-direction: column; gap: var(--sp-1); }
 #sf-starmap .sm-market-row {
   display: flex; justify-content: space-between; gap: var(--sp-2);
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
 }
-#sf-starmap .sm-market-row.fresh { color: var(--sf-you); }
-#sf-starmap .sm-market-row.mid { color: var(--sf-paper); }
-#sf-starmap .sm-market-row.old { color: var(--sf-calm); font-style: italic; }
+#sf-starmap .sm-market-row.fresh { color: var(--dp-phos, var(--sf-you)); }
+#sf-starmap .sm-market-row.mid { color: var(--dp-ink, var(--sf-paper)); }
+#sf-starmap .sm-market-row.old { color: var(--dp-ink-mute, var(--sf-calm)); font-style: italic; }
 #sf-starmap .sm-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); }
-#sf-starmap .sm-actions button {
-  width: 100%; min-height: 44px; padding: var(--sp-2); border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.15s ease;
-}
-#sf-starmap .sm-actions button:hover {
-  translate: 0 -1px;
-}
-#sf-starmap .sm-actions button:active {
-  translate: 0 1px;
-}
-#sf-starmap .sm-course {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--sf-goal) 25%, transparent) 0%, color-mix(in srgb, var(--sf-goal) 12%, transparent) 100%);
-  border: 1px solid var(--sf-goal); color: var(--sf-goal);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--sf-goal) 20%, transparent);
-}
-#sf-starmap .sm-course:hover, #sf-starmap .sm-course:focus-visible {
-  color: var(--sf-paper); border-color: var(--sf-paper); filter: brightness(1.15);
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--sf-goal) 35%, transparent);
-}
+/* The apron is a dissolving veil ON the chart (the localmap legend's grammar), not a flow bar:
+   it spans the canvas it describes, never the dossier column, so no reading is ever laid under it.
+   .sf-apron's column direction is overridden — the legend and the key hint share one row. */
 #sf-starmap .sm-foot {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--dp-veil-foot, linear-gradient(0deg, rgb(8 9 12 / .86) 0%, rgb(8 9 12 / .46) 42%, transparent 88%));
+  font-family: var(--sf-body-face); font-size: 13px; color: var(--dp-ink-mute, var(--sf-calm));
 }
-#sf-starmap .sm-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+#sf-starmap .sm-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; font-family: var(--dp-face-label, var(--sf-subhead-face)); font-stretch: 112%; font-weight: 650; font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--dp-ink-dim, var(--sf-calm)); }
 #sf-starmap .sm-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
-#sf-starmap .sm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--sf-calm); }
-#sf-starmap .sm-dot--you { background: var(--sf-you); }
-#sf-starmap .sm-dot--goal { background: var(--sf-goal); }
-#sf-starmap .sm-dot--foe { background: var(--sf-foe); }
-#sf-starmap .sm-legend .sm-legend-glyph { width: 12px; height: 12px; color: var(--sf-foe); flex: none; }
+#sf-starmap .sm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--dp-ink-dim, var(--sf-calm)); }
+#sf-starmap .sm-dot--foe { background: var(--dp-danger, var(--sf-foe)); }
+#sf-starmap .sm-dot--ice { background: var(--dp-ice, var(--sf-calm)); }
+#sf-starmap .sm-legend .sm-legend-glyph { width: 12px; height: 12px; color: var(--dp-danger, var(--sf-foe)); flex: none; }
 @media (max-width: 820px) {
-  #sf-starmap .sm-side { width: 270px; }
+  #sf-starmap .sm-side { width: 288px; }
   #sf-starmap .sm-stats { gap: var(--sp-2); }
 }
 @media (prefers-reduced-motion: reduce) {
   #sf-starmap, #sf-starmap * { animation: none; transition: none; }
 }
+html.sf-reduce-motion #sf-starmap .orr-rise { animation: none; }
 @media (forced-colors: active) {
   #sf-starmap, #sf-starmap .sm-objective, #sf-starmap .sm-side, #sf-starmap .sm-risk {
     background: Canvas; color: CanvasText; border-color: CanvasText;
   }
-  #sf-starmap .sm-objective, #sf-starmap .sm-sel-head { border-left-color: CanvasText; }
 }
 `;
 
@@ -408,6 +421,18 @@ export function trendRole(v, goodWhenPositive = false) {
   return positiveGood ? 'you' : 'goal';
 }
 export function trendColor(v, goodWhenPositive = false) { return token(trendRole(v, goodWhenPositive)); }
+/* What the SCREEN paints for a meaning role (ORRERY §3.3): a safe reading is phosphor, a caution
+   is bright bone ink, a threat is danger-red — never the kit's legacy green, and never the Hand's
+   amber (the course is this screen's one amber leader). dangerColor()/pressureColor()/
+   trendColor() keep their pinned kit-contract strings for the instrument-hierarchy test; the
+   dossier and the tooltip apply the dp tokens through this map instead. */
+const DP_ROLE_COLOR = {
+  you: 'var(--dp-phos, var(--sf-you))',
+  goal: 'var(--dp-ink, var(--sf-paper))',
+  calm: 'var(--dp-ink-mute, var(--sf-calm))',
+  foe: 'var(--dp-danger, var(--sf-foe))',
+};
+function dpColor(role) { return DP_ROLE_COLOR[role] || DP_ROLE_COLOR.calm; }
 function driverLabel(id) { return DRIVER_LABEL[id] || String(id || '').replace(/_/g, ' '); }
 function securityLabel(sec) { return sec >= 0.7 ? 'High' : sec >= 0.4 ? 'Mid' : sec >= 0.15 ? 'Low' : 'Null'; }
 function securityPips(sec) {
@@ -747,11 +772,14 @@ export const starmapScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
+    // The instrument composes the ORRERY library: .orr-rise arrival, the Lamp Key, and the --dp
+    // light tokens this sheet speaks (ORRERY.md §4 — screens compose, never hand-roll chrome).
+    injectOrrery();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-starmap';
     rootEl.innerHTML = `
-      <div class="sm-head sf-crest">
+      <div class="sm-head sf-crest orr-rise">
         <div class="sm-title">NAV CHART</div>
         <div class="sm-head-actions">
           <label class="sm-commodity">Intel <select data-commodity></select></label>
@@ -765,21 +793,21 @@ export const starmapScreen = {
         </div>
       </div>
       <div class="sm-body">
-        <div class="sm-canvas-wrap sf-stage" data-centerpiece="map-command-table"><canvas></canvas></div>
-        <div class="sm-side">
+        <div class="sm-canvas-wrap sf-stage" data-centerpiece="map-command-table"><canvas></canvas>
+          <div class="sm-foot sf-apron orr-rise" style="--orr-delay:180ms">
+            <div class="sm-legend">
+              <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
+              <span><i class="sm-dot sm-dot--ice"></i>commodity flow</span>
+              <span>${glyphSvg('err', 12, 'sm-legend-glyph')} contested</span>
+            </div>
+            <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · beads flow toward scarcity</div>
+          </div>
+        </div>
+        <div class="sm-side orr-rise" style="--orr-delay:60ms">
           <div class="sm-objective" data-objective hidden></div>
           <div data-sel><div class="sm-hint">Select a sector to inspect the live danger, market, and influence fields.</div></div>
           <div class="sm-actions" data-actions></div>
         </div>
-      </div>
-      <div class="sm-foot sf-apron">
-        <div class="sm-legend">
-          <span><i class="sm-dot sm-dot--foe"></i>danger field</span>
-          <span><i class="sm-dot sm-dot--goal"></i>scarcity</span>
-          <span><i class="sm-dot sm-dot--you"></i>surplus</span>
-          <span>${glyphSvg('err', 12, 'sm-legend-glyph')} contested</span>
-        </div>
-        <div>${BINDINGS.starmap.label} close · scroll zoom · drag pan · moving beads show commodity flow</div>
       </div>`;
 
     this._canvas = rootEl.querySelector('canvas');
@@ -1117,7 +1145,10 @@ export const starmapScreen = {
     const w = canvas.width / this._dpr, h = canvas.height / this._dpr;
     const roles = canvasRoles();
     g.clearRect(0, 0, w, h);
-    g.fillStyle = paint(roles.surface, 0.92); g.fillRect(0, 0, w, h);
+    // No plate: a deep veil of the void over the world, the instrument drawn on top (the chart's
+    // own law — the sky is the ground). Deep enough that lanes and readings hold contrast over a
+    // bright station plate.
+    g.fillStyle = paint(roles.surface, 0.74); g.fillRect(0, 0, w, h);
 
     const nodes = this._layout();
     const byId = Object.fromEntries(nodes.map((n) => [n.sector.id, n]));
@@ -1152,8 +1183,12 @@ export const starmapScreen = {
         const sa = this._signal(a.id), sb = this._signal(id);
         const averageDanger = bothKnown && sa && sb ? (sa.danger + sb.danger) * 0.5 : 0;
         g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
+        // Lanes are rest light (bone) whose WEIGHT carries danger; only a truly dangerous lane
+        // turns threat-red. Amber is never spent on structure.
         g.strokeStyle = bothKnown
-          ? paint(roles[dangerRole(averageDanger)], 0.18 + averageDanger * 0.20)
+          ? (averageDanger > 0.72
+            ? paint(roles.foe, 0.30 + averageDanger * 0.25)
+            : paint(roles.paper, 0.14 + averageDanger * 0.12))
           : paint(roles.calm, 0.12);
         g.lineWidth = (bothKnown ? 1.2 + averageDanger * 1.1 : 0.8) / zoom;
         g.setLineDash(bothKnown ? [] : [4 / zoom, 5 / zoom]);
@@ -1171,7 +1206,8 @@ export const starmapScreen = {
           const t = ((now / 2600 + phase + k * 0.5) % 1 + 1) % 1;
           const p = pointOnLine(from, to, t);
           g.beginPath(); g.arc(p.x, p.y, (1.8 + Math.abs(gradient) * 2.2) / zoom, 0, Math.PI * 2);
-          g.fillStyle = roles[pressureRole(Math.max(sa.pricePressure, sb.pricePressure))];
+          // the beads ARE data in motion — ice, whatever the pressure sign (ORRERY §3.3)
+          g.fillStyle = roles.motion;
           g.globalAlpha = 0.45 + Math.abs(gradient) * 0.45;
           g.fill(); g.globalAlpha = 1;
         }
@@ -1186,7 +1222,8 @@ export const starmapScreen = {
       if (!wh || !byId[wh.sectorId] || !this._isDiscovered(n.sector.id)) continue;
       const b = byId[wh.sectorId];
       g.beginPath(); g.moveTo(n.x, n.y); g.lineTo(b.x, b.y);
-      g.strokeStyle = paint(roles.goal, 0.55);
+      // a wormhole is structure at rest — bone, not the Hand's amber
+      g.strokeStyle = paint(roles.calm, 0.55);
       g.lineWidth = 1.5 / this._cam.zoom;
       g.setLineDash([2 / this._cam.zoom, 6 / this._cam.zoom]);
       g.stroke(); g.setLineDash([]);
@@ -1205,8 +1242,9 @@ export const starmapScreen = {
     const z = this._cam.zoom;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
-    g.lineWidth = 6 / z; g.strokeStyle = paint(roles.you, 0.18); g.stroke();
-    g.lineWidth = 3 / z; g.strokeStyle = roles.you;
+    // The plotted route IS the course — the one amber beam, bloom as a second wider stroke.
+    g.lineWidth = 6 / z; g.strokeStyle = paint(roles.goal, 0.18); g.stroke();
+    g.lineWidth = 3 / z; g.strokeStyle = roles.goal;
     g.setLineDash([8 / z, 6 / z]);
     g.lineDashOffset = reduced ? 0 : -(now * 0.04);
     g.stroke();
@@ -1250,7 +1288,7 @@ export const starmapScreen = {
         g.beginPath(); g.arc(n.x, n.y, n.r + 8 / z, 0, Math.PI * 2); g.fillStyle = paint(roles.paper, 0.12); g.fill();
       }
       if (reachable) {
-        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.you, 0.58);
+        g.beginPath(); g.arc(n.x, n.y, n.r + 5 / z, 0, Math.PI * 2); g.strokeStyle = paint(roles.calm, 0.6);
         g.lineWidth = 1.4 / z; g.setLineDash([3 / z, 3 / z]); g.stroke(); g.setLineDash([]);
       }
       if (signal && signal.contestMargin < 0.16) {
@@ -1259,48 +1297,61 @@ export const starmapScreen = {
       }
 
       drawHexPath(g, n.x, n.y, n.r + 2.8 / z);
-      g.lineWidth = (2.2 + danger * 1.2) / z; g.strokeStyle = roles[dangerRole(danger)]; g.stroke();
+      // The hex edge's WEIGHT carries danger; its hue turns threat-red only when danger is real.
+      g.lineWidth = (2.2 + danger * 1.2) / z;
+      g.strokeStyle = danger > 0.72 ? roles.foe : paint(roles.paper, 0.55); g.stroke();
       drawHexPath(g, n.x, n.y, n.r);
-      g.fillStyle = current ? roles.you : selected ? roles.paper : paint(core, 0.62); g.fill();
+      g.fillStyle = current ? roles.paper : selected ? roles.paper : paint(core, 0.62); g.fill();
       g.lineWidth = 1 / z; g.strokeStyle = paint(roles.paper, 0.25); g.stroke();
 
       if (Math.abs(pressure) > 0.035) {
         g.beginPath();
         const extent = clamp(Math.abs(pressure), 0.08, 1) * Math.PI * 1.65;
         g.arc(n.x, n.y, n.r + 5.5 / z, -Math.PI / 2, -Math.PI / 2 + extent);
-        g.strokeStyle = roles[pressureRole(pressure)]; g.lineWidth = 2.1 / z; g.stroke();
+        g.strokeStyle = paint(roles.paper, 0.8); g.lineWidth = 2.1 / z; g.stroke();
       }
 
       if (current) {
         g.beginPath(); g.arc(n.x, n.y, n.r + 11 / z, 0, Math.PI * 2);
-        g.strokeStyle = roles.you; g.lineWidth = 2 / z; g.stroke();
+        g.strokeStyle = roles.paper; g.lineWidth = 2 / z; g.stroke();
         // Centre pip drawn as a filled arc, not a '●' font glyph — a drawn mark, zoom-stable.
         g.beginPath(); g.arc(n.x, n.y, 3.4 / z, 0, Math.PI * 2);
         g.fillStyle = roles.paper; g.fill();
       }
 
       const labelY = n.y + n.r + 5 / z;
-      g.fillStyle = selected ? roles.paper : paint(roles.paper, 0.9);
       g.font = canvasFontScaled(current ? '700' : '500', 13, z, 'body');
-      g.textAlign = 'center'; g.textBaseline = 'top'; g.fillText(s.name, n.x, labelY);
+      g.textAlign = 'center'; g.textBaseline = 'top';
+      // a dark knockout under the name, so it survives a bright world behind it (geometry, not a filter)
+      g.lineJoin = 'round'; g.lineWidth = 3;
+      g.strokeStyle = paint(roles.surface, 0.8);
+      g.strokeText(s.name, n.x, labelY);
+      g.fillStyle = selected ? roles.paper : paint(roles.paper, 0.9);
+      g.fillText(s.name, n.x, labelY);
 
       const commQuote = quoteBySector.get(s.id);
       if (commQuote) {
         g.save();
-        g.fillStyle = roles.goal;
         g.font = canvasFontScaled('500', 12, z, 'data');
         g.textAlign = 'left';
         g.textBaseline = 'middle';
         const priceText = `${Math.round(commQuote.buy || 0)}/${Math.round(commQuote.sell || 0)}`;
+        g.strokeStyle = paint(roles.surface, 0.8);
+        g.strokeText(priceText, n.x + n.r + 5 / z, n.y);
+        // a price memory is a reading — phosphor
+        g.fillStyle = roles.you;
         g.fillText(priceText, n.x + n.r + 5 / z, n.y);
         g.restore();
       }
 
       if (signal) {
         const glyph = trendGlyph(signal.trend.danger);
-        g.fillStyle = roles[trendRole(signal.trend.danger)];
+        const dangerText = `${Math.round(signal.danger * 100)}${glyph}`;
         g.font = canvasFontScaled('700', 12, z, 'data');
-        g.fillText(`${Math.round(signal.danger * 100)}${glyph}`, n.x, labelY + 13 / z);
+        g.strokeStyle = paint(roles.surface, 0.8);
+        g.strokeText(dangerText, n.x, labelY + 13 / z);
+        g.fillStyle = signal.danger > 0.72 ? roles.foe : roles.you;
+        g.fillText(dangerText, n.x, labelY + 13 / z);
       }
       this._drawFeatureIcons(g, n, s, z, roles);
     }
@@ -1311,11 +1362,11 @@ export const starmapScreen = {
     // exists is a defect). Shared shapes come from glyphs.js; the two marks it does not carry use
     // the local cached Path2Ds above. Colors and slots match the pre-drawn-mark layout exactly.
     const icons = [];
-    if (s.hazards && s.hazards.length) icons.push({ glyph: 'warn', color: roles.goal });
-    if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push({ glyph: 'dense_asteroid', color: roles.you });
+    if (s.hazards && s.hazards.length) icons.push({ glyph: 'warn', color: paint(roles.calm, 0.9) });
+    if (s.fields && s.fields.some((f) => f.type === 'ast_rare_exotic' || f.type === 'ast_crystalline')) icons.push({ glyph: 'dense_asteroid', color: roles.motion });
     if (s.stations && s.stations.some((st) => st.type === 'blackmarket')) icons.push({ mark: 'blackmarket', color: roles.foe });
     if (s.stations && s.stations.some((st) => st.contested)) icons.push({ glyph: 'err', color: roles.foe });
-    if (s.wormholeTo) icons.push({ mark: 'wormhole', color: roles.goal });
+    if (s.wormholeTo) icons.push({ mark: 'wormhole', color: roles.calm });
     if (!icons.length) return;
     const spacing = 12 / z, start = n.x - (icons.length - 1) * spacing / 2;
     const px = 12 / z, cy = n.y - n.r - 8 / z;
@@ -1331,14 +1382,17 @@ export const starmapScreen = {
     const signal = this._signal(s.id);
     const eff = this._effective(s.id);
     if (!signal || !eff) return;
+    // The tooltip reads the same application map as the dossier: a caution is bright bone,
+    // never the Hand's amber; only a real threat turns danger-red.
+    const roleInk = (role) => role === 'foe' ? roles.foe : role === 'you' ? roles.you : role === 'goal' ? roles.paper : roles.calm;
     const lines = [
       { text: s.name, color: roles.paper, font: canvasFont('700', 15, 'subhead') },
       { text: `${factionName(signal.dominantFactionId)} influence ${pct(signal.dominantInfluence)}`, color: roles.calm, font: canvasFont('600', 12, 'data') },
-      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: roles[dangerRole(signal.danger)], font: canvasFont('600', 12, 'data') },
-      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: roles[pressureRole(signal.pricePressure)], font: canvasFont('600', 12, 'data') },
-      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: roles[dangerRole(signal.danger)], font: canvasFont('500', 12, 'data') },
+      { text: `DANGER ${Math.round(signal.danger * 100)}% ${trendGlyph(signal.trend.danger)}  · encounter ×${signal.encounterLoad.toFixed(2)}`, color: roleInk(dangerRole(signal.danger)), font: canvasFont('600', 12, 'data') },
+      { text: `MARKET ${pressureLabel(signal.pricePressure)} ${trendGlyph(signal.trend.pricePressure)}`, color: roleInk(pressureRole(signal.pricePressure)), font: canvasFont('600', 12, 'data') },
+      { text: `Security ${eff.security.toFixed(2)} · enemies ${enemyDensityLabel(eff.enemyDensity || 0)}`, color: roleInk(dangerRole(signal.danger)), font: canvasFont('500', 12, 'data') },
     ];
-    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: roles.goal, font: canvasFont('500', 12, 'data') });
+    if (s.hazards && s.hazards.length) lines.push({ text: `Hazards: ${s.hazards.map((h) => HAZARD_LABEL[h.type] || h.type).join(', ')}`, color: roles.paper, font: canvasFont('500', 12, 'data') });
     const lineH = 17, padX = 12, padY = 10;
     let maxW = 0;
     for (const line of lines) { g.font = line.font; maxW = Math.max(maxW, g.measureText(line.text).width); }
@@ -1346,11 +1400,17 @@ export const starmapScreen = {
     let x = this._mouseX + 16, y = this._mouseY - boxH / 2;
     if (x + boxW > canvasW - 8) x = this._mouseX - boxW - 16;
     y = clamp(y, 8, canvasH - boxH - 8);
-    g.fillStyle = paint(roles.surface, 0.94); g.strokeStyle = roles.edge; g.lineWidth = 1;
-    roundedRect(g, x, y, boxW, boxH, 2); g.fill(); g.stroke();
+    // borderless glass: the void's own depth carries the box, no stroke, no radius card
+    g.fillStyle = paint(roles.surface, 0.9);
+    roundedRect(g, x, y, boxW, boxH, 2); g.fill();
     let ly = y + padY + 12;
     g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    for (const line of lines) { g.font = line.font; g.fillStyle = line.color; g.fillText(line.text, x + padX, ly); ly += lineH; }
+    g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = paint(roles.surface, 0.85);
+    for (const line of lines) {
+      g.font = line.font;
+      g.strokeText(line.text, x + padX, ly);
+      g.fillStyle = line.color; g.fillText(line.text, x + padX, ly); ly += lineH;
+    }
   },
 
   _syncHeader() {
@@ -1418,7 +1478,7 @@ export const starmapScreen = {
 
       <div class="sm-section">
         <div class="sm-section-title">Danger field</div>
-        <div class="sm-kv"><span>Exposure</span><b class="sf-fig" style="color:${dangerColor(signal.danger)}">${pct(signal.danger)} ${trendGlyph(signal.trend.danger)} ${signed(dangerTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Exposure</span><b class="sf-fig" style="color:${dpColor(dangerRole(signal.danger))}">${pct(signal.danger)} ${trendGlyph(signal.trend.danger)} ${signed(dangerTrend)}%/day</b></div>
         <div class="sm-kv"><span>Encounter load</span><b class="sf-fig">×${signal.encounterLoad.toFixed(2)}</b></div>
         <div class="sm-kv"><span>Security / density</span><b class="sf-fig">${eff.security.toFixed(2)} ${securityLabel(eff.security)} / ${enemyDensityLabel(eff.enemyDensity || 0)}</b></div>
         <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.danger))}. This field feeds live enemy population and offscreen asset-loss risk.</div>
@@ -1426,8 +1486,8 @@ export const starmapScreen = {
 
       <div class="sm-section">
         <div class="sm-section-title">Trade pressure</div>
-        <div class="sm-kv"><span>Market state</span><b style="color:${pressureColor(signal.pricePressure)}">${escapeHtml(pressureLabel(signal.pricePressure))}</b></div>
-        <div class="sm-kv"><span>Pressure trend</span><b class="sf-fig" style="color:${pressureColor(signal.trend.pricePressure)}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
+        <div class="sm-kv"><span>Market state</span><b style="color:${dpColor(pressureRole(signal.pricePressure))}">${escapeHtml(pressureLabel(signal.pricePressure))}</b></div>
+        <div class="sm-kv"><span>Pressure trend</span><b class="sf-fig" style="color:${dpColor(pressureRole(signal.trend.pricePressure))}">${trendGlyph(signal.trend.pricePressure)} ${signed(priceTrend)}%/day</b></div>
         <div class="sm-kv"><span>Stock consequence</span><b>${escapeHtml(marketFlowText)}</b></div>
         <div class="sm-driver">Driven by ${escapeHtml(driverLabel(signal.driver.pricePressure))}. Moving edge beads show modeled commodity flow toward scarcity.</div>
       </div>
@@ -1466,6 +1526,9 @@ export const starmapScreen = {
     if (isCurrent) actions.innerHTML = '';
     else if (reachable) actions.innerHTML = '<button class="sm-course" data-act="jump">⟫ Set Course &amp; Jump</button>';
     else actions.innerHTML = '<button class="sm-course" data-act="route">⟫ Plot Route</button>';
+    // The course is the screen's one primary verb, so it carries the one Lamp Key (ORRERY §3.6):
+    // amber field, dark ink, the 45° cut, the sheen. The word and the handler stay the screen's.
+    for (const button of actions.querySelectorAll('button[data-act]')) dressLampKey(button);
   },
 
   _syncObjective() {
@@ -1505,8 +1568,8 @@ export const starmapScreen = {
   },
 
   _riskHtml(label, risk) {
-    const color = risk.incidentChance > 0.55 ? token('foe') : risk.incidentChance > 0.25 ? token('goal') : token('you');
-    const marginColor = risk.survivalMargin < 0 ? token('foe') : token('you');
+    const color = risk.incidentChance > 0.55 ? dpColor('foe') : risk.incidentChance > 0.25 ? dpColor('goal') : dpColor('you');
+    const marginColor = risk.survivalMargin < 0 ? dpColor('foe') : dpColor('you');
     return `<div class="sm-risk">
       <div class="sm-risk-head"><span>${label}</span><b class="sf-fig" style="color:${color}">${pct(risk.incidentChance)} incident</b></div>
       <div class="sm-kv"><span>Expected impact</span><b class="sf-fig">${risk.expectedDamage} HP</b></div>

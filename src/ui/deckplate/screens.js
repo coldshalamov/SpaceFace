@@ -1098,9 +1098,8 @@ ${OLDP}, ${AU} {
 }
 ${BS} :is(.base-plan, .base-slot, .base-spec, .base-ledger, .base-mod),
 ${AU} :is(.au-next, .au-summary, .au-metric, .au-card, .au-income, .au-outpost-flow, .au-miner-ops, .au-empty) { ${CARD} }
-${BS} :is(.base-slot, .base-spec, .base-mod):hover, ${AU} :is(.au-metric, .au-card):hover { ${CARD} background:${INK_FIELD}, var(--dp-field); }
+${BS} :is(.base-slot, .base-mod):hover, ${AU} :is(.au-metric, .au-card):hover { ${CARD} background:${INK_FIELD}, var(--dp-field); }
 ${BS} .base-slot.empty, ${AU} .au-empty { background:linear-gradient(rgb(232 226 212 / .03) 0 0); color:var(--dp-ink-mute); }
-${BS} .base-spec.active { background:${LAMP_EDGE}, ${INK_FIELD}, var(--dp-field); }
 ${BS} .base-plan--warn { background:${LAMP_EDGE}, var(--dp-field); }
 ${BS} .base-plan--bad { background:linear-gradient(90deg, var(--dp-danger) 2px, transparent 0), var(--dp-field); }
 ${BS} .base-plan--ok { background:linear-gradient(90deg, var(--dp-ink-dim) 2px, transparent 0), var(--dp-field); }
@@ -1140,7 +1139,7 @@ ${AU} .au-tab:focus-visible { outline:2px solid var(--dp-ink) !important; outlin
 ${AU} .au-tab.active { color:var(--dp-ink); text-shadow:none; background:${LAMP_UNDER}; box-shadow:0 8px 10px -8px var(--dp-lamp-bloom); }
 ${printedKey(`${AU} :is(.au-close, .au-cta, .au-card button, .au-outpost-detail button)`)}
 ${printedKey(`${BS} button.sf-btn`)}
-${lampKey(`${AU} :is(.au-cta, .au-card button.au-buy):not(:disabled)`)}
+${lampKey(`${AU} .au-cta:not(:disabled)`)}
 ${lampKey(`${BS} button.sf-btn.sf-btn--primary:not(:disabled)`)}
 ${AU} .au-card button.au-recall:not(:disabled) { --dpk-rule:linear-gradient(0deg, var(--dp-danger) 2px, transparent 0); }
 ${AU} .au-card button.au-recall:is(:hover, :focus-visible):not(:disabled) { --dpk-fill:var(--dp-danger); --dpk-cut:none; color:var(--dp-metal-0); box-shadow:0 0 18px var(--dp-danger-bloom); }

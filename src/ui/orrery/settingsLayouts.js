@@ -98,15 +98,15 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
 /* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip below the stage's bottom edge while rows continue */
 ${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:5px 13px 6px !important; cursor:pointer;
-  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .88) !important;
-  border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
-${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
+  ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .78) !important; background:rgb(8 10 14 / .88) !important;
+  border:0 !important; border-radius:0 !important; }
+${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:rgb(${BONE} / .6); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
-${S} > .orr-set-more:hover { border-color:rgb(${HOT} / .8) !important; }
+${S} > .orr-set-more:hover { color:rgb(${BONE}) !important; }
 @keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
 @media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
-${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
-  mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
+${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
+  mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
 ${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
 ${S} #sf-settings-pane > p.k-sentence.orr-set-check { display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr); column-gap:22px; align-items:center;
   min-height:34px; margin:0 0 0 30px !important; max-width:none !important; }
@@ -527,8 +527,8 @@ ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
   ${LABEL} font-size:12px !important; letter-spacing:.2em !important; line-height:1 !important;
-  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
-  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .08) !important; border:0 !important; border-radius:0 !important;
+  box-shadow:none !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
 ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 

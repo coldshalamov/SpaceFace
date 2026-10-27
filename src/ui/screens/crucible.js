@@ -71,6 +71,7 @@ import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
 import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
 import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { createDeathDial, initials as deathDialInitials } from '../orrery/deathDial.js';
 import { injectCrucibleResultsLayouts } from '../orrery/crucibleResultsLayouts.js';
 import {
@@ -2389,6 +2390,9 @@ export const crucibleScreen = {
       onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
       read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
+    // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
+    // (crucible-doorLayouts.js documents what it carries).
+    injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     this._cabinetAttract = createCabinetAttract({ host: preparation?.attractHost,
       tape: SWARM_CABINET_ATTRACT_TAPE, reducedMotion: () => !canAnimate() || orreryMotionReduced() });
     this._cabinetAttract.setVisible(!!preparation?.previewVisible);

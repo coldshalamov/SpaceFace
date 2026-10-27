@@ -1162,7 +1162,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: linear-gradient(90deg, rgba(7, 8, 10, 0), rgba(7, 8, 10, 0.88) 40px, rgba(7, 8, 10, 0.88) calc(100% - 40px), rgba(7, 8, 10, 0));
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--bg) 88%, transparent) 40px, color-mix(in srgb, var(--bg) 88%, transparent) calc(100% - 40px), transparent);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

@@ -26,21 +26,34 @@ export const BAND_HUD_CSS = `
   /* Keep the tuner out of the radar and contact-roster column by default. It anchors in the sky
      LEFT of the dock: the dock grew when the sector-law card moved into it, and at the old
      top-right anchor the chip sat directly on the law card's headline. Players can still
-     Ctrl-drag it anywhere that reads better for their own flight setup. */
+     Ctrl-drag it anywhere that reads better for their own flight setup.
+     ORRERY register: an instrument chip on the flight glass — etched face, warm bone rest light,
+     no bordered box (the 2px left edge is the state channel), the 2px bone bracket on focus. */
   .sf-band-hud { position:absolute; right:calc(20px + var(--sf-dock-w, 220px) + var(--sf-safe-inset-x, 0px)); top:150px; bottom:auto; z-index:18; pointer-events:auto; }
   #hud > .sf-band-hud { pointer-events:auto; }
   .sf-band-hud__button { min-width:176px; min-height:34px; display:flex; align-items:center;
-    justify-content:space-between; gap:12px; padding:7px 10px; border:1px solid rgba(135,165,190,.38);
-    border-left:1px solid var(--sf-edge); border-radius:8px; background:rgba(5,9,18,.92);
-    color:var(--text-secondary, #aebdca); font:600 12px/1.2 var(--hud-data, "IBM Plex Mono", Consolas, monospace);
-    letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
-    transition:border-color 160ms ease-out,color 160ms ease-out,background 160ms ease-out; }
-  .sf-band-hud__button:hover,.sf-band-hud__button:focus-visible { color:var(--text-primary, #edf5fa);
-    border-color:rgba(124,196,218,.86); background:rgba(8,16,28,.96); outline:none; }
-  .sf-band-hud__button:focus-visible { box-shadow:0 0 0 2px rgba(124,196,218,.24); }
-  .sf-band-hud__button[data-off="true"] { border-left-color:rgba(130,145,155,.5); color:rgba(174,189,202,.72); }
+    justify-content:space-between; gap:12px; padding:7px 12px 7px 14px;
+    border:0; border-left:2px solid var(--dp-lamp-dim, #8a6b3a);
+    border-radius:var(--dp-r-instrument, 3px);
+    background:var(--dp-glass-flight, rgb(18 23 29 / .82));
+    color:var(--dp-ink, #e8e2d4);
+    font-family:var(--dp-face-etch, var(--hud-data, system-ui));
+    font-size:12px; font-weight:700; line-height:1.2;
+    font-variation-settings:"wght" 720, "wdth" 68;
+    letter-spacing:.14em; text-transform:uppercase; cursor:pointer;
+    text-shadow:var(--dp-etch-shadow, none);
+    transition:color 160ms ease-out,border-color 160ms ease-out,background 160ms ease-out; }
+  .sf-band-hud__button:hover { color:var(--dp-phos, #dfeeff);
+    border-left-color:var(--dp-lamp, #f2b950); background:var(--dp-glass-flight, rgb(18 23 29 / .82)); }
+  .sf-band-hud__button:focus-visible { outline:2px solid var(--dp-ink-dim, #a9a696); outline-offset:2px; }
+  .sf-band-hud__button:active { color:var(--dp-phos, #dfeeff);
+    border-left-color:var(--dp-lamp-hot, #ffd98c); }
+  .sf-band-hud__button[data-off="true"] { border-left-color:var(--dp-metal-4, #2f3542);
+    color:var(--dp-ink-mute, #96948e); text-shadow:none; }
+  .sf-band-hud__button[data-off="true"]:hover { color:var(--dp-ink-dim, #a9a696); }
+  .sf-band-hud__button[data-silence="true"] { color:var(--dp-ink-dim, #a9a696); }
   .sf-band-hud__button[data-bearing-refusal] { text-transform:none; letter-spacing:.01em; font-weight:560;
-    color:var(--dp-danger, #ff5038); white-space:normal; text-align:left; line-height:1.25; }
+    color:var(--dp-danger-hot, #ff8a70); white-space:normal; text-align:left; line-height:1.25; }
   @media (prefers-reduced-motion: reduce) { .sf-band-hud__button { transition:none; } }
   @media (max-width: 820px) { .sf-band-hud { right:12px; top:112px; bottom:auto; }
     .sf-band-hud__button { min-width:148px; font-size:12px; } }

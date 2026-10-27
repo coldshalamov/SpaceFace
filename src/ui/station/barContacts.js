@@ -408,21 +408,163 @@ const CANONICAL_CONTACTS = [
       { id: 'approach', label: 'Ask what he is counting.' },
     ],
   },
+  // W-FACES (row 543, 03 §4.1 + §4.2): the rest of the canon cast and the eleven new faces, each at
+  // the station their canon ties them to. First lines are the canon lines from 03 §4.2.
+  {
+    key: 'sula_dree',
+    stationIds: ['station_dione_customs'],
+    name: 'Inspector Sula Dree',
+    role: 'pilot',
+    roleLabel: 'Gate Inspector',
+    factionId: 'faction_scn',
+    line: 'Gate 3 is a weighing, not a court. An honest manifest keeps its fine unpaid.',
+  },
+  {
+    key: 'callum',
+    stationIds: ['station_dione'],
+    name: 'Callum Oakes',
+    role: 'merchant',
+    roleLabel: 'Futures Broker',
+    factionId: 'faction_mts',
+    line: 'Futures settle at the tone. Everything else is sentiment.',
+  },
+  {
+    key: 'wex',
+    stationIds: ['station_helios'],
+    name: 'Wex',
+    role: 'engineer',
+    roleLabel: 'Bay 7 Depot Keeper',
+    factionId: 'faction_scn',
+    line: 'Nineteen years of install-pending tags. I file them anyway.',
+  },
+  {
+    key: 'sump',
+    stationIds: ['station_ashcache'],
+    name: 'Sump',
+    role: 'engineer',
+    roleLabel: 'Sweeper',
+    factionId: 'faction_pitborn',
+    line: 'Dust goes this side, then it goes that side. Someone has to push it.',
+  },
+  {
+    key: 'ma_sprocket',
+    stationIds: ['station_ashcache'],
+    name: 'Ma Sprocket',
+    role: 'merchant',
+    roleLabel: 'Cull Announcer',
+    factionId: 'faction_pitborn',
+    line: "Heavy's honest, babies! COUNT 'EM!",
+  },
+  {
+    key: 'clatter',
+    stationIds: ['station_sker'],
+    name: 'Clatter',
+    role: 'pilot',
+    roleLabel: 'Cull Rival Ace',
+    factionId: 'faction_pitborn',
+    line: 'That rock had my name on it. It has your hull on it now.',
+  },
+  {
+    key: 'moss_keeps_moss',
+    stationIds: ['station_eunomia'],
+    name: 'Moss-Keeps-Moss',
+    role: 'merchant',
+    roleLabel: 'Garden Elder',
+    factionId: 'faction_understory',
+    line: 'Bring us what died. We will make it something.',
+  },
+  {
+    key: 'brother_index',
+    stationIds: ['station_orcus_shadow'],
+    name: 'Brother Index',
+    role: 'merchant',
+    roleLabel: 'Reading-Room Keeper',
+    factionId: 'faction_archive',
+    line: 'That entry is sealed. Unseal one of yours.',
+  },
+  {
+    key: 'addendum_seroy',
+    stationIds: ['station_phoebe_echo'],
+    name: 'Addendum Seroy',
+    role: 'merchant',
+    roleLabel: 'Contract Officer',
+    factionId: 'faction_vael',
+    line: 'Provided that you read it, the terms are fair.',
+  },
+  {
+    key: 'cantor_lise',
+    stationIds: ['station_depot3'],
+    name: 'Cantor Lise',
+    role: 'barkeep',
+    roleLabel: 'Shrine Keeper',
+    factionId: 'faction_choir',
+    line: 'The relic was never inert. Only waiting.',
+  },
+  {
+    key: 'mael_ost',
+    stationIds: ['station_sedna'],
+    name: 'Adjudicator Mael Ost',
+    role: 'pilot',
+    roleLabel: 'Audit Adjudicator',
+    factionId: 'faction_helix',
+    line: 'Lawful interdiction. Read the invoice.',
+  },
+  {
+    key: 'petra_lusk',
+    stationIds: ['station_dione_customs'],
+    name: 'Commander Petra Lusk',
+    role: 'pilot',
+    roleLabel: 'Relief Captain',
+    factionId: 'faction_scn',
+    line: 'Hold for weight. I will not ask twice.',
+  },
+  {
+    key: 'nine_finger_abe',
+    stationIds: ['station_hyperion_claim'],
+    name: 'Nine-Finger Abe',
+    role: 'miner',
+    roleLabel: 'Claim Boss',
+    factionId: 'faction_dmc',
+    line: "The rock took one. It won't take another.",
+  },
+  {
+    key: 'tamsin',
+    stationIds: ['station_reach'],
+    name: 'Tamsin',
+    role: 'pilot',
+    roleLabel: 'Homestead Pilot',
+    factionId: 'faction_free',
+    line: 'Still temporary. Tell me where to put the wall.',
+  },
+  {
+    key: 'clerk_0003',
+    stationIds: ['station_tethys'],
+    name: 'Clerk 0003',
+    role: 'merchant',
+    roleLabel: 'Routing Clerk',
+    factionId: 'faction_fulfillment',
+    line: 'Your order has always been important to us.',
+  },
 ];
 
 const CANONICAL_BY_STATION = new Map();
 for (const contact of CANONICAL_CONTACTS) {
   for (const stationId of contact.stationIds) {
-    CANONICAL_BY_STATION.set(stationId, contact);
+    const list = CANONICAL_BY_STATION.get(stationId);
+    if (list) list.push(contact);
+    else CANONICAL_BY_STATION.set(stationId, [contact]);
   }
 }
 
 /* ── contact generation ─────────────────────────────────────────────── */
 
-function canonicalContactForStation(stationId) {
-  const base = CANONICAL_BY_STATION.get(stationId);
-  if (!base) return null;
-  return {
+// Row 543: a station can keep more than one authored face (Wex shares Helios with Kessler; Sump,
+// Ma Sprocket and Kurtz all live at the Pit; Sula Dree and Petra Lusk share Gate 3's customs post).
+// List order is insertion order into the bar's line-up.
+function canonicalContactsForStation(stationId) {
+  const bases = CANONICAL_BY_STATION.get(stationId);
+  if (!bases || !bases.length) return [];
+  return bases.map((base) => ({
     id: 'contact_' + stationId + '_' + base.key,
     name: base.name,
     role: base.role,
@@ -431,7 +573,7 @@ function canonicalContactForStation(stationId) {
     line: base.line,
     canonicalKey: base.key,
     choices: Array.isArray(base.choices) ? base.choices.slice() : undefined,
-  };
+  }));
 }
 
 export function authoredBarContactsForStation(stationId, state = {}) {
@@ -592,12 +734,15 @@ export function generateContacts(stationId, state = {}, opts = {}) {
     contacts[0].calendarMood = 'shift_end';
   }
 
-  const canonical = canonicalContactForStation(stationId);
-  if (canonical) {
+  // Row 543: every authored face the station keeps is inserted in list order; each spliced face
+  // nudges a procedural patron out rather than crowding the bar past four.
+  let insertAt = 1;
+  for (const canonical of canonicalContactsForStation(stationId)) {
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
     } else {
-      contacts.splice(1, 0, canonical);
+      contacts.splice(insertAt, 0, canonical);
+      insertAt += 1;
       if (contacts.length > 4) contacts.pop();
     }
   }

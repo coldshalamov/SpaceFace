@@ -300,12 +300,23 @@ export function createHullSchematic({ host, avoid = () => [], onPick = null, lab
     const minR = compact ? 64 : 110;
 
     const hb = host.getBoundingClientRect();
-    const local = (r, pad) => ({ left: r.left - hb.left - pad, top: r.top - hb.top - pad, right: r.right - hb.left + pad, bottom: r.bottom - hb.top + pad });
+    // Obstacles read as untransformed LAYOUT boxes (offset chain). getBoundingClientRect
+    // returned mid-arrival transformed boxes while kit settle classes were on, so relayout
+    // planned around boxes that would not exist at rest (labels buried under instruments).
+    const layoutBox = (el) => {
+      let x = 0, y = 0, n = el;
+      while (n && n !== host) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      if (n !== host) {
+        const r = el.getBoundingClientRect();
+        return { left: r.left - hb.left, top: r.top - hb.top, right: r.right - hb.left, bottom: r.bottom - hb.top };
+      }
+      return { left: x, top: y, right: x + el.offsetWidth, bottom: y + el.offsetHeight };
+    };
     const obstacles = [];
     for (const el of avoid() || []) {
-      if (!el || typeof el.getBoundingClientRect !== 'function') continue;
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) obstacles.push(local(r, 12));
+      if (!el || !el.isConnected) continue;
+      const b = layoutBox(el);
+      if (b.right - b.left > 0 && b.bottom - b.top > 0) obstacles.push({ left: b.left - 12, top: b.top - 12, right: b.right + 12, bottom: b.bottom + 12 });
     }
     // the ship's band: chrome that crosses the middle third pushes the band off it
     const region = { left: eg, right: W - eg, top: compact ? 16 : 28, bottom: H - (compact ? 16 : 28) };

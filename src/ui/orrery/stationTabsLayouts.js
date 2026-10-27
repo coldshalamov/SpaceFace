@@ -34,7 +34,7 @@ ${T} ${row}:is(${chosen})::after { content:"" !important; display:block !importa
   translate:none !important; scale:none !important; rotate:none !important;
   clip-path:none !important; background:linear-gradient(90deg, var(--dp-hand-hot, #ffd98c) 0 3px, var(--dp-hand, #f2b950) 3px) !important; opacity:1; box-shadow:0 0 5px 1px rgb(242 185 80 / .45); pointer-events:none; border:0 !important; box-shadow:none !important; transform:none !important; border-radius:0 !important; }
 ${T} ${list}:is(:focus-within, :hover) ${row}:is(${chosen})::after { background:var(--dp-hand-hot, #ffd98c) !important; }
-${T} ${row}:focus-visible { outline:none !important; }`;
+${T} ${row}:focus-visible { outline:2px solid var(--dp-ink, #e8e2d4) !important; outline-offset:-2px !important; }`;
 /** A verb that commits: a bone word at the reading's weight; amber where the player reaches it. */
 const commit = (sel) => `
 ${T} ${sel} { ${PLAIN} min-height:0 !important; min-width:0 !important; height:auto !important; border-radius:0 !important; padding:8px 2px 12px !important;

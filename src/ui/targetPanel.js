@@ -1124,7 +1124,10 @@ export function createTargetPanel(ctx) {
       const closing = -((rvx * dx + rvz * dz) * inv);
       const closeText = Math.abs(Math.round(closing)) + ' wu/s';
       const closeGlyph = closing >= 0 ? 'closing' : 'opening';
-      const closeColor = closing >= 0 ? 'var(--danger)' : 'var(--good)';
+      // Direction is carried twice already (the arrow glyph + the signed read); colour stays a
+      // bone reading, never an alarm — red is threat only, and an approached asteroid is not a
+      // threat. Closing is the brighter reading, opening the dimmer one.
+      const closeColor = closing >= 0 ? 'var(--dp-phos, #dfeeff)' : 'var(--dp-ink-dim, #b7b4a6)';
       if (closeGlyph !== lastCloseGlyph) { elCloseGlyph.innerHTML = glyphSvg(closeGlyph, 10); lastCloseGlyph = closeGlyph; }
       if (closeText !== lastCloseText) { elCloseTxt.textContent = closeText; lastCloseText = closeText; }
       if (closeColor !== lastCloseColor) { elClose.style.color = closeColor; lastCloseColor = closeColor; }

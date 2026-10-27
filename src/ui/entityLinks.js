@@ -30,6 +30,7 @@
 
 import { resolveEntity } from './entityResolver.js';
 import { pinKindForRef, isWatched, toggleWatchPin, watchlistPins } from './watchlist.js';
+import { ensurePopupsLayout } from './orrery/popupsLayouts.js';
 
 const MAX_BACK = 12;   // capped: the trail is a convenience, not a history feature (J6 owns history)
 
@@ -60,6 +61,7 @@ const CLOSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" str
   + 'stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
 
 export function createEntityLinks(ctx) {
+  ensurePopupsLayout(); // the sheet's content-hug, rung chevrons and disabled-verb look (orrery/popupsLayouts.js)
   const state = ctx && ctx.state;
   const bus = ctx && ctx.bus;
   const screenManager = ctx && ctx.screenManager;
@@ -313,6 +315,10 @@ export function createEntityLinks(ctx) {
       attrs: { role: 'region', 'aria-labelledby': headId, tabindex: '-1' },
     });
     layer.appendChild(drawer);
+    // Announce the drawer so overlays that outrank it can step back — the find palette (which
+    // paints at z 4500 over this layer's z 40) recedes while a dossier is up, making "the palette
+    // waits behind the drawer" true at the pixels, not just in the Esc order.
+    if (bus && bus.emit) bus.emit('ui:entityDrawer', { open: true, ref });
     // One frame before `is-open` so the slide transition actually runs (adding both at once gives
     // the element no start value to transition from).
     requestAnimationFrame(() => { if (drawer.isConnected) drawer.classList.add('is-open'); });
@@ -330,6 +336,7 @@ export function createEntityLinks(ctx) {
     if (!layer) return;
     teardownLayer();
     back.length = 0;
+    if (bus && bus.emit) bus.emit('ui:entityDrawer', { open: false });
     const target = opener;
     opener = null;
     if (target && target.isConnected && typeof target.focus === 'function') {
@@ -384,6 +391,7 @@ export function createEntityLinks(ctx) {
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (layer && bus && bus.emit) bus.emit('ui:entityDrawer', { open: false });
     screensRoot.removeEventListener('click', onClick);
     screensRoot.removeEventListener('keydown', onKeydown, true);
     screensRoot.removeEventListener('keydown', onActivateKey);

@@ -44,6 +44,8 @@ const DIAL_AT = Object.freeze({ x: 122, y: 134 });
 const GAUGE_FROM = 225;
 const GAUGE_TO = 495;
 const KEY_R = 20;
+// A single non-word, non-space character: a bare punctuation key label (`, ', /, ...).
+const GLYPH_KEY = /^[^\w\s]$/;
 // A collapsed node carries the same authored glyph as an unfolded key, so it must be big enough to read at
 // the Cluster's smallest live scale (.6): 16 → a 32 px socket holding a 22 px mark.
 const NODE_R = 16;
@@ -127,6 +129,10 @@ const CSS = `
 .orr-cluster__keytag { position:absolute; top:50%; transform:translateY(-50%); white-space:nowrap; font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); font-weight:500; }
 .orr-cluster__key:not(.is-node) .orr-cluster__keytag { left:${24 + KEY_R + 10}px; color:rgb(232 226 212 / .88); }
 .orr-cluster__key.is-node .orr-cluster__keytag { left:${24 + NODE_R + 9}px; color:rgb(232 226 212 / .92); }
+/* a bare punctuation key (a backtick or an apostrophe) is unreadable as a stray mark at 12 px:
+   it takes the key-cap frame so the hint reads as a key at a glance; the accessible name keeps
+   the exact key */
+.orr-cluster__keytag b.is-glyph { margin-left:8px; padding:1px 5px; border:1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius:3px; line-height:1.3; }
 /* the key reads as a key, set off from the words: "SHOVE · REPULSE + 2 DETONATE | 2" must not read as a count */
 .orr-cluster__keytag b { font-weight:700; color:var(--dp-ink, #e8e2d4); margin-left:8px; padding-left:7px; letter-spacing:.08em; border-left:1px solid rgb(232 226 212 / .38); }
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
@@ -420,7 +426,9 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     // rewrites only them, never the key beside them.
     const labelNode = el('span', 'orr-cluster__keyword', label);
     tag.appendChild(labelNode);
-    const keyNode = sub ? el('b', null, sub) : null;
+    // A bare punctuation binding reads as a stray mark, not a key: it takes the key-cap frame
+    // (the em dash is the UNBOUND placeholder, never a key — it stays bare).
+    const keyNode = sub && sub !== '—' && GLYPH_KEY.test(sub) ? el('b', 'is-glyph', sub) : el('b', null, sub);
     if (keyNode) tag.appendChild(keyNode);
     k.appendChild(tag);
     const count = el('span', 'orr-cluster__count');

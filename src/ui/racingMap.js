@@ -15,12 +15,24 @@ export function createRacingMap(gates, label = 'Circuit route', doc = globalThis
   const cx = (minX+maxX)/2, cz = (minZ+maxZ)/2;
   const x = value => 160+(value-cx)*scale, y = value => 85+(value-cz)*scale;
   const svg = node('svg', { viewBox:'0 0 320 170', role:'img', 'aria-label':label, class:'race-map' });
-  svg.appendChild(node('polyline', { points:points.map(p=>`${x(p.x).toFixed(2)},${y(p.z).toFixed(2)}`).join(' '),
-    fill:'none', stroke:'var(--dp-ink-dim)', 'stroke-width':2.5, 'stroke-linejoin':'round' }));
-  const start = node('rect', { x:x(points[0].x)-4, y:y(points[0].z)-4, width:8, height:8, fill:'var(--dp-lamp)' });
+  // The route is light, not a hairline: a wide dim bloom under the core stroke (ORRERY §3.1 —
+  // the bloom is geometry, a second stroke of the same path, never a filter).
+  const pointsAttr = points.map(p=>`${x(p.x).toFixed(2)},${y(p.z).toFixed(2)}`).join(' ');
+  svg.appendChild(node('polyline', { points:pointsAttr, fill:'none', stroke:'var(--dp-ink-dim)',
+    'stroke-width':7, 'stroke-linejoin':'round', 'stroke-linecap':'round', opacity:0.14 }));
+  svg.appendChild(node('polyline', { points:pointsAttr, fill:'none', stroke:'var(--dp-ink-dim)',
+    'stroke-width':1.8, 'stroke-linejoin':'round' }));
+  // The start is a start line: a bar across the course at the first gate, the Hand's amber,
+  // with its own bloom — not a bare square.
+  const p0 = points[0], p1 = points[1] || points[0];
+  const deg = Math.atan2(p1.z - p0.z, p1.x - p0.x) * 180 / Math.PI;
+  const startBloom = node('rect', { x:-1.75, y:-7.5, width:3.5, height:15, fill:'var(--dp-lamp)', opacity:0.3,
+    transform:`translate(${x(p0.x).toFixed(2)} ${y(p0.z).toFixed(2)}) rotate(${(deg + 90).toFixed(2)})` });
+  const start = node('rect', { x:-1.25, y:-6, width:2.5, height:12, fill:'var(--dp-lamp)',
+    transform:`translate(${x(p0.x).toFixed(2)} ${y(p0.z).toFixed(2)}) rotate(${(deg + 90).toFixed(2)})` });
   const target = node('circle', { cx:0, cy:0, r:7, fill:'none', stroke:'var(--dp-lamp)', 'stroke-width':2 });
   const player = node('path', { d:'M0 -6 L4 5 L0 3 L-4 5 Z', fill:'var(--dp-ink)', display:'none' });
-  svg.append(start, target, player);
+  svg.append(startBloom, start, target, player);
   target.setAttribute('display', 'none');
   return {
     element: svg,

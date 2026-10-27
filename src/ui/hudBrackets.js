@@ -19,11 +19,13 @@ export const BRACKET_ARM = 11;
 
 /**
  * CSS declarations drawing four corner brackets inside the element's padding box.
- * @param {string} color any CSS colour, including a var(). Defaults to the HUD hairline token.
+ * @param {string} color any CSS colour, including a var(). Defaults to warm bone at rest — the
+ *   ORRERY rest light (--dp-ink at hairline alpha); the old cool blue-grey fallback fought the
+ *   "rest light is warm bone, never blue" law.
  * @param {number} arm arm length in px.
  * @returns {string} declarations, semicolon-terminated, safe to interpolate into a rule body.
  */
-export function bracketCss(color = 'var(--sf-brk-col, rgba(148,178,205,.42))', arm = BRACKET_ARM) {
+export function bracketCss(color = 'var(--sf-brk-col, rgba(232,226,212,.4))', arm = BRACKET_ARM) {
   const g = `linear-gradient(${color}, ${color})`;
   const h = `${arm}px 1px`;
   const v = `1px ${arm}px`;

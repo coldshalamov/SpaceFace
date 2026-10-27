@@ -52,6 +52,14 @@ import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { bombUsesCharge, playerImpulseCharges, resolveRigTarget } from '../systems/powerVerbs.js';
+import { injectPowerRailLayouts } from './orrery/power-railLayouts.js';
+
+// The rail's composition sheet rides the model's import path: every surface that renders the rail
+// (the flight Cluster through hudAdapter, the ORRERY flight preview, the QA fixture) imports THIS
+// module, and the rail has no mount of its own to inject from. Headless-safe — with no document it
+// does no work. What the sheet owns (rest-light law, hover/focus/press states): see the header of
+// src/ui/orrery/power-railLayouts.js.
+injectPowerRailLayouts();
 import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
 import { LINE_BANK, staticVerbSentence } from '../data/arsenalWords.js';
 import { collectorRailSlot } from '../data/collectorKnot.js';

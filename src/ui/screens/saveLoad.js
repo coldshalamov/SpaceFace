@@ -26,6 +26,7 @@ import { injectDeckplate, dpMark } from '../deckplate/index.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
 import { injectSaveLayouts } from '../orrery/saveLayouts.js';
+import { injectSaveLoadLayouts } from '../orrery/save-loadLayouts.js';
 import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
@@ -470,11 +471,14 @@ export function slotModeLabel(meta) {
 /**
  * The slot row's sub line: the mode word first, then the hull, the sector, the
  * playtime, and any save notice. Pure, so the row render and the test read one line.
+ * The playtime phrase is one unbreakable run — on the filmstrip's narrow station
+ * columns "played" dangled on its own line under "6h 39m", and "6h / 30m" split.
  */
 export function slotRowSubLine(meta, noteText) {
   if (!isOccupied(meta)) return 'Empty slot';
+  const played = fmtPlaytime(meta && meta.playtimeS).replace(/ /g, '\u00A0');
   return [slotModeLabel(meta), meta && meta.shipName && shipLabel(meta.shipName),
-    meta && meta.sectorName, meta && fmtPlaytime(meta.playtimeS), noteText]
+    meta && meta.sectorName, played, noteText]
     .filter(Boolean).join(' · ') || 'Saved game';
 }
 
@@ -968,7 +972,7 @@ export const saveLoadScreen = {
     rootEl.classList.add('k-screen', 'of-saveload');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', 'Load');
-    if (orr) { injectSaveLayouts(); rootEl.classList.add('orr-saveload'); } else installShell(rootEl);
+    if (orr) { injectSaveLayouts(); injectSaveLoadLayouts(); rootEl.classList.add('orr-saveload'); } else installShell(rootEl);
 
     // Title: "Load" and the count.
     const title = el('header', 'k-title');
@@ -1267,7 +1271,14 @@ export const saveLoadScreen = {
       if (name && item.badges.length) {
         const tags = el('span', 'sf-slot-badges');
         for (const badge of item.badges) {
-          tags.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
+          // A badge never breaks mid-word: the filmstrip's label column wraps anywhere so a long
+          // pilot name stays inside its station (saveLayouts D249), and that wrap inherited into
+          // the badge broke CURRENT as "CU / RRENT" on the rail at 1366 and 1920. A badge wraps
+          // as a whole between the name's words, or takes its own line.
+          const tag = el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge);
+          tag.style.whiteSpace = 'nowrap';
+          tag.style.overflowWrap = 'normal';
+          tags.appendChild(tag);
         }
         name.insertAdjacentElement('afterend', tags);
       }

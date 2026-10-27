@@ -11,11 +11,12 @@ import { bestLineRows, loadCrucibleMeta } from '../../systems/survivalRecords.js
 import { injectDeckplate } from '../deckplate/index.js';
 import { el, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
-import { createCounter, decrypt } from '../orrery/text.js';
+import { createCounter, decrypt, rollTo } from '../orrery/text.js';
 import { hand, ring } from '../orrery/instruments.js';
-import { svg } from '../orrery/svg.js';
+import { lightPath, svg, ticksD } from '../orrery/svg.js';
 import { injectOrrery } from '../orrery/tokens.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectEndCardLayouts } from '../orrery/game-overLayouts.js';
 
 const MODULE_NAME = new Map([...MODULES, ...WEAPONS].map((def) => [def && def.id, def && def.name]));
 
@@ -53,7 +54,12 @@ function mountEndDial(host) {
     'aria-hidden': 'true',
   });
   figure.appendChild(ring({ cx: 80, cy: 80, r: 68, tone: 'faint', width: 1, bloom: 4, draw: true }));
-  const needle = hand({ cx: 80, cy: 80, r0: 14, r1: 62 });
+  // a bezel of ticks and a hub: without them the circle reads as an orphaned loop, not a
+  // pointing instrument (the same bezel grammar the after-action career ring wears)
+  figure.appendChild(lightPath(ticksD(80, 80, 68, 60, { len: 3, inward: true }), { tone: 'rest', width: 1, bloom: 0, draw: true, delay: 120 }));
+  figure.appendChild(lightPath(ticksD(80, 80, 68, 12, { len: 8, inward: true }), { tone: 'rest', width: 1.6, bloom: 5, draw: true, delay: 180 }));
+  figure.appendChild(svg('circle', { cx: 80, cy: 80, r: 2.2, class: 'orr-core orr-rest' }));
+  const needle = hand({ cx: 80, cy: 80, r0: 16, r1: 58 });
   figure.appendChild(needle.el);
   host.appendChild(figure);
   return { figure, needle };
@@ -124,10 +130,12 @@ export const demoEndScreen = {
 
   mount(rootEl, ctx) {
     injectDeckplate();
-    // The card composes ORRERY library pieces (the dial, the register) — their stroke sheet and
-    // their screen layout are what the results plate injects, so this card injects them too.
+    // The card composes ORRERY library pieces (the dial, the register, the chain beam) — their
+    // stroke sheet and their screen layout are what the results plate injects, so this card
+    // injects them too, then the end-card overlay last so its rules read as the final word.
     injectOrrery(rootEl.ownerDocument || undefined);
     injectOrreryScreens(rootEl.ownerDocument || undefined);
+    injectEndCardLayouts(rootEl.ownerDocument || undefined);
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-demo-end', 'orr-demo-end');
     rootEl.setAttribute('role', 'dialog');
@@ -145,11 +153,16 @@ export const demoEndScreen = {
       'You fought the pack, then flew out with a new part bolted on. The belt is the rest of the game.'));
     rootEl.appendChild(title);
 
-    // .k-stage — the record, as a register of lit readings (dl rows kept for the ear; the eye
-    // reads etched labels over numeral values, the results plate's grammar). The card is built
-    // at boot by the screen prewarm, when the run's numbers are still zero — the rows are a
-    // render, so onShow rebuilds them against the live state instead of trusting the prewarm's.
+    // .k-stage — the run told back, then the record. The chain beam is the hero instrument
+    // (the best line's acts on a light rail, its points as the hero numeral); the register of
+    // lit readings (dl rows kept for the ear; the eye reads etched labels over numeral values,
+    // the results plate's grammar) follows it. The card is built at boot by the screen prewarm,
+    // when the run's numbers are still zero — the rows are a render, so onShow rebuilds them
+    // against the live state instead of trusting the prewarm's.
     const stage = el('section', 'k-stage k-panel sf-demo-end__stage');
+    const chain = el('div', 'sf-demo-end__chainwrap');
+    this._chainHost = chain;
+    stage.appendChild(chain);
     const list = el('dl', 'sf-demo-end__facts orr-end-facts');
     this._factsList = list;
     this._renderFacts(ctx);
@@ -234,6 +247,67 @@ export const demoEndScreen = {
     }
   },
 
+  /** The run told back as a chain beam (ORRERY §4 #6): the best line's acts as nodes on a light
+   *  rail, a travelling pulse replaying the run, and the line's points as the hero numeral the
+   *  rail points into. Null-render (host left empty) when nothing is banked, the document has
+   *  no SVG (the node tests' stub DOM), or the acts would not read as a chain. */
+  _renderChain(profile) {
+    const host = this._chainHost;
+    if (!host) return false;
+    host.textContent = '';
+    const line = profile && Array.isArray(profile.bestLines) ? profile.bestLines[0] : null;
+    const acts = line && Array.isArray(line.acts) ? line.acts.filter((a) => a && a.name).slice(0, 8) : [];
+    const doc = host.ownerDocument || globalThis.document;
+    if (!line || !(line.points > 0) || !acts.length || !doc || typeof doc.createElementNS !== 'function') return false;
+    // The rail is plain full strokes (no pathLength dash-draw: that combination misrenders on a
+    // non-uniformly-scaled svg); its arrival is a left-origin scaleX in the layout sheet. Nodes
+    // are the library's beads; the pulse keeps pathLength — it rendered correctly on probe.
+    const seg = (tip = false, i = 0) => {
+      const svgEl = tip
+        ? svg('svg', { class: 'orr-svg sf-demo-end__tip', viewBox: '0 0 9 12', 'aria-hidden': 'true', focusable: 'false' })
+        : svg('svg', { class: 'orr-svg sf-demo-end__seg', viewBox: '0 0 48 12', preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' });
+      if (tip) {
+        svgEl.appendChild(svg('path', { d: 'M1.5 1.5 L7.5 6 L1.5 10.5', class: 'orr-bloom orr-rest', fill: 'none', 'stroke-width': 3 }));
+        svgEl.appendChild(svg('path', { d: 'M1.5 1.5 L7.5 6 L1.5 10.5', class: 'orr-core orr-hi', fill: 'none', 'stroke-width': 1.5 }));
+        return svgEl;
+      }
+      svgEl.style.setProperty('--i', String(i));
+      svgEl.appendChild(svg('path', { d: 'M0 6 H48', class: 'orr-bloom orr-rest', 'stroke-width': 4 }));
+      svgEl.appendChild(svg('path', { d: 'M0 6 H48', class: 'orr-core orr-hi' }));
+      svgEl.appendChild(svg('path', { d: 'M0 6 H48', class: 'sf-demo-end__seg__pulse', pathLength: 1 }));
+      return svgEl;
+    };
+    const row = el('div', 'sf-demo-end__chain');
+    row.setAttribute('role', 'img');
+    row.setAttribute('aria-label', 'Best crucible chain: '
+      + acts.map((a) => a.name).join(' → ') + ' — ' + Math.round(line.points).toLocaleString('en-US') + ' points');
+    const names = [];
+    acts.forEach((act, i) => {
+      if (i > 0) row.appendChild(seg(false, i));
+      const cell = el('div', 'sf-demo-end__act');
+      cell.style.setProperty('--i', String(i));
+      const dot = svg('svg', { class: 'orr-svg sf-demo-end__act__dot', viewBox: '0 0 12 12', 'aria-hidden': 'true', focusable: 'false' });
+      dot.appendChild(svg('circle', { cx: 6, cy: 6, r: 4.8, class: 'orr-bead-bloom' }));
+      dot.appendChild(svg('circle', { cx: 6, cy: 6, r: 2.6, class: 'orr-bead' }));
+      cell.appendChild(dot);
+      const name = el('span', 'sf-demo-end__act__name', '');
+      cell.appendChild(name);
+      row.appendChild(cell);
+      names.push([name, act.name]);
+    });
+    row.appendChild(seg(true));
+    const points = el('div', 'sf-demo-end__points');
+    const n = el('span', 'sf-demo-end__points__n', '');
+    rollTo(n, line.points);
+    points.appendChild(n);
+    points.appendChild(el('span', 'sf-demo-end__points__w k-caps', 'points'));
+    row.appendChild(points);
+    host.appendChild(row);
+    // the labels decrypt in on the arrival choreography's beat (240ms + the nodes' stagger)
+    names.forEach(([name, text], i) => decrypt(name, text, { duration: 300, delay: 240 + i * 70 }));
+    return true;
+  },
+
   _renderFacts(ctx) {
     const list = this._factsList;
     if (!list) return;
@@ -244,7 +318,10 @@ export const demoEndScreen = {
     }
     let profile = null;
     try { profile = loadCrucibleMeta(); } catch { profile = null; }
+    // When the chain beam tells the best line, the register does not repeat it.
+    const chainShown = this._renderChain(profile);
     for (const fact of demoEndFacts(ctx && ctx.state, profile)) {
+      if (chainShown && fact.key === 'bestLine') continue;
       const row = el('div', 'sf-demo-end__fact orr-end-fact');
       row.appendChild(el('dt', 'k-caps orr-end-fact__w', fact.label));
       const dd = el('dd', 'k-sentence orr-end-fact__n');
@@ -282,5 +359,6 @@ export const demoEndScreen = {
     this._dialTarget = null;
     this._aimDial = null;
     this._factsList = null;
+    this._chainHost = null;
   },
 };

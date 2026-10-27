@@ -375,7 +375,7 @@ function moduleDossier(state, id) {
   if (m.slots != null) facts.push({ k: 'Site slots', v: String(m.slots), tone: 'calm', num: true });
   // Every module advertises a power DRAW against a capacity the UI has never shown (§11.11 #2).
   // Naming it here is the cheapest place that gap becomes visible before J2 lands.
-  if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm', num: true });
+  if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: 'calm', num: true });
   const lines = [];
   const sentence = airSentenceForId(id);
   if (sentence) {

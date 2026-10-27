@@ -30,6 +30,7 @@ import { icon, factionIcon } from '../icons.js';
 import { dpMark, factionCrestName } from '../../deckplate/index.js';
 import { stationControlAttrs } from '../stationBindingMap.js';
 import { createCrestOrbit, standingScaleSvg, crestUrl } from '../../orrery/crestOrbit.js';
+import { injectOrreryStationFactions } from '../../orrery/station-factionsLayouts.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { decrypt, rollTo } from '../../orrery/text.js';
 import { reducedMotion } from '../../orrery/motion.js';
@@ -77,10 +78,6 @@ function standingClass(rep) {
   return tierIndex(rep) > 4 ? 'k-good' : '';
 }
 
-function reduceMotion() {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-
 function repOf(state, id) {
   const live = state && state.factions && state.factions[id];
   if (live && Number.isFinite(Number(live.rep))) return Math.round(Number(live.rep));
@@ -117,17 +114,6 @@ function relationEntries(meta) {
     .filter((entry) => Math.abs(entry.weight) >= 0.19)
     .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
     .slice(0, 7);
-}
-
-/** The next contract rung and what it buys, in one line; or the top when every rung is reached. */
-/** What a rung buys, as at most two short lines for the scale ("R3 · HIGHER-RISK ESCORTS" / "SMUGGLING, COMBAT"). */
-function rungDetailLines(unlocks) {
-  let t = String(unlocks || '').replace(/\s+contracts?\.?$/i, '').replace(/,\s+and\s+/g, ', ').trim();
-  t = t.replace(/^(R\d+)\s+/, '$1 \u00b7 ');
-  if (!t) return [];
-  const comma = t.indexOf(', ');
-  const lines = comma > 0 ? [t.slice(0, comma), t.slice(comma + 2)] : [t];
-  return lines.map((l) => (l.length > 28 ? `${l.slice(0, 27).trim()}\u2026` : l)).slice(0, 2);
 }
 
 function alliedRetainerOpen(row, rep) {
@@ -196,6 +182,7 @@ function recentDeedsHtml(state, live, f) {
 }
 
 export function createFactionsScreen(ctx) {
+  injectOrreryStationFactions();
   const el = document.createElement('div');
   el.className = 'k-panel sx-fac';
   // the scale runs the reading's width (measured live; 640 before layout); short screens draw it compact
@@ -221,6 +208,7 @@ export function createFactionsScreen(ctx) {
   readingEl.className = 'sx-fac-reading';
   stageEl.append(orbitHost, readingEl);
   let orbit = null;
+  let heroFigure = null;
   const stopDecrypt = [];
 
   function renderRail(state) {
@@ -314,8 +302,11 @@ export function createFactionsScreen(ctx) {
         `<span class="sx-fac-crest${f.id === authorityId ? ' is-authority' : ''}" aria-hidden="true"><img src="${crestUrl(f.id)}" alt="" decoding="sync" draggable="false"></span>` +
         `<p class="k-caps">${f.id === authorityId ? 'Current station authority' : 'External power'}</p>` +
         `<h2 class="k-display k-t-title sx-fac-ident__name">${entitySpanHtml('faction:' + f.id, escapeHtml(f.name))}</h2>` +
-        `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${f.id === authorityId ? 'Current station authority' : 'External power'}` +
-          `${controls.length ? ` · ${escapeHtml(controls.slice(0, 3).join(' · '))}` : ' · no confirmed jurisdiction at this berth'}</p>` +
+        // the eyebrow above already names the role, so the flag carries only the jurisdiction —
+        // the same words never stack twice on one reading
+        `<p class="k-sentence k-sentence--emph sx-fac-ident__flag">${controls.length
+          ? escapeHtml(controls.slice(0, 3).join(' · ')).replace(/^\s*([a-z])/, (m, c) => c.toUpperCase())
+          : 'No confirmed jurisdiction at this berth'}</p>` +
         // one figure: the standing, its tier above it; the two distances (to the next tier, above the
         // hostile line) are measured on the scale itself as brackets, not restated as a row of figures
         `<div class="sx-fac-heroes" aria-label="Standing with ${escapeHtml(f.name)}: ${escapeHtml(tier.name)} ${signed(rep)}${next ? `, ${next.need} to ${escapeHtml(next.name)}` : ''}, ${buffer} above the hostile line">` +
@@ -330,7 +321,11 @@ export function createFactionsScreen(ctx) {
                 ...(next && next.need > 0 ? [{ from: rep, to: rep + next.need, label: `${next.need} \u00b7 TO ${String(next.name).toUpperCase()}`, anchor: 'start' }] : []),
                 ...(buffer > 0 ? [{ from: FACTION_AGGRO_THRESHOLD, to: rep, label: `${buffer} \u00b7 ABOVE HOSTILE`, anchor: 'end' }] : []),
               ],
-              rungs: (() => { const rows = factionContractLadderRows(rep); const nextRow = rows.find((row) => !row.unlocked && !row.aspirational); return rows.map((row) => ({ minRep: row.minRep, name: row.name, state: contractRungScaleState(row, rep), detail: row === nextRow && !compactHeight() ? rungDetailLines(row.unlocks) : null })); })() }) +
+              // rungs hang as words only: the scale's row solver clears room by the rung word's own
+              // width, so the wider "what it buys" lines overprinted the neighbouring rungs (Crimson
+              // Reach at -50, ui-bench walk 2026-10-26). The ruler names the rungs; the Missions tab
+              // says what each buys.
+              rungs: (() => { const rows = factionContractLadderRows(rep); return rows.map((row) => ({ minRep: row.minRep, name: row.name, state: contractRungScaleState(row, rep) })); })() }) +
             ladderRows(standingLadder) +
           `</div>` +
           `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
@@ -347,15 +342,21 @@ export function createFactionsScreen(ctx) {
           `<div class="sx-fac-network" aria-label="Relations of ${escapeHtml(f.name)}">` +
             // folded: a word that unfolds the relations when asked
             (relations.length ? `<p class="k-caps sx-fac-legend">${relations.filter((r) => r.weight > 0).length ? `<span class="sx-fac-legend__k">Aligned</span> · ${relations.filter((r) => r.weight > 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}` : ''}${relations.some((r) => r.weight > 0) && relations.some((r) => r.weight < 0) ? '<span class="sx-fac-legend__gap"> · </span>' : ''}${relations.filter((r) => r.weight < 0).length ? `<span class="sx-fac-legend__k is-hostile">Rival</span> · <span class="is-hostile">${relations.filter((r) => r.weight < 0).map((r) => { const x = factions.find((c) => c.id === r.id); return escapeHtml(x ? ((x.meta && x.meta.short) || x.name) : r.id); }).join(', ')}</span>` : ''}</p>` : '') +
-            `<button type="button" ${stationControlAttrs('relations-toggle')} class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false">${'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
+            `<button type="button" ${stationControlAttrs('relations-toggle')} class="k-word k-word--fine sx-fac-network__toggle" data-relations-toggle aria-expanded="false" aria-controls="sx-fac-relations-box">${'Relations'}${relations.length ? ` · ${relations.length}` : ''}</button>` +
             (relations.length
-              ? `<ul class="k-rows sx-fac-network__rows" hidden>${relationRows}</ul>`
-              : `<p class="k-empty sx-fac-network__empty" hidden>No material relations recorded.</p>`) +
+              ? `<ul class="k-rows sx-fac-network__rows" id="sx-fac-relations-box" hidden>${relationRows}</ul>`
+              : `<p class="k-empty sx-fac-network__empty" id="sx-fac-relations-box" hidden>No material relations recorded.</p>`) +
           `</div>` +
         `</div>` +
       `</div>`;
     const facNum = readingEl.querySelector('.sx-fac-num');
-    if (facNum) rollTo(facNum, facNum.textContent);
+    // the counter rolls because the number changed (ORRERY §9): a re-render of the same figure
+    // writes plain, so re-selecting or a no-op refresh doesn't replay the arrival
+    const figure = signed(rep);
+    if (facNum) {
+      if (figure === heroFigure) facNum.textContent = figure;
+      else { rollTo(facNum, figure); heroFigure = figure; }
+    }
     composeStage(state, f);
   }
 
@@ -393,7 +394,7 @@ export function createFactionsScreen(ctx) {
     renderRail(state);
     renderStage(state);
     const active = railEl.querySelector(`[data-fac="${CSS.escape(id)}"]`);
-    if (active && active.scrollIntoView) active.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+    if (active && active.scrollIntoView) active.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
     if (focus && active && typeof active.focus === 'function') active.focus();
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }

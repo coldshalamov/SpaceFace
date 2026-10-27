@@ -1,11 +1,19 @@
 // FB-103 — the Statistics screen. It reads careerStats() and player.stats.
 // It never writes them.
+//
+// ORRERY composition (design/frontend/ORRERY.md §6 Meta): the screen is a wall of witnessed
+// deeds hung on a ladder, read beside the career instrument — one hero numeral (distance
+// flown) with the career's short readings ruled under it. The full readings sheet (every
+// counter the ledger keeps) stands under the deeds. Layout styles live in
+// src/ui/orrery/achievementsLayouts.js (this unit's meta-ledger composition home) over the
+// sheet styles in src/ui/orrery/statisticsLayouts.js.
 
 import { careerStats } from '../../systems/achievements.js';
 import { statisticsModel } from '../../core/statistics.js';
 import { wantedTierInfo } from '../../systems/heat.js';
 import { el, words, cue } from '../kit/index.js';
 import { injectStatisticsLayouts } from '../orrery/statisticsLayouts.js';
+import { injectMetaLedgerLayouts } from '../orrery/achievementsLayouts.js';
 import { recordsWall } from '../../chronicler/recordsWall.js';
 
 export const STATISTICS_LABEL = 'Records Wall';
@@ -34,7 +42,7 @@ function sheetHasReadings(sheet) {
 
 export function renderStatistics(model, { withTitle = true } = {}) {
   const sheet = model && Array.isArray(model.groups) ? model : statisticsModel();
-  const root = el('div', 'sf-statistics k-hang k-stage');
+  const root = el('div', 'sf-statistics orr-statistics__sheet');
   root.setAttribute('data-sf-scroll', 'statistics');
   root.tabIndex = 0;
   root.setAttribute('aria-label', 'Statistics readings');
@@ -71,6 +79,84 @@ export function renderStatistics(model, { withTitle = true } = {}) {
   return root;
 }
 
+/* The career instrument's own readings, from the same careerStats() snapshot the sheet reads. */
+
+function careerClock(seconds) {
+  const n = Math.max(0, Math.round(Number(seconds) || 0));
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  return h > 0 ? `${h} h ${m} m` : m > 0 ? `${m} m` : `${n} s`;
+}
+
+function careerFacts(career) {
+  const bag = (career && career.counters) || {};
+  const kills = Object.values(career && career.killsByWeapon || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const time = Object.values(career && career.timeBySector || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const fact = (label, value) => (value === null || value === undefined ? null : { label, value: String(value) });
+  return [
+    fact('Time flown', time > 0 ? careerClock(time) : null),
+    fact('Jumps', Number(bag.jumps) > 0 ? Number(bag.jumps).toLocaleString('en-US') : null),
+    fact('Docks', Number(bag.docks) > 0 ? Number(bag.docks).toLocaleString('en-US') : null),
+    fact('Throws', Number(bag.throws) > 0 ? Number(bag.throws).toLocaleString('en-US') : null),
+    fact('Kills', kills > 0 ? Math.round(kills).toLocaleString('en-US') : null),
+    fact('Ships lost', Number(career && career.shipsLost) > 0 ? Number(career.shipsLost).toLocaleString('en-US') : null),
+  ].filter(Boolean);
+}
+
+/** The career column: the hero reading and the short facts. Empty on an untouched ledger. */
+function careerColumn(career) {
+  const distance = Math.round(Number(career && career.distanceFlownWu) || 0);
+  const facts = careerFacts(career);
+  if (distance <= 0 && !facts.length) return null;
+  const aside = el('aside', 'orr-statistics__career');
+  aside.setAttribute('aria-label', 'Career at a glance');
+  const hero = el('div', 'orr-statistics__hero');
+  hero.appendChild(el('p', 'orr-statistics__hero-label', 'Distance flown'));
+  const numeral = el('p', 'orr-statistics__hero-n');
+  numeral.appendChild(el('span', 'orr-statistics__hero-v', distance.toLocaleString('en-US')));
+  if (distance > 0) numeral.appendChild(el('span', 'orr-statistics__hero-u', 'wu'));
+  hero.appendChild(numeral);
+  aside.appendChild(hero);
+  aside.appendChild(el('div', 'orr-statistics__hero-rule'));
+  if (facts.length) {
+    const list = el('ul', 'orr-statistics__facts');
+    for (const f of facts) {
+      const li = el('li', 'orr-statistics__fact');
+      li.appendChild(el('span', 'orr-statistics__fact-w', f.label));
+      li.appendChild(el('span', 'orr-statistics__fact-n', f.value));
+      list.appendChild(li);
+    }
+    aside.appendChild(list);
+  }
+  return aside;
+}
+
+/** The witnessed-deeds ladder. Each record hangs on a tick of the rail by when it happened. */
+function recordsLadder(records) {
+  const rungs = el('ol', 'orr-statistics__rungs');
+  rungs.setAttribute('aria-label', 'Witnessed deeds');
+  for (const record of records) {
+    const li = el('li', 'orr-statistics__rung');
+    li.appendChild(el('p', 'orr-statistics__rung-title', record.title));
+    li.appendChild(el('p', 'orr-statistics__rung-text', record.text));
+    li.appendChild(el('p', 'orr-statistics__rung-meta', `${record.place} · ${record.time} flown`));
+    rungs.appendChild(li);
+  }
+  return rungs;
+}
+
+/** The five readings the ledger keeps, named on a quiet scale — what this page would count.
+ *  Decorative words, not an outline: they are plain list items under the group's own label, never
+ *  role="heading" — five empty level-2 headings announced nothing but noise to assistive tech. */
+function promiseScale() {
+  const ul = el('ul', 'orr-statistics__promise-scale');
+  ul.setAttribute('aria-label', 'What the record counts');
+  for (const word of ['Flight', 'Line', 'Fight', 'Trade', 'Law']) {
+    ul.appendChild(el('li', 'orr-statistics__promise-word', word));
+  }
+  return ul;
+}
+
 function close(ctx) {
   const ui = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('ui');
   const mgr = (ctx && ctx.screenManager) || (ui && ui.screenManager) || null;
@@ -93,14 +179,16 @@ export const statisticsScreen = {
     const rootEl = this._root;
     if (!rootEl) return;
     injectStatisticsLayouts();
+    injectMetaLedgerLayouts();
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu');
     rootEl.classList.add('k-screen', 'k-screen--stage', 'orr-statistics');
     rootEl.setAttribute('aria-label', STATISTICS_LABEL);
     const player = ctx && ctx.state && ctx.state.player;
     const fine = ctx && ctx.state && ctx.state.lawSecurity && ctx.state.lawSecurity.fineOffer;
+    const career = careerStats();
     const model = statisticsModel({
-      career: careerStats(),
+      career,
       playerStats: (player && player.stats) || {},
       law: player ? {
         heat: Number(player.heat) || 0,
@@ -109,22 +197,29 @@ export const statisticsScreen = {
       } : null,
     });
     rootEl.appendChild(statisticsTitle());
-    const stage = el('div', 'sf-statistics k-stage k-hang');
+    const lived = sheetHasReadings(model);
+    const stage = el('div', 'sf-statistics k-stage k-hang orr-statistics__stage');
     stage.setAttribute('data-sf-scroll', 'records');
+    const wall = el('section', 'orr-statistics__wall');
+    wall.setAttribute('aria-label', 'Witnessed deeds and career readings');
     const records = recordsWall(ctx?.state);
-    if (!records.length) stage.appendChild(el('p', 'k-sentence', 'No witnessed deeds yet. Haul a load, rescue a pod, or finish a fight; the record keeps its place and time.'));
-    const wall = el('ul', 'k-rows');
-    for (const record of records) {
-      const row = el('li', 'k-row k-row--static');
-      const body = el('div');
-      body.appendChild(el('p', 'k-row__name', record.title));
-      body.appendChild(el('p', 'k-row__sub', record.text));
-      body.appendChild(el('p', 'k-caps', `${record.place} · ${record.time} flown`));
-      row.appendChild(body); wall.appendChild(row);
+    if (!records.length && !lived) {
+      // A fresh ledger: one voice for the whole wall, then the scale of what would be counted.
+      wall.appendChild(el('p', 'k-sentence orr-statistics__empty',
+        'Nothing on the record yet — fly, haul, and fight, and this page starts counting.'));
+      wall.appendChild(promiseScale());
+    } else {
+      if (!records.length) {
+        wall.appendChild(el('p', 'k-sentence orr-statistics__empty',
+          'No witnessed deeds yet. Haul a load, rescue a pod, or finish a fight; the record keeps its place and time.'));
+      } else {
+        wall.appendChild(recordsLadder(records));
+      }
+      wall.appendChild(renderStatistics(model, { withTitle: false }));
     }
     stage.appendChild(wall);
-    stage.appendChild(el('p', 'k-caps', 'Flight readings'));
-    stage.appendChild(renderStatistics(model, { withTitle: false }));
+    const careerAside = lived ? careerColumn(career) : null;
+    if (careerAside) stage.appendChild(careerAside);
     rootEl.appendChild(stage);
     const back = words([{ label: 'Back', action: 'back' }], {
       row: true,

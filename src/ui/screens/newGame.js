@@ -25,6 +25,7 @@ import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
+import { injectNewGameScreenSheet } from '../orrery/new-gameLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { armCallbackAfterPresent } from '../../render/compilePresentSlice.js';
@@ -289,7 +290,7 @@ function nav(ctx, method, arg) {
 // First-run splash (spec2/03 §3): after START, a single full-screen line on black, 2.5s, then B0.
 // Fires only once per profile (localStorage flag), so returning players skip straight into flight.
 // It is a cinematic, not a screen: its rules live in styles/ui.css beside the Continue veil.
-const FIRST_RUN_LINE = 'Helios System. Third shift. The manifest is wrong.';
+const FIRST_RUN_LINE = 'Helios System · Third Shift Arrival';
 const FIRST_RUN_FLAG = 'sf.firstRunIntroSeen';
 function showFirstRunSplash(ctx) {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
@@ -438,6 +439,7 @@ export const newGameScreen = {
     rootEl.setAttribute('aria-label', coreText('newGame'));
     injectOrreryScreens();
     injectNewGameLayouts();
+    injectNewGameScreenSheet();
     installShell(rootEl);
 
     // Title. `.sf-ng-header` is an inert hook the layout probe measures.
@@ -446,7 +448,7 @@ export const newGameScreen = {
     const heading = el('h1', 'k-display k-t-title fh-title', 'New game');
     paintMarking(heading);
     title.appendChild(heading);
-    title.appendChild(el('p', 'k-t-emph k-62', 'One hull, one contract, the whole sky.'));
+    title.appendChild(el('p', 'k-t-emph k-62', 'Choose your starting ship and pilot credentials.'));
     rootEl.appendChild(title);
 
     // The form hangs on the left. `.sf-ng-body` is the scrolling region the layout probe measures.
@@ -597,7 +599,8 @@ export const newGameScreen = {
     // and keeps the random behaviour; `game:new` carries opts and `resetRunState` honours `opts.seed`.
     const seedField = field('Universe seed', 'sf-ng-seed');
     const seedRow = el('div', 'k-words k-words--row of-pause');
-    const seed = el('input', 'k-input k-t-fine');
+    // A seed is a code (ORRERY §3.4): the field reads in the mono code face (the screen sheet).
+    const seed = el('input', 'k-input k-t-fine orr-ng-seed');
     seed.id = 'sf-ng-seed';
     seed.type = 'text';
     seed.inputMode = 'numeric';
@@ -609,7 +612,7 @@ export const newGameScreen = {
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
     paintKey(newSeed, 'small');
-    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); this._emitEmbarkSpec(); });
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); syncSeedHint(); cue('confirm'); this._emitEmbarkSpec(); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
     const seedDesc = el('p', 'k-t-fine k-38', ORRERY
@@ -617,8 +620,23 @@ export const newGameScreen = {
       : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
+    // A seed the game cannot use must say so at the field: anything that is not 1–10 digits
+    // parses to null and would silently launch as a random universe. The hint names it while
+    // the text is still in the field; blank and a valid seed hide it again.
+    const seedHint = el('p', 'orr-ng-seed-hint', '');
+    seedHint.id = 'sf-ng-seed-hint';
+    seedHint.setAttribute('role', 'status');
+    seedHint.hidden = true;
+    seedField.wrap.appendChild(seedHint);
+    const syncSeedHint = () => {
+      const text = String(seed.value ?? '').trim();
+      const unusable = text !== '' && parseUniverseSeed(text) === null;
+      seedHint.textContent = unusable ? 'Digits only — a seed is 1–10 digits, or leave it blank.' : '';
+      seedHint.hidden = !unusable;
+    };
     // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
-    seed.addEventListener('input', () => this._emitEmbarkSpec());
+    seed.addEventListener('input', () => { syncSeedHint(); this._emitEmbarkSpec(); });
+    syncSeedHint();
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
