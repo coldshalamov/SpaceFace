@@ -67,6 +67,46 @@ export const SWARM_AFFIX_BY_ID = Object.freeze(Object.fromEntries(
 /** Zone 3's first wave — the wave affixes start on without a Threat (§6.4). */
 export const SWARM_AFFIX_FROM_WAVE = 21;
 
+/**
+ * The veteran band — the escalation the late run was missing. From Zone 5's first wave a
+ * seeded share of affixed hulls carry a SECOND affix: two tricks on one body, never a
+ * bigger hull or a hotter gun. The odds open at BASE, climb STEP a wave, and stop at MAX —
+ * a marked minority, so meeting one still reads as the exception it is. A live Threat does
+ * not move the gate: the wager bought the early vocabulary, not the band — depth still
+ * earns the second trick by wave.
+ */
+export const SWARM_AFFIX_VETERAN_FROM_WAVE = 41;
+export const SWARM_AFFIX_VETERAN_BASE_PCT = 20;
+export const SWARM_AFFIX_VETERAN_PCT_PER_WAVE = 1;
+export const SWARM_AFFIX_VETERAN_MAX_PCT = 40;
+
+/**
+ * The veteran-band odds for a wave, in percent: zero below the gate, then the slow climb
+ * to the cap. Pure read — the stamp path supplies the seeded roll that answers it.
+ */
+export function swarmAffixVeteranPct(wave) {
+  if (!Number.isInteger(wave) || wave < SWARM_AFFIX_VETERAN_FROM_WAVE) return 0;
+  return Math.min(
+    SWARM_AFFIX_VETERAN_MAX_PCT,
+    SWARM_AFFIX_VETERAN_BASE_PCT
+      + (wave - SWARM_AFFIX_VETERAN_FROM_WAVE) * SWARM_AFFIX_VETERAN_PCT_PER_WAVE,
+  );
+}
+
+/**
+ * The second affix a veteran carries, guaranteed DISTINCT from its primary: the hash picks
+ * an offset 1..N-1 past the primary's own row and wraps, so the pair can never double one
+ * trick — no double-shielded, ever. Same hash in, same partner out.
+ */
+export function swarmAffixVeteranFor(hash, primaryId) {
+  if (!Number.isInteger(hash) || hash < 0) return null;
+  const count = SWARM_AFFIXES.length;
+  const primaryIndex = SWARM_AFFIXES.findIndex((row) => row.id === primaryId);
+  if (primaryIndex < 0 || count < 2) return null;
+  const row = SWARM_AFFIXES[(primaryIndex + 1 + (hash % (count - 1))) % count];
+  return row ? row.id : null;
+}
+
 /** Normalize a door pick or a request payload into catalog ids. Unknowns never reach the run. */
 export function normalizeThreatIds(value) {
   const list = Array.isArray(value) ? value : (typeof value === 'string' ? [value] : []);
@@ -165,6 +205,25 @@ export function validateSwarmThreats() {
   }
   for (const affix of SWARM_AFFIXES) {
     if (!affix || typeof affix.id !== 'string' || !affix.id) issues.push('affix: missing id');
+  }
+  if (!(SWARM_AFFIX_VETERAN_FROM_WAVE > SWARM_AFFIX_FROM_WAVE)) {
+    issues.push('veteran band: gate must sit past the affix floor');
+  }
+  if (!(SWARM_AFFIX_VETERAN_BASE_PCT > 0 && SWARM_AFFIX_VETERAN_BASE_PCT <= SWARM_AFFIX_VETERAN_MAX_PCT
+    && SWARM_AFFIX_VETERAN_MAX_PCT < 100 && SWARM_AFFIX_VETERAN_PCT_PER_WAVE >= 0)) {
+    issues.push('veteran band: odds outside the bounded band');
+  }
+  if (SWARM_AFFIXES.length >= 2) {
+    // The distinct-pair contract: every primary partners with a different second, always.
+    for (const affix of SWARM_AFFIXES) {
+      for (let h = 0; h < SWARM_AFFIXES.length * 4; h++) {
+        const second = swarmAffixVeteranFor(h, affix.id);
+        if (second === affix.id || !SWARM_AFFIX_BY_ID[second]) {
+          issues.push(`veteran pair: ${affix.id} produced ${second}`);
+          break;
+        }
+      }
+    }
   }
   return { ok: issues.length === 0, issues };
 }

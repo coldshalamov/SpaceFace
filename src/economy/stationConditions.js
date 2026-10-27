@@ -42,7 +42,6 @@ export const STATION_CONDITION_LAW = Object.freeze({
   grudge: Object.freeze({
     slamsToGrudge: 3,
     windowS: 600,
-    refusal: 'Dock control: pay your note before you come through our ring again',
   }),
   blockade: Object.freeze({
     buyMult: 1.2,            // the player's buy price: goods run dear behind a line
@@ -88,9 +87,20 @@ export function stationGrudge(state, stationId) {
   return rec && grudgeLive(state, rec.grudge) ? rec.grudge : null;
 }
 
-/** The refusal text the berth gate, the mission preflight and the dock banner all speak. */
+/** Credits still owed on a live slam note: the debt above the floor the slams started from. */
+export function stationGrudgeOwedCr(state, stationId) {
+  const g = stationGrudge(state, stationId);
+  if (!g) return 0;
+  const debt = Math.max(0, Math.round(Number(state && state.player && state.player.debt) || 0));
+  const floor = Math.max(0, Math.round(Number(g.untilPaidCr) || 0));
+  return Math.max(0, debt - floor);
+}
+
+/** The refusal the berth gate, the mission preflight and the dock banner all speak. */
 export function stationGrudgeRefusal(state, stationId) {
-  return stationGrudge(state, stationId) ? STATION_CONDITION_LAW.grudge.refusal : null;
+  if (!stationGrudge(state, stationId)) return null;
+  const owed = stationGrudgeOwedCr(state, stationId);
+  return `Dock control: pay the ${owed} cr on your note before you come through our ring again`;
 }
 
 /** Derived blockade: a live WAR front on this berth's own sector, for the berth's own faction. */

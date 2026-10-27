@@ -186,6 +186,6 @@ test('a burrower hides in the rock and telegraphs before it bursts, seed 4242', 
   };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: state.simTime });
-  assert.equal(scene.objects.length, 6);
+  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
   assert.equal(scene.objects[0].count, engine.census().alive, 'every live body, including the burrower, draws');
 });

@@ -86,9 +86,6 @@ const COMMODITY_OVERLAYS = Object.freeze({
   cmdty_gas_hydrogen: {
     maker: 'Hydrogen feedstock, compression-graded. The tank is worth more than the gas until it isn\'t.',
   },
-  cmdty_fuel_cells: {
-    maker: 'Stacked in Vesta Forge halls; the cell stamp is the only honest part of the deal.',
-  },
   cmdty_medical: {
     maker: 'Relief cargo. Every sector\'s shortage is someone else\'s price.',
     casualty: 'The Aesop run lost a hull to spoilage once. The Consortium renamed the route.',

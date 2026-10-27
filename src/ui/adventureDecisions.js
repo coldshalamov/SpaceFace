@@ -8,7 +8,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
-import { SERVICE_PRICES, quote } from '../systems/economy.js';
+import { SERVICE_PRICES, quote, serviceUnitCr } from '../systems/economy.js';
 import { predictPriceCurve } from '../systems/economyCycles.js';
 import { missionPreflight } from './missionPreflight.js';
 import { applyTradeNavigation, computeBestTrades } from './market/tradeLogic.js';
@@ -287,6 +287,24 @@ function listHaulDecision(state, stationId) {
   };
 }
 
+function bookedRepairAt(state, stationId) {
+  const booked = { hull: 0, armor: 0 };
+  const ui = state && state.ui;
+  if (!ui || ui.docked !== true || ui.dockedStationId !== stationId) return booked;
+  const player = state.stationServices && state.stationServices.player;
+  if (!player || player.stationId !== stationId) return booked;
+  for (const job of player.jobs || []) {
+    if (!job || job.type !== 'repair') continue;
+    const remaining = Math.max(0, (Number(job.total) || 0) - (Number(job.applied) || 0));
+    const shares = job.meta && job.meta.shares;
+    const hullShare = shares && Number.isFinite(Number(shares.hull)) ? Number(shares.hull) : 1;
+    const armorShare = shares && Number.isFinite(Number(shares.armor)) ? Number(shares.armor) : 0;
+    booked.hull += remaining * hullShare;
+    booked.armor += remaining * armorShare;
+  }
+  return booked;
+}
+
 function listRepairDecision(state, stationId) {
   const ship = playerShip(state);
   if (!ship) return null;
@@ -294,22 +312,23 @@ function listRepairDecision(state, stationId) {
   const hull = Number(ship.hull) || 0;
   const armorMax = Number(ship.armorMax) || 0;
   const armor = Number(ship.armorHp) || 0;
-  // The economy charges hull AND armor together and may queue the weld; quote the same
-  // total the yard will charge so the tradeoff never understates the bill.
-  const missHull = Math.max(0, hullMax - hull);
-  const missArmor = Math.max(0, armorMax - armor);
+  // The economy charges hull AND armor together, subtracts a weld already booked
+  // at this berth, and may queue the rest. Quote that same remainder.
+  const booked = bookedRepairAt(state, stationId);
+  const missHull = Math.max(0, hullMax - hull - booked.hull);
+  const missArmor = Math.max(0, armorMax - armor - booked.armor);
   const totalMiss = missHull + missArmor;
   const totalMax = hullMax + armorMax;
   if (!(totalMax > 0) || totalMiss <= 0.5) return null;
   if ((totalMax - totalMiss) / totalMax > 1 - REPAIR_HULL_FRAC) return null;
-  const cost = Math.round(totalMiss * SERVICE_PRICES.repairCrPerHp);
+  const cost = Math.round(totalMiss * serviceUnitCr(state, SERVICE_PRICES.repairCrPerHp, 'repair'));
   if (cost < MIN_CREDIT_GAP || creditsOf(state) < cost) return null;
   const services = stationServices(stationId);
   if (services.length && !services.includes('repair')) return null;
   const armorWords = armorMax > 0 ? `, armor ${Math.round(armor)} → ${Math.round(armorMax)}` : '';
   const armorLeft = armorMax > 0 ? ` (armor ${Math.round(armor)})` : '';
   return {
-    id: `repair:${stationId}:${Math.round(hull)}:${Math.round(armor)}`,
+    id: `repair:${stationId}:${Math.round(hull)}:${Math.round(armor)}:${cost}`,
     kind: 'repair',
     surface: 'market',
     situation: 'Battered hull. The yard here can fix it.',

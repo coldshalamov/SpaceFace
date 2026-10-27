@@ -1,8 +1,10 @@
 // Swarm arena event tables — the semi-curated layer of the Crucible (SWARM_PROGRAM S4).
 //
-// Pure data + one deterministic pick. An event round lands every SWARM_EVENT_EVERY waves,
-// skipping boss rounds (the boss room IS the event). The pick is seeded on (arenaId, wave, seed)
-// so a replay, a ghost and a share code all see the same card.
+// Pure data + two deterministic picks. A MAJOR event round lands every SWARM_EVENT_EVERY
+// waves, skipping boss rounds (the boss room IS the event); a MINOR round lands on the
+// off-beats — waves ≡2 and ≡8 of each ten-wave block — so the five-wave cadence never
+// leaves four identical rounds. Each pick is seeded on (arenaId, wave, seed) so a replay,
+// a ghost and a share code all see the same card.
 //
 // Event spend kinds, all through shipped seams — the director owns no new write path:
 //   surge — a window where an installed environmental field runs hot (fields.updateExternal)
@@ -30,6 +32,17 @@ export const SWARM_EVENT_SCHEMA_VERSION = 1;
 
 /** Event rounds land on waves 5, 15, 25… — the odd multiples of five the boss round skips. */
 export const SWARM_EVENT_EVERY = 5;
+
+/**
+ * The minor band: waves ≡2 and ≡8 of each ten-wave block (2, 8, 12, 18…). Those residues
+ * can never be a major round (≡0,5 mod 10) or a boss round (≡0), so the band fills empty
+ * slots only — no wave books two events.
+ */
+export const SWARM_MINOR_EVENT_PERIOD = 10;
+export const SWARM_MINOR_EVENT_RESIDUES = Object.freeze([2, 8]);
+
+/** A minor event's bounty is its card's authored wager scaled down — half the bet. */
+export const SWARM_MINOR_WAGER_SCALE = 0.5;
 
 function event(def) { return Object.freeze(def); }
 
@@ -71,7 +84,7 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     field: { kind: 'well', bearing: 'across', dist: 220, radius: 360, strength: 150, falloff: 1.2 },
   }),
   sling_gust: event({
-    id: 'sling_gust', name: 'Sling gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8,
+    id: 'sling_gust', name: 'Sling gust', kind: 'surge', factor: 1.8, windupS: 4, windowS: 8, minor: true,
     telegraph: 'SLING GUST — the slingshot is about to bite',
     wager: { score: 40, timeout: 'accept' },
   }),
@@ -151,19 +164,19 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     field: { kind: 'well', bearing: 'center', radius: 480, strength: 160, falloff: 1.2 },
   }),
   egg_drift: event({
-    id: 'egg_drift', name: 'Egg drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    id: 'egg_drift', name: 'Egg drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
     telegraph: 'EGG DRIFT — the hive seeds the lane',
     wager: { score: 30, timeout: 'accept' },
   }),
 
   // ── shared cards — every arena can draw these ──
   mine_drift: event({
-    id: 'mine_drift', name: 'Mine drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    id: 'mine_drift', name: 'Mine drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
     telegraph: 'MINE DRIFT — hazards riding a bearing',
     wager: { score: 30, timeout: 'accept' },
   }),
   supply_drop: event({
-    id: 'supply_drop', name: 'Supply pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0,
+    id: 'supply_drop', name: 'Supply pod', kind: 'supply', credits: 60, windupS: 6, windowS: 0, minor: true,
     telegraph: 'SUPPLY POD — salvage riding in. Staying for it is a choice.',
     wager: { score: 40, timeout: 'accept' },
   }),
@@ -187,7 +200,7 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     },
   }),
   lantern_drift: event({
-    id: 'lantern_drift', name: 'Lantern drift', kind: 'mines', count: 4, windupS: 5, windowS: 0,
+    id: 'lantern_drift', name: 'Lantern drift', kind: 'mines', count: 4, windupS: 5, windowS: 0, minor: true,
     telegraph: "LANTERN DRIFT — they want your heat. Give them someone else's.",
     wager: { score: 30, timeout: 'accept' },
   }),
@@ -204,7 +217,7 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
     field: { kind: 'repulsor', bearing: 'spin', dist: 280, radius: 380, strength: 190, falloff: 1.2 },
   }),
   sprocket_crate: event({
-    id: 'sprocket_crate', name: "Sprocket's crate", kind: 'supply', credits: 80, windupS: 6, windowS: 0,
+    id: 'sprocket_crate', name: "Sprocket's crate", kind: 'supply', credits: 80, windupS: 6, windowS: 0, minor: true,
     telegraph: 'MA SPROCKET SENDS A CRATE — catch it before they do.',
     wager: { score: 40, timeout: 'accept' },
   }),
@@ -240,6 +253,36 @@ export function isSwarmEventWave(wave) {
 }
 
 /**
+ * Is this wave a MINOR event round — deterministic on wave alone. The residues keep the
+ * band disjoint from majors and bosses by construction; the explicit guards stay so a
+ * future residue edit can never double-book.
+ */
+export function isSwarmMinorEventWave(wave) {
+  const w = swarmWaveOf(wave);
+  return SWARM_MINOR_EVENT_RESIDUES.includes(w % SWARM_MINOR_EVENT_PERIOD)
+    && !isSwarmBossWave(w) && !isSwarmEventWave(w);
+}
+
+/**
+ * The draw stream both bands share — same mixing idiom as arenaStreamSeed: a label-salted
+ * uint32 feeding mulberry32, never Math.random.
+ */
+function seededEventDraw(label, seed, w) {
+  let h = ((Number(seed) >>> 0) || 1) ^ 0x9e3779b9;
+  for (let i = 0; i < label.length; i++) {
+    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
+  }
+  h = (h ^ Math.imul(w, 0x85ebca6b)) >>> 0;
+  let a = h || 1;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * The card a wave draws. Deterministic: same (arenaId, wave, seed) → same event, so a ghost
  * replay and a share code see the same room do the same thing. Returns the frozen def or null.
  */
@@ -248,26 +291,57 @@ export function swarmEventFor({ arenaId, wave, seed } = {}) {
   if (!isSwarmEventWave(w)) return null;
   const own = (arenaId && SWARM_EVENT_TABLES[arenaId]) || [];
   if (own.length === 0 && SWARM_SHARED_EVENTS.length === 0) return null;
-  // Same mixing idiom as arenaStreamSeed — a label-salted uint32, not Math.random.
-  const label = `swarm-event-v1|${arenaId || 'arena'}|w${w}`;
-  let h = ((Number(seed) >>> 0) || 1) ^ 0x9e3779b9;
-  for (let i = 0; i < label.length; i++) {
-    h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
-  }
-  h = (h ^ Math.imul(w, 0x85ebca6b)) >>> 0;
-  // mulberry32 — two seeded draws: WHICH pool first (signatures lead 70/30 over shared cards,
-  // so the arena's own tricks stay the headline), then which card inside it.
-  let a = h || 1;
-  const draw = () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  const draw = seededEventDraw(`swarm-event-v1|${arenaId || 'arena'}|w${w}`, seed, w);
+  // Two seeded draws: WHICH pool first (signatures lead 70/30 over shared cards, so the
+  // arena's own tricks stay the headline), then which card inside it.
   const pool = draw() < 0.7 && own.length > 0 ? own : SWARM_SHARED_EVENTS;
   const pick = draw();
   const id = pool[Math.min(pool.length - 1, Math.floor(pick * pool.length))];
   return SWARM_EVENT_BY_ID[id] || null;
+}
+
+/**
+ * The minor pool: the `minor`-tagged cards in the arena's ordinary pool. A tag admits the
+ * card to the off-beat band — it stays major-drawable, so old seeds keep their majors.
+ * Minor cards never carry `install`: the wave plan pre-places only the major band's card.
+ */
+export function swarmMinorEventPool(arenaId) {
+  return swarmEventPool(arenaId).filter((id) => SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].minor);
+}
+
+/**
+ * The card a minor-band wave deals — supply and mine cards weigh double, so the quiet band
+ * serves salvage and hazards far more often than even a small surge. The returned def is a
+ * frozen copy stamped `band: 'minor'` whose wager.score is scaled by SWARM_MINOR_WAGER_SCALE:
+ * the same wager seam, proportionally smaller pressure and bounty.
+ */
+export function swarmMinorEventFor({ arenaId, wave, seed } = {}) {
+  const w = swarmWaveOf(wave);
+  if (!isSwarmMinorEventWave(w)) return null;
+  const pool = swarmMinorEventPool(arenaId);
+  if (pool.length === 0) return null;
+  const draw = seededEventDraw(`swarm-event-minor-v1|${arenaId || 'arena'}|w${w}`, seed, w);
+  const weightOf = (id) => {
+    const kind = SWARM_EVENT_BY_ID[id] && SWARM_EVENT_BY_ID[id].kind;
+    return kind === 'supply' || kind === 'mines' ? 2 : 1;
+  };
+  let total = 0;
+  for (const id of pool) total += weightOf(id);
+  let pick = draw() * total;
+  let id = pool[pool.length - 1];
+  for (const candidate of pool) {
+    pick -= weightOf(candidate);
+    if (pick < 0) { id = candidate; break; }
+  }
+  const def = SWARM_EVENT_BY_ID[id];
+  if (!def) return null;
+  return Object.freeze({
+    ...def,
+    band: 'minor',
+    wager: def.wager
+      ? { ...def.wager, score: Math.max(1, Math.round((Number(def.wager.score) || 0) * SWARM_MINOR_WAGER_SCALE)) }
+      : def.wager,
+  });
 }
 
 /** Validate the tables — run by the data test, not at import. */
@@ -284,6 +358,9 @@ export function validateSwarmEvents() {
     if (def.kind === 'surge' && !(def.factor > 0)) issues.push(`${id}: surge without factor`);
     if (def.kind === 'mines' && !(def.count >= 1)) issues.push(`${id}: mines without count`);
     if (def.kind === 'supply' && !(def.credits > 0)) issues.push(`${id}: supply without credits`);
+    if (def.minor && def.install) {
+      issues.push(`${id}: minor cards cannot carry install — the wave plan pre-places only the major band`);
+    }
     if (!def.wager || typeof def.wager !== 'object') {
       issues.push(`${id}: no wager — a telegraph that lays no bet is ambient pressure`);
     } else {

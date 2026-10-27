@@ -7,6 +7,7 @@ import {
   SWARM_BROOD_QUEEN_ID,
   swarmBroodBossFor,
 } from './swarmBrood.js';
+import { isSwarmBossWave } from './swarmMode.js';
 
 export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
   {
@@ -297,6 +298,58 @@ export function foldBroodLatePlan(plan, wave) {
     else copy.push({ id: fam.id, count: take });
   }
   return copy.filter((part) => part.count > 0);
+}
+
+// ── The late reserve: a specialist group held back for a mid-wave drop ─────────
+//
+// The last base/early-late family gate is wave 23 and the population ceiling arrives
+// at wave 21 — from wave 25 on, every non-Hive room fields the same full-strength
+// cohort at the open and then runs dry. The Hive answers that plateau with its sac
+// reserve (src/data/swarmBrood.js §B4); every other arena gets the same pressure axis
+// through the late band itself: one small group of an unlocked late family is held
+// out of the wave's own plan and dropped mid-wave, so clearing the room still has a
+// second act. Champion waves are exempt — the boss is already the wave's pressure
+// story and the population law keeps it legible (SWARM_BROOD_BOSS_FRACTION).
+//
+// Budget law is identical to the sac reserve and to foldBroodLatePlan: the held
+// bodies spend out of the mite share, so immediate plus reserve never exceeds
+// swarmBroodPopulation(wave) — texture, never population growth.
+
+/** First wave a non-Hive, non-champion room may hold a late specialist reserve. */
+export const SWARM_BROOD_RESERVE_FROM_WAVE = 25;
+/** Reserve size band — small on purpose; the reserve is texture, not a second wave. */
+export const SWARM_BROOD_RESERVE_MIN = 4;
+export const SWARM_BROOD_RESERVE_MAX = 8;
+/** Seconds after the wave's spawn lands before the reserve drops (a mid-wave beat). */
+export const SWARM_BROOD_RESERVE_DELAY_S = 45;
+
+/**
+ * The specialist group a late wave holds back, or null when the wave keeps no
+ * reserve: below the band, a champion wave (the boss is that room's pressure
+ * story), or no eligible late family unlocked yet. `roll` is the caller's
+ * deterministic stream (run seed + wave); exactly two draws — family, then size —
+ * so the same (seed, wave) always fields the same reserve. Families carrying their
+ * own hold-back machinery (`births`, `splits`) are ineligible: a reserve mother or
+ * splitter would drop bodies the plan never budgeted. The seeded size is capped by
+ * the family's authored cohort, so the group stays inside the family's own scale.
+ */
+export function swarmBroodLateReserve(wave, roll) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  if (w < SWARM_BROOD_RESERVE_FROM_WAVE) return null;
+  if (isSwarmBossWave(w)) return null;
+  const eligible = SWARM_BROOD_LATE_FAMILIES.filter(
+    (fam) => w >= fam.fromWave && !fam.births && !fam.splits,
+  );
+  if (eligible.length === 0) return null;
+  const draw = typeof roll === 'function' ? roll : () => 0.5;
+  const family = eligible[Math.min(eligible.length - 1, Math.floor(draw() * eligible.length))];
+  const authored = Math.max(1, Math.trunc(Number(family.cohort) || SWARM_BROOD_RESERVE_MAX));
+  const count = Math.max(1, Math.min(
+    authored,
+    SWARM_BROOD_RESERVE_MIN
+      + Math.floor(draw() * (SWARM_BROOD_RESERVE_MAX - SWARM_BROOD_RESERVE_MIN + 1)),
+  ));
+  return { familyId: family.id, count };
 }
 
 /** Authoring check for the late table. Empty when honest. Does not touch the base table. */

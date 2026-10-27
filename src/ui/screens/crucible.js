@@ -776,6 +776,8 @@ export const crucibleScreen = {
   stage: { scene: 'arena-foundry' },
 
   mount(rootEl, ctx) {
+    this._embarkSpecActive = false;
+    const door = this;
     let enterButton = null;
     let preparation = null;
     ensurePhysicsLabRoute(ctx);
@@ -1428,7 +1430,9 @@ export const crucibleScreen = {
     // tile flips, so arm the same embark speculation the sandbox picker posts on hover. The
     // renderer latches by signature — repeat re-syncs of an unchanged pick are near-free.
     function armEmbarkSpec() {
-      if (!ctx || !ctx.bus) return;
+      // Hidden screen prewarming calls syncArena too. It must not decode an entire sector
+      // behind the title or compete with another screen's New Game preparation.
+      if (!door._embarkSpecActive || !ctx || !ctx.bus) return;
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
       const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
         ? starterId.slice(5)
@@ -1443,6 +1447,7 @@ export const crucibleScreen = {
         seed,
       });
     }
+    this._armEmbarkSpec = armEmbarkSpec;
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
       const open = isStarterAvailable(doorProfile, starter.id);
       const face = starter.id === 'hornet_fast_clumsy' ? 'Bolt'
@@ -2406,7 +2411,9 @@ export const crucibleScreen = {
   },
 
   onShow() {
+    this._embarkSpecActive = true;
     this._refreshDaily?.();
+    this._armEmbarkSpec?.();
     this._refreshCabinetBoard?.();
     this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
     this._cabinetAttract?.start();
@@ -2425,12 +2432,15 @@ export const crucibleScreen = {
   },
 
   onHide() {
+    this._embarkSpecActive = false;
     this._cabinetAttract?.stop();
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');
   },
 
   dispose() {
+    this._embarkSpecActive = false;
+    this._armEmbarkSpec = null;
     this._cabinetAttract?.dispose();
     this._cabinetAttract = null;
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
