@@ -9,4 +9,7 @@
 
 ## Result
 - Unit: stunt callout suite 11/11. Type floor OK.
-- Screens: pending (player-truth lock held by another lane's job this session).
+- Screens (ui-bench flight + a live prompt-deck recovery card + two `physics:impact` lines; not committed): at 390×844, 600×844 and 960×540 the IMPACT LOGGED line now sits 12px above the card instead of being lost under/over its headline. 1280×720 and 1920×1080 (right-column deck) are unchanged.
+
+## Next
+- The LOG line reads dim against bright scenery (orange station glow) at phone sizes; a contrast pass on `.sf-stuntcall__name` is a separate follow-up.
