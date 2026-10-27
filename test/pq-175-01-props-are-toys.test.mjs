@@ -50,10 +50,12 @@ function formatRow(row) {
   ].join(' ');
 }
 
-test('library still names four laws and idle rooms stay inside two field slots', () => {
+test('library still names six law arenas and idle rooms stay inside two field slots', () => {
   const check = validateArenaModuleLibrary();
   assert.equal(check.ok, true, JSON.stringify(check.issues));
-  assert.equal(ARENA_MODULE_LIBRARY.length, 4);
+  // Six entries: the four authored-toy rooms plus the Mill and the Hive, whose machinery
+  // is ambient (grind fields / swarm-side walls and sacs) and so previews zero toys.
+  assert.equal(ARENA_MODULE_LIBRARY.length, 6);
   for (const mod of ARENA_MODULE_LIBRARY) {
     const preview = previewArenaModule(mod.id, 'idle');
     assert.equal(preview.ok, true, mod.id);
