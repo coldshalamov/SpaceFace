@@ -39,7 +39,7 @@ export const CANONICAL_CONTACT_SIGNALS = Object.freeze([
   // each step (skim scene, Kessler scale pad, Understory gardens, furnace intake,
   // Rook's booth, encounter director).
   'story:skimResolved', 'kesslerPod:weighed',
-  'understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete',
+  'understory:playerGrowth',
   'rookWreck:delivered', 'furnace:fed',
   // W-BOOKS-3-4: the Gate Audit welds are world-pressure evidence steps recorded
   // optionally while Books 3–4 run (worldPressure owns the schedule).
@@ -184,7 +184,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_charon_expanse', destStationId: 'station_expanse', zoneId: 'zone_charon_ambush' }),
     physicalContact: B({ mode: 'mission', steps: B([
       B({ id: 'cinder_board', signal: 'mission:completed', accept: B(['mission:completed']) }),
-      B({ id: 'compost', signal: 'understory:gardenFed', accept: B(['understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete']) }),
+      B({ id: 'compost', signal: 'understory:playerGrowth', accept: B(['understory:playerGrowth']) }),
       B({ id: 'nest', signal: 'encounter:resolved', accept: B(['encounter:resolved']) }),
       B({ id: 'elroy', signal: 'mission:completed', accept: B(['mission:completed']) }),
     ]) }),

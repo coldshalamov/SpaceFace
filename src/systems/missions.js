@@ -1,6 +1,8 @@
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
+import { UNDERSTORY_RECEIVER, receiverApproach, receiverStatus, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
+import { UNDERSTORY_COMPOST_RUN, UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES } from '../data/factions/understory.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
@@ -1583,6 +1585,7 @@ export const missions = {
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
+      this._reconcileCompostGrowth();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
@@ -1655,9 +1658,9 @@ export const missions = {
     // log and advances the live cursor when the current beat's list is satisfied.
     bus.on('story:skimResolved', (p) => this._recordCampaignBookSignal('story:skimResolved', p));
     bus.on('kesslerPod:weighed', (p) => this._recordCampaignBookSignal('kesslerPod:weighed', p));
-    bus.on('understory:gardenFed', (p) => this._recordCampaignBookSignal('understory:gardenFed', p));
-    bus.on('understory:gardenStage', (p) => this._recordCampaignBookSignal('understory:gardenStage', p));
-    bus.on('understory:compostRunComplete', (p) => this._recordCampaignBookSignal('understory:compostRunComplete', p));
+    // Book2 consumes the garden owner's persisted growth receipt, never a payload claim,
+    // ambient stage event, ordinary feed or payment event. The owner stores before emitting.
+    bus.on('understory:playerGrowth', (p) => this._reconcileCompostGrowth(p));
     bus.on('encounter:resolved', (p) => {
       // W-CANON (§34.7 row 537): a quiet interlude scene closing marks its story flag.
       this._observeCampaign47aInterludeResolved(p);
@@ -2017,6 +2020,9 @@ export const missions = {
     this._navRefreshT = (this._navRefreshT || 0) + (dt || 0);
     if (this._navRefreshT >= 0.75) {
       this._navRefreshT = 0;
+      // Real growth can precede Cinder's filing. Reconcile at the existing nav cadence,
+      // not by scanning all entities every tick; neither mass nor payment is replayed.
+      this._reconcileCompostGrowth();
       this._refreshNavigation();
     }
   },
@@ -3735,6 +3741,16 @@ export const missions = {
     return best;
   },
 
+  _reconcileCompostGrowth(payload = null) {
+    const state = this.state;
+    if (state?.story?.beatIndex !== 2) return false;
+    const done = getBeatStepStatus(state, 2)?.completed || [];
+    if (!done.includes('cinder_board') || done.includes('compost')) return false;
+    const receipt = firstPlayerGardenGrowth(state, payload);
+    if (!receipt) return false;
+    return this._recordCampaignBookSignal('understory:playerGrowth', receipt);
+  },
+
   _storyWaypointForBeat(beat) {
     if (!beat) return null;
     const state = this.state;
@@ -3763,12 +3779,42 @@ export const missions = {
           pos: station?.pos ? { ...station.pos } : null };
       }
       if (!done.has('compost')) {
-        const garden = (state.entityList || []).find(e => e?.alive !== false && e.data?.understoryGarden === true);
-        const known = garden ? null : Object.values(state.understory?.gardens || {}).find(g => Number.isFinite(g?.x) && Number.isFinite(g?.z));
-        return { ...base, label: garden || known ? 'Compost Run — feed the Understory garden' : 'Compost Run — find an Understory garden',
-          reason: 'The cinder contract is filed. Tow an edible body into a hungry Understory garden. The Nest and Registry Writ are not due yet.',
-          stationId: null, sectorId: garden?.data?.sectorId || known?.sectorId || currentSectorId,
-          targetEntityId: garden?.id ?? null, pos: garden?.pos ? { ...garden.pos } : known ? { x: known.x, z: known.z } : null };
+        const receiver = receiverStatus(state);
+        const garden = receiver.garden;
+        if (receiver.status === 'unavailable') {
+          return { ...base, label: 'Compost receiver — not receiving',
+            reason: 'The receiver is unavailable. No cargo or growth is credited; the Nest still waits for real player-fed growth.',
+            stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId, targetEntityId: null, pos: null };
+        }
+        const saved = garden?.data || state.understory?.authoredReceiver?.terminalGardenData || {};
+        const fed = Math.max(0, Number(saved.compostFedMass) || 0);
+        const biomass = receiver.status === 'destroyed' ? 0 : Number.isFinite(saved.gardenBiomass)
+          ? Math.max(0, saved.gardenBiomass) : UNDERSTORY_RECEIVER.initialBiomass;
+        const target = UNDERSTORY_COMPOST_RUN.targetMass;
+        const mass = n => Number(n.toFixed(1)).toString();
+        const nextStage = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
+        const growthFeed = nextStage ? Math.ceil((nextStage.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : null;
+        const growth = growthFeed == null ? 'First player growth still needs an owner receipt.'
+          : `Retained growth ${mass(biomass)} biomass; ${mass(growthFeed)}t feed reaches the next visible stage.`;
+        const run = saved.compostRunComplete === true
+          ? `Run paid once at ${mass(fed)}t; no repeat payment.`
+          : `Your run ${mass(fed)}/${target}t; ${mass(Math.max(0, target - fed))}t remain. No pay before ${target}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
+        const regrowth = receiver.status === 'destroyed'
+          ? 'The destroyed receiver can regrow only from new feed: 100t from zero to stage 2, no replacement 52 biomass. ' : '';
+        return { ...base, label: `Compost Run — ${UNDERSTORY_RECEIVER.name} west outside-mouth approach`,
+          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. If no Cinder hull remains, in Charon mine and collect ordinary iron, then jettison 17u near the receiver: 13.6t contents in a 20t tow body. No cargo is provided; only remaining contents count. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
+          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
+          // The location is deliberately not bound to the hull's centre: selection and
+          // autopilot consumers must retain the safe outside-mouth staging point.
+          targetEntityId: null, pos: receiverApproach() };
+      }
+      if (!done.has('nest')) {
+        return { ...base, label: 'The Nest — Charon',
+          reason: 'Your first garden growth is recorded. The Nest is next in Charon; the Registry Writ is not due yet.',
+          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
+          targetEntityId: null, pos: null };
       }
     }
     if (beat.beat === 0) {

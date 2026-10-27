@@ -1,3 +1,7 @@
+## Latest source continuation — 27 October 2026
+
+Cinder/Rook is verified in PR637 through fee687a5252a1360aa9a4326964da766bc7d7a1a. Resume the reviewed Compost receiver increment and its exact CI, then the actual Nest route. Preserve the current CREATE-first role, original scope and all acceptance gaps described in EXECUTION_STATUS/OPEN_GOALS. Do not revive obsolete model-production work or create external Work/Codex tasks. A named test was previously unregistered; its current hosted pass does not establish ordinary gameplay acceptance. Keep source/recovery/publication/visual acceptance distinct.
+
 # Current role and resume priority — 27 October 2026
 
 Read the current section of EXECUTION_STATUS and OPEN_GOALS before the historical procedure below. Resume the existing Adventure/Swarm experience-assembly owner, not obsolete model-production queues. Begin at first moments and extend along actual mission routes. Reports support concrete source edits; local agents own models. Keep original scope and acceptance gaps open. Work stays in the assistant's own environment; do not create or resume external Work/Codex tasks or user-computer/auth relays. Existing continuation schedules remain unchanged.

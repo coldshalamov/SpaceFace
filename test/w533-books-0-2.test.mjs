@@ -5,7 +5,7 @@
 // Drives: B0 mine → THE SKIM (kill feed + 12.4 t) → Pit dock (manifest zero, payment
 // withheld); B1 alloy run contract → Scale 4 weigh (kesslerPod:weighed) → infested hauler
 // (kills + CR-FEED feeds); B2 cinder board (kills + Rook delivery) → Compost Run
-// (understory:gardenFed) → the Nest (encounter:resolved{shape:'the_nest'}) → the register
+// (actual player-fed visible garden growth) → the Nest (encounter:resolved{shape:'the_nest'}) → the register
 // contract on Elroy (scan → CIVILIAN — REGISTERED → force/custody → MEDICINE).
 // Run: node --test test/w533-books-0-2.test.mjs
 
@@ -18,6 +18,8 @@ import { addCargo } from '../src/systems/cargo.js';
 import { combat as combatProto } from '../src/systems/combat.js';
 import { aftermathWrecks as aftermathProto } from '../src/systems/aftermathWrecks.js';
 import { createRookBooth } from '../src/systems/rookBooth.js';
+import { understoryGardens as understoryProto } from '../src/systems/faction_understory.js';
+import { UNDERSTORY_RECEIVER } from '../src/data/understoryReceiver.js';
 import { rookPadPosition } from '../src/characters/rookRules.js';
 import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
 import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
@@ -91,10 +93,11 @@ function makeHarness(seed = 47) {
   const missions = Object.assign({}, missionsProto);
   const story = Object.assign({}, storyProto);
   const aftermath = Object.assign({}, aftermathProto);
+  const understory = Object.assign({}, understoryProto);
   // Exercise the public kill producer; this test is not a damage/physics simulation.
   const combat = Object.assign({}, combatProto, { state, bus, helpers });
   const rook = createRookBooth(), furnace = createFurnaceIntake();
-  const systems = { missions, story, combat, aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace };
+  const systems = { missions, story, combat, aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace, understoryGardens: understory };
   const registry = { get: (name) => systems[name] || null };
   missions.init({ state, bus, helpers, registry });
   story.init({ state, bus, helpers, registry });
@@ -103,13 +106,14 @@ function makeHarness(seed = 47) {
   aftermath.init({ state, bus, helpers, registry });
   rook.init({ state, bus, helpers, registry });
   furnace.init({ state, bus, helpers, registry });
+  understory.init({ state, bus, helpers, registry });
   // Same ecology functions called by world: real cast creation and death permanence,
   // limited to the published refinery site, not a manufactured clearance ledger.
   const ecologyWorld = { state, bus, helpers, registry, active: { dressing: [], pois: [] },
     _toGlobal: sectorLocalToGlobalForSector };
   bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
   return { state, bus, missions, story, helpers, popups, skimResolved, elroyResolved, beatAdvances,
-    combat, aftermath, rook, furnace, ecologyWorld };
+    combat, aftermath, rook, furnace, understory, ecologyWorld };
 }
 
 function acceptOffer(h, stationId, expectedTag) {
@@ -174,6 +178,30 @@ function deliverCinderHull(h, m) {
   assert.equal(h.aftermath._markerById(ref.markerId), null, 'sale retires the same canonical material');
   assert.equal(wreck.alive, false);
   assert.equal(m.status, 'completed');
+}
+
+
+function feedReceivingGarden(h, m) {
+  // The same authored receiver exists on the ordinary Charon route without an Understory kill.
+  h.understory.update(1 / 60, h.state);
+  const garden = h.state.entityList.find(e => e.alive !== false
+    && e.data?.gardenId === UNDERSTORY_RECEIVER.gardenId);
+  assert.ok(garden, 'the real authored receiving garden is present');
+  const wreck = m.params.cinderMarkedWrecks.map(ref => h.aftermath._resolveBoundWreck(ref.markerId))
+    .find(e => e && e.alive !== false);
+  assert.ok(wreck, 'feed one surviving actual Cinder hull, not a synthetic garden event');
+  const markerId = wreck.data.markerId;
+  const credits = h.state.player.credits;
+  wreck.pos = { ...garden.pos };
+  wreck.vel = { x: 0, z: 0 };
+  h.state.player.tether = { active: true, targetId: wreck.id };
+  h.understory.update(1 / 60, h.state);
+  h.state.player.tether = null;
+  assert.equal(wreck.alive, false, 'the garden actually consumed the bound hull');
+  assert.equal(h.aftermath._markerById(markerId), null, 'the eaten canonical mass cannot reappear or sell');
+  assert.equal(garden.data.gardenStage, 2, 'the first real 16t feed visibly grows initial52 to61.6');
+  assert.equal(garden.data.gardenFirstPlayerGrowth.fedMass, 16);
+  assert.equal(h.state.player.credits, credits, 'first growth is not the separate240t payout');
 }
 
 
@@ -321,7 +349,10 @@ check('B2: cinder board → Compost Run → the Nest → the register on Elroy',
   bus.emit('understory:gardenFed', { byPlayer: false, gardenId: 'g1', fedMass: 20 });
   status = getBeatStepStatus(state, 2);
   assert.deepEqual(status.completed, ['cinder_board'], 'garden feed must be by the player');
-  bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g1', fedMass: 20 });
+  bus.emit('understory:gardenStage', { gardenId: UNDERSTORY_RECEIVER.gardenId, stage: 2 });
+  bus.emit('understory:playerGrowth', { gardenId: UNDERSTORY_RECEIVER.gardenId, byPlayer: true, stage: 2, fromStage: 1, fedMass: 16 });
+  assert.deepEqual(getBeatStepStatus(state, 2).completed, ['cinder_board'], 'ambient or forged growth has no owner receipt');
+  feedReceivingGarden(h, cinder);
   status = getBeatStepStatus(state, 2);
   assert.deepEqual(status.completed, ['cinder_board', 'compost']);
 
@@ -365,7 +396,7 @@ check('B2: the custody reel resolves Elroy without the kill', () => {
   const cinder = acceptOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
   completePatrol(h, cinder);
   deliverCinderHull(h, cinder);
-  bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g1', fedMass: 20 });
+  feedReceivingGarden(h, cinder);
   bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
   const elroy = acceptOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
   bus.emit('sector:enter', { sectorId: elroy.destSectorId });

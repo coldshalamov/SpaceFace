@@ -8,11 +8,13 @@ import path from 'node:path';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const roots = [root];
 for (let i = 2; i < process.argv.length; i++) if (process.argv[i] === '--aux-root') roots.push(path.resolve(process.argv[++i]));
+const { loadClearanceGeometry } = await import(pathToFileURL(path.join(root, 'scripts/compost-clearance-geometry.mjs')).href);
+const clearanceGeometry = await loadClearanceGeometry({ root, auxRoots: roots.slice(1) });
 const inventory = new Map();
 function read(name) {
   const file = roots.map(r => path.join(r, name)).find(f => fs.existsSync(f));
@@ -41,7 +43,17 @@ for (const name of ['src/missions/cinderRoute.js', 'src/characters/rookRules.js'
   'src/data/storySpine.js', 'src/data/sectorCoordinates.js', 'src/core/coordinates.js', 'src/data/sectorZones.js', 'src/core/rng.js',
   'src/combat/rewardEligibility.js', 'src/story/campaign47a/campaignData.js', 'src/story/campaign47a/campaignTransitions.js',
   'src/story/campaign47a/campaignSchema.js', 'src/story/campaign47a/storySpine.js', 'src/story/campaign47a/campaignIntents.js',
-  'src/story/campaign47a/campaignReceipts.js', 'src/story/campaign47a/embodiedMissions.js', 'src/data/enemies.js']) real(name);
+  'src/story/campaign47a/campaignReceipts.js', 'src/story/campaign47a/embodiedMissions.js', 'src/data/enemies.js',
+  'src/data/understoryReceiver.js', 'src/data/factions/understory.js', 'src/systems/faction_understory.js']) real(name);
+// Existing geometry owners are projected by the shared thin-review loader, never fake-clearance ports.
+for (const [name, exports] of Object.entries({
+  'src/data/collisionProxyManifests.js': ['hullEnvelopeWu', 'proxyOuterRadiusWu', 'COLLISION_PROXY_MANIFESTS'],
+  'src/data/modelTruth.js': ['modelTruthProxyManifest'],
+    'src/data/physicsMaterials.js': ['PHYSICS_MATERIALS'],
+  'src/core/physicsAuthority.js': ['shouldSyncPhysicsBodyEntity', 'substanceFor'],
+})) modules.set(name, new vm.SyntheticModule(exports, function () {
+  for (const key of exports) { assert.equal(typeof clearanceGeometry[key] !== 'undefined', true, `Actual geometry export ${key}`); this.setExport(key, clearanceGeometry[key]); }
+}, { context, identifier: name }));
 add('src/data/frontierRegions/index.js', 'export const FRONTIER_ORIGINS={}, FRONTIER_SECTOR_IDS=[], FRONTIER_ZONES={};');
 add('src/data/theBolus.js', 'export const BOLUS_ZONES={};');
 add('src/data/authoredPlaces.js', 'export const ZONE_CERES_THROUGHLINE={center:{x:0,z:0}}; export const appendAuthoredZones=x=>x;');
@@ -76,6 +88,7 @@ const stations = new Map([
 ]);
 const sectors = new Map(['sector_tethys_junction','sector_charon_expanse','sector_ceres_belt'].map(id => [id,{name:id,enemyLevel:[2,4]}]));
 const mc = vm.createContext({ console, ...route, ...builder, ...trans, ...coords, ...rng,
+  ...ns('src/data/understoryReceiver.js'), ...ns('src/data/factions/understory.js'),
   ...ns('src/data/storySpine.js'),...ns('src/story/campaign47a/campaignSchema.js'),
   resetRacingGhostSession:noop,restoreFurnaceAftermath:noop, normalizeBlackFlagJobs:()=>null,normalizeStandingOrders:()=>[],ADVENTURE_SPEED_CONTRACTS:[],
   CAMPAIGN_BEATS: canon.CAMPAIGN_BEATS, STORY_BEATS: canon.CAMPAIGN_BEATS,
@@ -112,10 +125,10 @@ vm.runInContext([
   fn(worldRecords,'stableRecordId'), fn(worldRecords,'missionIdentityOf'), fn(bounty,'markArchetypePoolFor'),
   strip(clauses.slice(clauseStart,clauseEnd)),
   `this.coreOps={${['abandonMission','acceptMission','_acceptPreflight','_instanceFromOffer','_objectiveTarget','_typeSpawnsTargets','trackMission',
-    '_refreshTrackedMissionNav','_missionWaypoint','_storyWaypointForBeat','_completeMission','_completeMissionBody',
+    '_refreshTrackedMissionNav','_missionWaypoint','_reconcileCompostGrowth','_storyWaypointForBeat','_completeMission','_completeMissionBody',
     '_dropSettledRow','_settleOptional','_recordMissionReceipt','_logCompletion'].map(n=>method(source,n)).join('\n')}};`,
   strip(spawning), 'this.spawnOps=missionSpawningOps;', strip(objective), 'this.objectiveOps=missionObjectiveOps;',
-  `this.storyOps={${['_advanceEmbodiedStoryMission','_advanceStory','_syncCampaignSidecarAfterAdvance','_activateBookContractOnDeparture',
+  `this.storyOps={${['_advanceEmbodiedStoryMission','_advanceStory','_syncCampaignSidecarAfterAdvance','_activateBookContractOnDeparture','_recordCampaignBookSignal',
     '_cleanupTargets','_onSectorExit','newGame','serialize','deserialize','deserializeChunked'].map(n=>method(story,n)).join('\n')}};`,
 ].join('\n'), mc, { filename: 'current-mission-owner-projections.js' });
 
@@ -161,7 +174,7 @@ function harness({beat=2,sector='sector_tethys_junction',missionFirst=false}={})
     ensureBoard(id){this._refreshEmbodiedStoryBoards();return state.missions.boards[id]||{slots:[]};},
     _findOffer(id){for(const board of Object.values(state.missions.boards)){const offer=board.slots.find(o=>o.id===id);if(offer)return{offer,board};}return{};},
   };
-  const ac=vm.createContext({console,...rng,...coords,...route,SECTORS:[],syncEntitySectorMembership:noop,
+  const ac=vm.createContext({console,...rng,...coords,...route,...ns('src/data/factions/understory.js'),...ns('src/data/understoryReceiver.js'),SECTORS:[],syncEntitySectorMembership:noop,
     deferSectorEnterMaterialization:no,deferredEnterNow:s=>s.simTime,validateRunState:()=>({ok:false}),salvagePoolFromManifest:()=>({}),
     peekPendingSlam:()=>null,IMPACT_TEAROFF_LAW:{},combatFlag:no,indexedTypeScan:(s,l)=>s.entityList.filter(e=>l!=='wrecks'||e.type==='wreck'),
     zoneAt:zones.zoneAt,zoneThreat:zones.zoneThreat,wreckClassById:id=>({id,label:id}),WRECK_COLLIDER_PROPORTIONS:{},normalizeCausalAftermath:()=>null});

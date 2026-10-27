@@ -1,3 +1,19 @@
+## Compost receiving experience — 27 October 2026, 08:22 UTC
+
+Latest verified predecessor: draft PR637 at `fee687a5252a1360aa9a4326964da766bc7d7a1a`, open/unmerged. That Cinder/Rook increment and its newly registered Books0–2 test are GitHub-backed. Hosted run40460525035 finished with failure overall; Books0–2 executed and passed on static index61 (one-based62), shard2. No overall green baseline, native flight or live visual acceptance is claimed.
+
+The reviewed successor creates a real Rookside Receiving Garden at Charon-local(2900,-750), with a clear outside-mouth staging point. Existing released hull and alien-growth pieces replace the previously missing garden presentation. One genuine16t hull takes authored initial52 biomass to61.6/stage2, opening the player-growth story step without an early payout. The independent240t run retains actual fed mass and pays only on genuine completion. Unreserved17u iron is an ordinary alternative:13.6t contents,20t handling body. The shell floor is not free biomass.
+
+Exact material-owner consumption prevents eaten canonical hulls from returning. A bounded optional save section retains real receiver loss; a dead receiver stays dead until new material seeds zero-subsidy regrowth. Live run/growth facts, completed stamps and genuine earlier player growth survive their documented restore boundaries. Ordinary gardens retain their prior ambient growth and collider semantics; new visual identity cannot silently change their ball bodies into skins. The authored144WU hull alone uses the verified fixed24-capsule recipe; intake/growth extent is separate.
+
+Source review:31 receiver/save/clearance groups,90 material cases,94 cargo cases,22 aftermath groups,9 story groups,23 Cinder neighbors, actual route composition/economy and geometry checks passed in their distinct declared scopes. The full local Books0–2 import remains blocked by an unrelated missing Shipjack dependency; its updated default-production test is retained for hosted CI, not called locally passed. Offline actual-model views were inspected and improved once from a symmetric filled platform to open seam-attached growth. No native solver/PBR/browser/steering result is inferred.
+
+See [Compost receiver](../opening-experience-2026-10-27/COMPOST_RECEIVER.md). The next executable connected unit is ordinary reachability and the player experience at the existing Nest, followed by the established Elroy choices. Do not declare Nest complete because a synthetic resolution event advances a fixture. Preserve current mission, encounter, art and performance owners.
+
+This current section supersedes earlier dispatch priorities, not historical evidence or acceptance fields. All twelve goals and original twenty-concept scope remain open. Local agents own models; this lane assembles the experience. No master merge, deployment or credential/security change is part of this increment.
+
+---
+
 # Expansion execution: current experience assembly
 
 ## Current experience assembly — 27 October 2026, 06:06 UTC

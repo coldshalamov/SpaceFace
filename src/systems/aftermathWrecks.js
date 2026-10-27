@@ -21,6 +21,8 @@ import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { wreckClassById, WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { SECTORS } from '../data/sectors.js';
+import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
+import { gardenGrowthRadius } from '../data/understoryReceiver.js';
 import { cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
 import {
   causalAftermath,
@@ -2126,7 +2128,7 @@ export const aftermathWrecks = {
     return this._retireDestroyedMarker(marker, entity.id);
   },
 
-  _retireDestroyedMarker(marker, entityId = null) {
+  _retireDestroyedMarker(marker, entityId = null, reason = 'destroyed') {
     if (!marker || !this.state) return false;
     const own = ensureAftermathState(this.state);
     const rows = own.bySector[marker.sectorId];
@@ -2141,9 +2143,73 @@ export const aftermathWrecks = {
     this._spawned?.delete(marker.markerId);
     this._retireMarkerShard(marker.markerId);
     this.bus?.emit('aftermathWreck:retired', {
-      markerId: marker.markerId, entityId, sectorId: marker.sectorId, reason: 'destroyed',
+      markerId: marker.markerId, entityId, sectorId: marker.sectorId, reason,
     });
     return true;
+  },
+
+  /** Read only: exact canonical loose mass available for an Understory intake. */
+  gardenFeedMass(entity) {
+    const data = entity && entity.data, flags = entity && entity.flags || {};
+    const markerId = data && data.markerId;
+    if (!entity || entity.id === this.state?.playerId || !markerId
+      || entityFor(this.state, entity.id) !== entity
+      || !isBoundWreck(entity, markerId) || !Number.isFinite(entity.hull) || entity.hull <= 0
+      || !Number.isFinite(entity.mass) || entity.mass <= 0
+      || data.persistenceOwner !== 'aftermathWrecks'
+      || this._spawned?.get(markerId) !== entity.id
+      || this._boundWreckMarkers?.get(entity) !== markerId) return null;
+    // Canonical does not mean unclaimed: recovery offers, authored sites, mission freight
+    // and another owner's durable body retain their own custody/settlement authority.
+    if (flags.persistent || flags.durable || flags.missionPinned || flags.invuln || flags.protected
+      || data.missionId || data.missionPinned || data.missionTag || data.wreckMissionId
+      || data.runtimeOwner || data.worldRecordId || data.identityKey || data.durable
+      || data.uniqueWreckId || data.authoredWreckId || data.worldSiteStructural
+      || data.poiId || data.authored || data.authoredCharacter || data.storyPropKind
+      || data.contractClaimSiteOf || data.salvorClaimedBy || data.recoveryEncounterId
+      || data.survivorPod || data.interventionId || data.onboarding
+      || data.worldOneOff || data.oneOffId || data.berthConsign || data.rookClaimed
+      || data.arenaShardOf || data.reefMineId || data.reefMine
+      || data.physicalCustodyOnly || data.orchardId || data.alienSiteId || data.fieldId
+      || data.resourceBodyId || data.worldSiteId || data.worldSitePayloadId || data.worldObjectId
+      || data.siteId || data.activityObjectSlotId || data.claimId || data.claimedBy || data.custodyOwner
+      || data.freightCustodyPod || data.freightCustody || data.caughtByNet || data.claimable
+      || data.protected || data.anchored || data.living || data.playerOwned || data.persistent
+      || data.originId || data.destinationId || data.originStationId || data.destStationId
+      || data.cargoIdentity || data.ownership
+      || (entity.ownerId != null && entity.ownerId !== this.state.playerId)
+      || (data.ownerId != null && data.ownerId !== this.state.playerId)) return null;
+    const sectorId = data.provenance.sectorId;
+    const rows = this.state.aftermathWrecks?.bySector?.[sectorId];
+    const marker = Array.isArray(rows)
+      ? rows.find(row => row?.markerId === markerId && row.sectorId === sectorId) : null;
+    if (!marker || marker.pinWreck === true) return null;
+    // The one unresolved Cinder route still owns its marked tow choices. Its ordinary
+    // completion releases any unsold survivors; eating them early must not strand Rook.
+    if (cinderRetentionIds(this.state, marker).has(markerId)) return null;
+    return entity.mass;
+  },
+
+  /**
+   * Terminal handoff while the exact physical hull is still live. Not salvage or a kill:
+   * the caller removes only after true. Neither absence nor entity:destroyed is proof.
+   */
+  consumeByGarden(entity, garden) {
+    if (!(this.gardenFeedMass(entity) > 0)) return false;
+    if (!garden || entityFor(this.state, garden.id) !== garden || garden.alive === false
+      || garden.type !== 'garden' || garden.factionId !== 'faction_understory'
+      || garden.data?.understoryGarden !== true || !garden.data.gardenId
+      || garden.data.gardenRetired === true || garden.data.gardenDestroyed === true
+      || !Number.isFinite(garden.hull) || garden.hull <= 0
+      || !Number.isFinite(garden.radius) || garden.radius <= 0) return false;
+    const reach = gardenGrowthRadius(garden) * UNDERSTORY_GARDENS.absorbPadding
+      + Math.max(0, Number(entity.radius) || 0);
+    const distance = Math.hypot(entity.pos?.x - garden.pos?.x, entity.pos?.z - garden.pos?.z);
+    if (!Number.isFinite(reach) || reach <= 0 || !Number.isFinite(distance) || distance > reach) return false;
+    const markerId = entity.data.markerId, sectorId = entity.data.provenance.sectorId;
+    const marker = this.state.aftermathWrecks.bySector[sectorId]
+      .find(row => row?.markerId === markerId && row.sectorId === sectorId);
+    return this._retireDestroyedMarker(marker, entity.id, 'understory_garden');
   },
 
   _raidCausality(encounterId) {
