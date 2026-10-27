@@ -49,6 +49,9 @@ test('Scar Bazaar and the Flight Deck form one reachable authored destination', 
 test('the physical Flight Deck carrier receives its archive and flavor identity', () => {
   const spawned = [];
   const system = Object.assign({}, worldProto, {
+    // AL-RACE-2's corridor scenery shift reads this.state for solid POIs; with no
+    // registered racing session it answers null, so a bare world shell is enough.
+    state: { world: { sectors: {} } },
     helpers: {
       spawnEntity(spec) {
         const entity = { id: spawned.length + 1, alive: true, ...spec };
