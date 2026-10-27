@@ -51,7 +51,7 @@
 | #576 | draft | Show authored professions in station contact rail and heading | 1/1061 | MERGED e4a851d8202 |
 | #577 | draft | fix(world): earn convoy progress while accompanying the leader | 2/1055 | ABSORBED (merge tree identical to master) |
 | #578 | draft | fix(world): make Grandee consequences follow confirmed causes | 2/1052 | MERGED a8e4050bbba |
-| #582 | draft | feat(world): physically recover the Pitborn survivor | 5/957 | REVERTED after merging: its native tender test fails against the deliberate Row 491 enemy-speed caps (maneuver.js 72->100, bisected); needs a tender-specific speed cap, then rebase |
+| #582 | draft | feat(world): physically recover the Pitborn survivor | 5/957 | REVERTED after merging (GitHub shows it merged; the content is NOT on master — re-landing means reverting d6d14ef5a81, not merging again): its native tender test fails against the deliberate Row 491 enemy-speed caps (maneuver.js 72->100, bisected); needs a tender-specific speed cap |
 | #594 | draft | feat(world): explain bounded Veil-Ray nursery disturbance and recovery | 3/904 | PARKED: conflicts src/systems/alienEcology.js |
 | #597 | draft | fix(ui): show committed Spanner hull and armor repair amounts | 1/902 | MERGED 95a0bf62ca8 |
 | #637 | draft | Create Adventure, Swarm, Tethys, Ceres, Cinder/Rook, and Compost openi | 10/126 | PARKED: opening-experience lane, fresh and 'not accepted' by its own description; 8 conflicting files |
