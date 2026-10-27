@@ -105,7 +105,10 @@ test('raw latch, steering and payout reach maximum capital tow from the authored
     assert.equal(spoolLength, 2340, 'derive the capital spool ceiling from the catalog');
 
     const geometry = anvilOrchardGustGeometry(frame);
-    const escapeAngle = 0.65;
+    // The authored +z side of the socket-1 exit is the service-bridge/safe-platform
+    // pocket (see anvil-orchard-authored-tow-pocket): a full-throttle tow wedges the
+    // pod there and can never pay out. The mirrored heading is the open escape lane.
+    const escapeAngle = -0.65;
     const escapeDir = rotateFromAxis(geometry.dir, escapeAngle);
     const podSocket = worldPodSocket(frame);
     const tug = sim.spawn(makeShipEntitySpec(leviathan.id, {
