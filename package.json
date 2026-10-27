@@ -270,6 +270,7 @@
     "check:one-voice": "node scripts/check-one-voice.mjs",
     "check:professional-first-hour-one-voice": "node scripts/check-professional-first-hour-one-voice.mjs",
     "check:release-soak": "node scripts/check-release-soak.mjs",
+    "check:retail-boot": "node scripts/check-retail-boot.mjs",
     "check:pq033:min-spec": "node scripts/check-min-spec-floors.mjs",
     "check:perf:attribution": "node scripts/check-performance-attribution.mjs",
     "check:named-captains": "node scripts/check-named-captains.mjs",
