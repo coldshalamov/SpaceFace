@@ -247,6 +247,7 @@ import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import {
   resolveForceNeonScale,
   resolveMasslineCableProfile,
+  resolveMasslineCableRadiance,
   resolveMasslineWhipGlow,
   resolveTumbleContinuousVfxPlan,
 } from './masslinePresentation.js';
@@ -959,6 +960,9 @@ function writeArcadeSpawnSpec(
 }
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
+// A swarm repair cell pulls the repair verb's mint thread (actionVfx 'beam:repaired', 0x84ffd2):
+// the one drop that buys hull back never wakes as cargo amber, credit gold or pod green.
+const LOOT_TRAIL_SWARM_REPAIR = '#84ffd2';
 const VFX_RIBBON_TRAILS_HZ = 30;
 // Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
 // retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
@@ -9692,6 +9696,7 @@ export const vfx = {
       scratch: { plan: createMasslineReleaseArcPlan() },
       input: {
         active: false,
+        held: false,
         releaseTarget: null,
         liveTarget: null,
         predictor: null,
@@ -9752,6 +9757,9 @@ export const vfx = {
     if (!arc) return false;
     if (arc.fade > 0.001 || arc.ratingAge < arc.ratingLife) return true;
     const tether = this.state.player && this.state.player.tether;
+    // Row 492: while the Line is held (latched, carried) the annulus is always drawn — the
+    // release arc does not wait for the aiming window to open.
+    if (tether && tether.active && tether.targetId != null) return true;
     const throwState = this.state.massline2 && this.state.massline2.throw;
     return !!(tether && tether.active
       && throwState && throwState.armed
@@ -9771,8 +9779,14 @@ export const vfx = {
       && throwState && throwState.armed
       && throwState.releaseTarget
       && throwState.solution && throwState.solution.valid === true);
+    // Row 492: a held line draws its quiet annulus too — latched, carried, aiming window or not.
+    // The planner falls back to the held profile only when no predictor and no rating exist, so
+    // the armed window and the post-release read stay the louder, more specific states.
+    const heldActive = !postActive && !preActive
+      && !!(tether && tether.active && tether.targetId != null);
     const input = arc.input;
-    input.active = postActive || preActive;
+    input.active = postActive || preActive || heldActive;
+    input.held = heldActive;
     input.timeS = this._t;
     input.reducedMotion = masslineReleaseMotionReduced(state && state.settings);
     input.reducedFlash = masslineReleaseFlashReduced(state && state.settings);
@@ -9792,6 +9806,11 @@ export const vfx = {
         : (throwState.releaseTarget && !throwState.releaseTarget.stable
           ? throwState.releaseTarget.targetId : null);
       input.liveTarget = liveId != null ? this._ent(liveId) : null;
+    } else if (heldActive) {
+      // The held annulus rides the latched body itself; a missing body fails the plan's center
+      // resolution and the arc fades, so nothing latched never draws.
+      input.releaseTarget = null;
+      input.liveTarget = this._ent(tether.targetId);
     } else {
       input.releaseTarget = null;
       input.liveTarget = null;
@@ -10682,6 +10701,12 @@ export const vfx = {
     // UVP force-neon: taut / loaded lines push energy above hull-neutral; slack stays quieter.
     const neon = resolveForceNeonScale('taut', this._forceNeonMetrics({ load: l }));
     const neonMul = taut ? neon.energy : (1 + (neon.energy - 1) * 0.35);
+    // Row 492: the strain → emissive law for core and sheath lives in one pure mapper
+    // (resolveMasslineCableRadiance; exercised at chase-camera pixel numbers in
+    // test/zc-a34-line-visuals.test.mjs). Its internal energy is this same neonMul read.
+    const cableRadiance = resolveMasslineCableRadiance(this._forceNeonMetrics({
+      load: l, whip: visualWhip, reel: cable.reelGlow, heat: lineVisual.heat, taut,
+    }), this._cableRadianceScratch ||= {});
     // PIC-13: the stored-swing-energy glow. The sim publishes tether.strainGlow per tick (0 when
     // the line is inactive); this is a straight transport into the ribbon frame, not a re-derivation.
     const whipGlow = resolveMasslineWhipGlow(tether);
@@ -10710,8 +10735,9 @@ export const vfx = {
         : 0,
       // Core: the filament cross-section (pow 9-18) concentrates almost all of this into the middle
       // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
-      intensity: (2.2 + l * 1.7 + cable.reelGlow * 1.5 + visualWhip * 2.1)
-        * radiance * neonMul * masslineA11y.radianceScale,
+      // The strain term inside the mapper (2.6·load, up from the old 1.7·load) keeps a heavy
+      // swing's filament a multi-pixel read at the shipping chase camera (tape 2026-10-21).
+      intensity: cableRadiance.core * radiance * masslineA11y.radianceScale,
       opacity: (taut ? 0.74 : 0.62) * cable.fade * masslineA11y.opacityScale,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
@@ -10720,8 +10746,7 @@ export const vfx = {
       // Halo: wide and coloured. Its centre needs to clear the bright-pass threshold so the rope
       // gets a real bloom skirt, but only its centre — push this higher and the sheath saturates
       // across its whole width and the cable stops being a cable and becomes a plume.
-      intensity: (1.5 + l * 1.5 + cable.reelGlow * 1.2 + visualWhip * 1.7)
-        * radiance * neonMul * masslineA11y.radianceScale,
+      intensity: cableRadiance.sheath * radiance * masslineA11y.radianceScale,
       opacity: (0.24 + 0.20 * l + cable.reelGlow * 0.20 + visualWhip * 0.16 + lineVisual.heat * .20)
         * cable.fade * masslineA11y.opacityScale,
     });
@@ -13537,10 +13562,7 @@ export const vfx = {
       if (speed < LOOT_MAGNET_MIN_SPEED) continue;
       drawn++;
 
-      const data = e.data || {};
-      const col = e.type === 'payload'
-        ? '#4fbf8f'
-        : ((data.kind === 'credits' || data.kind === 'credit_chip') ? '#ffcc44' : oreColor(data.commodityId));
+      const col = lootTrailColorFor(e);
       // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
       const rush = Math.min(1, speed / 260);
       const roll = Math.atan2(vz, vx);
@@ -18371,6 +18393,20 @@ export function oreColor(id) {
   if (id.indexOf('exotic') >= 0 || id.indexOf('xenium') >= 0) return '#ff60c0';
   if (id.indexOf('iron') >= 0 || id.indexOf('ore') >= 0 || id.indexOf('metal') >= 0) return '#c08040';
   return '#d8a050';
+}
+
+/**
+ * Loot-magnet wake tint for a trailed drop — the trail is the drop's identity at a glance,
+ * so the kind keys it: payloads share the pod green, chips pull gold, and a swarm repair
+ * cell pulls the repair verb's mint so the one drop that buys hull back reads before the
+ * toast does. Pure; the live call site is _updateLootMagnet.
+ */
+export function lootTrailColorFor(e) {
+  const data = (e && e.data) || {};
+  if (e && e.type === 'payload') return '#4fbf8f';
+  if (data.kind === 'swarm_repair' || data.swarmRepair === true) return LOOT_TRAIL_SWARM_REPAIR;
+  if (data.kind === 'credits' || data.kind === 'credit_chip') return '#ffcc44';
+  return oreColor(data.commodityId);
 }
 
 function clamp01Finite(value) {
