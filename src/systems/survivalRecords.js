@@ -1576,6 +1576,57 @@ export function overconfidenceStreak(history) {
   return streak;
 }
 
+/**
+ * Mutator ids a mid-run pact signed onto this run. The provenance rides
+ * `run.telemetry.pacts` (the wager seam `_acceptPact` stamps), with the durable
+ * `run.modifiers` pact ledger as the fallback so a run whose telemetry bag was rebuilt
+ * still carries its signature.
+ */
+function pactMutatorIds(result, run) {
+  const ids = [];
+  const push = (id) => {
+    if (typeof id === 'string' && id && !ids.includes(id)) ids.push(id);
+  };
+  const scan = (rows) => {
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) push(typeof row === 'string' ? row : row && row.mutatorId);
+  };
+  scan(result && result.pacts);
+  scan(run && run.telemetry && run.telemetry.pacts);
+  if (run && Array.isArray(run.modifiers)) {
+    for (const row of run.modifiers) if (row && row.kind === 'pact') push(row.mutatorId);
+  }
+  return ids;
+}
+
+/**
+ * The pact rows a record files — which handicap bound, and the wave the signature landed.
+ * The same sources pactMutatorIds reads, so the row and the exclusion can never disagree.
+ */
+function pactRecordRows(result, run) {
+  const out = [];
+  const push = (mutatorId, wave) => {
+    if (typeof mutatorId !== 'string' || !mutatorId) return;
+    if (out.some((row) => row.mutatorId === mutatorId)) return;
+    out.push({ mutatorId, wave: Number.isInteger(wave) && wave > 0 ? wave : null });
+  };
+  const scan = (rows) => {
+    if (!Array.isArray(rows)) return;
+    for (const row of rows) {
+      if (typeof row === 'string') push(row, null);
+      else if (row && typeof row === 'object') push(row.mutatorId, row.wave);
+    }
+  };
+  scan(result && result.pacts);
+  scan(run && run.telemetry && run.telemetry.pacts);
+  if (run && Array.isArray(run.modifiers)) {
+    for (const row of run.modifiers) {
+      if (row && row.kind === 'pact') push(row.mutatorId, row.wave);
+    }
+  }
+  return out;
+}
+
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
   const dailyDateKey = resolveDailyDateKey(result, run);
@@ -1587,6 +1638,11 @@ export function compactRunResult(result, run, newly) {
     (result && Array.isArray(result.threats) && result.threats)
     || (run && run.telemetry && Array.isArray(run.telemetry.threats) && run.telemetry.threats)
     || []));
+  // A signed mid-run pact (the armory's One Hull wager) folds its mutator into
+  // run.arenaMutators the same way — kept out of compact.mutators so a mid-flight signature
+  // cannot relabel the climb it joined. The signature itself files on compact.pacts below,
+  // the same double truth compact.threats keeps for a wager.
+  const pactMutators = new Set(pactMutatorIds(result, run));
   const compact = {
     schemaVersion: 1,
     outcome: result && result.outcome ? result.outcome : null,
@@ -1594,8 +1650,8 @@ export function compactRunResult(result, run, newly) {
     arenaId: (result && result.arenaId) || (run && run.arenaId) || null,
     ruleset: challenge.ruleset,
     trialId: challenge.trialId,
-    mutators: wagerMutators.size
-      ? challenge.mutators.filter((id) => !wagerMutators.has(id))
+    mutators: (wagerMutators.size || pactMutators.size)
+      ? challenge.mutators.filter((id) => !wagerMutators.has(id) && !pactMutators.has(id))
       : challenge.mutators.slice(),
     wave: result && Number.isInteger(result.wave) ? result.wave : 0,
     // SWARM-04: the round the run began at — 1 for a fresh ladder attempt, the checkpoint's
@@ -1624,6 +1680,10 @@ export function compactRunResult(result, run, newly) {
     unlocksEarned: Array.isArray(newly) ? newly.slice() : [],
   };
   if (dailyDateKey) compact.dailyDateKey = dailyDateKey;
+  // The signature itself is part of the run's truth: the row still says the ship flew bound
+  // (and from which wave), it just never lets the signature pose as the launch contract.
+  const pacts = pactRecordRows(result, run);
+  if (pacts.length) compact.pacts = pacts;
   if (typeof (result && result.kitId) === 'string' && result.kitId) compact.kitId = result.kitId;
   if (Number.isInteger(result && result.stuntScore) && result.stuntScore >= 0) compact.stuntScore = result.stuntScore;
   if (Number.isInteger(result && result.physicsKills) && result.physicsKills >= 0) compact.physicsKills = result.physicsKills;

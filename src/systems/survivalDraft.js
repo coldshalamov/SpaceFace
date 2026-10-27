@@ -1636,6 +1636,12 @@ export const survivalDraft = {
       ...(Array.isArray(run.arenaMutators) ? run.arenaMutators : []),
       mutatorId,
     ]);
+    // The signature's provenance rides the wager seam the Threat picks use — a pact bound
+    // mid-run is the run's own handicap, not its launch contract. The records row reads this
+    // stamp so a signed flight can never fingerprint as a launch `one_hull` challenge.
+    if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+    if (!Array.isArray(run.telemetry.pacts)) run.telemetry.pacts = [];
+    run.telemetry.pacts.push({ mutatorId, wave: Math.max(1, this._wave) });
     // The award's own clone commits the bound list and the purse on the same receipt — the
     // contract and the payment can never land on different runs.
     this._emit('run:awardRequested', { credits: purse, reason: 'crucible:pact' });

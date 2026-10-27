@@ -1036,3 +1036,52 @@ test('identities opened in one frame share one announcement, cast first; readout
     h.capSys.destroy();
   } finally { env.restore(); }
 });
+
+test('a corrupted plate ledger falls back to the hull gauge — never a silent 0% parts', () => {
+  const env = installDom(1280, 720);
+  try {
+    const h = bootScoreFight(TOLLMAN);
+    const spec = requireCapitalBossEncounter(TOLLMAN);
+    const project = (w, out) => { out.x = 640 + w.x; out.y = 360 + w.z; out.onScreen = true; return out; };
+    const mount = mountCapitalBossOverlay({ root: env.root, bus: h.bus, state: h.state, helpers: { worldToScreen: project } });
+    tick(h, spec.score.introTicks + spec.score.transitionTicks + 30, mount);
+    const g = groupNodes(env.root)[0];
+    const gauge = findAll(g, (n) => n.attributes && n.attributes.role === 'progressbar')[0];
+    const name = g.children[0].textContent;
+    const liveFight = h.state.capitalBossEncounters.fights[h.fightId];
+    assert.equal(gauge.getAttribute('aria-label'), `${name} parts remaining`,
+      'a healthy plated fight reads its parts');
+
+    // The broken-ledger shapes a corrupted or mismatched fight record can arrive in —
+    // missing, empty, foreign ids, or a ledger that lost track of one authored plate.
+    h.boss.hull = 40;
+    for (const broken of [
+      null,
+      [],
+      [{ id: 'plate_not_in_spec', attached: true, strainTicks: 0 }],
+      [{ id: spec.plates[0].id, attached: true, strainTicks: 0 }],
+    ]) {
+      liveFight.plates = broken;
+      mount.draw(h.state);
+      assert.equal(gauge.getAttribute('aria-label'), `${name} hull`,
+        `corrupted fight data reads hull, not a stripped colossus (${JSON.stringify(broken)})`);
+      assert.equal(gauge.getAttribute('aria-valuenow'), '40',
+        'the fallback answers the hull fraction the record still carries');
+    }
+
+    // The genuine stripped colossus still reads 0 parts — the fallback is not a cover-up.
+    liveFight.plates = spec.plates.map((p) => ({ id: p.id, attached: false, strainTicks: 0 }));
+    mount.draw(h.state);
+    assert.equal(gauge.getAttribute('aria-label'), `${name} parts remaining`);
+    assert.equal(gauge.getAttribute('aria-valuenow'), '0',
+      'a fully torn, fully recorded colossus reads its honest zero');
+
+    // And a healthy ledger reads its parts again — the fallback never latches.
+    liveFight.plates = spec.plates.map((p) => ({ id: p.id, attached: true, strainTicks: 0 }));
+    mount.draw(h.state);
+    assert.equal(gauge.getAttribute('aria-label'), `${name} parts remaining`);
+    assert.equal(gauge.getAttribute('aria-valuenow'), '100');
+    mount.destroy();
+    h.capSys.destroy();
+  } finally { env.restore(); }
+});

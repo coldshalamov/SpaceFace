@@ -1161,6 +1161,8 @@ export const survivalResults = {
       if (threats.length) result.threats = threats.slice();
       const perks = run.telemetry && Array.isArray(run.telemetry.perks) ? run.telemetry.perks : [];
       if (perks.length) result.perks = perks.slice();
+      const pacts = run.telemetry && Array.isArray(run.telemetry.pacts) ? run.telemetry.pacts : [];
+      if (pacts.length) result.pacts = pacts.slice();
     }
     if (this._deadHull) result.wreck = structuredClone(this._deadHull);
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;

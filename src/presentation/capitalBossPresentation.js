@@ -94,6 +94,19 @@ export function capitalBossReadouts(state,out) {
    readout.plateHold=null;
    const plateSpecs=spec&&Array.isArray(spec.plates)?spec.plates:null;
    const plateRecs=Array.isArray(r.plates)?r.plates:null;
+   // The parts gauge is only honest while the fight record tracks every plate the spec
+   // authored — an absent, empty, or mismatched r.plates is corrupted fight data, not a
+   // stripped colossus, so the mount must fall back to the hull readout, never a silent 0%.
+   let plateSpecN=0,plateMatchN=0;
+   if(plateSpecs){
+    for(let pi=0;pi<plateSpecs.length;pi+=1){
+     const pspec=plateSpecs[pi];
+     if(!pspec)continue;
+     plateSpecN+=1;
+     if(!plateRecs)continue;
+     for(let ri=0;ri<plateRecs.length;ri+=1){const q=plateRecs[ri];if(q&&q.id===pspec.id){plateMatchN+=1;break;}}
+    }
+   }
    if(plateSpecs&&plateRecs){
     const br=Math.max(1,Number(boss.radius)||20);
     const rot=Number(boss.rot)||0;
@@ -132,10 +145,12 @@ export function capitalBossReadouts(state,out) {
    // W-COLOSSI (row 547): the bar is the parts. When this fight carries live plates — every
    // score boss except the Last Argument, whose authored parts are data-only — the mount's
    // gauge reads attached-parts fraction instead of hull. `cellN` counts attached plates,
-   // so a fully stripped colossus reads 0 while its bare hull still fights.
+   // so a fully stripped colossus reads 0 while its bare hull still fights. A record that
+   // cannot account for every authored plate is a broken fight, not a stripped one — it
+   // falls back to the hull readout rather than print a silent 0%.
    readout.partsTotal=plateSpecs?plateSpecs.length:0;
    readout.partsAttached=cellN;
-   readout.partsLive=!!(plateSpecs&&plateSpecs.length&&r.encounterId!==LAST_ARGUMENT.scoreId);
+   readout.partsLive=!!(plateSpecN>0&&plateMatchN===plateSpecN&&r.encounterId!==LAST_ARGUMENT.scoreId);
    const cast=r.cast;
    if(cast&&score&&Array.isArray(score.beats)){
     let beat=null;
