@@ -97,7 +97,10 @@ function ensureBarStyle() {
 }
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
-const roleLabel = (r) => String(r || 'contact').replace(/_/g, ' ');
+const roleLabel = (c) => {
+  const authored = typeof c.roleLabel === 'string' ? c.roleLabel.trim() : '';
+  return authored || String(c.role || 'contact').replace(/_/g, ' ');
+};
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const rewardOf = (m) => Math.max(0, Math.round(Number(
   m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
@@ -374,7 +377,7 @@ export function createBarScreen(ctx) {
         return (
           `<li><button type="button" ${stationControlAttrs('contact')} class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
             `${c.memoryGlyph ? `<span aria-label="Contact record">${escapeHtml(c.memoryGlyph)}</span> ` : ''}${escapeHtml(c.name || 'Contact')}` +
-            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))} · ${escapeHtml(stationRegularRecognition(state, c).label)}</span>` +
+            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c))} · ${escapeHtml(stationRegularRecognition(state, c).label)}</span>` +
           `</button></li>`
         );
       }).join('') +
@@ -403,7 +406,7 @@ export function createBarScreen(ctx) {
       `<div class="sx-talk">` +
         `<header class="sx-talk__head">` +
           `<div class="sx-talk__id">` +
-            `<p class="k-caps sx-talk__role">${escapeHtml(roleLabel(c.role))}</p>` +
+            `<p class="k-caps sx-talk__role">${escapeHtml(roleLabel(c))}</p>` +
             `<h2 class="k-display k-t-title sx-talk__name">${escapeHtml(c.name || 'Contact')}</h2>` +
             (memLine ? `<p class="k-sentence sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
           `</div>` +
