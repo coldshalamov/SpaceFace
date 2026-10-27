@@ -293,7 +293,13 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
-  ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; }
+  ${D} .k-panel.sx-ct > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
+  /* each half scrolls once: the board and the dossier plate stop being second scrollers whose fades masked the only row in view */
+  ${D} .sx-ct__hang > .sx-ct__board, ${D} .sx-ct__dossier > .sx-dossier { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+  /* the dossier half opens on which job ACCEPT takes: kind and title, then the verbs, then the terms */
+  ${D} .sx-dossier > .k-caps { order:-3 !important; }
+  ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
 }
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
