@@ -330,7 +330,9 @@ export const missionObjectiveOps = {
   },
 
   _onRookWreckDelivered(p) {
-    if (!p) return;
+    // The book counts Rook's pad only — the rival laundry ring does not settle
+    // a "tow it to Rook's booth" contract. Legacy emitters carry no standId.
+    if (!p || (p.standId != null && p.standId !== 'rook')) return;
     const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
