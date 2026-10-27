@@ -1207,18 +1207,18 @@ export const ui = {
         <div class="cine-bg"><video class="cine-video" muted loop playsinline preload="auto" poster="assets/cinematics/intro-visualizer.jpg" aria-hidden="true"><source src="assets/cinematics/intro-visualizer.mp4" type="video/mp4" /></video></div>
         <div class="cine-scrim"></div>
         <div class="cine-grain"></div>
-        <div class="cine-tag">VHL-4471-T · Tessera — salvage registry</div>
+        <div class="cine-tag">Helios System · Frontier Sector</div>
         <div class="cine-lockup">
-          <div class="cine-eyebrow">Tessera · VHL-4471-T · Operator: Unknown</div>
+          <div class="cine-eyebrow">Deep Space Flight Systems</div>
           <div class="cine-title" id="cinematic-title">SPACEFACE</div>
           <div class="cine-rule"></div>
-          <div class="cine-contract" id="cinematic-summary">Contract 47-A — Open / Payment Pending</div>
+          <div class="cine-contract" id="cinematic-summary">Space Flight &amp; Exploration</div>
           <div class="cine-begin">${window.matchMedia?.('(pointer: coarse)').matches ? 'Tap to begin' : 'Click or press any key to begin'}</div>
         </div>
         <div class="cine-signal" id="cinematic-signal">
-          <div class="cine-signal__k">Inbound signal</div>
-          <div class="cine-signal__t">CONTRACT 47-A</div>
-          <div class="cine-signal__s">Reach corridor — channel open</div>
+          <div class="cine-signal__k">Beacon signal</div>
+          <div class="cine-signal__t">HELIOS TRANSIT</div>
+          <div class="cine-signal__s">All channels open</div>
         </div>
       `;
       // The baked clip is a bonus layer over the .cine-bg still: drop the

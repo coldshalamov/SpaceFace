@@ -165,6 +165,11 @@ function completeSpineSetPiece(h, mission) {
         data: { stationId: mission.destStationId, dockRadius: 80 },
       });
     }
+    // The living maw refuses the line until the slag stuns land.
+    const stuns = mission.params && mission.params.mawStunsNeeded;
+    for (let i = 0; i < (stuns || 0); i++) {
+      h.bus.emit('tether:whipImpact', { victimId: target.id, rating: 'solid' });
+    }
     h.bus.emit('tether:latched', { targetId: target.id });
     target.pos = { x: berth.pos.x, z: berth.pos.z };
     h.bus.emit('dock:docked', { stationId: mission.destStationId });
@@ -193,6 +198,19 @@ function completePhysicalMission(h, mission) {
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   h.missions.spawnTargetsForSector(mission.destSectorId);
   assert.ok(mission.targetEntityIds.length > 0, `${mission.storyTag} must materialize targets`);
+  if (mission.type === 'escort') {
+    const station = h.helpers.spawnEntity({
+      type: 'station', pos: { x: 0, z: 0 },
+      data: { stationId: mission.destStationId, dockRadius: 140 },
+    });
+    const lead = h.state.entities.get(mission._escorteeId);
+    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
+    lead.pos = { x: station.pos.x + 20, z: station.pos.z };
+    h.missions.update(0.016, h.state);
+    assert.equal(mission._escorteeArrived, true, 'convoy lead reaches the dock ring');
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   for (const targetId of [...mission.targetEntityIds]) {
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
@@ -206,29 +224,49 @@ function completeB0(h) {
   assert.equal(state.story.beatIndex, 1, 'B0 completes on ordered mine then dock');
 }
 
-/** The live B1→B4 route (no outcome token — the pod-rescue route of the running game). */
+/** The live B1→B4 route: the authored book lists (w533/w534) driven physically. */
 function advanceB1ToB5(h) {
   const { state, bus } = h;
   assert.equal(state.story.beatIndex, 1);
 
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
+  // B1 book list: the alloy run (+ the optional pod weigh) then the infested lane's
+  // furnace count.
+  const alloy = acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:alloy_run');
+  addCargo(state, 'cmdty_alloys', Math.max(1, alloy.params.qty || 6));
+  bus.emit('dock:docked', { stationId: 'station_tethys' });
+  bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
+  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b1:infested'));
+  for (let i = 0; i < 3; i++) bus.emit('furnace:fed', { entityId: 9100 + i });
   assert.equal(state.story.beatIndex, 2);
-  const rescue = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(rescue.type, 'rescue_under_fire');
-  completeSpineSetPiece(h, rescue);
+
+  // B2 book list: the cinder lane + garden + the Nest + the Elroy writ (force).
+  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:cinder'));
+  bus.emit('rookWreck:delivered', { entityId: 9301 });
+  bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g1', fedMass: 20 });
+  bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  const elroy = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  h.state.world.currentSectorId = elroy.destSectorId;
+  bus.emit('sector:enter', { sectorId: elroy.destSectorId });
+  h.missions.spawnTargetsForSector(elroy.destSectorId);
+  h.missions._ensureMissionTargets(elroy);
+  const elroyTarget = elroy.targetEntityIds[0];
+  state.entities.get(elroyTarget).pos = { x: 5, z: 0 };
+  bus.emit('scan:completed', { targetId: elroyTarget });
+  bus.emit('entity:killed', { id: elroyTarget, killerId: state.playerId });
   assert.equal(state.story.beatIndex, 3);
 
-  bus.emit('ship:purchased', {
-    defId: 'ship_drifter', hullId: 'ship_drifter', stationId: 'station_tethys', price: 9000,
-  });
-  assert.equal(state.story.beatIndex, 3, 'a hull buy cannot settle the long tow');
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
+  // B3 book list: the berth delivery (the long tow), the maw's stuns + tow, the Foreman.
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:berth'));
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:maw'));
+  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:foreman'));
   assert.equal(state.story.beatIndex, 4);
 
   const intro = acceptStoryOffer(h, 'station_tethys', STORY_BRANCH_INTRO_TAG);
   assert.equal(state.story.branch, null, 'accepting the intro only pends the branch');
   completePhysicalMission(h, intro);
   assert.equal(state.story.branch, 'traders');
+  assert.equal(state.story.beatIndex, 4, 'the intro settles the door; the operation closes the book');
+  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b4:operation'));
   assert.equal(state.story.beatIndex, 5);
 }
 
@@ -287,7 +325,7 @@ test('FB-063: the eight-beat walk on seed 4242 advances only through authored st
   advanceB1ToB5(h);
   const b4 = getBeatStepStatus(h.state, 4);
   assert.equal(b4.stepsComplete, true, 'B4 recorded its authored accept step');
-  assert.deepEqual(b4.completed, ['branch_intro_accept']);
+  assert.deepEqual(b4.completed, ['branch_intro_accept', 'operation']);
 
   // B5's authored step requires the chain count, not any mission:completed.
   completeB5Chain(h);

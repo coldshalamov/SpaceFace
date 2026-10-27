@@ -34,8 +34,11 @@ import {
 } from './fhChrome.js';
 
 const STYLE_ID = 'sf-station-ledger-fh';
+// ORRERY colour law (design/frontend/ORRERY.md §3.3): red is threat only — a lost ship, an open
+// scar, the patch that records one. Gains and stories carry no colour of their own: the signed
+// figure (+/−) and the cap's own word are the channels, and the type cap reads bone like every
+// other rest-state label.
 const LOSS_TYPES = new Set(['loss', 'scar', 'patch']);
-const GAIN_TYPES = new Set(['trade', 'renown', 'title', 'name', 'salvage']);
 
 function ensureLedgerStyle() {
   ensureInteriorStyle();
@@ -47,7 +50,17 @@ function ensureLedgerStyle() {
     '.sx-ledger .k-word.fh-key::after{display:none!important}' +
     '.sx-ledger .st-ledger-entry.fh-row{box-shadow:none!important;background-color:transparent!important}' +
     '.sx-ledger .fh-keyrack{gap:6px!important;align-items:center!important;flex-wrap:wrap!important}' +
-    '.sx-ledger .st-ledger-entry[aria-selected="true"]{box-shadow:none!important}';
+    '.sx-ledger .st-ledger-entry[aria-selected="true"]{box-shadow:none!important}' +
+    // ORRERY §3.3 (P1): the tape Hand is this screen's one amber. The shared legend/key chrome
+    // renders lamp-45% at rest (deckplate .fh-legend / .fh-key--legend), which put a second amber
+    // on the board's empty line and on a disabled page key — both recede to bone here.
+    '.sx-ledger .st-ledger-board-empty{color:color-mix(in srgb,var(--dp-ink-dim,#b7b4a6) 62%,transparent)!important}' +
+    '.sx-ledger [data-ledger-page]:disabled{color:color-mix(in srgb,var(--dp-ink-mute,#b0aea6) 58%,transparent)!important}' +
+    // the reading re-hangs when the column itself returns (never on an entry change): a 140ms
+    // settle, instant under the game's own reduce-motion class
+    '.sx-ledger__read.is-settle{animation:sx-ledger-read-settle 140ms var(--dp-ease-out,ease-out) both}' +
+    '@keyframes sx-ledger-read-settle{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}' +
+    'html.sf-reduce-motion .sx-ledger__read.is-settle{animation:none}';
   document.head.appendChild(style);
 }
 
@@ -120,9 +133,7 @@ function cycleDigits(label) {
 }
 
 function toneColor(type) {
-  if (LOSS_TYPES.has(type)) return 'var(--fh-hazard, var(--k-bad))';
-  if (GAIN_TYPES.has(type)) return 'var(--k-good)';
-  if (type === 'rumor' || type === 'bearing' || type === 'unique') return 'var(--fh-legend-lit, var(--k-signal))';
+  if (LOSS_TYPES.has(type)) return 'var(--dp-danger, var(--k-bad))';
   return '';
 }
 
@@ -178,7 +189,9 @@ export function createLedgerScreen(ctx) {
   readHero.append(readHeroN, readHeroW);
   const readTitle = el('h3', 'k-display k-t-title sx-ledger__read-title');
   const readLine = el('p', 'k-sentence k-sentence--emph sx-ledger__read-line');
-  const readHand = el('p', 'k-sentence k-signal sx-ledger__read-hand');
+  // the captain's hand reads as quiet voice in bone — amber stays the tape Hand's alone (ORRERY §3.3);
+  // the station skin sizes and tints .sx-ledger__read-hand, so no signal class is wanted here
+  const readHand = el('p', 'k-sentence sx-ledger__read-hand');
   read.append(readKicker, readHero, readTitle, readLine, readHand);
   // the right column: the tape above, the reading beneath the Hand's tick
   // the purse gauge stands beside the reading, off the tape's baseline: two instruments, two zones
@@ -258,6 +271,9 @@ export function createLedgerScreen(ctx) {
     pinKeyrack(panel.el.querySelector('.st-ledger-nav'));
     for (const btn of panel.el.querySelectorAll('[data-ledger-page]')) paintKey(btn, 'legend');
     const detail = panel.el.querySelector('.st-ledger-detail');
+    // the key hints describe the ladder; while the evidence page holds the screen they say nothing
+    // that is reachable, so they stand down with the list
+    if (keys) keys.hidden = !!(detail && !detail.hidden);
     if (detail && !detail.hidden) {
       paintPlate(detail, 'sunk');
       paintMarking(detail.querySelector('.st-ledger-detail-title'));
@@ -309,7 +325,15 @@ export function createLedgerScreen(ctx) {
     readLine.hidden = !readLine.textContent;
     readHand.textContent = entry.annotation || '';
     readHand.hidden = !entry.annotation;
+    // the column re-hangs when it itself returns (first read, back from an evidence page) —
+    // never on an entry change, which is an instrument update, not an arrival
+    const revealing = read.hidden;
     read.hidden = false;
+    if (revealing && !document.documentElement.classList.contains('sf-reduce-motion')) {
+      read.classList.remove('is-settle');
+      void read.offsetWidth;
+      read.classList.add('is-settle');
+    }
     dressLedger();
   }
   function onPointerOver(ev) {
@@ -321,14 +345,28 @@ export function createLedgerScreen(ctx) {
     if (item) readEntry(item);
   }
   // The panel's own evidence detail takes the right half while open; the reading column yields.
-  // A board chip opening the same detail yields the same way.
+  // A board chip opening the same detail yields the same way. The Hand stands down with it — a
+  // leader pointing at a reading that is no longer there is a false statement. A page turn
+  // re-serves the adapter's normalize + first-read pass, which the panel's own nav bypasses
+  // (its refresh re-renders rows from templates and swaps the archive slice under the tape).
   function onClick(ev) {
-    const t = ev.target && ev.target.closest && ev.target.closest('[data-ledger-evidence], [data-ledger-board-open], [data-ledger-back]');
+    const t = ev.target && ev.target.closest && ev.target.closest('[data-ledger-evidence], [data-ledger-board-open], [data-ledger-back], [data-ledger-page]');
     if (!t) return;
     if (t.hasAttribute('data-ledger-evidence') || t.hasAttribute('data-ledger-board-open')) {
       read.hidden = true;
+      syncTape(null);
       dressLedger();
+    } else if (t.hasAttribute('data-ledger-page')) {
+      // no disabled guard: the panel's own nav listener has already turned the page by the time
+      // this bubbles here and will have disabled the button just left — a fresh disabled check
+      // would read the post-turn state and cancel the re-sync. A disabled key cannot dispatch
+      // click at all, so a delivered event is a real turn by construction.
+      setTimeout(afterPageTurn, 0);
     } else setTimeout(readFirst, 0);
+  }
+  function afterPageTurn() {
+    normalizeStatusPlural();
+    readFirst();
   }
   panel.el.addEventListener('pointerover', onPointerOver);
   panel.el.addEventListener('focusin', onFocusIn);
@@ -347,6 +385,16 @@ export function createLedgerScreen(ctx) {
     }
     // one page is no archive: the count stands alone, and the key hint offers PAGE only when there is one
     if (status && /archive page 1 of 1/i.test(status.textContent)) status.textContent = status.textContent.replace(/\s*Archive page 1 of 1\.?/i, '').replace(/\.\s*$/, '');
+    // the board's empty line may not promise an action the archive cannot serve: with no receipts
+    // there is no evidence page to open, so the line says what would bring one instead
+    const boardEmpty = panel.el.querySelector('.st-ledger-board-empty');
+    if (boardEmpty) {
+      if (!boardEmpty.dataset.ledgerDefaultCopy) boardEmpty.dataset.ledgerDefaultCopy = boardEmpty.textContent;
+      const archiveEmpty = !panel.model || panel.model.total === 0;
+      boardEmpty.textContent = archiveEmpty
+        ? 'Nothing pinned yet — evidence rides in with the first receipts.'
+        : boardEmpty.dataset.ledgerDefaultCopy;
+    }
     // a trade's line item is equipment, not prose: verb · quantity · commodity · station · signed figure
     const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
     const entries = (panel.model && panel.model.entries) || [];
