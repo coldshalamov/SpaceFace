@@ -1,3 +1,5 @@
+import { ASTEROIDS } from '../data/mining.js';
+import { starterMiningFocus } from '../missions/starterWorkday.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -3563,6 +3565,8 @@ export const missions = {
     }
 
     if (m.type === 'mining_quota') {
+      const workFace = starterMiningFocus(m, this.state.entityList, sectorLocalToGlobalForSector, ASTEROIDS);
+      if (workFace) return { ...base, ...workFace, stationId: null, sectorId: m.destSectorId };
       const asteroid = this._nearestAsteroid();
       if (asteroid) {
         return { ...base, stationId: null, sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId, pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
@@ -6447,3 +6451,4 @@ export function mulberryLocal(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+

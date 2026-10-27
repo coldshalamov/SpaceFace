@@ -1,3 +1,4 @@
+import { authoredStarterSite } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { MARK_HAIL_RANGE_WU, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
@@ -106,8 +107,10 @@ export const missionSpawningOps = {
     if (m.type === 'race' && !follow) return this._adoptRaceGateTargets(m, existing);
     const list = [];
     // Campaign 47-A B2 uses the existing authored rescue-capsule payload. Adopt it through the
-    // cargo-interactable view on Continue instead of respawning the capsule.
-    const visitMissionTargets = isCampaign47aB2Rescue(m)
+    // cargo-interactable view on Continue instead of respawning the capsule. Authored starter
+    // buoys are payloads too; the living-actor view deliberately excludes that type.
+    const starterBuoy = m.type === 'tow_recovery' && m.params?.starterJobId === 'starter_pelican' && authoredStarterSite(m);
+    const visitMissionTargets = isCampaign47aB2Rescue(m) || starterBuoy
       ? forEachJobInteractable : forEachLivingWorldActor;
     visitMissionTargets(this.state, (e) => { list.push(e); });
     if (follow) {
@@ -138,6 +141,9 @@ export const missionSpawningOps = {
     }
     const candidates = list.filter((e) => {
       if (!e || !e.alive || e.isPlayer) return false;
+      if (starterBuoy && (e.type !== 'payload' || e.data?.physicalRole !== PHYSICAL_ROLE.SLAG_CORE
+        || e.data?.starterWorkdayVersion !== m.params.starterWorkdayVersion
+        || e.data?.starterJobId !== m.params.starterJobId || e.data?.starterStep !== m.params.starterStep)) return false;
       const mid = missionIdentityOf(e);
       return mid != null && String(mid) === String(m.id);
     });
@@ -1240,3 +1246,4 @@ export const missionSpawningOps = {
     this.bus.emit('mission:updated', { missionId: m.id, twist: 'escort_turns' });
   },
 };
+
