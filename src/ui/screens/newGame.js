@@ -339,7 +339,7 @@ function shipDefFor(ctx, shipId) {
 // bone; ice is for data in motion.)
 // SEED-ST-02 — "Line" is the Massline winch, not a speed: the stat names what it measures in
 // player words instead of bare "Line … wu/s". Mass and Thrust are self-evident; this one is not.
-export const STARTER_LINE_GLOSS = 'massline winch speed';
+export const STARTER_LINE_GLOSS = 'winch speed';
 
 function paintStarterStats(host, card, scale, others = []) {
   const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'wu/s', STARTER_LINE_GLOSS]];
