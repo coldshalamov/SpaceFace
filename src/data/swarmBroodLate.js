@@ -32,6 +32,10 @@ export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
     },
     counter: 'It hides in the rock. Clear the silhouette before it bursts.',
     deathLeaves: 'a cracked shell',
+    // W-BLOOM-LOW remains: the carapace piece survives the burst as one latched plate —
+    // already cracked, so the first solid hit shatters it onto the pack around it. Same
+    // spec vocabulary the base roster authors (swarmBrood.js).
+    remains: { kind: 'cracked_shell', name: 'Cracked shell', mass: 14, radius: 3.4, splashRadius: 26 },
     bodyColor: [0.28, 0.22, 0.16],
     bodyEmissive: [0.18, 0.10, 0.04],
     // Low and wide: a rock-crab, not the mite dart.
@@ -122,6 +126,10 @@ export const SWARM_BROOD_LATE_FAMILIES = Object.freeze([
     },
     counter: 'It swims your own wake and bursts at your stern. Turn hard to shed it, or pop it far out.',
     deathLeaves: 'a spent charge',
+    // W-BLOOM-LOW remains: the riding bomb's casing outlives its burst — a dead-fuse pod
+    // that still pops, a weak splash well under the live charge's own burstRadius, and
+    // then the body is spent for good.
+    remains: { kind: 'spent_charge', name: 'Spent charge', mass: 9, radius: 2.8, splashRadius: 34 },
     bodyColor: [0.60, 0.26, 0.10],
     bodyEmissive: [0.50, 0.14, 0.04],
     // A dart, not a boulder: low and long like the burrower, hot like the cyst.
@@ -594,6 +602,27 @@ export function swarmBroodLateIssues() {
     }
     if (!Array.isArray(family.bodyColor) || family.bodyColor.length !== 3) {
       issues.push({ path, message: `${family.id} has no body colour recipe` });
+    }
+    // Same remains contract as the base roster's (swarmBroodIssues): a late family that
+    // authors a throwable body carries the same lawful shape.
+    const rem = family.remains;
+    if (rem != null) {
+      if (typeof rem !== 'object' || typeof rem.kind !== 'string' || !rem.kind) {
+        issues.push({ path, message: `${family.id} remains has no kind` });
+      } else {
+        if (!(rem.mass > 0) || !(rem.radius > 0)) {
+          issues.push({ path, message: `${family.id} remains has no physical size` });
+        }
+        if (rem.splashRadius != null && !(rem.splashRadius > 0)) {
+          issues.push({ path, message: `${family.id} remains splashRadius is not positive` });
+        }
+        if (rem.glueS != null && !(rem.glueS > 0)) {
+          issues.push({ path, message: `${family.id} remains glueS is not positive` });
+        }
+        if (rem.whipMult != null && !(rem.whipMult > 1)) {
+          issues.push({ path, message: `${family.id} remains whipMult does not widen the whip` });
+        }
+      }
     }
   });
   // The strain table: each row needs an id, a carrier family the roster actually

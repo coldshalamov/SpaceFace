@@ -1,6 +1,7 @@
 import { ceresWorkfleetRetainsSection } from './ceresWorkfleet.js';
 import { refreshEntityPhysicsIndex, syncEntitySectorMembership } from '../core/coreSystem.js';
 import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
+import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   discardWorldSiteStaticFarRows,
   farActorTableRadius,
@@ -45,6 +46,23 @@ function playerSiteDistance(state, manifest) {
   const origin = manifest && manifest.placement && manifest.placement.pos;
   if (!player || !player.pos || !origin) return null;
   return Math.hypot((player.pos.x || 0) - origin.x, (player.pos.z || 0) - origin.z);
+}
+
+// Structural payloads never leave far rows — they are reauthored wholesale on approach. A sector
+// entered from beyond the reservation skips their spawn (the gate in syncWorldSiteMaterialization),
+// so the residency pass must notice them missing on arrival even with an empty far table, or the
+// site stands permanently gutted until the player leaves and returns.
+function siteStructuralPayloadMissing(state, manifest, record) {
+  const payloads = manifest && manifest.payloads;
+  const durables = record && record.payloads;
+  if (!payloads || !durables) return false;
+  for (const payload of payloads) {
+    if (!payload.structural) continue;
+    const durable = durables[payload.id];
+    if (!durable || durable.destroyed || durable.status !== 'stowed') continue;
+    if (!indexedWorldRecordEntity(state, payload.worldObjectId)) return true;
+  }
+  return false;
 }
 
 function siteFarRowCount(state, siteId) {
@@ -92,7 +110,8 @@ export function reconcileWorldSiteResidency(state, helpers) {
     if (distance == null) continue;
     const approach = siteApproachRadius(manifest);
     if (distance <= approach) {
-      if (siteFarRowCount(state, manifest.id) > 0) {
+      if (siteFarRowCount(state, manifest.id) > 0
+        || siteStructuralPayloadMissing(state, manifest, record)) {
         syncWorldSiteMaterialization({ state, helpers, manifest, record });
       }
       continue;
