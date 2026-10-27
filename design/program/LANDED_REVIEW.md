@@ -188,3 +188,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | 3c0fb097826 | EXP-25: impoundLot — auctions/ransoms/write-offs (238→1230+, ~5×) | Re-check: markdown floor-progress clamp vs hostile tiny prices |
 
 | 2026-10-27 | eb82bb6b14e | EXP-25: lamplighter — fuel/keeps/grudges (269→1300+, ~4.8×) | Re-check: seatIndex [0,slotCount) bound vs mod-32 shift wraparound on forged stamps |
+
+| 2026-10-27 | de923ac96da | World: area archetypes — Tethys Gate garrison (2 pockets, 3 lawful hulls at station_customs) + Pallas Den Shoal (fence runner + shoal scav at station_smuggler) + the 4-wreck Smuggler’s Archipelago threading the Sker approach | Re-check: on seed 4242 the garrison/den casts materialize with live jobs through sector:enter (chain tests assert it), and the archipelago POIs land on the den-to-Sker line with scan-salvage signals — confirm no ambient/author-cast double-spawn in Tethys after several re-enters |
