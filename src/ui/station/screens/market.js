@@ -9,6 +9,7 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
 // is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES, commodityPresentationFor } from '../../../data/commodities.js';
+import { createLaunderService, requestLaunderQuote } from '../launderService.js';
 import { canLaunderSalvageAtStation } from '../../../data/salvageLegality.js';
 import { FACTION_LABELS } from '../../../data/encounters.js';
 import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
@@ -453,7 +454,7 @@ export function requestMarketLaunder(bus, state) {
   if (!bus || typeof bus.emit !== 'function') return false;
   const sid = stationId(state);
   if (!sid || !canLaunderSalvageAtStation(sid)) return false;
-  bus.emit('dock:launder', { stationId: sid });
+  requestLaunderQuote(bus, state, 'market-preview', 'market-preview');
   return true;
 }
 
@@ -868,6 +869,8 @@ export function createMarketScreen(ctx) {
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
   const decisionEl = el.querySelector('.sx-mkt__decision');
+  const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
+  quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
   let tradeBusy = false;
   let visible = true;
   let disposed = false;
@@ -2500,7 +2503,7 @@ export function createMarketScreen(ctx) {
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
-      requestMarketLaunder(ctx.bus, st);
+      papers.show();
       const requestedMode = open.tradeMode === 'sell' || open.tradeMode === 'buy' ? open.tradeMode : null;
       // An explicit handoff ("Sell what I hauled") always applies its mode — even with a lot
       // already on screen, where the implicit resume below would otherwise keep Buy and leave
@@ -2533,11 +2536,13 @@ export function createMarketScreen(ctx) {
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
     onHide() {
+      papers.hide();
       visible = false;
       historyBackfill.reset();
       cancelDeferred();
     },
     dispose() {
+      papers.dispose();
       disposed = true;
       visible = false;
       historyBackfill.reset();

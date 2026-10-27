@@ -1,10 +1,11 @@
-// LAW-06: opening a black-market register asks the dock to wash papers.
+// LAW-06: opening a black-market register requests read-only papers quotes.
 // The market does not write the ledger. A lawful berth does not ask.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createBus } from '../src/core/eventBus.js';
-import { createGameState } from '../src/core/gameState.js';
+import { createSimulation } from '../src/core/sim.js';
+import { economy } from '../src/systems/economy.js';
 import {
   TETHYS_BLACK_MARKET_DISCOVERY,
   TETHYS_BLACK_MARKET_RUN,
@@ -35,29 +36,23 @@ function deliveredAccess(state) {
   };
 }
 
-test('the market open emits one launder intent and the dock writes the ledger once', () => {
+test('market opens read-only quotes and explicit confirmation writes the ledger once', () => {
   assert.equal(canLaunderSalvageAtStation(LAWFUL_BERTH), false);
-  const state = createGameState(4242);
-  const bus = createBus();
-  const disguise = Object.assign({}, pirateDisguise);
-  disguise.init({ state, bus, helpers: {} });
-
-  state.playerId = 900001;
-  state.entities.set(state.playerId, {
-    id: state.playerId,
-    alive: true,
-    pos: { x: 0, z: 0 },
-  });
+  const sim = createSimulation({seed:4242,systems:[economy,pirateDisguise]});
+  const {state,bus} = sim;
+  state.mode = 'flight'; state.ui.docked = true;
+  state.playerId = sim.spawn({type:'ship',pos:{x:0,z:0}}).id;
+  sim.spawn({type:'station',pos:{x:0,z:0},data:{stationId:TETHYS_BLACK_MARKET_RUN.stationId}});
   const hot = spawnJettisonedCargoPod(state, {
     commodityId: TETHYS_BLACK_MARKET_RUN.commodityId,
     amount: TETHYS_BLACK_MARKET_RUN.amount,
     pos: { x: 20, z: 0 },
-  });
+  }, sim.helpers);
   const legal = spawnJettisonedCargoPod(state, {
     commodityId: 'cmdty_food',
     amount: TETHYS_BLACK_MARKET_RUN.amount,
     pos: { x: 40, z: 0 },
-  });
+  }, sim.helpers);
   assert.ok(hot && legal);
   const hotId = hot.data.commodityId;
   const hotAmount = hot.data.amount;
@@ -80,8 +75,12 @@ test('the market open emits one launder intent and the dock writes the ledger on
   assert.equal(requestMarketLaunder(bus, state), true);
 
   assert.equal(intents.length, 2);
-  assert.deepEqual(intents[0], { stationId: TETHYS_BLACK_MARKET_RUN.stationId });
+  assert.deepEqual(intents[0], { action:'quote', stationId:TETHYS_BLACK_MARKET_RUN.stationId, contextId:'market-preview', requestId:'market-preview' });
   assert.deepEqual(intents[1], intents[0]);
+  assert.equal(state.player.launderLedger?.length || 0, 0);
+  assert.equal(charges.length, 0);
+  const quote = sim.registry.get('pirateDisguise').launderAtDock({action:'quote',stationId:TETHYS_BLACK_MARKET_RUN.stationId,contextId:'law06',requestId:'q'}).quotes[0];
+  bus.emit('dock:launder',{action:'confirm',stationId:TETHYS_BLACK_MARKET_RUN.stationId,contextId:'law06',requestId:'c',quoteId:quote.quoteId});
   assert.equal(state.player.launderLedger.length, 1);
   const row = state.player.launderLedger[0];
   assert.equal(row.stationId, TETHYS_BLACK_MARKET_RUN.stationId);
@@ -101,6 +100,7 @@ test('the market open emits one launder intent and the dock writes the ledger on
   assert.equal(state.player.launderLedger.length, 1);
 
   const src = readFileSync(new URL('../src/ui/station/screens/market.js', import.meta.url), 'utf8');
-  assert.match(src, /requestMarketLaunder\(ctx\.bus, st\)/);
+  assert.match(src, /papers\.show\(\)/);
   assert.doesNotMatch(src, /launderLedger\s*\.push|launderLedger\s*\.unshift/);
+  sim.dispose();
 });
