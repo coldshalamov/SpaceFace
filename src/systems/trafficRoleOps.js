@@ -302,6 +302,11 @@ export const trafficRoleOps = {
       || (entity && entity.data && (entity.data.trafficRole || entity.data.jobKind || entity.data.role))
       || '';
     if (CIVILIAN_HAULER_DUMP_ROLES.has(role)) return role;
+    // The Stormshift receiving tender is a finite-work hauler: damage must dislodge a real
+    // recoverable unit through the Anvil spill receipt, not silently preserve the lot.
+    // Scoped to the authored work itinerary so a lookalike role cannot opt itself in.
+    if (role === 'stormshift_receiver'
+      && (entity.data?.itinerary || rec?.itinerary)?.kind === 'anvil_work') return role;
     if (entity && entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT_ID) {
       return 'hauler';
     }
