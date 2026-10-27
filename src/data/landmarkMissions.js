@@ -449,6 +449,89 @@ export const EUNOMIA_LICENSED_PLATE = Object.freeze({
   }),
 });
 
+export const DEN_TOLL_REGISTER = Object.freeze({
+  id: 'landmark_den_toll_register',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_den_arch_d',
+  targetRef: 'landmark_den_toll_lamp',
+  stationId: 'station_smuggler',
+  factionId: 'faction_quiet',
+  targetLocalPos: Object.freeze({ x: -1700, z: 2140 }),
+  maxRangeWu: 300,
+  poiLabel: 'Toll Hulk Lamp',
+  rewardCr: 700,
+  minRep: -1000,
+  riskTier: 1,
+  signalKind: 'salvage',
+  title: 'The Toll Hulk: Lamp Register',
+  brief: 'Board-scan the old Reach gunboat’s tally lamp and file the register at the den berth.',
+  summary: 'The lamp still burns on a hulk with no guns left to argue for it. The house wants the toll register copied — who paid, who still owes — before somebody collects on it.',
+  causeTag: 'landmark:den_toll_register',
+  causeFingerprint: 'landmark:den:toll-register:v1',
+  causeLine: 'The archipelago’s last gunboat kept its lamp lit and its tally honest.',
+  successText: 'Register filed. The house paid without a word and struck one name from the tally.',
+  artifact: Object.freeze({
+    id: 'artifact_den_toll_register',
+    title: 'Den · Toll Register',
+    body: 'Grease-pencil tolls, wiped and rewritten for years. Most names are Quiet grey; three are Reach grey and dated after the gunboat died. The lamp keeps its own list of who still crosses.',
+  }),
+});
+
+export const DEN_SPLIT_MANIFEST = Object.freeze({
+  id: 'landmark_den_split_manifest',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_den_arch_c',
+  targetRef: 'landmark_den_wide_door_manifest',
+  stationId: 'station_drift',
+  factionId: 'faction_mts',
+  targetLocalPos: Object.freeze({ x: -1520, z: 1720 }),
+  maxRangeWu: 300,
+  poiLabel: 'Split Freighter Hold',
+  rewardCr: 640,
+  minRep: -1000,
+  riskTier: 1,
+  signalKind: 'salvage',
+  title: 'The Split Freighter: Wide-Door Manifest',
+  brief: 'Read the manifest sealed in the split hold and file it at the Drift Market board.',
+  summary: 'The wide door under the stern is the regulars’ gap, and the hold still seals one manifest the market wants read before the Quiet sell it twice.',
+  causeTag: 'landmark:den_split_manifest',
+  causeFingerprint: 'landmark:den:split-manifest:v1',
+  causeLine: 'The freighter broke her back on the middle rock and kept her manifest dry.',
+  successText: 'Manifest filed. One Drift client now buys insurance; the den never listed the cargo at all.',
+  artifact: Object.freeze({
+    id: 'artifact_den_split_manifest',
+    title: 'Drift · Wide-Door Manifest',
+    body: 'A bulk manifest under a Concord seal nobody at the den ever broke. Every line item is rations; every tonnage figure says machinery. Somewhere between the two columns is the reason she was running dark.',
+  }),
+});
+
+export const DEN_BELL_ROLL = Object.freeze({
+  id: 'landmark_den_bell_roll',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_pallas_quiet_bell',
+  targetRef: 'landmark_den_bell_roll',
+  stationId: 'station_smuggler',
+  factionId: 'faction_quiet',
+  targetLocalPos: Object.freeze({ x: -950, z: 700 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Quiet Bell',
+  rewardCr: 480,
+  minRep: -1000,
+  riskTier: 1,
+  title: 'The Quiet Bell: The Roll',
+  brief: 'Scan the bell buoy once and file the one-note roll at the den.',
+  summary: 'The house keeps no other record of who called. One reading of the bell’s own tally is the closest thing to a roll call the den will ever post.',
+  causeTag: 'landmark:den_bell_roll',
+  causeFingerprint: 'landmark:den:bell-roll:v1',
+  causeLine: 'The bell answers one note with silence, and silence is a complete sentence.',
+  successText: 'Roll filed. The bell said nothing back, which at the den is an acknowledgement.',
+  artifact: Object.freeze({
+    id: 'artifact_den_bell_roll',
+    title: 'Den · Bell Roll',
+    body: 'The buoy’s tally ring holds one strike per hull, worn to different depths. The deepest groove is struck from the wrong side — somebody rings the bell from inside the archipelago, and has for years.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
@@ -464,6 +547,9 @@ const LANDMARK_QUESTS = Object.freeze([
   NEREID_SAME_SHIFT_ICE,
   PROTEUS_WELL_SOUNDING,
   EUNOMIA_LICENSED_PLATE,
+  DEN_TOLL_REGISTER,
+  DEN_SPLIT_MANIFEST,
+  DEN_BELL_ROLL,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 
