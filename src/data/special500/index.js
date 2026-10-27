@@ -23,8 +23,15 @@
 // encounter files can gate on them through crSituationKit.priorOutcome.
 
 import { ENTRIES_SLICE } from './entries.js';
+import { ENTRIES_COMMS_A } from './entries-comms-a.js';
+import { ENTRIES_EGG_A } from './entries-egg-a.js';
+import { ENTRIES_ANOMALY_A } from './entries-anomaly-a.js';
+import { ENTRIES_VISUAL_A } from './entries-visual-a.js';
 
-export const SPECIAL500 = Object.freeze([...ENTRIES_SLICE]);
+export const SPECIAL500 = Object.freeze([
+  ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
+  ...ENTRIES_ANOMALY_A, ...ENTRIES_VISUAL_A,
+]);
 export const SPECIAL500_COMPLETE = false; // flipped true when all 500 entries are authored
 
 const BY_ID = new Map(SPECIAL500.map((e) => [e.id, e]));

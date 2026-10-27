@@ -26,10 +26,36 @@ const RUNTIME = new WeakMap();
 function runtime(state) {
   let rt = RUNTIME.get(state);
   if (!rt) {
-    rt = { receipts: new Set(), lastSectorId: null, nextCheckAt: 0 };
+    rt = { receipts: new Set(), lastSectorId: null, nextCheckAt: 0, anchorCache: new Map() };
     RUNTIME.set(state, rt);
   }
   return rt;
+}
+
+// Station/POI entities carry allocated ids; the catalog anchor is their world
+// id in data.stationId / data.poiId (or the literal entity id). Resolve once
+// per save and cache — stations do not move.
+function resolveAnchor(state, rt, anchorId) {
+  if (rt.anchorCache.has(anchorId)) {
+    const cached = rt.anchorCache.get(anchorId);
+    return cached && alive(cached) ? cached : null;
+  }
+  let found = null;
+  const entities = state && state.entities;
+  if (entities) {
+    if (typeof entities.get === 'function') {
+      const direct = entities.get(anchorId);
+      if (direct) found = direct;
+    }
+    if (!found && typeof entities.values === 'function') {
+      for (const e of entities.values()) {
+        const d = e && e.data;
+        if (d && (d.stationId === anchorId || d.poiId === anchorId)) { found = e; break; }
+      }
+    }
+  }
+  rt.anchorCache.set(anchorId, found);
+  return found && alive(found) ? found : null;
 }
 
 function flagKey(id) {
@@ -124,6 +150,10 @@ export const special500Director = {
     for (const e of SPECIAL500) {
       const t = e.trigger || {};
       if (firedAt(state, e.id) != null && !(e.recurring && t.type === 'calendar')) continue;
+      // sector scoping: a catalog entry bound to sectors fires only there
+      if (e.sectors && e.sectors.length) {
+        if (!sectorId || !e.sectors.includes(sectorId)) continue;
+      }
       let yearIndex = -1;
       let ok = false;
       switch (t.type) {
@@ -137,8 +167,8 @@ export const special500Director = {
           break;
         case 'proximity': {
           if (!Number.isFinite(player.x) || !Number.isFinite(player.z)) break;
-          const anchor = entityById(state, t.nearStation);
-          if (!alive(anchor)) break;
+          const anchor = resolveAnchor(state, rt, t.nearStation);
+          if (!anchor) break;
           const dx = player.x - anchor.x;
           const dz = player.z - anchor.z;
           ok = dx * dx + dz * dz <= t.wu * t.wu;
