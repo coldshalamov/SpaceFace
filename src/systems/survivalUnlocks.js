@@ -126,6 +126,14 @@ export function evaluateUnlocks(profile, result, catalog = SURVIVAL_UNLOCK_CATAL
     : {};
   const unlocks = { ...previous };
   const newly = [];
+  // A drill earns nothing: the Crucible door promises practice carries nothing back, and the
+  // law lives in the evaluator so no caller can pay a practice-flagged or practice-stamped
+  // result. (The run-side flag is the settlement's own gate — a result only carries the
+  // practice truth it was stamped with.)
+  if (result && (result.practice === true
+    || (result.recordRules && result.recordRules.mode === 'practice'))) {
+    return { unlocks, newly };
+  }
   for (const entry of catalog) {
     if (entry.defaultUnlocked) continue;
     if (Object.prototype.hasOwnProperty.call(unlocks, entry.id)) continue;

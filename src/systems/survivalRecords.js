@@ -1779,8 +1779,17 @@ function hangarBankInput(result, run) {
 
 export function settleCrucibleRun({ result, run, profile = null, storage = liveStorage() } = {}) {
   const loaded = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
-  const bank = applyBank(loaded.hangar, hangarBankInput(result, run));
-  const evaluated = evaluateUnlocks(loaded, result || {});
+  // RC-CRUCIBLE-DOOR (row 481): the drill's promise — "no records, no rewards, nothing carried
+  // back". recordRulesFor is the one normalization: an explicit practice flag on either input
+  // and a 'practice' mode stamped into provided rules both land on the same truth here.
+  const isPractice = recordRulesFor(result || {}, run || {}).mode === 'practice';
+  // A drill settles the Hangar as an empty run — bounty untouched, no settle key spent — and
+  // earns no unlocks. evaluateUnlocks also refuses a practice-shaped result on its own; this
+  // gate is the one that can see the run-side flag.
+  const bank = applyBank(loaded.hangar, isPractice ? null : hangarBankInput(result, run));
+  const evaluated = isPractice
+    ? { unlocks: { ...(asObject(loaded.unlocks) || {}) }, newly: [] }
+    : evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
   // Invalid Circuit data remains a Circuit for isolation even though it cannot publish a
   // valid journey summary. It must never silently regain ordinary ladder/challenge authority.
@@ -1846,7 +1855,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     compact.hangarBounty = bank.hangar.bounty;
   }
   if (threatIds.length) compact.threats = threatIds.slice();
-  const challengeEval = isCircuit
+  // A drill claims no purse either: a practice run that happens to carry the weekly mutator or a
+  // daily stamp still pays nothing into the chest.
+  const challengeEval = isCircuit || isPractice
     ? { paid: [], challenges: loaded.challenges }
     : challengePayoutFor(compact, loaded.challenges, recordedAt);
   if (challengeEval.paid.length) {
@@ -1856,7 +1867,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     compact.hangarBounty = bank.hangar.bounty;
   }
   const cabinet = migrateCabinet(loaded.cabinet);
-  if (cabinetEligible(compact) && result?.practice !== true && run?.practice !== true) {
+  if (cabinetEligible(compact) && !isPractice) {
     const identity = stableStringify({ seed: compact.seed, rules: compact.recordRules,
       outcome: compact.outcome, endedAt: result?.endedAt ?? null, progress: roundProgress(compact), score: compact.score });
     compact.cabinetEntryId = `${recordedAt}:${String(cabinet.nextId).padStart(16, '0')}:${hash32('swarm-cabinet', identity).toString(16)}`;
@@ -1877,8 +1888,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
     cabinet,
-    // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it was.
-    daily: isCircuit ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
+    // SWARM-08 B5 — a Circuit route is not an ordinary Swarm daily row: the board stays as it
+    // was. A drill files no standings either — even if a daily stamp leaked onto its envelope.
+    daily: isCircuit || isPractice ? loaded.daily : applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
     hangar: bank.hangar,
