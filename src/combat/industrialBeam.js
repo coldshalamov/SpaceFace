@@ -187,6 +187,9 @@ export function spawnPayloadEntity(state, spec = {}, helpers = null) {
     physicsBody: spec.physicsBody && typeof spec.physicsBody === 'object' ? { ...spec.physicsBody } : undefined,
     hull: Number.isFinite(spec.hull) ? spec.hull : 100,
     hullMax: Number.isFinite(spec.hullMax) ? spec.hullMax : 100,
+    // D207: sector ownership rides the body when the caller names one — unstamped payloads
+    // survive residency teardown invisible to the scoped despawn/durable-capture readers.
+    ...(spec.homeSectorId != null ? { homeSectorId: spec.homeSectorId } : {}),
     data: {
       kind: 'payload',
       payloadType: spec.payloadType || 'cut_panel',
@@ -196,6 +199,9 @@ export function spawnPayloadEntity(state, spec = {}, helpers = null) {
       ownership: { ownerId, factionId },
       worldRecordId: spec.worldRecordId || null,
       transientSector: spec.transientSector !== false, // despawns on sector transition if transient
+      ...(spec.homeSectorId != null
+        ? { homeSectorId: spec.homeSectorId, sectorId: spec.sectorId != null ? spec.sectorId : spec.homeSectorId }
+        : {}),
     },
   };
 
