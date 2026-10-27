@@ -878,6 +878,12 @@ const CSS_TAIL = `
   /* This stage scrolls: keep the situation that gives the tradeoff meaning readable in full. */
   ${MD} .sx-mkt__decision .sx-decision > .k-sentence { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
   ${MD} .sx-trade__go.orr-lampkey { white-space:nowrap !important; }
+  /* the column's scroll window cut the decision's terms mid-line ("Pay 22 cr. Hull 86 → 100," with
+     its lower half sliced off): its foot fades over 20px instead, and 20px of padding lets the last
+     line scroll clear of the fade (ui-polish-155) */
+  ${MD} .sx-mkt__stage { padding-bottom:20px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent) !important; }
   /* the family strip's wrapped lines touched (0 lead); 3px between them */
   ${MD} .sx-mkt-browser__filters { row-gap:3px !important; }
 }
