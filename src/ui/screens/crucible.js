@@ -50,6 +50,7 @@ import {
 import {
   emptyHangar,
   HANGAR_TRACKS,
+  hangarHullRackView,
   hangarRank,
   trackPrice,
 } from '../../data/swarmHangar.js';
@@ -108,6 +109,7 @@ import {
   OVERCONFIDENCE_STREAK_AT,
   roundProgress,
   buyCrucibleHangarTrack,
+  buyCrucibleHangarHull,
   crucibleSwarmDepthView,
   setCruciblePerkLoadout,
   kitBalanceBoard,
@@ -1711,6 +1713,16 @@ export const crucibleScreen = {
     hangarTracks.setAttribute('aria-label', 'Hangar upgrades');
     pin(hangarTracks, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     hangarBody.appendChild(hangarTracks);
+    // SWARM-05 §4.2 — the hull rack under the tracks: the one spend that buys content, not a
+    // number. A bought hull joins the manifest of every later run (a free armory switch with
+    // its own kit), which is the permanence the door's bare pick and the per-run armory sale
+    // never offer. Same word/key parts as the track row; the earn-only hulls are never stock.
+    hangarBody.appendChild(el('p', 'k-t-fine k-38 sf-crd-hangar-note',
+      'The rack — a bought hull rides the manifest of every run.'));
+    const hangarHulls = el('ul', 'k-words k-words--row sf-crd-tracks fh-cluster');
+    hangarHulls.setAttribute('aria-label', 'Hangar hull rack');
+    pin(hangarHulls, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
+    hangarBody.appendChild(hangarHulls);
     const hangarHint = el('p', 'k-t-fine k-38 sf-crd-hangar-note', '');
     hangarBody.appendChild(hangarHint);
     hangarLi.hidden = true;
@@ -1897,7 +1909,7 @@ export const crucibleScreen = {
     // through the profile owner's seam and repaints; the row hides off the swarm door.
     function syncHangar() {
       let els = null;
-      try { els = { hangarLi, hangarNote, hangarTracks, hangarHint }; }
+      try { els = { hangarLi, hangarNote, hangarTracks, hangarHulls, hangarHint }; }
       catch { return; /* pre-mount */ }
       const on = ruleset === SWARM_RULESET;
       els.hangarLi.hidden = !on;
@@ -1935,6 +1947,39 @@ export const crucibleScreen = {
           syncHangar();
         });
         addWord(els.hangarTracks, button);
+      }
+      // The rack's buttons are the track buttons' siblings: name · price, disabled until the
+      // bounty stands it or it is already in the bay. The buy goes through the same profile
+      // seam (buyCrucibleHangarHull loads, buys, saves) and the repaint re-reads the bag, so
+      // the bay count on the note line is the same ownedHulls the next run's manifest reads.
+      els.hangarHulls.innerHTML = '';
+      for (const row of hangarHullRackView(hangar)) {
+        const button = word(row.owned
+          ? `${row.name} · in the bay`
+          : `${row.name} · ${row.price} cr`, 'k-word--fine');
+        paintKey(button, 'small');
+        button.disabled = !row.buyable;
+        button.setAttribute('aria-disabled', String(!row.buyable));
+        button.title = row.owned
+          ? `${row.name} is in the bay — a free armory switch on every run.`
+          : `Buy the ${row.name} outright — it rides the manifest of every later run.`;
+        button.addEventListener('click', () => {
+          const res = buyCrucibleHangarHull(row.hullId, row.price);
+          if (res && res.ok) {
+            els.hangarHint.textContent = `${row.name} is in the bay — the armory switches to it free, every run.`;
+            try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+            cue('confirm');
+          } else {
+            els.hangarHint.textContent = res && res.reason === 'short'
+              ? 'The bounty cannot stand it yet — bank more in the arena.'
+              : res && res.reason === 'owned'
+                ? `${row.name} is already in the bay.`
+                : 'That hull did not land.';
+            cue('deny');
+          }
+          syncHangar();
+        });
+        addWord(els.hangarHulls, button);
       }
     }
 
