@@ -58,7 +58,7 @@ import { wreckMissionById } from '../data/wreckMissions.js';
 import { pickWreckClass, wreckClassById } from '../data/wreckClasses.js';
 import { effectiveDangerTierFor, sectorSignalFor } from './sectorSim.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
-import { postImpoundListing } from './impoundLot.js';
+import { postImpoundListing, ensureImpoundLotWiring } from './impoundLot.js';
 import { FACTION_KITS } from '../data/factions/index.js';
 
 const MAX_PER_SECTOR = 8;           // ring-buffer cap — bounded growth (failureMode guard)
@@ -426,6 +426,10 @@ export const lossLedger = {
     this._helpers = ctx && ctx.helpers;
     this._registry = ctx && ctx.registry;
     ensureState(this._state);
+    // The living lot's clocks live on this slice. Wiring here — not only at
+    // post — keeps a save-restored book (and a marked hull's ransom seams)
+    // alive in a session that never sees a fresh postImpoundListing.
+    ensureImpoundLotWiring(this._state, ctx);
 
     this._onAssetLost = (p) => this._handleAssetLost(p);
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
