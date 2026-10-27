@@ -8,6 +8,7 @@
 // Before the deck this module owned its own corner card, style tag, digit keys and a gamepad poll
 // that fired simultaneously with every other card's poll (one A press complied AND tracked).
 import { COMMODITIES } from '../data/commodities.js';
+import { commodityDisplayName } from './commodityNames.js';
 import { FACTION_META } from '../data/factions.js';
 import { getPromptDeck } from './promptDeck.js';
 
@@ -35,7 +36,7 @@ function numberText(value) {
 }
 
 function commodityLabel(id) {
-  return COMMODITY_LABELS.get(id) || String(id || 'cargo').replace(/^cmdty_/i, '').replace(/_/g, ' ');
+  return COMMODITY_LABELS.get(id) || (id ? commodityDisplayName(id) : 'cargo');
 }
 
 export function parleyDemandText(demand) {

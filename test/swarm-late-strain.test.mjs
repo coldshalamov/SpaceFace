@@ -6,7 +6,10 @@
 // share hatches marked 'volatile' — one byte per slot, one honored effect (the body
 // pops where it dies: a small blast and a shove on the signature, never a kill on the
 // pack). From wave 97 a second cooking joins the draw: 'plated' — the keelback's shell
-// law on a single body, refusing every cause but mass. The picker's seeded hand deals
+// law on a single body, refusing every cause but mass. From wave 111 the trio closes
+// on the last axis — WHO FIRST: 'commander' marks one or two LEADERS (a count band,
+// not a share), and a live leader buffs every other body inside its radius — the pack
+// steers harder and runs faster until the leader dies. The picker's seeded hand deals
 // ONE strain per wave, so the plateau alternates its lessons rather than mixing them.
 // The marks ride budgeted bodies and the champion waves stay exempt. The mark is a
 // standing property — no telegraph line; the slam card speaks each strain once at its
@@ -24,6 +27,7 @@ import {
 } from '../src/data/swarmBrood.js';
 import {
   SWARM_BROOD_LATE_FAMILIES,
+  SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE,
   SWARM_BROOD_STRAIN_FROM_WAVE,
   SWARM_BROOD_STRAIN_PLATED_FROM_WAVE,
   SWARM_BROOD_STRAIN_SHARE_MAX,
@@ -42,6 +46,13 @@ import { HIVE_ARENA_ID } from '../src/systems/theHiveArena.js';
 const DT = 1 / 60;
 const SEED = 4242;
 const VOLATILE = SWARM_BROOD_STRAINS[0];
+const COMMANDER = swarmBroodStrainById('commander');
+
+/** A deterministic roll stream handing back the listed draws in order. */
+function seq(...vals) {
+  let n = 0;
+  return () => vals[Math.min(n++, vals.length - 1)];
+}
 
 function boot(wave, arenaId = null) {
   const state = createGameState(SEED);
@@ -137,9 +148,10 @@ test('the strain picker gates on wave band, champion and mite-count law', () => 
         `wave ${w} marked above the share ceiling`);
     }
   }
-  // From the plated gate the strain draw picks between both cookings — the seeded
-  // hand deals one per wave, never a mix, and either pick keeps the share band.
-  for (const w of [SWARM_BROOD_STRAIN_PLATED_FROM_WAVE, 99, 113, 127, 139]) {
+  // From the plated gate the strain draw picks between the unlocked cookings — the
+  // seeded hand deals one per wave, never a mix, and a share-band pick keeps the
+  // authored band. Between the two gates the hand is the two cookings alone.
+  for (const w of [99, 103, 107]) {
     const hot = swarmBroodStrainFor(w, 200, () => 0.9);
     const cold = swarmBroodStrainFor(w, 200, () => 0.1);
     assert.equal(hot.strain.id, 'plated', `wave ${w}: high strain draw should field plated`);
@@ -151,9 +163,44 @@ test('the strain picker gates on wave band, champion and mite-count law', () => 
         `wave ${w} marked above the share ceiling`);
     }
   }
+  // The debut law: a strain's own gate wave fields that cooking under EVERY roll —
+  // the slam card's lesson is on the field that wave, whatever the draw says.
+  for (const rollV of [0.1, 0.5, 0.9]) {
+    assert.equal(swarmBroodStrainFor(SWARM_BROOD_STRAIN_PLATED_FROM_WAVE, 200, () => rollV).strain.id,
+      'plated', 'the plated debut wave dealt another cooking');
+    assert.equal(swarmBroodStrainFor(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE, 200, () => rollV).strain.id,
+      'commander', 'the commander debut wave dealt another cooking');
+  }
+  // From the commander gate the seeded hand deals from the whole trio — one cooking
+  // per wave, never a mix. The share-band picks keep the share band; the commander
+  // pick keeps its own count law: one or two heads, never a marked fifth.
+  for (const w of [112, 113, 127, 139]) {
+    if (isSwarmBossWave(w)) continue;
+    const cold = swarmBroodStrainFor(w, 200, () => 0.1);
+    const mid = swarmBroodStrainFor(w, 200, () => 0.5);
+    const hot = swarmBroodStrainFor(w, 200, () => 0.9);
+    assert.equal(cold.strain.id, 'volatile', `wave ${w}: low strain draw should field volatile`);
+    assert.equal(mid.strain.id, 'plated', `wave ${w}: mid strain draw should field plated`);
+    assert.equal(hot.strain.id, 'commander', `wave ${w}: high strain draw should field commander`);
+    for (const pick of [cold, mid]) {
+      assert.ok(pick.count >= SWARM_BROOD_STRAIN_MIN_MARKED && pick.count <= 199,
+        `wave ${w} mark count ${pick.count} outside the authored band`);
+      assert.ok(pick.count <= Math.round(200 * SWARM_BROOD_STRAIN_SHARE_MAX) + 1,
+        `wave ${w} marked above the share ceiling`);
+    }
+    assert.ok(hot.count >= 1 && hot.count <= COMMANDER.markMax,
+      `wave ${w} leader count ${hot.count} outside the count band`);
+    // The second draw still seeds the leader count inside its own band — below the
+    // band's midpoint one head, at it two. Both draws are spent either way.
+    assert.equal(swarmBroodStrainFor(w, 200, seq(0.9, 0.49)).count, 1,
+      `wave ${w} low count draw did not field one leader`);
+    assert.equal(swarmBroodStrainFor(w, 200, seq(0.9, 0.5)).count, 2,
+      `wave ${w} high count draw did not field two leaders`);
+  }
   // Deterministic: same stream position, same pick.
   const rngA = () => 0.314;
   assert.deepEqual(swarmBroodStrainFor(91, 180, rngA), swarmBroodStrainFor(91, 180, rngA));
+  assert.deepEqual(swarmBroodStrainFor(131, 180, rngA), swarmBroodStrainFor(131, 180, rngA));
 });
 
 // (a cont.) The late table's authoring check stays clean — strains included.
@@ -227,13 +274,15 @@ test('a wave-83 room hatches a marked mite share inside its own plan', () => {
 });
 
 // (c cont.) Later band waves keep marking — the plateau never runs clean again.
-// From the plated gate the seeded draw alternates the two cookings: one strain per
-// wave, never a mix, and each wave's whole mark budget carries that strain's byte.
+// From the plated gate the seeded draw alternates the unlocked cookings: one strain
+// per wave, never a mix, and each wave's whole mark budget carries that strain's byte.
 test('the whole plateau hatches the strain every non-champion wave', () => {
   // The run-seed deal for these exact waves (probe: seed 4242 through prepareWave):
-  // pre-97 every room fields volatile; the plateau then alternates as the draw lands.
+  // pre-97 every room fields volatile; the plateau then alternates as the draw lands —
+  // and from 111 the commander joins the hand (its own debut wave always fields it).
   const dealt = new Map([[87, 'volatile'], [95, 'volatile'], [97, 'plated'],
-    [103, 'volatile'], [121, 'plated'], [135, 'plated']]);
+    [103, 'volatile'], [SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE, 'commander'],
+    [112, 'commander'], [127, 'volatile'], [135, 'commander']]);
   for (const [wave, strainId] of dealt) {
     if (isSwarmBossWave(wave)) continue;
     const h = boot(wave);
@@ -408,6 +457,16 @@ test('the strain debuts on the card seam at its gate wave and only there', () =>
   assert.ok(typeof plated.name === 'string' && plated.name.length > 0);
   assert.ok(typeof plated.counter === 'string' && plated.counter.length >= 10);
   assert.equal(swarmBroodStrainDebutFor(98), null, 'the plated debut lingers past its wave');
+  // The third cooking takes its own card wave — the trio's last lesson.
+  assert.equal(swarmBroodStrainDebutFor(110), null, 'a champion wave carries no strain debut');
+  const commander = swarmBroodStrainDebutFor(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  assert.ok(commander, 'the commander gate wave carries no strain debut');
+  assert.equal(commander.id, 'commander');
+  assert.equal(commander, COMMANDER);
+  assert.ok(typeof commander.name === 'string' && commander.name.length > 0);
+  assert.ok(typeof commander.counter === 'string' && commander.counter.length >= 10);
+  assert.equal(swarmBroodStrainDebutFor(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE + 1), null,
+    'the commander debut lingers past its wave');
 });
 
 // (i) A plated wave: the second cooking hatches a marked mite share out of the same
@@ -524,5 +583,138 @@ test('the plated strain never changes the wave population', () => {
     assert.equal(budget(h.engine), swarmBroodPopulation(wave),
       `wave ${wave} moved off its population once marked plated`);
     assert.ok(h.engine.census().alive <= SWARM_BROOD_MAX);
+  }
+});
+
+// (l) A commander wave: the third cooking marks one or two LEADERS — its own count
+// band instead of a share — on the same carrier family, the same mark budget
+// machinery, the same population law, deterministic across engines.
+test('a commander room hatches one or two marked leaders under its own count band', () => {
+  const h = boot(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  const h2 = boot(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h.engine.prepareWave(h.state.run, SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h2.engine.prepareWave(h2.state.run, SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  assert.deepEqual(h2.engine._strain(), h.engine._strain(), 'the commander pick is not deterministic');
+
+  const strain = h.engine._strain();
+  // The debut wave always fields the debuting cooking — this IS the commander's wave.
+  assert.equal(strain.id, 'commander');
+  assert.ok(strain.left >= 1 && strain.left <= COMMANDER.markMax,
+    `the leader band armed ${strain.left} marks`);
+
+  const spawned = h.engine.spawnWave(h.state);
+  assert.ok(spawned > 0);
+  assert.equal(budget(h.engine), swarmBroodPopulation(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE),
+    'the commander wave moved off its authored population');
+
+  const mark = swarmBroodStrainMark('commander');
+  assert.ok(mark === 3 && mark !== swarmBroodStrainMark('volatile')
+    && mark !== swarmBroodStrainMark('plated'), 'the commander did not take its own byte');
+  const miteIdx = familyIndex('mite');
+  const marked = markedSlots(h.engine, mark);
+  assert.equal(marked.length + h.engine._strain().left, strain.left,
+    'leaders do not account for the whole mark budget');
+  assert.ok(marked.length >= 1 && marked.length <= COMMANDER.markMax,
+    `a commander wave fielded ${marked.length} leaders`);
+  for (const slot of marked) {
+    assert.equal(h.engine._bodies.family[slot], miteIdx, 'a non-mite body took the commander mark');
+  }
+  assert.equal(h.engine.view.strain, 'commander');
+  h2.engine.spawnWave(h2.state);
+  assert.deepEqual(markedSlots(h2.engine, mark), marked,
+    'the leader cohort is not deterministic across engines');
+});
+
+// (m) The honored effect is a different law again — WHO FIRST: a live leader flags
+// every OTHER body inside its authored radius; the flagged pack runs the strain's
+// own speed multiplier while the unflagged keep the ordinary law; and killing the
+// leader drops the aura the same tick it dies.
+test("a live leader's aura buffs its pack — and the buff dies with the leader", () => {
+  const h = boot(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h.engine.prepareWave(h.state.run, SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h.engine.spawnWave(h.state);
+  const mark = swarmBroodStrainMark('commander');
+  const leaders = markedSlots(h.engine, mark);
+  assert.ok(leaders.length >= 1, 'no leader landed to pin the aura against');
+  const b = h.engine._bodies;
+  const miteIdx = familyIndex('mite');
+  // The aura under test is ONE leader's: park it near the signature with packmates
+  // authored-radius in and out, and park every OTHER leader far away.
+  const L = leaders[0];
+  b.px[L] = h.player.pos.x + 100;
+  b.pz[L] = h.player.pos.z;
+  for (let k = 1; k < leaders.length; k++) {
+    b.px[leaders[k]] = h.player.pos.x + 2000;
+    b.pz[leaders[k]] = h.player.pos.z + 2000;
+  }
+  const probes = [];
+  for (let i = 0; i < SWARM_BROOD_MAX && probes.length < 3; i++) {
+    if (b.alive[i] && b.affix[i] === 0 && b.family[i] === miteIdx && !leaders.includes(i)) probes.push(i);
+  }
+  assert.equal(probes.length, 3, 'not enough unmarked mites to pin the aura');
+  const [inside, inside2, outside] = probes;
+  // Inside the authored radius on both sides; outside it on the signature's far flank.
+  b.px[inside] = b.px[L] + COMMANDER.commandRadius - 20;
+  b.pz[inside] = b.pz[L];
+  b.px[inside2] = b.px[L] - 30;
+  b.pz[inside2] = b.pz[L] + 20;
+  b.px[outside] = b.px[L] + COMMANDER.commandRadius + 120;
+  b.pz[outside] = b.pz[L];
+  for (const s of probes) { b.vx[s] = 0; b.vz[s] = 0; }
+
+  step(h, 1);
+  assert.equal(b.commandBuff[inside], 1, 'the aura never flagged the pack inside it');
+  assert.equal(b.commandBuff[inside2], 1, 'the aura never flagged the pack inside it');
+  assert.equal(b.commandBuff[outside], 0, 'the aura leaked past its authored radius');
+  assert.equal(b.commandBuff[L], 0, 'the leader flagged itself');
+  for (let k = 1; k < leaders.length; k++) {
+    assert.equal(b.commandBuff[leaders[k]], 0, 'one leader flagged another');
+  }
+  // The buff is honored on the flock's own levers: flagged bodies accelerate the
+  // strain's factor harder and run the strain's factor faster, so a flagged mite
+  // out-runs an unflagged one hunting the same signature.
+  step(h, 30);
+  const speed = (i) => Math.hypot(b.vx[i], b.vz[i]);
+  assert.ok(speed(inside) > speed(outside) * 1.2,
+    `flagged ${speed(inside).toFixed(2)} never out-ran unflagged ${speed(outside).toFixed(2)}`);
+
+  // Kill the leader — the aura it owned drops on the very next tick.
+  h.engine._killDirectForTest(L, 'collision');
+  assert.equal(b.alive[L], 0, 'the leader did not die');
+  step(h, 1);
+  assert.equal(b.commandBuff[inside], 0, 'the aura outlived its leader');
+  assert.equal(b.commandBuff[inside2], 0, 'the aura outlived its leader');
+});
+
+// (n) A leader's death is no pop — the aura is the whole effect: no burst receipt,
+// no blast on the signature, no kill-gate either (every lawful cause answers). And
+// the leader band never grows the room.
+test('a commander death pops nothing, gates nothing, and the room never grows', () => {
+  const h = boot(SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h.engine.prepareWave(h.state.run, SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE);
+  h.engine.spawnWave(h.state);
+  step(h, 1);
+  const mark = swarmBroodStrainMark('commander');
+  const leaders = markedSlots(h.engine, mark);
+  assert.ok(leaders.length >= 1);
+  const slot = leaders[0];
+  // No kill-gate: a blast cracks a leader like any other mite.
+  h.engine._killDirectForTest(slot, 'explosive');
+  assert.equal(h.engine._bodies.alive[slot], 0, 'the commander grew a kill-gate it does not own');
+  // And no pop: the aura is its whole honored effect.
+  assert.ok(!h.emitted.some((e) => e.event === 'swarm:broodBurst'
+    && e.payload.strain === 'commander'), 'the commander death emitted a pop it does not own');
+  assert.ok(h.emitted.some((e) => e.event === 'swarm:broodKills'),
+    'the leader death emitted no kill receipt');
+
+  for (const wave of [SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE, 112, 139]) {
+    if (isSwarmBossWave(wave)) continue;
+    const h2 = boot(wave);
+    h2.engine.prepareWave(h2.state.run, wave);
+    if (h2.engine._strain().id !== 'commander') continue; // the seed dealt elsewhere — not this pin's wave
+    h2.engine.spawnWave(h2.state);
+    assert.equal(budget(h2.engine), swarmBroodPopulation(wave),
+      `wave ${wave} moved off its population once marked commander`);
+    assert.ok(h2.engine.census().alive <= SWARM_BROOD_MAX);
   }
 });

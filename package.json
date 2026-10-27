@@ -730,7 +730,8 @@
     "check:bar-authored-role-labels": "node --test test/bar-authored-role-labels.test.mjs",
     "check:grandee-causal-consequences": "node --test test/grandee-transit-encounter.test.mjs test/grandee-causal-owner.test.mjs",
     "check:salvage-dispute-recovery": "node --test test/sfq-m-salvage-dispute.test.mjs test/salvage-dispute-recovery-native.test.mjs",
-    "check:pip-spanner-receipts": "node --test test/pip-spanner-ui.test.mjs test/pip-spanner-purchase-receipts.test.mjs test/pip-spanner-preview-lifecycle.test.mjs"
+    "check:pip-spanner-receipts": "node --test test/pip-spanner-ui.test.mjs test/pip-spanner-purchase-receipts.test.mjs test/pip-spanner-preview-lifecycle.test.mjs",
+    "check:retail-boot": "node scripts/check-retail-boot.mjs"
   },
   "private": true,
   "devDependencies": {

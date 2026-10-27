@@ -4,6 +4,7 @@
 // danger/economy/influence from private save fields, and it does not own simulation math. The same
 // transit forecast shown here is the function used by sectorSim on jump arrival.
 import { SECTORS, dangerTier } from '../../data/sectors.js';
+import { commodityDisplayName } from '../commodityNames.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { FACTION_META } from '../../data/factions.js';
 import {
@@ -491,7 +492,7 @@ function hashText(s) {
 
 function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
-  return c ? c.name : id;
+  return c ? c.name : commodityDisplayName(id);
 }
 
 function stationSectorCatalog(state) {

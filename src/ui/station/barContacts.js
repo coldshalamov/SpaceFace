@@ -1,4 +1,5 @@
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
+import { commodityDisplayName } from '../commodityNames.js';
 // Shared station-contact data, choices, replies, and map actions.
 // DOM rendering belongs to src/ui/station/screens/bar.js.
 
@@ -1067,7 +1068,7 @@ function openMissionLog(ctx) {
 
 function commodityName(id) {
   const c = COMMODITY_BY_ID.get(id);
-  return c ? c.name : id;
+  return c ? c.name : commodityDisplayName(id);
 }
 function stationName(id, state) {
   const info = barStationInfo(id, state);

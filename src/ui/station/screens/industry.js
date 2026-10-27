@@ -1,4 +1,5 @@
 import { industryFrameHtml } from '../../views/stationFrames.js';
+import { commodityDisplayName } from '../../commodityNames.js';
 // src/ui/station/screens/industry.js — "Industry" fabrication as a kit panel (Frontend Task C §1.7).
 // Left: the processes under a k-caps per category — each blueprint a row (output × qty, the tier
 // and its one-line readiness as the sub-line, the readiness carried by the row's is-* state class
@@ -52,7 +53,7 @@ const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
 const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station' };
 
 function niceName(id, kind) { return NAME.get((kind || 'commodity') + ':' + id) || String(id).replace(/^cmdty_|^mod_|^wpn_|^ship_/, '').replace(/_/g, ' '); }
-function matName(id) { return CMDTY_NAME.get(id) || String(id).replace(/^cmdty_/, '').replace(/_/g, ' '); }
+function matName(id) { return CMDTY_NAME.get(id) || commodityDisplayName(String(id)); }
 // A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
 // name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
 const OUTPUT_ENTITY_TYPE = { commodity: 'commodity', module: 'module', ship: 'hull' };

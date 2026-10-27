@@ -300,7 +300,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-yard > .orr-turntable__row > li.is-front { translate:0 22px !important; }
   ${NGD} .orr-hullring text.orr-hullring__num { font-size:24px !important; }
   ${NGD} .orr-hullring text.orr-hullring__num tspan { font-size:12px !important; }
-  /* the side names set at normal width, and the LINE gloss ("massline winch speed") condensed, so both
+  /* the side names set at normal width, and the LINE gloss ("winch speed") condensed, so both
      readings and the gloss stay inside the window beside a hull that keeps most of its size */
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
