@@ -1,6 +1,16 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Build Map
 
+<!-- strategic-chaos-foundations:start -->
+The owner-directed [Strategic Chaos program](design/program/strategic-chaos/README.md)
+connects strategic command, readable physics, multi-party operations and lasting consequences.
+Its [thirteen implementation commissions](design/program/strategic-chaos/PROGRAM.md) extend
+existing rows; SC labels are document labels, not new queue IDs or completion claims.
+Use `node scripts/strategic-chaos.mjs brief SC-01` for a complete agent assignment, and the
+[foundation checks and proof adapter](design/program/strategic-chaos/FOUNDATIONS.md) for evidence.
+Current claims, ordinary-route acceptance, INFERENCE and the existing single-writer owners remain authoritative.
+<!-- strategic-chaos-foundations:end -->
+
 The owner-requested [Maturity and cloud implementation pack](design/program/maturity-cloud-2026-10-20/README.md)
 expands the existing first-hour, physics/Swarm, living-world, economy and discovery rows into
 bounded workflows and ten cloud-sized slices. This is supporting detail, not a second queue;
