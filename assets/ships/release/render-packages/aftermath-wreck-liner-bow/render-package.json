@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9a53596df65c121855da15a3fecc3816d70b00bbb3d0f00b743b8598f9cf0842",
+  "contentHash": "5ecccab9b615910161d8e3d7ade0d54094e35cfe8e8b87955918df16e15a61ff",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1420,7 +1420,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib0",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib0",
@@ -1445,7 +1445,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib1",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib1",
@@ -1470,7 +1470,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib2",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib2",
@@ -1495,7 +1495,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib3",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib3",
@@ -1520,7 +1520,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib4",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib4",
@@ -1570,7 +1570,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib6",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib6",
@@ -1595,7 +1595,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib7",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib7",
@@ -1620,7 +1620,7 @@
       "id": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
+      "materialHash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
       "materialPipelineKey": "opaque",
       "meshName": "woundAft_f_rib8",
       "nodeId": "sf.render.aftermath-wreck-liner-bow.mesh.woundaft-f-rib8",
@@ -1858,6 +1858,38 @@
   "lods": [],
   "materials": [
     {
+      "hash": "0c898285a1af648404c69513c4b70ecd986e0fef947b5ebc6210b0b5fbde614c",
+      "id": "material:0c898285a1af648404c69513",
+      "name": "Forge_massline_express_liner_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "26f0260af55f95f62389669d0aa4e0d2a78e3fff7099392fc6e4e81d0961c4ad",
       "id": "material:26f0260af55f95f62389669d",
       "name": "Forge_massline_express_liner_hazard",
@@ -2058,38 +2090,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "bd2c5bccc203471f40a56c8353aa1d7e620f6c263672687e077e789243a70f95",
-      "id": "material:bd2c5bccc203471f40a56c83",
-      "name": "Forge_massline_express_liner_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -4702,14 +4702,14 @@
       "uri": "place_aftermath_wreck_liner_bow.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 345476,
-    "sha256": "ede31474315581e9fa723f17deee18c3c0503cbe541daa59222b3b37654b1f70",
+    "bytes": 345584,
+    "sha256": "7e47bf74416227c2c44cc65d8fbe576a03b896adf3827e16d192e9049566c44b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -7070,7 +7070,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_bow.glb"
   },
-  "runtimeHash": "4b06e24ccc4500d2599e1e3cc970c4d43af7578f372d6fb7363860743b252005",
+  "runtimeHash": "de2334b335e17c62d5c11c82e499129121bc41e195b3bdf84686191fd03a8f02",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2a8aa5e43f98b7d62d1b2f275b1d96307624717d559d8bead6019cf216297aee",
+  "contentHash": "973cafd460092c0047c8aa78d99e5bde2381cbb2d913cc875072e564c3031587",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
+      "materialHash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
       "materialPipelineKey": "opaque",
       "meshName": "Beacon",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.beacon",
@@ -245,7 +245,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0-m",
@@ -270,7 +270,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-0",
@@ -295,7 +295,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1-m",
@@ -320,7 +320,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-1",
@@ -345,7 +345,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2-m",
@@ -370,7 +370,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-2",
@@ -395,7 +395,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3-m",
@@ -420,7 +420,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.bridgewin-3",
@@ -445,7 +445,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood-m",
@@ -470,7 +470,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.flood.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.flood",
@@ -495,7 +495,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.lampbar.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "LampBar",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.lampbar",
@@ -520,7 +520,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-foot.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "Mast_Foot",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-foot",
@@ -545,7 +545,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.mast-mast.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
+      "materialHash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
       "materialPipelineKey": "opaque",
       "meshName": "Mast_Mast",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.mast-mast",
@@ -570,7 +570,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib0",
@@ -595,7 +595,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib1",
@@ -620,7 +620,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib2",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib2",
@@ -645,7 +645,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib3",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib3",
@@ -670,7 +670,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib4",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib4",
@@ -695,7 +695,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib5",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib5",
@@ -720,7 +720,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "towerBase_rib6",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerbase-rib6",
@@ -770,7 +770,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerskirt.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
+      "materialHash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
       "materialPipelineKey": "opaque",
       "meshName": "TowerSkirt",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerskirt",
@@ -795,7 +795,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0-m",
@@ -820,7 +820,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-0",
@@ -845,7 +845,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1_M",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1-m",
@@ -870,7 +870,7 @@
       "id": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1",
       "nodeId": "sf.render.aftermath-aft-cockpit-section.node.towerwin-1",
@@ -882,70 +882,6 @@
   "kind": "place",
   "lods": [],
   "materials": [
-    {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
-      "id": "material:0dac9b269e88e4a2a6e51b7b",
-      "name": "Forge_ore_barge_gunmetal",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
     {
       "hash": "15ed238ec68bfce5920f3de3318a46f7ec374c6e52a293abe76f742a2ee51e7e",
       "id": "material:15ed238ec68bfce5920f3de3",
@@ -979,11 +915,36 @@
       ]
     },
     {
-      "hash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
-      "id": "material:458a949ee94c7745fec3c2d5",
-      "name": "Forge_ore_barge_glow_amber",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "1ebadaa97cbcbe08a1b9931ff2ff1db227b4c22b6a6a4ff6977fd8d9b23c97b1",
+      "id": "material:1ebadaa97cbcbe08a1b9931f",
+      "name": "Forge_ore_barge_gunmetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "4e85f4b12211dce9496ca638d96cd779448e7cedac9aab38dd65da2871c14a4d",
@@ -1057,10 +1018,24 @@
       ]
     },
     {
-      "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
-      "id": "material:c36a4bf93ab869729a357a6a",
-      "name": "Forge_ore_barge_wk_scorch",
-      "pipelineKey": "opaque:double",
+      "hash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
+      "id": "material:b7dd1f662234aa98804ecaf3",
+      "name": "Forge_ore_barge_glow_warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
+      "id": "material:befa2158c9128240e6aaed8c",
+      "name": "Forge_ore_barge_glow_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1089,11 +1064,36 @@
       ]
     },
     {
-      "hash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
-      "id": "material:f6a0573d4efe444e59efea7d",
-      "name": "Forge_ore_barge_glow_warm",
-      "pipelineKey": "opaque:double",
-      "textures": []
+      "hash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
+      "id": "material:e9f7bd582170738d03ca89c5",
+      "name": "Forge_ore_barge_wk_scorch",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -2626,14 +2626,14 @@
       "uri": "place_aftermath_aft_cockpit_section.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 217564,
-    "sha256": "4017d61d49467f2564906f99ef1722dc6d358c27fb73115cbcc73eba7fd7d61a",
+    "bytes": 217696,
+    "sha256": "d87103f28fe38e6c31c04fdd0983a7ff3adf2ea6935752804c265fe638456c40",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3748,7 +3748,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
   },
-  "runtimeHash": "27583582eaa33d60f30a6315edf7d314f2faaed3637966e825b86dcf58b89b6e",
+  "runtimeHash": "5fdaf58c71400e4b5de6aa61cf15e8f727f0fba42fc5ca1d7cbc6b78acc01820",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

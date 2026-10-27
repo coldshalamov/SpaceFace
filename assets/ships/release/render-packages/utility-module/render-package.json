@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "178d539a714176b61e1c5f745ec0fa4d9be8c06c3e1cda9434335729713787c0",
+  "contentHash": "63b84fa94f2b906dc6aaef715497df8f2307dbee3e48a3aecfbb8f30b04add8a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -374,7 +374,7 @@
       "id": "sf.render.utility-module.mesh.status.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.utility-module.mesh.status",
@@ -433,17 +433,17 @@
       "textures": []
     },
     {
-      "hash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
-      "id": "material:6c55db37a0352026e716da34",
-      "name": "esk_armor_plate",
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
-      "id": "material:710749cab1590f13b764fa15",
-      "name": "esk_light_signal_amber",
-      "pipelineKey": "opaque:double",
+      "hash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
+      "id": "material:6c55db37a0352026e716da34",
+      "name": "esk_armor_plate",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1235,14 +1235,14 @@
       "uri": "place_utility_module.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 22632,
-    "sha256": "74c8ab907fe33305c546a484cd9d8c1bac573534519c28cd62cbae4cfa54f9bb",
+    "bytes": 22720,
+    "sha256": "e8eae9ab6e4e0d5db5fa1c2680bbb92a926e3822c5eded1afd9ae69ca643c17f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1772,7 +1772,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_utility_module.glb"
   },
-  "runtimeHash": "439b461be31d3458fc5850525e602db0787bddccc77e2875d67af028477e6496",
+  "runtimeHash": "9f393ac455f2596537f4be186278ede26d201a73ae69bc83e91b6fd465f13edb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

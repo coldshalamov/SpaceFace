@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "baa247625e52ca0db358ce59130c39538c3440017041cb89278e0b738fea4c16",
+  "contentHash": "89e19d9a88db5bc7741658e248f03405008a93fa9fdf349fbc9561ad6482e454",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -52,7 +52,7 @@
       "id": "sf.render.engine-industrial.node.det-cinder-spatter.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialHash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.engine-industrial.node.det-cinder-spatter",
@@ -102,7 +102,7 @@
       "id": "sf.render.engine-industrial.node.det-ore-dust-cake.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialHash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-industrial.node.det-ore-dust-cake",
@@ -177,7 +177,7 @@
       "id": "sf.render.engine-industrial.node.det-rust-bloom-flank.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialHash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-industrial.node.det-rust-bloom-flank",
@@ -227,7 +227,7 @@
       "id": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged.primitive.0",
       "indexCount": 2160,
       "indexed": true,
-      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialHash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
       "materialPipelineKey": "opaque",
       "meshName": "engine_industrial_Material_Hull_Merged",
       "nodeId": "sf.render.engine-industrial.node.engine-industrial-material-hull-merged",
@@ -352,7 +352,7 @@
       "id": "sf.render.engine-industrial.node.lod0-engine-industrial-main.primitive.0",
       "indexCount": 1296,
       "indexed": true,
-      "materialHash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
+      "materialHash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ENGINE_INDUSTRIAL_MAIN",
       "nodeId": "sf.render.engine-industrial.node.lod0-engine-industrial-main",
@@ -391,10 +391,10 @@
       ]
     },
     {
-      "hash": "48b3546274460f11c608292c753cb122b7fff005fed25750487fabc2e49079fe",
-      "id": "material:48b3546274460f11c608292c",
+      "hash": "512ab0fee636e5288c4967f8c514bba666d025fe274e1bd949907af4b204361e",
+      "id": "material:512ab0fee636e5288c4967f8",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -2602,14 +2602,14 @@
       "uri": "engine_industrial.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 400128,
-    "sha256": "9e2674ff9b119e7e41caa52ab6a2c0f3f7b6c19f71c5ba3b850aab09638fe47e",
+    "bytes": 400212,
+    "sha256": "b746bbb8dd6d2bfa1d22395b47d5449e558cbe65ad44ca3cc76daa2f3392b624",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3146,7 +3146,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_industrial.glb"
   },
-  "runtimeHash": "c3c88b0702eef13091ba4e3c439aa76a81216a1377e65cdd74f0f34af2f1625f",
+  "runtimeHash": "7d7a7a0235c8bb2f6f2807e906b0f0f0f7d88e5e9765a1264253523236cc54ae",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

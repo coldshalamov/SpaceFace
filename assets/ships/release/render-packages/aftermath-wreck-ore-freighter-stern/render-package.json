@@ -145,7 +145,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6d629fe7805decb97cae8421d665bcddcf9dcf48c2ff06c618b9c4f18635cf56",
+  "contentHash": "b06cc42a88c95b5c3a10ac69f0a583097976efba3c89ec7e204895e28959fb97",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -166,7 +166,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.beacon.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
+      "materialHash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
       "materialPipelineKey": "opaque",
       "meshName": "Beacon",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.beacon",
@@ -291,7 +291,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-0-m",
@@ -316,7 +316,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-0",
@@ -341,7 +341,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-1-m",
@@ -366,7 +366,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-1",
@@ -391,7 +391,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-2-m",
@@ -416,7 +416,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-2",
@@ -441,7 +441,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-3-m",
@@ -466,7 +466,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.bridgewin-3",
@@ -491,7 +491,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.dome-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "28d4ec440d32d22f6ea4e008b8ce06a61ad7375ed0939ec2a5a8d714116d6eaa",
+      "materialHash": "7abd3a9611a14c30d9d40ded8a067b72f45d9387487984a79872718737cb9684",
       "materialPipelineKey": "opaque",
       "meshName": "Dome_Lens",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.dome-lens",
@@ -666,7 +666,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.flood-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.flood-m",
@@ -691,7 +691,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.flood.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "Flood",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.flood",
@@ -1791,7 +1791,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.navport.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "9958fa66765ae50411c1dfcf6e9cbd2dc240b0a1f852aab3f40346cac635dea8",
+      "materialHash": "58f6989fbe83662f9735ef6588fe4c5c668490c4734d0789ce10dc6e506aa39c",
       "materialPipelineKey": "opaque",
       "meshName": "NavPort",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.navport",
@@ -1816,7 +1816,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.navstarboard.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "632b3b388e2f6e99e2232eb005855fc5a9145ebf87307c680d365979a86ccc8c",
+      "materialHash": "56d7ff668e29accaa352d247689ad564414281a6fa27387be325f9fa677794f2",
       "materialPipelineKey": "opaque",
       "meshName": "NavStarboard",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.navstarboard",
@@ -2916,7 +2916,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-0-m",
@@ -2941,7 +2941,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-0",
@@ -2966,7 +2966,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-1-m",
@@ -2991,7 +2991,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-stern.mesh.towerwin-1",
@@ -3493,13 +3493,6 @@
       ]
     },
     {
-      "hash": "28d4ec440d32d22f6ea4e008b8ce06a61ad7375ed0939ec2a5a8d714116d6eaa",
-      "id": "material:28d4ec440d32d22f6ea4e008",
-      "name": "Forge_ore_barge_glow_cyan",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "32e0c093a4c9e58340674d0d65dbca796b4d90fa57c21d41060b6977609ec971",
       "id": "material:32e0c093a4c9e58340674d0d",
       "name": "Forge_ore_barge_wk_scorch_edge",
@@ -3530,13 +3523,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "458a949ee94c7745fec3c2d59ba3700a9570e04271174c52789d608dc73ce73b",
-      "id": "material:458a949ee94c7745fec3c2d5",
-      "name": "Forge_ore_barge_glow_amber",
-      "pipelineKey": "opaque:double",
-      "textures": []
     },
     {
       "hash": "4e85f4b12211dce9496ca638d96cd779448e7cedac9aab38dd65da2871c14a4d",
@@ -3578,10 +3564,24 @@
       ]
     },
     {
-      "hash": "632b3b388e2f6e99e2232eb005855fc5a9145ebf87307c680d365979a86ccc8c",
-      "id": "material:632b3b388e2f6e99e2232eb0",
+      "hash": "56d7ff668e29accaa352d247689ad564414281a6fa27387be325f9fa677794f2",
+      "id": "material:56d7ff668e29accaa352d247",
       "name": "Forge_ore_barge_glow_green",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "58f6989fbe83662f9735ef6588fe4c5c668490c4734d0789ce10dc6e506aa39c",
+      "id": "material:58f6989fbe83662f9735ef65",
+      "name": "Forge_ore_barge_glow_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7abd3a9611a14c30d9d40ded8a067b72f45d9387487984a79872718737cb9684",
+      "id": "material:7abd3a9611a14c30d9d40ded",
+      "name": "Forge_ore_barge_glow_cyan",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -3647,13 +3647,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "9958fa66765ae50411c1dfcf6e9cbd2dc240b0a1f852aab3f40346cac635dea8",
-      "id": "material:9958fa66765ae50411c1dfcf",
-      "name": "Forge_ore_barge_glow_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
     },
     {
       "hash": "998e0169135cb83ed523b293ba43c23d12e1949c4e75727b8428d97ed993fa3b",
@@ -3784,6 +3777,20 @@
       ]
     },
     {
+      "hash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
+      "id": "material:b7dd1f662234aa98804ecaf3",
+      "name": "Forge_ore_barge_glow_warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "befa2158c9128240e6aaed8c0df2471a4737cc6c19b6caef0da53b7d66577446",
+      "id": "material:befa2158c9128240e6aaed8c",
+      "name": "Forge_ore_barge_glow_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
       "id": "material:c36a4bf93ab869729a357a6a",
       "name": "Forge_ore_barge_wk_scorch",
@@ -3819,13 +3826,6 @@
       "hash": "f14da993a92f546d13e369181f470a393fc468943d53f27ef381ff5377e04307",
       "id": "material:f14da993a92f546d13e36918",
       "name": "Forge_ore_barge_glow_drive",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
-      "id": "material:f6a0573d4efe444e59efea7d",
-      "name": "Forge_ore_barge_glow_warm",
       "pipelineKey": "opaque:double",
       "textures": []
     },
@@ -8773,14 +8773,14 @@
       "uri": "place_aftermath_wreck_ore_freighter_stern.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 601928,
-    "sha256": "87d72c868d8d2f29cce26879485797b57323c68e9a3e23b60f84abb1ab16176e",
+    "bytes": 602060,
+    "sha256": "86de6b2c5b3d7cb720c59fde878e5e27a267efd2e94ed75202cd42c1b0ab959c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -13132,7 +13132,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_stern.glb"
   },
-  "runtimeHash": "e6f14a64a88bc60ca68b8996a5089e0c16f4337c7347b4a84a1cc89652aa03b8",
+  "runtimeHash": "1e0b2230f41f206fce9ffe420909860b0cfcff463b802f2fe4c503e8d3b3cefd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

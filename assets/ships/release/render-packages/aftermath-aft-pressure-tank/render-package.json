@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "61dafca425618ff69a452aa1642235b8f8c531eb67670b644e0cf018f3ca296e",
+  "contentHash": "06b603dd562b44241b5ad72d74cc13cc88556503fb3b2039fe227cd612651a59",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear0",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear0",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear1",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear1",
@@ -199,7 +199,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear2",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear2",
@@ -224,7 +224,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear3",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear3",
@@ -249,7 +249,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear4",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear4",
@@ -274,7 +274,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear5",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear5",
@@ -299,7 +299,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
+      "materialHash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
       "materialPipelineKey": "opaque",
       "meshName": "tankPetals_tear6",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankpetals-tear6",
@@ -324,7 +324,7 @@
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankvalve.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
+      "materialHash": "7d510e7f0ceb53b63faf01bf79412d9d8ce6620ffc2f72292bc4b03ef333fa7e",
       "materialPipelineKey": "opaque",
       "meshName": "TankValve",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankvalve",
@@ -369,10 +369,10 @@
       ]
     },
     {
-      "hash": "9298fcfc7c081d69e38949531d83cb8811ebc7cf1e286c15665e626113acbefb",
-      "id": "material:9298fcfc7c081d69e3894953",
+      "hash": "7d510e7f0ceb53b63faf01bf79412d9d8ce6620ffc2f72292bc4b03ef333fa7e",
+      "id": "material:7d510e7f0ceb53b63faf01bf",
       "name": "Forge_massline_express_liner_gunmetal",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -395,38 +395,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "987e4aefae13e344c4e3752c7395c2fa0404a09f5b20a5dbd6c0b9c64e467ec4",
-      "id": "material:987e4aefae13e344c4e3752c",
-      "name": "Forge_massline_express_liner_wk_torn",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -459,6 +427,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "db70268674a0278ee7d18d708afdfd33debc2ea63287de6656f5221c513ab7a0",
+      "id": "material:db70268674a0278ee7d18d70",
+      "name": "Forge_massline_express_liner_wk_torn",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1064,14 +1064,14 @@
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 154812,
-    "sha256": "2fdd41de0d25b2ad6b63b36d35835a0a30bac10ce3e34b19e004d8ac8aaf00be",
+    "bytes": 154936,
+    "sha256": "b3857c4b7b413dda1795734e34f7d12fefb2f1a0e08e8ebfdfc15d20ce9fa1ee",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1504,7 +1504,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "412b83e199cefa91d18d7f19c3ccf288a2e90ccae9c5578a965742a69aafa5bb",
+  "runtimeHash": "1acb4fd44f2861006e29be7fc9a283d799e5435f6d692333c32dbc2a099767a5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

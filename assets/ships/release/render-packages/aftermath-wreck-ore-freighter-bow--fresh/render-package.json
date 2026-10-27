@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "54b8435eddf65870b7ad20a807118d2810f66e5c67f0b87919fa5e6256adb7da",
+  "contentHash": "bba24ad026cd1feb57b030c819612f6f392b8eb1f84d06ee6ffaba3f5fdb1fd6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -262,7 +262,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.bowlamp-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BowLamp_M",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.bowlamp-m",
@@ -287,7 +287,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.bowlamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
+      "materialHash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
       "materialPipelineKey": "opaque",
       "meshName": "BowLamp",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.bowlamp",
@@ -312,7 +312,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.emerg-wk0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "b2e34eb652d8f9e2d6ae9c7753114de8a108f8af1dbbbf62685d19452c0a5a5c",
+      "materialHash": "62c4e4424226af98e263b02a92d41d58b1f9df94989ab42ab50a571155d8ed0e",
       "materialPipelineKey": "opaque",
       "meshName": "emerg_wk0",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.emerg-wk0",
@@ -337,7 +337,7 @@
       "id": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.emerg-wk1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "b2e34eb652d8f9e2d6ae9c7753114de8a108f8af1dbbbf62685d19452c0a5a5c",
+      "materialHash": "62c4e4424226af98e263b02a92d41d58b1f9df94989ab42ab50a571155d8ed0e",
       "materialPipelineKey": "opaque",
       "meshName": "emerg_wk1",
       "nodeId": "sf.render.aftermath-wreck-ore-freighter-bow--fresh.mesh.emerg-wk1",
@@ -4560,6 +4560,13 @@
       ]
     },
     {
+      "hash": "62c4e4424226af98e263b02a92d41d58b1f9df94989ab42ab50a571155d8ed0e",
+      "id": "material:62c4e4424226af98e263b02a",
+      "name": "Forge_ore_barge_wk_emerg",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "7dd3fb3f9465afd5a291a3708854c38af8b4b2a738995f2ba7eb1e1175c0d5f4",
       "id": "material:7dd3fb3f9465afd5a291a370",
       "name": "Forge_ore_barge_ceramic.ore2",
@@ -4720,13 +4727,6 @@
       ]
     },
     {
-      "hash": "b2e34eb652d8f9e2d6ae9c7753114de8a108f8af1dbbbf62685d19452c0a5a5c",
-      "id": "material:b2e34eb652d8f9e2d6ae9c77",
-      "name": "Forge_ore_barge_wk_emerg",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "b7b0be5052ab4f1138a547dbaf6e6c56dd50226bde0061c42d8958e0f9ff4ae0",
       "id": "material:b7b0be5052ab4f1138a547db",
       "name": "Forge_ore_barge_paint",
@@ -4759,6 +4759,13 @@
       ]
     },
     {
+      "hash": "b7dd1f662234aa98804ecaf3adee5ac18e4dcc88b1083dd345637410c6a25558",
+      "id": "material:b7dd1f662234aa98804ecaf3",
+      "name": "Forge_ore_barge_glow_warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
       "id": "material:c36a4bf93ab869729a357a6a",
       "name": "Forge_ore_barge_wk_scorch",
@@ -4789,13 +4796,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "f6a0573d4efe444e59efea7da5e14022ef230f4b96b29c19d27e272b36114410",
-      "id": "material:f6a0573d4efe444e59efea7d",
-      "name": "Forge_ore_barge_glow_warm",
-      "pipelineKey": "opaque:double",
-      "textures": []
     },
     {
       "hash": "fbc5f02020d77dd509e51dc4a45f23cab6f5273733301dbffc94ccbf173e77a0",
@@ -10280,14 +10280,14 @@
       "uri": "place_aftermath_wreck_ore_freighter_bow__fresh.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 635536,
-    "sha256": "f0c50d4149d56381be8a43f6e0f32228a0b1db0114a550122509c843ecc352a7",
+    "bytes": 635636,
+    "sha256": "ccb376f8d000dc1175ad400c8939b9eeaeedce8346e9e27eef7caca19bb58aaa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -15858,7 +15858,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_ore_freighter_bow__fresh.glb"
   },
-  "runtimeHash": "8ce87f35906b9e34c35f727064abebd5c2429e5b6674fe7fa8570467270d558a",
+  "runtimeHash": "cf70838d9f06e950671ee003f39b0284869340f1301ede351f986119c6e78386",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

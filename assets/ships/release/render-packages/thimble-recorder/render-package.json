@@ -105,7 +105,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "928b80f488e8ae60ca0e3d5db403f9486796274f74a2ac6a48cf2f059312739d",
+  "contentHash": "9d99b0adfa14d60550118691690636d989fc4b9c7f910c696b593b8d810c0c0f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -745,8 +745,8 @@
       "uri": "thimble_recorder.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -1030,7 +1030,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/thimble_recorder.glb"
   },
-  "runtimeHash": "cbb22cd1d287755505ed292edb9c99bdd154bc4b7de953eab9fad1d91268b42a",
+  "runtimeHash": "63ae9690207bb48de49ecfe565f7c94efc631f735c9d5083674f3f5b1f57d58f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

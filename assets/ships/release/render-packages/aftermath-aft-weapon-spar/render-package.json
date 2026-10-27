@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1259048fcf6859bcd47d91a4de98e8fee8aaa318563b681d7b5376fec7122733",
+  "contentHash": "5a9c72ac35a270b8c8508a150ba2bda792c3e45c023f156b73c6bf69e22fe1f0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.spar.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
+      "materialHash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
       "materialPipelineKey": "opaque",
       "meshName": "Spar",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.spar",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "sparEnd_tear0",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear0",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "sparEnd_tear1",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear1",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "sparEnd_tear2",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear2",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
+      "materialHash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
       "materialPipelineKey": "opaque",
       "meshName": "sparEnd_tear3",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.sparend-tear3",
@@ -199,7 +199,7 @@
       "id": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette.primitive.0",
       "indexCount": 1908,
       "indexed": true,
-      "materialHash": "9c7a8ef5bc08f1733e59318684e6a2fe3762b7a3909be24a6120c22018a41eb9",
+      "materialHash": "76af6f60878ca9b898f58bf7b26e4a8b478b866aefc633ce2bbc9d27699f4f06",
       "materialPipelineKey": "opaque",
       "meshName": "TurretBBarbette",
       "nodeId": "sf.render.aftermath-aft-weapon-spar.node.turretbbarbette",
@@ -594,6 +594,38 @@
       ]
     },
     {
+      "hash": "11ed44a130019ebcdc096ccdf7af531aa846f64c515c24f6b3854060e8455ff2",
+      "id": "material:11ed44a130019ebcdc096ccd",
+      "name": "Forge_bastion_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "2a85e9ff514d3991263809dc1fc3503b0883dc4e10219c245756fb647ea521a6",
       "id": "material:2a85e9ff514d3991263809dc",
       "name": "Forge_bastion_gunmetal",
@@ -690,42 +722,42 @@
       ]
     },
     {
-      "hash": "6e405ab1041812afcb8616f696d6f3465f326f558c44c8c11c956c33fbae66bf",
-      "id": "material:6e405ab1041812afcb8616f6",
-      "name": "Forge_bastion_wk_frame",
-      "pipelineKey": "opaque:double",
+      "hash": "76af6f60878ca9b898f58bf7b26e4a8b478b866aefc633ce2bbc9d27699f4f06",
+      "id": "material:76af6f60878ca9b898f58bf7",
+      "name": "Forge_bastion_paint2",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
+          "name": "forge_panel_albedo",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "forge_panel_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_normal",
+          "name": "forge_panel_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "forge_machinery_orm",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "9c7a8ef5bc08f1733e59318684e6a2fe3762b7a3909be24a6120c22018a41eb9",
-      "id": "material:9c7a8ef5bc08f1733e593186",
-      "name": "Forge_bastion_paint2",
-      "pipelineKey": "opaque:double",
+      "hash": "a0b9525a2334f9c031ad55fd0646183c63e2899a199e5c84a2d07d6294452789",
+      "id": "material:a0b9525a2334f9c031ad55fd",
+      "name": "Forge_bastion_wk_torn",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -757,38 +789,6 @@
       "hash": "a74dd4b143963f79a060f17a3f39a90317a038bf97dfa49ab12c8587df6825fd",
       "id": "material:a74dd4b143963f79a060f17a",
       "name": "Forge_bastion_paint.upper",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "b88e000b1a54b9b4040410169ddbb6476b02611f239df3f065f79d9c171b1721",
-      "id": "material:b88e000b1a54b9b404041016",
-      "name": "Forge_bastion_wk_torn",
       "pipelineKey": "opaque:double",
       "textures": [
         {
@@ -1760,14 +1760,14 @@
       "uri": "place_aftermath_aft_weapon_spar.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 210028,
-    "sha256": "b36f04c372036f7cf4fc04e515d68a52aa814950f4c0469b845666073603e72a",
+    "bytes": 210128,
+    "sha256": "53d40050a479ebbc58a7a963ffd11d2e4c0593e9ee6acbb4769b5879b09429f5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2489,7 +2489,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_weapon_spar.glb"
   },
-  "runtimeHash": "33046042c90d8101f19750665d0067b937ede10d7b8598beaa0d72c8a5144fd9",
+  "runtimeHash": "fedf0166e3312862115b1b99b8641a9a9b2ed93d775741249d5ee41e54bcfb65",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

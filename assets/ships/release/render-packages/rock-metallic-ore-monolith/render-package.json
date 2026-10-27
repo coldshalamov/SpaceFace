@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5acf39a0ccf500b6a3826fe9541a36f5b2fef83b6f1cfae3becb2c15078cb1eb",
+  "contentHash": "ce06dff47ff3976d1246f4626a442a5ebd53ff2670f0cc68fc5c8ce722320d41",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1878,8 +1878,8 @@
       "uri": "place_rock_metallic_ore_monolith.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -3028,7 +3028,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_metallic_ore_monolith.glb"
   },
-  "runtimeHash": "b95c4339f747dd3b13f0932eefb7e527e9f5b28254e1b62416ba6aae81902074",
+  "runtimeHash": "2ab2c64d96c4fd32c0bab8ce775973a8deae3ba5e8546740a646dab021c313c7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c05ef34d698668747cb10f86b35dd88ac3cb26bbaab2b6351bb6f10f57e27a56",
+  "contentHash": "46db02aebff3530c29252349e5f11fb307e763528183b41b8493ff56b71a157f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -454,7 +454,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowlamp-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BowLamp_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowlamp-m",
@@ -479,7 +479,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowlamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BowLamp",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bowlamp",
@@ -604,7 +604,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-0-m",
@@ -629,7 +629,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_0",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-0",
@@ -654,7 +654,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-1-m",
@@ -679,7 +679,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_1",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-1",
@@ -704,7 +704,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-2-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-2-m",
@@ -729,7 +729,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_2",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-2",
@@ -754,7 +754,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-3-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-3-m",
@@ -779,7 +779,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "BridgeWin_3",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.bridgewin-3",
@@ -804,7 +804,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.dome-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "690678111213b6f4b0ec188025811bed86e4f81d5713052b8c09a17a24fbb0e7",
+      "materialHash": "494b4c31bbb0e036d95c24480b6b4abb4abaae66b93d8783ec646bd547b4a470",
       "materialPipelineKey": "opaque",
       "meshName": "Dome_Lens",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.dome-lens",
@@ -4204,7 +4204,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-0-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-0-m",
@@ -4229,7 +4229,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_0",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-0",
@@ -4254,7 +4254,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-1-m.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1_M",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-1-m",
@@ -4279,7 +4279,7 @@
       "id": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
+      "materialHash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
       "materialPipelineKey": "opaque",
       "meshName": "TowerWin_1",
       "nodeId": "sf.render.aftermath-wreck-mining-barge-authored-down.node.towerwin-1",
@@ -5288,6 +5288,13 @@
       ]
     },
     {
+      "hash": "0f9875c1ce66186a724ad8f98a5f301554b3c42c9936a9d8f70b1085ec76a631",
+      "id": "material:0f9875c1ce66186a724ad8f9",
+      "name": "Forge_ore_barge_glow_warm__dead",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "2e1e70eeccb6aad156d8fc2edcc296f55becd8a4a33d765ba44c9643c71cd862",
       "id": "material:2e1e70eeccb6aad156d8fc2e",
       "name": "Forge_ore_barge_hazard__dead",
@@ -5318,6 +5325,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "494b4c31bbb0e036d95c24480b6b4abb4abaae66b93d8783ec646bd547b4a470",
+      "id": "material:494b4c31bbb0e036d95c2448",
+      "name": "Forge_ore_barge_glow_cyan__dead",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
@@ -5446,20 +5460,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "690678111213b6f4b0ec188025811bed86e4f81d5713052b8c09a17a24fbb0e7",
-      "id": "material:690678111213b6f4b0ec1880",
-      "name": "Forge_ore_barge_glow_cyan__dead",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "839548aca290b379dd51d813cefb7e3784db4e9e76d47e8bb961cb059b4a262c",
-      "id": "material:839548aca290b379dd51d813",
-      "name": "Forge_ore_barge_glow_warm__dead",
-      "pipelineKey": "opaque:double",
-      "textures": []
     },
     {
       "hash": "964a34d04718a086a00ad9d6c3297dfee44e6bac000a85b6094bb8b9c7ee55fe",
@@ -12997,14 +12997,14 @@
       "uri": "place_aftermath_wreck_mining_barge_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 837464,
-    "sha256": "cb109c6b1346e1e6510b7d85a0d5698df83d9c44586fbdae26a7d9975b1dbd65",
+    "bytes": 837580,
+    "sha256": "c56606cd3b60d3fb2f647b7b4fb586a884c9e6dba2c22c92c0af4dbabc007316",
     "uri": "render.glb"
   },
   "runtime": {
@@ -19553,7 +19553,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_mining_barge_authored_down.glb"
   },
-  "runtimeHash": "61a971f568740841503eba4cee3b111392b5bae170150889f216ca103176c2af",
+  "runtimeHash": "43a66f0f2889eaa5fe8b291aa889c1764d4d2faa02dd5aa8ebf6accf500acc28",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

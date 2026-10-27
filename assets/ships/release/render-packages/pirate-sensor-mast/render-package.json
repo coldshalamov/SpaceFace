@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0daf911b757953dbb988b9905792d19110c984e15c2153f90d84eeff805d3035",
+  "contentHash": "0ce060e6ff8966c44e8afe37043c39a154ce345bb6ac63ce8d0bd4d7dc6d0ee9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -324,7 +324,7 @@
       "id": "sf.render.pirate-sensor-mast.mesh.hood-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.hood-lens",
@@ -590,13 +590,6 @@
       "textures": []
     },
     {
-      "hash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
-      "id": "material:5c25af379243dc87acccdd2f",
-      "name": "esk_light_hooded_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "de6cb84edd89ae45bd670d253be01ce6083632c25b7745be39b877836d91eb12",
       "id": "material:de6cb84edd89ae45bd670d25",
       "name": "esk_paint_rust",
@@ -607,6 +600,13 @@
       "hash": "e76428a023b51c64a1243fbd3f92ab31c3075a17d4f9f6ffd436fb1213f5609e",
       "id": "material:e76428a023b51c64a1243fbd",
       "name": "esk_paint_authority_navy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "id": "material:f0d8b86f276ed9e28482a52e",
+      "name": "esk_light_hooded_red",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1660,14 +1660,14 @@
       "uri": "place_pirate_sensor_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 38476,
-    "sha256": "f162ba16b3cd61dbe17732651bd58780677994eb14e5449459e199545891a771",
+    "bytes": 38564,
+    "sha256": "99b942040f043d101e500495a2b535b094462c6a81e732e1cfe24c984e3fb911",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2389,7 +2389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
-  "runtimeHash": "45b43b646149daabb9fa24fc5642f8177fec06eea51c6e5ee0902afeb63f6618",
+  "runtimeHash": "dc287acb632cf8659872bd0998c74e325d1e29c3188270f7e79c8bafc7779cca",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

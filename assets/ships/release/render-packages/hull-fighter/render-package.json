@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2dc367d75dc89ff8502f64783c76eb91256e31762b6de487fa48f1481c35d081",
+  "contentHash": "2911b528251830e278b643738f74a1986b9f64ae51d30be5c71955bd94915b0b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-bounty-weld.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "6122058447c122c6b8de727a70d34522bed8642bee05ccc9fa18bc3259e08607",
+      "materialHash": "a0db63069527e03f3773e325e96aca2d9f7b6c99138d21833c312fc2cf4d4d9d",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-bounty-weld",
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "6122058447c122c6b8de727a70d34522bed8642bee05ccc9fa18bc3259e08607",
+      "materialHash": "a0db63069527e03f3773e325e96aca2d9f7b6c99138d21833c312fc2cf4d4d9d",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-hardpoint-collar",
@@ -195,7 +195,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-nav-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "acd58b37996b5b3789c18305e0a95e9b0fb645f1f889da7dbb400b5435a22729",
+      "materialHash": "2738a21b4fb742aab9c7e209d5919173217f9c15260deecba8e4b5ba93b2d34e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-nav-stripe",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "acd58b37996b5b3789c18305e0a95e9b0fb645f1f889da7dbb400b5435a22729",
+      "materialHash": "2738a21b4fb742aab9c7e209d5919173217f9c15260deecba8e4b5ba93b2d34e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-patrol-stencil",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-reactor-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "6122058447c122c6b8de727a70d34522bed8642bee05ccc9fa18bc3259e08607",
+      "materialHash": "a0db63069527e03f3773e325e96aca2d9f7b6c99138d21833c312fc2cf4d4d9d",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-reactor-vent",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-fighter.mesh.lod0-det-sensor-nose.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "6122058447c122c6b8de727a70d34522bed8642bee05ccc9fa18bc3259e08607",
+      "materialHash": "a0db63069527e03f3773e325e96aca2d9f7b6c99138d21833c312fc2cf4d4d9d",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-fighter.mesh.lod0-det-sensor-nose",
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "6122058447c122c6b8de727a70d34522bed8642bee05ccc9fa18bc3259e08607",
-      "id": "material:6122058447c122c6b8de727a",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "hash": "2738a21b4fb742aab9c7e209d5919173217f9c15260deecba8e4b5ba93b2d34e",
+      "id": "material:2738a21b4fb742aab9c7e209",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -396,7 +396,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_fighter_mechanical_orm_1k",
+          "name": "hull_fighter_accent_orm_1k",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -408,17 +408,17 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_fighter_mechanical_orm_1k",
+          "name": "hull_fighter_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "acd58b37996b5b3789c18305e0a95e9b0fb645f1f889da7dbb400b5435a22729",
-      "id": "material:acd58b37996b5b3789c18305",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "hash": "a0db63069527e03f3773e325e96aca2d9f7b6c99138d21833c312fc2cf4d4d9d",
+      "id": "material:a0db63069527e03f3773e325",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -428,7 +428,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_fighter_accent_orm_1k",
+          "name": "hull_fighter_mechanical_orm_1k",
           "slot": "metallicRoughness",
           "uri": null
         },
@@ -440,7 +440,7 @@
         },
         {
           "colorSpace": "linear",
-          "name": "hull_fighter_accent_orm_1k",
+          "name": "hull_fighter_mechanical_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1078,14 +1078,14 @@
       "uri": "hull_fighter.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2860888,
-    "sha256": "16364c152e11802a242a2014a696c981d5ae448db5e098637ad1d9a9aaa9e311",
+    "bytes": 2860976,
+    "sha256": "b547aa80304a7db9eea3072ce001e6d32ebf2b7391533ae230fa5a079fe825d3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_fighter.glb"
   },
-  "runtimeHash": "c837deda0e8ed8b4232d98db54d394311d6e7e682452d68df1a867eb964b228b",
+  "runtimeHash": "8688ba592730dc492d068e7d368fa0eb0d91aa0a6f53ed59766b8d9df590ed17",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

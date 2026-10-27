@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "72e3f75f8a337798874926657b103b7b3d121e3340aa555ef612a6079eaa54eb",
+  "contentHash": "fa904fe1eda10e570324754a388c58a10d209664da7e9b0e157ad24f9b9d55c3",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-slag-boulder.mesh.lod0-hook-nav-port.dynamic",
@@ -1869,8 +1869,8 @@
       "uri": "place_rock_slag_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -3021,7 +3021,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_slag_boulder.glb"
   },
-  "runtimeHash": "68094f6b7e0436801fe99cd1ffd2394184a4d6d6d4348cb69a9893e8479e564b",
+  "runtimeHash": "9d8a578361cdbe5f550816e1f239aead0ed2ee68b2d9daa7e29a065b19d360c0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

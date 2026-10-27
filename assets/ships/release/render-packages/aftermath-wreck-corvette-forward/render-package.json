@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "64e451160efd67cc7a58d7fb4e56aca71df785a6f187ae09412f30fae8e53aae",
+  "contentHash": "2a6346c65b0de09b6b0d762b8f603a9d6028d69b4b91c6bc6b54c86e64df74fc",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -362,7 +362,7 @@
       "id": "sf.render.aftermath-wreck-corvette-forward.mesh.bowlight.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cf4d469b73af28b8ce80c0d54b7c8e3e49bff7e8410b404a615b7c1430e0d2d6",
+      "materialHash": "928024aad3cb575c10818a5c8a7cdf7d835a71f3738fa6b54215c3cfb80eda0f",
       "materialPipelineKey": "opaque",
       "meshName": "BowLight",
       "nodeId": "sf.render.aftermath-wreck-corvette-forward.mesh.bowlight",
@@ -2724,6 +2724,13 @@
       ]
     },
     {
+      "hash": "928024aad3cb575c10818a5c8a7cdf7d835a71f3738fa6b54215c3cfb80eda0f",
+      "id": "material:928024aad3cb575c10818a5c",
+      "name": "Forge_bastion_glow_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "9c7a8ef5bc08f1733e59318684e6a2fe3762b7a3909be24a6120c22018a41eb9",
       "id": "material:9c7a8ef5bc08f1733e593186",
       "name": "Forge_bastion_paint2",
@@ -2786,13 +2793,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "cf4d469b73af28b8ce80c0d54b7c8e3e49bff7e8410b404a615b7c1430e0d2d6",
-      "id": "material:cf4d469b73af28b8ce80c0d5",
-      "name": "Forge_bastion_glow_amber",
-      "pipelineKey": "opaque:double",
-      "textures": []
     }
   ],
   "nodes": [
@@ -6089,14 +6089,14 @@
       "uri": "place_aftermath_wreck_corvette_forward.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 483516,
-    "sha256": "060a2d7bb0abd74dc995f548a5d9e1a4dec05b38f89156a0dcf9dd4a4f356cf7",
+    "bytes": 483608,
+    "sha256": "7816ecfc3f27efc4bc84e14a0c76f14d15aec787c2e74bcc1e9bd4af53bf45b6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9266,7 +9266,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward.glb"
   },
-  "runtimeHash": "6cb9aff3f733ded89363220dc0ae17f817da3fdaaeedac828cb1b8646862d274",
+  "runtimeHash": "b19fb902328fcbbe193d31edd73bfc8b8f10ba8ec0f002d259aa36e6c833b146",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

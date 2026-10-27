@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6912ab3709fa8c587e5379b9b3168a8616ec1cc8a927f1def904971b1d563608",
+  "contentHash": "37635faa801cbcc772c88cad556a7ece027efab6a9a58669721844c0f54f20e3",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.customs-pylon.mesh.aperture.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialHash": "6786dafab4ec8296c76ae4f264a8489948637348307f8c5caee7f33f211cd063",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.customs-pylon.mesh.aperture",
@@ -274,7 +274,7 @@
       "id": "sf.render.customs-pylon.mesh.slot.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialHash": "6786dafab4ec8296c76ae4f264a8489948637348307f8c5caee7f33f211cd063",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.customs-pylon.mesh.slot",
@@ -299,7 +299,7 @@
       "id": "sf.render.customs-pylon.mesh.top.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
+      "materialHash": "6786dafab4ec8296c76ae4f264a8489948637348307f8c5caee7f33f211cd063",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.customs-pylon.mesh.top",
@@ -319,10 +319,10 @@
       "textures": []
     },
     {
-      "hash": "b49314b7271e17a69fb54a73df3cf07d27f85255bc454435d187b740cbec2c4b",
-      "id": "material:b49314b7271e17a69fb54a73",
+      "hash": "6786dafab4ec8296c76ae4f264a8489948637348307f8c5caee7f33f211cd063",
+      "id": "material:6786dafab4ec8296c76ae4f2",
       "name": "esk_light_authority",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -897,14 +897,14 @@
       "uri": "place_customs_pylon.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 16756,
-    "sha256": "1898220f9538c45ae0b32a6ecda88498a98bf3df19a15ae978a04c5e3f25b30d",
+    "bytes": 16844,
+    "sha256": "754c43164a2798c6c2cef27cd0e3c50d328dca0b056fec458f993207852a1859",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1305,7 +1305,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_customs_pylon.glb"
   },
-  "runtimeHash": "c9b15da76a48459b21e8e8c11af814019692bce37237840792432afcdde25f77",
+  "runtimeHash": "9767b08f8ca8144b04e2abb81396fd12b8d6cc33f79c536b25e4690627d72a4b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

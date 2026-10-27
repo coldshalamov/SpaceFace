@@ -611,7 +611,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "278428a195f20f7e9a60a3bfccdebb160214d9235f873c29a8a624bf4ec43c69",
+  "contentHash": "4f4ed1d445756ecf1070d34346bd40b08e8496b58cbea928f5f9060276717142",
   "dynamicGroups": [
     {
       "id": "sf.render.hornet-scn-interdictor.node.lod0-hook-drive-core.dynamic",
@@ -6610,8 +6610,8 @@
       "uri": "hornet_scn_interdictor.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -9826,7 +9826,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_scn_interdictor.glb"
   },
-  "runtimeHash": "ef8b4e1b65917d749dae657fff84cf5be32f02f849e7bcb5c99c63272dad0bb3",
+  "runtimeHash": "41a64596a6c01cfb2403c6265fc4bc7b9f99880843fd7486989be697bbf34165",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

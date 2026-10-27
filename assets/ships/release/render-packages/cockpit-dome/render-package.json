@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "28ecc99088b7fbc190a13b69f994b47d8203f6ea83265346b52504fca9590f76",
+  "contentHash": "23a6680b3dd4d7e2cb70f7b0525c95a21b4279da015c39504942acd81ab86df9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -77,7 +77,7 @@
       "id": "sf.render.cockpit-dome.node.det-collar-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
+      "materialHash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.cockpit-dome.node.det-collar-seam",
@@ -277,7 +277,7 @@
       "id": "sf.render.cockpit-dome.node.dome-mount-collar.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
+      "materialHash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
       "materialPipelineKey": "opaque",
       "meshName": "Dome_Mount_Collar",
       "nodeId": "sf.render.cockpit-dome.node.dome-mount-collar",
@@ -294,38 +294,6 @@
       "id": "material:db6bc38792b1aa8e3650f9f5",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "cockpit_dome_trim_sheet_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_1024",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_1024",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "deef36cbe6980ef38f5da3eb95c4cda247cb26dcc513fd174f2f41cc3839ec57",
-      "id": "material:deef36cbe6980ef38f5da3eb",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -391,6 +359,38 @@
       "name": "Material_Glass",
       "pipelineKey": "opaque:double",
       "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_1024",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_1024",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f86b042e64e8c34a8850af50d39161facd6cb1d04474802070ee3e03e8e905ce",
+      "id": "material:f86b042e64e8c34a8850af50",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cockpit_dome_trim_sheet_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
         {
           "colorSpace": "linear",
           "name": "spaceface_neutral_orm_1024",
@@ -1596,14 +1596,14 @@
       "uri": "cockpit_dome.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 125476,
-    "sha256": "b0288a1fa35bcc11b53002a222e44bbd0f2722d37dfc2b1ca744653db5c3a6cf",
+    "bytes": 125556,
+    "sha256": "8d728406ff2246d1447d59cad8495bffeded834f26abafd6d62a6ec59f007449",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2023,7 +2023,7 @@
     "slot": "cockpit",
     "url": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
-  "runtimeHash": "db8e3d4d7e56d2dfa39bc81746c8d1fba0d634cb53c1b79c7b6189e2dd3ffabc",
+  "runtimeHash": "6c7ba23fdb350802d4703eff5055e9e70637451eef8d68ae66297e65ebd54d88",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

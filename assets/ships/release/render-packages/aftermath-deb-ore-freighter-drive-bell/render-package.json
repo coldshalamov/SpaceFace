@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d69ac0e218cab9ffa1cf9abf18dfdf895244d4d11398454824e035bfa85fe3a",
+  "contentHash": "4fa90826494ca4c6fd4a8fd37f08431ea7d5c2eced28ea9b2836507f23576bd4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib2",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib3",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib4",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib4",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib5",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib5",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib6",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib6",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib7",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib7",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_f_rib8",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-f-rib8",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear0",
@@ -277,7 +277,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear1",
@@ -302,7 +302,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear2",
@@ -327,7 +327,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear3",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear3",
@@ -352,7 +352,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear4",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear4",
@@ -377,7 +377,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear5",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear5",
@@ -402,7 +402,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
+      "materialHash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
       "materialPipelineKey": "opaque",
       "meshName": "bellWound_t_tear6",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.bellwound-t-tear6",
@@ -427,7 +427,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "Drive_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1a",
@@ -452,7 +452,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "Drive_xrib1b",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.drive-xrib1b",
@@ -877,7 +877,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "RCSAft_M_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-m-xrib1a",
@@ -1027,7 +1027,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "RCSAft_xrib1a",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-drive-bell.mesh.rcsaft-xrib1a",
@@ -1097,10 +1097,10 @@
       ]
     },
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
+      "hash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "id": "material:203cc84c70ad17be35f60b4e",
+      "name": "Forge_ore_barge_wk_frame__dead",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1123,38 +1123,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "1924058446149e26f586ed31b7a81a90f5c46b33dfafdde3818c36961199ccd6",
-      "id": "material:1924058446149e26f586ed31",
-      "name": "Forge_ore_barge_wk_torn__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1187,38 +1155,6 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
-      "id": "material:55cf3807fb7e4c7e740b0413",
-      "name": "Forge_ore_barge_wk_frame__dead",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1289,11 +1225,75 @@
       ]
     },
     {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "d987f2406e3d723b9a5efb58ccb68bf4964c32f296c03e0d0c96bcfe4d7bb230",
       "id": "material:d987f2406e3d723b9a5efb58",
       "name": "Forge_ore_barge_glow_drive__dead",
       "pipelineKey": "opaque:double",
       "textures": []
+    },
+    {
+      "hash": "fa1be6065fe73501f8f36d50288d64a113132b7d1b32aea1e009dca7b6f3e6a0",
+      "id": "material:fa1be6065fe73501f8f36d50",
+      "name": "Forge_ore_barge_wk_torn__dead",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
       "hash": "fdc53fab1f3a311e1b7f098a2fbad09178c773a1df9efac5dcd1c805d4eca17b",
@@ -2907,14 +2907,14 @@
       "uri": "place_aftermath_deb_ore_freighter_drive_bell.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 225628,
-    "sha256": "dfb7d0c1d98bcba8492c0ab63cdf879fed7c0b6186c7a883a7c34f00f9ea11a4",
+    "bytes": 225748,
+    "sha256": "50e40eb3b90cf9d59bc3aa7e5ea01fdfb8180b8b5d33d2d30d377c99a641aaa6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4302,7 +4302,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_drive_bell.glb"
   },
-  "runtimeHash": "d3abefc2098cf39cf33b2fbefc5514a85bc1b62560c0448599f6547c7519ed92",
+  "runtimeHash": "158097ee08e1311ec35d106cac3264971802bbc351a72d5558a855729b8d1800",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

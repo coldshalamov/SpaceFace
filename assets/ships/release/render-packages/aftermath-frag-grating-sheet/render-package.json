@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1f98b67f0a1200a27a28835133b94194cb372021cd5d1588825961c63f9a4ffd",
+  "contentHash": "1e9b19bfaa019b7a2590a6528ecc0d823855f487b3ab92627099c31780b48480",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar0",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar1",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar2",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar2",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
+      "materialHash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
       "materialPipelineKey": "opaque",
       "meshName": "gBar3",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.gbar3",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-grating-sheet.mesh.grate.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
+      "materialHash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
       "materialPipelineKey": "opaque",
       "meshName": "grate",
       "nodeId": "sf.render.aftermath-frag-grating-sheet.mesh.grate",
@@ -140,10 +140,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "55cf3807fb7e4c7e740b041358959163f61a1c7437271d7eb722bd19c89c0381",
-      "id": "material:55cf3807fb7e4c7e740b0413",
+      "hash": "203cc84c70ad17be35f60b4e7416632e43a1605add5bc4460c54b5859e2c8279",
+      "id": "material:203cc84c70ad17be35f60b4e",
       "name": "Forge_ore_barge_wk_frame__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -172,10 +172,10 @@
       ]
     },
     {
-      "hash": "596e78a82c1a871d551d1ad7a2a9695981b43205bf5649f6d5cb8e8caf611402",
-      "id": "material:596e78a82c1a871d551d1ad7",
+      "hash": "edf55240cfd35c4f717eb63acff8997999c9aafcbc90bef9d5f1f06a332a3c23",
+      "id": "material:edf55240cfd35c4f717eb63a",
       "name": "Forge_ore_barge_wk_scorch__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -509,14 +509,14 @@
       "uri": "place_aftermath_frag_grating_sheet.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 44520,
-    "sha256": "f8a8786b0e3c0be0a64e2d663da035244eb6a77d8a9ccf56fc85b708ee212fe9",
+    "bytes": 44632,
+    "sha256": "257277849992c2c9f30c49e2b90b3158defb4c7c38bef9f10c28e1411c9d236b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -718,7 +718,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_grating_sheet.glb"
   },
-  "runtimeHash": "3cd95c9a57fca8744fcb0b6a4da6f1603d6de2550f4dbbd19b799df09f38deb0",
+  "runtimeHash": "6d9430fe4be4213ae05521849ac9dfcc4d72937557192bbd98f63e77bf037c4e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

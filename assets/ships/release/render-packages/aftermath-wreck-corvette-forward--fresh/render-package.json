@@ -191,7 +191,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5e06eb7e398897d5519d571a71d139e23bc1f9276c7c1a96daeb5a2a86708d19",
+  "contentHash": "329fe4c2c0ebd5b5af25353d66e575c9717a3bb7763c1aa22544fe0c6058e87b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -362,7 +362,7 @@
       "id": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.bowlight.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "cf4d469b73af28b8ce80c0d54b7c8e3e49bff7e8410b404a615b7c1430e0d2d6",
+      "materialHash": "928024aad3cb575c10818a5c8a7cdf7d835a71f3738fa6b54215c3cfb80eda0f",
       "materialPipelineKey": "opaque",
       "meshName": "BowLight",
       "nodeId": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.bowlight",
@@ -887,7 +887,7 @@
       "id": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.emerg-wk0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "1f28d5a9fbd73afa16f313d9e9b60eac9936ea373ae423102b96bd01822db96e",
+      "materialHash": "a9d5fe87393c0dee100c870bb44cabf1a15dfdb2cc87567b21824ec90d7e130d",
       "materialPipelineKey": "opaque",
       "meshName": "emerg_wk0",
       "nodeId": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.emerg-wk0",
@@ -912,7 +912,7 @@
       "id": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.emerg-wk1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "1f28d5a9fbd73afa16f313d9e9b60eac9936ea373ae423102b96bd01822db96e",
+      "materialHash": "a9d5fe87393c0dee100c870bb44cabf1a15dfdb2cc87567b21824ec90d7e130d",
       "materialPipelineKey": "opaque",
       "meshName": "emerg_wk1",
       "nodeId": "sf.render.aftermath-wreck-corvette-forward--fresh.mesh.emerg-wk1",
@@ -2607,13 +2607,6 @@
       ]
     },
     {
-      "hash": "1f28d5a9fbd73afa16f313d9e9b60eac9936ea373ae423102b96bd01822db96e",
-      "id": "material:1f28d5a9fbd73afa16f313d9",
-      "name": "Forge_bastion_wk_emerg",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "290d13e449ca76a1b84823d1c02163c84ecc4beaf8ca25b227333c5a22e96c72",
       "id": "material:290d13e449ca76a1b84823d1",
       "name": "Forge_bastion_wk_scorch_edge",
@@ -2781,6 +2774,13 @@
       ]
     },
     {
+      "hash": "928024aad3cb575c10818a5c8a7cdf7d835a71f3738fa6b54215c3cfb80eda0f",
+      "id": "material:928024aad3cb575c10818a5c",
+      "name": "Forge_bastion_glow_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "9c7a8ef5bc08f1733e59318684e6a2fe3762b7a3909be24a6120c22018a41eb9",
       "id": "material:9c7a8ef5bc08f1733e593186",
       "name": "Forge_bastion_paint2",
@@ -2845,10 +2845,10 @@
       ]
     },
     {
-      "hash": "cf4d469b73af28b8ce80c0d54b7c8e3e49bff7e8410b404a615b7c1430e0d2d6",
-      "id": "material:cf4d469b73af28b8ce80c0d5",
-      "name": "Forge_bastion_glow_amber",
-      "pipelineKey": "opaque:double",
+      "hash": "a9d5fe87393c0dee100c870bb44cabf1a15dfdb2cc87567b21824ec90d7e130d",
+      "id": "material:a9d5fe87393c0dee100c870b",
+      "name": "Forge_bastion_wk_emerg",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -6244,14 +6244,14 @@
       "uri": "place_aftermath_wreck_corvette_forward__fresh.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 489452,
-    "sha256": "be81b8210582ba16685c0f0053acb51de2f0e48567cad2e3b6b425c27d164c28",
+    "bytes": 489548,
+    "sha256": "26bebe3532cacccf2c1418670cea82e2d821062c5233440bed26835e1ec30932",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9485,7 +9485,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_corvette_forward__fresh.glb"
   },
-  "runtimeHash": "eaa26fd2a5b7e6372b97ca1ccbad4423c1a73e7bf39da65f649061d729ce1b11",
+  "runtimeHash": "3a5663664790dfe9090a92bca869db129c4625eff07dec0d48874290fee47e49",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

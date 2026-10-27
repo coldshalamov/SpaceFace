@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a25ff501d8a26bc2c230672ab3250919ccddb65c051a2aa321f7a0b1bb1b7e6b",
+  "contentHash": "be7f38a8cdf67a0b79e32165a4e0c3c4510dc0d364352529f02cc199df4adf30",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -74,7 +74,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib0",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib0",
@@ -99,7 +99,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib1",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib1",
@@ -124,7 +124,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib2",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib2",
@@ -149,7 +149,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib3",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib3",
@@ -174,7 +174,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib4",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib4",
@@ -199,7 +199,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib5.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_f_rib5",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-f-rib5",
@@ -224,7 +224,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_t_tear0",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear0",
@@ -249,7 +249,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_t_tear1",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear1",
@@ -274,7 +274,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_t_tear2",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear2",
@@ -299,7 +299,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_t_tear3",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear3",
@@ -324,7 +324,7 @@
       "id": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "cargoA_t_tear4",
       "nodeId": "sf.render.aftermath-aft-cargo-module.node.cargoa-t-tear4",
@@ -1487,38 +1487,6 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
       "hash": "0dac9b269e88e4a2a6e51b7bf6248debd278b25fee1792292551028b9097783c",
       "id": "material:0dac9b269e88e4a2a6e51b7b",
       "name": "Forge_ore_barge_gunmetal",
@@ -1583,10 +1551,10 @@
       ]
     },
     {
-      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
-      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
       "name": "Forge_ore_barge_wk_torn",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1843,6 +1811,38 @@
       "id": "material:c36a4bf93ab869729a357a6a",
       "name": "Forge_ore_barge_wk_scorch",
       "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -3874,14 +3874,14 @@
       "uri": "place_aftermath_aft_cargo_module.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 317368,
-    "sha256": "c63b250b9328733730ad8c71433d1e64264970d8f259aee7786ba8098bb9e6cf",
+    "bytes": 317468,
+    "sha256": "9f18aa41b40d4c136225b4cf77a6cbc0d978b9ae0c80976f2c16047615681167",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5789,7 +5789,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb"
   },
-  "runtimeHash": "2ebdeb6ac893129f1fcaa41eaa1249d11ecb450f5782eda72bda83b4b6e33c76",
+  "runtimeHash": "dd5d09bbb96374dbde1a132d219df07c04bd650810895d9eea69d4f369111931",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

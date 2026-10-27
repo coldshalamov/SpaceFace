@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "444832bdb6ba76fe5b7e611de9329a1388dc9b0755db193da2b4bab69cffbe4e",
+  "contentHash": "93ceaa0fbc3c385c88905b1d47e2c3290bf2ebace0d9cc9942d93231becad80c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -52,7 +52,7 @@
       "id": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc.primitive.1",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
+      "materialHash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
       "materialPipelineKey": "opaque",
       "meshName": "place_sedna_ringworld_arc",
       "nodeId": "sf.render.sedna-ringworld-arc.mesh.place-sedna-ringworld-arc",
@@ -102,7 +102,7 @@
       "id": "sf.render.sedna-ringworld-arc.root.primitive.1",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
+      "materialHash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
       "materialPipelineKey": "root",
       "meshName": "place_sedna_ringworld_arc",
       "nodeId": "sf.render.sedna-ringworld-arc.root",
@@ -122,10 +122,10 @@
       "textures": []
     },
     {
-      "hash": "7dd8815b645ec8e880aeb708e5f8dc816682dd983daa729094e74649c4240d51",
-      "id": "material:7dd8815b645ec8e880aeb708",
+      "hash": "4873cf13925af0d59a4e723d427229299939129183723ef6fcb703cbfdb70096",
+      "id": "material:4873cf13925af0d59a4e723d",
       "name": "RingworldCityGrid",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -237,14 +237,14 @@
       "uri": "place_sedna_ringworld_arc.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 14004,
-    "sha256": "67d2ebd1e8f6d1a2f6e3edfedf2a601d649120fc9f6861465f333e3f41fefaa6",
+    "bytes": 14092,
+    "sha256": "93f554b15974c986ad62fe2522048e10f024478e06251c80807b080a4d680885",
     "uri": "render.glb"
   },
   "runtime": {
@@ -347,7 +347,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sedna_ringworld_arc.glb"
   },
-  "runtimeHash": "647d160c44ebaa7c171253b2b1e907edca9ea23b92cb908247a5113fb7da1382",
+  "runtimeHash": "5e686cb7660943b0b8b0548de6da7e9015c5f652b9f9095ddff537dac1a95bc8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

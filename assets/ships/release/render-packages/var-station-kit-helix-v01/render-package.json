@@ -559,7 +559,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5eb55881b394bedaa9995c0ba69b29902344aa360f1759e7f340ae8f815348f5",
+  "contentHash": "b962a641abf441fb4e6edceee4c6d05a90ab2bdcb30362ba7cd5a9797cd43405",
   "dynamicGroups": [
     {
       "id": "sf.render.var-station-kit-helix-v01.mesh.lod0-hook-nav-port-helix.dynamic",
@@ -2194,8 +2194,8 @@
       "uri": "var_station_kit_helix_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -3469,7 +3469,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_kit_helix_v01.glb"
   },
-  "runtimeHash": "e02f5a22b78f107808262d8b91bcab6951c7f722b0a041d1e73e579059edcbed",
+  "runtimeHash": "fb57e003132f868b6400345f97b464a442e08e9b6911b2f5fb459926b6b1cf9d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

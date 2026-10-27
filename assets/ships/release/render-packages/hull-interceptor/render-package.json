@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ea11cd6dd4f15c50b159ed3f6d4df2327e6d31039e56408f33fcb1c4976c6259",
+  "contentHash": "56d0f4f80da971b28fc8ad5c0f52ef6c479a587956528e5eba627293bed4d164",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-interceptor.mesh.lod0-det-hardpoint-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "877675ac004a00cf9d945d0eef66f69e0e0e6267aec4e5f6ef00dca942609930",
+      "materialHash": "1503f74f5f97afca105e5a2de60d413778f36181a7d86f49e55f4bde68eb8158",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-interceptor.mesh.lod0-det-hardpoint-collar",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-interceptor.mesh.lod0-det-reactor-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "877675ac004a00cf9d945d0eef66f69e0e0e6267aec4e5f6ef00dca942609930",
+      "materialHash": "1503f74f5f97afca105e5a2de60d413778f36181a7d86f49e55f4bde68eb8158",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-interceptor.mesh.lod0-det-reactor-vent",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-interceptor.mesh.lod0-det-sensor-nose.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "877675ac004a00cf9d945d0eef66f69e0e0e6267aec4e5f6ef00dca942609930",
+      "materialHash": "1503f74f5f97afca105e5a2de60d413778f36181a7d86f49e55f4bde68eb8158",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-interceptor.mesh.lod0-det-sensor-nose",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-interceptor.mesh.lod0-det-sodium-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "e806000a486bde668840056c8b6ea02a90a4153cc6eecf3ded935c23a02a6d3f",
+      "materialHash": "ccafdac5f818fe2d8a278154c56618c909669723f62db03b912943dda6a1b9d2",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-interceptor.mesh.lod0-det-sodium-stripe",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-interceptor.mesh.lod0-det-wing-root-rib.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "877675ac004a00cf9d945d0eef66f69e0e0e6267aec4e5f6ef00dca942609930",
+      "materialHash": "1503f74f5f97afca105e5a2de60d413778f36181a7d86f49e55f4bde68eb8158",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-interceptor.mesh.lod0-det-wing-root-rib",
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "877675ac004a00cf9d945d0eef66f69e0e0e6267aec4e5f6ef00dca942609930",
-      "id": "material:877675ac004a00cf9d945d0e",
+      "hash": "1503f74f5f97afca105e5a2de60d413778f36181a7d86f49e55f4bde68eb8158",
+      "id": "material:1503f74f5f97afca105e5a2d",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -409,6 +409,38 @@
         {
           "colorSpace": "linear",
           "name": "hull_interceptor_mechanical_orm_1k",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ccafdac5f818fe2d8a278154c56618c909669723f62db03b912943dda6a1b9d2",
+      "id": "material:ccafdac5f818fe2d8a278154",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_interceptor_baseColor_1k",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_interceptor_accent_orm_1k",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_interceptor_neutral_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_interceptor_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -441,38 +473,6 @@
         {
           "colorSpace": "linear",
           "name": "hull_interceptor_hull_orm_1k",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "e806000a486bde668840056c8b6ea02a90a4153cc6eecf3ded935c23a02a6d3f",
-      "id": "material:e806000a486bde668840056c",
-      "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "hull_interceptor_baseColor_1k",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_interceptor_accent_orm_1k",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_interceptor_neutral_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "hull_interceptor_accent_orm_1k",
           "slot": "occlusion",
           "uri": null
         }
@@ -1078,14 +1078,14 @@
       "uri": "hull_interceptor.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3317400,
-    "sha256": "df3adf92c24694ad572070020aeb54ce301daa28a3adad19563df152ed9129c3",
+    "bytes": 3317488,
+    "sha256": "ef0874ad8156f28c1276ef1bc2ec274473ae1fa0e6e79292099474b21d0bcd5a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_interceptor.glb"
   },
-  "runtimeHash": "2664cb80ee28c59c3b73cdd7ba074ad966a8f758a205c742b296dc77296408f4",
+  "runtimeHash": "7ed41e467e41eaafe9c700c617ab104e02ba6c44e3ba76ce6ccd45948f55bf19",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

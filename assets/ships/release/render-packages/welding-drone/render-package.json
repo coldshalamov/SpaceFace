@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4611696bdd9a5316b362069557229e5521fea8960316e7fd32e50cb86295031e",
+  "contentHash": "9a27344b56d02489e2fce4b7ff26a55bc1b87cb90a16fc2ec48eb32f3a79c174",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -274,7 +274,7 @@
       "id": "sf.render.welding-drone.mesh.tail.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.welding-drone.mesh.tail",
@@ -324,7 +324,7 @@
       "id": "sf.render.welding-drone.mesh.torch.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.welding-drone.mesh.torch",
@@ -344,10 +344,17 @@
       "textures": []
     },
     {
-      "hash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
-      "id": "material:30a1b3664c52d6456d2dd72a",
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
+      "id": "material:445c58dd17d49c031fa46fe7",
       "name": "esk_light_repair",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -355,13 +362,6 @@
       "id": "material:6afd4c662783ee0c598ebf5c",
       "name": "esk_glass",
       "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
-      "id": "material:710749cab1590f13b764fa15",
-      "name": "esk_light_signal_amber",
-      "pipelineKey": "opaque:double",
       "textures": []
     },
     {
@@ -978,14 +978,14 @@
       "uri": "place_welding_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 22572,
-    "sha256": "b8ca64743e1031056e7b7af9f3b6d964968649a68e9a9cfe1c990805e8b2071e",
+    "bytes": 22664,
+    "sha256": "b32a0734483a4de7d9470eaf2c0ade0b5a142d81d040fbdfb3b12ad681313da3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1420,7 +1420,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "e47bc51bb12da3de508cd02d8243ffd066a25f701eaf044ddb4029c459d486d0",
+  "runtimeHash": "568b5bd5491d3f98cbb0a115229dec2b1d286a9ea81f386aee080dda71f9ff77",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

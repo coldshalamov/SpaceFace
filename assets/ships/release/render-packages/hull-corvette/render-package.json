@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7674a15089d8045f7088ab90ed62ae32ed991abc52190cde6f446ce7f4818636",
+  "contentHash": "6e5e204de222225588ae0b0bb838941fb10a3d85fe30cd4a6ec2040c3e5269ca",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-bridge-super.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2694c443627f0959f74ff08768c4f84b02c9cedc1b0565bc6f133bb528371bd9",
+      "materialHash": "22bc0d851bc9d1a4887f6c1667dcfd2d705661d83be1d020dc39f110f139e1cd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-bridge-super",
@@ -145,7 +145,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3d1066f9b0317d412b80cd769f332fafe9671bac3a120a313fca481c1c53926b",
+      "materialHash": "bc7cc41880d453c7cdb742cc3abdebb2764f3dc26cbfe273298b0d98e887b9df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-corporate-stencil",
@@ -195,7 +195,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-engine-vent.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2694c443627f0959f74ff08768c4f84b02c9cedc1b0565bc6f133bb528371bd9",
+      "materialHash": "22bc0d851bc9d1a4887f6c1667dcfd2d705661d83be1d020dc39f110f139e1cd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-engine-vent",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "3d1066f9b0317d412b80cd769f332fafe9671bac3a120a313fca481c1c53926b",
+      "materialHash": "bc7cc41880d453c7cdb742cc3abdebb2764f3dc26cbfe273298b0d98e887b9df",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-escort-nav-stripe",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-sensor-array.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2694c443627f0959f74ff08768c4f84b02c9cedc1b0565bc6f133bb528371bd9",
+      "materialHash": "22bc0d851bc9d1a4887f6c1667dcfd2d705661d83be1d020dc39f110f139e1cd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-sensor-array",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-corvette.mesh.lod0-det-turret-collar.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "2694c443627f0959f74ff08768c4f84b02c9cedc1b0565bc6f133bb528371bd9",
+      "materialHash": "22bc0d851bc9d1a4887f6c1667dcfd2d705661d83be1d020dc39f110f139e1cd",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-corvette.mesh.lod0-det-turret-collar",
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2694c443627f0959f74ff08768c4f84b02c9cedc1b0565bc6f133bb528371bd9",
-      "id": "material:2694c443627f0959f74ff087",
+      "hash": "22bc0d851bc9d1a4887f6c1667dcfd2d705661d83be1d020dc39f110f139e1cd",
+      "id": "material:22bc0d851bc9d1a4887f6c16",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -415,10 +415,10 @@
       ]
     },
     {
-      "hash": "3d1066f9b0317d412b80cd769f332fafe9671bac3a120a313fca481c1c53926b",
-      "id": "material:3d1066f9b0317d412b80cd76",
+      "hash": "bc7cc41880d453c7cdb742cc3abdebb2764f3dc26cbfe273298b0d98e887b9df",
+      "id": "material:bc7cc41880d453c7cdb742cc",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1078,14 +1078,14 @@
       "uri": "hull_corvette.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3357984,
-    "sha256": "55dfa6ec83f03492cf2a28c72763fcda3d4e0cea26ddf2d04e571e68736a8df4",
+    "bytes": 3358072,
+    "sha256": "48c120daa53d25e9ccae107e3ef25eadae0a371c6025d1e2a9d73b6600365ada",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_corvette.glb"
   },
-  "runtimeHash": "c331168a247cb7a27e99b4acbc90553fae07ce5759d72ffdd85048062bbcc539",
+  "runtimeHash": "75b5e5f5759a775ddb7a79b5ed0b89927611c9153dec1fbabc7265554fb8f113",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ef753fb67eeaeeae8e527a95b56434d1135b7ac55a97af5dca92d4cad60cc8b5",
+  "contentHash": "393bc8cabe91a66fa3829252761dc538afe1916e76732a5ab760a45c14a90f7e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -52,7 +52,7 @@
       "id": "sf.render.engine-ion-twin.node.det-dock-collar-scuff.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b1009042263d37c1d00bc06f0f072a8e03da116eb8ce133f2c7bf769cc9ed63a",
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.engine-ion-twin.node.det-dock-collar-scuff",
@@ -127,7 +127,7 @@
       "id": "sf.render.engine-ion-twin.node.det-panel-respray-edge.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "b1009042263d37c1d00bc06f0f072a8e03da116eb8ce133f2c7bf769cc9ed63a",
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.engine-ion-twin.node.det-panel-respray-edge",
@@ -377,7 +377,7 @@
       "id": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main.primitive.0",
       "indexCount": 576,
       "indexed": true,
-      "materialHash": "b1009042263d37c1d00bc06f0f072a8e03da116eb8ce133f2c7bf769cc9ed63a",
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ENGINE_ION_TWIN_MAIN",
       "nodeId": "sf.render.engine-ion-twin.node.lod0-engine-ion-twin-main",
@@ -402,7 +402,7 @@
       "id": "sf.render.engine-ion-twin.node.static-hull-merged.primitive.0",
       "indexCount": 2496,
       "indexed": true,
-      "materialHash": "b1009042263d37c1d00bc06f0f072a8e03da116eb8ce133f2c7bf769cc9ed63a",
+      "materialHash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
       "materialPipelineKey": "opaque",
       "meshName": "Static_Hull_Merged",
       "nodeId": "sf.render.engine-ion-twin.node.static-hull-merged",
@@ -440,10 +440,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "b1009042263d37c1d00bc06f0f072a8e03da116eb8ce133f2c7bf769cc9ed63a",
-      "id": "material:b1009042263d37c1d00bc06f",
+      "hash": "93ac9a57006327c2073e397f7fae40444577995ab53ead3f9779566d98c0009c",
+      "id": "material:93ac9a57006327c2073e397f",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1756,14 +1756,14 @@
       "uri": "engine_ion_twin.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 145892,
-    "sha256": "2a326c0a66430ae8cd2b6eef4bc65498bf6d2c36f19c9477c0abf41afc9297b8",
+    "bytes": 145976,
+    "sha256": "745a78dba9ceb0b57e1c24433a0c03a772bde878c05acb419c1b3466eaeff6e8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2499,7 +2499,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_twin.glb"
   },
-  "runtimeHash": "083d6e06468ff1debefe4d4b396565475c66edd23b0c5590de775f30edcde8bb",
+  "runtimeHash": "89c6c6142c174502663bee5c2bf005c94e7f9380b3bdc5cecb29d5a14862da39",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

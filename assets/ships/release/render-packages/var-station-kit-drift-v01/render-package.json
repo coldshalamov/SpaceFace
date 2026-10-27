@@ -559,7 +559,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "53c141a17f1ef3a61fa7407af45e6d7347797bbb4d3eedb260a1ab442c91a21f",
+  "contentHash": "6601ba73f0dc6be597433a19c7d16e737e528747fa742c0f39f28f5b899d8445",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2381,8 +2381,8 @@
       "uri": "var_station_kit_drift_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -3718,7 +3718,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_kit_drift_v01.glb"
   },
-  "runtimeHash": "c6d57ec290ffc627d438c3316f5bb578f33c6d7e5f1bf523697a95372dbfcb9b",
+  "runtimeHash": "292cb30cdae761fd8250572a566954e88a91335a0b471ea942ae24c2e9b3eb3e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

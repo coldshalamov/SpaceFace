@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "790b622bf951ec9d08793dbd270cd79f7cf49741bb096c40ae674d2128d960dc",
+  "contentHash": "645ec6178bef2643e15ef299f24abefcec2439b099f11305937f19c4f4283fe6",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -174,7 +174,7 @@
       "id": "sf.render.traffic-signal.mesh.lens-go.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.traffic-signal.mesh.lens-go",
@@ -199,7 +199,7 @@
       "id": "sf.render.traffic-signal.mesh.lens-hold.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.traffic-signal.mesh.lens-hold",
@@ -224,7 +224,7 @@
       "id": "sf.render.traffic-signal.mesh.lens-stop.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.traffic-signal.mesh.lens-stop",
@@ -299,7 +299,7 @@
       "id": "sf.render.traffic-signal.mesh.top.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.traffic-signal.mesh.top",
@@ -319,17 +319,17 @@
       "textures": []
     },
     {
-      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
-      "id": "material:5305fc668e4d72b103333713",
-      "name": "esk_hazard_stripe",
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
+      "name": "esk_light_signal_amber",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
-      "id": "material:53eb4ca876098f910744724d",
-      "name": "esk_light_nav_red",
-      "pipelineKey": "opaque:double",
+      "hash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
+      "id": "material:5305fc668e4d72b103333713",
+      "name": "esk_hazard_stripe",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -340,17 +340,17 @@
       "textures": []
     },
     {
-      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
-      "id": "material:710749cab1590f13b764fa15",
-      "name": "esk_light_signal_amber",
-      "pipelineKey": "opaque:double",
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
-      "id": "material:a090cc581cc4edd9c4d71310",
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
       "name": "esk_light_nav_green",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -918,14 +918,14 @@
       "uri": "place_traffic_signal.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 19172,
-    "sha256": "22f8d64ef78d5da05c2cde954d8fa3dbcdc21cabaa2a86dae6a25a3ef07429fb",
+    "bytes": 19268,
+    "sha256": "3c154e47ec2ce14486f9eade89ae52483ee1a2c93e125510d33e41a40aa5d98d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1326,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "56140a8e33f4a3ba80e76b5af90120983c5d837314c7d6d3f36c3bbbf6bd2ea4",
+  "runtimeHash": "ab359fc854921ef77c4406edc4ffb0df8578e81c6cae1eb7e058a96afb464597",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

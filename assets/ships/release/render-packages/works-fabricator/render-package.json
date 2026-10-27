@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5b28c729236e718831675bec0421dd922f9cb0b55f605882ff68538de8ac2e35",
+  "contentHash": "91b876491b3e9b9dcd144b85f5432926aeb978626e49a3c7757da87ba1eae2b1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.works-fabricator.mesh.lod0-fabricator.primitive.0",
       "indexCount": 19524,
       "indexed": true,
-      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialHash": "3c93bfb0a164cb8a8903e0b3b5174f85f9b7b717056194596414743c51e7e9a1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_fabricator",
       "nodeId": "sf.render.works-fabricator.mesh.lod0-fabricator",
@@ -52,7 +52,7 @@
       "id": "sf.render.works-fabricator.mesh.lod0-gantry.primitive.0",
       "indexCount": 6060,
       "indexed": true,
-      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialHash": "3c93bfb0a164cb8a8903e0b3b5174f85f9b7b717056194596414743c51e7e9a1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Gantry",
       "nodeId": "sf.render.works-fabricator.mesh.lod0-gantry",
@@ -77,7 +77,7 @@
       "id": "sf.render.works-fabricator.mesh.lod0-lamp.primitive.0",
       "indexCount": 1032,
       "indexed": true,
-      "materialHash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
+      "materialHash": "3c93bfb0a164cb8a8903e0b3b5174f85f9b7b717056194596414743c51e7e9a1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lamp",
       "nodeId": "sf.render.works-fabricator.mesh.lod0-lamp",
@@ -102,7 +102,7 @@
       "id": "sf.render.works-fabricator.mesh.lod1-fabricator.primitive.0",
       "indexCount": 1548,
       "indexed": true,
-      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialHash": "b3b280ba4b75229fc916dcc4b2dbccadf91c120b9814f17e13be1a9e63ad682c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_fabricator",
       "nodeId": "sf.render.works-fabricator.mesh.lod1-fabricator",
@@ -127,7 +127,7 @@
       "id": "sf.render.works-fabricator.mesh.lod1-gantry.primitive.0",
       "indexCount": 804,
       "indexed": true,
-      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialHash": "b3b280ba4b75229fc916dcc4b2dbccadf91c120b9814f17e13be1a9e63ad682c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Gantry",
       "nodeId": "sf.render.works-fabricator.mesh.lod1-gantry",
@@ -152,7 +152,7 @@
       "id": "sf.render.works-fabricator.mesh.lod1-lamp.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
+      "materialHash": "b3b280ba4b75229fc916dcc4b2dbccadf91c120b9814f17e13be1a9e63ad682c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lamp",
       "nodeId": "sf.render.works-fabricator.mesh.lod1-lamp",
@@ -165,10 +165,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "5d8a04e40e5d6d198176ccc14817ba188ffc4eec60507850a41836221f4f53f0",
-      "id": "material:5d8a04e40e5d6d198176ccc1",
+      "hash": "3c93bfb0a164cb8a8903e0b3b5174f85f9b7b717056194596414743c51e7e9a1",
+      "id": "material:3c93bfb0a164cb8a8903e0b3",
       "name": "FabricatorAtlasLOD0",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -197,10 +197,10 @@
       ]
     },
     {
-      "hash": "c88227ad39c62ee9a0094392188523c577e8c228c930211dec65dfcb163cf456",
-      "id": "material:c88227ad39c62ee9a0094392",
+      "hash": "b3b280ba4b75229fc916dcc4b2dbccadf91c120b9814f17e13be1a9e63ad682c",
+      "id": "material:b3b280ba4b75229fc916dcc4",
       "name": "FabricatorAtlasLOD1",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -587,14 +587,14 @@
       "uri": "place_works_fabricator.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 692156,
-    "sha256": "66d0d7293c7b177e6f70b857c17942773f721f99cab7788fed07086fcbc7b05a",
+    "bytes": 692248,
+    "sha256": "a508bfc869100f4b3f0c9bccc83c75a04c4f7aa031dc5567cf1c95cd005aae19",
     "uri": "render.glb"
   },
   "runtime": {
@@ -926,7 +926,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_fabricator.glb"
   },
-  "runtimeHash": "996f5e98a06d7ee963dcdcd0fdcee58fd27e86455deda956177ade8eea96b1d3",
+  "runtimeHash": "d6baa39836f6a5c6bd35c4d6f897b3c0c4c1cf5ddef7377fcd3f98fc2a37c790",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

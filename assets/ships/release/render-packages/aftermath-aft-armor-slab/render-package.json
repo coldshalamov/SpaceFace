@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "93858381b99c8b476467036962d760fff7e499c71c437716996d5210ed6c5c62",
+  "contentHash": "86f1cd1961a47db017c6932d2a175bc1222d12cf766536213bdb9f3eb5590405",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear0",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear0",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear1",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear1",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear2",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear2",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
+      "materialHash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
       "materialPipelineKey": "opaque",
       "meshName": "slabEdge_tear3",
       "nodeId": "sf.render.aftermath-aft-armor-slab.mesh.slabedge-tear3",
@@ -165,10 +165,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "6109de97f71b842f4915fdd7d752b2a61f8c296506fb0c4e0aa97de479420d5f",
-      "id": "material:6109de97f71b842f4915fdd7",
+      "hash": "0eb149d5928a914ec68a878d746cb7159716f0880b731dcebcebed7657e37b7a",
+      "id": "material:0eb149d5928a914ec68a878d",
       "name": "Forge_bastion_wk_torn__dead",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -566,14 +566,14 @@
       "uri": "place_aftermath_aft_armor_slab.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 105512,
-    "sha256": "d1b95714e0038324fd7ca34054fd184b24d26188d386d9d56fbade8ec72f646d",
+    "bytes": 105608,
+    "sha256": "2764590a425a36114f83a0e70367b82978b0330e620ca3c05f06c683450ef130",
     "uri": "render.glb"
   },
   "runtime": {
@@ -808,7 +808,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab.glb"
   },
-  "runtimeHash": "d2477d3c749f2560c83d9a3ac582e6b5c4f40e384d089cd21f343c7cd92caa4e",
+  "runtimeHash": "d979e772b5127d00e5fdad15613c1fb179cade5747712dd05c88662411962625",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

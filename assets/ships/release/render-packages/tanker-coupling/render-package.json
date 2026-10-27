@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b978ee2d9f592004eb8efe23a7529e18f639618da2622a5427d77c8cbefc6a40",
+  "contentHash": "a2f5a0ed61688ce8c49c046035c14dfabb898ce651c3adf288751dfd9bf455b9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -220,7 +220,7 @@
       "id": "sf.render.tanker-coupling.mesh.coupler-flood-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
+      "materialHash": "a481df9859cff377575cc61f69cff3a91ad70f7e436ea6edc7771d3fe10c5c74",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.tanker-coupling.mesh.coupler-flood-lens",
@@ -495,7 +495,7 @@
       "id": "sf.render.tanker-coupling.mesh.top-strobe.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.tanker-coupling.mesh.top-strobe",
@@ -679,13 +679,6 @@
       "textures": []
     },
     {
-      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
-      "id": "material:53eb4ca876098f910744724d",
-      "name": "esk_light_nav_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "6c55db37a0352026e716da349ee59bc3b7c312b1c5ba232279b67042c4d0ef86",
       "id": "material:6c55db37a0352026e716da34",
       "name": "esk_armor_plate",
@@ -693,10 +686,17 @@
       "textures": []
     },
     {
-      "hash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
-      "id": "material:83ea3b840f24c4d8125de80d",
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a481df9859cff377575cc61f69cff3a91ad70f7e436ea6edc7771d3fe10c5c74",
+      "id": "material:a481df9859cff377575cc61f",
       "name": "esk_light_flood",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1859,14 +1859,14 @@
       "uri": "place_tanker_coupling.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 31172,
-    "sha256": "a8dd8bd94089263d892dd0fd27fbc8f8eac459c50c699861ba8834957f40f808",
+    "bytes": 31260,
+    "sha256": "f34ba3650ce981653bacd99d2b1bf5bfa9d887cf73548a7a80cdb9eac9cf5ff1",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2689,7 +2689,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "98bdbf4eed6ac5b0803a25ef0176270e39474de1220fd73d479a5ee6aaf55b5e",
+  "runtimeHash": "221e4e8716ded9e74ac02cb4d9f99f327fe877c98b9be8d3486d236cbcc9db6b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

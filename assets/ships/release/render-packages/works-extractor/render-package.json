@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c6bac4e3537c01c048cb2c73ae4b0b91314c0611e4d358e34a26e509aa986b73",
+  "contentHash": "8bf623b0a93b1afd90651b7367b2f163590ddca0ebd5e248822f721c26b97b07",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.works-extractor.mesh.lod0-belt.primitive.0",
       "indexCount": 1740,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "belt_face_Mesh",
       "nodeId": "sf.render.works-extractor.mesh.lod0-belt",
@@ -52,7 +52,7 @@
       "id": "sf.render.works-extractor.mesh.lod0-extractor.primitive.0",
       "indexCount": 3132,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "rail_P_Mesh",
       "nodeId": "sf.render.works-extractor.mesh.lod0-extractor",
@@ -77,7 +77,7 @@
       "id": "sf.render.works-extractor.mesh.lod0-head.primitive.0",
       "indexCount": 3600,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.works-extractor.mesh.lod0-head",
@@ -102,7 +102,7 @@
       "id": "sf.render.works-extractor.mesh.lod0-lamp-lens.primitive.0",
       "indexCount": 276,
       "indexed": true,
-      "materialHash": "7684801207c684f35bf12544ab89b81b10c2d71e6c80ef0f930f1b148ae51faf",
+      "materialHash": "6d6f7143ce84e108b3531f02df8f5b6a47a37fafb277789c1475a6c3cb0a7602",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.013",
       "nodeId": "sf.render.works-extractor.mesh.lod0-lamp-lens",
@@ -127,7 +127,7 @@
       "id": "sf.render.works-extractor.mesh.lod0-lamp.primitive.0",
       "indexCount": 588,
       "indexed": true,
-      "materialHash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
+      "materialHash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.025",
       "nodeId": "sf.render.works-extractor.mesh.lod0-lamp",
@@ -152,7 +152,7 @@
       "id": "sf.render.works-extractor.mesh.lod1-belt.primitive.0",
       "indexCount": 756,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "belt_face_Mesh.001",
       "nodeId": "sf.render.works-extractor.mesh.lod1-belt",
@@ -177,7 +177,7 @@
       "id": "sf.render.works-extractor.mesh.lod1-extractor.primitive.0",
       "indexCount": 900,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "rail_P_Mesh.001",
       "nodeId": "sf.render.works-extractor.mesh.lod1-extractor",
@@ -202,7 +202,7 @@
       "id": "sf.render.works-extractor.mesh.lod1-head.primitive.0",
       "indexCount": 828,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.works-extractor.mesh.lod1-head",
@@ -227,7 +227,7 @@
       "id": "sf.render.works-extractor.mesh.lod1-lamp-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "29a56594327df662d27754ad2347683753e0ba0d356454d357b1b5ebf05f007c",
+      "materialHash": "3c600d1abfeef0a625f791b572f4bfe8841a28b52b6f810ebb00b9bfd345232b",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.works-extractor.mesh.lod1-lamp-lens",
@@ -252,7 +252,7 @@
       "id": "sf.render.works-extractor.mesh.lod1-lamp.primitive.0",
       "indexCount": 204,
       "indexed": true,
-      "materialHash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
+      "materialHash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.019",
       "nodeId": "sf.render.works-extractor.mesh.lod1-lamp",
@@ -265,10 +265,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "29a56594327df662d27754ad2347683753e0ba0d356454d357b1b5ebf05f007c",
-      "id": "material:29a56594327df662d27754ad",
+      "hash": "3c600d1abfeef0a625f791b572f4bfe8841a28b52b6f810ebb00b9bfd345232b",
+      "id": "material:3c600d1abfeef0a625f791b5",
       "name": "ExtractorAtlas_LOD1_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -297,10 +297,10 @@
       ]
     },
     {
-      "hash": "29f4831fbee6574df594e175d5ed1eb1d9d0cb22a645204e1f08f4e6cdec8c9d",
-      "id": "material:29f4831fbee6574df594e175",
+      "hash": "52f7a5e345c6654b878ded797ebad66b2120c40cffcbb518276ea1bd91218fcb",
+      "id": "material:52f7a5e345c6654b878ded79",
       "name": "ExtractorAtlas_LOD0",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -323,36 +323,10 @@
       ]
     },
     {
-      "hash": "2e3ab9c0e8791ed8771b11b2e3365d04660a0a4c3cdb787a302bfeb936f320a2",
-      "id": "material:2e3ab9c0e8791ed8771b11b2",
-      "name": "ExtractorAtlas_LOD1",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "extractor_atlas_lod1_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "extractor_atlas_lod1_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "extractor_atlas_lod1_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "7684801207c684f35bf12544ab89b81b10c2d71e6c80ef0f930f1b148ae51faf",
-      "id": "material:7684801207c684f35bf12544",
+      "hash": "6d6f7143ce84e108b3531f02df8f5b6a47a37fafb277789c1475a6c3cb0a7602",
+      "id": "material:6d6f7143ce84e108b3531f02",
       "name": "ExtractorAtlas_LOD0_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -375,6 +349,32 @@
         {
           "colorSpace": "linear",
           "name": "extractor_atlas_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7cd3da19227c92771ed14a0ae30620b586c1c12816aba8c839790f9eebe3e580",
+      "id": "material:7cd3da19227c92771ed14a0a",
+      "name": "ExtractorAtlas_LOD1",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "extractor_atlas_lod1_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "extractor_atlas_lod1_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "extractor_atlas_lod1_normal",
           "slot": "normal",
           "uri": null
         }
@@ -939,14 +939,14 @@
       "uri": "place_works_extractor.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2013520,
-    "sha256": "18460e2077862e34d63637ecd2b34e7673f24f1da00bab5eaeb8898cceabd3ca",
+    "bytes": 2013628,
+    "sha256": "8fe94792c0d05a71ed48bf60a3314e2fbeec315c0e354ff5019b66ad9b2d674c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1417,7 +1417,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_extractor.glb"
   },
-  "runtimeHash": "7823e416a5c205b78dc78516f890fc61dcf88dd303ed4687d168f3cacfb6e939",
+  "runtimeHash": "7dfdace1f905c417e7cfc5319af5e36b8074f276282b39cf8fe0533f42c1fa33",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "187d39577a6c1450e8a46c438738e045583ebe4213f22e1f05f47db980429238",
+  "contentHash": "2ee2b76fd1e4f4a37655dec35ca897546045ab716af2d16b54b80e9671c07410",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -170,7 +170,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "f8b36b97396858749d32ca572035bacf7aec1968b58b911534d774519079c0f9",
+      "materialHash": "f6795d4c1d5ae3ff81532036abe6d7478857ba76a859cc7f6beed29453b1f639",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-exhaust-soot",
@@ -220,7 +220,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-military-stencil.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "218addc65e1e8b1db2e88976b17e8119911add13f42bb5a169b3d5eabd4b92a5",
+      "materialHash": "8c0b23eba1a1402bcf665751278d2f22ee403cd6b9f3c3594aa39258db8e05bb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-military-stencil",
@@ -245,7 +245,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "f8b36b97396858749d32ca572035bacf7aec1968b58b911534d774519079c0f9",
+      "materialHash": "f6795d4c1d5ae3ff81532036abe6d7478857ba76a859cc7f6beed29453b1f639",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-sensor-dome",
@@ -270,7 +270,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-turret-mount.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "f8b36b97396858749d32ca572035bacf7aec1968b58b911534d774519079c0f9",
+      "materialHash": "f6795d4c1d5ae3ff81532036abe6d7478857ba76a859cc7f6beed29453b1f639",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-turret-mount",
@@ -295,7 +295,7 @@
       "id": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "f8b36b97396858749d32ca572035bacf7aec1968b58b911534d774519079c0f9",
+      "materialHash": "f6795d4c1d5ae3ff81532036abe6d7478857ba76a859cc7f6beed29453b1f639",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.hull-gunship.mesh.lod0-det-weapon-hardpoint",
@@ -383,10 +383,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "218addc65e1e8b1db2e88976b17e8119911add13f42bb5a169b3d5eabd4b92a5",
-      "id": "material:218addc65e1e8b1db2e88976",
+      "hash": "8c0b23eba1a1402bcf665751278d2f22ee403cd6b9f3c3594aa39258db8e05bb",
+      "id": "material:8c0b23eba1a1402bcf665751",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -447,10 +447,10 @@
       ]
     },
     {
-      "hash": "f8b36b97396858749d32ca572035bacf7aec1968b58b911534d774519079c0f9",
-      "id": "material:f8b36b97396858749d32ca57",
+      "hash": "f6795d4c1d5ae3ff81532036abe6d7478857ba76a859cc7f6beed29453b1f639",
+      "id": "material:f6795d4c1d5ae3ff81532036",
       "name": "Material_Mechanical",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -1078,14 +1078,14 @@
       "uri": "hull_gunship.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3615768,
-    "sha256": "75f2953da1b2c9c313f92ca0d0b81bc9b62501e7064c23925cb2b24170e3cbf4",
+    "bytes": 3615856,
+    "sha256": "b52c445be7d6f08459f13134b0860af2ba69246e3b3f399a7f8a64d509ffde9d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1734,7 +1734,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_gunship.glb"
   },
-  "runtimeHash": "fd59196bb40e238eea02c8ac89c2d834bbcbed98169598e8db3a692f61dac9ca",
+  "runtimeHash": "d81dca5a30bd10ccb066c646f1cb07d0b4a96a8577ecccb1ff1f20dfbb41758c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

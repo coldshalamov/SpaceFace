@@ -375,7 +375,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "50fb5034b7251b27871f4c1f5b75cd5a0cb17d37f01922110a3ff2e77eea2fb2",
+  "contentHash": "b422b67ac0f80c222cdadb5bd23d80e8b54faa6aca25e495455266e1e506582f",
   "dynamicGroups": [
     {
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-main-port-glow-drive.dynamic",
@@ -8534,8 +8534,8 @@
       "uri": "place_latch_nine.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -12317,7 +12317,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_latch_nine.glb"
   },
-  "runtimeHash": "f81033e076d238d759864f6f40e7f1746477fcb24ea114526c5e128f127a4662",
+  "runtimeHash": "10ea5644099aa76ac7a67936cbe8bfb44e0f68b6bd8027016cbe42793ebcc8d4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

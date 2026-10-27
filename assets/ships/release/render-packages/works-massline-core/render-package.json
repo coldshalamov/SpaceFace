@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "59d6ef113add74a5eb68333bbb8c88c6855a61ec0303e4a1f75fb4b9d8f2105f",
+  "contentHash": "5e27cacd7c1ecde4c52272de4bd44fab5d5fbb554fb8ed08caa14b0acb1eb811",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.works-massline-core.mesh.lod0-massline-core-lamp.primitive.0",
       "indexCount": 624,
       "indexed": true,
-      "materialHash": "143ba437c8c74cd23a73f3cd6def65f6427e21f4c6b08909570ae2fef9ca2cfa",
+      "materialHash": "28f4fcc27c3f1a4d1bb297518916c5cbd6e74a798ac72062946e2c17675885fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_massline_core_lamp",
       "nodeId": "sf.render.works-massline-core.mesh.lod0-massline-core-lamp",
@@ -52,7 +52,7 @@
       "id": "sf.render.works-massline-core.mesh.lod0-massline-core-spin.primitive.0",
       "indexCount": 2394,
       "indexed": true,
-      "materialHash": "143ba437c8c74cd23a73f3cd6def65f6427e21f4c6b08909570ae2fef9ca2cfa",
+      "materialHash": "28f4fcc27c3f1a4d1bb297518916c5cbd6e74a798ac72062946e2c17675885fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_massline_core_spin",
       "nodeId": "sf.render.works-massline-core.mesh.lod0-massline-core-spin",
@@ -77,7 +77,7 @@
       "id": "sf.render.works-massline-core.mesh.lod0-massline-core.primitive.0",
       "indexCount": 17154,
       "indexed": true,
-      "materialHash": "143ba437c8c74cd23a73f3cd6def65f6427e21f4c6b08909570ae2fef9ca2cfa",
+      "materialHash": "28f4fcc27c3f1a4d1bb297518916c5cbd6e74a798ac72062946e2c17675885fa",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_massline_core",
       "nodeId": "sf.render.works-massline-core.mesh.lod0-massline-core",
@@ -102,7 +102,7 @@
       "id": "sf.render.works-massline-core.mesh.lod1-massline-core-lamp.primitive.0",
       "indexCount": 288,
       "indexed": true,
-      "materialHash": "d13303c3859de9ae2395c826d1675a232519343114df04c3a62a448c509338fb",
+      "materialHash": "6bae45ed8f04d53c880027cabdb266180cf1517995948d6f78af18918bd70b66",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_massline_core_lamp",
       "nodeId": "sf.render.works-massline-core.mesh.lod1-massline-core-lamp",
@@ -127,7 +127,7 @@
       "id": "sf.render.works-massline-core.mesh.lod1-massline-core-spin.primitive.0",
       "indexCount": 198,
       "indexed": true,
-      "materialHash": "d13303c3859de9ae2395c826d1675a232519343114df04c3a62a448c509338fb",
+      "materialHash": "6bae45ed8f04d53c880027cabdb266180cf1517995948d6f78af18918bd70b66",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_massline_core_spin",
       "nodeId": "sf.render.works-massline-core.mesh.lod1-massline-core-spin",
@@ -152,7 +152,7 @@
       "id": "sf.render.works-massline-core.mesh.lod1-massline-core.primitive.0",
       "indexCount": 3354,
       "indexed": true,
-      "materialHash": "d13303c3859de9ae2395c826d1675a232519343114df04c3a62a448c509338fb",
+      "materialHash": "6bae45ed8f04d53c880027cabdb266180cf1517995948d6f78af18918bd70b66",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_massline_core",
       "nodeId": "sf.render.works-massline-core.mesh.lod1-massline-core",
@@ -165,10 +165,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "143ba437c8c74cd23a73f3cd6def65f6427e21f4c6b08909570ae2fef9ca2cfa",
-      "id": "material:143ba437c8c74cd23a73f3cd",
+      "hash": "28f4fcc27c3f1a4d1bb297518916c5cbd6e74a798ac72062946e2c17675885fa",
+      "id": "material:28f4fcc27c3f1a4d1bb29751",
       "name": "Material_Atlas_LOD0",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -203,10 +203,10 @@
       ]
     },
     {
-      "hash": "d13303c3859de9ae2395c826d1675a232519343114df04c3a62a448c509338fb",
-      "id": "material:d13303c3859de9ae2395c826",
+      "hash": "6bae45ed8f04d53c880027cabdb266180cf1517995948d6f78af18918bd70b66",
+      "id": "material:6bae45ed8f04d53c880027ca",
       "name": "Material_Atlas_LOD1",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -599,14 +599,14 @@
       "uri": "place_works_massline_core.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1087388,
-    "sha256": "b4c15c9c93cee5b9b1d8a9a08cd7343f06df0a6eab6c318c1ecfe3b266732b66",
+    "bytes": 1087480,
+    "sha256": "500f1348a7e7c5a851d8e3fe8d6412bbcbea9a2eeaae5b17cfe81ed84f0270be",
     "uri": "render.glb"
   },
   "runtime": {
@@ -912,7 +912,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_massline_core.glb"
   },
-  "runtimeHash": "78b1d9c26d0b78e6c91bc6025b1dd6ad3907a33de964c8f098f57c73968f1d16",
+  "runtimeHash": "c1dd395f99551f0eb4baccb6e293746635f0556dfd6e66c010536196201e8c10",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

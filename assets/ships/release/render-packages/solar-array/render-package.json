@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "909fd281004d0c81ade90d07d5558be07cde14cc76d48eafd4ba15d8ccd75428",
+  "contentHash": "378effad684b69977108c052ebb1cea0812d4a7d04a29ec86cc658a4744e0a31",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -445,7 +445,7 @@
       "id": "sf.render.solar-array.mesh.status.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
+      "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.solar-array.mesh.status",
@@ -470,7 +470,7 @@
       "id": "sf.render.solar-array.mesh.tip-p.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.002",
       "nodeId": "sf.render.solar-array.mesh.tip-p",
@@ -495,7 +495,7 @@
       "id": "sf.render.solar-array.mesh.tip-s.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.003",
       "nodeId": "sf.render.solar-array.mesh.tip-s",
@@ -561,24 +561,24 @@
       "textures": []
     },
     {
-      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
-      "id": "material:53eb4ca876098f910744724d",
-      "name": "esk_light_nav_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "710749cab1590f13b764fa15b9dab43d4a36ca58c7554a5f9bdc5365fd72340a",
-      "id": "material:710749cab1590f13b764fa15",
+      "hash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
+      "id": "material:34f564162e21bc0296927f4f",
       "name": "esk_light_signal_amber",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
-      "id": "material:a090cc581cc4edd9c4d71310",
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
       "name": "esk_light_nav_green",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -1482,14 +1482,14 @@
       "uri": "place_solar_array.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 30172,
-    "sha256": "999b035c96ae421852041a8eda55cad4913b631e7ceac5dbf873ed9b014aeece",
+    "bytes": 30268,
+    "sha256": "1ee4378b6d18ca7936710a679f00c69383ad2b199fd5baa09d2b36012faabdc6",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2151,7 +2151,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_solar_array.glb"
   },
-  "runtimeHash": "2502df91471229bc13f0c28d9f9a67c14a03df00f99c7e0765dde4186be68487",
+  "runtimeHash": "22b4bab7d84aa39ed42ff3e2b04eb4197229bed257fede91d4b1369dc9e3fd59",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

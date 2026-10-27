@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "70f14837b753d8436f46e8185f6e21538d97b389aab262ac2a2cfa106ee279f0",
+  "contentHash": "1b92f21a0087e0cc5b08e51c5a82248d381ac7997462457e3769d2b07ebba1b0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -349,7 +349,7 @@
       "id": "sf.render.power-skid-patched.mesh.hood-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
+      "materialHash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.power-skid-patched.mesh.hood-lens",
@@ -508,13 +508,6 @@
       "textures": []
     },
     {
-      "hash": "5c25af379243dc87acccdd2f9f5d9ca24a924a964710637b160d52c99feb202c",
-      "id": "material:5c25af379243dc87acccdd2f",
-      "name": "esk_light_hooded_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "71880284f6aae962fa407931b8a2638883486d46b4b48204760ab51ad34edd50",
       "id": "material:71880284f6aae962fa407931",
       "name": "esk_tank_shell",
@@ -532,6 +525,13 @@
       "hash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "id": "material:ef83aaa905288b1ffc8a4f70",
       "name": "esk_struct_alloy",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "f0d8b86f276ed9e28482a52e204a0077eb4375206b39f72df7703cded517ac73",
+      "id": "material:f0d8b86f276ed9e28482a52e",
+      "name": "esk_light_hooded_red",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1438,14 +1438,14 @@
       "uri": "place_power_skid_patched.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 25996,
-    "sha256": "0a5315249de533921e6449077faf73e3a65fa1136e8a240d9ab595307b5bf819",
+    "bytes": 26084,
+    "sha256": "7f042ba9dd73b84dd67e975dabae33d5fb4fa04561818787b618922645831f94",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2071,7 +2071,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_power_skid_patched.glb"
   },
-  "runtimeHash": "bf34b81ffb8cc5c01b080db7a8d59b91ef4c283efe753dd72e482f1c866593a6",
+  "runtimeHash": "11f7be854428e44a309a1d1002d18523bc4813bf94d3e674390227008b0598ad",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

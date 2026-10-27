@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5b3128e163cbf65559a3dee43a823bf6ed6e2539f4ba0cfdb1605cfb44e39dd2",
+  "contentHash": "7f54327a22847662195519f4f6c34421c39c7a737b9d4171b1abecc9ecfbad69",
   "dynamicGroups": [
     {
       "id": "sf.render.inspection-cutter.node.lod0-hook-drive-core.dynamic",
@@ -5917,8 +5917,8 @@
       "uri": "inspection_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -8643,7 +8643,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
   },
-  "runtimeHash": "63984a041730c87e4a5c58c82765402a7e5b6d5e48959618f19f070d2246459c",
+  "runtimeHash": "8138796e380f65d6a3f5c324636264eb71d7606e6fd6f2bde87b0a3274e3877a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

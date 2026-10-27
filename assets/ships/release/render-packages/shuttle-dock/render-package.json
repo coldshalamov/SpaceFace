@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "16a052b789c4e64c2ccb47a5cbb8b063df878ac22600c9d4d982661278d9e395",
+  "contentHash": "82f803889075b9aebdd611c5354f0a42f957b16e98b7b3991d702fd4225859fa",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.shuttle-dock.mesh.apg0.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.010",
       "nodeId": "sf.render.shuttle-dock.mesh.apg0",
@@ -145,7 +145,7 @@
       "id": "sf.render.shuttle-dock.mesh.apg1.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.011",
       "nodeId": "sf.render.shuttle-dock.mesh.apg1",
@@ -170,7 +170,7 @@
       "id": "sf.render.shuttle-dock.mesh.apg2.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.002",
       "nodeId": "sf.render.shuttle-dock.mesh.apg2",
@@ -195,7 +195,7 @@
       "id": "sf.render.shuttle-dock.mesh.apg3.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.004",
       "nodeId": "sf.render.shuttle-dock.mesh.apg3",
@@ -220,7 +220,7 @@
       "id": "sf.render.shuttle-dock.mesh.apg4.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.006",
       "nodeId": "sf.render.shuttle-dock.mesh.apg4",
@@ -495,7 +495,7 @@
       "id": "sf.render.shuttle-dock.mesh.apr0.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.008",
       "nodeId": "sf.render.shuttle-dock.mesh.apr0",
@@ -520,7 +520,7 @@
       "id": "sf.render.shuttle-dock.mesh.apr1.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.shuttle-dock.mesh.apr1",
@@ -545,7 +545,7 @@
       "id": "sf.render.shuttle-dock.mesh.apr2.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.003",
       "nodeId": "sf.render.shuttle-dock.mesh.apr2",
@@ -570,7 +570,7 @@
       "id": "sf.render.shuttle-dock.mesh.apr3.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.005",
       "nodeId": "sf.render.shuttle-dock.mesh.apr3",
@@ -595,7 +595,7 @@
       "id": "sf.render.shuttle-dock.mesh.apr4.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
+      "materialHash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.007",
       "nodeId": "sf.render.shuttle-dock.mesh.apr4",
@@ -820,7 +820,7 @@
       "id": "sf.render.shuttle-dock.mesh.mast-fl-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
+      "materialHash": "a481df9859cff377575cc61f69cff3a91ad70f7e436ea6edc7771d3fe10c5c74",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.shuttle-dock.mesh.mast-fl-lens",
@@ -970,7 +970,7 @@
       "id": "sf.render.shuttle-dock.mesh.walk-glow.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.shuttle-dock.mesh.walk-glow",
@@ -990,16 +990,16 @@
       "textures": []
     },
     {
-      "hash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
-      "id": "material:12fb5c7a19cd2d7af38baeab",
-      "name": "esk_light_cabin",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "id": "material:143624083cd581b0939afdce",
       "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
+      "id": "material:1bf5cc68ef723c852f79aebc",
+      "name": "esk_light_cabin",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -1018,13 +1018,6 @@
       "textures": []
     },
     {
-      "hash": "53eb4ca876098f910744724d89f5589364e6ac2f9ca0ab035713573c5c15b7e1",
-      "id": "material:53eb4ca876098f910744724d",
-      "name": "esk_light_nav_red",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "6afd4c662783ee0c598ebf5cc1a783c2dd027a24be310d9cfb96d392d41cb586",
       "id": "material:6afd4c662783ee0c598ebf5c",
       "name": "esk_glass",
@@ -1032,23 +1025,30 @@
       "textures": []
     },
     {
-      "hash": "83ea3b840f24c4d8125de80dedf06756b794cf179ccc2cc31a6d9138ef257052",
-      "id": "material:83ea3b840f24c4d8125de80d",
-      "name": "esk_light_flood",
-      "pipelineKey": "opaque:double",
+      "hash": "87b3341f40761483253aaeb3ed7f2c4c1dde36ff03a002399b162aea94c228d6",
+      "id": "material:87b3341f40761483253aaeb3",
+      "name": "esk_light_nav_red",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
-      "id": "material:a090cc581cc4edd9c4d71310",
-      "name": "esk_light_nav_green",
-      "pipelineKey": "opaque:double",
+      "hash": "a481df9859cff377575cc61f69cff3a91ad70f7e436ea6edc7771d3fe10c5c74",
+      "id": "material:a481df9859cff377575cc61f",
+      "name": "esk_light_flood",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
       "hash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "id": "material:be22fc38209109d7bc12285f",
       "name": "esk_id_plate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
+      "name": "esk_light_nav_green",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2845,14 +2845,14 @@
       "uri": "place_shuttle_dock.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 39344,
-    "sha256": "987bdc77037518329d118a4763d13452d15af59405be5057ee840b2834cfd94a",
+    "bytes": 39432,
+    "sha256": "8e482f0b4d297918386563bdbff438bf80579e507d5d65ffbbb04b6cd36d1266",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4092,7 +4092,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_shuttle_dock.glb"
   },
-  "runtimeHash": "f2d8f4cd0c8987bf2a5943a3714e151b87a9c8faf45d3d3c8e2adc56cdf099f3",
+  "runtimeHash": "a05b7333cf248711aa8a42edf380c80bb2c237754441637c43f6ed00e8ba034c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

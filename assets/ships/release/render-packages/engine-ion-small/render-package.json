@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f3c9c77769e34312647b46d361e383a8e0947ec3364fa7e72b7c2c83b98d8f59",
+  "contentHash": "56f3bad30c13b1b22bdaded729342ffc388f8ef5a217ccee3a3a33dfadd9fdae",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -152,7 +152,7 @@
       "id": "sf.render.engine-ion-small.node.det-patch-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "6af834cfe00ed90a0e27060212eff501d508c08dcf2cf33ec1c5667cc6cc976d",
+      "materialHash": "2d55c844a985da8e30390c7408cf1b72b3852db33ce96f40c2494df2ef5c2d96",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.engine-ion-small.node.det-patch-plate",
@@ -302,7 +302,7 @@
       "id": "sf.render.engine-ion-small.node.lod0-engine-ion-small-main.primitive.0",
       "indexCount": 720,
       "indexed": true,
-      "materialHash": "6af834cfe00ed90a0e27060212eff501d508c08dcf2cf33ec1c5667cc6cc976d",
+      "materialHash": "2d55c844a985da8e30390c7408cf1b72b3852db33ce96f40c2494df2ef5c2d96",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ENGINE_ION_SMALL_MAIN",
       "nodeId": "sf.render.engine-ion-small.node.lod0-engine-ion-small-main",
@@ -315,9 +315,9 @@
   "lods": [],
   "materials": [
     {
-      "hash": "51ee3958b2483446e0e89fbc39af3b78f039a23e02e573040ae38fc72f5e90cb",
-      "id": "material:51ee3958b2483446e0e89fbc",
-      "name": "Material_Accent",
+      "hash": "2d55c844a985da8e30390c7408cf1b72b3852db33ce96f40c2494df2ef5c2d96",
+      "id": "material:2d55c844a985da8e30390c74",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -341,10 +341,10 @@
       ]
     },
     {
-      "hash": "6af834cfe00ed90a0e27060212eff501d508c08dcf2cf33ec1c5667cc6cc976d",
-      "id": "material:6af834cfe00ed90a0e270602",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:double",
+      "hash": "51ee3958b2483446e0e89fbc39af3b78f039a23e02e573040ae38fc72f5e90cb",
+      "id": "material:51ee3958b2483446e0e89fbc",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -981,14 +981,14 @@
       "uri": "engine_ion_small.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 362564,
-    "sha256": "22ba2d221e42888829a253a4bd397957771c8c95382b4bc714777bbbfa9d152a",
+    "bytes": 362644,
+    "sha256": "e41c32f6f8e0a3b410f72f32ed5c11e6ec8f71d51d68760ff161b22d6979f34e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1463,7 +1463,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_small.glb"
   },
-  "runtimeHash": "c3417454b8a5a89389dd43faa17882ef8a4eab4a319281902d402154309be46d",
+  "runtimeHash": "72e87a25d33e786449d7f8487875429bac6c05c043cccd472dfeb71f7a9df052",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

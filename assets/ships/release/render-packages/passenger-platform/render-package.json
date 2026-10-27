@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ee8fb0f6fbf136997a2cfd83a4c7d86d09681fa9d1723dbb1e3b81d3a787ba6e",
+  "contentHash": "c61f7789d03a8fe7e51ca962228e25dce1abe0721e9ba6b6a93f0ad40b739ec7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -145,7 +145,7 @@
       "id": "sf.render.passenger-platform.mesh.cglow0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.passenger-platform.mesh.cglow0",
@@ -170,7 +170,7 @@
       "id": "sf.render.passenger-platform.mesh.cglow1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.passenger-platform.mesh.cglow1",
@@ -195,7 +195,7 @@
       "id": "sf.render.passenger-platform.mesh.cglow2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.passenger-platform.mesh.cglow2",
@@ -220,7 +220,7 @@
       "id": "sf.render.passenger-platform.mesh.cglow3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.passenger-platform.mesh.cglow3",
@@ -445,7 +445,7 @@
       "id": "sf.render.passenger-platform.mesh.gsign.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
+      "materialHash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.015",
       "nodeId": "sf.render.passenger-platform.mesh.gsign",
@@ -470,7 +470,7 @@
       "id": "sf.render.passenger-platform.mesh.guide0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
       "nodeId": "sf.render.passenger-platform.mesh.guide0",
@@ -495,7 +495,7 @@
       "id": "sf.render.passenger-platform.mesh.guide1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.passenger-platform.mesh.guide1",
@@ -520,7 +520,7 @@
       "id": "sf.render.passenger-platform.mesh.guide2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.passenger-platform.mesh.guide2",
@@ -545,7 +545,7 @@
       "id": "sf.render.passenger-platform.mesh.guide3.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.passenger-platform.mesh.guide3",
@@ -570,7 +570,7 @@
       "id": "sf.render.passenger-platform.mesh.guide4.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.passenger-platform.mesh.guide4",
@@ -595,7 +595,7 @@
       "id": "sf.render.passenger-platform.mesh.guide5.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
+      "materialHash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.passenger-platform.mesh.guide5",
@@ -908,16 +908,16 @@
   "lods": [],
   "materials": [
     {
-      "hash": "12fb5c7a19cd2d7af38baeab67cd01bddb0ded12367c62331b0660a2cd9871a6",
-      "id": "material:12fb5c7a19cd2d7af38baeab",
-      "name": "esk_light_cabin",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
       "id": "material:143624083cd581b0939afdce",
       "name": "esk_bare_steel",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "1bf5cc68ef723c852f79aebca55e4391f1863f55b35fd8a4207f89c76a42c853",
+      "id": "material:1bf5cc68ef723c852f79aebc",
+      "name": "esk_light_cabin",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -936,16 +936,16 @@
       "textures": []
     },
     {
-      "hash": "a090cc581cc4edd9c4d713106ed32f702affecf7dda0998512c331a3511bd14b",
-      "id": "material:a090cc581cc4edd9c4d71310",
-      "name": "esk_light_nav_green",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
       "hash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "id": "material:be22fc38209109d7bc12285f",
       "name": "esk_id_plate",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "da4ab03ee34c8a536220eec297e959a0eca84181bb811449b8921f6e53adf883",
+      "id": "material:da4ab03ee34c8a536220eec2",
+      "name": "esk_light_nav_green",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2589,14 +2589,14 @@
       "uri": "place_passenger_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 29360,
-    "sha256": "03b8d421055a9559558e3f26542614c847a075d6f396562796fb5c97f2f8872c",
+    "bytes": 29448,
+    "sha256": "94649463685ab36ec906435b2405202e695a0596d62f97a8047ed81a7f95c923",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3738,7 +3738,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_passenger_platform.glb"
   },
-  "runtimeHash": "ce87a3f2c5ade0c39007b361e58adba7a7b20147a171219e0be893ae7a49f6d7",
+  "runtimeHash": "92aaac0477840bce3692b71ebfb224616fc00c809a9f6c2118588ce533497163",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

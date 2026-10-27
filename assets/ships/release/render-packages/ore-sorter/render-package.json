@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6a87ea3d9c4a05cbc48e883baa96dbde0c03878a8f357eb8933210ae0d5be011",
+  "contentHash": "05d5b7c82e9e192eb50a1480c9f393eafb5ff987fc85d101f31175dab748f3e2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.ore-sorter.mesh.bar-p.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.ore-sorter.mesh.bar-p",
@@ -145,7 +145,7 @@
       "id": "sf.render.ore-sorter.mesh.bar-s.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.ore-sorter.mesh.bar-s",
@@ -320,7 +320,7 @@
       "id": "sf.render.ore-sorter.mesh.grade0-lamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.ore-sorter.mesh.grade0-lamp",
@@ -345,7 +345,7 @@
       "id": "sf.render.ore-sorter.mesh.grade1-lamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.ore-sorter.mesh.grade1-lamp",
@@ -370,7 +370,7 @@
       "id": "sf.render.ore-sorter.mesh.grade2-lamp.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
+      "materialHash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.ore-sorter.mesh.grade2-lamp",
@@ -661,17 +661,17 @@
       "textures": []
     },
     {
-      "hash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
-      "id": "material:b3f07a16d4766efd3b9f9cbd",
-      "name": "esk_ore_raw",
+      "hash": "8e5e2555bf57e74391b1e9c5ef4d6ee8a67839b18974cdc87aafe4d9e528e7bc",
+      "id": "material:8e5e2555bf57e74391b1e9c5",
+      "name": "esk_light_mining",
       "pipelineKey": "opaque:front",
       "textures": []
     },
     {
-      "hash": "e798a9eeac4b3e2fa59949aaf0e5c453b2f3c8e21279ee6ffd627f53d2468dd4",
-      "id": "material:e798a9eeac4b3e2fa59949aa",
-      "name": "esk_light_mining",
-      "pipelineKey": "opaque:double",
+      "hash": "b3f07a16d4766efd3b9f9cbd2b6fed157ba2644fcd303d14bdb8ea809e6c5d98",
+      "id": "material:b3f07a16d4766efd3b9f9cbd",
+      "name": "esk_ore_raw",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -1764,14 +1764,14 @@
       "uri": "place_ore_sorter.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 31832,
-    "sha256": "eb79f21a0551cc0f6705c53abf1e4530c3910b799a472cbd6cfb697beae6e4e6",
+    "bytes": 31916,
+    "sha256": "aad49d7d75ef6827ceb91169c76337d8d493957240d77945b4993308b4d912d7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2561,7 +2561,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_sorter.glb"
   },
-  "runtimeHash": "be4baf638c7d1aed480b517c7164a7feb4b03155dc0b13007dc1cebc8c843c60",
+  "runtimeHash": "15ac3a9b02b0cf24adc0f93c484d69ac04fe69484f3c28bd8ccf078c739abdf1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

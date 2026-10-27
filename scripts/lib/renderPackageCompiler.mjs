@@ -17,6 +17,7 @@ import {
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
 import { encodeRenderPackageGlb } from './renderPackageStorage.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './releaseMeshoptProfile.mjs';
+import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
 
 import {
   RENDER_PACKAGE_COMPILER_NAME,
@@ -72,6 +73,21 @@ export async function compileRenderPackage(options = {}) {
   document.setLogger(new Logger(Logger.Verbosity.SILENT));
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
+  // A render package is a *render* artifact: it may narrow a material to what the geometry can
+  // actually show. Double-sided opaque materials over watertight shells rasterise every triangle's
+  // back face for a face the camera can never reach, and compile their own DOUBLESIDED program.
+  // The rule only fires on a closed shell, so open wreck shells, plates, decals and thin surfaces
+  // keep the authored setting and the picture is unchanged.
+  const singleSide = singleSideWatertightOpaque()(document);
+  if (singleSide.flipped.length) {
+    document.getRoot().setExtras({
+      ...(document.getRoot().getExtras() || {}),
+      [SINGLE_SIDE_REPORT_SCHEMA]: {
+        materials: singleSide.flipped.map((row) => row.name).sort(),
+        triangles: singleSide.flippedTriangles,
+      },
+    });
+  }
 
   // The authored release GLBs ship quantized and meshopt-compressed. Reading one here decodes it
   // to float, and baking immutable node transforms + welding then wrote it back lossless - so every

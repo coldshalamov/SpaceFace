@@ -657,7 +657,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6ba23da07d83119db20762d0ccecb9544d613d163a110bce5ff1714fb2434077",
+  "contentHash": "e33fdded0efdce20b44619af7f4c5e0e240188d7b64a3513932c569c8c57353b",
   "dynamicGroups": [
     {
       "id": "sf.render.saucer-production-v1-lod1.node.lod0-motion-hull-core-hook-drive-core-mesh-lights-cyan.dynamic",
@@ -2900,8 +2900,8 @@
       "uri": "saucer_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
@@ -4273,7 +4273,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/saucer_production_v1_lod1.glb"
   },
-  "runtimeHash": "4ac88a3e5942aed2bba9bf3a4b13c2644bf4cd1e43f1960640d605c917216f12",
+  "runtimeHash": "d55819cef182e2b1ff9cfeb440b84b17ba7fcee306e16e3fea531b75a975baa4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

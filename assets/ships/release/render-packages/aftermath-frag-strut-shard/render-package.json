@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ed881509104208fe0d1c1445577005b70eb26cd0f504459578b41836900a5d4f",
+  "contentHash": "fc434422195a8d325cbbb85bf610e3f10602047bfbc01cd1a73649f81ca6bbce",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "strutFray_rib0",
       "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "strutFray_rib1",
       "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "strutFray_rib2",
       "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutfray-rib2",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutmain.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "strutMain",
       "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutmain",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-strut-shard.mesh.strutside.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "strutSide",
       "nodeId": "sf.render.aftermath-frag-strut-shard.mesh.strutside",
@@ -140,10 +140,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
       "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -477,14 +477,14 @@
       "uri": "place_aftermath_frag_strut_shard.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 46056,
-    "sha256": "2becefa06016752db320ebeb6e712e4fa4dd32dc5da42dfceb374189ce0e14cd",
+    "bytes": 46148,
+    "sha256": "ec32caa775bae167e93c14e959f1d20e0e95bd3a38a6eda5c227be4fba9af59f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -685,7 +685,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb"
   },
-  "runtimeHash": "36faf1c96574305cabed44b22df2114451e32604a75dc275190626e8f1129552",
+  "runtimeHash": "56b1767f694cba3cd7f19d14215bf2578b255df065698f93f1f397114fb67b59",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

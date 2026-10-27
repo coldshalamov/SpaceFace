@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27d1ccf02f8ce47a1b03e1db9bd9ceb7b5f3b74806cc20e4a0618fb9e647413e",
+  "contentHash": "b1be28259e7f00c32f4e1306270d3a4801717706b0ac15630de4064b2c90bf08",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.hush-gap.mesh.place-hush-gap.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialHash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
       "materialPipelineKey": "opaque",
       "meshName": "place_hush_gap",
       "nodeId": "sf.render.hush-gap.mesh.place-hush-gap",
@@ -52,7 +52,7 @@
       "id": "sf.render.hush-gap.root.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
+      "materialHash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
       "materialPipelineKey": "root",
       "meshName": "place_hush_gap",
       "nodeId": "sf.render.hush-gap.root",
@@ -65,10 +65,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "f16631848cf82ccc20dce27a3a59adeea1fd0a6bb7dc05525c7b0617869e88b7",
-      "id": "material:f16631848cf82ccc20dce27a",
+      "hash": "559a57b64b6898147b7f56c399061e438713981caf4c35d2844976ad1c1008d2",
+      "id": "material:559a57b64b6898147b7f56c3",
       "name": "HushVoidDisc",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     }
   ],
@@ -180,14 +180,14 @@
       "uri": "place_hush_gap.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4276,
-    "sha256": "22ebcc6f7fb5ddfac673f49755b7e0e743ae9153e70185d1ab97661925fa6760",
+    "bytes": 4356,
+    "sha256": "b215391b0becd85af53e9ebcf03c6ebb73305465321459980fd787a2572a9b52",
     "uri": "render.glb"
   },
   "runtime": {
@@ -259,7 +259,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_hush_gap.glb"
   },
-  "runtimeHash": "d97fcdff0815cadb13b21c03ae40206de09e196a8c819b696560235eb70cd0ea",
+  "runtimeHash": "886a7080bd7dd038fd9112c36d71088b6d7066c9f13ff134925ae9060977f55b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

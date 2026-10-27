@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5422ca437e2f7106d2d64a4238717a8f1d4e56ef1f9183751a4c99aae7d9b405",
+  "contentHash": "9a77adbb1dd0ed2dc7e0cb99a41c2e935056309411b823435c0645cccfa48f27",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "Coaming",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.coaming",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endA_rib0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib0",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endA_rib1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib1",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endA_rib2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.enda-rib2",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endB_rib0",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib0",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endB_rib1",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib1",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "endB_rib2",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.endb-rib2",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc.primitive.0",
       "indexCount": 588,
       "indexed": true,
-      "materialHash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
+      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
       "materialPipelineKey": "opaque",
       "meshName": "RingArc",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-ring-span.mesh.ringarc",
@@ -215,42 +215,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0c7aa7865a150ff305773a74d5403b56af762ec3b48ac3bde321257d8059296e",
-      "id": "material:0c7aa7865a150ff305773a74",
-      "name": "Forge_ore_barge_wk_frame",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_machinery_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_machinery_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
-      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
       "name": "Forge_ore_barge_wk_torn",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -273,6 +241,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "id": "material:cd333b2cda5928c0c3546800",
+      "name": "Forge_ore_barge_wk_frame",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -731,14 +731,14 @@
       "uri": "place_aftermath_deb_ore_freighter_ring_span.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 130596,
-    "sha256": "f0488790efedf07c49f00317bcc087f5af6eb343c284ab95e8f0b1be793b2ccc",
+    "bytes": 130696,
+    "sha256": "1d3f3c2b62128a8a2dccafd207edf6b5e94c21ab2925415d96941f85427f11c7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1035,7 +1035,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
   },
-  "runtimeHash": "18d012556c1f39ea90f93a657997e922ff1dac87416dde328af12d782cb1caae",
+  "runtimeHash": "642ddb2bd07b8a61efa75acc588fde59fe2212c7d5c4cb16628d259c07b03d71",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

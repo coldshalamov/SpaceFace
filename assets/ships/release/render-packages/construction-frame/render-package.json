@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d53eb5a7b918ed0b76e37c4829152ef863f85911b69df4d9a3b310ea13b0306",
+  "contentHash": "5dd8c69d5b3a8bec1fa407cca17ced3b03784995d95659fd07d47baf38ccfbaa",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -120,7 +120,7 @@
       "id": "sf.render.construction-frame.mesh.end-a.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.002",
       "nodeId": "sf.render.construction-frame.mesh.end-a",
@@ -145,7 +145,7 @@
       "id": "sf.render.construction-frame.mesh.end-f.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
       "materialPipelineKey": "opaque",
       "meshName": "Sphere.001",
       "nodeId": "sf.render.construction-frame.mesh.end-f",
@@ -220,7 +220,7 @@
       "id": "sf.render.construction-frame.mesh.fl-f-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.018",
       "nodeId": "sf.render.construction-frame.mesh.fl-f-lens",
@@ -295,7 +295,7 @@
       "id": "sf.render.construction-frame.mesh.fl-m-lens.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
+      "materialHash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.020",
       "nodeId": "sf.render.construction-frame.mesh.fl-m-lens",
@@ -972,10 +972,10 @@
       "textures": []
     },
     {
-      "hash": "30a1b3664c52d6456d2dd72abd1fded5a26c5ed6d695b8679899c02ea2ffd521",
-      "id": "material:30a1b3664c52d6456d2dd72a",
+      "hash": "445c58dd17d49c031fa46fe70138f092e2b97e76938aea7865a3dc68eb769f23",
+      "id": "material:445c58dd17d49c031fa46fe7",
       "name": "esk_light_repair",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -2712,14 +2712,14 @@
       "uri": "place_construction_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 44292,
-    "sha256": "85118e1d58623577995e312b2ad0e69f889cd558908de21f6ba6eeb7efe5d1d4",
+    "bytes": 44376,
+    "sha256": "5f3116a01d03cdf9dc44d09d615b5ec8dcaa7c682be7de8adedd3edd9d52aa4a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3925,7 +3925,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "f317c528d565f2f847136131289803df67a2339da0ba8bb9197124dc0a4925b7",
+  "runtimeHash": "2f44263132d6153d1dc0e781475ca23520dbc4bfde9caad97d73bdbaa2296f7b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

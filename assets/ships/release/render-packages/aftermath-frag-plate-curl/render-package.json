@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "273ab28dbcff1268b62a5c59afa58c1702c500675afd7ce0c5f1d868acd2b9b7",
+  "contentHash": "fb068799f8ebe86c4f128122ea308c6a8603a6d8ee7b4612621d3e00c09c16c1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "curl0",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl0",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
+      "materialHash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
       "materialPipelineKey": "opaque",
       "meshName": "curl1",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl1",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-plate-curl.mesh.curl2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
+      "materialHash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
       "materialPipelineKey": "opaque",
       "meshName": "curl2",
       "nodeId": "sf.render.aftermath-frag-plate-curl.mesh.curl2",
@@ -90,10 +90,10 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2420fbdf2e405d9bd20f8b92815e8ed1a525309b71533bf5f77b55b09794a23e",
-      "id": "material:2420fbdf2e405d9bd20f8b92",
+      "hash": "26127603b853d7f44c27cfbb18001cf394fdad4b6ac571d37f44acd9d603024c",
+      "id": "material:26127603b853d7f44c27cfbb",
       "name": "Forge_ore_barge_wk_torn",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -122,10 +122,10 @@
       ]
     },
     {
-      "hash": "c36a4bf93ab869729a357a6a98da82157199acc4c36601de8c66450ca2c3bc76",
-      "id": "material:c36a4bf93ab869729a357a6a",
+      "hash": "e9f7bd582170738d03ca89c5cd88893b17d0cc9a530b5069ca26183315ab58f1",
+      "id": "material:e9f7bd582170738d03ca89c5",
       "name": "Forge_ore_barge_wk_scorch",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -361,14 +361,14 @@
       "uri": "place_aftermath_frag_plate_curl.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 116304,
-    "sha256": "79b61e40a5a14ef6b9f2bfbddfca1d9b74b2f5a354ea86e914fe61f51fe7c3ba",
+    "bytes": 116404,
+    "sha256": "1376da048fd4f832e1fc5b48c0a868679c4041c8921093dc7bd1319fd3225a4a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -506,7 +506,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb"
   },
-  "runtimeHash": "f42ee6ccdb7ec83706d6e1d5d738d5029efcee46d30c8fa74c00549cd4ff8f7c",
+  "runtimeHash": "cb7ea930545e5480ace0cad3f07e29a2cd22ad1f3ae4a62fe2619e81b26199ac",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

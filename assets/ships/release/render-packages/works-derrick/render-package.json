@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d3f68914614e33957e63049f8989dd41535441c0e62ef7da6ab70021bd258a6c",
+  "contentHash": "d8d662889f59bcb675f030c91863636cab76860592b06f953ee7bb24f1a82eed",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,11 +23,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca4f6df3dae2cadc077e1afe936927ba2f3e4af3fea32ff8efdc31823ed3ccd2",
+      "geometryHash": "50f23c6f3bb8ae4570cee99536e5c855c9fc0574f5ed3a6f3c9c4de0aee5da81",
       "id": "sf.render.works-derrick.mesh.lod0-cable.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.049",
       "nodeId": "sf.render.works-derrick.mesh.lod0-cable",
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d644d338ffc0edda86ba2ce595d9a02890257041245f9a64334b884f8d223162",
+      "geometryHash": "396cdb348464cb29c8de20e64b713c20a12571c0f18bc741a48fdac0db39e0f1",
       "id": "sf.render.works-derrick.mesh.lod0-derrick.primitive.0",
       "indexCount": 16116,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "leg_P_X_Mesh",
       "nodeId": "sf.render.works-derrick.mesh.lod0-derrick",
       "primitiveIndex": 0,
-      "vertexCount": 8903
+      "vertexCount": 9337
     },
     {
       "bounds": {
@@ -73,11 +73,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d239bcf1c2078cea0effaadbd56b842181a89f04b400f71355331d676ce82a8",
+      "geometryHash": "eb28dc431dcd1a9b992edbf5564f5edf7b7aed76b243925d6e805554f374e65c",
       "id": "sf.render.works-derrick.mesh.lod0-drum.primitive.0",
       "indexCount": 2148,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.044",
       "nodeId": "sf.render.works-derrick.mesh.lod0-drum",
@@ -102,7 +102,7 @@
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l-lens.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
+      "materialHash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.054",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-l-lens",
@@ -123,11 +123,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b9ddb285eab80b78cbad080b3aceee70762932fef065f9fbaaa02f0fb7c8a9f",
+      "geometryHash": "71457bb552a945236ad5ed7ab650d9122cf3c531b62949ec06b74467eb2ca4af",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-l.primitive.0",
       "indexCount": 984,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.037",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-l",
@@ -152,7 +152,7 @@
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r-lens.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
+      "materialHash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.056",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-r-lens",
@@ -173,11 +173,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebfe35294473250348dbf10fd5d90ac615febeb2de32925e809f18df2ddfb9aa",
+      "geometryHash": "6067defc547329a11f7a2d96b3080dd592b19323a5135cf7d592395b793e830c",
       "id": "sf.render.works-derrick.mesh.lod0-lamp-r.primitive.0",
       "indexCount": 984,
       "indexed": true,
-      "materialHash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
+      "materialHash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.038",
       "nodeId": "sf.render.works-derrick.mesh.lod0-lamp-r",
@@ -202,7 +202,7 @@
       "id": "sf.render.works-derrick.mesh.lod1-cable.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.works-derrick.mesh.lod1-cable",
@@ -227,7 +227,7 @@
       "id": "sf.render.works-derrick.mesh.lod1-derrick.primitive.0",
       "indexCount": 2088,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "leg_P_X_Mesh.001",
       "nodeId": "sf.render.works-derrick.mesh.lod1-derrick",
@@ -248,11 +248,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92568501a07c585aa809a58b9246f64f82737bab704abca7a5229baa661a9e27",
+      "geometryHash": "96071c62e0cf377eaf4f9589d387acca433c07417126c51e3c8bc16ba52df2a4",
       "id": "sf.render.works-derrick.mesh.lod1-drum.primitive.0",
       "indexCount": 768,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.007",
       "nodeId": "sf.render.works-derrick.mesh.lod1-drum",
@@ -277,7 +277,7 @@
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
+      "materialHash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.014",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-l-lens",
@@ -298,11 +298,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b4196eb4df4c00949215b801f543d59cead0ff1ea93635854fb4f725c480768",
+      "geometryHash": "99c7cc88e90506a6524aa2ff83b5a67740a3f592de082ce49294fb3505d513e1",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-l.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.020",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-l",
@@ -327,7 +327,7 @@
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r-lens.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
+      "materialHash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.016",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-r-lens",
@@ -348,11 +348,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9f6633699cd8db07d681420ada8f40f4ecb4e1bda1ced7c591b262e6ea8e066a",
+      "geometryHash": "e8379a1d8b221656adf46c2e9ee4c68c4724e84589bfea3e7ba78262124e7f4e",
       "id": "sf.render.works-derrick.mesh.lod1-lamp-r.primitive.0",
       "indexCount": 312,
       "indexed": true,
-      "materialHash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
+      "materialHash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.021",
       "nodeId": "sf.render.works-derrick.mesh.lod1-lamp-r",
@@ -365,47 +365,15 @@
   "lods": [],
   "materials": [
     {
-      "hash": "983435dd3209d15cf78446e546edb01bf7a4e0bafc6fa5d4bfbb08902a451b5a",
-      "id": "material:983435dd3209d15cf78446e5",
-      "name": "DerrickAtlas_LOD0",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "derrick_atlas_lod0_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "derrick_atlas_lod0_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "derrick_atlas_lod0_normal",
-          "slot": "normal",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c205b21a2a0b50ce7ea26296193b94b52b0bd74c5cfdb0ef5f3aa9e273af602f",
-      "id": "material:c205b21a2a0b50ce7ea26296",
-      "name": "DerrickAtlas_LOD1_Lamp",
-      "pipelineKey": "opaque:double",
+      "hash": "28547b3d7f3de765ceb47c9e419df9fb7e2ec665e6a71698390a2f57752d508e",
+      "id": "material:28547b3d7f3de765ceb47c9e",
+      "name": "DerrickAtlas_LOD1",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
           "name": "derrick_lod1_site_basecolor",
           "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "srgb",
-          "name": "derrick_lod1_site_basecolor",
-          "slot": "emissive",
           "uri": null
         },
         {
@@ -423,10 +391,10 @@
       ]
     },
     {
-      "hash": "f2053667b642b68fa201087273a40f903bbe1723734365eb13cf34d88dd8ae1f",
-      "id": "material:f2053667b642b68fa2010872",
+      "hash": "42c6f9ffe39a8f179bd91f2573ff46862f933583409a979a7536a77e22f178b9",
+      "id": "material:42c6f9ffe39a8f179bd91f25",
       "name": "DerrickAtlas_LOD0_Lamp",
-      "pipelineKey": "opaque:double",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
@@ -455,15 +423,47 @@
       ]
     },
     {
-      "hash": "f85560103aae97041a8c05041c81fb9cd885653528abfa76c87d85d5667285cb",
-      "id": "material:f85560103aae97041a8c0504",
-      "name": "DerrickAtlas_LOD1",
-      "pipelineKey": "opaque:double",
+      "hash": "68da316a3f65b9c92cebb1261c3ea8ed4d7aacc41dfcb9125f904323d6901303",
+      "id": "material:68da316a3f65b9c92cebb126",
+      "name": "DerrickAtlas_LOD0",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "derrick_atlas_lod0_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "derrick_atlas_lod0_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "derrick_atlas_lod0_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "88aaba52566dd210da5f99fcb03c420417fa02c201adb34c998a3a263b9f49cb",
+      "id": "material:88aaba52566dd210da5f99fc",
+      "name": "DerrickAtlas_LOD1_Lamp",
+      "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
           "name": "derrick_lod1_site_basecolor",
           "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "derrick_lod1_site_basecolor",
+          "slot": "emissive",
           "uri": null
         },
         {
@@ -1234,19 +1234,19 @@
       "sha256": "0d68bb5267bb34fe9aa04f74e9c356f4b2a0ff7cd2cc10db29e10fa14eb9773b"
     },
     "sourceGlb": {
-      "bytes": 4055056,
-      "sha256": "ce35018eb7a5cdc6e5b70d19a5db7f6b5964e59cfafa952cb43abfc6814afc82",
+      "bytes": 1017920,
+      "sha256": "ec97abd6345e414912fc172f7ac103aaa1396b29197a814164274c5f6d073596",
       "uri": "place_works_derrick.glb"
     },
     "sourceManifest": {
-      "bytes": 323118,
-      "sha256": "63d61a305bc7dcea9368c3a50edaf869230658ad8dd72008a39e585a9322f167",
+      "bytes": 323116,
+      "sha256": "73d583c7362b0f8df4b0fbb371da01bf7c340a988360732982a5ccac6473dbde",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4044264,
-    "sha256": "ca9fbc3015fdd798864064068f28db420ae43d42c340d45deef754d5ba055492",
+    "bytes": 1010556,
+    "sha256": "477b7f33a6c8248d27520e77ef60c93df200a9e57c43d0e691c6603d0ff36d1c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1881,7 +1881,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_derrick.glb"
   },
-  "runtimeHash": "d7bc4138d6123150750e657fe17f9f61fa6f23a2b78342cbca903c107f7f843a",
+  "runtimeHash": "466eb3e01bb326e55542b64795fcb1b203e8a53a68b3962eef4fed827d637cc3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
