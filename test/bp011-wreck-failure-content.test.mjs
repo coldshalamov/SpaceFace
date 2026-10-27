@@ -223,7 +223,10 @@ test('survivorPod rescue commits the passenger contract; strip withdraws the off
   // Plant a promoted pod record and its point/entity, then board the stamped offer shape.
   const entity = {
     id: 7001, alive: true, type: 'wreck', pos: { x: 50, z: 50 },
-    data: {},
+    // Real spawn contract (_makeSalvagePoint stamps data.salvagePointId at birth): since D237
+    // (f0dd5d63056) survivorPod.entityForPoint drops a point.entityId pin whose occupant does not
+    // carry the point's binding, so a bare fixture body would unbind the pod and block the rescue.
+    data: { salvagePointId: 'zone_derelict_01:sal9' },
   };
   state.entities.set(entity.id, entity);
   state.salvage.points.push({
@@ -408,7 +411,8 @@ test('survivorPod persistence: a stripped pod stays stripped and cannot be re-ex
   // Round-trip into a fresh state whose replanned point looks un-spent — the reconcile must
   // re-assert the terminal strip, not resurrect a fresh rescue.
   const restoredState = baseState();
-  restoredState.entities.set(8001, { id: 8001, alive: true, type: 'wreck', pos: { x: 1, z: 1 }, data: {} });
+  // Carries its point binding like a real spawned body (D237, f0dd5d63056).
+  restoredState.entities.set(8001, { id: 8001, alive: true, type: 'wreck', pos: { x: 1, z: 1 }, data: { salvagePointId: rec.salvagePointId } });
   restoredState.salvage.points.push({
     id: rec.salvagePointId, sectorId: rec.sectorId, zoneId: rec.zoneId,
     pos: { x: 1, z: 1 }, entityId: 8001, isCommunicator: true,
