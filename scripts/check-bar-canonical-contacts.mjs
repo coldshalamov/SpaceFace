@@ -23,6 +23,22 @@ const expected = [
   { key: 'slate', stations: ['station_forge'], text: 'Shipyard Welder' },
   { key: 'drift', stations: ['station_drift'], text: 'Ore Ledger' },
   { key: 'quinn', stations: ['station_smuggler', 'station_sker'], text: 'Proprietor' },
+  // W-FACES (row 543): the rest of the canon cast and the eleven new faces of 03 §4.2.
+  { key: 'sula_dree', stations: ['station_dione_customs'], text: 'Gate Inspector' },
+  { key: 'callum', stations: ['station_dione'], text: 'Futures Broker' },
+  { key: 'wex', stations: ['station_helios'], text: 'Bay 7 Depot Keeper' },
+  { key: 'sump', stations: ['station_ashcache'], text: 'Sweeper' },
+  { key: 'ma_sprocket', stations: ['station_ashcache'], text: 'Cull Announcer' },
+  { key: 'clatter', stations: ['station_sker'], text: 'Cull Rival Ace' },
+  { key: 'moss_keeps_moss', stations: ['station_eunomia'], text: 'Garden Elder' },
+  { key: 'brother_index', stations: ['station_orcus_shadow'], text: 'Reading-Room Keeper' },
+  { key: 'addendum_seroy', stations: ['station_phoebe_echo'], text: 'Contract Officer' },
+  { key: 'cantor_lise', stations: ['station_depot3'], text: 'Shrine Keeper' },
+  { key: 'mael_ost', stations: ['station_sedna'], text: 'Audit Adjudicator' },
+  { key: 'petra_lusk', stations: ['station_dione_customs'], text: 'Relief Captain' },
+  { key: 'nine_finger_abe', stations: ['station_hyperion_claim'], text: 'Claim Boss' },
+  { key: 'tamsin', stations: ['station_reach'], text: 'Homestead Pilot' },
+  { key: 'clerk_0003', stations: ['station_tethys'], text: 'Routing Clerk' },
 ];
 
 for (const entry of expected) {
@@ -34,7 +50,7 @@ for (const entry of expected) {
   }
 }
 
-assert.ok(contactSource.includes('const canonical = canonicalContactForStation(stationId)'), 'bar contact generation must insert canonical contacts');
+assert.ok(contactSource.includes('canonicalContactsForStation(stationId)'), 'bar contact generation must insert canonical contacts');
 assert.ok(contactSource.includes('buildCanonicalReply(contact, choiceId, ctx, stationId)'), 'bar replies must dispatch to canonical contacts');
 assert.ok(stationBarSource.includes('createBarScreen(ctx)'), 'the shipped Station Bar must remain the live screen');
 assert.ok(stationBarSource.includes('barContactIntelTags'), 'the shipped Station Bar must render canonical contact intelligence');

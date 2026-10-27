@@ -15,6 +15,29 @@ const CANONICAL = Object.freeze({
   quinn: 'portrait_quinn.jpg',
 });
 
+// Canon faces whose art has not shipped: they stay out of the live registry (a key with no file
+// draws a 404 and a placeholder where a role face used to be) until the file lands.
+const PENDING = Object.freeze({
+  sula_dree: 'portrait_sula_dree.jpg',
+  callum: 'portrait_callum.jpg',
+  wex: 'portrait_wex.jpg',
+  sump: 'portrait_sump.jpg',
+  ma_sprocket: 'portrait_ma_sprocket.jpg',
+  clatter: 'portrait_clatter.jpg',
+  moss_keeps_moss: 'portrait_moss_keeps_moss.jpg',
+  brother_index: 'portrait_brother_index.jpg',
+  addendum_seroy: 'portrait_addendum_seroy.jpg',
+  cantor_lise: 'portrait_cantor_lise.jpg',
+  mael_ost: 'portrait_mael_ost.jpg',
+  petra_lusk: 'portrait_petra_lusk.jpg',
+  nine_finger_abe: 'portrait_nine_finger_abe.jpg',
+  tamsin: 'portrait_tamsin.jpg',
+  clerk_0003: 'portrait_clerk_0003.jpg',
+  sallow: 'portrait_sallow.jpg',
+  ferrow: 'portrait_ferrow.jpg',
+  next_run_courier: 'portrait_next_run_courier.jpg',
+});
+
 const NAMED_CONTACTS = Object.freeze({
   contact_yune: 'portrait_yune.jpg',
   contact_coldburn_rey: 'portrait_coldburn_rey.jpg',
@@ -48,6 +71,20 @@ test('every authored recurring person owns one stable portrait identity', async 
       `${canonicalKey} must resolve by identity, never by role`,
     );
     await access(new URL(`../assets/portraits/${filename}`, import.meta.url));
+  }
+});
+
+test('portraits whose art has not shipped stay out of the live registry until the file exists', async () => {
+  assert.deepEqual(portraitRegistry.PENDING_CANONICAL_PORTRAITS, PENDING);
+  for (const [canonicalKey, filename] of Object.entries(PENDING)) {
+    assert.equal(portraitRegistry.CANONICAL_PORTRAITS[canonicalKey], undefined, `${canonicalKey} is pending — not live`);
+    assert.equal(
+      portraitRegistry.portraitAssetForContact({ canonicalKey, role: 'smuggler', id: `fallback-${canonicalKey}` }),
+      null,
+      `${canonicalKey} must not resolve to a file that is not on disk`,
+    );
+    const present = await access(new URL(`../assets/portraits/${filename}`, import.meta.url)).then(() => true, () => false);
+    assert.equal(present, false, `${filename} now exists: move ${canonicalKey} from PENDING_CANONICAL_PORTRAITS into CANONICAL_PORTRAITS`);
   }
 });
 

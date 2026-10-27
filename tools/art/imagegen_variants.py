@@ -50,13 +50,13 @@ def settle(vdir):
     return 'ok' if same else 'fixed'
 
 
-def run_variant(job_dir, k, prompt, refs, timeout):
+def run_variant(job_dir, k, prompt, refs, timeout, model):
     vdir = os.path.join(job_dir, f'v{k}')
     os.makedirs(vdir, exist_ok=True)
     target = os.path.join(vdir, 'out.png')
     if os.path.exists(target):
         return k, 'exists'
-    cmd = [CODEX, 'exec', prompt, '-m', 'gpt-5.5', '-c', 'model_reasoning_effort=low',
+    cmd = [CODEX, 'exec', prompt, '-m', model, '-c', 'model_reasoning_effort=low',
            '--skip-git-repo-check', '-s', 'workspace-write']
     for ref in refs:
         cmd += ['-i', ref]
@@ -84,7 +84,7 @@ def cmd_run(args):
               ' Save the PNG in the current directory as out.png and reply with the path only.')
     ks = list(range(args.start, args.start + args.variants))
     with ThreadPoolExecutor(max_workers=args.variants) as ex:
-        for k, status in ex.map(lambda k: run_variant(job_dir, k, prompt, refs, args.timeout), ks):
+        for k, status in ex.map(lambda k: run_variant(job_dir, k, prompt, refs, args.timeout, args.model), ks):
             print(time.strftime('%H:%M:%S'), args.name, f'v{k}', status, flush=True)
     print('JOB_DONE', args.name, flush=True)
 
@@ -132,6 +132,7 @@ if __name__ == '__main__':
     r.add_argument('--prompt-file', required=True); r.add_argument('--variants', type=int, default=3)
     r.add_argument('--start', type=int, default=1); r.add_argument('--ref', nargs='*')
     r.add_argument('--timeout', type=int, default=1200)
+    r.add_argument('--model', default='gpt-6.1-sol')
     r.set_defaults(fn=cmd_run)
     p = sub.add_parser('repair'); p.add_argument('--out', required=True); p.set_defaults(fn=cmd_repair)
     c = sub.add_parser('contact')

@@ -1,0 +1,11 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "culture portrait pools (W-FACES, build_map §34.8 row 543)",
+  "use": "src/data/localPortraits.js via src/ui/portraitArt.js: the face of a procedural station-bar contact at a station whose people have a culture (STATION_CULTURE). One pool per people (03 §2); a local gets one face from its station and bar slot.",
+  "date": "2026-10-26",
+  "generator": "OpenAI image generation via codex exec -m gpt-6.1-sol (ChatGPT account); tools/art/imagegen_variants.py (3 variants per two-person sheet, each taken from its own session folder), best passing the reject-list check per person, cut by tools/art/cut_portraits.py (768 px square JPEG, quality 90)",
+  "license": "Generated for SpaceFace by the project. Two existing portraits (portrait_kessler, portrait_rook) were given as look references only. Every face is an invented person; no real person or third-party photograph was supplied.",
+  "briefs": "tools/art/culture_portrait_briefs.py holds the shared style frame and each person's brief (a specific life, a justified detail, the capture device) — eight people per culture, one pool per people of 03 §2",
+  "files": {
+  }
+}
