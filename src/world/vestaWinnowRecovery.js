@@ -362,7 +362,9 @@ export function stepWinnowRecovery(owner,e,rec) {
     for (const r of b.pods) {
       if (!r.loose) continue;
       const p=sourcePod(s,b,r);
-      if (!p || Math.hypot(p.pos.x-e.pos.x,p.pos.z-e.pos.z)>180 || Math.hypot(p.vel.x,p.vel.z)>DEF.pickupSpeed
+      // Choose an interceptable free body; physical pickup below owns the relative-speed gate.
+      // Equal motion in the world is safe contact even when both bodies exceed eight WU/s.
+      if (!p || Math.hypot(p.pos.x-e.pos.x,p.pos.z-e.pos.z)>180
         || !nativeRecord(owner,p) || reserveBlocked(owner,p) || p.data.salvorClaimedBy && p.data.salvorClaimedBy!==b.carrierId) continue;
       if (!target || Math.hypot(p.pos.x-e.pos.x,p.pos.z-e.pos.z)<Math.hypot(target.pos.x-e.pos.x,target.pos.z-e.pos.z)) target=p;
     }
@@ -423,8 +425,19 @@ export function stepWinnowRecovery(owner,e,rec) {
 export function winnowDestroyedReceipt(owner,payload) {
   const e=payload?.entity;
   if (!e || payload.reason && /shelv|sector|virtual|restore|reset/.test(payload.reason)) return;
-  const stamp=e.data?.vestaWinnowPod,b=stamp&&batch(owner.state,stamp.batchId),r=rowFor(b,e);
-  if (r && (e.hull<=0 || ['jettisoned_cargo_pod_cap','manifest_payload_cap'].includes(payload.reason))) {r.lost+=r.loose;r.loose=0;}
+  const s=owner.state,stamp=e.data?.vestaWinnowPod,b=stamp&&batch(s,stamp.batchId),r=rowFor(b,e);
+  if (!r) return;
+  // Dump Chute consumption queues this ordinary retirement before its economy transaction
+  // commits. By receipt flush the saved ring proves the exact paid physical lifetime.
+  // A stale slot receipt, live body, replay, or uncommitted request cannot debit the source.
+  const qty=e.data.amount,life=e.occupantGeneration;
+  const intake=Number.isSafeInteger(life) && s.economy?.podIntakeReceipts?.find(receipt=>
+    receipt.intakeId===`dumpchute:${e.id}:${life}` && receipt.podId===String(e.id)
+    && receipt.commodityId===DEF.commodityId && receipt.qty===qty);
+  if (intake && e.alive===false && s.entities.get(e.id)!==e && whole(qty) && qty>0 && r.loose===qty) {
+    r.loose-=qty;r.other=(r.other||0)+qty;return;
+  }
+  if (e.hull<=0 || ['jettisoned_cargo_pod_cap','manifest_payload_cap'].includes(payload.reason)) {r.lost+=r.loose;r.loose=0;}
 }
 
 // Splitting/violence/death move the original finite inventory through the existing

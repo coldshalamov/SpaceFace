@@ -1,3 +1,4 @@
+import { starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord } from '../missions/starterWorkday.js';
 import { captureOrchardWorkDamage } from '../combat/orchardWorkDamage.js';
 import {claimsTallyAssessor} from './tallyThreeIdentity.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
@@ -366,7 +367,8 @@ export function normalizeRecord(raw, fallbackId) {
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
+    type: isStarterBuoyRecord(raw) ? 'payload'
+      : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
     factionId: raw.factionId || null,
@@ -735,7 +737,13 @@ export function entityHasDurableMarkers(entity, playerId) {
   if (entity.type === 'station' && entity.data && entity.data.isGate) return false;
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
   if (entity.type === 'asteroid') return false;
-  if (entity.type === 'projectile' || entity.type === 'pickup' || entity.type === 'payload') return false;
+  if (entity.type === 'payload') {
+    const missionId = missionIdentityOf(entity);
+    return !!starterBuoyRecordMarker(entity) && !!missionId
+      && entity.data.identityKey === `mission:${missionId}:0`
+      && (entity.homeSectorId || entity.data.homeSectorId) === 'sector_helios_prime';
+  }
+  if (entity.type === 'projectile' || entity.type === 'pickup') return false;
   // Cosmetic dressing re-rolls with FULL extras.
   if (entity.type === 'fx' && entity.data && entity.data.worldDressing && !entity.data.poi) return false;
 
@@ -827,6 +835,7 @@ export function captureEntityRecord(entity, opts = {}) {
   if (kind === RECORD_KIND.AFTERMATH) return null;
   const seed = opts.seed != null ? opts.seed : 1;
   const d = entity.data || {};
+  const starterBuoy = kind === RECORD_KIND.MISSION_TARGET && sectorId === 'sector_helios_prime' ? starterBuoyRecordMarker(entity) : null;
   const existingId = d.worldRecordId || opts.recordId || null;
   const previous = opts.previousRecord
     || opts.existingRecord
@@ -939,7 +948,7 @@ export function captureEntityRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    type: entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
+    type: starterBuoy ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
     enemyTypeId: d.lootTableId || d.enemyTypeId || null,
     shipDefId: d.defId || null,
     factionId: entity.factionId || d.factionId || null,
@@ -988,7 +997,8 @@ export function captureEntityRecord(entity, opts = {}) {
     scheduledEventIds,
     regeneration,
     deactivation,
-    extra: claimsTallyAssessor(entity) ? {...extra,tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
+    extra: starterBuoy ? { ...extra, starterWorkdayBuoy: starterBuoy }
+      : claimsTallyAssessor(entity) ? {...extra,tallyThreeIdentityVersion:1,tallyThreeBody:entity.physicsBody==null?null:JSON.parse(JSON.stringify(entity.physicsBody)),tallyThree:d.tallyThree==null?null:JSON.parse(JSON.stringify(d.tallyThree))}
       : extra,
   });
   rec.extra = captureOrchardWorkDamage(opts.stationSource || opts.state, entity, rec.extra);
@@ -1194,6 +1204,10 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  const starterBuoy = starterBuoyFromRecord(rec);
+  if (starterBuoy) return starterBuoy;
+  // A malformed versioned starter marker must not fall through into a generic ship.
+  if (rec.extra?.starterWorkdayBuoy != null) return null;
   if (isCeresWorkfleetRecordIdentity(record)) {
     const role=ceresWorkfleetHardwareRoleForRecord(record);
     return role ? ceresWorkfleetHardwareSpec(role,record) : null;

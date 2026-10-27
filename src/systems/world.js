@@ -1,3 +1,4 @@
+import { starterBuoyRecordMarker } from '../missions/starterWorkday.js';
 import {TALLY_THREE} from '../data/tallyThree.js';
 import {tallyAssessorRecordSpec} from '../world/tallyThreeIdentity.js';
 // World / Sectors / Navigation system (ARCHITECTURE §2.3 step 13, §3.8, design 05).
@@ -185,7 +186,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
+import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, isLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
@@ -1870,7 +1871,7 @@ export const world = {
       }
       return aliveConvoyRecords;
     };
-    forEachLivingWorldActor(state, (e) => {
+    const capture = (e) => {
       // The bounded entrance run lives under its rumor record, never in two save owners.
       if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
       const home = e.homeSectorId || (e.data && e.data.homeSectorId);
@@ -1922,7 +1923,13 @@ export const world = {
       // an unregistered write leaves byWorldRecordId/byWorldRecordIdCount missing this carrier,
       // so every lookup takes the self-heal walk and the lane never bumps.
       registerEntityWorldRecordId(state && state.entityIndex, e);
-    });
+    };
+    forEachLivingWorldActor(state, capture);
+    // The authored starter buoy is a payload, outside the actor view. Keep every other
+    // payload on its existing persistence path, and never capture a future actor twice.
+    for (const e of indexedTypeScan(state, 'payloads')) {
+      if (e?.type === 'payload' && !isLivingWorldActor(e) && starterBuoyRecordMarker(e)) capture(e);
+    }
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     this._destroyEntitiesAtIndices(despawnIndexes);
   },

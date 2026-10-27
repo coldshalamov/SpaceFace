@@ -459,3 +459,94 @@ test('carrier casualty preserves legal player recovery and one ordinary Forge sa
     assert.equal(s.player.credits,paidCredits);assert.equal(stock(),paidStock);assert.equal(notices.length,1);
   } finally { f.close(); }
 });
+
+
+for (const [podSpeed,expected] of [[20,2],[40,0]]) test(`a free moving original at real native relative contact keeps pickup limits (${podSpeed})`, async () => {
+  const {stepWinnowRecovery}=await import('../src/world/vestaWinnowRecovery.js');
+  const f=await vestaWinnowRecoveryFixture();
+  try {
+    const s=f.state,e=f.tann,p=f.pods[0],rec=f.record,b=s.traffic.vestaWinnowRecovery.batches[0];
+    // Focused selector/contact setup, before native admission. This is not prior-job or travel proof.
+    delete e.data.jobId; delete e.data.civilianReaction; delete rec.civilianReaction;
+    b.phase='collect';b.carrierId=e.data.worldRecordId;
+    e.data.vestaWinnowRecovery={batchId:b.id,saved:{persistent:false}};
+    e.data.itinerary={kind:'vesta_winnow_recovery',batchId:b.id,destinationStationId:'station_forge',phase:'collect'};
+    const manifest={finiteSource:'vesta_winnow_recovery',manifestId:`${b.id}:load`,freighterKey:b.carrierId,lotId:b.id,lines:[],totalQty:0,totalValue:0};
+    assert.equal(f.owner._setTrafficManifest(e,rec,manifest),true);
+    e.pos.x=p.pos.x;e.pos.z=p.pos.z;e.rot=0;
+    e.vel.x=20;e.vel.z=0;p.vel.x=podSpeed;p.vel.z=0;
+    f.runtime.getSystem('world').relocatePlayerInSector({x:p.pos.x-100,z:p.pos.z,heading:0},{reason:'focused-relative-contact-setup'});
+    const {vestaWinnowPhase}=await import('../src/data/environmentalMachinery.js');
+    const calm=Array.from({length:180},(_,i)=>i).find(t=>vestaWinnowPhase(t).phase==='calm');
+    assert.notEqual(calm,undefined);s.simTime=calm;
+    const physics=f.runtime.getSystem('physics');
+    assert.equal(await physics.prepareBackend(s),true);
+    const er=physics._sg02.records.get(e.id),pr=physics._sg02.records.get(p.id);
+    assert.ok(er&&pr,'actual original native bodies are admitted');
+    assert.ok(er.colliders.some(a=>pr.colliders.some(b=>a.contactCollider(b,0)?.distance<=0)),'real native contact exists');
+    assert.ok(Math.hypot(p.vel.x,p.vel.z)>8,'world motion exceeds the old selector filter');
+    assert.equal(Math.hypot(p.vel.x-e.vel.x,p.vel.z-e.vel.z)<=8,expected===2,'the actual relative admission boundary is exercised');
+    const original=b.pods.find(r=>r.id===p.data.vestaWinnowPod.podId);
+    stepWinnowRecovery(f.owner,e,rec);
+    assert.equal(original.aboard,expected,'the native owner admits only matching-velocity physical contact');
+    assert.equal(original.loose,2-expected);
+    if (!expected) assert.equal(b.targetPodId,original.id,'interception intent never bypasses physical pickup admission');
+    assert.equal(winnowRecoveryFacts(s,b.id).original,10);
+  } finally {f.close();}
+});
+
+
+test('a real Dump Chute intake accounts the retired original once through cold Continue', async () => {
+  const {winnowDestroyedReceipt}=await import('../src/world/vestaWinnowRecovery.js');
+  const f=await vestaWinnowRecoveryFixture();
+  try {
+    const s=f.state,p=f.pods[0],b=s.traffic.vestaWinnowRecovery.batches[0];
+    const station=s.entityList.find(e=>e.alive&&e.data?.stationId==='station_forge');
+    // Native intake-context setup, not approach or Tann transport proof.
+    p.pos.x=station.pos.x+50;p.pos.z=station.pos.z;
+    const phys=f.runtime.getSystem('physics');assert.equal(await phys.prepareBackend(s),true);
+    assert.equal(phys._sg02.records.get(p.id)?.entity,p);
+    const id=p.id,generation=p.occupantGeneration,economy=f.runtime.getSystem('economy');
+    const stock=()=>s.economy.markets.station_forge.cmdty_ore_copper.stock;
+    const initialStock=stock(),initialCredits=s.player.credits;
+    f.runtime.bus.emit('tether:releaseRated',{targetId:id,deliberate:true});
+    f.runtime.bus.flush();
+    const receipt=s.economy.podIntakeReceipts.find(r=>r.intakeId===`dumpchute:${id}:${generation}`);
+    assert.ok(receipt,'ordinary release routing committed the economy receipt');
+    assert.equal(receipt.qty,2);assert.equal(receipt.stationId,'station_forge');
+    assert.equal(s.entities.get(id),undefined);assert.equal(p.hull,100,'paid intake is not a destroyed hull');
+    assert.equal(stock(),initialStock+2);assert.equal(s.player.credits,initialCredits+receipt.valueCr);
+    const facts=winnowRecoveryFacts(s,b.id);
+    assert.equal(facts.loose,8);assert.equal(facts.otherConsumed,2);
+    assert.equal(facts.delivered,0,'chute intake is never Tann freight');
+    assert.equal(facts.playerRecovered,0,'intake does not invent player cargo');
+    assert.equal(facts.lost,0);assert.equal(facts.original,10);
+    winnowDestroyedReceipt(f.owner,{entity:p});
+    assert.deepEqual(winnowRecoveryFacts(s,b.id),facts,'retirement replay cannot debit twice');
+    const input={intakeId:receipt.intakeId,podId:id,stationId:receipt.stationId,commodityId:receipt.commodityId,qty:receipt.qty};
+    assert.equal(economy.applyPodIntake(input).duplicate,true);
+    assert.equal(stock(),initialStock+2);assert.equal(s.player.credits,initialCredits+receipt.valueCr);
+    const savedFacts=structuredClone(facts),paidStock=stock(),paidCredits=s.player.credits;
+    assert.equal(f.save.loadEnvelope(f.save.serialize('winnow-chute-intake')),true);
+    assert.deepEqual(winnowRecoveryFacts(s,b.id),savedFacts);
+    assert.equal(economy.applyPodIntake(input).duplicate,true);
+    assert.equal(stock(),paidStock);assert.equal(s.player.credits,paidCredits);
+    assert.equal(s.entityList.filter(e=>e.alive&&e.data?.vestaWinnowPod?.podId===p.data.vestaWinnowPod.podId).length,0);
+    assert.equal(s.entityList.filter(e=>e.alive&&e.data?.vestaWinnowPod?.batchId===b.id).length,4);
+  } finally {f.close();}
+});
+
+
+test('chute accounting refuses a live source and an old occupant receipt', async () => {
+  const {winnowDestroyedReceipt}=await import('../src/world/vestaWinnowRecovery.js');
+  const s={world:{currentSectorId:'sector_vesta_forge'},traffic:{},entities:new Map(),economy:{podIntakeReceipts:[]}};
+  const id=beginWinnowBatch(s,'chute-life'),p={id:40,occupantGeneration:9,alive:true,hull:100,data:{amount:2,commodityId:'cmdty_ore_copper'}};
+  s.entities.set(p.id,p);assert.equal(registerWinnowPod(s,id,p,'original'),true);
+  const receipt={intakeId:'dumpchute:40:9',podId:'40',stationId:'station_forge',commodityId:'cmdty_ore_copper',qty:2};
+  s.economy.podIntakeReceipts.push(receipt);winnowDestroyedReceipt({state:s},{entity:p});
+  assert.equal(winnowRecoveryFacts(s,id).loose,2,'receipt cannot remove a live source');
+  p.alive=false;s.entities.delete(p.id);receipt.intakeId='dumpchute:40:8';
+  winnowDestroyedReceipt({state:s},{entity:p});assert.equal(winnowRecoveryFacts(s,id).loose,2,'old slot lifetime is not this body');
+  receipt.intakeId='dumpchute:40:9';winnowDestroyedReceipt({state:s},{entity:p});
+  assert.equal(winnowRecoveryFacts(s,id).loose,0);assert.equal(winnowRecoveryFacts(s,id).otherConsumed,2);
+});

@@ -1,3 +1,5 @@
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { starterBuoySpec, starterMiningReceiptMatches } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { addCargo, releasableContractUnits } from './cargo.js';
@@ -104,6 +106,7 @@ export const missionObjectiveOps = {
       if (m.params.cmdtyId !== p.commodityId) continue;
       // A starter cut pays only while its tool is fitted. The Hitch contract is a rich-core
       // hold (Drill Amp) plus the mining laser. Iron mined without that fit does not count.
+      if (!starterMiningReceiptMatches(m, p, this.state)) continue;
       if (m.params.starterJobId) {
         const ship = activeOwnedShip(this.state);
         if (!shipCarriesModule(ship, m.params.requiredModule)) continue;
@@ -1647,7 +1650,11 @@ export const missionObjectiveOps = {
       const r = 220 + rng() * 80;
       const bodyRadius = Math.max(8, Number(m.params && m.params.bodyRadius) || 16);
       const cachePos = ashfallCacheApproachPos(m, -200);
-      spawnAt(durableSlot, {
+      const buoy = starterBuoySpec(m, sectorLocalToGlobalForSector);
+      if (buoy) {
+        buoy.data.physicalRole = PHYSICAL_ROLE.SLAG_CORE;
+        spawnAt(durableSlot, buoy);
+      } else spawnAt(durableSlot, {
         type: 'asteroid',
         team: 2,
         pos: cachePos || { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
@@ -2805,3 +2812,4 @@ export const missionObjectiveOps = {
     }
   },
 };
+

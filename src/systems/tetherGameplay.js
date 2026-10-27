@@ -1,3 +1,4 @@
+import { isOriginalStarterBuoyTow } from '../missions/starterWorkday.js';
 // Tether gameplay system (GDD 2.0 §4.3, BUILD_PLAN WS-D1).
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
@@ -3243,6 +3244,8 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
 function recoveryTowRequiredTier(state, entity) {
   // Preserve the scorer's existing scripted teaching catch across fresh/nearest admission.
   if (entity?.data?.onboarding === true) return 0;
+  // Accepted recovery cargo consents to towing; its actual mass/forces still apply.
+  if (isOriginalStarterBuoyTow(state,entity)) return 0;
   const ordinary = lineThrowTierForBody(entity);
   if (!isBlackFlagAdventure(state) || entity?.type !== 'ship' || !entity.alive || !(entity.hull > 0)
     || state.entities?.get(entity.id) !== entity) return ordinary;
