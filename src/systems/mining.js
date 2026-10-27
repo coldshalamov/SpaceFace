@@ -1,3 +1,4 @@
+import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, and wreck salvage.
@@ -1155,14 +1156,16 @@ export const mining = {
     const delivered = lost * yieldPerHp * seam.yieldMult;
     d._oreCarry += delivered;
     let richClaim = null;
-    if (destroyed && minerId === state.playerId) {
+    const claimKind = minerId === state.playerId ? 'player'
+      : isHeliosClaimCutter(state, miner, ast) ? 'npc' : null;
+    if (destroyed && claimKind) {
       richClaim = claimRichSeamOpportunity(state, {
         fieldId: d.fieldId,
         activityObjectSlotId: d.activityObjectSlotId,
-        claimId: `player-rich-seam:${state.playerId}:${ast.id}:${state.tick | 0}`,
-        claimedByKind: 'player',
-        claimedById: state.playerId,
-        resolution: 'exploit',
+        claimId: `${claimKind}-rich-seam:${minerId}:${ast.id}:${state.tick | 0}`,
+        claimedByKind: claimKind,
+        claimedById: minerId,
+        resolution: claimKind === 'player' ? 'exploit' : 'work',
         simTime: state.simTime,
       });
       if (richClaim) {
@@ -1173,8 +1176,8 @@ export const mining = {
           richBonusU: richClaim.claimedBonusU,
           fieldId: d.fieldId,
           activityObjectSlotId: d.activityObjectSlotId,
-          richResolution: richClaim.resolution || 'exploit',
-          sourceOwner: 'player',
+          richResolution: richClaim.resolution || 'work',
+          sourceOwner: claimKind,
         };
         recordFieldExtraction(state, {
           fieldId: d.fieldId,
@@ -1185,12 +1188,12 @@ export const mining = {
           tick: state.tick,
           destroyed: false,
           event: 'rich_seam_bonus',
-          source: 'player_mining',
+          source: claimKind === 'player' ? 'player_mining' : 'npc_mining',
           jobId: richClaim.claimId,
         });
         this.bus.emit('field:richSeamWorked', {
           ...richClaim,
-          minerId: state.playerId,
+          minerId,
           asteroidId: ast.id,
           commodityId: d.commodityId || this._dominantOre(def),
           extractedU: richClaim.claimedBonusU,
@@ -3557,3 +3560,4 @@ export function isMasslineLatchedPickup(state, player, entity) {
 
   return false;
 }
+

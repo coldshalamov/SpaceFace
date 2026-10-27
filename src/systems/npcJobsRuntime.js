@@ -1,3 +1,4 @@
+import { heliosClaimAwaitingWitness } from './heliosClaimOpening.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -4096,7 +4097,7 @@ export const npcJobsRuntime = {
     const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
     let best = null;
     forEachFieldRock(this.state, (rock) => {
-      if (!starterRockMineable(rock)) return;
+      if (!starterRockMineable(rock) || heliosClaimAwaitingWitness(this.state, rock)) return;
       const dx = rock.pos.x - ax;
       const dz = rock.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -4116,7 +4117,7 @@ export const npcJobsRuntime = {
         && this.state.entities && this.state.entities.get
         ? this.state.entities.get(this._heliosStarterRockId) : null)
       : this._asteroidForFieldWaypoint(field.waypoint);
-    return starterRockMineable(rock) ? rock : null;
+    return starterRockMineable(rock) && !heliosClaimAwaitingWitness(this.state, rock) ? rock : null;
   },
 
   /** The cutting stop of a Helios miner: a `field:` waypoint, or the authored claim's ore face. */
@@ -4169,7 +4170,7 @@ export const npcJobsRuntime = {
     const rock = this.state.entities && this.state.entities.get
       ? this.state.entities.get(this._heliosStarterRockId)
       : null;
-    if (!starterRockMineable(rock)) {
+    if (!starterRockMineable(rock) || heliosClaimAwaitingWitness(this.state, rock)) {
       entry.heliosShiftStopped = true;
       stop();
       return;
@@ -6759,3 +6760,4 @@ export const npcJobsRuntime = {
 };
 
 export default npcJobsRuntime;
+

@@ -1,3 +1,5 @@
+import { HELIOS_CLAIM_OPENING, heliosClaimVisualEpoch } from './heliosClaimOpening.js';
+import { richSeamOpportunityReadout } from './fieldDepletion.js';
 import { getPresentationRecipe } from '../presentation/cueRecipes.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { normalizePresentationEvent } from '../presentation/cueSchema.js';
@@ -187,6 +189,7 @@ export const presentationOrchestrator = {
       this.bus.on('jump:arrive', (payload) => this._onTravelJumpArrive(payload || {})),
       this.bus.on('sector:discovered', (payload) => this._onTravelSectorDiscovered(payload || {})),
       this.bus.on('interdiction:triggered', (payload) => this._onTravelInterdiction(payload || {})),
+      this.bus.on('field:richSeamVisible', (payload) => this._onHeliosClaimVisible(payload || {})),
       this.bus.on('scan:pulse', (payload) => this._onMiningSurveyPulse(payload || {})),
       this.bus.on('scan:completed', (payload) => this._onMiningSurveyResolved(payload || {})),
       this.bus.on('signal:scanResults', (payload) => this._onMiningSignalResults(payload || {})),
@@ -958,6 +961,34 @@ export const presentationOrchestrator = {
       magnitude: Math.max(1, Number(payload.total) || 1),
       sequence: signalId || payload.scannedAt || currentTick(this.state),
       tags: [classification, primary.sourceKind, primary.status, `signals_${Math.max(0, Number(payload.total) || 0)}`].filter(Boolean),
+    });
+  },
+
+  _onHeliosClaimVisible(payload) {
+    const state = this.state;
+    const def = HELIOS_CLAIM_OPENING;
+    if (state?.world?.currentSectorId !== def.sectorId || payload.sectorId !== def.sectorId
+      || payload.visualEpoch !== heliosClaimVisualEpoch(state)) return false;
+    const now = Number(state.simTime) || 0;
+    if (!Number.isFinite(payload.atS) || now < payload.atS || now - payload.atS > 1) return false;
+    const rock = state.entities?.get(payload.targetId);
+    const player = state.entities?.get(state.playerId);
+    if (!rock?.pos || rock.alive === false || rock.type !== 'asteroid' || !player?.pos
+      || rock.data?.fieldId !== def.fieldId || rock.data?.activityObjectSlotId !== def.slotId
+      || Math.hypot(player.pos.x - rock.pos.x, player.pos.z - rock.pos.z) > def.approachWU) return false;
+    const record = richSeamOpportunityReadout(state, def.fieldId, def.slotId);
+    if (!record || record.state !== 'open' || now >= record.expiresAtT
+      || record.opportunityId !== def.opportunityId
+      || payload.opportunityId !== record.opportunityId
+      || (state.onboarding?.active === true && state.onboarding.finished !== true)) return false;
+    // Existing bounded capture geometry follows this real rock. World-scoped repeats stay
+    // below the player-lane threshold, so they never repeat the first accessible announcement.
+    return this._emitCue('mining.survey.tracked', { position: { ...rock.pos } }, {
+      sourceEvent: 'field:richSeamVisible', targetId: rock.id, material: 'survey',
+      playerRelevance: payload.announce === true ? 0.88 : 0.72,
+      sequence: `${payload.visualEpoch}:${payload.opportunityId}:${payload.atS}`,
+      accessibilityText: 'Open rich face marked. Finish this rock for eight extra ore units.',
+      tags: ['helios', 'rich-face', 'world-marker'],
     });
   },
 
@@ -1909,3 +1940,4 @@ function emitDeferred(bus, type, payload) {
   if (bus && typeof bus.queue === 'function') bus.queue(type, payload);
   else if (bus && typeof bus.emit === 'function') bus.emit(type, payload);
 }
+

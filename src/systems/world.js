@@ -122,6 +122,7 @@ import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sect
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
+  HELIOS_ACTIVITY_POCKETS,
 } from '../data/sectorActivityPockets.js';
 import {
   ASHFALL_BURN_SURGE_PERIOD_S,
@@ -523,6 +524,19 @@ const CERES_ACTIVITY_DRONE_SLOT_PRESENTATION = Object.freeze({
     placeId: 'place_ceres_grave_shard', name: 'Cathedral Grave Shard',
   }),
 });
+
+// Bind an existing-budget rock, not a decorative claim marker or an additional spawn.
+// Index zero keeps its authored geology; the materializer still consumes every original draw.
+export function heliosOpeningFaceBinding(sectorId, fieldId, index, toGlobal) {
+  if (sectorId !== 'sector_helios_prime' || fieldId !== 'f_helios_starter' || index !== 1) return null;
+  const pocket = HELIOS_ACTIVITY_POCKETS.find((row) => row.id === 'helios_starter_seam');
+  const slot = pocket?.objectSlots.find((row) => row.id === 'helios_seam_ore_face');
+  if (!slot) throw new Error('Missing Helios first-claim face');
+  return { id: slot.id, pos: toGlobal({
+    x: pocket.activityAnchor.localPos.x + slot.offset.x,
+    z: pocket.activityAnchor.localPos.z + slot.offset.z,
+  }) };
+}
 
 function ceresActivityObjectBinding(id, toGlobal) {
   const binding = CERES_ACTIVITY_OBJECT_SLOTS.get(id);
@@ -2538,6 +2552,14 @@ export const world = {
         });
       }
     }
+    const heliosFace = heliosOpeningFaceBinding(sector.id, 'f_helios_starter', 1,
+      (localPos) => this._toGlobal(localPos, sector.id));
+    if (heliosFace) {
+      const field = (sector.fields || []).find((row) => row.id === 'f_helios_starter');
+      const def = AST_BY_ID.get(field?.type) || AST_BY_ID.get('ast_common_rock');
+      const sizes = def?.sizeRange || [30];
+      reservations.push({ pos: heliosFace.pos, radius: Math.max(1, ...sizes) });
+    }
     return createSectorArranger(sector, { origin: this._sectorOrigin(sector.id), active, reservations });
   },
 
@@ -2676,7 +2698,8 @@ export const world = {
             'ceres_seam_ore_clast',
             (localPos) => this._toGlobal(localPos, sector.id),
           )
-          : null;
+          : heliosOpeningFaceBinding(sector.id, fdef.id, i,
+            (localPos) => this._toGlobal(localPos, sector.id));
         const collisionAnchorBinding = sector.id === CERES_ACTIVITY_SECTOR_ID
           ? ceresActivityCollisionAnchorBinding(
             fdef.id,

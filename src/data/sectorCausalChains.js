@@ -38,6 +38,9 @@ import { HELIOS_ACTIVITY_SECTOR_ID, TETHYS_ACTIVITY_SECTOR_ID, VESTA_ACTIVITY_SE
 // seam yet); the pullover's inspection point and orbit ride the patrol's existing job redirect
 // (it closes on the hauler and is released back to its beat), not a new off-lane waypoint; the
 // jump's "fight" branch is not staged — the fence yields, nobody fires.
+// The first stake now exposes a real rich face through heliosClaimOpening: its finite work
+// window starts on the player's approach after the optional rail, and fieldDepletion remembers
+// worked/missed outcomes. Later choreography cycles never re-arm that first-visit reward.
 //
 // Cue honesty: two catalog lamps read as hull failure in the hail STATUS table (the discord lamp,
 // the spine wake). The catalog's cues are kept for the signature VFX; contactHail.js carries
@@ -610,3 +613,4 @@ export const SECTOR_CAUSAL_CHAIN_DEFS = Object.freeze({
     cycleNewsText: vestaCycleNewsText,
   }),
 });
+

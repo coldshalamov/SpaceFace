@@ -1,6 +1,7 @@
 // Row 413 extraction — methods moved verbatim out of traffic.js;
 // spread back onto the traffic object, so `this` still binds to the system at call time.
-import { forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { stepHeliosClaimOpening } from './heliosClaimOpening.js';
+import { forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { CERES_ACTIVITY_SECTOR_ID, TETHYS_ACTIVITY_SECTOR_ID, activityActorSlotById, activityPocketsForSector } from '../data/sectorActivityPockets.js';
 import { deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
@@ -2112,6 +2113,18 @@ export const trafficCausalChainOps = {
       }
     }
     this._tryStartNextCeresCausalEvents(simTime);
+    if (chain.sectorId === 'sector_helios_prime') {
+      stepHeliosClaimOpening(this, () => {
+        let face = null;
+        forEachFieldRock(this.state, (rock) => {
+          if (rock.data?.fieldId === 'f_helios_starter'
+            && rock.data?.activityObjectSlotId === 'helios_seam_ore_face') face = rock;
+        });
+        // The cut consumes the face. Its worker remains the return-recognition anchor;
+        // an absent face can never open a fresh opportunity (no oreHP on this fallback).
+        return face || this._ceresCausalActorBySlot('helios_seam_miner')?.entity || null;
+      });
+    }
     // dt is accepted for call-site symmetry with traffic.update; phase ends are absolute simTime.
     void dt;
   },
@@ -2955,3 +2968,4 @@ export const trafficCausalChainOps = {
     };
   },
 };
+
