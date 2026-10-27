@@ -1129,7 +1129,22 @@ export const swarmArena = {
     const anchor = playerAnchor(state);
     this._lastTerrainAnchor = anchor;
     const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
-    const fightSq = SWARM_DEBRIS_FIGHT_RADIUS * SWARM_DEBRIS_FIGHT_RADIUS;
+    const reef = runHasMutator(run, 'reef');
+    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
+    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
+    const ladderTier = swarmArenaTierForRun({
+      wave: Number.isInteger(wave) ? wave : 1,
+      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
+    });
+    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
+    // The fight band follows the room this tier actually builds. The fixed census radius (400)
+    // sat inside the wider ladder rooms (outer 391 / 459 / 544): rocks the top-up placed past it
+    // were never counted, so the field kept spawning toward the cap. Same 60 WU margin as before.
+    const fightRadius = Math.max(
+      SWARM_DEBRIS_FIGHT_RADIUS,
+      (Number(layout && layout.outer) || 0) + (SWARM_DEBRIS_FIGHT_RADIUS - SWARM_DEBRIS_OUTER),
+    );
+    const fightSq = fightRadius * fightRadius;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
 
     // Census: every solid the field must not grow into, and how many of OUR rocks are still in
@@ -1181,17 +1196,9 @@ export const swarmArena = {
     }
     this._ids = surviving;
 
-    const reef = runHasMutator(run, 'reef');
     // Row 481 — Wreck Ballast: the debris field comes in as dead hulls, not rock. Same plan,
     // same counts, same physics verbs; only the material the room hands you changes.
     const ballast = runHasMutator(run, 'wreck_ballast');
-    // §33 row 485 — the ladder tier (deepest rung the wave band or line rating unlocks) owns the
-    // debris room's band and size; authored arena layouts stay the fallback and the reef override.
-    const ladderTier = swarmArenaTierForRun({
-      wave: Number.isInteger(wave) ? wave : 1,
-      ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
-    });
-    const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
     const target = reef ? REEF_DEBRIS_TARGET : layout.target;
     const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
       SWARM_DEBRIS_MAX * 2 - surviving.length);
@@ -1213,7 +1220,7 @@ export const swarmArena = {
       });
     const spawnedIds = [];
     const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
-      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= SWARM_DEBRIS_FIGHT_RADIUS).map(environmentMaterialOf));
+      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
     const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
     if (spots.length < Math.min(want, missingMaterials.length)) {
       // Tight arena lanes can exhaust their placement search. Their missing toys sit on

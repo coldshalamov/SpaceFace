@@ -145,6 +145,7 @@ export const PHYSICS_LOG_EVENTS = Object.freeze([
   'helix:lienFiled', 'helix:lienStuck', 'lossLedger:recorded', 'custody:recorded',
   'aftermathWreck:recorded', 'law:recordAudit', 'mail:delivered', 'survivorPod:delivered',
   'occupation:delivered', 'swarm:killPopup',
+  'line:recordStamped',
 ]);
 
 /** Count of authored LOG lines across the outcome kinds (EXP-12's volume bar). */
@@ -161,6 +162,9 @@ export const PHYSICS_LOG_LINE_COUNT = Object.freeze(
 export function physicsLogLine(eventName, payload = {}) {
   const p = payload || {};
   switch (eventName) {
+    case 'line:recordStamped':
+      return ['heaviest_hold', 'class_up', 'exact_mass'].includes(p.kind)
+        && typeof p.text === 'string' && p.text.length <= 100 ? p.text : null;
     case 'combat:kill': {
       const cause = String(p.cause || '');
       if (cause === 'impact' || cause === 'collision' || cause === 'throw' || cause === 'physics') {

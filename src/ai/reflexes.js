@@ -4,6 +4,16 @@
 // displaces the desired point/velocity for a handful of ticks and then hands the hull back to
 // doctrine. The trigger table is data; the engine evaluates it against the live sensor frame.
 //
+// Row 491 consolidation: the reflex stack is FOLDED INTO the doctrine's committed-attack cycle,
+// not extended. When the doctrine stamps `committedRun` (wind-up + attack phases) the lateral
+// bursts and weave stance stand down — the doctrine owns the hull, and the only dodge that
+// survives is the body dodge (the one rare, physics-telegraphed evasion). When it stamps
+// `exposedRecovery` (post-attack egress) only survival triggers stay (body dodge, volley jink):
+// the recovery beat stays exposed and readable instead of thrashing. Outside those beats — the
+// approach legs — the pilot flies and dodges: full stack, but the four lateral bursts share one
+// refractory (DEFENSIVE_BURST_COOLDOWN_TICKS) so even there a pilot takes at most one defensive
+// burst per window.
+//
 // Determinism: every draw is hashUnit(seed, entityId, tick-bucket) and every state lives on the
 // planner's per-entity runtime record (rebuilt, not serialized — same contract as the rest of
 // the planner). No ambient randomness, no wall time.
@@ -35,6 +45,20 @@ const TRIGGERS = Object.freeze({
   [REFLEX_KIND.MARKED_WEAVE]: Object.freeze({ windowTicks: 0, cooldownTicks: 0, priority: 9, stance: true }),
   [REFLEX_KIND.SIMMER]: Object.freeze({ windowTicks: 0, cooldownTicks: 0, priority: 8, stance: true }),
 });
+
+// Row 491 consolidation (build_map §33.2): the four lateral-burst triggers — volley jink, hit
+// weave, brake-check, scatter-on-loss — share ONE refractory slot. Independent per-kind
+// cooldowns let the causes chain (jink → weave → scatter → jink…) into a continuous
+// side-to-side thrash (measured 0.8 heading reversals/s); one shared window structurally caps
+// reflex-induced reversals at 1 per 160 ticks = 0.375/s, inside the ≤0.4/s design target.
+// The per-kind cooldownTicks above still apply on top (a hit-weave stays rarer than a jink).
+export const DEFENSIVE_BURST_KINDS = Object.freeze([
+  REFLEX_KIND.VOLLEY_JINK,
+  REFLEX_KIND.HIT_WEAVE,
+  REFLEX_KIND.BRAKE_CHECK,
+  REFLEX_KIND.SCATTER_LOSS,
+]);
+export const DEFENSIVE_BURST_COOLDOWN_TICKS = 160;
 
 const TAU = Math.PI * 2;
 
@@ -89,6 +113,12 @@ export function evaluateReflexes(seed, ctx) {
     if (intent && rs.burst) rs.burst = null;
     return null;
   }
+  // A phase change owns active bursts too: an approach jink must not carry its
+  // remaining strafe into the announced attack line. Keep the existing cooldowns,
+  // body dodge and forward pounce; recovery still permits a surviving volley jink.
+  if (rs.burst && DEFENSIVE_BURST_KINDS.includes(rs.burst.kind)
+    && (intent.committedRun === true || (intent.exposedRecovery === true
+      && rs.burst.kind !== REFLEX_KIND.VOLLEY_JINK))) rs.burst = null;
 
   // Update the observation registers every call, burst or not.
   let hullHit = 0;
@@ -115,9 +145,13 @@ export function evaluateReflexes(seed, ctx) {
   // ── stance: marked weave ────────────────────────────────────────────────────
   // A hostile ship tracking this hull while it is still outside knife range earns a
   // continuous weave — the "rolls and dodges" pilot. Gunners (high aim) stand straighter.
+  // Row 491: the stance belongs to the approach legs. During a committed run (wind-up or
+  // attack) and the exposed recovery the hull straightens — a wind-up that weaves is not a
+  // readable tell, and a recovery that weaves is not exposed.
   const marked = !bodyOnly && markedByHostile(self, contacts);
   let stance = null;
-  if (marked && temperament.weave > 0.25) {
+  if (marked && temperament.weave > 0.25
+    && intent.committedRun !== true && intent.exposedRecovery !== true) {
     stance = {
       kind: REFLEX_KIND.MARKED_WEAVE,
       // Slow drift cycle: ~2.2 s at 60 Hz, phase offset per pilot so wingmates don't
@@ -215,9 +249,25 @@ function pickBurst(seed, ctx, obs) {
     if (!rs.cooldowns) rs.cooldowns = new Map();
     rs.cooldowns.set(kind, tick + TRIGGERS[kind].cooldownTicks);
   };
+  // Row 491 consolidation: the lateral bursts share one refractory slot (see
+  // DEFENSIVE_BURST_COOLDOWN_TICKS above) so chained causes cannot chain bursts.
+  const SHARED_BURST_SLOT = 'defensive_burst';
+  const burstCooling = () => rs.cooldowns != null && (rs.cooldowns.get(SHARED_BURST_SLOT) || 0) > tick;
+  const setBurstCooldown = () => {
+    if (!rs.cooldowns) rs.cooldowns = new Map();
+    rs.cooldowns.set(SHARED_BURST_SLOT, tick + DEFENSIVE_BURST_COOLDOWN_TICKS);
+  };
+  // Cycle gates stamped by the combat doctrine (row 491). `committedRun` — the doctrine holds a
+  // wind-up or attack phase and owns the hull: lateral bursts stand down entirely.
+  // `exposedRecovery` — the post-attack egress: survival triggers only, so the beat stays
+  // exposed. Approach legs (no flag) fly the full stack.
+  const committedRun = intent.committedRun === true;
+  const exposedRecovery = intent.exposedRecovery === true;
   const side = () => (hashUnit(seed, entityId, 'reflex_side', Math.floor(tick / 24)) < 0.5 ? -1 : 1);
 
   // 0) Body dodge: a thrown wreck/rock/pod/tumbling hull closing on a near-miss course.
+  //    The one rare, telegraphed dodge — it survives every cycle beat (hull integrity
+  //    outranks readability; the thrown body announces itself physically).
   if (!cooling(REFLEX_KIND.BODY_DODGE) && obs.body && obs.body.ready) {
     setCooldown(REFLEX_KIND.BODY_DODGE);
     return {
@@ -233,9 +283,12 @@ function pickBurst(seed, ctx, obs) {
   if (obs.bodyOnly) return null;
 
   // 1) Volley jink: a live projectile on a near-miss course. The highest-priority
-  //    reaction — ships that never dodge gunfire read as targets, not pilots.
-  if (!cooling(REFLEX_KIND.VOLLEY_JINK) && obs.incoming && temperament.dash > 0.2) {
+  //    reaction — ships that never dodge gunfire read as targets, not pilots. Allowed on
+  //    approach legs and through the exposed recovery (a fleeing hull still sidesteps a
+  //    shell); suppressed inside a committed run so the announced pass holds its line.
+  if (!committedRun && !burstCooling() && !cooling(REFLEX_KIND.VOLLEY_JINK) && obs.incoming && temperament.dash > 0.2) {
     setCooldown(REFLEX_KIND.VOLLEY_JINK);
+    setBurstCooldown();
     return {
       kind: REFLEX_KIND.VOLLEY_JINK,
       startTick: tick,
@@ -245,10 +298,13 @@ function pickBurst(seed, ctx, obs) {
     };
   }
 
-  // 2) Hit weave: hull dropped since the last frame (or a damage event landed).
+  // 2) Hit weave: hull dropped since the last frame (or a damage event landed). Approach
+  //    legs only — a hit taken during a committed run or the exposed recovery must not
+  //    re-break the line the player is reading.
   const damaged = obs.hullHit > 0.015 || damageEventSeen(ctx);
-  if (!cooling(REFLEX_KIND.HIT_WEAVE) && damaged) {
+  if (!committedRun && !exposedRecovery && !burstCooling() && !cooling(REFLEX_KIND.HIT_WEAVE) && damaged) {
     setCooldown(REFLEX_KIND.HIT_WEAVE);
+    setBurstCooldown();
     return {
       kind: REFLEX_KIND.HIT_WEAVE,
       startTick: tick,
@@ -260,12 +316,14 @@ function pickBurst(seed, ctx, obs) {
 
   // 3) Brake check: closing way too hot on the target and this pilot is the kind who
   //    would drop the hammer. Deterministic per-pilot gate so wingmates don't all
-  //    brake on the same tick.
+  //    brake on the same tick. Approach legs only — the doctrine's own egress owns the
+  //    overshoot inside a run.
   const closing = closingSpeed(self, target);
-  if (!cooling(REFLEX_KIND.BRAKE_CHECK) && target && closing > 78
+  if (!committedRun && !exposedRecovery && !burstCooling() && !cooling(REFLEX_KIND.BRAKE_CHECK) && target && closing > 78
     && distanceTo(self, target) < 430
     && hashUnit(seed, entityId, 'brake_check_gate', Math.floor(tick / 120)) < temperament.dash * 0.9) {
     setCooldown(REFLEX_KIND.BRAKE_CHECK);
+    setBurstCooldown();
     return {
       kind: REFLEX_KIND.BRAKE_CHECK,
       startTick: tick,
@@ -276,6 +334,8 @@ function pickBurst(seed, ctx, obs) {
   }
 
   // 4) Pounce: the target is running or disabled and this pilot has the legs for it.
+  //    Survives every cycle beat — it is a forward boost through the commit, never a
+  //    reversal.
   if (!cooling(REFLEX_KIND.POUNCE) && target && temperament.verve > 0.55) {
     const receding = recedingSpeed(self, target);
     if ((receding > 26 || target.disabled === true || target.alive === false)
@@ -292,9 +352,10 @@ function pickBurst(seed, ctx, obs) {
   }
 
   // 5) Scatter on loss: a wingmate just went down in view. Ships that keep a dead-even
-  //    course while friends die read as drones; this breaks the line.
-  if (!cooling(REFLEX_KIND.SCATTER_LOSS) && obs.allies.lostRecently) {
+  //    course while friends die read as drones; this breaks the line. Approach legs only.
+  if (!committedRun && !exposedRecovery && !burstCooling() && !cooling(REFLEX_KIND.SCATTER_LOSS) && obs.allies.lostRecently) {
     setCooldown(REFLEX_KIND.SCATTER_LOSS);
+    setBurstCooldown();
     return {
       kind: REFLEX_KIND.SCATTER_LOSS,
       startTick: tick,
