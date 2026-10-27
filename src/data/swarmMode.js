@@ -589,27 +589,6 @@ function swarmAuthoredEscortCount(row) {
   return total;
 }
 
-const BOSS_ROOM_NOTES = Object.freeze({
-  flank_berm: 'a flank berm — throw the swarm into it',
-  mirror_lane: 'a mirrored lane — cross the committed pass, work the stern',
-  crown_furnace: 'the furnace wears a crown — the middle shoves, the rim is plate to bank off',
-  wing_bank: 'bank stone on the wing\'s bearing',
-  screen_wall: 'a screen wall between you and the brawlers',
-  hold_close: 'the room holds you; close on the ghosts',
-  brood_nest: 'the nest pulls toward the sacs — cover to break the flood, rocks to throw back',
-  coil_field: 'the weave field — a slow cross-breeze, and rocks to feed the committed pass',
-  nest_berth: 'the berth pulls toward the belly — a vent-breeze rakes the launch lanes',
-  casket_field: 'the grave drifts two ways — rocks to feed the middle cut',
-  maw_feed: 'the mouth shoves — the rim orbit is free, and the cavity eats what you feed it',
-  wreck_magnet: 'the magnet drags the whole yard inward — everything loose ends up inside the pile',
-  seal_gate: 'the gate is welding shut — rails on the flanks, mines at the mouth, one honest corridor',
-  hive_shaft: 'the shaft pulls long and rakes crosswise — the hulk is the only cover',
-});
-
-export function bossRoomNote(room) {
-  return BOSS_ROOM_NOTES[room] || null;
-}
-
 /**
  * A WRAPPED CHAMPION READS AS AN ESCALATION, NOT A REPRINT.
  *
@@ -821,19 +800,12 @@ export function swarmQuota(wave) {
  * `makeEnemySpawnSpec` → `scaleCombatant` raises hull, armor and shield by 12% per level
  * (`src/systems/combat.js`). That is hit-point inflation, which this mode is forbidden to use.
  * Swarm materialization still passes `swarmLevel` into that path, so the only legal return is 1
- * at every wave. Count, composition, mass, hazards and bearings carry the difficulty curve.
- * `SWARM_LEVEL_CAP` remains the wave at which every OTHER dial (concurrency, roster) is maxed.
+ * at every wave. Count, composition, mass, hazards and bearings carry the difficulty curve —
+ * the roster's own `fromWave` unlocks and the concurrency ramp are the intensity dials.
  */
-export const SWARM_LEVEL_CAP = 8;
-
 export function swarmLevel(wave) {
   swarmWaveOf(wave);
   return 1;
-}
-
-/** The wave at which every dial this mode has is at its maximum. */
-export function swarmFullIntensityWave() {
-  return 1 + (SWARM_LEVEL_CAP - 1) * 3;
 }
 
 /** The archetypes legal at this wave, in roster order. */

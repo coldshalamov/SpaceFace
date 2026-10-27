@@ -428,10 +428,15 @@ export function swarmPassiveCount(run, passiveId) {
   return total;
 }
 
-/** The hull bonus the run's plated-hull stack grants, once per copy. */
+/**
+ * The hull bonus the run's plated-hull stack grants: once per copy up to the rack cap —
+ * `count × perCopyHull`, the same shape the fire-rate sibling keeps. The catalog row is the
+ * one authored source of the number; the effect host (swarmElites) reads it through here.
+ */
 export function swarmPassiveHullBonus(run) {
   const entry = PASSIVE_BY_ID.get('plated_hull');
-  return entry ? swarmPassiveCount(run, 'plated_hull') * entry.perCopyHull : 0;
+  const stacks = Math.min(SWARM_PASSIVE_STACK_MAX, swarmPassiveCount(run, 'plated_hull'));
+  return entry ? stacks * entry.perCopyHull : 0;
 }
 
 /**

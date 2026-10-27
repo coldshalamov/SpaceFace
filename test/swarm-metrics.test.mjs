@@ -19,7 +19,6 @@ import {
 import {
   SWARM_CONCURRENT_MAX,
   SWARM_CONCURRENT_MIN,
-  SWARM_LEVEL_CAP,
   SWARM_QUOTA_CAP,
   SWARM_QUOTA_MARGIN,
   SWARM_QUOTA_OPENING_MARGIN,
@@ -275,7 +274,6 @@ test('.01 opening reward-reference is 15; later waves still climb; concurrency u
   assert.equal(swarmLevel(1), 1);
   // PQ-174.01 design memo: return 1 at every swarm wave so scaleCombatant cannot inflate hull.
   assert.equal(swarmLevel(22), 1);
-  assert.equal(SWARM_LEVEL_CAP, 8, 'the intensity-wave marker is not the hull scaler');
   // Later count still increases (wave-2 formula is the pre-.01 20+2w curve).
   assert.equal(swarmQuota(2), 24);
   assert.ok(swarmQuota(2) > swarmQuota(1));
