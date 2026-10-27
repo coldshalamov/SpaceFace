@@ -1925,6 +1925,29 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-talk__memory { font-size:13px !important; line-height:1.4 !important; max-width:none !important; }
   ${D} .sx-talk__reply { max-width:calc(100% - 330px) !important; }
 }
+/* Bar in a short laptop window (801–1100 × 461–600, e.g. 960×540): the stage is ~160px, so her words take two
+   lines (the arc and its dial still clear them) and the reply scale closes up; all three replies read without a scroll */
+@media (min-width:801px) and (max-width:1100px) and (min-height:461px) and (max-height:600px) {
+  ${D} .sx-talk__id { max-width:calc(100% - 250px) !important; }
+  ${D} .sx-talk__id > * + * { margin-top:4px !important; }
+  ${D} .sx-talk__memory { line-height:1.3 !important; }
+  ${D} .sx-talk__choices { padding-top:0 !important; margin-top:2px !important; gap:0 !important; }
+  ${D} .sx-talk__choices > li .sx-choice { padding-top:2px !important; padding-bottom:2px !important; line-height:16px !important; }
+}
+/* …and in a narrow window (651–800 × ≤800): the 330px reserve left her words a 38px column ("HUL / L / GHO / ST");
+   the portrait steps down to 140px so the words keep ~170px clear of the arc's reply dial, and the arc follows the smaller face */
+@media (min-width:651px) and (max-width:800px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { width:140px !important; height:140px !important; right:-2% !important; top:0 !important; }
+  ${D} .sx-talk__id { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__reply { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__name { white-space:normal !important; }
+}
+/* at 651–760 that column is under 120px whatever the face's size, so the portrait (and the arc drawn on it) stands down
+   and her words and the replies take the stage's whole width; the ladder still names her */
+@media (min-width:651px) and (max-width:760px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { display:none !important; }
+  ${D} :is(.sx-talk__id, .sx-talk__reply) { max-width:none !important; }
+}
 @media (max-width:1100px) and (max-height:640px) {
   /* Industry: every material keeps room for its name, count and wrapped Source verb.
      Dense recipes extend the existing scrollable stage instead of crushing the input labels. */
