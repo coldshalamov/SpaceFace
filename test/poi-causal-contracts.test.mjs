@@ -12,6 +12,11 @@ import {
 import { livingPoiBehaviors as livingProto } from '../src/systems/livingPoiBehaviors.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { scanner as scannerProto } from '../src/systems/scanner.js';
+import { world as worldProto } from '../src/systems/world.js';
+import {
+  captureEntityRecord, ensureWorldRecords, upsertRecord,
+  serializeRecordsBag, deserializeRecordsBag, recordShouldRematerialize, spawnSpecFromRecord,
+} from '../src/world/worldRecords.js';
 
 const SOURCE_SECTOR_ID = 'sector_helios_prime';
 const SOURCE_STATION_ID = 'station_helios';
@@ -45,7 +50,7 @@ function buildOffer(index = 0, familyId = 'derelict_salvage', seed = 4701) {
   });
 }
 
-function boot(seed = 4701) {
+function boot(seed = 4701, { realWorldRetirement = false } = {}) {
   const state = createGameState(seed);
   state.mode = 'flight';
   state.simTime = 20;
@@ -107,6 +112,9 @@ function boot(seed = 4701) {
     },
   };
   const worldMarks = [];
+  // Opt-in authority for settlement coverage; other cases retain their existing call spy.
+  // No world population/physics is initialized by this focused fixture.
+  const world = realWorldRetirement ? Object.assign({}, worldProto, { state }) : null;
   const missions = Object.assign({}, missionsProto);
   const living = Object.assign({}, livingProto);
   const scanner = Object.assign({}, scannerProto);
@@ -117,7 +125,10 @@ function boot(seed = 4701) {
     registry: {
       get(name) {
         return name === 'world'
-          ? { markWorldRecordDestroyed: (recordId, options) => worldMarks.push({ recordId, options }) }
+          ? { markWorldRecordDestroyed: (recordId, options) => {
+            worldMarks.push({ recordId, options });
+            return world ? world.markWorldRecordDestroyed(recordId, options) : undefined;
+          } }
           : null;
       },
     },
@@ -287,7 +298,7 @@ test('resolved derelict boards idempotently and external POI rows remain bounded
 });
 
 test('accepted causal contract uses scanner progression and completes only the exact investigated entity', () => {
-  const h = boot();
+  const h = boot(4701, { realWorldRetirement: true });
   const offer = resolvePoiLead(h, 'anomaly_research');
   assert.equal(h.missions.acceptMission(offer.id), true);
   const mission = h.state.missions.active.find((candidate) => candidate.sourceOfferId === offer.id);
@@ -311,6 +322,17 @@ test('accepted causal contract uses scanner progression and completes only the e
   assert.equal(target.data.worldRecordId, follow.targetRecordId);
   assert.equal(target.data.missionId, mission.id);
   assert.equal(follow.entityId, target.id);
+
+  // Exercise a previously captured target, not only an unrecorded live entity. This uses
+  // the real capture/retirement/record serialization owners, not a fabricated tombstone.
+  const bag = ensureWorldRecords(h.state.world);
+  const captured = captureEntityRecord(target, {
+    sectorId: offer.destSectorId, seed: h.state.meta.seed,
+    tick: h.state.tick, simTime: h.state.simTime, recordId: follow.targetRecordId,
+  });
+  assert.ok(captured, 'the accepted target has a durable capture');
+  upsertRecord(bag, captured);
+  assert.equal(bag.byId[follow.targetRecordId].alive, true);
 
   h.player.pos = { x: target.pos.x + 900, z: target.pos.z };
   h.scanner._pulse(h.state, h.player, h.state.simTime);
@@ -342,17 +364,52 @@ test('accepted causal contract uses scanner progression and completes only the e
   assert.equal(receipt.sourceOfferId, offer.id);
   assert.equal(receipt.causeFingerprint, offer.cause.fingerprint);
   assert.equal(receipt.targetRecordId, follow.targetRecordId);
-  assert.deepEqual(h.worldMarks, [{
-    recordId: follow.targetRecordId,
-    options: { outcome: 'investigated', reason: 'mission_settled' },
-  }], 'the world authority tombstones any saved target record on settlement');
+  assert.equal(h.log.filter((row) => row.event === 'mission:completed'
+    && row.payload.missionId === mission.id).length, 1, 'one contract settlement');
+  assert.equal(target.alive, false, 'the investigated physical target is retired');
+  assert.equal(h.state.signalInvestigation.completed[signalId].outcome, 'investigated');
+  assert.equal(h.state.signalInvestigation.completed[signalId].entityId, target.id);
+  assert.equal(h.state.signalInvestigation.receipts.filter((row) => row.signalId === signalId).length, 1);
+  assert.ok(h.worldMarks.length > 0, 'settlement reaches the real world authority');
+  assert.ok(h.worldMarks.every((row) => row.recordId === follow.targetRecordId
+    && row.options.reason === 'mission_settled'), 'only the exact target is retired');
+  // The follow-up and generic target/record sweeps may each retire this identity. Exact
+  // call cardinality is not the contract: scanner owns "investigated", world owns custody.
+  const retired = bag.byId[follow.targetRecordId];
+  assert.equal(retired.recordId, follow.targetRecordId);
+  assert.equal(retired.missionId, mission.id);
+  assert.equal(retired.alive, false);
+  assert.equal(retired.outcome, 'destroyed', 'world records retain their terminal vocabulary');
+  const serialized = serializeRecordsBag(bag);
+  assert.equal(serialized.byId[follow.targetRecordId].alive, false);
+  assert.equal(serialized.byId[follow.targetRecordId].outcome, 'destroyed');
+  // JSON removes in-memory normalization markers: this must test disk-shaped data.
+  const restored = deserializeRecordsBag(JSON.parse(JSON.stringify(serialized)));
+  const restoredTarget = restored.byId[follow.targetRecordId];
+  assert.equal(restoredTarget.recordId, follow.targetRecordId);
+  assert.equal(restoredTarget.missionId, mission.id);
+  assert.equal(restoredTarget.alive, false);
+  assert.equal(restoredTarget.outcome, 'destroyed');
+  assert.equal(recordShouldRematerialize(restoredTarget, 'FULL'), false);
+  assert.equal(recordShouldRematerialize(restoredTarget, 'REDUCED'), false);
+  assert.equal(spawnSpecFromRecord(restoredTarget), null, 'reload cannot construct a second target');
+  h.state.world.records = restored;
+  h.scanner.deserialize(JSON.parse(JSON.stringify(h.scanner.serialize())));
+  assert.equal(h.state.signalInvestigation.completed[signalId].outcome, 'investigated',
+    'the scanner keeps the investigated story independently of physical retirement');
+  const retirementCount = h.worldMarks.length;
+  const beforeDuplicate = JSON.stringify(serializeRecordsBag(restored));
   h.bus.emit('signal:investigated', {
     signalId, entityId: target.id, sectorId: offer.destSectorId,
   });
   assert.equal(h.log.filter((row) => row.event === 'economy:grantCredits'
     && row.payload.reason === `mission:${mission.id}`).length, 1,
   'duplicate investigation receipts cannot pay twice');
-  assert.equal(h.worldMarks.length, 1);
+  assert.equal(h.worldMarks.length, retirementCount, 'duplicate signals do not retire again');
+  assert.equal(h.log.filter((row) => row.event === 'mission:completed'
+    && row.payload.missionId === mission.id).length, 1, 'duplicate signals cannot settle twice');
+  assert.equal(h.state.signalInvestigation.receipts.filter((row) => row.signalId === signalId).length, 1);
+  assert.equal(JSON.stringify(serializeRecordsBag(restored)), beforeDuplicate);
   const debrief = h.log.find((row) => row.event === 'comms:popup'
     && /registry|signal/i.test(row.payload && row.payload.text || ''));
   assert.ok(debrief, 'completion emits a cause-specific debrief');
