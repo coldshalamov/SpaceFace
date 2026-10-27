@@ -279,9 +279,13 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-talk__head > .sx-talk__avatar { grid-column:2 !important; grid-row:1 / span 2 !important; align-self:center !important; position:relative !important; inset:auto !important; width:56px !important; height:56px !important; max-height:none !important; }
   ${D} .sx-talk__avatar::after { display:none !important; }
 }
-/* …and under 481 two halves cut the roles and the questions: the contacts stand over the reading, each scrolling */
+/* …and under 481 two halves cut the roles and the questions: the contacts stand over the reading, each scrolling.
+   The reading gets two thirds, its questions settle at the foot, and the whole reading scrolls as one. */
 @media (max-width:480px) and (min-height:801px) {
-  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 2fr) minmax(0, 3fr) !important; row-gap:10px !important; }
+  ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 1fr) minmax(0, 2fr) !important; row-gap:8px !important; }
+  ${D} .sx-bar__stage .sx-talk { display:flex !important; flex-direction:column !important; min-height:100% !important; }
+  ${D} .sx-bar__stage .sx-talk__choices { margin-top:auto !important; padding-top:6px !important; padding-bottom:2px !important; }
+  ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:7px !important; padding-bottom:7px !important; }
   ${D} .k-panel.sx-bar > * { grid-column:1 !important; grid-row:auto !important; min-height:0 !important; }
   ${D} .sx-bar__hang { overflow-y:auto !important; overscroll-behavior:contain; padding-top:0 !important; }
   ${D} .sx-bar__rows .sx-bar-row { padding-top:3px !important; padding-bottom:3px !important; }
