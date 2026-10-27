@@ -695,7 +695,7 @@
     "check:orchard-receiver-native": "node --test --test-name-pattern=\"full production native receiver\" test/anvil-receiver-delivery.test.mjs",
     "check:cargo-mass-read-contract": "node --test test/cargo-mass-read-contract.test.mjs",
     "check:rope-scale:contracts": "node --test test/al-story-1-rope-scale-4242.test.mjs test/cargo-mass-read-contract.test.mjs test/rope-scale-kessler-evidence.test.mjs",
-    "check:rope-scale:native": "node --test test/rope-scale-native-evidence.test.mjs",
+    "check:rope-scale:native": "node --test test/rope-scale-native-evidence.test.mjs test/rope-scale-continue-native.test.mjs",
     "check:narrative-worker-entry": "node --test --test-concurrency=1 test/towline-player-path.test.mjs test/ilex-player-path.test.mjs test/last-shift-worker-entry.test.mjs test/event-surface-optional-chain.test.mjs test/last-shift-recovery-guidance.test.mjs test/last-shift-return-feedback.test.mjs test/last-shift-local-report.test.mjs test/borrowed-sun-bar-context.test.mjs",
     "check:ceres-earned-interventions": "node --test test/ceres-earned-interventions.test.mjs",
     "check:sim:tally-three-tow-guidance": "node --test test/tally-three-tow-guidance.test.mjs test/tally-three-hail-native.test.mjs",

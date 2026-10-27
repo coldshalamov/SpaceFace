@@ -1,3 +1,4 @@
+import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -399,6 +400,7 @@ export const missionSpawningOps = {
     }
     if (ent.data.worldRecordId || !sectorId) {
       registerStarterBuoyTow(this.state,ent,m);
+      registerMassScaleTow(this.state,ent,m);
       return;
     }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
@@ -411,6 +413,7 @@ export const missionSpawningOps = {
     // proves a single carrier) and the per-tick miss-memos see the new carrier immediately.
     registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
     registerStarterBuoyTow(this.state,ent,m);
+    registerMassScaleTow(this.state,ent,m);
   },
 
   /**
