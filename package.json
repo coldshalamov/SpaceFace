@@ -518,7 +518,7 @@
     "check:m2b:region-data": "node scripts/check-m2b-region-data.mjs",
     "check:mission-log-map:runtime": "node scripts/check-mission-log-map-runtime.mjs",
     "check:mission-log-contract-terms": "node scripts/check-mission-log-contract-terms.mjs",
-    "check:mission-receipts": "node scripts/check-mission-receipt-ledger.mjs test/al-world-3-captains-4242.test.mjs test/captain-standing-offer-reconciliation.test.mjs test/captain-relief-acceptance.test.mjs test/captain-rescue-production-continue.test.mjs",
+    "check:mission-receipts": "node scripts/check-mission-receipt-ledger.mjs && node --test test/al-world-3-captains-4242.test.mjs test/captain-standing-offer-reconciliation.test.mjs test/captain-relief-acceptance.test.mjs test/captain-rescue-production-continue.test.mjs",
     "check:mission-conditions": "node scripts/check-mission-conditions.mjs",
     "check:automation-board": "node --test test/automation-drone-bay-capacity.test.mjs && node scripts/check-automation-ops-board.mjs",
     "check:automation-board:runtime": "node scripts/check-automation-board-runtime.mjs",

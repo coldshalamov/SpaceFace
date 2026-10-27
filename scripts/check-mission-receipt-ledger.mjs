@@ -15,6 +15,7 @@ import { missionReceiptRows } from '../src/ui/screens/missionLog.js';
 
 const gameStateSrc = readFileSync(new URL('../src/core/gameState.js', import.meta.url), 'utf8');
 const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
+const missionStorySrc = readFileSync(new URL('../src/systems/missionStoryOps.js', import.meta.url), 'utf8');
 const saveSrc = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 
@@ -36,9 +37,9 @@ assert.match(missionsSrc, /_recordMissionReceipt\(m, 'failed'/,
   'failed missions must record a settlement receipt');
 assert.match(missionsSrc, /_recordMissionReceipt\(m, 'expired'/,
   'expired missions must record a settlement receipt');
-assert.match(missionsSrc, /receipts: normalizeMissionReceipts\(m\.receipts\)/,
+assert.match(missionStorySrc, /receipts: normalizeMissionReceipts\(m\.receipts\)/,
   'mission serializer must persist normalized receipts');
-assert.match(missionsSrc, /state\.missions\.receipts = normalizeMissionReceipts\(data\.receipts\)/,
+assert.match(missionStorySrc, /state\.missions\.receipts = normalizeMissionReceipts\(data\.receipts\)/,
   'mission deserializer must restore normalized capped receipts');
 assert.match(saveSrc, /payload\.receipts/,
   'save fallback restore must preserve receipts when missions system is unavailable');
