@@ -27,10 +27,17 @@ import { ENTRIES_COMMS_A } from './entries-comms-a.js';
 import { ENTRIES_EGG_A } from './entries-egg-a.js';
 import { ENTRIES_ANOMALY_A } from './entries-anomaly-a.js';
 import { ENTRIES_VISUAL_A } from './entries-visual-a.js';
+import { ENTRIES_COMMS_B } from './entries-comms-b.js';
+import { ENTRIES_EGG_B } from './entries-egg-b.js';
+import { ENTRIES_ANOMALY_B } from './entries-anomaly-b.js';
+import { ENTRIES_VISUAL_B } from './entries-visual-b.js';
+import { ENTRIES_WORLD_A } from './entries-world-a.js';
 
 export const SPECIAL500 = Object.freeze([
   ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
   ...ENTRIES_ANOMALY_A, ...ENTRIES_VISUAL_A,
+  ...ENTRIES_COMMS_B, ...ENTRIES_EGG_B, ...ENTRIES_ANOMALY_B,
+  ...ENTRIES_VISUAL_B, ...ENTRIES_WORLD_A,
 ]);
 export const SPECIAL500_COMPLETE = false; // flipped true when all 500 entries are authored
 
