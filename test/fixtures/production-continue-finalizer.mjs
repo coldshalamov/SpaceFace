@@ -6,6 +6,7 @@ import { resetCombatInputMode } from '../../src/core/newGameBoot.js';
 import { laneCommandSink, laneSetMode } from '../../src/core/simLaneCommands.js';
 import { GameStartReadinessError, describeGameStartFailure } from '../../src/core/newGameStartTransition.js';
 import { holdOpeningPresentationUntilPaint } from '../../src/render/pipelineReadiness.js';
+import { openingGateBudgetMs } from '../../src/render/startupPacing.js';
 import { createAuthoritativeRuntime } from '../../src/runtime/createAuthoritativeRuntime.js';
 import { makeShipEntitySpec } from '../../src/systems/ships.js';
 import { encodeSavePayload } from '../../src/save/saveWorker.js';
@@ -47,7 +48,7 @@ export async function productionContinueFixture({ picture = async () => true, in
   const testConsole = { ...console, error: (...args) => errors.push(args) };
   const deps = {
     resetCombatInputMode, createTimeEffects, laneCommandSink, laneSetMode,
-    GameStartReadinessError, describeGameStartFailure, holdOpeningPresentationUntilPaint,
+    GameStartReadinessError, describeGameStartFailure, holdOpeningPresentationUntilPaint, openingGateBudgetMs,
     // Presentation ports, deliberately outside the Node manifest.
     releaseUiStage() {}, _loadingClearColor: {}, nextFrame: nextHostTurn,
     nextPaintSliced: nextHostTurn, nowMs: () => performance.now(),
@@ -56,7 +57,7 @@ export async function productionContinueFixture({ picture = async () => true, in
     authoredCriticalVisualReadiness: () => ({ openingPending: [] }),
     waitForInitialAuthoredVisualsWithRetry: async () => true,
     waitForRequiredOpeningPicture: picture, SF_DEBUG: false, console: testConsole,
-    // Keep main's actual20-second deadline; its losing timer must not retain Node.
+    // Keep main's authored deadline; its losing timer must not retain Node.
     setTimeout: (fn, ms) => { const timer = setTimeout(fn, ms); timer.unref?.(); return timer; },
   };
   const finalize = new Function(...Object.keys(deps),

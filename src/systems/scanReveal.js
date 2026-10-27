@@ -41,7 +41,9 @@ import {
 import { revisitDoorState } from './shipCapabilities.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
-const INVESTIGATED_CAP = 64;
+import { SURVEY_MEMORY_CAP, normalizeSurveyMemory } from '../data/surveyCartography.js';
+
+const INVESTIGATED_CAP = SURVEY_MEMORY_CAP;
 // INF-U14: the survey pays. Deep investigations used to end in a toast — the
 // scan:wreckInvestigated event had no listeners at all. Now the first deep read
 // of a loss-linked wreck files a cartography claim through the canonical credit
@@ -58,7 +60,13 @@ export const scanReveal = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this._onScanPulse = (payload) => this._scan(payload || {});
-    if (this.bus && typeof this.bus.on === 'function') this.bus.on('scan:pulse', this._onScanPulse);
+    this._onNewGame = () => this.newGame();
+    this._onEntitySpawned = p => clearStructuralProjection(p?.entity);
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('scan:pulse', this._onScanPulse);
+      this.bus.on('game:newGame', this._onNewGame);
+      this.bus.on('entity:spawned', this._onEntitySpawned);
+    }
   },
 
   _scan(payload) {
@@ -141,9 +149,9 @@ export const scanReveal = {
     }
     for (const entity of wrecks) {
       const data = entity.data || (entity.data = {});
-      const lossId = data.provenance && data.provenance.lossId;
+      const lossId = data.worldSiteStructural === true ? null : data.provenance && data.provenance.lossId;
       const loss = lossId ? findLossById(state, lossId, lossCache) : null;
-      const known = lossId ? isInvestigated(state, lossId) : false;
+      const known = lossId ? isInvestigated(state, lossId, loss) : false;
       const reveal = buildWreckScanReveal(entity, state, {
         origin,
         now,
@@ -152,18 +160,21 @@ export const scanReveal = {
         known,
       });
       if (!reveal) continue;
-      const wreckDiscovery = composeWreckDiscovery(state, entity, wrecks, reveal, loss, now);
+      const wreckDiscovery = data.worldSiteStructural === true ? null
+        : composeWreckDiscovery(state, entity, wrecks, reveal, loss, now);
       if (wreckDiscovery) reveal.discovery = wreckDiscovery;
-      if (sameScanReveal(data.scanRevealed, reveal)) {
-        data.scanRevealed = { ...reveal, revealedAt: data.scanRevealed.revealedAt };
-        continue;
-      }
-      data.scanRevealed = reveal;
+      const unchanged = sameScanReveal(data.scanRevealed, reveal);
+      data.scanRevealed = unchanged ? { ...reveal, revealedAt: data.scanRevealed.revealedAt } : reveal;
       if (this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('scan:wreckRevealed', reveal);
-        if (reveal.quality === 'deep' && reveal.lossId && !known) {
-          recordInvestigated(state, reveal, loss, now);
-          const paid = this._fileCartographyClaim(state, reveal, loss, now);
+        if (!unchanged) this.bus.emit('scan:wreckRevealed', reveal);
+        if (reveal.quality === 'deep' && reveal.lossId && loss && !known) {
+          const claim = { lossId: reveal.lossId, at: now, result: null };
+          this.bus.emit('lossLedger:claimSurvey', claim);
+          // emit() isolates listener errors. A missing/failed owner is not a paid receipt.
+          if (!claim.result) continue;
+          const accepted = claim.result.accepted === true;
+          recordInvestigated(state, reveal, loss, now, accepted);
+          const paid = accepted ? this._fileCartographyClaim(state, reveal, loss, now) : 0;
           this.bus.emit('scan:wreckInvestigated', {
             entityId: entity.id,
             lossId: reveal.lossId,
@@ -173,7 +184,7 @@ export const scanReveal = {
             paid,
             at: now,
           });
-          this._surveyMilestone(state, loss, now);
+          if (accepted) this._surveyMilestone(state, loss, now);
         } else if (reveal.quality === 'deep' && !reveal.lossId && data.debrisCache == null) {
           // INF-U18 v1: generic debris never borrows a story — but a deep read
           // can expose a sealed survivor cache. Once per hull either way.
@@ -210,10 +221,12 @@ export const scanReveal = {
   // INF-U14 v2: each milestone also posts a chart bonus through the same writer.
   _surveyMilestone(state, loss, now) {
     const memory = ensureMemory(state);
+    if (memory.legacyChartBonusesUnknown === true) return;
     const sectorId = (loss && loss.sectorId) || 'unknown';
     let count = 0;
     for (const id of Object.keys(memory.investigated || {})) {
-      if (memory.investigated[id] && memory.investigated[id].sectorId === sectorId) count += 1;
+      if (memory.investigated[id] && memory.investigated[id].credited !== false
+        && memory.investigated[id].sectorId === sectorId) count += 1;
     }
     const tier = count >= 10 ? 10 : count >= 6 ? 6 : count >= 3 ? 3 : 0;
     if (!tier) return;
@@ -275,22 +288,29 @@ export const scanReveal = {
   // The scanner's existing save sidecar carries this owner-owned survey history.
   // The pay-once loss receipts and milestone receipts must survive rematerialized wrecks.
   serialize() {
-    return cloneSurveyMemory(this.state && this.state.scanReveal);
+    return normalizeSurveyMemory(this.state && this.state.scanReveal);
   },
 
   newGame() {
-    if (this.state) this.state.scanReveal = cloneSurveyMemory(null);
+    if (this.state) this.state.scanReveal = normalizeSurveyMemory(null);
   },
 
   deserialize(data) {
-    if (this.state) this.state.scanReveal = cloneSurveyMemory(data);
+    if (!this.state) return;
+    // Legacy proof is migrated from the detached envelope, never borrowed from a live run.
+    this.state.scanReveal = normalizeSurveyMemory(data);
+    for (const entity of this.state.entityList || []) clearStructuralProjection(entity);
   },
 
   destroy() {
     if (this.bus && this._onScanPulse && typeof this.bus.off === 'function') {
       this.bus.off('scan:pulse', this._onScanPulse);
+      this.bus.off('game:newGame', this._onNewGame);
+      this.bus.off('entity:spawned', this._onEntitySpawned);
     }
     this._onScanPulse = null;
+    this._onNewGame = null;
+    this._onEntitySpawned = null;
   },
 };
 
@@ -326,39 +346,25 @@ function ensureMemory(state) {
   return memory;
 }
 
-function cloneSurveyMemory(source) {
-  const memory = { investigated: {}, milestones: {} };
-  const investigated = source && source.investigated;
-  for (const [id, row] of Object.entries(investigated || {})) {
-    if (!row || typeof row !== 'object') continue;
-    memory.investigated[id] = {
-      at: Number(row.at) || 0,
-      sectorId: row.sectorId || null,
-      entityId: row.entityId ?? null,
-    };
+function clearStructuralProjection(entity) {
+  if (entity?.data?.worldSiteStructural === true && entity.data.scanRevealed?.lossId) {
+    delete entity.data.scanRevealed;
   }
-  const ids = Object.keys(memory.investigated);
-  if (ids.length > INVESTIGATED_CAP) {
-    ids.sort((a, b) => memory.investigated[a].at - memory.investigated[b].at || a.localeCompare(b));
-    for (const id of ids.slice(0, ids.length - INVESTIGATED_CAP)) delete memory.investigated[id];
-  }
-  for (const [id, row] of Object.entries(source && source.milestones || {})) {
-    if (row && typeof row === 'object') memory.milestones[id] = { at: Number(row.at) || 0, count: Number(row.count) || 0 };
-  }
-  return memory;
 }
 
-function isInvestigated(state, lossId) {
+function isInvestigated(state, lossId, loss) {
+  if (Number.isFinite(loss?.surveyedAt)) return true;
   const memory = state && state.scanReveal;
   return !!(memory && memory.investigated && memory.investigated[lossId]);
 }
 
-function recordInvestigated(state, reveal, loss, now) {
+function recordInvestigated(state, reveal, loss, now, credited = true) {
   const memory = ensureMemory(state);
   memory.investigated[reveal.lossId] = {
     at: now,
     sectorId: (loss && loss.sectorId) || (state.world && state.world.currentSectorId) || null,
     entityId: reveal.entityId,
+    ...(credited ? {} : { credited: false }),
   };
   const ids = Object.keys(memory.investigated);
   if (ids.length > INVESTIGATED_CAP) {
@@ -562,7 +568,7 @@ function salvageLots(entity) {
 function trailKey(entity) {
   const data = entity && entity.data || {};
   if (data.trailId) return `trail:${data.trailId}`;
-  const lossId = data.provenance && data.provenance.lossId;
+  const lossId = data.worldSiteStructural === true ? null : data.provenance && data.provenance.lossId;
   if (lossId) return `loss:${lossId}`;
   return null;
 }

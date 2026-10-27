@@ -13,10 +13,18 @@
 
 import { MAIL_EVENT_NAMES, MAIL_LETTERS, MAIL_DAY_S } from '../data/mail.js';
 import { deedTally } from './deedRecord.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 const SCHEMA_VERSION = 1;
 const EVENT_CAP = 96;
 const LETTER_BY_ID = new Map(MAIL_LETTERS.map((letter) => [letter.id, letter]));
+
+// The campaign inbox does not observe temporary runs. Borrowed circuits deliberately
+// retain an Adventure envelope, so use their actual world-session registration.
+function campaignMailboxActive(state) {
+  return !!state && (!state.run?.kind || state.run.kind === 'adventure')
+    && !state.physicsVenueSession && !isRacingCorridorSession(state);
+}
 
 function freshState() {
   return { schemaVersion: SCHEMA_VERSION, delivered: [], events: [] };
@@ -169,12 +177,17 @@ export const mail = {
 
   /** Record one witnessed trigger event. Deliveries evaluate on the next tick. */
   _witness(name, payload) {
+    if (!campaignMailboxActive(this.state)) return;
     const own = this._ensureState();
     own.events.push({ n: name, t: (this.state && this.state.simTime) || 0, f: eventScalars(payload) });
     if (own.events.length > EVENT_CAP) own.events.splice(0, own.events.length - EVENT_CAP);
   },
 
   update(dt, state) {
+    if (!campaignMailboxActive(state || this.state)) {
+      this._accumS = 0;
+      return;
+    }
     this._accumS = (this._accumS || 0) + Math.max(0, Number(dt) || 0);
     if (this._accumS < 1) return;         // a letter can wait one second
     this._accumS = 0;
@@ -182,6 +195,7 @@ export const mail = {
   },
 
   _evaluate(state) {
+    if (!campaignMailboxActive(state)) return;
     const own = this._ensureState();
     const delivered = new Set(own.delivered);
     for (const letter of MAIL_LETTERS) {

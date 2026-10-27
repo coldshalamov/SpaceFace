@@ -1,6 +1,8 @@
 // Main-thread simulation owner. Keeps the authoritative fixed-step policy separate from presentation
 // scheduling so a later transport change does not need to rediscover tick, backlog, or ordering rules.
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
+import { registerLaneRpcHandler } from './simLaneCommands.js';
+import { createPlayerTruthImpulseObserver } from '../testing/playerTruth/impulseObserver.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
@@ -547,6 +549,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
     closeAttemptCount++;
     if (!closed) {
       closed = true;
+      unregisterImpulseObserver();
+      impulseObserver.dispose();
       closeCount++;
       const pendingLogical = completedCount
         + (completedOverflow ? completedRecordCount(completedOverflow) : 0);
@@ -617,6 +621,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
     return true;
   }
 
+  const impulseObserver = createPlayerTruthImpulseObserver({ getState: () => state, getBus: () => deps.bus });
+  const unregisterImpulseObserver = registerLaneRpcHandler('playerTruthImpulseObserver', impulseObserver.rpc);
   return {
     fixedDt,
     maxSteps,

@@ -52,14 +52,16 @@ test('PQ-174.03 each problem role names a distinct counter-verb and a telegraph'
 });
 
 test('PQ-174.03 swarm roster and pinned waves already field these roles; overlay does not retune HP', () => {
-  const byRole = new Map();
-  for (const row of SWARM_ROSTER) {
-    if (SURVIVAL_PROBLEM_ROLES.includes(row.role)) byRole.set(row.role, row);
-  }
-  assert.equal(byRole.get('support').enemyId, 'pd_screen_escort');
-  assert.equal(byRole.get('disruptor').enemyId, 'mine_layer_jackal');
-  assert.equal(byRole.get('elite').enemyId, 'corsair_raider');
-  const anchors = SWARM_ROSTER.filter((row) => row.role === 'anchor').map((row) => row.enemyId);
+  const rosterIds = (role) => SWARM_ROSTER.filter((row) => row.role === role).map((row) => row.enemyId);
+  const supports = rosterIds('support');
+  assert.ok(supports.includes('pd_screen_escort'));
+  const disruptors = rosterIds('disruptor');
+  assert.ok(disruptors.includes('mine_layer_jackal'));
+  assert.ok(disruptors.includes('customs_cutter'));
+  const elites = rosterIds('elite');
+  assert.ok(elites.includes('corsair_raider'));
+  assert.ok(elites.includes('patrol_lawman'));
+  const anchors = rosterIds('anchor');
   assert.ok(anchors.includes('field_anchor_controller'));
   assert.ok(anchors.includes('bruiser_brawler'));
 

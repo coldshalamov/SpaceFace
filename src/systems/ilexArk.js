@@ -11,6 +11,13 @@ import { resolveDockRange } from '../core/dockRange.js';
 import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
 
+// Keep the private planner in the carrier's authored acceleration units. Generic NPC
+// normalization (96/52) leaves this low-authority hull chasing a released vault's
+// avoidance shoulder. aiPorts attenuates lateral input by .75; FORMATION by .42.
+const carrierAcceleration=Object.freeze({mainAccel:8,reverseAccel:7,strafeAccel:5});
+const carrierPlannerConfig=Object.freeze({desiredMaxForwardAccel:carrierAcceleration.mainAccel,
+  desiredMaxLateralAccel:carrierAcceleration.strafeAccel*0.75*0.42});
+
 const terminal=new Set(['delivered','destroyed','lost']);
 const dist=(a,b)=>a&&b?Math.hypot(a.x-b.x,a.z-b.z):Infinity;
 const pose=e=>({x:e.pos.x,z:e.pos.z,vx:e.vel.x,vz:e.vel.z,rot:e.rot||0,spin:e.angVel||0});
@@ -22,7 +29,7 @@ const key=id=>`${C.id}:${id}`;
 // perform their own mutations. An accepted receiver never depends on a submitted count.
 export const ilexArk={name:'ilexArk',init(ctx){
   this.ctx=ctx;this.state=ctx.state;this.bus=ctx.bus;this.helpers=ctx.helpers;this._bindings=new Map();this._subs=[];
-  this._restoring=false;this._lastTick=-1;this._offerKey=null;this._busy=false;this._planner=new ManeuverPlanner();this._impactTicks=new WeakMap();this._retired=new WeakSet();
+  this._restoring=false;this._lastTick=-1;this._offerKey=null;this._busy=false;this._planner=new ManeuverPlanner({config:carrierPlannerConfig});this._impactTicks=new WeakMap();this._retired=new WeakSet();
   this._row=normalizeIlexArk(ctx.state.ilexArk);ctx.state.ilexArk=this._row;owners.set(ctx.state,this);
   const on=(event,fn)=>this._subs.push(this.bus.on(event,fn));
   on('mission:completed',p=>{if(['cargo_delivery','salvage_retrieval'].includes(p?.type))this._row.eligible=true;});
@@ -69,7 +76,7 @@ _spawnCarrier(){
       missionId:C.id,homeSectorId:C.originSectorId,sectorId:this.state.world.currentSectorId,authoredAssetId:'SF_SHIP_ILEX_ARK',defId:'ship_hawser',shipId:'ship_hawser',
       name:'Captain Ilex · Seed Ark',callsign:'SEED ARK',scannable:true,scanLabel:'Captain Ilex · six living botanical vaults',
       ai:{passive:true,holdFire:true},weapons:[],fittings:[],miningBeam:null},
-    flightModel:{flightClass:'freighter',mass:body.mass,inertia:body.inertiaY,mainAccel:8,reverseAccel:7,strafeAccel:5,
+    flightModel:{flightClass:'freighter',mass:body.mass,inertia:body.inertiaY,...carrierAcceleration,
       angularAccel:.8,angularBrake:2,maxYawRate:.55,maxSpeed:32,boostMult:1,boostMaxSpeedMult:1,normalMaxSpeedMult:1,
       linearDrag:0,lateralDrag:0,assistStrength:0,reverseBrake:2.4}});
   if(!e||!budget.bindEntity(e.id,C.actorId)){if(e)this.helpers.removeEntity(e.id);budget.release(C.actorId);return;}
@@ -139,6 +146,16 @@ _impact(p){if(!(p?.preSolveClosingSpeed>18))return;
   packet.flags={ignoreFriendlyFire:true,allowAnyTarget:true};getCombatKernel(this.ctx).routeDamage({targetId:e.id,packet,origin:{kind:'ilex_vault_shock',id:C.id}});
 },
 _player(){const p=this.state.entities.get(this.state.playerId);return p?.alive?p:null;},
+// The carrier may keep travelling while a pilot chooses a released original. Interaction
+// follows that living cargo too; it grants neither receiver custody nor an automatic voyage.
+_nearbyOriginal(player){
+  if(!player)return null;
+  let nearest=null,best=C.offerRange;
+  const consider=e=>{const distance=dist(player.pos,e?.pos);if(e&&distance<=best){nearest=e;best=distance;}};
+  consider(this._find('carrier'));
+  for(const id of ILEX_VAULT_IDS)if(this._row.vaults[id].status==='drifting')consider(this._find(id));
+  return nearest;
+},
 _receiver(e){if(!e?.alive||Math.hypot(e.vel.x,e.vel.z)>C.receiverSpeed)return null;
   const r=resolveDockRange({...this.state,playerId:e.id});return r.stationId===C.stationId?r.station:null;},
 _towGate(){const player=this._player(),receiver=this._receiver(player);if(!receiver)return {ok:false,reason:'pilot_outside_slow_receiver'};
@@ -154,8 +171,8 @@ _towGate(){const player=this._player(),receiver=this._receiver(player);if(!recei
   return {ok:false,reason:'original_vault_native_line_required'};
 },
 accept(revision){if(this._restoring||this._row.phase!=='waiting'||revision!==this._row.revision||!this._row.eligible)return {ok:false,reason:'offer_changed'};
-  const p=this._player(),e=this._find('carrier')||ILEX_VAULT_IDS.map(id=>this._find(id)).find(Boolean);
-  if(!p||!e||dist(p.pos,e.pos)>C.offerRange)return {ok:false,reason:'source_out_of_range'};
+  const p=this._player();
+  if(!p||!this._nearbyOriginal(p))return {ok:false,reason:'source_out_of_range'};
   this._row.phase='active';this._row.acceptedAt=this.state.simTime;this._row.deadline=this.state.simTime+C.deadlineS;this._row.revision++;
   this._say('Six original vaults bound for Ceres. Protect the carrier or recover a loose vault. Partial arrival is accepted; lost cargo stays lost.');
   this.bus.emit('ilexArk:accepted',{missionId:C.id,deadline:this._row.deadline});return {ok:true};
@@ -219,8 +236,8 @@ _incident(){if(this._row.phase!=='active'||this._row.incident||this._row.routeIn
     if(e&&!budget.bindEntity(e.id,owner))this.helpers.removeEntity(e.id);}
   this._say('Raiders on the vault collars. Cover the ship, or take a released vault clear of the attack.');
 },
-offer(){const p=this._player(),carrier=this._find('carrier'),source=carrier||ILEX_VAULT_IDS.map(id=>this._find(id)).find(Boolean);
-  if(!p||(!this._receiver(p)&&(!source||dist(p.pos,source.pos)>C.offerRange)))return false;
+offer(){const p=this._player();
+  if(!p||(!this._receiver(p)&&!this._nearbyOriginal(p)))return false;
   const n=this._delivered().length,tow=this._row.phase==='active'&&this._towGate().ok;
   this.bus.emit('ilexArk:offer',{revision:this._row.revision,canAccept:this._row.phase==='waiting'&&this._row.eligible,
     canDeliver:tow,canFinish:this._row.phase==='active'&&!!this._receiver(p),canCourse:this._row.phase==='active',delivered:n,
@@ -233,8 +250,8 @@ update(_dt,state){if(this._restoring||state.mode!=='flight'||(state.run?.kind===
   this._lastTick=state.tick;this._capture();this._materialize();
   if(this._row.phase==='active'){this._acceptCarrier();if(state.simTime>=this._row.deadline)this.finish(this._row.revision,true);else{this._motor();this._incident();}}
   else if(this._row.phase==='waiting')this._motor();
-  if(state.tick%60===0){this._settle();const p=this._player(),e=this._find('carrier');
-    const trigger=`${this._row.phase}:${this._row.revision}:${this._towGate().ok}:${!!this._receiver(p)}:${dist(p?.pos,e?.pos)<=C.offerRange}`;
+  if(state.tick%60===0){this._settle();const p=this._player();
+    const trigger=`${this._row.phase}:${this._row.revision}:${this._towGate().ok}:${!!this._receiver(p)}:${!!this._nearbyOriginal(p)}`;
     if(trigger!==this._offerKey){this._offerKey=trigger;this.offer();}}
 },
 _removeBodies(){for(const e of [...this.state.entityList])if(e.data?.ilexId===C.id){this._retired.add(e);this.helpers.spawnBudget?.releaseEntity(e.id,e);this.helpers.removeEntity(e.id);}

@@ -23,6 +23,8 @@ import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
 import { powersFireOnPress } from '../../systems/powerVerbs.js';
+import { staticVerbSentence } from '../../data/arsenalWords.js';
+import { resolveArsenalPresentation } from '../../data/arsenalPresentation.js';
 import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS, gamepadButtonNames, gamepadButtonLabels } from '../../systems/gamepad.js';
 import { gamepadGlyphForAction } from '../bindings.js';
 import { BINDINGS } from '../bindings.js';
@@ -134,6 +136,7 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Deploy nav beacon', 'deployBeacon', (g) => g],
   ['Jettison cargo lot', 'jettisonLot', (g) => g],
   ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
+  ['Shield pylons (place / link / recall)', 'deployShieldPylon', (g) => g],
   ['Chase / overhead camera', 'steeringView', (g) => g],
 ]);
 
@@ -156,6 +159,7 @@ const GAMEPAD_ROW_ORDER = Object.freeze([
   'Scanner pulse', 'Pin (anchor seed)', 'Pull (gravity well)', 'Rig (clearing cone / skim scoop)',
   'World Site beam', 'Deploy nav beacon', 'Jettison cargo lot',
   'Gyre Snare (hold: lash; release: bowl)',
+  'Shield pylons (place / link / recall)',
   'Chase / overhead camera',
 ]);
 
@@ -202,6 +206,10 @@ export function gamepadControlRows(map) {
 }
 
 export function controlSections(state) {
+  // The words for the powers, the fitted weapons and the combination come from the arsenal presentation
+  // (one source: the same sentences the rail's tips read), never retyped on this sheet.
+  const arsenal = resolveArsenalPresentation(state || {});
+  const power = (id, action) => [`${arsenal.entries[id].name} — ${staticVerbSentence(id)}`, action];
   const holdLine = [liveGlyph(state, 'forward'), liveGlyph(state, 'reverse'), livePair(state, 'yawLeft', 'yawRight')]
     .filter(Boolean)
     .join('/');
@@ -221,6 +229,8 @@ export function controlSections(state) {
       ['Lateral thruster (right)', 'strafeRight'],
       ['Boost (hold) / Dash (tap)', 'boost'],
       ['Fire weapons', 'fire'],
+      // What is actually fitted, and what its fitted modifiers change (the compiled result, in plain words).
+      ...arsenal.weapons.slice(0, 4).map((w) => [`${w.name} — ${[w.sentence, ...w.changes].join(' ')}`, 'fire']),
       ['Draw-to-fly (optional toggle)', 'autoFire'],
       ['Countermeasure', 'countermeasure'],
       ['Massline tap: latch / cut', 'tether'],
@@ -232,13 +242,17 @@ export function controlSections(state) {
       powersFireOnPress(state)
         ? ['Powers: each is used the moment you press its key (Settings → Gameplay → Powers)', null, '1–5']
         : ['Powers: hold a key to outline every body it will move and where it goes; let go to use it', null, '1–5'],
-      ['Pull — drop a gravity well at your aim; it grips your locked target three times as hard', 'pull'],
-      ['Shove — blast everything outward from your ship, and set off every armed charge and bomb', 'shove'],
-      ['Pin — fire an anchor that locks where it lands, then latch your Line to it', 'pin'],
-      ['Bomb — throw a sticky charge (Shove sets it off), or the drift bomb the cycle chose', 'bomb'],
+      power('pull', 'pull'),
+      power('shove', 'shove'),
+      power('pin', 'pin'),
+      power('bomb', 'bomb'),
       ['Cycle ordnance (the sticky charge, then your loaded bombs)', 'cycleBomb'],
-      ['Rig — toggle the clearing cone; in a planet band, the skim scoop', 'rig'],
-      ['Gyre Snare (hold to beam a mass basin ahead; the first body to reach its heart is tethered in orbit — nearby mass absorbs in, katamari-style; release to bowl the clump)', 'gyreSnare'],
+      power('rig', 'rig'),
+      power('gyre', 'gyreSnare'),
+      // The worked example: a physical proposition, not a rotation — built from the same entries and the
+      // pilot's live keys, so it never teaches a key that was rebound or removed.
+      [`Combination — ${arsenal.combo.text} ${arsenal.combo.note}`, null,
+        arsenal.combo.steps.map((step, i) => (i === 2 ? 'release' : step.key)).join(' → ')],
       // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
       // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour
       // seam beat orders: "Pulse the scanner.") but were listed only on the pad sheet — a keyboard
@@ -249,6 +263,7 @@ export function controlSections(state) {
       ['Bullet time (hold)', 'bulletTime'],
       ['Cloak toggle', 'cloak'],
       ['Deploy nav beacon (open space)', 'deployBeacon'],
+      ['Shield pylons — place one endpoint, then link a second: hostile ships and shots stop at the wall between them, you and your allies pass; aim at a pylon to recall its pair (needs a Pylon Projector)', 'deployShieldPylon'],
       ['Jettison cargo lot', 'jettisonLot'],
       ['Travel burn (latch a long burn)', 'travelBurn'],
     ]],

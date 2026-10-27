@@ -35,7 +35,21 @@ for(const mode of ['intact_mule','physical_thief','restored_recovery','restored_
  }
  if(mode.startsWith('restored_')){
   if(mode==='restored_recovery'){h.runtime.getSystem('combat').kill(m,rs[0].id);assert.ok(r.pods.some(p=>p.status==='live'));}
-  else{h.step(61);assert.ok(r.escapeStartedAt!=null);}
+  else{
+   // Collection and escape advance at different owner boundaries; remaining pods
+   // also keep recovery live. Save at the real transition within the authored window.
+   const recoveryDeadline=r.deadlineAt,waitingAt=h.state.simTime;
+   h.step(Math.max(1,Math.ceil((recoveryDeadline-waitingAt)*60)+1),{after(){
+    return r.escapeStartedAt==null&&!r.terminal&&!r.raiderRecoveryClosed&&h.state.simTime<recoveryDeadline;
+   }});
+   assert.ok(r.escapeStartedAt!=null,JSON.stringify({waited:h.state.simTime-waitingAt,now:h.state.simTime,deadline:recoveryDeadline,
+    terminal:r.terminal,recoveryClosed:r.raiderRecoveryClosed,secured:r.raiderSecuredQty,
+    pods:r.pods.map(p=>({qty:p.qty,status:p.status})),activity:target.data.ai?.activity}));
+   assert.equal(r.raiderEscaped,false,'restore starts during the actual escape, before it settles');
+   assert.equal(r.terminal,false);
+   assert.ok(r.raiderSecuredQty>=securedBefore);
+   assert.equal(r.pods.some(p=>p.status==='live'),false,'the physical recovery completed before escape');
+  }
   const pre=JSON.parse(JSON.stringify(s.serialize('npc-before-capture')));assert.equal(s.loadEnvelope(pre,'npc-before-capture'),true);live=h.state.encounterDirector.live[req.encounterId];r=live.data.freightCargoCustody;target=h.state.entities.get(r.raiderId);assert.ok(target);
  }
  const untouched=structuredClone(target.data.cargo),vesselId='tail:independent:'+mode;

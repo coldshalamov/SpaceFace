@@ -9,6 +9,7 @@ import { presentedAnchorXZ, presentedAnchorRot } from './presentedAnchor.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { modelTruthNozzleOrigin, modelTruthPlumeSocketName, modelTruthSocketWorld } from '../data/modelTruth.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
+import { chooseActionSlotVictim } from '../presentation/telegraphPriority.js';
 
 const recipe=(verb,color,life=.65,extra={})=>Object.freeze({verb,life,
   primitive:actionPrimitiveForVerb(verb),continuous:verb==='repair'||verb==='transfer',...extra,
@@ -127,7 +128,14 @@ export class ActionVfx {
     for(const s of this.slots)if(s.event===name&&s.kind===(p.kind??null)&&s.id===id&&s.alive){slot=s;break;}
     if(slot&&now-slot.last<.14)return false;
     if(!slot)for(const s of this.slots)if(!s.alive){slot=s;break;}
-    if(!slot)return false;
+    if(!slot){
+      // Pool full. Only a telegraph may displace anything, and only a lower-ranked answer (never a
+      // telegraph at or above its own consequence/time-to-contact): a tell already being read must
+      // not be deleted because a receipt asked for the last slot (presentation/telegraphPriority.js).
+      const victim=chooseActionSlotVictim(this.slots,{event:name,kind:p.kind??null},now);
+      if(victim<0)return false;
+      slot=this.slots[victim];slot.alive=false;this.live=Math.max(0,this.live-1);
+    }
     const sustained=slot.alive&&recipe.continuous;
     if(!slot.alive)this.live++;
     slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;

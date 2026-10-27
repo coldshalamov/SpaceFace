@@ -4,7 +4,8 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { prepareAuthoredVisualPipelines, isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.js';
-import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease,
+import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
+import { openingPreparedLeafKey, openingAdmissionSubjects, applyFirstPlayablePaintRelease, releaseOpeningGraphPublication,
   enqueueMissingMeshBuildsSteps, render as renderSystem } from '../src/render/renderer.js';
 import { admitOpeningUnitsAcrossSlices, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { collectFirstFlightLayerDrawables } from '../src/render/latePipelineAdmission.js';
@@ -52,7 +53,7 @@ function loadingOwnerFixture() {
       entity.mesh = mesh; this._meshes.set(id, mesh); built.push(id);
     },
   };
-  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const start = source.indexOf('state.render.beginOpeningLoadingAdmission = () => {');
   const end = source.indexOf('const openingCohort = createOpeningAdmissionCohort();', start);
   assert.ok(start > 0 && end > start, 'the real opening admission owner exists');
@@ -449,15 +450,15 @@ test('sector preparation keeps its existing bounded envelope and cannot consume 
 });
 
 function livePictureBarrier(owner) {
-  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const start = source.indexOf('if (ownsFirstPictureBarrier) {');
   const end = source.indexOf('// PQ-210.00 — a roster-prewarm exemplar', start);
   assert.ok(start > 0 && end > start);
   return new Function('state', 'remainingMs', 'cookStale', 'cookSuperseded', 'survivalRunHoldsArena',
-    'openingGateBudgetMs',
+    'openingGateBudgetMs', 'releaseOpeningGraphPublication',
     `return (async () => { let firstPictureError = null; const ownsFirstPictureBarrier = true;
       ${source.slice(start, end)} return firstPictureError; })();`)
-    .call(owner, owner.state, () => 400, () => false, {}, () => false, () => 20000);
+    .call(owner, owner.state, () => 400, () => false, {}, () => false, () => 20000, releaseOpeningGraphPublication);
 }
 
 function pendingPictureOwner() {
@@ -495,7 +496,7 @@ test('the real picture window still expires and its pool-census owner propagates
   const error = await barrier;
   assert.match(error, /opening first-picture preparation timed out/);
   assert.notEqual(owner._openingFirstPicturePrepared, true);
-  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const start = source.indexOf("recordOpeningCookStep(state.render, 'live.firstFramePoolCensus'");
   const end = source.indexOf('\n      }\n      // Final ambient seal:', start);
   assert.ok(start > 0 && end > start);
@@ -505,7 +506,7 @@ test('the real picture window still expires and its pool-census owner propagates
 });
 
 test('final live-sector handover replaces only stale composition samples with a fresh owner verdict', async () => {
-  const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const start = source.indexOf('let finalOpening = opening;');
   const end = source.indexOf('\n      } finally {', start);
   assert.ok(start > 0 && end > start);
@@ -514,14 +515,21 @@ test('final live-sector handover replaces only stale composition samples with a 
     { settled: false, pending: 1, reason: 'timeout' }]) {
     const initial = { settled: false, pending: 3, reason: 'timeout' };
     const state = { render: { openingCookLedger: [{ step: 'live.openingComposition', outcome: 'timeout' }] } };
-    const owner = { _meshes: new Map() }, rows = [];
+    const owner = { _meshes: new Map(), prepareOpeningFirstPicture: async () => true,
+      _parkBoundedWarmRoots: () => ({ roots: 0, nodes: 0 }) }, rows = [];
     const env = { state, opening: initial, recook: false, sectorId: 'helios',
       resumed: null, upgrades: null, pending: null, cook: null, leftover: null,
       renderer: {}, scene: {}, cookSuperseded: {}, cookStale: () => false,
       remainingMs: () => 400, prepareNow: () => 0, yieldAndFlushLiveSectorGpu: async () => {},
       waitForOpeningCompositionSettled: async (_state, options) => {
-        assert.equal(options.timeoutMs, 400); assert.equal(options.meshes, owner._meshes); return fresh;
+        assert.equal(options.timeoutMs, openingLoadPolicy({ shouldAwaitGpuCook: true, mode: 'loading' }).compositionSettleMs);
+        assert.equal(options.meshes, owner._meshes); return fresh;
       }, recordOpeningCookStep: (...row) => rows.push(row),
+      loadPolicy: openingLoadPolicy({ shouldAwaitGpuCook: true, mode: 'loading' }),
+      survivalRunHoldsArena: () => false, openingGateBudgetMs: () => 20000,
+      prepareStartupGpuResidency: async () => ({ skipped: false }), residencyPolicy: () => ({}),
+      createSlicedYield: fn => fn, yieldToBrowser: async () => {}, pacedFrameSpend: () => 0,
+      PACED_FRAME_BUDGET_MS: 8, notePacedFrameSpend() {}, recordAuthoredAdmissionBlockingSlice() {},
     };
     const result = await new Function('env', `with (env) { return (async () => { ${source.slice(start, end)} })(); }`)
       .call(owner, env);
@@ -863,4 +871,49 @@ test('explicit cancellation retires its stale generation/world without clearing 
     assert.equal(effects.describeRequests()['runtime:first-picture'].scale, 0);
     state.render.cancelOpeningPresentationHold();
   }
+});
+
+test('the first-picture deadline does not expire while the armory intentionally freezes world submission', () => {
+  const state = { mode: 'flight', timeScale: 1, world: {}, ui: { screenStack: ['crucibleDraft'] },
+    render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+  const effects = createTimeEffects(state), timers = [];
+  let now = 0, failure;
+  holdOpeningPresentationUntilPaint(state, effects, error => { failure = error; }, {
+    timeoutMs: 10, now: () => now, visibilityTarget: null, lifecyclePort: null,
+    schedule(callback) { timers.push(callback); return timers.length; }, cancel() {},
+  });
+  try {
+    now = 60000; timers.at(-1)();
+    assert.equal(failure, undefined, 'browsing and fitting cannot fail an intentionally withheld world picture');
+    assert.equal(state.timeScale, 0, 'the real first-picture hold still protects the spawn');
+    state.ui.screenStack = []; timers.at(-1)();
+    assert.equal(state.render.releaseOpeningPresentationHold(), false, 'closing the armory is not a world paint');
+    now += 9; timers.at(-1)();
+    assert.equal(failure, undefined, 'the unchanged rendering allowance begins when submission is possible');
+    state.render.worldSubmittedFrames++;
+    assert.equal(state.render.releaseOpeningPresentationHold(), true);
+    assert.equal(state.timeScale, 1);
+  } finally { state.render.cancelOpeningPresentationHold?.(); }
+});
+
+test('the first-picture deadline resumes bounded after an intervening menu freeze', () => {
+  const state = { mode: 'flight', timeScale: 1, world: {}, ui: { screenStack: [] },
+    render: { admissionRunGeneration: 1, worldSubmittedFrames: 0 } };
+  const effects = createTimeEffects(state), timers = [];
+  let now = 0, failure;
+  holdOpeningPresentationUntilPaint(state, effects, error => { failure = error; }, {
+    timeoutMs: 10, now: () => now, visibilityTarget: null, lifecyclePort: null,
+    schedule(callback) { timers.push(callback); return timers.length; }, cancel() {},
+  });
+  try {
+    now = 4; state.ui.screenStack.push('pause');
+    now = 20; timers.at(-1)();
+    assert.equal(failure, undefined, 'a freeze between timer deliveries cannot consume the remaining window');
+    now = 200; state.ui.screenStack = []; timers.at(-1)();
+    now = 209; timers.at(-1)();
+    assert.equal(failure, undefined);
+    now = 210; timers.at(-1)();
+    assert.match(failure?.message || '', /first world picture.*Retry Launch/);
+    assert.equal(state.timeScale, 1, 'a real missing world picture still fails recoverably');
+  } finally { state.render.cancelOpeningPresentationHold?.(); }
 });

@@ -94,8 +94,8 @@ function inertTreeUnchanged(value,tree) {
   return tree.entries.every(([key,child])=>{const d=Object.getOwnPropertyDescriptor(value,key);return d && 'value' in d && inertTreeUnchanged(d.value,child);});
 }
 
-function capture(entity) {
-  const state = authored(entity);
+function capture(entity, normalizedBody = null) {
+  const state = authored(entity, normalizedBody);
   if (!state) throw new Error('invalid_orchard_frame_source');
   return { entity, id:entity.id, life: entity.occupantGeneration, data: entity.data, spec: entity.physicsBody,
     state, finiteMarker: Object.getOwnPropertyDescriptor(entity.data,'orchardFiniteCustody'), progress: state.progress, cycles: state.cycles,
@@ -411,7 +411,7 @@ export function captureOrchardRestoreInputs(context,state,entities,facade,capabi
    const flight=retainOptionalInertField(entity,'flightModel');if(!flight)throw Error('orchard_restore_normalization_accessor');
    const projection=Object.create(Object.getPrototypeOf(entity),Object.getOwnPropertyDescriptors(entity));
    const resolved=resolvePhysicsBodySpec(projection);
-   rows.push({entity,id:entity.id,cells,spec,data,resolved,flight,specTree:retainInertTree(spec),dataTree:retainInertTree(data),pos:{x:entity.pos.x,z:entity.pos.z},vel:{x:entity.vel.x,z:entity.vel.z}});
+   rows.push({entity,id:entity.id,cells,spec,data,resolved,normalizedBody:projection.physicsBody,flight,specTree:retainInertTree(spec),dataTree:retainInertTree(data),pos:{x:entity.pos.x,z:entity.pos.z},vel:{x:entity.vel.x,z:entity.vel.z}});
   }
   const current=()=>epochCurrent() && ownData(state,['sites','entities','world','mode','tick']) && state.sites===sites && state.entities===map && state.world===world && state.mode===mode && state.tick===tick
     && ownData(world,['currentSectorId']) && world.currentSectorId===sector && finiteCell(sites,'anvilOrchard')?.value===row && inertTreeUnchanged(row,tree);
@@ -446,7 +446,12 @@ export function prepareOrchardFrameTransfer(candidate, destination, originalCont
     : [...Map.prototype.keys.call(destinationContext.dormantFrames)];
   for(const entity of semanticFrames)if(!sourceRecords.some(r=>r.entity===entity))sourceRecords.push({entity,dormant:true});
   for (const record of sourceRecords) {
-    const old = record.dormant ? capture(record.entity) : leases.get(record);
+    // Cold dormant sources have never crossed native normalization. Validate the
+    // private restore projection while retaining the untouched raw source lease;
+    // its body/data descriptors and census stay guarded until atomic publication.
+    const dormantBody = record.dormant && options.restoreInputs
+      ? coldInputPlans.get(options.restoreInputs)?.rows.find(r=>r.entity===record.entity)?.normalizedBody : null;
+    const old = record.dormant ? capture(record.entity, dormantBody) : leases.get(record);
     if (!old && !claimsOrchardFrame(record.entity)) continue;
     if (!old || (!record.dormant && (old.owner !== candidate || old.world !== candidate.world || record.body !== old.body
       || !geometryMatches(candidate, record, old))) || !retained(old)) throw new Error('invalid_orchard_staged_lease');
@@ -457,7 +462,7 @@ export function prepareOrchardFrameTransfer(candidate, destination, originalCont
       || (source && (entity.physicsBody !== source.spec || entity.data !== source.data
         || entity.occupantGeneration !== source.life))) throw new Error('orchard_original_replaced');
     if(options.restoreInputs && !restoreInputsCurrent(options.restoreInputs))throw Error('orchard_restore_inputs_changed');
-    const cache = preparePhysicsBodyNormalizationAdoption(entity, old.spec);
+    const cache = preparePhysicsBodyNormalizationAdoption(entity, dormantBody || old.spec);
     if (!cache) throw new Error('invalid_orchard_cold_normalization');
     const predecessor=leases.get(destination.records.get(entity.id)) || destinationContext.dormantFrames.get(entity);
     const continued=predecessor && predecessor.entity===entity && predecessor.state===old.state
@@ -474,7 +479,7 @@ export function prepareOrchardFrameTransfer(candidate, destination, originalCont
     }
     const finiteState=options.finiteState,coldFinite=options.coldMotor===true && ownData(finiteState,['sites']) && finiteCell(finiteState.sites,'anvilOrchard')?.value!=null;
     if(coldFinite && !old.finiteMarker){const descriptors=Object.getOwnPropertyDescriptors(nextData);descriptors.orchardFiniteCustody={value:1,writable:true,configurable:true,enumerable:true};nextData=Object.create(Object.getPrototypeOf(nextData),descriptors);}
-    const next={...old,entity,owner:destination,spec:cache.body,data:nextData,state:nextState,finiteMarker:Object.getOwnPropertyDescriptor(nextData,'orchardFiniteCustody'),
+    const next={...old,entity,owner:destination,spec:cache.body,bodyTree:retainInertTree(cache.body),contract:JSON.stringify(cache.body),data:nextData,state:nextState,finiteMarker:Object.getOwnPropertyDescriptor(nextData,'orchardFiniteCustody'),
       progress:nextState.progress,cycles:nextState.cycles,stateContract:JSON.stringify(nextState),provenance:'cold-adopted',
       bindingRevision:nextRevision++,completedReceipt:null,presentation:null,
       lastTicks:continued?[...predecessor.lastTicks]:[null,null,null],

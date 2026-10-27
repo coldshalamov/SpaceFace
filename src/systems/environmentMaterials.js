@@ -73,7 +73,9 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   const flight = entity?.data?.gyreLaunched && entity.physicsBody?.impactDamageScale > 1
     && Number(entity.data.despawnAt) > Number(state.simTime)
     && Number(entity.data.gyreLaunchMeta?.holdUntilSim) > Number(state.simTime);
-  if (held || flight) return false;
+  // A collector's knot is bound the same way while its emitter holds it (impact cohesion, not immunity).
+  const knotHeld = !!entity?.data?.collectorCore;
+  if (held || flight || knotHeld) return false;
   const material = environmentMaterialOf(entity);
   // Row 509/510: a stamped substance names its own break speed; the family default stands.
   const impactThreshold = Number.isFinite(entity?.data?.breakSpeed)
@@ -122,7 +124,9 @@ export const environmentMaterials = {
   },
   _persist(body) { this.registry?.get('world')?.persistResourceBody?.(body); },
   _cue(body, kind, count = 0) {
-    const p = { id: body.id, pos: { ...body.pos }, x: body.pos.x, z: body.pos.z, radius: body.radius, material: body.data.material,
+    // Publish the terminal owner before core can recycle this slot; both sim lanes hear this cue.
+    const p = { id: body.id, type: body.type, occupantGeneration: body.occupantGeneration,
+      simTime: this.state.simTime, pos: { ...body.pos }, x: body.pos.x, z: body.pos.z, radius: body.radius, material: body.data.material,
       substance: body.data.substance, vfxFamily: body.data.impactVfx, count };
     this.bus?.emit(`environment:${kind}`, p);
     this.bus?.emit(kind === 'fractured' ? 'asteroid:destroyed' : 'bomb:exploded', p);
@@ -150,7 +154,7 @@ export const environmentMaterials = {
         data: environmentSurfaceData(material, { ...d, opticMaterial: undefined, opticStructureId: undefined, opticCell: undefined,
           // Rupture ends the bound aggregate. Fragments are ordinary material, never
           // new armed balls inheriting a stale core/member ledger or hold lifetime.
-          gyreCore: undefined, gyreLaunched: undefined, gyreLaunchMeta: undefined,
+          gyreCore: undefined, gyreLaunched: undefined, gyreLaunchMeta: undefined, collectorCore: undefined,
           gyrePrevImpactScale: undefined, gyrePrevDespawnAt: undefined, gyrePrevTtl: undefined,
           size: childRadius, isChunk: true, materialFragment: true, fractured: true, tetherPayload: true,
           // Row 510: a break steps the ladder down one tier — the piece stays a live throwable.

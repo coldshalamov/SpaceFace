@@ -283,6 +283,12 @@ const VERB_BINDINGS = {
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
+  // Linked shield pylons (Controlled Chaos packet 06): ONE labeled edge whose meaning is named by
+  // the HUD pill each time (PLACE FIRST ENDPOINT / LINK SECOND ENDPOINT / RECALL PAIR / CAPACITY
+  // REACHED) - it is not folded into another power. Digit6 is free repo-wide (checked against both
+  // scheme tables, ui/bindings.js, the UI key router and the prompt-digit claims). The shieldPylons
+  // system owns fitting, cost, placement and the pair lifecycle.
+  deployShieldPylon: ['Digit6'],
   deployBeacon:   ['KeyU'],   // edge: drop a claim beacon in open space (beacons system owns cost/cap).
                               //   The UI router owns U only when a claimable body is in range; in open
                               //   space it falls through to this flight verb (see check-claim-base-input).
@@ -455,7 +461,7 @@ export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
   'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'reelIn', 'reelOut',
   'pull', 'shove', 'pin', 'bomb', 'rig', 'cycleBomb',
-  'siteBeam', 'scanPulse', 'cruise',
+  'siteBeam', 'scanPulse', 'cruise', 'deployShieldPylon',
 ]);
 
 /**
@@ -631,7 +637,7 @@ function applyFlightKeyTransition(keys, nextKeys) {
 // Verbs that must not collapse into the key map. Movement stays on the map itself.
 const SAMPLED_EDGE_ACTIONS = new Set([
   'tether', 'pull', 'shove', 'pin', 'bomb', 'rig', 'scanPulse', 'cruise', 'deployBeacon',
-  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
+  'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot', 'deployShieldPylon',
 ]);
 
 // Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
@@ -650,7 +656,7 @@ const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
   'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'shove',
   'bomb', 'cycleBomb',
   'scanPulse', 'cruise', 'deployBeacon', 'pin', 'pull', 'rig',
-  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot',
+  'siteBeam', 'bulletTime', 'cloak', 'jettisonLot', 'deployShieldPylon',
   // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
   // re-fire the beam the moment the pad publishes again.
   'gyreSnare',
@@ -750,9 +756,21 @@ export function applyFlightKeyEvent(host, event = {}) {
   return true;
 }
 
+// Touch pylon presses share the bounded sampled queue with keys. A worker can drain
+// both the tap and its neutral frame before stepping; the final hold alone loses that tap.
+function discardSampledTouchPresses(host) {
+  const queue = host._keyEdgeQueue;
+  if (queue) for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].source === 'touch') queue.splice(i, 1);
+  }
+}
+
 function takeSampledPress(host, state, action) {
   const queue = host._keyEdgeQueue;
   if (!queue || queue.length === 0 || action === 'tether') return false;
+  for (let i = queue.length - 1; i >= 0; i--) {
+    if (queue[i].source === 'touch' && queue[i].sector !== state.world?.currentSectorId) queue.splice(i, 1);
+  }
   const index = queue.findIndex((edge) => edge.pressed && edge.action === action);
   if (index < 0) return false;
   queue.splice(index, 1);
@@ -1094,6 +1112,7 @@ export const input = {
     this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
     this._holdToggleLatches = Object.create(null);
     this._holdToggleEdges = Object.create(null);
+    this._touchPylonQuarantined = false;
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1207,7 +1226,20 @@ export const input = {
         // its resolved frame lands here — the lane touch reducer applies axes,
         // actions and cancelled-role resets into the sim-owned touch surface.
         if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
+          const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
           this.touch.applyLaneFrame(d.frame, this);
+          const held = !!this.touch.actions?.deployShieldPylon?.held;
+          if (d.frame?.active === false) {
+            discardSampledTouchPresses(this);
+            this._touchPylonQuarantined = false;
+          } else if (!held) {
+            this._touchPylonQuarantined = false;
+          } else if (!wasHeld && !this._touchPylonQuarantined) {
+            const queue = flightEdgeQueue(this);
+            queue.push({ action: 'deployShieldPylon', pressed: true, source: 'touch',
+              sector: this.state.world?.currentSectorId });
+            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          }
         }
         break;
       }
@@ -1401,6 +1433,9 @@ export const input = {
   releaseHeldControls(_reason = 'lifecycle') {
     const keys = this._keys;
     dropUnreleasedHeldEdges(this._keyEdgeQueue, keys);
+    discardSampledTouchPresses(this);
+    // Only a real neutral touch descriptor re-arms the worker deck after interruption.
+    this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
     // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
     this._cancelPowerHolds(this.state);
     if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
@@ -1527,9 +1562,11 @@ export const input = {
       const padHeld = this._padHeld(gp, power);
       const held = keyHeld || padHeld;
       let hold = holds[power];
-      // The context moved under the grip — a new sector, or a pad grip fenced on resume (its
-      // fenced button reads as not held). Cancel; the eventual release must not fire.
-      if (hold && (hold.sector !== sector || (hold.pad && !keyHeld && !this._gamepadLifecycleActionAllowed(power)))) {
+      // The context moved under the grip — a new sector, a pad grip fenced on resume (its fenced button
+      // reads as not held), or a pad that vanished with the button down (no release will ever come, and
+      // the pilot did not let go). Cancel; the eventual release must not fire.
+      if (hold && (hold.sector !== sector
+        || (hold.pad && !keyHeld && (!this._gamepadLifecycleActionAllowed(power) || !(gp && gp.isConnected()))))) {
         delete holds[power];
         hold = null;
       }
@@ -1684,7 +1721,7 @@ export const input = {
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
-      jettisonLotAll: false, gyreSnare: false,
+      jettisonLotAll: false, gyreSnare: false, deployShieldPylon: false,
       // The five powers' read surface ({ held, pressed } once sampled; null = untouched).
       pull: null, shove: null, pin: null, bomb: null, rig: null,
     });
@@ -1703,6 +1740,8 @@ export const input = {
       acts.brake = false; acts.cruise = false; acts.tetherFire = false; acts.tetherCut = false;
       acts.reelDelta = 0; acts.chargeThrow = false; acts.chargeDetonate = false; acts.scanPulse = false; acts.autopursuit = false;
       acts.deployBeacon = false;
+      acts.deployShieldPylon = false;
+      if (tp?.actions?.deployShieldPylon?.held) this._touchPylonQuarantined = true;
       acts.bulletTime = false; acts.cloakToggle = false; acts.throwArm = false; acts.travelBurn = false;
       acts.siteBeam = false; acts.aimedMine = false;
       acts.autoTargetToggle = false;
@@ -2095,7 +2134,10 @@ export const input = {
     const edges = this._edgePrev || (this._edgePrev = {});
     const edge = (action) => {
       const sampled = takeSampledPress(this, state, action);
-      const held = this._held(state, action);
+      // Worker touch pylon edges were captured at descriptor ingest. Keep its final
+      // raw hold truthful without deriving another press (or replaying one after blur).
+      const held = action === 'deployShieldPylon' && typeof tp?.applyLaneFrame === 'function'
+        ? input._held.call(this, state, action) : this._held(state, action);
       const was = !!edges[action];
       edges[action] = held;
       // One press per update. A second press sampled in the same gap stays queued.
@@ -2186,6 +2228,7 @@ export const input = {
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
     acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
+    acts.deployShieldPylon = edge('deployShieldPylon') || this._padEdge(gp, 'deployShieldPylon');
     acts.deployMassSeed = fire.pin;
     acts.deployWell = fire.pull;
     acts.deployRepulsor = fire.shove;

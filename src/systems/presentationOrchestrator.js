@@ -21,6 +21,7 @@ import {
 } from '../audio/minimalActionAudio.js';
 import { bindAttackCausalBus } from '../combat/attackHit.js';
 import { endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
+import { telegraphAdmissionPriority } from '../presentation/telegraphPriority.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -434,9 +435,21 @@ export const presentationOrchestrator = {
       ...common,
       tags: [doctrineId, grammar.shape, 'setup'],
     });
-    this._emitCue('combat.doctrine.telegraph', enriched, {
+    // Packet 02: a telegraph being read must outlive an ordinary explosion in the shared VFX pools.
+    // vfxAdmissionPriority honours an explicit admissionPriority; ours rises with consequence and
+    // time-to-contact and is highest when the tell is aimed at the player.
+    const durationTicks = Math.max(1, Number(payload.durationTicks) || grammar.telegraphTicks);
+    this._emitCue('combat.doctrine.telegraph', {
+      ...enriched,
+      admissionPriority: telegraphAdmissionPriority({
+        kind: grammar.telegraphKind,
+        elapsedTicks: 0,
+        durationTicks,
+        onPlayer: !!(this.state && targetId === this.state.playerId),
+      }),
+    }, {
       ...common,
-      magnitude: Math.max(1, Number(payload.durationTicks) || grammar.telegraphTicks),
+      magnitude: durationTicks,
       tags: [doctrineId, grammar.shape, grammar.telegraphKind, 'telegraph'],
     });
   },

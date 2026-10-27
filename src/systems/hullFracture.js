@@ -214,6 +214,16 @@ function consumeBreakup(entity) {
   if (entity) (entity.data || (entity.data = {})).physicalBreakup = true;
 }
 
+// Packet 08: a dying hull's rupture is the one break-apart its kill wreck (parentType 'ship', which
+// breakupConsumed treats as already spent) is still owed. Every other stamp - an earlier shed, a
+// fracture piece, a tear-off - still refuses, and consumeBreakup latches it so it happens once.
+function dyingRuptureMayShed(victim) {
+  const d = victim && victim.data;
+  return !!d && victim.type === 'wreck' && d.physicalBreakup !== true && !d.fracturePiece
+    && d.collisionTearOff !== true && !(Number(d.impactChipCount) > 0) && d.isChunk !== true
+    && d.reactiveMatter?.parentId == null;
+}
+
 export function closingSpeedFromImpact(payload) {
   const closing = Number(payload && payload.preSolveClosingSpeed);
   return Number.isFinite(closing) ? closing : NaN;
@@ -634,7 +644,7 @@ export function spawnCollisionTearOff(ctx, note) {
   if (typeof state.rng !== 'function') return null;
   if (!note.pos || !Number.isFinite(note.pos.x) || !Number.isFinite(note.pos.z)) return null;
   const victim = state.entities?.get(note.victimId);
-  if (breakupConsumed(victim)) return null;
+  if (breakupConsumed(victim) && !(note.dyingHullRupture === true && dyingRuptureMayShed(victim))) return null;
   const budget = livePieceBudget(state);
   const remaining = Math.max(0, PHYSICAL_BREAKUP_LAW.livePieceCap - budget.count);
   if (remaining === 0) return null;

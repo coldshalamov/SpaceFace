@@ -23,6 +23,11 @@ import { FACTION_KITS } from '../src/data/factions/index.js';
 import { SHIPS } from '../src/data/ships.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { FIGURES } from '../src/data/narrative.js';
+import { createGameState } from '../src/core/gameState.js';
+import { runSession } from '../src/systems/runSession.js';
+import { configureRacingCorridorSession, isRacingCorridorSession } from '../src/world/racingCorridor.js';
+import { MAIL_DAY_S } from '../src/data/mail.js';
+
 
 const CMDTY = new Set(COMMODITIES.map((c) => c.id));
 const FACTION = new Set(Object.values(FACTION_KITS).map((k) => k.id));
@@ -248,4 +253,92 @@ test('cast letters address real named figures', () => {
     || String(l.from).includes('Kurtz') || String(l.from).includes('Ashfall'));
   assert.ok(realSenders.length >= 15,
     `most cast letters should come from named figures (${realSenders.length})`);
+});
+
+
+// The real run owner and borrowed-course registration, not legacy mode booleans.
+function campaignMailbox(t) {
+  const state = createGameState(435);
+  state.mode = 'flight';
+  state.simTime = 10 * MAIL_DAY_S;
+  const bus = fakeBus();
+  const owner = Object.create(mail);
+  const runs = Object.create(runSession);
+  runs.init({ state, bus });
+  owner.init({ state, bus });
+  owner.deserialize({ schemaVersion: 1, delivered: ['mail_kael_01'], events: [
+    { n: 'dock:docked', t: 1, f: { stationId: 'station_helios' } },
+  ] });
+  t.after(() => { owner.destroy(); runs.destroy(); });
+  return { state, bus, owner, runs };
+}
+
+function assertMailboxDeferred(f, before) {
+  f.bus.emit('law:fineAssessed', { amount: 400, reason: 'arena_contact' });
+  f.owner.update(2, f.state);
+  // The event/evaluation seam must also defer when invoked by its actual owner.
+  f.owner._evaluate(f.state);
+  assert.deepEqual(f.owner.serialize(), before, 'temporary play consumes neither campaign letters nor event witnesses');
+  assert.deepEqual(f.bus.emitted.filter(e => e.name === 'mail:delivered' || e.name === 'comms:popup'), [],
+    'campaign inbox and downstream mail callouts stay silent');
+}
+
+for (const [kind, ruleset] of [['survival', 'swarm'], ['survival', 'scored'], ['lab', null]]) {
+  test(`campaign mailbox defers throughout ${kind}/${ruleset || 'lab'} and recovers on Adventure restore`, t => {
+    const f = campaignMailbox(t);
+    f.bus.emit('run:beginRequested', { kind, ruleset, seed: 435 });
+    assert.equal(f.state.run.kind, kind);
+    assert.equal(f.state.run.phase, 'loadout');
+    const before = f.owner.serialize();
+    const phases = ['loadout', 'arena_intro', 'wave_intro', 'active', 'cleanup', 'draft', 'refit'];
+    for (const phase of phases) {
+      if (phase !== 'loadout') f.bus.emit('run:transitionRequested', { expectedPhase: f.state.run.phase, nextPhase: phase });
+      assert.equal(f.state.run.phase, phase);
+      assertMailboxDeferred(f, before);
+    }
+    f.bus.emit('run:endRequested', { outcome: 'aborted', reason: 'mail_fixture' });
+    assert.equal(f.state.run.phase, 'ended');
+    assertMailboxDeferred(f, before);
+    // This is the canonical Continue boundary, not a hand-written run envelope.
+    f.bus.emit('save:restoring', {});
+    assert.equal(f.state.run.kind, 'adventure');
+    assert.equal(f.state.run.phase, 'inactive');
+    f.owner.update(1, f.state);
+    assert.ok(f.bus.emitted.some(e => e.name === 'mail:delivered'), 'normal due letters remain available');
+    assert.equal(f.state.mail.delivered.includes('mail_bill_03'), false, 'temporary fine was never retained as a campaign witness');
+    f.bus.emit('law:fineAssessed', { amount: 400, reason: 'dock_slam' });
+    f.owner.update(1, f.state);
+    assert.ok(f.state.mail.delivered.includes('mail_bill_03'), 'a real campaign fine still delivers its letter');
+  });
+}
+
+test('borrowed Racing before a race exists defers mail without consuming campaign opportunity', t => {
+  const f = campaignMailbox(t);
+  f.state.world.sectors = { sector_helios_prime: { id: 'sector_helios_prime' } };
+  configureRacingCorridorSession(f.state, true);
+  assert.equal(isRacingCorridorSession(f.state), true);
+  assert.equal(f.state.run.kind, 'adventure', 'borrowed flight uses Adventure run defaults');
+  assert.equal(f.state.racing?.active, undefined);
+  assert.equal(f.state.race?.active, undefined);
+  const before = f.owner.serialize();
+  assertMailboxDeferred(f, before);
+  configureRacingCorridorSession(f.state, false);
+  f.owner.update(1, f.state);
+  assert.ok(f.bus.emitted.some(e => e.name === 'mail:delivered'), 'due mail was deferred, not marked sent');
+  assert.equal(f.state.mail.delivered.includes('mail_bill_03'), false);
+});
+
+test('temporary physics venue defers mail while an ordinary Adventure race keeps its inbox', t => {
+  const f = campaignMailbox(t);
+  f.state.physicsVenueSession = true;
+  const before = f.owner.serialize();
+  assertMailboxDeferred(f, before);
+  f.state.physicsVenueSession = false;
+  f.state.missions.active = [{ type: 'race', status: 'active', params: { racingContractId: 'adventure-race', raceLease: true } }];
+  f.bus.emit('law:fineAssessed', { amount: 400, reason: 'dock_slam' });
+  f.owner.update(1, f.state);
+  assert.ok(f.state.mail.delivered.includes('mail_bill_03'), 'in-world Adventure races keep campaign event delivery');
+  const snapshot = f.owner.serialize();
+  f.owner.update(1, f.state);
+  assert.deepEqual(f.owner.serialize(), snapshot, 'ordinary letters still arrive only once');
 });

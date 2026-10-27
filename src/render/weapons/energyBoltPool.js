@@ -8,6 +8,7 @@ import {
 import { BOLT_VARIANT } from './recipes.js';
 import { DEFAULT_BOLT_MIN_LENGTH_PIXELS, DEFAULT_BOLT_MIN_PIXELS, tanHalfFov } from './pixelFloor.js';
 import { createSpindleGeometry } from './projectileGeometries.js';
+import { registerProjectileBodyOwner } from '../projectileBodyProvenance.js';
 
 export const ENERGY_BOLT_CAPACITY = 256;
 
@@ -486,7 +487,16 @@ export class EnergyBoltPool {
 
     this.entityIds = new Int32Array(this.capacity);
     this.entityIds.fill(-1);
+    this.occupantGenerations = new Float64Array(this.capacity).fill(NaN);
     this.byEntity = new Map();
+    this._duplicateEntities = new Set();
+    this._publishedReady = false;
+    this._diagnosticActive = false;
+    this._disposed = false;
+    this._unregisterProjectileBody = registerProjectileBodyOwner(this.mesh, {
+      matches: identity => this._presentedBodyIndex(identity) >= 0,
+      withHidden: (identity, draw) => this._withBodyHidden(identity, draw),
+    });
     this.writeCount = 0;
     // Quiet settled flight: beginFrame Map.clear + uniform writes + commit attr
     // republish ran every tick after the last bolt died. Trust empty mesh after the
@@ -505,6 +515,7 @@ export class EnergyBoltPool {
     this._sortDestinations = new Uint32Array(this.capacity);
     this._sortAttributeScratch = new Float32Array(this.capacity * 4);
     this._sortEntityScratch = new Int32Array(this.capacity);
+    this._sortGenerationScratch = new Float64Array(this.capacity);
     this._remapEntity = (index, id) => this.byEntity.set(id, this._sortDestinations[index]);
     this.dynamicBufferOwner = scene ? registerDynamicBufferOwner(scene, {
       id: 'weapon-energy-bolts',
@@ -542,6 +553,7 @@ export class EnergyBoltPool {
   }
 
   beginFrame(dt = 0, accessibilityProfile = null) {
+    this._publishedReady = false;
     // Already empty/invisible: defer Map.clear + uniform writes until a bolt is written.
     // commit() drops the deferred begin when writeCount stays 0 — picture unchanged.
     if (this._quietEmpty) {
@@ -561,11 +573,13 @@ export class EnergyBoltPool {
     this.material.uniforms.uBoltFlicker.value = reducedFlash ? 0 : 1;
     this.writeCount = 0;
     this.byEntity.clear();
+    this._duplicateEntities.clear();
     this._deferredBegin = null;
   }
 
   writeBolt({
     entityId,
+    occupantGeneration,
     x, y, z,
     prevX, prevY, prevZ,
     ax, ay, az,
@@ -574,6 +588,7 @@ export class EnergyBoltPool {
     sheathR, sheathG, sheathB,
     minPixels,
   }) {
+    this._publishedReady = false;
     if (this._deferredBegin) {
       const deferred = this._deferredBegin;
       this._deferredBegin = null;
@@ -587,6 +602,8 @@ export class EnergyBoltPool {
     if (index >= this.capacity) return -1;
     this.writeCount = index + 1;
     this.entityIds[index] = entityId == null ? -1 : entityId;
+    this.occupantGenerations[index] = Number.isSafeInteger(occupantGeneration) ? occupantGeneration : NaN;
+    if (this.byEntity.has(entityId)) this._duplicateEntities.add(entityId);
     if (entityId != null) this.byEntity.set(entityId, index);
     const seed = weaponEffectSeed(entityId == null ? index : entityId);
     this.variation.setXY(index, seed * Math.PI * 2, (seed * 37.719) % 1);
@@ -663,8 +680,10 @@ export class EnergyBoltPool {
     for (let i = 0; i < count; i++) {
       this._sortDestinations[order[i]] = i;
       this._sortEntityScratch[i] = this.entityIds[order[i]];
+      this._sortGenerationScratch[i] = this.occupantGenerations[order[i]];
     }
     for (let i = 0; i < count; i++) this.entityIds[i] = this._sortEntityScratch[i];
+    for (let i = 0; i < count; i++) this.occupantGenerations[i] = this._sortGenerationScratch[i];
     // Preserve the original map keys, including callers that use string entity IDs.
     this.byEntity.forEach(this._remapEntity);
     const values = this._sortAttributeScratch;
@@ -709,6 +728,7 @@ export class EnergyBoltPool {
       this.variation.needsUpdate = true;
     }
     this.mesh.visible = this.writeCount > 0;
+    this._publishedReady = true;
     this._quietEmpty = this.writeCount === 0 && this.mesh.count === 0 && !this.mesh.visible;
   }
 
@@ -716,7 +736,45 @@ export class EnergyBoltPool {
     return this.writeCount;
   }
 
+  _presentedBodyIndex(identity) {
+    if (this._disposed || this._diagnosticActive || !this._publishedReady || !this.mesh.visible
+        || this.mesh.count !== this.writeCount || this._duplicateEntities.has(identity.id)) return -1;
+    const index = this.byEntity.get(identity.id);
+    return Number.isInteger(index) && index >= 0 && index < this.mesh.count
+      && this.entityIds[index] === identity.id
+      && this.occupantGenerations[index] === identity.occupantGeneration ? index : -1;
+  }
+
+  _withBodyHidden(identity, draw) {
+    const index = this._presentedBodyIndex(identity);
+    if (index < 0) return false;
+    const offset = index * 3;
+    const saved = [this.pos.array.slice(offset, offset + 3), this.prev.array.slice(offset, offset + 3)];
+    const attributes = [this.pos, this.prev];
+    this._diagnosticActive = true;
+    try {
+      // The shader uses custom endpoint attributes, not instanceMatrix. Move only this body
+      // outside clip space; its draw order, material, count and every other instance stay intact.
+      for (const attribute of attributes) {
+        attribute.array.fill(1e12, offset, offset + 3);
+        attribute.clearUpdateRanges(); attribute.needsUpdate = true;
+      }
+      draw();
+      return true;
+    } finally {
+      for (let i = 0; i < attributes.length; i++) {
+        attributes[i].array.set(saved[i], offset);
+        // Full refresh is intentional: an offscreen draw may have consumed pending upload ranges.
+        // The next draw must see all original endpoints, including this restored instance.
+        attributes[i].clearUpdateRanges(); attributes[i].needsUpdate = true;
+      }
+      this._diagnosticActive = false;
+    }
+  }
+
   dispose() {
+    this._disposed = true;
+    this._unregisterProjectileBody();
     unregisterDynamicBufferOwner(this.dynamicBufferOwner);
     this.dynamicBufferOwner = null;
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);

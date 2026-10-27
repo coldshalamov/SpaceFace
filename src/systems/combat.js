@@ -44,6 +44,8 @@ import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { sampleFactionBehavior } from '../data/factionDoctrines.js';
 import { isHostileToPlayer } from './scanner.js';
 import { queryPhysicalBodies } from '../combat/physicalEffects.js';
+import { hasBlockingPanels, interceptSegment, acceptIntercept, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
@@ -1735,7 +1737,9 @@ export const combat = {
       const damageables = beamDamageCandidates(this, state, beam, dx, dz);
       for (const e of damageables) {
         if (!e.alive) continue;
-        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
+        // A shield pylon endpoint is a destructible body (packet 06): a beam can hit it like a hull.
+        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone'
+          && !(e.data && e.data.shieldPylonEndpoint === true)) continue;
         if (e.id === beam.ownerId) continue;
         if (e.id === state.playerId && this.playerIsDockProtected()) continue;
         if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
@@ -1778,6 +1782,19 @@ export const combat = {
         // owns the contact — a hull in front of the lattice takes the hit, not the rock.
         const hullHit = opticBeamHit(beam, bestE);
         if (hullHit && hullHit.t < opticT) { opticE = null; opticHit = null; }
+      }
+      // Linked shield pylons (packet 06): a hostile ray ends at the first panel crossing on this same
+      // path, ahead of any hull or optic surface beyond it. The shared geometry read decides; the
+      // contact is only recorded here and the shieldPylons system debits it once.
+      if (hasBlockingPanels(state)) {
+        const wall = interceptSegment(state, PYLON_CONTACT.BEAM, beam.ownerId, ax, az, beam.to.x, beam.to.z, 0,
+          { fallbackTeam: beam.sourceTeam ?? ownerTeam, sourceLife: beam.sourceLife === undefined ? occupantGenerationOf(owner) : beam.sourceLife });
+        if (wall && wall.t < (bestE ? bestT : Infinity) && wall.t < (opticE ? opticT : Infinity)) {
+          beam.to.x = ax + dx * wall.t;
+          beam.to.z = az + dz * wall.t;
+          acceptIntercept(state, wall, PYLON_CONTACT.BEAM, { damage: beam.dpsThisTick }, beam.ownerId);
+          continue;
+        }
       }
       const target = opticE || bestE;
       if (target && !state.entities.get(target.id)) {

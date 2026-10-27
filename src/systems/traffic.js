@@ -122,7 +122,7 @@ import {
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { SECTOR_CAUSAL_CHAIN_DEFS } from '../data/sectorCausalChains.js';
-import { stepPallasWorkLoop } from './pallasWorkLoop.js';
+import { stepPallasWorkLoop, pallasWorkTarget } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zoneAt } from '../data/sectorZones.js';
@@ -2090,6 +2090,7 @@ export const traffic = {
       this.helpers.traffic = {
         ...(this.helpers.traffic || {}),
         heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        pallasWorkTarget: (entry, entity) => pallasWorkTarget(this, entry, entity),
       };
     }
 
@@ -4196,7 +4197,7 @@ export const traffic = {
     this._ensureState();
     this._releaseTrafficWatches(state);
     if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
-      stepPallasWorkLoop(state, dt);
+      stepPallasWorkLoop(state, dt, this);
     }
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;

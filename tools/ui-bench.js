@@ -13,7 +13,7 @@ import { missions } from '../src/systems/missions.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
-import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
+import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { ships as shipsSystem } from '../src/systems/ships.js';
@@ -1037,7 +1037,7 @@ async function goto(rawId) {
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
       if (id === 'crucibleHud') await mountCrucibleHud();
-      else await mountFlightHud();
+      else await mountFlightHud({ lineTarget: rawId === 'flight-line-target' || rawId === 'flight-line-blocked', blockedLine: rawId === 'flight-line-blocked', contactMarks: rawId === 'flight-contacts' });
       if (id === 'mobileFlight') await mountMobileDeck(shot);
       current = id;
       currentScreen = null;
@@ -1312,6 +1312,58 @@ async function mountFlightHud(opts = {}) {
     state.entityList.push(e);
   }
   state.player.targetId = 11;
+  if (opts.contactMarks) {
+    // Packet 02: living contacts too small on screen to read by silhouette get one mark in the
+    // radar's IFF shapes; debris (the wreck) and the selected hull get none. Team 1 is the player's.
+    const pid = state.playerId;
+    const living = [
+      { id: 21, team: 3, x: -120, z: -230, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 21' } },
+      { id: 22, team: 3, x: 210, z: -170, data: { combat: { targetId: pid }, intent: { fire: true }, callsign: 'RAIDER 22' } },
+      { id: 23, team: 1, x: -260, z: 40, data: { callsign: 'WINGMAN 23', ownerId: pid } },
+      { id: 24, team: 2, x: 150, z: 130, data: { trafficRole: 'miner', ai: { archetype: 'miner', passive: true }, callsign: 'MINER 24' } },
+      { id: 25, team: 3, x: 330, z: 30, data: { ai: { huntPlayer: true }, callsign: 'RAIDER 25 (drive out)' } },
+    ];
+    for (const lc of living) {
+      if (state.entities.has(lc.id)) continue;
+      const e = { id: lc.id, type: 'ship', alive: true, team: lc.team, radius: 14, pos: { x: lc.x, y: 0, z: lc.z },
+        vel: { x: 0, y: 0, z: 0 }, rot: 0, mass: 60, data: { defId: 'ship_kestrel', ...lc.data } };
+      state.entities.set(lc.id, e); state.entityList.push(e);
+    }
+    if (!state.entities.has(26)) {
+      const wreck = { id: 26, type: 'wreck', alive: true, team: 0, radius: 12, pos: { x: -40, y: 0, z: 170 }, vel: { x: 0, y: 0, z: 0 }, data: { callsign: 'DERELICT' } };
+      state.entities.set(26, wreck); state.entityList.push(wreck);
+    }
+    state.combat = state.combat || {};
+    state.combat.entities = { ...(state.combat.entities || {}), 25: { capabilities: { drive: false }, statuses: {} } };
+    state.player.targetId = null;
+  }
+  if (opts.lineTarget) {
+    // Packet 02 (target truth): a hostile is SELECTED (11, the hexagram bracket) while a second
+    // hostile (13) hangs on the player's Massline. The line owns the guns, so the lead pip and the
+    // LINE TARGET tag belong on 13 — a confident mark on the selected hull would lie.
+    applyFeatureConfigToMaps(PRODUCTION_FEATURES);
+    const selected = state.entities.get(11);
+    // The player flies team 1; a hull is hostile only on another non-neutral team, so both are team 3.
+    if (selected) { selected.team = 3; selected.data = { ...selected.data, ai: { huntPlayer: true } }; selected.vel = { x: 0, y: 0, z: 0 }; }
+    const held = {
+      id: 13, type: 'ship', alive: true, team: 3, radius: 14,
+      pos: { x: -230, y: 0, z: -70 }, vel: { x: 0, y: 0, z: -70 },
+      data: { defId: 'ship_kestrel', callsign: 'RAIDER 13', ai: { huntPlayer: true } },
+    };
+    if (!state.entities.has(13)) { state.entities.set(13, held); state.entityList.push(held); }
+    state.player.tether = { active: true, targetId: 13, phase: 'slack', restLength: 0, strain: 0, attachmentId: null };
+    // A ballistic gun, or the lead pip (which only exists for projectile weapons) has nothing to draw.
+    const shooter = state.entities.get(state.playerId);
+    const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
+    if (mount) mount.projSpeed = 320;
+  } else {
+    if (state.player.tether && state.player.tether.active) {
+      state.player.tether = { active: false, targetId: null, phase: 'slack', restLength: 0 };
+    }
+    const shooter = state.entities.get(state.playerId);
+    const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
+    if (mount && mount.projSpeed === 320) delete mount.projSpeed;
+  }
   // createHud wipes #hud. Alerts have to mount after that wipe or the warn floor has no host.
   const hud = createHud(ctx, null);
   let alertsRoot = document.getElementById('alerts');
@@ -1352,6 +1404,15 @@ async function mountFlightHud(opts = {}) {
     note(`HUD frame: ${error && error.message ? error.message : String(error)}`);
   }
   window.__benchHud = hud;
+  if (opts.blockedLine) {
+    // Composition proof for the BLOCKED denial. The live query (line-of-sight witness / shield
+    // intercept) needs native physics bodies a still does not have, so this writes the same two
+    // attributes the HUD writes when gunLineDenial answers (tested in test/gun-line-denial.test.mjs).
+    const pip = hudRoot.querySelector('.sf-leadpip');
+    if (pip) pip.setAttribute('data-denial', 'blocked');
+    const tagText = hudRoot.querySelector('.sf-aimtag__text');
+    if (tagText) tagText.textContent = 'LINE TARGET · BLOCKED';
+  }
     // A single frame renders the "now"; the instruments' reactive writes (lamina fill, bar
     // segments, gauge fraction) settle on the driven frames the live route runs. A bench still
     // proves composition, type, material and light; ui-look proves the reactions on the live route.

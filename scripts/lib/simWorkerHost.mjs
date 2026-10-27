@@ -42,7 +42,6 @@ import {
 import { resolveRuntimeManifest } from '../../src/runtime/resolveRuntimeManifest.js';
 import { applyBudgetedLabPackage, applyPreparedCrucibleSetup, applySandboxSetup } from '../../src/ui/sandbox/sandboxSetup.js';
 import { getCombatKernel } from '../../src/combat/kernel.js';
-import { registerStuntImpulseObserver } from '../../src/combat/stuntEvidence.js';
 import { runNewGameSimBoot } from '../../src/core/newGameBoot.js';
 import { LEGACY47A_FEATURES } from '../../src/runtime/runtimeProfiles.js';
 import {
@@ -92,7 +91,7 @@ import { insertAsteroidFieldRock, promoteAsteroidFieldRock } from '../../src/wor
 import { insertFarActor, promoteFarActor } from '../../src/world/farActorTable.js';
 import { dropDressingRow, insertDressingRow } from '../../src/world/dressingTable.js';
 import { armAuxJournal, markAuxRowDirty } from '../../src/world/auxRowJournal.js';
-import { createBoundedImpulseReceiptCollector } from '../../src/testing/playerTruth/impulseReceipts.js';
+import { createPlayerTruthImpulseObserver } from '../../src/testing/playerTruth/impulseObserver.js';
 
 // ---------------------------------------------------------------------------
 // Journal transport pack — the "byte-range" that crosses worker→main.
@@ -281,6 +280,18 @@ function livingHullWireRecord(record) {
   return livingHullWireRecords.get(record);
 }
 
+// Only the authored seam miner has this two-scalar work light. Durable identity is checked
+// again by the target-panel consumer; no native body/source/owner crosses the wire.
+function hasPallasSeamWorkLight(e) {
+  const d = e.data;
+  return e.type === 'ship' && d?.activityActorSlotId === 'pallas_seam_miner'
+    && d.authoredActivityCast === true && d.identityKey === 'pallas:activity:pallas_seam_miner'
+    && d.homeSectorId === 'sector_pallas_drift' && d.defId === 'ship_pelican';
+}
+function pallasSeamStandbyTick(e) {
+  return Number.isSafeInteger(e.data?.pallasSeamStandbyTick) ? e.data.pallasSeamStandbyTick : null;
+}
+
 export function entityVitalsOf(e) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
@@ -324,6 +335,10 @@ export function entityVitalsOf(e) {
     fields.aiFsm = typeof ai.fsm === 'string' && ai.fsm
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null);
+  }
+  if (hasPallasSeamWorkLight(e)) {
+    fields.pallasSeamCutting = e.data.minerShiftActive === true;
+    fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
   return fields;
 }
@@ -382,6 +397,9 @@ function vitalShadowMatches(e, shadow) {
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
   if (aiFsm !== shadow[i++]) return false;
+  const seam = hasPallasSeamWorkLight(e);
+  if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   return true;
 }
 
@@ -418,6 +436,9 @@ function writeVitalShadow(e, shadow) {
       ? ai.fsm
       : (typeof ai.state === 'string' && ai.state ? ai.state : null))
     : VITAL_SHADOW_MISSING;
+  const seam = hasPallasSeamWorkLight(e);
+  shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
+  shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
   shadow.length = i;
   return shadow;
 }
@@ -1082,38 +1103,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // public flight route starts. The bounded collector is deliberately host-local so the same
   // implementation works in a worker and in SIM_LANE=main.
   function playerTruthImpulseObserverRpc(args = {}) {
-    const action = typeof args.action === 'string' ? args.action : 'status';
-    if (action === 'install') {
-      const state = host.state;
-      if (!state) return { ok: false, status: 'unsupported', reason: 'host-not-initialized' };
-      host.playerTruthImpulseObserver?.unsubscribe?.();
-      const collector = createBoundedImpulseReceiptCollector({
-        maxReceipts: Number.isSafeInteger(args.maxReceipts) ? args.maxReceipts : undefined,
-        maxTicks: Number.isSafeInteger(args.maxTicks) ? args.maxTicks : undefined,
-      });
-      collector.arm();
-      const unsubscribe = registerStuntImpulseObserver(state, (observation) => collector.record({
-        ...observation,
-        // Capture mode at the authoritative delivery boundary. The reader is armed before
-        // launch, so the collector can retain flight impulses that precede the later begin RPC
-        // while ignoring any unrelated menu/loading observation.
-        mode: state.mode,
-      }));
-      host.playerTruthImpulseObserver = { collector, unsubscribe, installedTick: state.tick };
-      return { ok: true, status: 'armed', readOnly: true, installedTick: state.tick,
-        maxReceipts: collector.snapshot().maxReceipts, maxTicks: collector.snapshot().maxTicks };
-    }
-    const session = host.playerTruthImpulseObserver;
-    if (!session) return { ok: false, status: 'unsupported', reason: 'observer-not-installed' };
-    if (action === 'begin') return session.collector.begin(args.tick);
-    if (action === 'finalize') {
-      const capture = session.collector.snapshot();
-      session.unsubscribe?.();
-      session.unsubscribe = null;
-      return { ok: true, ...capture };
-    }
-    if (action === 'status') return { ok: true, ...session.collector.snapshot() };
-    return { ok: false, status: 'unsupported', reason: `unknown-action:${action}` };
+    host.playerTruthImpulseObserver ||= createPlayerTruthImpulseObserver({
+      getState: () => host.state, getBus: () => host.bus,
+    });
+    return host.playerTruthImpulseObserver.rpc(args);
   }
 
   function buildRpcHandlers(state, simLike, registry) {
@@ -2328,7 +2321,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.missionBoardMirrorUnsubscribe = null;
     host.draftReadUnsubscribe?.();
     host.draftReadUnsubscribe = null;
-    host.playerTruthImpulseObserver?.unsubscribe?.();
+    host.playerTruthImpulseObserver?.dispose?.();
     host.playerTruthImpulseObserver = null;
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();

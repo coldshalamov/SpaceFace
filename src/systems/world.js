@@ -83,6 +83,7 @@ import {
   orrinWitnessSource,
 } from '../data/orrinWitnessCase.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
+import { spawnRestoredCatalogStation } from '../save/catalogStationRestore.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
@@ -131,6 +132,7 @@ import {
   apertureHazardZones,
   ashfallBurnProgramSeed,
   killMachineHazardZones,
+  killMachinesForSector,
   metronomeHazardZone,
   movingHazardTick,
   pallasReefHazardZone,
@@ -2519,6 +2521,24 @@ export const world = {
   _arrangerForSector(sector, active) {
     if (readArrangementVersion(this.state.world.arrangementVersion, ARRANGEMENT_VERSION) === 0) return null;
     const reservations = [];
+    // Machine adapters materialize after scatter; reserve the same authored envelopes
+    // used by ladder bedrock before any native body can be born inside their skins.
+    for (const machine of killMachinesForSector(sector.id)) {
+      reservations.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      reservations.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    // Authored bedrock materializes after scatter. Reserve its native skin first, so
+    // mapping a free rock cannot put it inside a landmark that has not spawned yet.
+    for (const field of sector.fields || []) {
+      for (const boulder of field.boulders || []) {
+        if (!boulder || !boulder.id || !boulder.pos) continue;
+        const def = AST_BY_ID.get(boulder.type || field.type) || AST_BY_ID.get('ast_common_rock');
+        const radius = Math.max(1, Number(boulder.radius) || (def.sizeRange || [6, 14])[1]);
+        reservations.push({ pos: this._toGlobal(boulder.pos, sector.id),
+          radius: asteroidColliderRadius(def.id, radius) });
+      }
+    }
     if (sector.id === CERES_ACTIVITY_SECTOR_ID) {
       const asteroidRadiusFor = (fieldId) => {
         const field = (sector.fields || []).find((row) => row.id === fieldId);
@@ -2589,7 +2609,11 @@ export const world = {
       const corridorBearingDeg = sectorOrigin && Number.isFinite(sectorOrigin.x)
         ? Math.atan2(sectorOrigin.z - pos.z, sectorOrigin.x - pos.x) * (180 / Math.PI)
         : null;
-      const ent = this.helpers.spawnEntity({
+      // During Continue the envelope may carry earned station recoil/attachment state.
+      // Materialize that exact carrier at the catalog's normal slot, so its bag/anchors
+      // and the later persistent pass all refer to one body rather than a fresh twin.
+      const ent = spawnRestoredCatalogStation(this.state, this.helpers, st.id, sector.id, pos)
+        || this.helpers.spawnEntity({
         type: 'station', factionId: st.factionId || sector.factionId, pos,
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
@@ -2622,7 +2646,7 @@ export const world = {
         },
       });
       this._stampHomeSector(ent, sector.id);
-      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: pos.x, z: pos.z } });
+      active.stations.push({ id: ent.id, stationId: st.id, pos: { x: ent.pos.x, z: ent.pos.z } });
     });
   },
 
@@ -2786,7 +2810,7 @@ export const world = {
       : scatteredPos;
     // Map positions only, after every legacy draw. Pinned geology/activity/collision slots win.
     const pos = arrangement
-      ? arrangement.place(originalPos, size, slotIndex, !!(positionBinding || authoredGeologyPlaceId))
+      ? arrangement.place(originalPos, asteroidColliderRadius(def.id, size), slotIndex, !!(positionBinding || authoredGeologyPlaceId))
       : originalPos;
 
     const data = environmentSurfaceData(adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, slotIndex), {
@@ -2917,18 +2941,49 @@ export const world = {
       const r = Math.max(1, Number(b && b.radius) || szHi);
       counts[Math.min(4, rockTierForRadius(r))] += 1;
     }
+    // Logical field rows include dormant rocks, so the result is independent of promotion order.
+    // Reserve machine geometry from authored data too: its adapters materialize after the field.
+    const blockers = (this.state.world?.asteroidField?.rocks || [])
+      .filter(rock => rock && rock.alive !== false && rock.pos)
+      .map(rock => ({ pos: rock.pos,
+        radius: asteroidColliderRadius(rock.data?.typeId, rock.radius) }));
+    for (const machine of killMachinesForSector(sector.id)) {
+      blockers.push({ pos: machine.globalPos, radius: machine.hazardRadius });
+      blockers.push({ pos: machine.anvil.pos,
+        radius: asteroidColliderRadius('ast_common_rock', machine.anvil.radius) });
+    }
+    const center = this._toGlobal(centerLocal || { x: 0, z: 0 }, sector.id);
     for (let tier = 0; tier <= 4; tier++) {
       for (let k = counts[tier]; k < ROCK_LADDER_MIN_PER_TIER; k++) {
         const ang = k * 2.399963 + tier * 1.31;
-        const cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        let cr = Math.max(60, clusterR * (0.55 + 0.09 * (k % 3)));
+        const ux = Math.cos(ang), uz = Math.sin(ang);
+        const radius = asteroidColliderRadius(def.id, ROCK_LADDER_RADII[tier]);
+        const intervals = [];
+        for (const blocker of blockers) {
+          const dx = blocker.pos.x - center.x, dz = blocker.pos.z - center.z;
+          const along = dx * ux + dz * uz, across = dx * uz - dz * ux;
+          const reach = radius + blocker.radius + 4;
+          if (Math.abs(across) >= reach) continue;
+          const half = Math.sqrt(Math.max(0, reach * reach - across * across));
+          if (along + half >= cr) intervals.push([along - half, along + half]);
+        }
+        intervals.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+        // Advance along this rung's authored spoke through the finite union of occupied
+        // intervals. No retries, dropped rungs, extra RNG or post-physics pose correction.
+        for (const [start, end] of intervals) if (cr >= start && cr <= end) cr = end + 1;
         const ent = this._spawnAuthoredBoulder(sector, fdef, params, {
           id: `ladder_${fdef.id}_${tier}_${k}`,
-          pos: { x: (centerLocal ? centerLocal.x : 0) + Math.cos(ang) * cr,
-                 z: (centerLocal ? centerLocal.z : 0) + Math.sin(ang) * cr },
+          pos: { x: (centerLocal ? centerLocal.x : 0) + ux * cr,
+                 z: (centerLocal ? centerLocal.z : 0) + uz * cr },
           radius: ROCK_LADDER_RADII[tier],
           type: fdef.type,
         });
-        if (ent) { this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++; }
+        if (ent) {
+          this._stampHomeSector(ent, sector.id); astIds.push(ent.id); counts[tier]++;
+          blockers.push({ pos: ent.pos,
+            radius: asteroidColliderRadius(ent.data?.typeId, ent.radius) });
+        }
       }
     }
   },

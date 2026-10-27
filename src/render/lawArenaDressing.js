@@ -17,8 +17,11 @@
 //   BOSS — the wave-10 boss of a law arena is a ROLE over the shared dreadnought hull
 //   (`bossRole` in the arena module); materializeWaveBatch stamps data.bossDressing with the
 //   role id. tidal_engine gets paired counter-rotating tide vanes around the spine; chain_tug
-//   gets the aft winch array. Same lifecycle contract as forgeRegentCrown.js: lazy bind under
-//   mesh.userData.hull, build-in, idle motion, kill release, mesh rebind, prune, done latch.
+//   gets the aft winch array; manifold_warden its four coolant arms; grid_tyrant a relay-drone
+//   ring; the Asteroid Mill's seam_crusher wears the opposed grind wheels and their ore train;
+//   the Hive's queen_warden carries the brood clutch and its attendant ring. Same lifecycle
+//   contract as forgeRegentCrown.js: lazy bind under mesh.userData.hull, build-in, idle
+//   motion, kill release, mesh rebind, prune, done latch.
 //
 // PURE RENDER-ONLY PRESENTATION: never mutates sim state; room props never become physics bodies
 // (the law-arena toys are deliberately non-solid — a solid port would change the field digests).
@@ -45,12 +48,16 @@ import {
 import { WORKS_FURNACE_HEAT } from './industrialMaterialFamilies.js';
 
 const LAW_ARENA_IDS = new Set([LAGRANGE_ARENA_ID, CINDER_ARENA_ID, CRYO_ARENA_ID, STORM_ARENA_ID]);
-const BOSS_DRESSING_KINDS = new Set(['tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant']);
+const BOSS_DRESSING_KINDS = new Set([
+  'tidal_engine', 'chain_tug', 'manifold_warden', 'grid_tyrant', 'seam_crusher', 'queen_warden',
+]);
 
 // Cold polarity for pull machinery (wells, tide vanes); furnace ember for push/heat (repulsor,
 // sluice throat, crusher faces). Two hues keep the room readable: cyan drags, orange shoves.
+// The brood green is the Hive's own authored hue (broodPresentation.js marker rings).
 const TIDE_HEX = 0x59d8e8;
 const AMBER_HEX = 0xffb347;
+const BROOD_HEX = 0x6cff9a;
 
 // --- choreography (seconds / rad·s⁻¹) ---
 const PYLON_SPIN = 0.22;
@@ -66,6 +73,11 @@ const WINCH_RATE_REDUCED = 0.12;
 const GIMBAL_RATE = 0.5;          // manifold_warden arm tumble
 const ORBIT_RATE = 0.4;           // grid_tyrant drone ring
 const RELAY_SPARK_RATE = 5.0;     // storm relay beam flicker cadence
+const GRIND_RATE = 0.55;          // seam_crusher mill wheels — a heavy turn, not a fan
+const GRIND_RATE_REDUCED = 0.14;
+const BROOD_ORBIT_RATE = 0.4;     // queen_warden attendant ring
+const BROOD_ORBIT_RATE_REDUCED = 0.1;
+const SAC_PULSE_RATE = 1.6;       // queen_warden sac bellows cadence (rad·s⁻¹ of the seethe)
 const BUILD_S = 0.9;
 const RELEASE_S = 0.55;
 const RELEASE_FLING_WU = 26;
@@ -104,10 +116,16 @@ function sharedAssets() {
     emissiveIntensity: 0.08,
     metalness: 0.4, roughness: 0.5,
   });
-  for (const res of [boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat]) {
+  const broodMat = new THREE.MeshStandardMaterial({
+    color: 0x0c1a10,
+    emissive: new THREE.Color(BROOD_HEX),
+    emissiveIntensity: 0.08,
+    metalness: 0.25, roughness: 0.62,
+  });
+  for (const res of [boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat]) {
     res.userData.spacefaceSharedAsset = true;
   }
-  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat };
+  _shared = { boxGeo, cylGeo, torusGeo, darkMat, metalMat, plateMat, emberMat, tideMat, amberMat, broodMat };
   return _shared;
 }
 
@@ -818,12 +836,182 @@ function buildGridTyrant(radiusWu, sink) {
   };
 }
 
+/**
+ * Seam Crusher (Asteroid Mill): the grind pair worn as hardware — two opposed mill wheels
+ * riding the flanks, teeth on the rims, an ore train marching the trough between them into
+ * the grind. `method: 'thrown_mass'` — the room hurls the mass; the boss carries the mill
+ * that fed it.
+ */
+function buildSeamCrusher(radiusWu, sink) {
+  const shared = sharedAssets();
+  const seamMat = cloneEmissive(shared.emberMat, sink);
+  const group = new THREE.Group();
+  group.name = 'seam_crusher_dressing';
+  const drums = [];
+  for (const side of [-1, 1]) {
+    const wheel = new THREE.Group();
+    wheel.name = 'seam_grind_wheel';
+    wheel.position.set(radiusWu * -0.06, radiusWu * 0.4, side * radiusWu * 0.5);
+    const cone = mesh(shared.cylGeo, shared.metalMat, 'seam_grind_cone');
+    cone.rotation.x = Math.PI / 2; // cylinder axis -> Z: the wheel face stands outboard
+    cone.scale.set(radiusWu * 0.24, radiusWu * 0.09, radiusWu * 0.24);
+    wheel.add(cone);
+    const face = mesh(shared.cylGeo, shared.darkMat, 'seam_grind_face');
+    face.rotation.x = Math.PI / 2;
+    face.scale.set(radiusWu * 0.15, radiusWu * 0.12, radiusWu * 0.15);
+    face.position.z = side * radiusWu * 0.04;
+    wheel.add(face);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const tooth = mesh(shared.boxGeo, shared.plateMat, 'seam_grind_tooth');
+      tooth.position.set(Math.cos(a) * radiusWu * 0.2, Math.sin(a) * radiusWu * 0.2, 0);
+      tooth.rotation.z = a;
+      tooth.scale.set(radiusWu * 0.07, radiusWu * 0.05, radiusWu * 0.1);
+      wheel.add(tooth);
+    }
+    group.add(wheel);
+    // Opposed turn — the room's two grind cones are written as counter-pushing currents,
+    // so the wheels the boss carries counter-rotate too.
+    drums.push({ drum: wheel, axis: 'z', dir: side });
+  }
+  // The ore train: a trough of broken rock riding the spine — the seam feeding itself.
+  const trough = mesh(shared.boxGeo, shared.darkMat, 'seam_ore_trough');
+  trough.scale.set(radiusWu * 0.86, radiusWu * 0.05, radiusWu * 0.18);
+  trough.position.set(radiusWu * 0.02, radiusWu * 0.14, 0);
+  group.add(trough);
+  const oreTrain = new THREE.Group();
+  oreTrain.name = 'seam_ore_train';
+  oreTrain.position.copy(trough.position);
+  group.add(oreTrain);
+  const ore = [];
+  for (let i = 0; i < 5; i++) {
+    const lump = mesh(shared.boxGeo, i % 2 ? shared.plateMat : shared.darkMat, 'seam_ore_lump');
+    lump.scale.set(radiusWu * 0.05, radiusWu * 0.045, radiusWu * 0.05);
+    lump.position.y = radiusWu * 0.05;
+    oreTrain.add(lump);
+    ore.push({ lump, u: i / 5 });
+  }
+  const seam = mesh(shared.torusGeo, seamMat, 'seam_crusher_seam');
+  seam.rotation.y = Math.PI / 2;
+  seam.position.set(radiusWu * -0.3, radiusWu * 0.12, 0);
+  seam.scale.setScalar(radiusWu * 0.32);
+  group.add(seam);
+  return {
+    group, drums, seamMat,
+    tick(rec, simTime, dt, reduced) {
+      // Ore lumps march aft-to-nose down the trough and tumble — the mill at work.
+      const rate = reduced ? 0.05 : 0.18;
+      for (const o of ore) {
+        o.u = (o.u + rate * dt) % 1;
+        o.lump.position.x = radiusWu * (-0.42 + o.u * 0.84);
+        o.lump.rotation.x += dt * (reduced ? 0.4 : 1.3);
+        o.lump.rotation.y += dt * (reduced ? 0.25 : 0.8);
+      }
+    },
+  };
+}
+
+/**
+ * Queen Warden (the Hive): the brood heart riding the hull — a clutch of sacs amidships
+ * swelling off-phase (the room's breath worn as organs), a ring of attendant pods orbiting
+ * the spine, and the green seam the walls bleed. `method: 'machinery'` — the living room
+ * is the machine; the warden carries its working set.
+ */
+function buildQueenWarden(radiusWu, sink) {
+  const shared = sharedAssets();
+  const seamMat = cloneEmissive(shared.broodMat, sink);
+  const group = new THREE.Group();
+  group.name = 'queen_warden_dressing';
+
+  // The sac clutch amidships: three organ pods bulging off a collar — the brood heart.
+  const clutch = new THREE.Group();
+  clutch.name = 'queen_sac_clutch';
+  clutch.position.set(radiusWu * 0.04, radiusWu * 0.46, 0);
+  group.add(clutch);
+  const collar = mesh(shared.torusGeo, shared.darkMat, 'queen_clutch_collar');
+  collar.rotation.y = Math.PI / 2;
+  collar.scale.setScalar(radiusWu * 0.34);
+  clutch.add(collar);
+  const sacs = [];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
+    const sac = mesh(shared.cylGeo, shared.darkMat, 'queen_sac');
+    const r = radiusWu * (0.13 + (i === 0 ? 0.03 : 0));
+    sac.scale.set(r, radiusWu * 0.2, r);
+    sac.position.set(0, Math.cos(a) * radiusWu * 0.3, Math.sin(a) * radiusWu * 0.3);
+    sac.rotation.x = a; // pod axis points radially out of the collar ring
+    clutch.add(sac);
+    const glow = mesh(shared.cylGeo, seamMat, 'queen_sac_glow');
+    // Child of the scaled sac: unit-local coords, a cap just past the pod's outer face.
+    glow.scale.set(0.4, 0.14, 0.4);
+    glow.position.y = 0.55;
+    sac.add(glow);
+    sacs.push({ sac, phase: i * 2.1, baseY: sac.scale.y });
+  }
+
+  // Attendant pods on a slow ring — the warden's honour brood riding the hull.
+  const ringGroup = new THREE.Group();
+  ringGroup.name = 'queen_attendant_ring';
+  ringGroup.position.set(radiusWu * -0.1, radiusWu * 0.38, 0);
+  group.add(ringGroup);
+  const attendants = [];
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const holder = new THREE.Group();
+    holder.rotation.x = a;
+    ringGroup.add(holder);
+    const pod = mesh(shared.cylGeo, shared.darkMat, 'queen_attendant');
+    const r = radiusWu * 0.55;
+    pod.scale.set(radiusWu * 0.07, radiusWu * 0.11, radiusWu * 0.07);
+    pod.position.y = r;
+    holder.add(pod);
+    const tip = mesh(shared.cylGeo, seamMat, 'queen_attendant_glow');
+    tip.scale.set(radiusWu * 0.028, radiusWu * 0.03, radiusWu * 0.028);
+    tip.position.y = r * 1.12;
+    holder.add(tip);
+    attendants.push({ pod, phase: a });
+  }
+  const drums = [{ drum: ringGroup, dir: 1 }];
+  const seam = mesh(shared.torusGeo, seamMat, 'queen_warden_seam');
+  seam.rotation.y = Math.PI / 2;
+  seam.position.set(radiusWu * -0.34, radiusWu * 0.12, 0);
+  seam.scale.setScalar(radiusWu * 0.36);
+  group.add(seam);
+  return {
+    group, drums, seamMat,
+    tick(rec, simTime, dt, reduced, calmFlash) {
+      // Seething: every sac breathes off-phase; attendants bob on their berths.
+      const rate = reduced ? 0.5 : SAC_PULSE_RATE;
+      for (const s of sacs) {
+        const swell = 1 + (reduced ? 0.04 : 0.16) * Math.sin(simTime * rate + s.phase);
+        s.sac.scale.y = s.baseY * swell;
+      }
+      for (const a of attendants) {
+        a.pod.position.y = radiusWu * (0.55 + 0.035 * Math.sin(simTime * rate * 0.8 + a.phase));
+      }
+      void calmFlash;
+    },
+  };
+}
+
 const BOSS_BUILDERS = {
   tidal_engine: buildTidalVanes,
   chain_tug: buildChainTug,
   manifold_warden: buildManifoldWarden,
   grid_tyrant: buildGridTyrant,
+  seam_crusher: buildSeamCrusher,
+  queen_warden: buildQueenWarden,
 };
+
+// Per-kind [normal, reduced] drum rates — the kind's own motion signature. Kinds absent
+// here ride the default vane rates (tidal_engine, manifold_warden both do).
+const VANE_SPIN = Object.freeze([VANE_RATE, VANE_RATE_REDUCED]);
+const BOSS_SPIN_RATES = Object.freeze({
+  chain_tug: Object.freeze([WINCH_RATE, WINCH_RATE_REDUCED]),
+  grid_tyrant: Object.freeze([ORBIT_RATE, ORBIT_RATE * 0.3]),
+  seam_crusher: Object.freeze([GRIND_RATE, GRIND_RATE_REDUCED]),
+  queen_warden: Object.freeze([BROOD_ORBIT_RATE, BROOD_ORBIT_RATE_REDUCED]),
+});
 
 function driveBossDrums(rec) {
   for (const d of rec.drums) {
@@ -1077,9 +1265,8 @@ export function createLawArenaDressing() {
       rec.phase = 'release';
       rec.releaseClock = 0;
     }
-    const spinRate = reduced
-      ? (kind === 'chain_tug' ? WINCH_RATE_REDUCED : kind === 'grid_tyrant' ? ORBIT_RATE * 0.3 : VANE_RATE_REDUCED)
-      : (kind === 'chain_tug' ? WINCH_RATE : kind === 'grid_tyrant' ? ORBIT_RATE : VANE_RATE);
+    const spin = BOSS_SPIN_RATES[kind] || VANE_SPIN;
+    const spinRate = reduced ? spin[1] : spin[0];
 
     if (rec.phase === 'build' || rec.phase === 'spin') {
       const buildT = Math.min(1, rec.clock / BUILD_S);

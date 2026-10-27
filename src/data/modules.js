@@ -148,6 +148,12 @@ const SHIPPED_MODULES = [
     description: 'Brake and throw to drop a proximity charge behind your flight path; a plain throw still sticks a plate. Pursuers trigger a radial shove; remote detonation still works.',
   },
   {
+    id: 'mod_collector_maw_s', name: 'Collector Maw', slotType: 'utility', size: 'S', tier: 2,
+    mass: 3, price: 21000, requiresTech: 'tech_tractor_systems', energyDraw: 2,
+    mods: { pullCollector: 1 },
+    description: 'Fit it and Pull drops a collector: the well binds loose rocks and wrecks into one knot at its maw. Hold Pull to aim the knot, release to throw it from where it sits.',
+  },
+  {
     id: 'mod_cargo_scanner_s', name: 'Cargo Scanner S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 4000,
     energyDraw: 1, mods: { revealCargo: true },
   },
@@ -460,6 +466,23 @@ const SHIPPED_MODULES = [
     // price and the research gate stand at every other berth.
     shopOffers: { station_helios: { price: 12000 } },
     energyDraw: 0, mods: { hullBurst: 'gravity', hullBurstRank: 1 },
+  },
+  {
+    // PYLON PROJECTOR — Linked Shield Pylons (Controlled Chaos packet 06). Deploy one endpoint, then a
+    // second: a thin relation-selective shield wall stands between them. You and your allies cross it
+    // both ways and shoot through it; hostile hulls, shots, beams, blasts and arcs stop at it. The
+    // wall has one energy pool, strains, overloads and collapses; each pylon is a body hostile fire
+    // can destroy, which drops the whole wall at once. Two pairs at a time. Tuned in data/shieldPylons.js,
+    // run by systems/shieldPylons.js (the Digit6 verb; the binding owner labels the key).
+    id: 'mod_pylon_projector_s', name: 'Pylon Projector S', slotType: 'utility', size: 'S', tier: 2, mass: 5, price: 28000,
+    requiresTech: 'tech_deflector_theory',
+    // First-station rack at first-haul terms (same door as Gravity Bumper): a pilot docked at Helios can
+    // buy the wall without a research stop; the catalog price and the research gate stand elsewhere.
+    shopOffers: { station_helios: { price: 16000 } },
+    energyDraw: 3,
+    mods: { pylonPairs: 2 },
+    sentence: 'Place one pylon, then a second: hostile ships and shots stop at the wall between them; you and your allies pass.',
+    description: 'A pylon projector and two pairs of deployable endpoints. Each endpoint is a body that hostile fire can destroy; the wall between a linked pair stops hostile hulls, shots, beams, blasts and arcs while you and your allies cross it both ways. Strain it too hard and it overloads; lose an endpoint and it collapses.',
   },
   {
     // FIRE LANCE — the finisher (design doc 2026-09-29 section 4). A narrow, short wedge you must fly straight

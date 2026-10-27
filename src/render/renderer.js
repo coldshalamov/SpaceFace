@@ -30,6 +30,7 @@ export {
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, shakeDistanceAttenuation } from './camera.js';
+import { createShakeAdmission } from './shakeAdmission.js';
 import {
   clearanceCellInRange,
   clearanceGridRawAt,
@@ -16530,6 +16531,10 @@ export const render = {
               ? Math.max(30000, remainingMs())
               : openingGateBudgetMs(), { isActive: () => !cookStale() });
             if (cookStale()) return cookSuperseded;
+            // This picture seeds derived pools for the cook; required runway actors can still
+            // be decoding outside its visible wait set. Keep their commits open until the full
+            // composition settles, then recapture and freeze the exact picture below.
+            if (!survivalRunHoldsArena(state)) releaseOpeningGraphPublication(this);
           } catch (error) {
               if (cookStale()) return cookSuperseded;
             firstPictureError = String(error && error.message || error);
@@ -17358,6 +17363,86 @@ export const render = {
             });
         }
       }
+      // Composition includes required runway actors outside the exact picture's camera. Their
+      // authored commits must finish before the final graph freeze, not wait on flight to release
+      // that freeze. The provisional census above left publication open under this loading owner.
+      let finalOpening = opening;
+      if (!recook && (opening?.settled !== true || !survivalRunHoldsArena(state))) {
+        // The initial composition wait is a bounded progress sample before the GPU cook. Its
+        // timeout can outlive the jobs it described: never reject the finished picture using that
+        // stale sample, and never turn it into success without the same owner's two-poll verdict.
+        const finalOpeningStarted = prepareNow();
+        finalOpening = await waitForOpeningCompositionSettled(state, {
+          stale: cookStale,
+          // The broad cook's allowance can already be spent. This handoff still requires
+          // two fresh observations across a presented frame; its 400ms residual floor
+          // rejected fully authored pictures when that frame alone took longer. Keep the
+          // bounded composition window, under the unchanged outer current-sector deadline.
+          timeoutMs: loadPolicy.compositionSettleMs,
+          yieldToMain: yieldAndFlushLiveSectorGpu,
+          renderer,
+          scene,
+          meshes: this._meshes,
+        });
+        if (cookStale()) return cookSuperseded;
+        recordOpeningCookStep(state.render, 'live.openingCompositionFinal', finalOpeningStarted,
+          finalOpening?.settled === true ? 'resolved' : (finalOpening?.reason || 'incomplete'), {
+            pending: finalOpening?.pending,
+            ids: finalOpening?.ids?.join('/'),
+            statuses: finalOpening?.statuses?.slice(0, 6).join('/'),
+          });
+        state.render.openingCompositionSettle = finalOpening;
+      }
+      if (!recook && !survivalRunHoldsArena(state) && finalOpening?.settled === true) {
+        if (cookStale()) return cookSuperseded;
+        const pictureSealStarted = prepareNow();
+        await this.prepareOpeningFirstPicture(openingGateBudgetMs(), { isActive: () => !cookStale() });
+        if (cookStale()) return cookSuperseded;
+        // Late commits can change instance/shadow pools when the exact picture is republished.
+        // Seal those final resources before rebuilding the plan and receipt from their identities.
+        const assertPictureSealActive = () => {
+          if (!cookStale()) return;
+          const error = new Error('final opening picture residency was superseded');
+          error.name = 'AbortError';
+          throw error;
+        };
+        const pictureSealYield = createSlicedYield(yieldToBrowser, {
+          sliceMs: 16,
+          shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+          debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+        });
+        try {
+          const residency = await prepareStartupGpuResidency(renderer, scene, {
+            geometryBatchDrawables: residencyPolicy().geometryBatchDrawables,
+            ...residencyPolicy().textureBatch,
+            isActive: () => !cookStale(),
+            beforeSubmit: assertPictureSealActive,
+            yieldToMain: async () => {
+              assertPictureSealActive();
+              await pictureSealYield();
+              assertPictureSealActive();
+            },
+            includeEmpty: true,
+            onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+          });
+          if (cookStale()) return cookSuperseded;
+          if (!residency || residency.skipped === true || residency.ok === false
+              || residency.partial === true || residency.contextLost === true
+              || residency.geometryResidency?.partial === true
+              || residency.geometryResidency?.contextLost === true
+              || (residency.geometryResidency?.skipped === true
+                && residency.geometryResidency.reason !== 'no drawable geometry')) {
+            throw new Error('Required final opening GPU residency did not complete');
+          }
+          recordOpeningCookStep(state.render, 'live.finalPictureSeal', pictureSealStarted, 'resolved');
+        } catch (error) {
+          if (cookStale()) return cookSuperseded;
+          recordOpeningCookStep(state.render, 'live.finalPictureSeal', pictureSealStarted, 'error', {
+            error: String(error && error.message || error),
+          });
+          throw error;
+        }
+      }
       // A second restore mid-cook superseded this run during the awaits above — recapturing
       // the receipt now would race the live cook's own stamp and could land last.
       if (cookStale()) return cookSuperseded;
@@ -17367,7 +17452,7 @@ export const render = {
       // resource identities the first draw submits are final. Recapture plan + receipt here or the
       // post-submit gate compares a stale plan against the live scene and reports every authored
       // hull (and every grown pool mesh, e.g. ContactShadow_Pool) as an uncaptured admission.
-      if (!recook && state.render.openingSubmissionReceipt) {
+      if (!recook && finalOpening?.settled === true && state.render.openingSubmissionReceipt) {
         // Pace the recapture's census legs across the settle's slice clock — the
         // atomic build used to donate one multi-census window right at release.
         const settledPlanIter = buildOpeningSubmissionPlanSteps.call(this);
@@ -17453,33 +17538,6 @@ export const render = {
           { roots: parked.roots, nodes: parked.nodes });
       }
       if (cookStale()) return cookSuperseded;
-      let finalOpening = opening;
-      if (!recook && opening?.settled !== true) {
-        // The initial composition wait is a bounded progress sample before the GPU cook. Its
-        // timeout can outlive the jobs it described: never reject the finished picture using that
-        // stale sample, and never turn it into success without the same owner's two-poll verdict.
-        const finalOpeningStarted = prepareNow();
-        finalOpening = await waitForOpeningCompositionSettled(state, {
-          stale: cookStale,
-          // The broad cook's allowance can already be spent. This handoff still requires
-          // two fresh observations across a presented frame; its 400ms residual floor
-          // rejected fully authored pictures when that frame alone took longer. Keep the
-          // bounded composition window, under the unchanged outer current-sector deadline.
-          timeoutMs: loadPolicy.compositionSettleMs,
-          yieldToMain: yieldAndFlushLiveSectorGpu,
-          renderer,
-          scene,
-          meshes: this._meshes,
-        });
-        if (cookStale()) return cookSuperseded;
-        recordOpeningCookStep(state.render, 'live.openingCompositionFinal', finalOpeningStarted,
-          finalOpening?.settled === true ? 'resolved' : (finalOpening?.reason || 'incomplete'), {
-            pending: finalOpening?.pending,
-            ids: finalOpening?.ids?.join('/'),
-            statuses: finalOpening?.statuses?.slice(0, 6).join('/'),
-          });
-        state.render.openingCompositionSettle = finalOpening;
-      }
       if (opening?.settled !== true || finalOpening?.settled !== true) {
         const recovered = finalOpening?.settled === true;
         const report = recovered ? console.info : console.warn;
@@ -20778,6 +20836,9 @@ export const render = {
     // player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
     // and passes through unchanged. Attenuating here rather than at each emitter means the twelve
     // sites nobody has audited are covered too.
+    // Packet 08: discrete blows are admitted with diminishing returns inside a draining window, so a
+    // swarm fight or a shotgun burst bounds the camera instead of pinning trauma at 1.
+    const shakeAdmission = createShakeAdmission();
     onBus('camera:shake', (payload) => {
       const amount = (payload && payload.amount) || 0.3;
       const at = payload && payload.position;
@@ -20788,6 +20849,8 @@ export const render = {
           scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
         }
       }
+      if (scaled <= 0.001) return;
+      scaled = shakeAdmission.admit(scaled, state.simTime);
       if (scaled <= 0.001) return;
       // FB-072 — a shake that carries a direction is a knock, not noise: the view is pushed
       // along the real hit axis via the kick envelope instead of undirected trauma. The kick

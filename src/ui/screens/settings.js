@@ -248,7 +248,7 @@ export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeL
   // The rest of the live bound verbs: rebindable in data (input.js VERB_BINDINGS; countermeasure
   // sits in the scheme tables) but until now with no row here — "rebindable in data but no row
   // is not rebindable to a player" (below).
-  'countermeasure', 'deployBeacon', 'jettisonLot', 'gyreSnare'];
+  'countermeasure', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'deployShieldPylon'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -276,6 +276,7 @@ export const REBIND_LABELS = {
   travelBurn: 'Travel drive (burn latch)',
   // The Gyre Snare is a held verb: grip to beam/hold, release to bowl the clump.
   gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  deployShieldPylon: 'Shield pylons: place, link, or recall (needs a Pylon Projector)',
   cycleBomb: 'Ordnance: cycle (sticky charge, then bombs)',
   // Labels mirror the pad grid's names for the same verbs (one verb, one name across devices).
   countermeasure: 'Countermeasure',
@@ -291,7 +292,7 @@ export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'dock', 'shove', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'bomb', 'cycleBomb', 'tabPrev', 'tabNext',
   'scanPulse', 'cruise', 'bulletTime', 'cloak', 'siteBeam', 'pin', 'pull',
-  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView',
+  'rig', 'deployBeacon', 'jettisonLot', 'gyreSnare', 'steeringView', 'deployShieldPylon',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
@@ -327,6 +328,7 @@ export const GAMEPAD_REBIND_LABELS = {
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
   gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
+  deployShieldPylon: 'Shield pylons: place, link, or recall',
 };
 
 function controlSchemeFor(settings) {

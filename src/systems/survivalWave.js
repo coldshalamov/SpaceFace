@@ -35,7 +35,6 @@ import {
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
-  swarmPressureIsHolding,
   swarmPressureSuppressing,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
@@ -1329,8 +1328,10 @@ export const survivalWave = {
     if (remaining <= 0) return;
     const want = Math.min(remaining, swarmReinforceCount(target - alive));
     if (want <= 0) {
-      // A zero under `holding` is the breath refusing a top-up the stream asked for.
-      if (swarmPressureIsHolding()) this._stallSuppressed = true;
+      // A zero consult is the running breath refusing a top-up — the same predicate the
+      // dispatch clamp reads. A hold whose clock is already out spends inside the consult
+      // instead (and clears `holding` there), so it never stands here refusing anything.
+      if (swarmPressureSuppressing()) this._stallSuppressed = true;
       return;
     }
 

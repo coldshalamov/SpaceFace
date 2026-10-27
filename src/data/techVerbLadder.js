@@ -149,7 +149,7 @@ const VERBS = Object.freeze({
   tech_impulse_ballistics: 'Throw a vector charge',
   tech_graviton_drives: 'Mark gravity, sink momentum, shunt inertia, or open a well',
   tech_long_range_survey: 'Fly the Ranger; open a wormhole',
-  tech_tractor_systems: 'Tow, whip, or couple a body; magnet salvage; flail a tow; fly the Hawser tug',
+  tech_tractor_systems: 'Tow, whip, or couple a body; magnet salvage; flail a tow; fit a collector maw; fly the Hawser tug',
   tech_drone_control: 'Launch a drone from a bay',
   tech_drone_swarm: 'Fly a second drone off one bay',
   tech_autonomous_fleets: 'Hire an NPC trader to fly your routes',

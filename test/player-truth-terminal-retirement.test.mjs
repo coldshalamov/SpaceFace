@@ -29,7 +29,12 @@ test('actual native cook-off and room release retain terminal meaning through im
     const rock = runtime.spawn({ type: 'asteroid', radius: 12, pos: { x: -1743.6, z: -2176.2 },
       data: { material: 'volatile', materialCondition: { heat: 40, reacted: true }, fuelVolatile: .8 } });
     const rockLife = rock.occupantGeneration;
+    const mainCues = [];
+    runtime.bus.on('environment:detonated', payload => mainCues.push({ ...payload }));
     runtime.getSystem('environmentMaterials')._detonate(rock, {});
+    assert.equal(mainCues[0]?.type, 'asteroid', 'the main bus gets terminal type without worker enrichment');
+    assert.equal(mainCues[0]?.occupantGeneration, rockLife, 'the main bus gets the dying life');
+    assert.equal(mainCues[0]?.simTime, 7.8, 'the main bus gets the authoritative terminal time');
     assert.equal(rock.alive, false, 'the captured cue is an actual native material death');
     runtime.getSystem('core').helpers.removeEntity(rock.id, { immediate: true });
     const rockSuccessor = runtime.spawn({ id: rock.id, type: 'projectile' });
