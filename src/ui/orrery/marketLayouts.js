@@ -678,6 +678,10 @@ const CSS_TAIL = `
   ${MD} .so-trade-total > strong { line-height:16px !important; }
   ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
   ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+  /* the family ladder stood 8 × 17px = 136px in a ~109px rail cell, so MILITARY was sliced in half
+     and RESTRICTED sat under the tab strip, out of reach. The rows close to 13px (still 12px type, all caps),
+     so all eight end inside the cell. */
+  ${MD} .sx-mkt-filter { padding:0 !important; line-height:13px !important; }
   /* the trace here is ~119px wide and 48–56px tall, so SPREAD (over its bracket, whose top is at
      most h−40px down) and AVG (over its line) shared the band over the plot: "AVG 215" printed
      across "14 SPREAD" on Machine Control Unit, and SPREAD rode into the "Last move" line. SPREAD
