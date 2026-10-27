@@ -58,7 +58,7 @@ import {
   weaponLevelOf,
 } from '../data/swarmWeaponLevels.js';
 import { CIRCUIT_EVENT, CIRCUIT_MYSTERY, CIRCUIT_SERVICES, CIRCUIT_STAGE_COUNT, circuitChoicesFor, circuitFor, circuitMysteryOffer, circuitStateError, parseCircuitChoiceId } from './survivalCircuit.js';
-import { compileChallenge } from './survivalMutators.js';
+import { compileChallenge, filterDraftOffers } from './survivalMutators.js';
 import {
   runModifierRecord,
   summarizeRunBuild,
@@ -319,7 +319,10 @@ export const survivalDraft = {
         unavailableReason: legendaryOwned ? 'Owned for this run' : spent ? 'Done' : blocked
           || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
     }
-    return rows;
+    // The shelf is re-derived on every refresh — hull and service rows included — so the
+    // contract's offer law (physics_only) is judged on the finished stock the player can
+    // actually buy, not only on the cards dealt at open.
+    return filterDraftOffers(rows, compileChallenge(run.seed, run.arenaMutators, run.ruleset));
   },
 
   /** PQ-175.02 catalog audit. Pure data; does not touch the open draft. */
@@ -488,7 +491,8 @@ export const survivalDraft = {
     // stop, and what must not stand is a dealt shelf inside that pass-through: a pick, demo, hold,
     // purchase or re-roll could otherwise land in the window. So nothing is dealt, no screen
     // opens, and _resolved never goes false while the phase runs out.
-    if (compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft) {
+    const challenge = compileChallenge(run.seed, run.arenaMutators, run.ruleset);
+    if (challenge.skipDraft) {
       this._offers = null;
       this._wave = run.wave;
       this._resolved = false;
@@ -559,6 +563,9 @@ export const survivalDraft = {
         this._offers.unshift({ ...carry, lockedIn: true });
       }
     }
+    // The contract's offer law judges the FINISHED shelf — evolutions, armory extras and a
+    // carried hold alike — through the same filter the compiler owns (physics_only).
+    this._offers = filterDraftOffers(this._offers, challenge);
     if (this._offers.length === 0) {
       // Nothing legal to offer on this hull. Resolve immediately rather than opening an empty
       // surface the player cannot dismiss.
@@ -883,7 +890,13 @@ export const survivalDraft = {
     if (!this._draftInput) return [];
     const result = offerDraft({ ...this._draftInput, rerollCount });
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
-    return preferRoleCounterOffers(offers, this.state);
+    const preferred = preferRoleCounterOffers(offers, this.state);
+    // A peek must see the shelf the contract would actually deal — an unfiltered peek would
+    // sell a re-roll on rows physics_only has already struck from the armory.
+    const run = liveSurvivalRun(this.state);
+    return run
+      ? filterDraftOffers(preferred, compileChallenge(run.seed, run.arenaMutators, run.ruleset))
+      : preferred;
   },
 
   /**
@@ -1175,7 +1188,9 @@ export const survivalDraft = {
         if (!offers.some((offer) => offer.id === id)) offers.unshift({ ...carry });
       }
     }
-    return offers;
+    return run
+      ? filterDraftOffers(offers, compileChallenge(run.seed, run.arenaMutators, run.ruleset))
+      : offers;
   },
 
   _applyHangarReroll() {
@@ -1365,7 +1380,12 @@ export const survivalDraft = {
     // once the run has begun, and the campaign-starter artifact is not a day-one switch.
     const opening = (this._wave || 0) <= 0;
     const flyingId = loadout && loadout.hullId;
-    for (const ship of SHIPS) {
+    // One Hull: the cradle is not on this run's shelf — the launch hull is the hull you fly
+    // out, so the armory never lists another one. This shelf is the only mid-run swap path.
+    const shelfShips = compileChallenge(run.seed, run.arenaMutators, run.ruleset).hullLocked === true
+      ? []
+      : SHIPS;
+    for (const ship of shelfShips) {
       if (!ship || typeof ship.id !== 'string') continue;
       if (opening && ship.id !== flyingId) continue;
       const ownedIndex = ownedList.findIndex((entry) => entry && entry.defId === ship.id);
