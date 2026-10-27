@@ -73,6 +73,16 @@ const EXPECTED = {
   // the annihilator an M plasma battery.
   wpn_saucer_death_ray: 'sfx_wpn_heavy_beam',
   wpn_saucer_annihilator: 'sfx_wpn_plasma',
+  // SEED-SW-17..23 armory guns (dda2c2cc960 / b2be8191cee): the ballistic verbs keep the
+  // autocannon's hard-crack voice; the seeker barrage is a missile, the cone is plasma,
+  // and the caster's chain arc stays disruptor.
+  wpn_disc_launcher_m: 'sfx_wpn_autocannon',
+  wpn_micro_barrage_m: 'sfx_wpn_missile',
+  wpn_plasma_cone_s: 'sfx_wpn_plasma',
+  wpn_singularity_mortar_m: 'sfx_wpn_autocannon',
+  wpn_debris_orbit_s: 'sfx_wpn_autocannon',
+  wpn_glaive_s: 'sfx_wpn_autocannon',
+  wpn_arc_caster: 'sfx_wpn_disruptor',
 };
 
 test('every catalog weapon resolves to a recipe that exists in the registry', () => {

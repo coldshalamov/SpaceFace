@@ -507,7 +507,9 @@ test('production browser and Node manifests register titles before wing morale',
   const updateTitle = PRODUCTION_UPDATE_ORDER.indexOf('titles');
   assert.equal(initTitle, PRODUCTION_INIT_ORDER.indexOf('uniqueWrecks') + 1);
   assert.equal(initTitle + 1, PRODUCTION_INIT_ORDER.indexOf('wingMorale'));
-  assert.equal(updateTitle, PRODUCTION_UPDATE_ORDER.indexOf('aftermathWrecks') + 1);
+  // dyingHull (7fcda9f4144) owns the rupture interval and sits between aftermathWrecks and
+  // titles by design — the pinned predecessor is now dyingHull, the contract unchanged.
+  assert.equal(updateTitle, PRODUCTION_UPDATE_ORDER.indexOf('dyingHull') + 1);
   assert.equal(updateTitle + 1, PRODUCTION_UPDATE_ORDER.indexOf('wingMorale'));
   assert.equal(getNodeSystemFactoryTable().get('titles').name, 'titles');
 });

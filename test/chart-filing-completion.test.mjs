@@ -53,28 +53,43 @@ test('the last authored site investigated files the sector chart once — paid, 
   const t = harness('sector_phoebe_echo');
   t.state.simTime = 140;
 
+  // The echo census is three authored signal sites now (vault + struck face + listener post);
+  // only the last investigation closes the chart — the first two file nothing.
   assert.equal(world._onSignalInvestigated({
     sectorId: 'sector_phoebe_echo',
     sourceKind: 'salvage',
     sourceId: 'poi_phoebe_vault',
+    completedAt: 138,
+  }), true);
+  assert.equal(world._onSignalInvestigated({
+    sectorId: 'sector_phoebe_echo',
+    sourceKind: 'salvage',
+    sourceId: 'poi_phoebe_struck_face',
+    completedAt: 139,
+  }), true);
+  assert.equal(filings(t.events).length, 0, 'an open census files nothing');
+  assert.equal(world._onSignalInvestigated({
+    sectorId: 'sector_phoebe_echo',
+    sourceKind: 'salvage',
+    sourceId: 'poi_phoebe_listener_post',
     completedAt: 140,
   }), true);
 
   const progress = sectorExplorationProgress(t.state, 'sector_phoebe_echo');
-  assert.equal(progress.found, 1);
-  assert.equal(progress.total, 1);
+  assert.equal(progress.found, 3);
+  assert.equal(progress.total, 3);
 
   const stamp = t.state.world.discovery.sector_phoebe_echo.chartFiled;
-  assert.deepEqual(stamp, { at: 140, sites: 1, paid: 3920 });
+  assert.deepEqual(stamp, { at: 140, sites: 3, paid: 4360 });
 
   assert.equal(filings(t.events).length, 1);
   assert.deepEqual(filings(t.events)[0].payload, {
-    sectorId: 'sector_phoebe_echo', found: 1, total: 1, bounty: 3920, at: 140,
+    sectorId: 'sector_phoebe_echo', found: 3, total: 3, bounty: 4360, at: 140,
   });
 
   const grant = grants(t.events);
   assert.equal(grant.length, 1);
-  assert.equal(grant[0].payload.amount, 3920);
+  assert.equal(grant[0].payload.amount, 4360);
   assert.equal(grant[0].payload.reason, CHART_FILING.reasonId);
   assert.equal(grant[0].payload.sectorId, 'sector_phoebe_echo');
 
@@ -85,7 +100,7 @@ test('the last authored site investigated files the sector chart once — paid, 
 
   const toast = t.events.find((e) => e.name === 'toast' && /chart filed/i.test(e.payload.text || ''));
   assert.ok(toast, 'the player hears the chart filed');
-  assert.match(toast.payload.text, /3,920 cr/);
+  assert.match(toast.payload.text, /4,360 cr/);
 
   const news = t.events.find((e) => e.name === 'news:publish');
   assert.equal(news && news.payload.id, 'chart-filed:sector_phoebe_echo');
@@ -94,19 +109,21 @@ test('the last authored site investigated files the sector chart once — paid, 
 
 test('chart filing is durable: survives a save round-trip and never double-pays', () => {
   const t = harness('sector_phoebe_echo');
-  world._onSignalInvestigated({
-    sectorId: 'sector_phoebe_echo',
-    sourceKind: 'salvage',
-    sourceId: 'poi_phoebe_vault',
-    completedAt: 140,
-  });
+  for (const sourceId of ['poi_phoebe_vault', 'poi_phoebe_struck_face', 'poi_phoebe_listener_post']) {
+    world._onSignalInvestigated({
+      sectorId: 'sector_phoebe_echo',
+      sourceKind: 'salvage',
+      sourceId,
+      completedAt: 140,
+    });
+  }
   assert.equal(grants(t.events).length, 1);
 
   // Serialize/restore the discovery overlay exactly like a save does.
   t.state.world.discovery = JSON.parse(JSON.stringify(t.state.world.discovery));
   assert.deepEqual(
     normalizeChartFiling(t.state.world.discovery.sector_phoebe_echo.chartFiled),
-    { at: 20, sites: 1, paid: 3920 },
+    { at: 20, sites: 3, paid: 4360 },
     'the stamp reads back through the normalizer after a clone',
   );
 
@@ -131,7 +148,7 @@ test('a partial census files nothing — the office only buys a finished chart',
   });
   const progress = sectorExplorationProgress(t.state, 'sector_ashfall_reach');
   assert.equal(progress.found, 1);
-  assert.equal(progress.total, 3);
+  assert.equal(progress.total, 6);
   assert.equal(t.state.world.discovery.sector_ashfall_reach.chartFiled, undefined);
   assert.equal(filings(t.events).length, 0);
   assert.equal(grants(t.events).length, 0);
@@ -145,12 +162,15 @@ test('a boss kill that closes the census files the chart at the defeat edge', ()
     pois: [{ id: 100, poiId: 'poi_vault', type: 'cache', hidden: true }],
     hazards: [],
   };
-  // Two of three sites already on the record; the Deep-Mother is the last find.
+  // Five of six sites already on the record; the Deep-Mother is the last find.
   t.state.world.discovery.sector_ashfall_reach = {
     discovered: true,
     pois: {
       poi_vault: { discovered: true, identified: true, investigated: true },
       poi_claim_cinder_crown: { discovered: true, identified: true },
+      poi_ashfall_kurtz_mark: { discovered: true, identified: true },
+      poi_ashfall_burn_lamp: { discovered: true, identified: true, investigated: true },
+      poi_ashfall_keykeeper: { discovered: true, identified: true },
     },
   };
   t.state.entities.set(99, {
@@ -161,13 +181,13 @@ test('a boss kill that closes the census files the chart at the defeat edge', ()
   world._onBossKilled({ id: 99, killerId: 1 });
 
   const progress = sectorExplorationProgress(t.state, 'sector_ashfall_reach');
-  assert.equal(progress.found, 3);
+  assert.equal(progress.found, 6);
   const stamp = t.state.world.discovery.sector_ashfall_reach.chartFiled;
-  assert.equal(stamp && stamp.paid, 4360);
-  assert.equal(stamp && stamp.sites, 3);
+  assert.equal(stamp && stamp.paid, 5020);
+  assert.equal(stamp && stamp.sites, 6);
   const grant = grants(t.events).find((e) => e.payload.reason === CHART_FILING.reasonId);
   assert.ok(grant, 'the boss kill edge pays the completed chart');
-  assert.equal(grant.payload.amount, 4360);
+  assert.equal(grant.payload.amount, 5020);
   assert.equal(filings(t.events).length, 1);
 });
 
@@ -176,6 +196,14 @@ test('proximity identifying the last site files the chart through the scan tick'
   t.state.world.activeSector = {
     id: 'sector_phoebe_echo',
     pois: [{ id: 201, poiId: 'poi_phoebe_vault', type: 'cache' }],
+  };
+  // Two of three echo sites already on the record — the vault scan closes the census.
+  t.state.world.discovery.sector_phoebe_echo = {
+    discovered: true,
+    pois: {
+      poi_phoebe_struck_face: { discovered: true, identified: true, investigated: true },
+      poi_phoebe_listener_post: { discovered: true, identified: true, investigated: true },
+    },
   };
   t.state.entities.set(1, {
     id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 },
@@ -190,7 +218,7 @@ test('proximity identifying the last site files the chart through the scan tick'
 
   const rec = t.state.world.discovery.sector_phoebe_echo.pois.poi_phoebe_vault;
   assert.equal(rec.identified, true);
-  assert.equal(t.state.world.discovery.sector_phoebe_echo.chartFiled.paid, 3920);
+  assert.equal(t.state.world.discovery.sector_phoebe_echo.chartFiled.paid, 4360);
   assert.equal(grants(t.events).length, 1);
   assert.equal(filings(t.events).length, 1);
 
@@ -206,18 +234,20 @@ test('the galaxy map sells the completion: fee preview before, filed stamp after
 
   const before = galaxyMapScreen._discoveryTabHtml(t.state);
   assert.match(before, /Chart fee/);
-  assert.match(before, /3,920 cr on completion/);
+  assert.match(before, /4,360 cr on completion/);
   assert.doesNotMatch(before, /Chart filed/);
 
-  world._onSignalInvestigated({
-    sectorId: 'sector_phoebe_echo',
-    sourceKind: 'salvage',
-    sourceId: 'poi_phoebe_vault',
-    completedAt: 140,
-  });
+  for (const sourceId of ['poi_phoebe_vault', 'poi_phoebe_struck_face', 'poi_phoebe_listener_post']) {
+    world._onSignalInvestigated({
+      sectorId: 'sector_phoebe_echo',
+      sourceKind: 'salvage',
+      sourceId,
+      completedAt: 140,
+    });
+  }
 
   const after = galaxyMapScreen._discoveryTabHtml(t.state);
   assert.match(after, /Chart filed/);
-  assert.match(after, /3,920 cr/);
+  assert.match(after, /4,360 cr/);
   assert.doesNotMatch(after, /Chart fee/);
 });
