@@ -14,7 +14,7 @@ import { deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { setPieceFacilityWorldPos } from './heistFacilities.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { BULK_HAUL_TYPE, CAPITAL_SUBSYSTEM_ORDER, CHOIR_RETURN_RADIUS_WU, CLEAN_PHYSICAL_RELEASE, CONTRACT_47A_B0_TAG, CONTRACT_47A_B2_CUSTODY_REEL_WU, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_TAG, CONTRACT_47A_B3_TAG, CONTRACT_47A_SAMPLE_ID, LONG_READ_RUMOR_EVENT, MISSION_WRECK_COLLISION_MASK, PHYSICAL_BERTH_WU, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, SET_PIECE_DISPOSITION_OBJECTIVES, SET_PIECE_RECOVERY_OBJECTIVES, STATION_INFO, STORY_LATCH_DOCK_SLACK_WU, THROWN_MASS_SUBSYSTEM_DAMAGE, ashfallBlockadeDoorPos, ashfallCacheApproachPos, authoredDefinitionOf, authoredEncounterOf, authoredMethodFor, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, b6DeploymentPayload, bountyTargetLost, campaign47aOutcomeKey, campaign47aRouteKind, capitalBossAdjustedPlacement, capitalSubsystemWorldPos, completedMissionTargetSlots, convoyClientVoice, distSq, ensureB2RescueActorOutcomes, escortLossSite, externalTargetLoss, findLivingWorldActorStation, isCampaign47aB2Rescue, isCapitalBossMission, isMutationRecovery, missionHostileSpawnPos, missionObservesClauseEvent, missions, mutationWreckRouting, outsideMissionPortSafety, physicalRoleOf, setPieceCauseOf } from './missions.js';
+import { BULK_HAUL_TYPE, CAPITAL_SUBSYSTEM_ORDER, CHOIR_RETURN_RADIUS_WU, CLEAN_PHYSICAL_RELEASE, CONTRACT_47A_B0_TAG, CONTRACT_47A_B2_CUSTODY_REEL_WU, CONTRACT_47A_B2_SCAN_RADIUS_WU, CONTRACT_47A_B2_TAG, CONTRACT_47A_SAMPLE_ID, LONG_READ_RUMOR_EVENT, MISSION_WRECK_COLLISION_MASK, PHYSICAL_BERTH_WU, PHYSICAL_ROLE, PHYSICAL_TYPE_SET, SECTOR_BY_ID, SET_PIECE_DISPOSITION_OBJECTIVES, SET_PIECE_RECOVERY_OBJECTIVES, STATION_INFO, STORY_LATCH_DOCK_SLACK_WU, THROWN_MASS_SUBSYSTEM_DAMAGE, ashfallBlockadeDoorPos, ashfallCacheApproachPos, authoredDefinitionOf, authoredEncounterOf, authoredMethodFor, b2RescueActorForRole, b2RescueActorIdentity, b2RescueActorIndexFromEntity, b6DeploymentPayload, bountyTargetLost, campaign47aOutcomeKey, campaign47aRouteKind, capitalBossAdjustedPlacement, capitalSubsystemWorldPos, completedMissionTargetSlots, convoyClientVoice, distSq, ensureB2RescueActorOutcomes, escortLossSite, externalTargetLoss, findLivingWorldActorStation, isCampaign47aB2Rescue, isCapitalBossMission, isMutationRecovery, missionHostileSpawnPos, missionObservesClauseEvent, missions, mutationWreckRouting, outsideMissionPortSafety, physicalRoleOf, setPieceCauseOf } from './missions.js';
 import { activeOwnedShip, shipCarriesModule, starterRamKill } from '../data/starterJobs.js';
 import { AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS, ONE_LOAD_CARGO_TYPES, WRECK_BOUND_SET_PIECE_OBJECTIVES } from '../data/missions.js';
 import { heistMissionRuntime } from '../missions/heistMissionRuntime.js';
@@ -274,6 +274,9 @@ export const missionObjectiveOps = {
     const p = (m && m.params) || {};
     if (Number(p.furnaceFeedsNeeded) > 0 && (p.furnaceFeeds | 0) < p.furnaceFeedsNeeded) return false;
     if (Number(p.rookDeliveryNeeded) > 0 && (p.rookDeliveries | 0) < p.rookDeliveryNeeded) return false;
+    // W-BOOKS-3-4: Feed the Maw — the maw must be stunned with hot slag before the tow
+    // can leave the lane; a thrashing maw does not ride a Line out.
+    if (Number(p.mawStunsNeeded) > 0 && (p.mawStuns | 0) < p.mawStunsNeeded) return false;
     return true;
   },
 
@@ -287,6 +290,10 @@ export const missionObjectiveOps = {
     if (Number(p.rookDeliveryNeeded) > 0) {
       const left = Math.max(0, p.rookDeliveryNeeded - (p.rookDeliveries | 0));
       if (left > 0) rows.push(`tow ${left} more wreck into Rook's booth ring`);
+    }
+    if (Number(p.mawStunsNeeded) > 0) {
+      const left = Math.max(0, p.mawStunsNeeded - (p.mawStuns | 0));
+      if (left > 0) rows.push(`stun the maw ${left} more time${left === 1 ? '' : 's'} with hot slag`);
     }
     return rows;
   },
@@ -1658,6 +1665,9 @@ export const missionObjectiveOps = {
           scanLabel: (m.params && m.params.scanLabel) || 'SLAG CORE',
           tetherable: true,
           ...(m.params && m.params.tetherPayload ? { tetherPayload: true } : {}),
+          // W-BOOKS-3-4: Feed the Maw — the "core" is a living Furnace maw; the stamp
+          // lets scanners/scars read it as fauna, not ore.
+          ...(m.params && m.params.furnaceMaw === true ? { furnaceMaw: true } : {}),
         },
       });
     }
@@ -2206,11 +2216,29 @@ export const missionObjectiveOps = {
   },
 
   _usesStoryDestDock(m) {
-    return !!(m && (m.storyTag === CONTRACT_47A_B2_TAG || m.storyTag === CONTRACT_47A_B3_TAG));
+    const tag = m && m.storyTag;
+    if (typeof tag !== 'string') return false;
+    // Story B2–B4 dest-dock (latch-dock, throw, sling) uses the tightened
+    // station-hull + slack gate, not the leftover 700 WU berth radius — covers the
+    // legacy single-contract tags (b2:elroy, b3:bigger_boat) and the W-BOOKS-3-4
+    // book tags (b3:berth, b3:maw, b4:operation).
+    return (
+      tag.startsWith('campaign47a:b2:')
+      || tag.startsWith('campaign47a:b3:')
+      || tag === 'campaign47a:b4:operation'
+    );
   },
 
   _completePhysical(m, index, method) {
     if (!m || m.status !== 'active') return false;
+    // W-BOOKS-3-4: a book contract whose authored extra is still owed refuses the settle —
+    // the maw stays on the lane until the slag has knocked it stupid. Only contracts that
+    // carry an extras param are affected; every other physical completion path is unchanged.
+    if (!this._bookExtrasSatisfied(m)) {
+      const rows = this._bookExtrasPending(m);
+      if (rows.length) this._sayStoryLine(`Still owed: ${rows.join('; ')}.`, 5);
+      return false;
+    }
     m.params = m.params || {};
     m.params.completionMethod = method;
     if (isCampaign47aB2Rescue(m)) {
@@ -2422,7 +2450,7 @@ export const missionObjectiveOps = {
         return false;
       }
       const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
-      const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+      const storyDock = this._usesStoryDestDock(m);
       if (core) {
         if (storyDock ? this._entityAtStoryDestDock(core, m) : this._entityNearDestBerth(core, m)) {
           return this._completePhysical(m, index, 'tow_in');
@@ -2439,7 +2467,7 @@ export const missionObjectiveOps = {
     }
     if (m.type === 'rescue_under_fire') {
       const pod = this._playerLatchedTo(m, PHYSICAL_ROLE.POD);
-      const storyDock = m.storyTag === CONTRACT_47A_B2_TAG;
+      const storyDock = this._usesStoryDestDock(m);
       if (pod && (storyDock ? this._entityAtStoryDestDock(pod, m) : this._entityNearDestBerth(pod, m))) {
         return this._completePhysical(m, index, 'stage_tow');
       }
@@ -2494,7 +2522,7 @@ export const missionObjectiveOps = {
       const core = this.state.entities.get(targetId);
       if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
       const clean = !p.classification || CLEAN_PHYSICAL_RELEASE.has(p.classification);
-      const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+      const storyDock = this._usesStoryDestDock(m);
       const atBerth = storyDock
         ? this._entityAtStoryDestDock(core, m)
         : this._entityNearDestBerth(core, m);
@@ -2534,7 +2562,7 @@ export const missionObjectiveOps = {
         if (!m.targetEntityIds || !m.targetEntityIds.includes(p.payloadId)) continue;
         const core = this.state.entities.get(p.payloadId);
         if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
-        const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+        const storyDock = this._usesStoryDestDock(m);
         if (storyDock) {
           if (this._entityAtStoryDestDock(core, m)) this._completePhysical(m, i, 'sling_in');
           continue;
@@ -2563,6 +2591,17 @@ export const missionObjectiveOps = {
         if (victim && physicalRoleOf(victim) === PHYSICAL_ROLE.CAPITAL) {
           this._noteCapitalBossPhysics(m, victim, 'whip');
         }
+        continue;
+      }
+      // W-BOOKS-3-4: Feed the Maw — hot slag through the whip is the stun. Solid and
+      // crushing hits on the maw's own body count toward the stun gate that keeps the
+      // tow honest; the maw itself is the contract's slag-core body.
+      if (m.params && Number(m.params.mawStunsNeeded) > 0) {
+        if (!m.targetEntityIds || !m.targetEntityIds.includes(p.victimId)) continue;
+        m.params.mawStuns = (m.params.mawStuns | 0) + 1;
+        delete m._extrasAnnounced;
+        this._sayStoryLine(`The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.`, 4);
+        this.bus.emit('mission:updated', { missionId: m.id });
         continue;
       }
       if (m.type !== 'demolition') continue;

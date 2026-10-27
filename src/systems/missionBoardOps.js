@@ -825,6 +825,9 @@ export const missionBoardOps = {
        && candidate.storyTag.startsWith('campaign47a:')
        && !candidate.storyTag.startsWith('campaign47a:ending:')
        && candidate.storyTag !== keepTag
+       // W-BOOKS-3-4: the doubled interdiction contract is a player choice beside the
+       // door — it survives the book's own re-sync until taken or the book closes.
+       && candidate.storyTag !== 'campaign47a:b4:doubled'
     ));
     if (!offer || !offer.type || offer.stationId !== info.id || activeTags.has(offer.storyTag)) {
       return board.slots.length !== before;
@@ -836,6 +839,66 @@ export const missionBoardOps = {
     return true;
   },
 
+  /**
+   * W-BOOKS-3-4 (§34.7 Book 4): "in plain type on the board: DOUBLED — INTERDICTION
+   * CONTRACT." A free player choice beside the three doors, posted on the clearing
+   * station's board while Pick a Side is live; never a book step, and the wall line
+   * it earns is canon only when the job is actually taken.
+   */
+  _syncDoubledInterdictionOffer(epoch = this._epoch()) {
+    const story = this.state && this.state.story;
+    const flags = story && story.flags || {};
+    const tag = 'campaign47a:b4:doubled';
+    const boards = this.state.missions && this.state.missions.boards || {};
+    const board = boards.station_tethys || ((story && (story.beatIndex | 0) === 4) ? this.ensureBoard('station_tethys') : null);
+    const live = !!(story && (story.beatIndex | 0) === 4
+      && flags.doubled_contract_taken !== true && flags.doubled_wall_shown !== true);
+    if (!board || !Array.isArray(board.slots)) return false;
+    // Not live (book closed, flag flown, or never opened): strip any stranded row so the
+    // board never keeps a dead door — the tag's exemption in _syncEmbodiedStoryOffer is
+    // only for while the choice is actually on the table.
+    if (!live) {
+      const before = board.slots.length;
+      board.slots = board.slots.filter((c) => !(c && c.storyTag === tag));
+      return board.slots.length !== before;
+    }
+    const active = (this.state.missions.active || []).some((m) => m && m.status === 'active' && m.storyTag === tag);
+    if (active || board.slots.some((c) => c && c.storyTag === tag)) return false;
+    const seed = this.state.meta && this.state.meta.seed || 1;
+    board.slots.push({
+      id: `mo_47a_b4_doubled_${(seed >>> 0).toString(36)}_${epoch | 0}`,
+      type: 'bounty_hunt',
+      storyTag: tag,
+      storyContractId: tag,
+      title: 'DOUBLED — interdiction contract',
+      brief: 'In plain type: a crew-of-two survey hull holds station on the Charon line. Fee paid double on delivery of the wreck. TAG: HOSTILE (REGISTERED CIVILIAN — FILED AS HOSTILE).',
+      factionId: 'faction_dmc',
+      stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+      reward_cr: 1600, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+      storyTarget: {
+        id: 'npc_survey_pair', name: 'Survey crew of two', label: 'UNKNOWN VESSEL',
+        archetype: 'wasp_swarmer', factionId: 'faction_free', role: 'register_mark',
+        zoneId: 'zone_charon_ambush',
+        registry: 'CIVILIAN VESSEL — REGISTERED',
+        lastRegisteredOwner: 'PIT ENGINEERING — SURVEY',
+        salvageCargo: 'SURVEY LOGS — SIX DAYS OF READINGS',
+      },
+      params: {
+        physicalVerb: 'hunt',
+        completionMethods: ['interdiction'],
+        bookScene: 'doubled_interdiction',
+        doubledContract: true,
+        clearCount: 1,
+        targetStrength: 1.0, fValue: 1.2, taskTime: 60,
+      },
+      distance: 3000,
+      expiresAtEpoch: epoch + 2,
+      campaign47aBeat: 4,
+      source: 'campaign47a.embodied',
+    });
+    return true;
+  },
+
   _refreshEmbodiedStoryBoards() {
     let changed = false;
     const epoch = this._epoch();
@@ -843,6 +906,7 @@ export const missionBoardOps = {
       const info = STATION_INFO.get(stationId);
       if (this._syncEmbodiedStoryOffer(info, board, epoch)) changed = true;
     }
+    if (this._syncDoubledInterdictionOffer(epoch)) changed = true;
     if (changed) this.bus.emit('mission:updated', { missionId: null });
     return changed;
   },

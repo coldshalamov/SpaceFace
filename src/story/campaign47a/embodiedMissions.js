@@ -41,6 +41,9 @@ export const CANONICAL_CONTACT_SIGNALS = Object.freeze([
   'story:skimResolved', 'kesslerPod:weighed',
   'understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete',
   'rookWreck:delivered', 'furnace:fed',
+  // W-BOOKS-3-4: the Gate Audit welds are world-pressure evidence steps recorded
+  // optionally while Books 3–4 run (worldPressure owns the schedule).
+  'worldPressure:auditAnnounced', 'worldPressure:gateClosed',
 ]);
 
 export const CANONICAL_INTENT_EVENTS = Object.freeze([
@@ -235,12 +238,74 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 3, id: 'bigger_boat', contactId: 'contact_slate', contactName: 'Slate',
-    headlineVerb: 'tow', setPiece: 'long tow',
+    headlineVerb: 'tow', setPiece: 'variance adjustment + feed the maw + foreman',
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_ceres_belt', destStationId: 'station_ceres' }),
     consequenceRoutes: BIGGER_BOAT_ROUTES,
     physicalContact: B({ mode: 'mission', steps: B([
-      B({ id: 'tow', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'delivery', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'feed_the_maw', signal: 'mission:completed', accept: B(['mission:completed']), requiresPrior: B(['delivery']) }),
+      B({ id: 'foreman', signal: 'mission:completed', accept: B(['mission:completed']), requiresPrior: B(['delivery']) }),
+      B({ id: 'gate_audit_kepler', signal: 'worldPressure:gateClosed', accept: B(['worldPressure:auditAnnounced', 'worldPressure:gateClosed']), optional: true }),
     ]) }),
+    // W-BOOKS-3-4 (§34.7 Book 3): the book posts Slate's yard list in order — delivery of
+    // VARIANCE ADJUSTMENT (the Hawser-class tug, seam honest to the fourth strain spike),
+    // then Feed the Maw on the reactor approach, then the Mirrorjaw Foreman's yard feud.
+    bookContracts: B([
+      B({
+        stepId: 'delivery',
+        type: 'tow_recovery', storyTag: 'campaign47a:b3:berth',
+        title: 'Tow the slag core',
+        brief: 'Delivery run for Slate\u2019s yard. Keep the core on the line into the yard, or sling it in — the Hawser seam reads honest: it holds three spikes and lets go at the fourth.',
+        factionId: 'faction_dmc',
+        stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+        reward_cr: 1000, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'tow',
+          completionMethods: B(['tow_in', 'sling_in']),
+          authoredSetPieceId: 'long_tow',
+          bookScene: 'variance_delivery',
+          massU: 36, cargoValue: 792, fValue: 1.1, taskTime: 40,
+        }),
+      }),
+      B({
+        stepId: 'feed_the_maw',
+        type: 'tow_recovery', storyTag: 'campaign47a:b3:maw',
+        title: 'Feed the maw',
+        brief: 'A Furnace maw hunts the Ceres reactor approach. Stun it with hot slag — three solid hits — then tow it out of the lane to the yard, or sling it in.',
+        factionId: 'faction_dmc',
+        stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+        reward_cr: 900, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'tow',
+          completionMethods: B(['tow_in', 'sling_in']),
+          authoredSetPieceId: 'long_tow',
+          bookScene: 'feed_the_maw',
+          furnaceMaw: true,
+          scanLabel: 'FURNACE MAW',
+          mawStunsNeeded: 3,
+          massU: 120, bodyRadius: 24, cargoValue: 0, fValue: 1.4, taskTime: 60,
+        }),
+      }),
+      B({
+        stepId: 'foreman',
+        type: 'capital_boss', storyTag: 'campaign47a:b3:foreman',
+        title: 'The Foreman — yard feud',
+        brief: 'The Mirrorjaw Foreman holds the yard lane and calls every weld an unpaid debt. Put mass through the plated prow or outgun the stern.',
+        factionId: 'faction_dmc',
+        stationId: 'station_tethys', destStationId: 'station_forge', destSectorId: 'sector_vesta_forge',
+        reward_cr: 2200, collateral_cr: 0, riskTier: 3, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'throw',
+          completionMethods: B(['throw_the_capital', 'outgun_the_capital']),
+          bookScene: 'foreman_feud',
+          capitalBossId: 'capital_boss_foreman',
+          encounterId: 'capital_boss_foreman',
+          fValue: 1.8, taskTime: 80,
+        }),
+      }),
+    ]),
+    // Kept for PQ-032 parity + the pre-book legacy tag: leftover `campaign47a:b3:bigger_boat`
+    // contracts still settle through the legacy fill in _advanceEmbodiedStoryMission.
     missionBoardContract: B({
       type: 'tow_recovery', storyTag: 'campaign47a:b3:bigger_boat',
       title: 'Tow the slag core', brief: 'Keep the core on the line into the yard, or sling it in.',
@@ -254,7 +319,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
         massU: 36, cargoValue: 792, fValue: 1.1, taskTime: 40,
       }),
     }),
-    recovery: 'The core still waits. Tow it in.',
+    recovery: 'The yard still holds the book. The next job re-posts.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
   B({
@@ -262,7 +327,65 @@ export const EMBODIED_MISSIONS = Object.freeze([
     headlineVerbs: BRANCH_HEADLINE_VERBS,
     location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios' }),
     consequenceStakes: PICK_SIDE_STAKES,
-    physicalContact: B({ mode: 'existing_branch_intro', steps: B([B({ id: 'branch', signal: 'mission:completed', accept: B(['mission:completed']), requireStoryTag: STORY_BRANCH_INTRO_TAG })]) }),
+    physicalContact: B({ mode: 'existing_branch_intro', steps: B([
+      B({ id: 'branch_intro_accept', signal: 'mission:accepted', accept: B(['mission:accepted']), requireStoryTag: STORY_BRANCH_INTRO_TAG }),
+      B({ id: 'operation', signal: 'mission:completed', accept: B(['mission:completed']), requiresPrior: B(['branch_intro_accept']) }),
+      B({ id: 'gate_audit_io', signal: 'worldPressure:gateClosed', accept: B(['worldPressure:auditAnnounced', 'worldPressure:gateClosed']), optional: true }),
+    ]) }),
+    // W-BOOKS-3-4 (§34.7 Book 4): the intro chooses the door; the door's operation posts
+    // next and the book closes on it. One row per branch — buildBookContractOffer picks
+    // the run's door. The doubled interdiction contract posts separately (a player
+    // choice beside the door, not a book step).
+    bookContracts: B([
+      B({
+        stepId: 'operation', branch: 'traders',
+        type: 'escort', storyTag: 'campaign47a:b4:operation',
+        title: 'Spine Break — Meridian cargo spine',
+        brief: 'Reach is cutting cargo spines in the Tethys rock field. Escort the Meridian train through and re-couple it under fire — the tickers count each drifting container down.',
+        factionId: 'faction_mts',
+        stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+        reward_cr: 1400, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'deliver',
+          completionMethods: B(['recouple_under_fire', 'hold_the_spine']),
+          bookScene: 'spine_break',
+          fValue: 1.4, taskTime: 70,
+        }),
+      }),
+      B({
+        stepId: 'operation', branch: 'patrol',
+        type: 'patrol_clear', storyTag: 'campaign47a:b4:operation',
+        title: 'The Weighing — customs weir',
+        brief: 'Run the customs weir with Concord. The pack holding the lane flies a Reach flag too perfectly — break the pattern and the flags resolve.',
+        factionId: 'faction_scn',
+        stationId: 'station_coalition', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
+        reward_cr: 1400, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'clear',
+          completionMethods: B(['break_the_pattern', 'hold_the_weir']),
+          bookScene: 'too_perfect_pack',
+          clearCount: 3, packUnmask: true,
+          targetStrength: 1.4, fValue: 1.4, taskTime: 70,
+        }),
+      }),
+      B({
+        stepId: 'operation', branch: 'free',
+        type: 'tow_recovery', storyTag: 'campaign47a:b4:operation',
+        title: 'Barn Raising — homestead frame',
+        brief: 'Six modules, one frame, and the Nereid gate welding on the road behind you. Tow the homestead together before the line strands it.',
+        factionId: 'faction_free',
+        stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
+        reward_cr: 1400, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+        params: B({
+          physicalVerb: 'tow',
+          completionMethods: B(['tow_in', 'sling_in']),
+          authoredSetPieceId: 'long_tow',
+          bookScene: 'barn_raising',
+          scanLabel: 'HOMESTEAD MODULE',
+          massU: 24, bodyRadius: 14, cargoValue: 0, fValue: 1.2, taskTime: 50,
+        }),
+      }),
+    ]),
     missionBoardContract: B({ kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG }),
     recovery: 'Three introductions remain. Choose how you participate.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
@@ -420,9 +543,21 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
   const def = embodiedMissionAt(beatIndex);
   if (!def) return null;
   if (def.beat === 7) return buildDeepReachOperationOffer(options);
-  if (def.beat === 4) return { beat: 4, kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG };
   const seed = (Number(options.seed) >>> 0) || 1;
   const epoch = Math.max(0, Number(options.epoch) | 0);
+  if (def.beat === 4) {
+    // W-BOOKS-3-4: the three-door intro still chooses the branch through the live intro
+    // machinery — but once the door is chosen and the intro settles, the door's own
+    // operation (Spine Break / the Weighing / Barn Raising) posts as the book job and
+    // closes the book. Without a chosen door the board keeps the intro kind marker.
+    const status = options.state ? getBeatStepStatus(options.state, 4) : null;
+    const introDone = !!(status && Array.isArray(status.completed) && status.completed.includes('branch_intro_accept'));
+    const branch = options.branch || (options.state && options.state.story && options.state.story.branch) || null;
+    if (introDone && branch) {
+      return buildBookContractOffer(def, seed, epoch, { ...options, branch });
+    }
+    return { beat: 4, kind: 'existing_branch_intro', storyTag: STORY_BRANCH_INTRO_TAG };
+  }
   if (def.beat === 5) return buildBranchChainOffer(def, seed, epoch, options);
   // W-BOOKS-0-2 (§34.7): a Book-list beat posts the contract bound to its NEXT pending
   // ordered step, read from the sidecar's step log — world-work steps post nothing, so the
@@ -456,16 +591,25 @@ function buildBookContractOffer(def, seed, epoch, options) {
   const steps = (canon && canon.steps) || [];
   const status = options.state ? getBeatStepStatus(options.state, def.beat) : null;
   const done = new Set((status && status.completed) || []);
-  const nextStep = steps.find((s) => s && !done.has(s.id)) || null;
+  // W-BOOKS-3-4: optional steps (the Gate Audit welds) never hold the board — the
+  // next posted job is bound to the next pending REQUIRED step only.
+  const nextStep = steps.find((s) => s && s.optional !== true && !done.has(s.id)) || null;
   if (!nextStep) return null; // list complete — the cursor will move to the next beat
-  const row = def.bookContracts.find((bk) => bk && bk.stepId === nextStep.id);
-  if (!row) return null; // world work next: nothing to post
+  // A row may carry `branch` (B4: one operation per door); it posts only for the run's
+  // chosen door. Rows without a branch match any run.
+  const branch = options.branch
+    || (options.state && options.state.story && options.state.story.branch)
+    || null;
+  const row = def.bookContracts.find((bk) => bk && bk.stepId === nextStep.id
+    && (bk.branch == null || bk.branch === branch));
+  if (!row) return null; // world work next (or another door's operation): nothing to post
   const order = Number.isFinite(nextStep.order) ? nextStep.order : 0;
   return adjustBoardOffer({
     ...row,
     id: stableOfferId(seed, def.beat, epoch, order, row.storyTag),
     params: { ...(row.params || {}) },
     storyTarget: row.storyTarget ? { ...row.storyTarget } : null,
+    ...(row.branch ? { storyBranch: row.branch } : {}),
     distance: Number(options.distance) || (def.beat === 2 ? 3000 : 1600),
     expiresAtEpoch: epoch + 1,
     campaign47aBeat: def.beat,

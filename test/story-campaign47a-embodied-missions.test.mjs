@@ -47,10 +47,13 @@ assert.deepEqual(buildAftermathHook(2), {
   zoneId: 'zone_charon_ambush',
 });
 
+// W-BOOKS-3-4 (§34.7): B3 posts the yard list's first pending contract — the
+// VARIANCE ADJUSTMENT berth delivery — not the legacy single-tow catch-all.
 const b3 = buildMissionBoardContract(3, { seed: 47, epoch: 3 });
 assert.equal(b3.type, 'tow_recovery');
-assert.equal(b3.storyTag, 'campaign47a:b3:bigger_boat');
+assert.equal(b3.storyTag, 'campaign47a:b3:berth');
 assert.equal(b3.title, 'Tow the slag core');
+assert.equal(b3.params.bookScene, 'variance_delivery');
 assert.deepEqual(b3.params.completionMethods, ['tow_in', 'sling_in']);
 
 const patrol1 = buildMissionBoardContract(5, { seed: 47, epoch: 4, branch: 'patrol', chainStep: 0 });

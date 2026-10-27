@@ -318,6 +318,16 @@ function solvedPhrase(row) {
   if (row.stepId === 'compost') return 'the garden fed';
   if (row.stepId === 'nest') return 'the Nest survived';
   if (row.stepId === 'skim') return 'the lane skim survived';
+  // W-BOOKS-3-4 (§34.7): the B3 yard list and the B4 door operations file their own
+  // verbs too — the beat's solved row keeps the last recorded step.
+  if (row.stepId === 'delivery') return 'the Hawser berthed';
+  if (row.stepId === 'feed_the_maw') return 'the maw fed';
+  if (row.stepId === 'foreman') return 'the yard feud settled';
+  if (row.beat === 4 && row.stepId === 'operation') {
+    if (row.verb === 'deliver') return 'the cargo spine held';
+    if (row.verb === 'clear') return 'the pack unmasked';
+    if (row.verb === 'tow') return 'the barn raised';
+  }
   if (row.method === 'sling_in') return 'the core slung';
   if (row.method === 'tow_in' || row.verb === 'tow') return 'the core towed';
   if (row.verb === 'jam') return 'the approach jammed';
