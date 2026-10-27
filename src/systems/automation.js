@@ -2658,7 +2658,8 @@ export const automation = {
     if (idx < 0) return false;
     const g = a.drones[idx];
     const value = this._droneBufferValue(g);
-    if (value > 0) this.creditPassive(value, 'drone'); // bank the buffer through the cap funnel
+    // The toast names what the cap funnel actually paid, not the gross ore hold.
+    const paid = value > 0 ? this.creditPassive(value, 'drone') : 0;
     // Recalled stock was banked at the recall price, not a depot receipt — the cycle ledger
     // books it as withdrawn so the final tally still reconciles mined vs sold vs held.
     if (g.operation) recordOperationWithdrawal(g, shipmentUsed(g));
@@ -2671,7 +2672,7 @@ export const automation = {
     this._clearDroneRecovery(g);
     this._releaseDroneEntities(g); // despawn the flying drones
     a.drones.splice(idx, 1);
-    this.toast(`Drone recalled (+${value} cr ore, -${refuel} cr fuel)`, 'success');
+    this.toast(`Drone recalled (+${paid} cr ore, -${refuel} cr fuel)`, 'success');
     return true;
   },
 
