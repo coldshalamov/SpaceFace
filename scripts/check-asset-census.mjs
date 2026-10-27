@@ -14,9 +14,10 @@
 //   node scripts/check-asset-census.mjs --dir=assets/ships/release/parts/wholeships
 //   node scripts/check-asset-census.mjs --json
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { censusAssets, categoryFor } from './lib/assetCensus.mjs';
+import { censusAssets, categoryFor, walkGlbFiles } from './lib/assetCensus.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const argv = process.argv.slice(2);
@@ -100,6 +101,28 @@ for (const row of rows) {
   bucket.prims += row.prims;
   bucket.vram += row.vram;
   byCategory.set(category, bucket);
+}
+
+// Every shipped body must be declared by the release manifest. An undeclared GLB is dead
+// weight in the retail copy that nothing loads and nothing can ever ask for: the tree carried
+// `wholeships/pelican.glb` and `wholeships/wasp.glb` (9.7 MB) - blocked legacy originals
+// superseded by `*_production_v1` - because a release build writes files but never deletes the
+// ones a later blocking decision retired. Render-package payloads are exempt: they are bound by
+// pilots.json, which check-render-package-encoding.mjs already verifies.
+const RELEASE_ROOT = path.resolve(ROOT, 'assets/ships/release');
+const manifestPath = path.join(RELEASE_ROOT, 'release_manifest.json');
+let undeclared = [];
+if (TARGET === RELEASE_ROOT) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const declared = new Set((manifest.assets || []).map((asset) => String(asset.release).replace(/\\/g, '/')));
+  undeclared = walkGlbFiles(RELEASE_ROOT)
+    .map((file) => path.relative(ROOT, file).replace(/\\/g, '/'))
+    .filter((file) => !file.includes('/render-packages/'))
+    .filter((file) => !declared.has(file));
+  if (undeclared.length) {
+    const bytes = undeclared.reduce((sum, file) => sum + readFileSync(path.resolve(ROOT, file)).length, 0);
+    failures.push(`${undeclared.length} shipped GLB(s) are not declared by release_manifest.json (${mb(bytes)} of dead weight): ${undeclared.join(', ')}`);
+  }
 }
 
 if (JSON_OUT) {
