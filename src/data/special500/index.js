@@ -32,14 +32,21 @@ import { ENTRIES_EGG_B } from './entries-egg-b.js';
 import { ENTRIES_ANOMALY_B } from './entries-anomaly-b.js';
 import { ENTRIES_VISUAL_B } from './entries-visual-b.js';
 import { ENTRIES_WORLD_A } from './entries-world-a.js';
+import { ENTRIES_WORLD_B } from './entries-world-b.js';
+import { ENTRIES_INTERACT_A } from './entries-interact-a.js';
+import { ENTRIES_INTERACT_B } from './entries-interact-b.js';
+import { ENTRIES_INTERACT_C } from './entries-interact-c.js';
+import { ENTRIES_INTERACT_D } from './entries-interact-d.js';
 
 export const SPECIAL500 = Object.freeze([
   ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
   ...ENTRIES_ANOMALY_A, ...ENTRIES_VISUAL_A,
   ...ENTRIES_COMMS_B, ...ENTRIES_EGG_B, ...ENTRIES_ANOMALY_B,
   ...ENTRIES_VISUAL_B, ...ENTRIES_WORLD_A,
+  ...ENTRIES_WORLD_B, ...ENTRIES_INTERACT_A, ...ENTRIES_INTERACT_B,
+  ...ENTRIES_INTERACT_C, ...ENTRIES_INTERACT_D,
 ]);
-export const SPECIAL500_COMPLETE = false; // flipped true when all 500 entries are authored
+export const SPECIAL500_COMPLETE = true; // all 500 ratified entries authored
 
 const BY_ID = new Map(SPECIAL500.map((e) => [e.id, e]));
 export function special500ById(id) {
