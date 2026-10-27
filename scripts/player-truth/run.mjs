@@ -906,9 +906,12 @@ async function runOne(args, arena, extra = {}) {
         visualReadiness: sf?.authoredVisualReadiness?.() ?? null,
       };
     }).catch(error => ({ unavailable: String(error.message || error) }));
-    let quote = err && err.environmentQuote;
-    if (!quote) quote = quoteLoadError(String(err && err.message || err));
-    if (!quote) quote = await readLoadError(page);
+    // A terminal startup pane is the running game's own verdict; never re-classify it as a host
+    // problem through the load-string whitelist (that would hide the player's actual cause).
+    const startupFailure = err && err.startupFailure || null;
+    let quote = !startupFailure && err && err.environmentQuote;
+    if (!startupFailure && !quote) quote = quoteLoadError(String(err && err.message || err));
+    if (!startupFailure && !quote) quote = await readLoadError(page);
     if (quote) {
       trace.meta.environmentQuote = quote;
       stopReason = `HARNESS ENVIRONMENT: route load failed: "${quote}"`;
@@ -949,7 +952,7 @@ async function runOne(args, arena, extra = {}) {
         console.error(stopReason);
       } else {
         stopReason = formatted;
-        trace.route.steps.push({ name: 'route', ok: false, detail: stopReason });
+        trace.route.steps.push({ name: 'route', ok: false, detail: stopReason, ...(startupFailure ? { startupFailure } : {}) });
         console.error(err);
       }
       if (browserNotes.length) console.error('browser close notes:', browserNotes.join(' | '));

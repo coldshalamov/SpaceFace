@@ -37,6 +37,58 @@ function environmentError(quote) {
   return err;
 }
 
+/**
+ * The terminal startup pane's own cause, when the game has already stopped trying.
+ *
+ * `failGameStart` retires the opening paint hold and presents a public Retry / Back to menu pane
+ * inside #boot-overlay. That pane is a definitive route failure - the running game decided the
+ * launch cannot finish - but a reader that only matches known load sentences keeps polling for the
+ * whole timeout and then reports a generic timeout, hiding the cause the player is looking at.
+ *
+ * The pane stays in the DOM after a retry/back, so only a VISIBLE pane on a VISIBLE overlay counts;
+ * a stale node under a hidden overlay is not a failure.
+ */
+export async function readStartupFailure(page) {
+  const facts = await page.evaluate(() => {
+    const overlay = document.getElementById('boot-overlay');
+    const pane = overlay && overlay.querySelector('[data-startup-failure="true"]');
+    if (!pane) return { found: false };
+    const overlayStyle = getComputedStyle(overlay);
+    const paneStyle = getComputedStyle(pane);
+    const line = (sel) => String((pane.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+    return {
+      found: true,
+      overlayVisible: overlayStyle.display !== 'none' && overlayStyle.visibility !== 'hidden'
+        && Number(overlayStyle.opacity) >= 0.05,
+      paneVisible: paneStyle.display !== 'none' && paneStyle.visibility !== 'hidden'
+        && pane.getClientRects().length > 0,
+      stage: String(pane.getAttribute('data-startup-stage') || ''),
+      code: String((pane.querySelector('.sf-state__word') || {}).getAttribute?.('data-sf-code') || ''),
+      headline: line('.sf-state__head'),
+      detail: line('.sf-state__detail'),
+      text: String(pane.innerText || ''),
+    };
+  }).catch(() => ({ found: false }));
+  return startupFailureQuote(facts);
+}
+
+/** Pure decision for [readStartupFailure]: the player's stage, code and cause, or null. */
+export function startupFailureQuote(facts = {}) {
+  if (!facts || facts.found !== true || facts.overlayVisible !== true || facts.paneVisible !== true) return null;
+  const stage = norm(facts.stage) || 'startup';
+  const code = norm(facts.code);
+  const reported = norm(facts.detail) || norm(facts.text) || norm(facts.headline) || 'the launch stopped';
+  return `startup failed during ${stage}${code ? ` (${code})` : ''}: ${reported}`;
+}
+
+// A terminal startup pane is the game's own verdict, so it must never be re-classified as a host
+// problem by the load-string whitelist. run.mjs checks this marker before that whitelist.
+function startupFailureError(quote) {
+  const err = new Error(quote);
+  err.startupFailure = quote;
+  return err;
+}
+
 export async function bootToMenu(page, baseUrl, step) {
   await installFirstLightPromptHandler(page, step);
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
@@ -44,6 +96,8 @@ export async function bootToMenu(page, baseUrl, step) {
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
+    const failure = await readStartupFailure(page);
+    if (failure) throw startupFailureError(failure);
     const ready = await page.evaluate(() => {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
@@ -59,6 +113,8 @@ export async function bootToMenu(page, baseUrl, step) {
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
+  const failure = await readStartupFailure(page);
+  if (failure) throw startupFailureError(failure);
   throw new Error('main menu did not appear');
 }
 
@@ -93,6 +149,8 @@ export async function waitUntilFlight(page, { timeout = 600000, active = false }
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
+    const failure = await readStartupFailure(page);
+    if (failure) throw startupFailureError(failure);
     const flight = await page.evaluate((needActive) => {
       const st = window.SF && window.SF.state;
       if (!st || st.mode !== 'flight') return false;
@@ -104,6 +162,8 @@ export async function waitUntilFlight(page, { timeout = 600000, active = false }
   }
   const quote = await readLoadError(page);
   if (quote) throw environmentError(quote);
+  const failure = await readStartupFailure(page);
+  if (failure) throw startupFailureError(failure);
   throw new Error(active ? 'flight did not become active before the timeout' : 'flight did not start before the timeout');
 }
 
