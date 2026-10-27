@@ -262,6 +262,15 @@ export const OWNED_RUNTIME_MODULES = Object.freeze({
     tick: 'owned',
     driven: Object.freeze(['economy:tick', 'entity:killed']),
   }),
+  // createScavengerOccupationSwitch(uniqueWrecks) returns { departed, jobComplete, killed,
+  // sync, clear, status }; uniqueWrecks — an event-driven registered system — drives departed
+  // from 'wreckEcology:departed', jobComplete from 'npcjobs:complete', killed from
+  // 'entity:killed', and sync from its 'economy:tick' listener. The switch has no own tick.
+  scavengerOccupationSwitch: Object.freeze({
+    owner: 'uniqueWrecks',
+    tick: 'owned',
+    driven: Object.freeze(['wreckEcology:departed', 'npcjobs:complete', 'entity:killed', 'economy:tick']),
+  }),
 });
 
 export function isNodeSafeSystemId(id) {

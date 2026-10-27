@@ -48,7 +48,9 @@ test('detail CSS wraps long tokens and bounds scrolling to narrow or short viewp
  const source=readFileSync(new URL('../src/ui/contactHailPrompt.js',import.meta.url),'utf8');
  assert.match(source,/\.sf-contact-hail__line \{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap/);
  assert.match(source,/\.sf-contact-hail__panel--detail \{ max-height:min\(480px, calc\(100dvh - 90px\)\);\s*overflow-y:auto/);
- assert.match(source,/\.sf-contact-hail__panel--detail \.sf-contact-hail__line \{ white-space:normal;\s*overflow:visible; overflow-wrap:anywhere; text-overflow:clip/);
+ // The wrap rule is grouped with the tow-advice line (tally_three advice needs the same
+ // multi-line treatment); pin the grouped selector and the wrapping semantics it carries.
+ assert.match(source,/\.sf-contact-hail__panel--detail \.sf-contact-hail__line,\s*\.sf-contact-hail__line\.sf-contact-hail__tow-advice \{ white-space:normal;\s*overflow:visible; overflow-wrap:anywhere; text-overflow:clip/);
  assert.match(source,/width:min\(332px, calc\(100vw - 28px\)\)/);
 });
 

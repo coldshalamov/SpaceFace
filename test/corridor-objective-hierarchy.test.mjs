@@ -215,7 +215,9 @@ test('tracker priority source pins include corridor idle before untracked/story 
   assert.match(missions, /existingWp|!existingWp|!state\.nav\.waypoint|nav\.waypoint is absent|!existingWp/);
 
   // HUD: single paint arm — navWaypoint || buildCorridorOpeningWaypoint (no dual branch).
-  const trackerBlock = hud.match(/\/\/ --- mission tracker @10Hz ---[\s\S]*?\/\/ --- credits \/ cargo/);
+  // (The old "credits / cargo" sibling block is gone; contextual cargo panels now rebuild on
+  // data events, and the target-panel block follows the tracker tick.)
+  const trackerBlock = hud.match(/\/\/ --- mission tracker @10Hz ---[\s\S]*?\/\/ --- target panel/);
   assert.ok(trackerBlock, 'mission tracker tick block present');
   const block = trackerBlock[0];
   assert.match(block, /navWaypoint\s*\|\|\s*buildCorridorOpeningWaypoint\(state\)/,

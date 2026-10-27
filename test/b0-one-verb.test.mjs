@@ -37,6 +37,7 @@ const CORE_COPY_SRC = read('../src/ui/localizedCoreCopy.js');
 const MISSION_LOG_SRC = read('../src/ui/screens/missionLog.js');
 const STORY_SRC = read('../src/systems/story.js');
 const MISSIONS_SYS_SRC = read('../src/systems/missions.js');
+const MISSION_STORY_OPS_SRC = read('../src/systems/missionStoryOps.js');
 
 const B0_VERB_CLASS = /thrust|speed/i;
 
@@ -293,7 +294,7 @@ check('tutorial voice is a single chokepoint with one B0 beat line', () => {
   );
   assert.match(
     ONBOARDING_SRC,
-    /_sayTutorial\(beat\.line,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
+    /_sayTutorial\(ob\.beatAction,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
     'beat entry emits only the authored line through _sayTutorial and conditionally yields its visual',
   );
   // No parallel B0 splash/modal voice stack.
@@ -309,7 +310,7 @@ check('matching persistent objective suppresses only the duplicate visual tutori
   );
   assert.match(
     advance,
-    /_sayTutorial\(beat\.line,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
+    /_sayTutorial\(ob\.beatAction,\s*\{\s*visual:\s*!persistentObjectiveOwnsLine\s*\}\)/,
     'only the transient visual is suppressed when the persistent objective owns the line',
   );
 
@@ -346,8 +347,10 @@ check('story cold-start / longform yield the channel while tutorial B0 owns the 
   assert.match(STORY_SRC, /_tutorialOwnsOpening\(\)/, 'story defers while tutorial owns opening');
   assert.match(STORY_SRC, /_coldStartDeferred/, 'cold-start is deferred, not a second t=0 command');
   assert.match(STORY_SRC, /tutorial:finished/, 'story releases after tutorial finishes');
+  // The tutorial-opening gate moved to missionStoryOps.js in the Oct-23 missions.js LOC split;
+  // pin the live call seam where tracked-mission nav claims yield to the opening beat.
   assert.match(
-    MISSIONS_SYS_SRC,
+    MISSION_STORY_OPS_SRC,
     /_tutorialOwnsOpening\(\)/,
     'missions must not force story waypoint/toast over the tutorial opening',
   );

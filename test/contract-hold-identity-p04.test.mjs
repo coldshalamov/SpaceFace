@@ -136,8 +136,13 @@ function makeContractsDom() {
   const screens = [];
   function wireScreen(root) {
     const regions = {};
+    // Parsed markup always carries parents: the screen pins the standing-orders sentence under
+    // the dispatch label via parentNode.appendChild, so bare region nodes must not be parentless.
+    const frame = new CtNode('div', doc);
     for (const sel of ['.sx-ct-dispatch__label', '.sx-ct__board', '.sx-ct__dossier', '.sx-ct__active']) {
-      regions[sel] = new CtNode('div', doc);
+      const region = new CtNode('div', doc);
+      frame.appendChild(region);
+      regions[sel] = region;
     }
     const dossier = regions['.sx-ct__dossier'];
     let accept = null;

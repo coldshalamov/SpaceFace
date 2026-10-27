@@ -518,6 +518,16 @@ export function isMasslineObstructed({
     masslineObstacleXZ(rock, simTime, xz);
     const px = xz.x - sx;
     const pz = xz.z - sz;
+    // A wreck/station disc is a sparse bounding hull, not solid mass: a mounted payload
+    // (orchard pod socket, salvage on a hulk) legitimately sits INSIDE its carrier's disc.
+    // The mount cannot block access to its own cargo — the gate only stops lines through a
+    // hull to a target on the far side. Asteroid discs stay solid: inside one is inside rock.
+    if (rock.type === 'wreck' || rock.type === 'station') {
+      const hx = tx - xz.x;
+      const hz = tz - xz.z;
+      const hr = masslineObstacleRadius(rock);
+      if (hx * hx + hz * hz <= hr * hr) continue;
+    }
     // Quadratic segment-vs-disc on the OPEN span: the disc's intersection interval is
     // [along - half, along + half] in unit-direction world units, and only an overlap with
     // (0, span) blocks. A rock that only touches an endpoint is clear; one that overlaps the

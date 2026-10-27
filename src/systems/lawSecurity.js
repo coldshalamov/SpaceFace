@@ -1885,6 +1885,14 @@ export const lawSecurity = {
       // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
       // authored slot: a late, stacked response beats none, and crime must never go unanswered.
       spec.pos = clearPos || pos;
+      // D207: sector ownership rides the body — an unstamped reserve roams untagged past residency
+      // teardown, and the durable kill/capture chain (worldRecords ambient-ship lane) needs it too.
+      const homeSectorId = station?.data?.sectorId || station?.sectorId || currentSectorId(state);
+      if (homeSectorId) {
+        spec.homeSectorId = homeSectorId;
+        spec.data.homeSectorId = homeSectorId;
+        if (spec.data.sectorId == null) spec.data.sectorId = homeSectorId;
+      }
       let spawned;
       try {
         spawned = this.helpers.spawnEntity(spec);

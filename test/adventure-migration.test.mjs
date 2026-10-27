@@ -336,14 +336,17 @@ test('the Foundry pulse joins the reserved-unique manifest with a frozen count',
     .sort();
   // List re-pinned 2026-10-03: the four precursor-machine modules joined the reserved set with the
   // wave-C alien ecology landing (af734e085 — precursorMachines grants them via grantAlienUnique).
+  // Re-pinned 2026-10-27: the Blackbird Overbored Governor joined the set with the Black Flag
+  // custody/yards landing (5fd400ea2 — blackbird_prize pays it as the prototype prize module).
   assert.deepEqual(reservedOutsideWrecks, [
     'mod_lattice_coupler_s',
     'mod_precursor_handshake_s',
     'mod_quiet_equation_s',
     'mod_resonant_massline_m',
+    'unique_blackbird_governor',
     'unique_broken_ring_whip',
     'unique_mirrorjaw_pulse',
     'unique_no_cut_filament',
     'unique_toll_saint_bridle',
-  ], 'the reserved manifest outside the twelve wrecks is the three ace trophy heads, the Foundry pulse, and the four precursor-machine modules');
+  ], 'the reserved manifest outside the twelve wrecks is the three ace trophy heads, the Foundry pulse, the Blackbird governor prize, and the four precursor-machine modules');
 });

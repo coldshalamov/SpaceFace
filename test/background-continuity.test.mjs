@@ -16,8 +16,15 @@ test('the entire extreme chase footprint remains inside the unshrunk debris cell
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld(true);
   const ray = new THREE.Raycaster();
-  for (const spec of Object.values(PARALLAX_BANDS)) {
-    assert.ok(spec.y + spec.yJitter / 2 + spec.radius1 * 2 < 0, 'dressing stays below gameplay');
+  for (const [band, spec] of Object.entries(PARALLAX_BANDS)) {
+    // 5803e145eca authored the above-plane drift sheet (row 427): grains over the flight
+    // plane by design, kept far too small to read as obstacles. The other bands still
+    // dress strictly below gameplay.
+    if (band === 'drift') {
+      assert.ok(spec.y > 0 && spec.radius1 <= 0.2, 'drift stays an above-plane dust sheet');
+    } else {
+      assert.ok(spec.y + spec.yJitter / 2 + spec.radius1 * 2 < 0, 'dressing stays below gameplay');
+    }
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -spec.y + spec.yJitter / 2);
     for (const x of [-1, 1]) for (const y of [-1, 1]) {
       ray.setFromCamera(new THREE.Vector2(x, y), camera);

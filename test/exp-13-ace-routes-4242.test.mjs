@@ -70,10 +70,17 @@ test('seed 4242: dock hands repeat the home-sector rumour and drop it when the w
   for (const home of HOME) {
     const openAt = home.windowStartS + 120;
     const closedAt = home.windowStartS === 0 ? 2000 : 120;
-    const open = { seed: 4242, simTime: openAt };
-    const closed = { seed: 4242, simTime: closedAt };
+    const open = { seed: 4242, simTime: openAt, player: { uniqueWrecks: { bearings: {} } } };
+    const closed = { seed: 4242, simTime: closedAt, player: { uniqueWrecks: { bearings: {} } } };
 
-    const reply = buildReply('barkeep', 'rumors', { state: open }, home.stationId);
+    // One-shot authored wreck leads outrank the rotating ace line (Sker, Helios, Ashcache
+    // each carry one): record the lead's bearing so the windowed rumour answers next.
+    let reply = buildReply('barkeep', 'rumors', { state: open }, home.stationId);
+    if (reply && reply.uniqueWreckRumor) {
+      open.player.uniqueWrecks.bearings[reply.uniqueWreckRumor.wreckId] = { phase: 'rumored' };
+      closed.player.uniqueWrecks.bearings[reply.uniqueWreckRumor.wreckId] = { phase: 'rumored' };
+      reply = buildReply('barkeep', 'rumors', { state: open }, home.stationId);
+    }
     assert.ok(reply, `${home.stationId} answers rumors`);
     assert.ok(reply.text.includes(home.named), `${home.stationId} names ${home.named}`);
     assert.equal(reply.aceRouteRumor.aceId, home.aceId);

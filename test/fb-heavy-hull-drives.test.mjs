@@ -16,18 +16,11 @@
 //     colossus     300         3.62 s                    2.75 s      957 WU
 //     leviathan    600         3.62 s                    2.75 s      957 WU
 //
-//   A 600-ton flagship answers the throttle exactly like a 68-ton tug. FB-059's mechanism fixes
-//   this by REASSIGNING authored drives per hull: `drive_gravimetric_m` (already authored in
-//   PROPULSION_PROFILES, fitted to no hull) to the Bastion and the Warden, a new torch XL
-//   variant for the Colossus/Leviathan mass band, Hawser staying on the torch.
-//
-// WHY THE FIX IS NOT IN THIS COMMIT: the hull→drive assignment (`driveId` per hull) lives in
-// `src/data/ships.js`, which is under an active foreign writer (protected path — preserved, not
-// edited, per the concurrent-work rules). This sitting owns `src/core/flight/propulsionCatalog.js`
-// and pins the truth instead. The differentiation is ONE data edit away; when the data owner
-// lands it, the "identical triples" assertion below goes red BY DESIGN — rewrite it then to pin
-// the three distinct handling triples the packet's done-when asks for ("three distinct handling
-// triples across the five heavies").
+//   A 600-ton flagship answered the throttle exactly like a 68-ton tug — until the data
+//   owner landed the FB-059 fit exactly as the packet drew it: `drive_gravimetric_m` to the
+//   Bastion and the Warden, a torch XL variant for the Colossus/Leviathan mass band, the
+//   Hawser keeping its torch. The "identical triples" residual went red by design; this
+//   file now pins the landed three-band contract the packet's done-when named.
 //
 // Determinism: scripted fixed-step integration only; no Math.random, no wall time.
 import assert from 'node:assert/strict';
@@ -140,27 +133,41 @@ test('FB-059 the heavy ladder is the real fleet: five distinct hulls, one shared
   assert.equal(new Set(masses).size, HEAVIES.length, 'the five heavies must be distinct hulls');
   assert.deepEqual(masses, [...masses].sort((a, b) => a - b), 'hawser→leviathan ascend in mass');
 
-  // RESIDUAL (FB-059): every heavy still resolves the same authored drive.
+  // LANDED (FB-059): the data owner's fit is in — three authored drive bands.
+  const EXPECTED_DRIVES = {
+    ship_hawser: 'drive_torch_l',
+    ship_bastion: 'drive_gravimetric_m',
+    ship_warden: 'drive_gravimetric_m',
+    ship_colossus: 'drive_torch_xl',
+    ship_leviathan: 'drive_torch_xl',
+  };
   for (const id of HEAVIES) {
-    assert.equal(triples[id].driveId, 'drive_torch_l',
-      `${id} resolves drive_torch_l today — when this fails, the data owner's FB-059 fit has landed`);
+    assert.equal(triples[id].driveId, EXPECTED_DRIVES[id],
+      `${id} rides its authored FB-059 band`);
   }
 
-  // And because kernel acceleration is mass-independent at stock, the FEEL is byte-identical:
-  // the measured clone receipt (numbers in the file header; re-measured here every run).
-  for (const key of ['t90', 't180', 'vCap', 'stopDist']) {
-    const values = HEAVIES.map((id) => triples[id][key]);
-    assert.equal(new Set(values).size, 1,
-      `${key} identical across the five heavies (${values.join(', ')}) — the shared-drive clone, ` +
-      'pinned as the FB-059 residual. When the authored drive fit lands in ships.js, this ' +
-      'assertion is REPLACED by three-distinct-triples pinning (the packet done-when).');
-  }
-  assert.equal(triples.ship_hawser.cap, 320, 'the torch governor cap the heavies all share');
+  // The packet done-when: three distinct handling triples across the five heavies —
+  // the tug keeps its torch, the mid band runs the gravimetric's short leash, the
+  // flagships carry the XL's long reach. Within a band the feel stays byte-identical
+  // (kernel acceleration is mass-independent at stock): measured, not assumed.
+  const tripleKey = (t) => `${t.t90}|${t.t180}|${t.vCap}|${t.stopDist}`;
+  const distinct = new Set(HEAVIES.map((id) => tripleKey(triples[id])));
+  assert.equal(distinct.size, 3,
+    `three distinct handling triples across the five heavies (got ${distinct.size})`);
+  assert.equal(tripleKey(triples.ship_bastion), tripleKey(triples.ship_warden),
+    'the gravimetric pair share one feel');
+  assert.equal(tripleKey(triples.ship_colossus), tripleKey(triples.ship_leviathan),
+    'the XL pair share one feel');
+
+  // The measured landed receipt — the numbers this file's header once called the residual.
+  assert.equal(triples.ship_hawser.cap, 320, 'the tug keeps the torch governor cap');
+  assert.equal(triples.ship_bastion.cap, 156, 'the gravimetric band caps lower, answers sooner');
+  assert.equal(triples.ship_colossus.cap, 280, 'the XL band trades cap for reach');
 });
 
-test('FB-059 the fix mechanism exists authored: drive_gravimetric_m is in the catalog and unfitted', () => {
-  // The packet's direction: no new profiles — fit the authored one. The catalog ships it; the
-  // fleet does not use it yet. This is the one-edit-away receipt.
+test('FB-059 the landed fit: all three authored drives are in the catalog and in service', () => {
+  // The packet's direction held: no new reaction clones — the authored gravimetric profile
+  // took the mid band and the XL variant took the flagships. Both are live service now.
   const grav = PROPULSION_PROFILES.drive_gravimetric_m;
   assert.ok(grav, 'drive_gravimetric_m is authored in PROPULSION_PROFILES');
   assert.equal(grav.family, 'gravimetric');
@@ -172,8 +179,10 @@ test('FB-059 the fix mechanism exists authored: drive_gravimetric_m is in the ca
     const { profile } = spawnHull(hull.id);
     fittedDriveIds.add(profile.id);
   }
-  assert.equal(fittedDriveIds.has('drive_gravimetric_m'), false,
-    'drive_gravimetric_m is authored and fitted to no hull — the FB-059 mechanism is a data edit');
+  assert.equal(fittedDriveIds.has('drive_gravimetric_m'), true,
+    'the gravimetric band is in live service (bastion, warden)');
   assert.equal(fittedDriveIds.has('drive_torch_l'), true,
-    'the torch family is in live service (the drive the heavies share)');
+    'the torch family is in live service (the tug keeps it)');
+  assert.equal(fittedDriveIds.has('drive_torch_xl'), true,
+    'the XL variant is in live service (colossus, leviathan)');
 });
