@@ -12,7 +12,8 @@ const root=new URL('../',import.meta.url);
 const explicitRoot=process.env.CERES_ROUTE_SOURCE_ROOT ? new URL('file://'+process.env.CERES_ROUTE_SOURCE_ROOT.replace(/\/$/,'')+'/') : root;
 const integrationRoot=process.env.CERES_ROUTE_INTEGRATION_ROOT ? new URL('file://'+process.env.CERES_ROUTE_INTEGRATION_ROOT.replace(/\/$/,'')+'/') : explicitRoot;
 const sparse=process.env.CERES_ROUTE_AUX_SOURCES ? JSON.parse(gunzipSync(fs.readFileSync(process.env.CERES_ROUTE_AUX_SOURCES))) : {};
-function read(p){const base=p==='src/systems/missions.js'||p==='src/story/campaign47a/embodiedMissions.js'?integrationRoot:explicitRoot;const url=new URL(p,base);if(fs.existsSync(url))return fs.readFileSync(url,'utf8');if(sparse[p])return sparse[p];throw Error('Missing production source '+url+'; sparse review may explicitly set CERES_ROUTE_AUX_SOURCES');}
+const auxRoots=(process.env.CERES_ROUTE_AUX_ROOTS||'').split(':').filter(Boolean).map(p=>new URL('file://'+p.replace(/\/$/,'')+'/'));
+function read(p){const base=p==='src/systems/missions.js'||p==='src/story/campaign47a/embodiedMissions.js'?integrationRoot:explicitRoot;const url=new URL(p,base);if(fs.existsSync(url))return fs.readFileSync(url,'utf8');for(const root of auxRoots){const url=new URL(p,root);if(fs.existsSync(url))return fs.readFileSync(url,'utf8');}if(sparse[p])return sparse[p];throw Error('Missing production source '+url+'; sparse review may explicitly set CERES_ROUTE_AUX_SOURCES');}
 const context=vm.createContext({console});const mods=new Map();
 const add=(p,s)=>mods.set(p,new vm.SourceTextModule(s,{context,identifier:p}));
 for(const p of ['src/story/campaign47a/campaignData.js','src/story/campaign47a/campaignTransitions.js','src/story/campaign47a/campaignSchema.js','src/story/campaign47a/storySpine.js','src/story/campaign47a/campaignIntents.js','src/story/campaign47a/campaignReceipts.js','src/core/rng.js','src/story/campaign47a/embodiedMissions.js'])add(p,read(p));
@@ -23,9 +24,13 @@ add('src/story/endings/endingDefs.js','export const ENDING_DEFS=[];');
 add('src/missions/furnaceWorksite.js',read('src/missions/furnaceWorksite.js'));
 add('src/data/furnace.js',read('src/data/furnace.js'));
 add('src/data/sectorCoordinates.js',"export function sectorLocalToGlobalForSector(p,s){if(s!=='sector_ceres_belt')throw Error(s);return {x:p.x-12288,z:p.z+8192}} export function sectorMembershipAtGlobal(p){return p.x>8000?'sector_tethys_junction':'sector_ceres_belt'}");
+for(const p of ['src/missions/cinderRoute.js','src/characters/rookRules.js','src/data/rook.js'])add(p,read(p));
+// B1 never enters Cinder's zone path. Fail loudly rather than fake a positive route.
+add('src/data/sectorZones.js','export function zonesForSector(){throw Error("Cinder zones outside B1 regression")}');
 const production=read('src/systems/missions.js');
 function method(name){const at=production.indexOf('  '+name+'(');if(at<0)throw Error(name);const end=production.indexOf('\n  },',at);return production.slice(at,end+5);}
-add('src/systems/routeProjection.js',`import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
+add('src/systems/routeProjection.js',`import { cinderRouteFocus } from '../missions/cinderRoute.js';
+import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 const TYPE_BY_ID=new Map([['patrol_clear',{}]]),SECTOR_BY_ID=new Map([['sector_ceres_belt',{name:'Ceres Belt'}]]),STATION_INFO=new Map([['station_ceres',{name:'Ceres Refinery'}]]);
 const BULK_HAUL_TYPE='bulk_haul',PQ019C_HEIST_TYPE='heist',BREAKAWAY_RECOVERY_TYPE='breakaway',COUNTERWEIGHT_WATCH_TYPE='counterweight',SPLIT_MANIFEST_TYPE='split',QUIET_BERTH_TYPE='quiet',PHYSICAL_TYPE_SET=new Set();const setPieceCauseOf=()=>false,deferredEnterNow=s=>s.simTime,missionNavReason=()=> 'station fallback';
 export const ops={${['_instanceFromOffer','_objectiveTarget','_typeSpawnsTargets','_missionWaypoint'].map(method).join('\n')}};`);
@@ -39,7 +44,8 @@ const clauseSource=fs.readFileSync(process.env.FURNACE_CLAUSES_SOURCE || new URL
 const clause=clauseSource.slice(clauseSource.indexOf('export function settleContractClauses'),clauseSource.indexOf('/**',clauseSource.indexOf('export function settleContractClauses')));
 const receipts=production.slice(production.indexOf('export function normalizeMissionReceipts'),production.indexOf('export const CLEAN_PHYSICAL_RELEASE'));
 const cleanup=storyOps.slice(storyOps.indexOf('  _cleanupTargets(m) {'),storyOps.indexOf('    // Capital boss contracts',storyOps.indexOf('  _cleanupTargets(m) {')))+'},';
-add('src/systems/completionProjection.js',`import { prepareFurnaceSettlement, recordFurnaceAftermathFact, retireFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
+add('src/systems/completionProjection.js',`import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, retainCinderRetry } from '../missions/cinderRoute.js';
+import { prepareFurnaceSettlement, recordFurnaceAftermathFact, retireFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
 import { furnaceDetail, authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js';
 import { CAMPAIGN_BEATS, CAMPAIGN_BEATS as STORY_BEATS } from '../story/campaign47a/campaignData.js';
 import { recordBeatStep,isBeatStepsComplete,completeBeatStepsForLegacy } from '../story/campaign47a/campaignTransitions.js';

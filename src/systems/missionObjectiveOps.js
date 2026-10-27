@@ -1,3 +1,4 @@
+import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
 import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
 import { furnaceDetail, authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -205,6 +206,7 @@ export const missionObjectiveOps = {
 
   _onKill(p) {
     if (!p) return;
+    observeCinderKill(this, p);
     recordFurnaceAftermathFact(this, p, 'lost');
     // Only an actual kill loses a disposal lot; residency despawn is not destruction.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -264,7 +266,7 @@ export const missionObjectiveOps = {
    */
   _settleBountyTargetKill(m, i, p) {
     // Versioned refinery work is a cleared-place predicate, not fabricated kill credit.
-    if (authoredFurnaceWorksite(m)) return;
+    if (authoredFurnaceWorksite(m) || authoredCinderRoute(m)) return;
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
     if (m.params && m.params.requiredModule === 'mod_ram_plate') {
       if (!shipCarriesModule(activeOwnedShip(this.state), 'mod_ram_plate')) return;
@@ -305,7 +307,9 @@ export const missionObjectiveOps = {
       const accounted = furnaceAccounting(m);
       if (accounted.received + accounted.lost < 3) return false;
     } else if (Number(p.furnaceFeedsNeeded) > 0 && (p.furnaceFeeds | 0) < p.furnaceFeedsNeeded) return false;
-    if (Number(p.rookDeliveryNeeded) > 0 && (p.rookDeliveries | 0) < p.rookDeliveryNeeded) return false;
+    if (authoredCinderRoute(m)) {
+      if (!cinderExtrasSatisfied(m, this.state)) return false;
+    } else if (Number(p.rookDeliveryNeeded) > 0 && (p.rookDeliveries | 0) < p.rookDeliveryNeeded) return false;
     // W-BOOKS-3-4: Feed the Maw — the maw must be stunned with hot slag before the tow
     // can leave the lane; a thrashing maw does not ride a Line out.
     if (Number(p.mawStunsNeeded) > 0 && (p.mawStuns | 0) < p.mawStunsNeeded) return false;
@@ -368,11 +372,22 @@ export const missionObjectiveOps = {
 
   _onRookWreckDelivered(p) {
     if (!p) return;
+    const retry = this.state.missions.cinderRetry;
+    if (retry && acceptCinderRookReceipt(this, retry, p)) return;
     const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || !m.params || !(Number(m.params.rookDeliveryNeeded) > 0)) continue;
       if (m.destSectorId && sectorId && m.destSectorId !== sectorId) continue;
+      if (authoredCinderRoute(m)) {
+        if (!acceptCinderRookReceipt(this, m, p)) continue;
+        delete m._extrasAnnounced;
+        this._sayStoryLine(m.objectiveProgress >= m.objectiveTarget
+          ? 'Rook logged the marked Cinder hull. All three lane clearances are filed.'
+          : 'Rook logged the marked Cinder hull. The remaining lane clearances are still owed.', 5);
+        driveCinderRoute(this, m);
+        return;
+      }
       m.params.rookDeliveries = (m.params.rookDeliveries | 0) + 1;
       delete m._extrasAnnounced;
       if (m.objectiveProgress >= m.objectiveTarget && this._bookExtrasSatisfied(m)) {
@@ -424,6 +439,7 @@ export const missionObjectiveOps = {
     if (!p || p.id == null) return;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
+      if (authoredCinderRoute(m)) continue;
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
       const gone = (id) => {
         const e = this.state.entities && this.state.entities.get(id);

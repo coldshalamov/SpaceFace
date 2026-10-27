@@ -1837,6 +1837,7 @@ export const mining = {
     const aftermathPlan = aftermathOwner && typeof aftermathOwner.immediateWreckPlan === 'function'
       ? aftermathOwner.immediateWreckPlan(p)
       : null;
+    if (aftermathPlan?.deferred === true) return null;
     // A duplicate kill notification for a marker whose wreck is already live must not mint a second
     // salvage pool. The durable owner has already checked entity liveness for this exact marker.
     if (aftermathPlan && aftermathPlan.entityId != null) {

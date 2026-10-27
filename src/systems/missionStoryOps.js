@@ -1,3 +1,4 @@
+import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
 import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
@@ -1075,6 +1076,7 @@ export const missionStoryOps = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
+    if (retainCinderRetry(this, m)) return;
     if (m?.storyTag === 'campaign47a:b1:infested' && m.params?.furnaceWorksiteVersion === 1) {
       // Ecology owns these living actors and its permanent clearance ledger. Settlement
       // releases borrowed references; it is neither a kill nor permission to delete fauna.
@@ -1494,6 +1496,9 @@ export const missionStoryOps = {
     }
     // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
+      // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
+      // ownership retains the real survivors; a hard exit is not their destruction.
+      if (authoredCinderRoute(m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
         snapshotReckoning(this, m);
@@ -2474,6 +2479,10 @@ export const missionStoryOps = {
     const popup = (sender, text, ttl = 7) => this.bus.emit('comms:popup', {
       id: `b34_accept_${scene}_${inst.id}`, sender, category: 'story', ttl, persist: true, text,
     });
+    if (scene === 'cinder_board' && authoredCinderRoute(inst)) {
+      popup("ROOK'S BOOTH", 'Cinder One, Two and Three hold the Ashfall approach in Charon. Clear all three; tow one of their actual marked hulls to my lit ring at Expanse. Brake the hull inside it. Keep one intact — I do not buy a story about a wreck.', 10);
+      return true;
+    }
     if (scene === 'variance_delivery') {
       popup('SLATE', 'She is called VARIANCE ADJUSTMENT. Hawser class, mine — two passes on the seam, hand-set. Tow the core in and fly her like you mean it.', 8);
       return true;
@@ -2510,7 +2519,7 @@ export const missionStoryOps = {
    * book's pending contract is resolved from the sidecar step log (so an active legacy
    * contract still tracks, and a world-work gap in the list posts nothing).
    */
-  _activateBookContractOnDeparture(beatIndex) {
+  _activateBookContractOnDeparture(beatIndex, departedStationId = null) {
     const story = this.state && this.state.story;
     if (!story || story.beatIndex !== beatIndex) return false;
     const prefix = `campaign47a:b${beatIndex}:`;
@@ -2532,6 +2541,7 @@ export const missionStoryOps = {
       legacy: campaign47aRouteKind(this.state) === 'legacy',
     });
     if (!offer || !offer.stationId) return false;
+    if (authoredCinderRoute(offer) && departedStationId !== offer.stationId) return false;
     const board = this.ensureBoard(offer.stationId);
     const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;
@@ -2542,8 +2552,8 @@ export const missionStoryOps = {
     return this._activateBookContractOnDeparture(1);
   },
 
-  _activateContract47aB2OnDeparture() {
-    return this._activateBookContractOnDeparture(2);
+  _activateContract47aB2OnDeparture(departedStationId = null) {
+    return this._activateBookContractOnDeparture(2, departedStationId);
   },
 
   _activateContract47aB3OnDeparture() {
@@ -2568,6 +2578,8 @@ export const missionStoryOps = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.cinderRetry;
+    delete state.missions.furnaceWorksiteAftermath;
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
@@ -2714,6 +2726,7 @@ export const missionStoryOps = {
       story: this.state.story,
     };
     if (m.furnaceWorksiteAftermath) serialized.furnaceWorksiteAftermath = m.furnaceWorksiteAftermath;
+    if (m.cinderRetry) serialized.cinderRetry = JSON.parse(JSON.stringify(m.cinderRetry));
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
@@ -2763,6 +2776,8 @@ export const missionStoryOps = {
     if (!data) return;
     const state = this.state;
     restoreFurnaceAftermath(this, data.furnaceWorksiteAftermath);
+    if (authoredCinderRoute(data.cinderRetry)) state.missions.cinderRetry = JSON.parse(JSON.stringify(data.cinderRetry));
+    else delete state.missions.cinderRetry;
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);

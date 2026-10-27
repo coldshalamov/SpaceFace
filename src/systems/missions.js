@@ -1,3 +1,4 @@
+import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -308,6 +309,7 @@ import {
   getEmpireSeedProgram,
   getDeepReachOperation,
   getEmbodiedLocation,
+  getBeatStepStatus,
   recordBeatStep,
   syncObservedBeat,
   recoveryCommsForBeat,
@@ -1638,10 +1640,11 @@ export const missions = {
       this._resolveVarianceSeamWeld(stationId);
       this._storyTrigger('dock', { stationId });
     });
-    bus.on('dock:undocked', () => {
+    bus.on('dock:undocked', (p) => {
+      const departedStationId = p?.stationId || this._lastDockedStation;
       this._lastDockedStation = null;
       this._activateContract47aB1OnDeparture();
-      this._activateContract47aB2OnDeparture();
+      this._activateContract47aB2OnDeparture(departedStationId);
       this._activateContract47aB3OnDeparture();
       this._activateContract47aB4OnDeparture();
       this._onPassengerUndock();
@@ -1660,6 +1663,9 @@ export const missions = {
       this._observeCampaign47aInterludeResolved(p);
       this._recordCampaignBookSignal('encounter:resolved', p);
     });
+    bus.on('aftermathWreck:recorded', (p) => observeCinderMarker(this, p));
+    bus.on('aftermathWreck:completed', (p) => observeCinderRetirement(this, p, 'aftermathWreck:completed'));
+    bus.on('aftermathWreck:retired', (p) => observeCinderRetirement(this, p, 'aftermathWreck:retired'));
     bus.on('rookWreck:delivered', (p) => {
       this._onRookWreckDelivered(p);
       this._recordCampaignBookSignal('rookWreck:delivered', p);
@@ -1938,6 +1944,7 @@ export const missions = {
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (m.status !== 'active') continue;
+      if (authoredCinderRoute(m) && driveCinderRoute(this, m) && m.status !== 'active') continue;
       if (m.params?.workingBattlefield) { driveWorkingBattlefield(this, m, i); continue; }
       // Expiry by deadline.
       if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
@@ -2293,6 +2300,7 @@ export const missions = {
     }
 
     const inst = this._instanceFromOffer(offer);
+    initializeCinderRoute(this, inst);
     // A branch selection is atomic: withdraw both siblings from every board before any fee intent
     // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
     const withdrawnSetPiece = setPieceCauseOf(offer)
@@ -3198,6 +3206,8 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    const cinderFocus = cinderRouteFocus(m, this.state);
+    if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);
     if (furnaceFocus) return { ...base, ...furnaceFocus, stationId: null };
 
@@ -3741,6 +3751,25 @@ export const missions = {
     if (beat.beat === 1) {
       const scale = kesslerScaleWaypoint(state);
       if (scale) return { ...base, ...scale };
+    }
+    if (beat.beat === 2) {
+      const done = new Set(getBeatStepStatus(state, 2)?.completed || []);
+      if (!done.has('cinder_board') || (done.has('nest') && !done.has('elroy'))) {
+        const loc = getEmbodiedLocation(2), info = STATION_INFO.get(loc.stationId);
+        const station = currentSectorId === loc.sectorId ? this._liveStation(loc.stationId) : null;
+        return { ...base, label: done.has('cinder_board') ? 'Tethys board — Registry Writ' : 'Tethys board — Cinder marks',
+          reason: done.has('cinder_board') ? 'Dock at Tethys and read the next writ; scan before choosing force or custody.' : 'Dock at Tethys Junction and accept Cinder marks from the mission board before flying to Charon.',
+          stationId: loc.stationId, sectorId: loc.sectorId, sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+          pos: station?.pos ? { ...station.pos } : null };
+      }
+      if (!done.has('compost')) {
+        const garden = (state.entityList || []).find(e => e?.alive !== false && e.data?.understoryGarden === true);
+        const known = garden ? null : Object.values(state.understory?.gardens || {}).find(g => Number.isFinite(g?.x) && Number.isFinite(g?.z));
+        return { ...base, label: garden || known ? 'Compost Run — feed the Understory garden' : 'Compost Run — find an Understory garden',
+          reason: 'The cinder contract is filed. Tow an edible body into a hungry Understory garden. The Nest and Registry Writ are not due yet.',
+          stationId: null, sectorId: garden?.data?.sectorId || known?.sectorId || currentSectorId,
+          targetEntityId: garden?.id ?? null, pos: garden?.pos ? { ...garden.pos } : known ? { x: known.x, z: known.z } : null };
+      }
     }
     if (beat.beat === 0) {
       const asteroid = this._nearestAsteroid();
@@ -5717,6 +5746,8 @@ export const missions = {
     // below runs completely unchanged.
     const mutation = this._mutateInsteadOfFail(m, reason || 'failed');
     m.status = 'failed';
+    // Preserve the finite Cinder cast before a synchronous failure observer can accept retry.
+    retainCinderRetry(this, m);
     this._clearMissionNav(m.id);
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
@@ -6393,7 +6424,7 @@ export const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 export const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
   1: 'Honest Work: the book posts the alloy run first — the Scale 4 weigh and the furnace detail follow.',
-  2: 'First Blood: the cinder board posts first — the Compost Run, the Nest, and the register follow.',
+  2: 'First Blood: dock at Tethys Junction and accept Cinder marks from the mission board. Then fly to Charon; the Compost Run, the Nest, and the register follow in order.',
   3: 'Bigger Boat: take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth — the maw and the Foreman follow.',
   4: 'Pick a Side: accept an intro contract, then run the door\u2019s operation on the board.',
   5: 'Proving Ground: complete your faction\'s mission chain.',

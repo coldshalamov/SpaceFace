@@ -14,18 +14,19 @@
 // time the booth explains itself. Each sale emits rookWreck:delivered for observability.
 
 import { ROOK_BOOTH } from '../data/rook.js';
-import { rookBoothEligible, rookDeliveryCheck, rookPayoutCr } from '../characters/rookRules.js';
+import { rookBoothEligible, rookDeliveryCheck, rookPayoutCr, rookPadPosition } from '../characters/rookRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
 export function rookBoothSpec() {
   return {
     type: 'beacon',
-    pos: { ...ROOK_BOOTH.pad }, vel: { x: 0, z: 0 },
+    pos: rookPadPosition(), vel: { x: 0, z: 0 },
     radius: 12, mass: 1e6, hull: 1, hullMax: 1,
-    collides: false,
+    collides: false, physicsBody: false,
     homeSectorId: ROOK_BOOTH.sectorId,
     data: {
       rookBooth: true, parentType: 'story_prop',
+      circuitMark: true, ringRadius: ROOK_BOOTH.padRadius, visualRadius: ROOK_BOOTH.padRadius,
       scanLabel: "Rook's pad · hulls bought by mass",
       scannerSignalKind: 'salvage',
       homeSectorId: ROOK_BOOTH.sectorId,
@@ -40,6 +41,7 @@ export function createRookBooth() {
       // Singleton re-init retires the old listener set and provider first (ravel/docket law).
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
+      this.registry = ctx.registry;
       this._unsubs = [];
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
@@ -95,6 +97,15 @@ export function createRookBooth() {
     _sync() {
       if (!this.state?.story) return;
       if (!this._adventure()) { this._removeOwned(); return; }
+      // Continue may contain the old local-coordinate mast. Replace only our own visual
+      // through the entity owner; never move a live physics body directly.
+      const pad = rookPadPosition();
+      const beacon = this._beacon();
+      if (beacon && (beacon.pos?.x !== pad.x || beacon.pos?.z !== pad.z
+        || beacon.data?.ringRadius !== ROOK_BOOTH.padRadius || beacon.data?.circuitMark !== true
+        || beacon.data?.visualRadius !== ROOK_BOOTH.padRadius || beacon.physicsBody !== false)) {
+        this.helpers.removeEntity?.(beacon.id, { immediate: true });
+      }
       if (!this._beacon() && this.helpers.spawnEntity) this.helpers.spawnEntity(rookBoothSpec());
       const flags = this._flags();
       if (flags && flags[ROOK_BOOTH.announceFlag] !== true) {
@@ -104,6 +115,19 @@ export function createRookBooth() {
           text: ROOK_BOOTH.announce, ttl: 9, persist: false,
         });
       }
+    },
+    /** A durable hull can be sold only when its actual owner can retire THIS body.
+     *  A stale marker, duplicate body or forged marker ID must not earn a second payout.
+     *  Unowned ordinary debris keeps the original booth law; no new wreck ledger. */
+    _canRetireWreck(entity) {
+      const d = entity.data || {};
+      const markerId = d.markerId || d.provenance?.markerId || null;
+      if (!markerId && d.persistenceOwner !== 'aftermathWrecks') return true;
+      if (!markerId || d.persistenceOwner !== 'aftermathWrecks'
+        || d.markerId !== markerId || d.provenance?.markerId !== markerId) return false;
+      const owner = this.registry?.get?.('aftermathWrecks');
+      const marker = owner?._markerById?.(markerId);
+      return !!(marker && owner?._resolveBoundWreck?.(markerId) === entity);
     },
     /** The calendar delivery pass: any eligible wreck at rest inside the ring is a sale
      *  — towed, shoved or drifted, the book does not ask how it got there. */
@@ -116,23 +140,27 @@ export function createRookBooth() {
       const flags = this._flags();
       if (!flags) return;
       for (const e of s.entityList || []) {
-        if (!rookBoothEligible(e)) continue;
+        if (!rookBoothEligible(e) || !this._canRetireWreck(e)) continue;
         const check = rookDeliveryCheck(e);
         if (!check.arrived) continue;
         const d = e.data || (e.data = {});
+        const markerId = d.markerId || d.provenance?.markerId || null;
         d.rookClaimed = true;
         const payout = rookPayoutCr(e.mass);
+        const hullName = markerId ? this.registry?.get?.('aftermathWrecks')?._markerById?.(markerId)?.victimLabel : null;
         const count = (Number(flags[ROOK_BOOTH.countFlag]) || 0) + 1;
         flags[ROOK_BOOTH.countFlag] = count;
         this.bus?.emit('economy:grantCredits', { amount: payout, reason: 'rook:booth' });
         this.bus?.emit('comms:popup', {
           id: `rook_receipt_${e.id}`, sender: ROOK_BOOTH.sender, category: 'story',
-          text: (count === 1 ? ROOK_BOOTH.firstReceipt : ROOK_BOOTH.receipt).replace('{cr}', String(payout)),
+          text: `${hullName ? String(hullName).slice(0,80) + ': ' : ''}${(count === 1 ? ROOK_BOOTH.firstReceipt : ROOK_BOOTH.receipt).replace('{cr}', String(payout))}`,
           ttl: 8, persist: false,
         });
         this.bus?.emit('rookWreck:delivered', {
           entityId: e.id, mass: e.mass, payoutCr: payout, count,
+          source: 'rook:booth', markerId, sectorId: ROOK_BOOTH.sectorId,
           pos: { x: e.pos.x, z: e.pos.z },
+          vel: { x: e.vel.x, z: e.vel.z }, speed: check.speed,
         });
         // The booth takes the hull through the canonical consumption receipt, not a silent
         // delete: a durable aftermath marker retires on salvage:completed instead of
@@ -141,7 +169,7 @@ export function createRookBooth() {
         // law discovery, world pressure) settles the wreck like a strip did.
         this.bus?.emit('salvage:completed', {
           wreckId: e.id,
-          markerId: d.markerId || (d.provenance && d.provenance.markerId) || null,
+          markerId,
           loot: {},
           pos: { x: e.pos.x, z: e.pos.z },
           radius: Number.isFinite(e.radius) ? e.radius : 0,

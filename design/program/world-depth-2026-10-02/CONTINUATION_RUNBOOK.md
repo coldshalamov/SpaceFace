@@ -1,3 +1,11 @@
+# Current role and resume priority — 27 October 2026
+
+Read the current section of EXECUTION_STATUS and OPEN_GOALS before the historical procedure below. Resume the existing Adventure/Swarm experience-assembly owner, not obsolete model-production queues. Begin at first moments and extend along actual mission routes. Reports support concrete source edits; local agents own models. Keep original scope and acceptance gaps open. Work stays in the assistant's own environment; do not create or resume external Work/Codex tasks or user-computer/auth relays. Existing continuation schedules remain unchanged.
+
+At this checkpoint, PR637 source is verified through d29c8a41f8e07929f014401be4179c8e2456db59. Ceres is published; the next active connected unit is Cinder → Rook. Verify current branch/PR and exact active owners before edits. A newer merge is a handoff, not permission to overwrite others. Test ordinary offer/action/settlement/return and preserve real material and consequences. Isolate any publication failure and continue independent authorized work; do not repeatedly summon uncertain approvals.
+
+---
+
 # Expansion continuation: restart and failure recovery
 
 This procedure was requested on 8 October 2026 after repeated status reports replaced

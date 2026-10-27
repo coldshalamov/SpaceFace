@@ -1,3 +1,29 @@
+# Expansion execution: current experience assembly
+
+## Current experience assembly — 27 October 2026, 06:06 UTC
+
+This section supersedes the historical dispatch priorities below, not their evidence or acceptance gaps. Start at Adventure and Swarm's first moments and CREATE playable scenes outward along the missions' actual destinations. Local agents own model production; this lane authors, integrates and judges the experience using existing pieces. Old Orchard/model jobs remain bounded handoff work, not the automatic next queue.
+
+Verified draft [PR637](https://github.com/coldshalamov/SpaceFace/pull/637) is open and unmerged at `d29c8a41f8e07929f014401be4179c8e2456db59`. Its Ceres successor has sole parent `ab9ad5c68ccd3abb7064b038028f6b3910e8871f`; public master remains `d5f607c81591280ab65533e8b3878c8810ce1feb` at this observation. The earlier draft-only synchronization preserved newer upstream content. No master merge or deployment was performed.
+
+Published connected source:
+- Swarm: authored baseline Foundry first-three-round throwing banks, with existing lessons, pockets and budgets preserved.
+- Helios: optional starter workday physical buoys/mining routes and a finite physical claim face with an actual presentation-to-renderer cue.
+- Tethys: correctly transformed Scale 4, open measured worksite, true cargo reading and ordinary alloy-delivery → weighing navigation.
+- Ceres: four genuine repair-fauna clearances and three physical disposal lots, normal blast/tether interaction, exact furnace receipts, persistent surviving/lost material, proportional payment and an explicit clearance-only outcome rather than a story softlock.
+
+See the source-linked [opening dossier](../opening-experience-2026-10-27/SWARM_OPENING.md), [starter workday](../opening-experience-2026-10-27/STARTER_WORKDAY.md), [Helios claim](../opening-experience-2026-10-27/HELIOS_CLAIM.md), [Tethys scale](../opening-experience-2026-10-27/TETHYS_SCALE.md), and [Ceres furnace](../opening-experience-2026-10-27/CERES_FURNACE.md).
+
+Verification: focused Swarm7, starter13, Helios20, Tethys10 and Ceres32 cases have distinct scopes and are not an additive whole-game score. Ceres also passed actual offer/navigation and completion/clauses/receipt/story projections for0/160/320/480-credit outcomes plus the blast matrix and independent Continue/cross-sector controls. Explicit dependency adapters remain disclosed. Ceres CI run40453203096 finished with failure; browser shard3 was externally cancelled after5/333 browser commands; all three Ceres leaves executed and passed by complete failure-table inference on completed static shards (85/84/84 commands). prior Tethys run40451346785 was externally cancelled after supersession, after its target static leaf passed by complete-matrix inference. Other broad checks failed; no overall green baseline is claimed. Read exact current CI rather than freezing this observation.
+
+New offline Tethys assembly views were inspected using four verified current release GLBs and the actual ring geometry at normal draw scales. Nearest furniture geometry clears the ring by21.6 WU. Source-material CPU views are not live PBR, texture, animation, performance, native or player-walkthrough acceptance.
+
+Reviewed successor: Cinder approach → Rook physical tow, preserving Ceres. Focused route23, Rook9, aftermath22 groups and18 independent cases pass with disclosed adapters. The next executable scene after this source increment is the existing Book2 Compost worksite. Reproduction found four generic kills despite a three-Wasp-plus-tow brief, a raw-local Rook pad, and a nonspecific delivery receipt. Repair the ordinary Ceres completion → next offer → arrival → action → settlement route, not merely an already-active fixture. Preserve the existing aftermath owner, Compost/Nest/Elroy order and custody/force choices. Serialize shared mission-family edits; do not overwrite active world/renderer/UI owners.
+
+All twelve goals in OPEN_GOALS remain open, including the original twenty concepts and larger implementation scope. Source commits and backups do not establish game acceptance. There is no pending user approval for the current authorized source increments; older model-specific holds remain separate and must not be silently retried.
+
+---
+
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 

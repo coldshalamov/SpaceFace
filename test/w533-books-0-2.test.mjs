@@ -15,6 +15,16 @@ import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { addCargo } from '../src/systems/cargo.js';
+import { combat as combatProto } from '../src/systems/combat.js';
+import { aftermathWrecks as aftermathProto } from '../src/systems/aftermathWrecks.js';
+import { createRookBooth } from '../src/systems/rookBooth.js';
+import { rookPadPosition } from '../src/characters/rookRules.js';
+import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
+import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
+import { materializeAlienEcology, handleAlienEcologyEvent } from '../src/systems/alienEcology.js';
+import { ALIEN_SITES } from '../src/data/alienEcology.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
 import { isBeatStepsComplete, getBeatStepStatus } from '../src/story/campaign47a/index.js';
 
 let failures = 0;
@@ -31,6 +41,7 @@ function check(name, fn) {
 function makeHarness(seed = 47) {
   const state = createGameState(seed);
   state.mode = 'flight';
+  state.run = { ...(state.run || {}), kind: 'adventure' };
   state.simTime = 10;
   state.playerId = 1;
   state.player.credits = 5000;
@@ -41,7 +52,7 @@ function makeHarness(seed = 47) {
     state.factions[id] = state.factions[id] || { rep: 0 };
   }
   state.entities = state.entities || new Map();
-  state.entities.set(1, { id: 1, team: 'player', pos: { x: 0, y: 0, z: 0 }, flags: {}, hull: 100 });
+  state.entities.set(1, { id: 1, type: 'ship', isPlayer: true, alive: true, team: 'player', pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {}, flags: {}, hull: 100 });
   state.entityList = [state.entities.get(1)];
   state.onboarding = { active: false, finished: true };
   if (state.settings && state.settings.gameplay) state.settings.gameplay.tutorialHints = false;
@@ -59,10 +70,12 @@ function makeHarness(seed = 47) {
     if (p && p.amount) state.player.credits = (state.player.credits | 0) + (p.amount | 0);
   });
 
+  let nextEntityId = 2; // The real owner never reuses a removed body's live handle.
   const helpers = {
+    hash32, mulberry32,
     voice: { say: () => true },
     spawnEntity: (spec) => {
-      const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
+      const id = nextEntityId++;
       const entity = { id, alive: true, ...spec, data: structuredClone(spec.data || {}) };
       state.entities.set(id, entity);
       state.entityList.push(entity);
@@ -77,12 +90,26 @@ function makeHarness(seed = 47) {
   };
   const missions = Object.assign({}, missionsProto);
   const story = Object.assign({}, storyProto);
-  const registry = { get: (n) => (n === 'missions' ? missions : n === 'story' ? story : null) };
+  const aftermath = Object.assign({}, aftermathProto);
+  // Exercise the public kill producer; this test is not a damage/physics simulation.
+  const combat = Object.assign({}, combatProto, { state, bus, helpers });
+  const rook = createRookBooth(), furnace = createFurnaceIntake();
+  const systems = { missions, story, combat, aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace };
+  const registry = { get: (name) => systems[name] || null };
   missions.init({ state, bus, helpers, registry });
   story.init({ state, bus, helpers, registry });
   missions.newGame();
   story._ensureState && story._ensureState(true);
-  return { state, bus, missions, story, helpers, popups, skimResolved, elroyResolved, beatAdvances };
+  aftermath.init({ state, bus, helpers, registry });
+  rook.init({ state, bus, helpers, registry });
+  furnace.init({ state, bus, helpers, registry });
+  // Same ecology functions called by world: real cast creation and death permanence,
+  // limited to the published refinery site, not a manufactured clearance ledger.
+  const ecologyWorld = { state, bus, helpers, registry, active: { dressing: [], pois: [] },
+    _toGlobal: sectorLocalToGlobalForSector };
+  bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
+  return { state, bus, missions, story, helpers, popups, skimResolved, elroyResolved, beatAdvances,
+    combat, aftermath, rook, furnace, ecologyWorld };
 }
 
 function acceptOffer(h, stationId, expectedTag) {
@@ -97,14 +124,58 @@ function acceptOffer(h, stationId, expectedTag) {
 
 function completePatrol(h, m) {
   h.state.world.currentSectorId = m.destSectorId;
+  if (m.params.furnaceWorksiteVersion === 1) {
+    materializeAlienEcology(h.ecologyWorld, { id: m.destSectorId }, h.ecologyWorld.active,
+      [ALIEN_SITES.closed_refinery]);
+  }
   h.bus.emit('sector:enter', { sectorId: m.destSectorId });
   h.missions.spawnTargetsForSector(m.destSectorId);
   h.missions._ensureMissionTargets(m);
   assert.ok(m.targetEntityIds.length > 0, `${m.storyTag} must materialize targets`);
-  for (const id of [...m.targetEntityIds]) {
-    h.bus.emit('entity:killed', { id, killerId: h.state.playerId });
+  if (m.params.cinderRouteVersion === 1) {
+    assert.equal(m.targetEntityIds.length, 3, 'exactly three real Cinder Wasps');
+    for (const id of m.targetEntityIds) assert.equal(h.state.entities.get(id).data.lootTableId, 'wasp_swarmer');
   }
+  if (m.params.furnaceWorksiteVersion === 1) assert.equal(m.targetEntityIds.length, 4, 'four real refinery mites');
+  for (const id of [...m.targetEntityIds]) {
+    const target = h.state.entities.get(id);
+    h.combat.kill(target, h.state.playerId);
+    assert.equal(target.alive, false, 'combat owns the death transition');
+  }
+  // Ecology runs after mission listeners here; reconcile its just-recorded durable deaths.
+  h.missions._ensureMissionTargets(m);
 }
+
+function feedFurnaceLot(h, m, slot) {
+  const lot = m.params.furnaceLots.find((row) => row.slot === slot);
+  const pod = h.state.entities.get(lot.entityId);
+  assert.ok(pod && pod.alive && pod.data.furnaceMissionId === m.id, 'real owned disposal pod');
+  pod.pos = { ...furnaceMouthGlobal() };
+  pod.vel = { x: 0, z: 0 };
+  h.furnace.update();
+  assert.equal(lot.received, true, 'intake emitted the canonical owned receipt');
+  assert.equal(pod.alive, false);
+}
+
+function deliverCinderHull(h, m) {
+  assert.equal(m.params.cinderRouteVersion, 1, 'new offers exercise the authored route, not legacy mode');
+  assert.equal(m.objectiveProgress, 3);
+  assert.equal(m.params.cinderMarkedWrecks.length, 3, 'real deaths produced canonical markers');
+  h.bus.emit('rookWreck:delivered', { entityId: 9201 });
+  assert.equal(m.status, 'active', 'legacy synthetic sale is not evidence for a new Cinder offer');
+  assert.equal(m.params.rookDeliveries || 0, 0);
+  const ref = m.params.cinderMarkedWrecks[0];
+  const wreck = h.aftermath._resolveBoundWreck(ref.markerId);
+  assert.ok(wreck && wreck.alive, 'recover the real aftermath hull');
+  wreck.pos = { ...rookPadPosition() };
+  wreck.vel = { x: 0, z: 0 };
+  h.rook.update();
+  assert.equal(m.params.cinderDeliveredMarkerId, ref.markerId);
+  assert.equal(h.aftermath._markerById(ref.markerId), null, 'sale retires the same canonical material');
+  assert.equal(wreck.alive, false);
+  assert.equal(m.status, 'completed');
+}
+
 
 console.log('w533-books-0-2');
 
@@ -204,11 +275,13 @@ check('B1: board posts the alloy run first, Scale 4 is world work, furnace detai
   // Clear the mites — kills alone leave the disposal leg owed.
   completePatrol(h, infested);
   assert.equal(infested.status, 'active', 'kills alone do not settle the furnace detail');
-  // Fling the ore into CR-FEED — three feeds close the book.
+  // Unbound old receipts are negatives; actual finite disposal pods must cross CR-FEED.
   bus.emit('furnace:fed', { entityId: 9001 });
-  bus.emit('furnace:fed', { entityId: 9002 });
+  assert.equal(infested.params.furnaceFeeds || 0, 0);
+  feedFurnaceLot(h, infested, 0);
+  feedFurnaceLot(h, infested, 1);
   assert.equal(infested.status, 'active');
-  bus.emit('furnace:fed', { entityId: 9003 });
+  feedFurnaceLot(h, infested, 2);
   assert.equal(infested.status, 'completed');
   assert.equal(state.story.beatIndex, 2, 'alloy → scale 4 → furnace advances to First Blood');
   assert.equal(state.story.flags.embodied_route, 'book');
@@ -224,7 +297,7 @@ function reachB2(h) {
   bus.emit('kesslerPod:weighed', { variance: true, massT: 6 });
   const infested = acceptOffer(h, 'station_tethys', 'campaign47a:b1:infested');
   completePatrol(h, infested);
-  for (let i = 0; i < 3; i++) bus.emit('furnace:fed', { entityId: 9100 + i });
+  for (let i = 0; i < 3; i++) feedFurnaceLot(h, infested, i);
   assert.equal(state.story.beatIndex, 2);
 }
 
@@ -238,7 +311,7 @@ check('B2: cinder board → Compost Run → the Nest → the register on Elroy',
   assert.equal(cinder.params.rookDeliveryNeeded, 1);
   completePatrol(h, cinder);
   assert.equal(cinder.status, 'active', 'the wreck still owes Rook a delivery');
-  bus.emit('rookWreck:delivered', { entityId: 9201 });
+  deliverCinderHull(h, cinder);
   assert.equal(cinder.status, 'completed');
   let status = getBeatStepStatus(state, 2);
   assert.deepEqual(status.completed, ['cinder_board']);
@@ -274,7 +347,7 @@ check('B2: cinder board → Compost Run → the Nest → the register on Elroy',
   bus.emit('scan:completed', { targetId });
   assert.equal(elroy.params.investigationStage, 'identified', 'the register resolves');
   // Fire to close the tag — force outcome, register + medicine lines.
-  bus.emit('entity:killed', { id: targetId, killerId: state.playerId });
+  h.combat.kill(target, state.playerId);
   assert.equal(h.elroyResolved.length, 1);
   assert.equal(h.elroyResolved[0].outcome, 'force');
   assert.equal(state.story.flags.elroy_outcome, 'force');
@@ -291,7 +364,7 @@ check('B2: the custody reel resolves Elroy without the kill', () => {
   reachB2(h);
   const cinder = acceptOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
   completePatrol(h, cinder);
-  bus.emit('rookWreck:delivered', { entityId: 9301 });
+  deliverCinderHull(h, cinder);
   bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g1', fedMass: 20 });
   bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
   const elroy = acceptOffer(h, 'station_tethys', 'campaign47a:b2:elroy');

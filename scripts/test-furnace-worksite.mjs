@@ -2,10 +2,13 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 const root = new URL('../', import.meta.url);
+// Default resolves current production; sparse review may explicitly add pinned auxiliary roots.
+const auxRoots = (process.env.FURNACE_AUX_ROOTS || '').split(':').filter(Boolean).map(p=>new URL('file://'+p.replace(/\/$/,'')+'/'));
+function read(p) { for (const base of [root,...auxRoots]) { const f=new URL(p,base); if(fs.existsSync(f)) return fs.readFileSync(f,'utf8'); } throw Error('Missing production source '+p); }
 const files = ['src/missions/furnaceWorksite.js','src/systems/furnaceIntake.js','src/data/furnace.js','src/missions/furnaceWorksiteRuntime.js','src/data/worldOneOffs.js'];
 const modules = new Map();
 const context = vm.createContext({console});
-for (const p of files) modules.set(p,new vm.SourceTextModule(fs.readFileSync(new URL(p,root),'utf8'),{context,identifier:p}));
+for (const p of files) modules.set(p,new vm.SourceTextModule(read(p),{context,identifier:p}));
 modules.set('src/data/sectorCoordinates.js',new vm.SourceTextModule("export function sectorLocalToGlobalForSector(p,s) { if(s !== 'sector_ceres_belt') throw Error('wrong sector'); return {x:p.x-12288,z:p.z+8192}; } export function sectorMembershipAtGlobal(p){return [{id:'sector_ceres_belt',x:-12288,z:8192},{id:'sector_tethys_junction',x:12288,z:8192},{id:'sector_helios_prime',x:0,z:0}].sort((a,b)=>Math.hypot(p.x-a.x,p.z-a.z)-Math.hypot(p.x-b.x,p.z-b.z))[0].id;}",{context,identifier:'src/data/sectorCoordinates.js'}));
 modules.set('src/core/sectorEnterDefer.js',new vm.SourceTextModule('export function deferSectorEnterMaterialization() { return false; }',{context,identifier:'src/core/sectorEnterDefer.js'}));
 // Default resolves current production owner. Sparse source-only staging must explicitly
@@ -24,14 +27,17 @@ const cullSource=fs.readFileSync(consumerPath('src/render/visualCullRadius.js'),
 const presenceSource=fs.readFileSync(consumerPath('src/world/activityClassification.js'),'utf8');
 function namedFunction(source,name){const at=source.indexOf('function '+name+'(');if(at<0)throw Error('Missing production consumer '+name);return source.slice(at,source.indexOf('\n}',at)+2);}
 modules.set('scripts/furnaceCullTest.js',new vm.SourceTextModule(namedFunction(presenceSource,'finite')+'\n'+namedFunction(presenceSource,'entityPresenceRadius')+'\nconst motionTravelPadFor=()=>0;const drawnCullRadiusForMesh=()=>{throw Error("No mesh in declared-radius test")};export '+namedFunction(cullSource,'entityVisualCullRadius'),{context,identifier:'scripts/furnaceCullTest.js'}));
-const objectiveSource = fs.readFileSync(new URL('src/systems/missionObjectiveOps.js',root),'utf8');
+for(const p of ['src/missions/cinderRoute.js','src/characters/rookRules.js','src/data/rook.js']) modules.set(p,new vm.SourceTextModule(read(p),{context,identifier:p}));
+// B1 never enters Cinder's zone path. Fail loudly rather than fake a positive route.
+modules.set('src/data/sectorZones.js',new vm.SourceTextModule('export function zonesForSector(){throw Error("Cinder zones outside B1 regression")}',{context,identifier:'src/data/sectorZones.js'}));
+const objectiveSource = read('src/systems/missionObjectiveOps.js');
 const killHandler = objectiveSource.slice(objectiveSource.indexOf('  _onKill(p) {'),objectiveSource.indexOf('  /**\n   * RC-34:',objectiveSource.indexOf('  _onKill(p) {')));
 const extras=objectiveSource.slice(objectiveSource.indexOf('  _bookExtrasSatisfied(m) {'),objectiveSource.indexOf('  _announceBookExtrasPending(m) {'));
 const handler = objectiveSource.slice(objectiveSource.indexOf('  _onFurnaceFed(p) {'),objectiveSource.indexOf('  _onRookWreckDelivered(p) {'));
-modules.set('src/systems/furnaceReceiptTest.js',new vm.SourceTextModule("import { furnaceDetail, authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js'; import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js'; export const ops = {"+handler+killHandler+extras+'};',{context,identifier:'src/systems/furnaceReceiptTest.js'}));
+modules.set('src/systems/furnaceReceiptTest.js',new vm.SourceTextModule("import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied } from '../missions/cinderRoute.js'; import { furnaceDetail, authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches } from '../missions/furnaceWorksite.js'; import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js'; export const ops = {"+handler+killHandler+extras+'};',{context,identifier:'src/systems/furnaceReceiptTest.js'}));
 modules.set('src/world/dressingTable.js',new vm.SourceTextModule(`export function insertDressingRow(s,spec){const rows=(s.world.dressing||={rows:[]}).rows;const r={...spec,id:9000+rows.length,alive:true};rows.push(r);return r;} export function forEachDressingRow(s,fn){for(const r of s.world.dressing?.rows||[])if(r.alive!==false)fn(r);}export function dropDressingRow(s,id){const r=s.world.dressing?.rows?.find(e=>e.id===id);if(r)r.alive=false;}`,{context,identifier:'src/world/dressingTable.js'}));
 modules.set('src/world/solidDressing.js',new vm.SourceTextModule(`export function stampSolidDressing(d){d.collisionProxy='skin:'+d.placeId;return {collisionProxy:d.collisionProxy};}`,{context,identifier:'src/world/solidDressing.js'}));
-const storySource=fs.readFileSync(new URL('src/systems/missionStoryOps.js',root),'utf8');
+const storySource=read('src/systems/missionStoryOps.js');
 const cleanupStart=storySource.indexOf('  _cleanupTargets(m) {');
 const cleanupRelease=storySource.slice(cleanupStart,storySource.indexOf('    // Capital boss contracts',cleanupStart))+'},';
 const serialize=storySource.slice(storySource.indexOf('  serialize() {'),storySource.indexOf('  deserialize('));
@@ -39,12 +45,12 @@ const spawnStart=storySource.indexOf('  *spawnTargetsForSectorChunked(');
 const spawnMethod=storySource.slice(spawnStart,storySource.indexOf('  _onSectorExit(',spawnStart));
 const restoreStart=storySource.indexOf('  *deserializeChunked(data) {');
 const restorePrefix=storySource.slice(restoreStart,storySource.lastIndexOf('\n};'));
-const beamSource=fs.readFileSync(new URL('src/combat/industrialBeam.js',root),'utf8');
+const beamSource=read('src/combat/industrialBeam.js');
 const transition=beamSource.slice(beamSource.indexOf('export function handlePayloadSectorTransition'),beamSource.indexOf('// Presentation cue IDs'));
 modules.set('src/combat/furnaceTransitionTest.js',new vm.SourceTextModule("import { isFurnaceOwnedLot } from '../missions/furnaceWorksite.js';const clearEntityRuntime=()=>{};"+transition,{context,identifier:'src/combat/furnaceTransitionTest.js'}));
 const exitStart=storySource.indexOf('  _onSectorExit(p) {');
 const exitMethod=storySource.slice(exitStart,storySource.indexOf('  // =========================================================================================',exitStart));
-modules.set('src/systems/furnaceLifecycleTest.js',new vm.SourceTextModule(`import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, materializeFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js'; import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js'; const snapshotReckoning=()=>{};const normalizeMissionReceipts=x=>x||[];const normalizeSetPieceSettlements=x=>x||{};const MISSION_TUNING={}; const entityIndexVersion=()=>null; const resetRacingGhostSession=()=>{};const normalizeBlackFlagJobs=()=>null;const ADVENTURE_SPEED_CONTRACTS=[];const normalizeStandingOrders=()=>[];const ensureCampaign47aState=()=>{};const syncObservedBeat=()=>{};const STATION_INFO=new Map();const SECTOR_BY_ID=new Map([['sector_ceres_belt',{}]]); export const ops={`+serialize+exitMethod+cleanupRelease+spawnMethod+restorePrefix+'};',{context,identifier:'src/systems/furnaceLifecycleTest.js'}));
+modules.set('src/systems/furnaceLifecycleTest.js',new vm.SourceTextModule(`import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js'; import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, materializeFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js'; import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js'; const snapshotReckoning=()=>{};const normalizeMissionReceipts=x=>x||[];const normalizeSetPieceSettlements=x=>x||{};const MISSION_TUNING={}; const entityIndexVersion=()=>null; const resetRacingGhostSession=()=>{};const normalizeBlackFlagJobs=()=>null;const ADVENTURE_SPEED_CONTRACTS=[];const normalizeStandingOrders=()=>[];const ensureCampaign47aState=()=>{};const syncObservedBeat=()=>{};const STATION_INFO=new Map();const SECTOR_BY_ID=new Map([['sector_ceres_belt',{}]]); export const ops={`+serialize+exitMethod+cleanupRelease+spawnMethod+restorePrefix+'};',{context,identifier:'src/systems/furnaceLifecycleTest.js'}));
 const resolve = (name, ref) => {const parts=ref.identifier.split('/');parts.pop(); for(const part of name.split('/')) {if(part==='..')parts.pop();else if(part!=='.')parts.push(part);}return modules.get(parts.join('/'));};
 for(const mod of modules.values()) if(mod.status==='unlinked') await mod.link(resolve);
 for(const mod of modules.values()) if(mod.status==='linked') await mod.evaluate();

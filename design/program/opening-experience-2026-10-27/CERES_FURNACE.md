@@ -20,7 +20,7 @@ The old contract advertised four mites and three pods but supplied a generic pat
 
 ## Consequence and return
 
-The finite lot ledger belongs to the existing mission owner, not a new global cargo system. A bounded one-worksite aftermath record retains three slot identities/statuses and real poses across abandon/retry and Save/Continue. Terminal received/lost slots cannot be minted again. Retrying adopts surviving bodies rather than producing three fresh lots. Residency removal alone is not destruction. Borrowed ecology actors are released from mission references, not deleted by generic target cleanup.
+The finite lot ledger belongs to the existing mission owner, not a new global cargo system. A bounded one-worksite aftermath record retains three slot identities/statuses and real poses across internal failure/cleanup recovery and Save/Continue. Terminal received/lost slots cannot be minted again. Internal retry recovery adopts surviving bodies rather than producing three fresh lots. Campaign 47-A's public mission API forbids abandonment and its UI hides that action; these cleanup/retry tests do not establish a player-accessible Abandon route. Residency removal alone is not destruction. Borrowed ecology actors are released from mission references, not deleted by generic target cleanup.
 
 The player can leave a recognizably worked place: the hulk stays, ecology remembers clearance, received ore is gone, destroyed ore is recorded as loss, and surviving unaccounted lots remain material rather than a reset reward dispenser. This is the intended behavior; final source review must verify the complete persistence and transition call sites before claiming it is implemented end to end.
 
@@ -36,7 +36,7 @@ The player can leave a recognizably worked place: the hulk stays, ecology rememb
 
 Focused checks exercise the actual small runtime modules and disclosed projections of large mission/world methods. Production damage routing is checked for real fauna hull change and a single lethal callback. They are not a full native physics session or ordinary browser playthrough. Permanent hulk geometry, global coordinate conversion, ring/pod clearance and source call-site wiring are inspectable; final lighting, camera scale, model draw, frame budget and physical handling remain unaccepted until a supported game-camera route works.
 
-The remaining practical review must cover normal offer generation, navigation handoff, final/partial/all-lost settlement, unrelated legacy contracts, malformed saves, true destruction versus culling, held-body sector travel, and repeated receipt/Continue/retry behavior. Do not call the larger game or sector complete because this document or a focused test passes.
+The remaining practical review must cover normal offer generation, navigation handoff, final/partial/all-lost settlement, unrelated legacy contracts, malformed saves, true destruction versus culling, held-body sector travel, and repeated receipt/Continue/internal-recovery behavior. Do not call the larger game or sector complete because this document or a focused test passes.
 
 ## Final bounded source checks
 
