@@ -180,3 +180,5 @@ The oldest OPEN row is the next second look.
 | 2026-10-27 | da984d0e387 | EXP-25: impoundGrudge — hull nemesis w/ lessons + endings (256→1050+, ~4×) | Re-check: killedLiveId===liveId invariant across save/continue + bind-fault bookkeeping order |
 
 | 2026-10-27 | 0ef64050303 | EXP-25: borrowedSun — lender w/ sails/charters/collectors (269→1450+, ~5.4×) | Re-check: corpse-reference kill receipts (p.entity fallback) vs deferred destroy delivery |
+
+| 2026-10-27 | ac3117fd959 | EXP-25: faction_pitborn — yard claims/collectors/ballast (245→2150+, ~8.7×) | Re-check: anchor re-bind via _anchorAt when sector regen re-issues ids |
