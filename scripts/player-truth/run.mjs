@@ -9,6 +9,7 @@
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
 //          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
+//          --candidate-source=<manifest> tests explicit uncommitted source/assets; it is not a Git baseline
 //          browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
@@ -309,7 +310,7 @@ export async function awaitRoundHandoff(page, {
 }
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -319,13 +320,16 @@ export function parseArgs(argv) {
     else if (k === 'fight') a.fight = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
-    else if (k === 'baseline-source') {
-      if (v == null || !String(v).trim()) throw new Error('--baseline-source requires a manifest path');
+    else if (k === 'baseline-source' || k === 'candidate-source') {
+      if (v == null || !String(v).trim()) throw new Error(`--${k} requires a manifest path`);
+      if (a.baselineSource) throw new Error('choose only one source overlay');
       a.baselineSource = String(v);
+      a.candidateSource = k === 'candidate-source';
     }
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
+  if (a.candidateSource && a.baseline) throw new Error('--candidate-source cannot be used as a Git performance baseline');
   // SwiftShader fill cost dominates a software run; a smaller canvas keeps a bounded run in minutes.
   a.viewport = a.viewport || (a.headed ? '1280x720' : '960x540');
   a.viewportList = a.viewports ? String(a.viewports).split(',').map((x) => x.trim()).filter((x) => /^\d+x\d+$/.test(x)) : [a.viewport];
@@ -526,7 +530,7 @@ async function runOne(args, arena, extra = {}) {
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
   const freezeWatch = createFreezeWatch();
   freezeWatch.start();
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), sourceOverlay: args.baselineSource ? { manifest: args.baselineSource.relative, requested: args.baselineSource.identity, served: null } : null, loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), sourceOverlay: args.baselineSource ? { kind: args.candidateSource ? 'candidate' : 'git-baseline', manifest: args.baselineSource.relative, requested: args.baselineSource.identity, served: null } : null, loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const stampHarnessClock = () => {
     if (trace.meta.harnessFreezes) return;
     freezeWatch.stop();
@@ -728,6 +732,7 @@ async function runOne(args, arena, extra = {}) {
   try {
     await bootToMenu(page, server.baseUrl, step);
     trace.meta.sourceOverlay = args.baselineSource ? {
+      kind: args.candidateSource ? 'candidate' : 'git-baseline',
       manifest: args.baselineSource.relative,
       requested: args.baselineSource.identity,
       served: await readServedBaselineSource(page, args.baselineSource),
@@ -1100,21 +1105,23 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pru
 // CLI mode → the Crucible door's data-ruleset (Gauntlet is the 'scored' ruleset).
 const RULESET = Object.freeze({ swarm: 'swarm', gauntlet: 'scored' });
 
-async function assertHarnessEnvironment(baselineSource = null) {
+async function assertHarnessEnvironment(baselineSource = null, candidateAssets = false) {
   const server = await startBenchServer({ sourceOverlay: baselineSource?.path || null });
   let code = null;
   try {
-    const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl, sourceOverlay: baselineSource?.path || null });
+    const env = await verifyHarnessEnvironment({ root: ROOT, baseUrl: server.baseUrl, sourceOverlay: baselineSource?.path || null, candidateAssets });
     if (!env.ok) {
       const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'HEAD'; } })();
       const dir = path.join(ROOT, 'scratch/player-truth/environment');
       mkdirSync(dir, { recursive: true });
-      const md = renderEnvironmentAbort({ problems: env.problems, commit, checked: env.checked, hashed: env.hashed });
+      const md = renderEnvironmentAbort({ problems: env.problems, commit, checked: env.checked, hashed: env.hashed, candidateAssets });
       writeFileSync(path.join(dir, 'verdict.md'), md);
       console.error(md);
       code = ENVIRONMENT_EXIT;
     } else {
-      console.log(`harness environment: ${env.checked} assets blobs match HEAD (${env.hashed} hashed)`);
+      console.log(candidateAssets
+        ? `harness environment: ${env.checked} assets checked (${env.candidateAssets} candidate assets verified over HTTP; remaining assets against HEAD)`
+        : `harness environment: ${env.checked} assets blobs match HEAD (${env.hashed} hashed)`);
     }
   } catch (err) {
     if (err && err.harnessError) { console.error(err.message || err); code = 3; }
@@ -1130,7 +1137,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   args.baselineSource = resolveBaselineSource(args.baselineSource);
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
-  await assertHarnessEnvironment(args.baselineSource);
+  await assertHarnessEnvironment(args.baselineSource, args.candidateSource);
   let arenas = [args.arena];
   if (args.arena === 'all' && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
     const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null }); const { chromium } = await loadPlaywright();

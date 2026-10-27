@@ -22,6 +22,10 @@ export function renderVerdict({ meta, results, overall, paths }) {
   L.push(`# Player-truth verdict: ${overall} — ${meta.label}`);
   L.push('');
   L.push(`- Mode: ${meta.mode}${meta.arena ? ` · arena ${meta.arena}` : ''} · seed ${meta.seedSet === false && meta.runSeed != null ? `${meta.runSeed} (requested ${meta.seed}; field not settable on this route)` : meta.runSeed != null ? meta.runSeed : meta.seed} · build ${meta.commit}${meta.dirty ? ' (dirty)' : ''}`);
+  if (meta.sourceOverlay?.requested) {
+    const source = meta.sourceOverlay.requested;
+    L.push(`- Source overlay: ${meta.sourceOverlay.kind === 'candidate' ? 'uncommitted candidate' : 'Git baseline'} · base ${source.sourceCommit} · digest ${source.sourceOverlayDigest}`);
+  }
   if (meta.startCommit) {
     const paths = (list) => list == null ? 'status unavailable' : list.length ? list.join(', ') : 'no dirty source paths';
     L.push(`- Source at start: ${meta.startCommit} · ${paths(meta.startDirtySourcePaths)}`);
