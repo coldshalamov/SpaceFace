@@ -491,6 +491,12 @@ export function swarmBroodLateReserve(wave, roll) {
 //   * 'plated' (97+) carries the keelback's shell law on a single body — only mass
 //     cracks it (collision/terrain); a blast it survives still throws it — taxing
 //     WHAT kills the fodder (the detonation that used to clear the room).
+//   * 'commander' (111+) completes the trio on the last axis — WHO FIRST: the mark
+//     is not a share of the fodder but one or two LEADERS driving the pack around
+//     them (bodies inside the leader's aura steer harder and run faster), so killing
+//     the leader breaks the buff that same tick. Its count band — `markMin`/
+//     `markMax` — is the strain law's own per-row mark law: a pack keeps heads, never
+//     a fifth of the room wearing the same mark.
 // Champion waves stay exempt — the boss is that room's pressure story, same law as
 // the late reserve.
 
@@ -498,10 +504,13 @@ export function swarmBroodLateReserve(wave, roll) {
 export const SWARM_BROOD_STRAIN_FROM_WAVE = 83;
 /** First wave the plated cooking joins the draw (its own debut wave, own card). */
 export const SWARM_BROOD_STRAIN_PLATED_FROM_WAVE = 97;
+/** First wave the commander cooking joins the draw (its own debut wave, own card). */
+export const SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE = 111;
 /** The marked share of the wave's mite row, seeded inside this band each wave. */
 export const SWARM_BROOD_STRAIN_SHARE_MIN = 0.12;
 export const SWARM_BROOD_STRAIN_SHARE_MAX = 0.22;
-/** A wave that fields a strain always marks at least this many bodies (mite count permitting). */
+/** A share-band strain always marks at least this many bodies (mite count permitting).
+ *  A leader strain's own count band (markMin/markMax) is its mark law instead. */
 export const SWARM_BROOD_STRAIN_MIN_MARKED = 6;
 
 /**
@@ -512,10 +521,12 @@ export const SWARM_BROOD_STRAIN_MIN_MARKED = 6;
  * are the volatile pop's authored size (a burst, never a kill on neighbouring cells —
  * the pop is the pilot's problem, not free crowd-clearing); `massOnly` is the
  * keelback's kill-gate moved onto the single body (only collision/terrain cracks it —
- * a refused blast still throws it). `counter` is the slam-card lesson at the debut;
- * `tint` is the standing read on the field. A strain owns no telegraph — the mark is a
- * standing property, like the glassback's shell: the card says it once, the colour
- * keeps saying it.
+ * a refused blast still throws it); `commandRadius`/`commandAccel`/`commandSpeed` are
+ * the commander's pack aura (every other body inside the radius steers at the
+ * signature harder and runs faster while the leader lives). `counter` is the
+ * slam-card lesson at the debut; `tint` is the standing read on the field. A strain
+ * owns no telegraph — the mark is a standing property, like the glassback's shell:
+ * the card says it once, the colour keeps saying it.
  */
 export const SWARM_BROOD_STRAINS = Object.freeze([
   Object.freeze({
@@ -543,16 +554,41 @@ export const SWARM_BROOD_STRAINS = Object.freeze([
     // Cold iron sheen over the mite's rust — the glazed shell reads before it pings.
     tint: Object.freeze([0.66, 0.74, 0.88]),
   }),
+  Object.freeze({
+    id: 'commander',
+    name: 'Commander Brood',
+    fromWave: SWARM_BROOD_STRAIN_COMMANDER_FROM_WAVE,
+    familyId: 'mite',
+    // The trio's WHO FIRST axis: the mark is one or two LEADERS, not a share of the
+    // fodder — `markMin`/`markMax` is a count band, the strain law's own mark law.
+    // A live leader drives the pack around it: every OTHER body inside
+    // `commandRadius` steers at the signature `commandAccel`× harder and runs
+    // `commandSpeed`× faster. The buff is rebuilt off the live marks every tick —
+    // kill the leader and its pack calms that same tick. The leader itself is still
+    // one mite; the mark, not the body, is the lesson.
+    markMin: 1,
+    markMax: 2,
+    commandRadius: 64,
+    commandAccel: 1.9,
+    commandSpeed: 1.5,
+    counter: 'The violet-lit mite whips its pack — bodies near the leader fly faster and dive harder. Kill the leader first; the pack calms the moment it drops.',
+    // The leader's standing read: a hot violet-white over the mite's rust — hotter
+    // than the volatile amber, warmer than the plated iron.
+    tint: Object.freeze([0.80, 0.60, 1.00]),
+  }),
 ]);
 
 /**
  * The wave's strain pick, or null when the room hatches clean: below the gate, a
  * champion wave, or too few mites to mark. `miteCount` is the wave's planned mite row
  * AFTER every hold-back — the share is of the fodder that actually fields. Exactly
- * two draws (strain, then share) so the same (seed, wave) hatches the same mark. The
+ * two draws (strain, then count) so the same (seed, wave) hatches the same mark. The
  * strain draw is over the rows the wave has unlocked — one cooking per room, never a
- * mix: waves 97+ alternate volatile and plated as the seed deals them, each wave's
- * card still teaching a single trick.
+ * mix: waves 97+ alternate volatile and plated as the seed deals them, waves 111+
+ * deal from the whole trio, each wave's card still teaching a single trick. The
+ * count draw's law is the strain's own: a share-band row marks a seeded fraction of
+ * the fodder (floored at SWARM_BROOD_STRAIN_MIN_MARKED); a leader row's `markMin`/
+ * `markMax` is a count band — a pack keeps heads, never a marked fifth.
  */
 export function swarmBroodStrainFor(wave, miteCount, roll) {
   const w = Math.max(1, Math.trunc(Number(wave) || 1));
@@ -562,13 +598,28 @@ export function swarmBroodStrainFor(wave, miteCount, roll) {
   const mites = Math.max(0, Math.trunc(Number(miteCount) || 0));
   if (mites <= 1) return null;
   const draw = typeof roll === 'function' ? roll : () => 0.5;
-  const strain = eligible[Math.min(eligible.length - 1, Math.floor(draw() * eligible.length))];
-  const share = SWARM_BROOD_STRAIN_SHARE_MIN
-    + draw() * (SWARM_BROOD_STRAIN_SHARE_MAX - SWARM_BROOD_STRAIN_SHARE_MIN);
-  const count = Math.max(0, Math.min(
-    mites - 1,
-    Math.max(Math.min(mites - 1, SWARM_BROOD_STRAIN_MIN_MARKED), Math.round(mites * share)),
-  ));
+  const strainDraw = draw();
+  // A strain's own debut wave always fields that cooking — the slam card's lesson
+  // is on the field that wave, whatever the draw says (a family debut works the
+  // same way: the fold always fields its new silhouette). The draw is still spent
+  // either way — the stream stays two-draws deep.
+  const strain = swarmBroodStrainDebutFor(w)
+    || eligible[Math.min(eligible.length - 1, Math.floor(strainDraw * eligible.length))];
+  let count;
+  if (strain.markMax > 0) {
+    // The leader band: a small authored COUNT, seeded inside its own band — the
+    // second draw is still spent, so the stream stays two-draws deep either way.
+    const lo = Math.max(1, Math.trunc(Number(strain.markMin) || 1));
+    const hi = Math.max(lo, Math.trunc(Number(strain.markMax)));
+    count = Math.min(mites - 1, lo + Math.floor(draw() * (hi - lo + 1)));
+  } else {
+    const share = SWARM_BROOD_STRAIN_SHARE_MIN
+      + draw() * (SWARM_BROOD_STRAIN_SHARE_MAX - SWARM_BROOD_STRAIN_SHARE_MIN);
+    count = Math.max(0, Math.min(
+      mites - 1,
+      Math.max(Math.min(mites - 1, SWARM_BROOD_STRAIN_MIN_MARKED), Math.round(mites * share)),
+    ));
+  }
   if (count <= 0) return null;
   return { strain, count };
 }
@@ -701,11 +752,23 @@ export function swarmBroodLateIssues() {
       issues.push({ path, message: `${strain.id} needs a mark tint` });
     }
     // Every strain owns ONE honored effect in the engine's existing vocabulary: a
-    // death burst (the volatile blast numbers) or a kill-gate (plated's massOnly).
-    // A row with neither marks fodder that obeys nothing — tint without a law.
+    // death burst (the volatile blast numbers), a kill-gate (plated's massOnly), or
+    // a pack aura (commander's radius plus its two multipliers). A row with none
+    // marks fodder that obeys nothing — tint without a law.
     const ownsBurst = strain.blastRadius > 0 && strain.shoveDv > 0;
-    if (strain.massOnly !== true && !ownsBurst) {
+    const ownsAura = strain.commandRadius > 0 && strain.commandAccel > 1 && strain.commandSpeed > 1;
+    if (strain.massOnly !== true && !ownsBurst && !ownsAura) {
       issues.push({ path, message: `${strain.id} carries no honored effect` });
+    }
+    // A count band is the leader strains' own mark law — it exists so a commander
+    // fields heads, not a share of the room. It must stay under the share floor:
+    // a big count band is just a share dodging the band law.
+    if (strain.markMax != null) {
+      const lo = Math.trunc(Number(strain.markMin) || 0);
+      const hi = Math.trunc(Number(strain.markMax) || 0);
+      if (!(lo >= 1) || !(hi >= lo) || !(hi <= SWARM_BROOD_STRAIN_MIN_MARKED)) {
+        issues.push({ path, message: `${strain.id} mark band is not a small leader count` });
+      }
     }
     if (strain.id === 'volatile') {
       if (!(strain.blastRadius > 0) || !(strain.blastDamage >= 0) || !(strain.shoveDv > 0)) {
@@ -714,6 +777,12 @@ export function swarmBroodLateIssues() {
     }
     if (strain.id === 'plated' && strain.massOnly !== true) {
       issues.push({ path, message: 'plated needs its massOnly kill-gate' });
+    }
+    if (strain.id === 'commander') {
+      if (!(strain.commandRadius > 0) || !(strain.commandAccel > 1) || !(strain.commandSpeed > 1)
+        || !(Number.isFinite(strain.markMax) && strain.markMax >= 1)) {
+        issues.push({ path, message: 'commander needs its pack aura and a leader count band' });
+      }
     }
   });
   return issues;
