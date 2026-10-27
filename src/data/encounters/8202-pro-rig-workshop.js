@@ -5,7 +5,7 @@ import { rigWorkshopEncounter } from '../../features/rigWorkshop/runtime.js';
 export const encounterOrder = 8202;
 export const trigger = deepFreeze({ id: 'pro_rig_workshop', tier: 'ambient', deck: 'civilian', weight: 1,
   zoneTypes: ['civilian_core', 'refinery_approach', 'trade_lane'], script: 'selfRegistered',
-  pressureCost: 0, cooldownS: 1800, proximity: true, gates: {} });
+  pressureCost: 0, cooldownS: 1800, proximity: true, gates: { deferDuringGuidedOnboarding: true } });
 export const runtime = rigWorkshopEncounter;
 export default defineEncounter(trigger, {
   shape: { situation: 'yard', place: trigger.zoneTypes, twist: 'none', actor: 'faction_free' },

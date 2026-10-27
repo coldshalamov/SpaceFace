@@ -754,11 +754,18 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
 export async function racingToFlight(page, step) {
   await clickText(page, 'Circuits', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: 60000 });
-  const course = await page.evaluate(() => { const c = document.querySelector('#screens .race-board-course h2'); return c ? c.textContent.trim() : null; });
-  step('mode select', true, `Circuits · first course ${course}`);
-  await page.waitForFunction(() => { const b = document.querySelector('#screens .race-board-launch'); return b && !b.disabled; }, null, { timeout: 60000 });
-  const word = await page.evaluate(() => document.querySelector('#screens .race-board-launch').textContent.trim());
-  await page.locator('#screens .race-board-launch').first().click();
+  const course = await page.evaluate(() => {
+    const board = document.querySelector('#screens [data-screen="raceBoard"]');
+    const c = board?.querySelector('.race-board-start h2') || board?.querySelector('.race-board-course h2');
+    return c ? c.textContent.trim() : null;
+  });
+  step('mode select', true, `Circuits · selected event ${course}`);
+  // Prepared hidden screens can share the board classes (for example physics venues).
+  // Use the actual Circuits screen and the control a player can see.
+  const start = page.locator('#screens [data-screen="raceBoard"] .race-board-launch:visible').first();
+  await start.waitFor({ state: 'visible', timeout: 60000 });
+  const word = (await start.textContent()).trim();
+  await start.click();
   // The board asks "Launch a temporary circuit flight?" before it leaves the menu: answer it like a player.
   const ok = page.locator('.sf-confirm .sf-confirm__ok').first();
   let confirmed = null;

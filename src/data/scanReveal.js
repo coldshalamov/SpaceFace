@@ -135,8 +135,10 @@ export function buildWreckScanReveal(entity, state, options = {}) {
 
   const data = entity.data || {};
   const now = finite(options.now, state && state.simTime || 0);
-  const loss = options.loss || null;
-  const provenance = data.provenance || null;
+  // Older saves can carry a random ship-loss tag on a structural site frame.
+  // Keep the saved identity data intact, but never present/pay that unrelated story.
+  const loss = data.worldSiteStructural === true ? null : options.loss || null;
+  const provenance = data.worldSiteStructural === true ? null : data.provenance || null;
   const lossId = (loss && loss.lossId) || (provenance && provenance.lossId) || null;
   const reveal = {
     entityId: entity.id,
@@ -145,8 +147,8 @@ export function buildWreckScanReveal(entity, state, options = {}) {
     quality,
     rangeWu: Math.round(distance),
     lossId,
-    wreckClass: data.wreckClass || null,
-    wreckLabel: data.wreckClassLabel || data.scanLabel || 'Unidentified wreck',
+    wreckClass: data.worldSiteStructural === true ? null : data.wreckClass || null,
+    wreckLabel: (data.worldSiteStructural === true ? data.scanLabel : data.wreckClassLabel || data.scanLabel) || 'Unidentified wreck',
     story: null,
     factionId: (loss && loss.factionId) || (provenance && provenance.factionId) || null,
     simDay: (loss && Number.isFinite(loss.simDay)) ? loss.simDay : null,
@@ -490,7 +492,7 @@ const DEBRIS_CACHE_KINDS = Object.freeze(['cargo', 'valuables', 'munitions']);
  * Pure: same wreck id + seed + pool always answers the same way.
  */
 export function debrisCacheFor(wreck, seed) {
-  if (!wreck || wreck.type !== 'wreck') return null;
+  if (!wreck || wreck.type !== 'wreck' || wreck.data?.worldSiteStructural === true) return null;
   const cold = wreckPoolLots(wreck).length === 0;
   const h = hash32((seed >>> 0) || 1, wreck.id, 'debris-cache') >>> 0;
   const chance = cold ? DEBRIS_CACHE_COLD_CHANCE : DEBRIS_CACHE_FRESH_CHANCE;

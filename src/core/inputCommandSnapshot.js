@@ -14,6 +14,7 @@ const ACTION_KEYS = Object.freeze([
   'scanPulse',
   'autopursuit',
   'deployBeacon',
+  'deployShieldPylon',
   'bulletTime',
   'cloakToggle',
   'throwArm',

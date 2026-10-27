@@ -10,7 +10,7 @@ import { deferred, nextHostTurn, productionContinueFixture } from './fixtures/pr
 function assertProductionOwners(h) {
   const manifest = h.runtime.manifest;
   assert.equal(manifest.evidenceClass, 'production-manifest');
-  assert.deepEqual(manifest.exclusions, ['render', 'vfx', 'feel', 'audio', 'ui'].map(id => `node-excluded:${id}`));
+  assert.deepEqual(manifest.exclusions, ['render', 'vfx', 'feel', 'audio', 'ui', 'shipbreakingYardBrowser'].map(id => `node-excluded:${id}`));
   for (const id of ['physics', 'environmentalMachinery', 'planetRuntime', 'fields', 'traffic', 'world',
     'spawnBudget', 'mining', 'cargo', 'chronicler', 'save', 'aiSlot', 'flightSlot']) {
     assert.ok(manifest.authoritativeSystemIds.includes(id), `production owner ${id} is present`);

@@ -49,19 +49,14 @@ test('Pallas pockets load as four two-actor routes on seed 4242', () => {
   assert.equal(ids.size, 8);
 });
 
-test('four handoffs land in order inside twenty minutes and the hulls keep working speed', () => {
+test('elapsed time cannot move hulls or certify fictional Pallas handoffs', () => {
   const state = world();
-  const miner = state.entities.get('pallas_seam_miner');
+  const before = [...state.entities.values()].map(e => structuredClone(e));
   assert.equal(stepPallasWorkLoop({ ...state, world: { currentSectorId: 'sector_helios_prime' } }, 1), null);
-  let loop = null;
-  for (let second = 0; second < 1200; second += 1) loop = stepPallasWorkLoop(state, 1);
-  assert.deepEqual(loop.order, [...PALLAS_HANDOFF_ORDER]);
-  // Each leg turns, so the net chord is shorter than the path. The path is 36 wu every second
-  // until the fourth handoff, and it has to finish inside the twenty minutes above.
-  const travelled = miner.data.pallasWorkStepWU;
-  assert.ok(travelled > 2700 && travelled < 2900, `miner travelled ${travelled} wu at 36 wu/s across the legs`);
-  assert.ok(Math.hypot(miner.pos.x, miner.pos.z) > 1000, 'the miner was not teleported to the handoff');
-  assert.equal(state.entities.get('pallas_ambush_hauler').data.ai.passive, false);
-  assert.equal(state.entities.get('pallas_ambush_escort').data.pallasEscortClosing, true);
-  assert.equal(loop.seed, SEED);
+  let loop;
+  for (let second = 0; second < 1200; second++) loop = stepPallasWorkLoop(state, 1);
+  assert.equal(loop.phase, 'waiting');
+  assert.equal(loop.arrived, false);
+  assert.deepEqual([...state.entities.values()], before);
+  assert.deepEqual(PALLAS_HANDOFF_ORDER, ['escort_join', 'sker_marks', 'hollow_hub']);
 });

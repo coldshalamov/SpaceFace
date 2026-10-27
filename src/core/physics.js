@@ -1,4 +1,5 @@
 import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
+import { hasBlockingPanels, interceptSegment, acceptIntercept, projectileDamageOf, PYLON_CONTACT } from '../combat/pylonShieldQuery.js';
 import {orchardRestoreInputsRequired,captureOrchardRestoreInputs,orchardRestoreInputsCurrent,orchardRestoreContextCurrent} from './anvilOrchardNative.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
@@ -38,6 +39,7 @@ import {
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
 import { isAnchoredPhysicalBody, anchoredRecoilKey } from './physicalResponse.js';
+import { restoredCatalogStationAnchor } from '../save/catalogStationRestore.js';
 import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
@@ -505,7 +507,7 @@ export const physics = {
     if(!current())return false;
     // Match the synchronous restore: recoil selects the body type and saved pose
     // before native adoption or fallback rebuild claims the regenerated entities.
-    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities, state);
     this._pendingAnchoredRecoil = null;
     if(!current())return false;
     const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
@@ -568,7 +570,7 @@ export const physics = {
     if(!current())return false;
     // Recoil must be on the body spec before adoption claims handles or a rebuild picks
     // the kinematic body type; its rest pose is the regenerated spawn, not the saved pose.
-    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities, state);
     this._pendingAnchoredRecoil = null;
     if(!current())return false;
     const needsOrchardInputs=restoreContext!==null && orchardRestoreInputsRequired(state,entities);
@@ -1342,6 +1344,25 @@ export const physics = {
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
       let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
       bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
+      // Linked shield pylons (packet 06): a hostile round stops at the first panel crossing on this
+      // SAME path. The shared geometry read decides (relation-selective: the owner's and allies'
+      // rounds pass), the round ends at the intercept and never also hits the target behind it, and
+      // the accepted contact is only RECORDED here - the shieldPylons system debits it once.
+      if (hasBlockingPanels(state)) {
+        const wall = interceptSegment(state, PYLON_CONTACT.PROJECTILE, proj.ownerId,
+          start.x, start.z, end.x, end.z, proj.radius || 0, { fallbackTeam: proj.data?.attackSource?.team ?? proj.team, sourceLife: proj.data?.attackSource?.life ?? null });
+        if (wall && (!bestTarget || wall.t < this._bestSegmentHitScratch.t)) {
+          proj.pos.x = wall.cx;
+          proj.pos.z = wall.cz;
+          acceptIntercept(state, wall, PYLON_CONTACT.PROJECTILE, { damage: projectileDamageOf(proj) }, proj.ownerId);
+          this.bus.emit('shieldPylon:intercepted', {
+            projectileId: proj.id, ownerId: proj.ownerId, team: proj.team, pairId: wall.pairId,
+            x: wall.x, z: wall.z, nx: wall.nx, nz: wall.nz, tick: state && Number.isInteger(state.tick) ? state.tick : 0,
+          });
+          proj.alive = false;
+          continue;
+        }
+      }
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
         if (limit.expired) {
@@ -1772,16 +1793,20 @@ function sanitizeAnchoredRecoil(rows) {
   return out.size ? out : null;
 }
 
-function applyAnchoredRecoil(rows, entities) {
+function applyAnchoredRecoil(rows, entities, state) {
   if (!rows || !entities) return;
   for (const entity of entities) {
     if (!entity || entity.alive === false || !entity.physicsBody || typeof entity.physicsBody !== 'object') continue;
     const key = anchoredRecoilKey(entity);
     const row = key && rows.get(key);
     if (!row) continue;
+    const catalogAnchor = state && restoredCatalogStationAnchor(state, entity);
     entity.physicsBody.anchorRecoil = {
       // Rest is the regenerated spawn pose — authored data may have moved since the save.
-      rest: { x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0, z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0 },
+      // A saved catalog carrier already has its recoiled pose, not that spawn pose.
+      // Its restore-scoped catalog anchor prevents accumulating the offset every Continue.
+      rest: catalogAnchor ? { ...catalogAnchor }
+        : { x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0, z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0 },
       x: row.x, z: row.z, vx: row.vx, vz: row.vz,
       settled: false,
     };

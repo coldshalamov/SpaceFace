@@ -2755,6 +2755,7 @@ export const trafficCausalChainOps = {
     const heliosFreightTallies = normalizeHeliosFreightTallyList(this.state.traffic.heliosFreightTallies);
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      pallasWorkLoop: normalizePallasShift(this.state.traffic.pallasWorkLoop, this.state.meta.seed),
       ...(this.state.traffic.captainRoster?.length
         ? { captainRoster: normalizeCaptainRoster(this.state.traffic.captainRoster) } : {}),
       ...(this.state.traffic.coldburnRey
@@ -2812,6 +2813,7 @@ export const trafficCausalChainOps = {
     this._nextDepotDispatchAt = 0;
     this._depotWatchRequested = new Set();
     yield 'traffic-releases';
+    this.state.traffic.pallasWorkLoop = normalizePallasShift(data?.pallasWorkLoop, this.state.meta.seed);
     const depotServices = normalizeDepotServices(data?.depotServices);
     const captainRoster = normalizeCaptainRoster(data?.captainRoster);
     if (captainRoster.length) this.state.traffic.captainRoster = captainRoster;
@@ -2955,3 +2957,4 @@ export const trafficCausalChainOps = {
     };
   },
 };
+import { normalizePallasShift } from '../data/pallasWorkShift.js';

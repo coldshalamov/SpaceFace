@@ -91,6 +91,31 @@ function hold(t) {
 }
 function release(t) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
 
+test('a recycled held-core id cannot inherit the hold, release or strain impulse', () => {
+  for (const edge of ['hold', 'release', 'strain', 'coil']) {
+    const t = boot();
+    const original = rock(t.sim, T.mawDist, 0, 12, 4);
+    hold(t);
+    assert.equal(t.sys._rt.coreId, original.id);
+    if (edge === 'coil') release(t);
+    const originalGeneration = original.occupantGeneration;
+    t.helpers.removeEntity(original.id, { immediate: true });
+    const heir = rock(t.sim, T.mawDist, 0, 18, 5);
+    assert.equal(heir.id, original.id, 'exercise the actual recycler');
+    assert.notEqual(heir.occupantGeneration, originalGeneration);
+    const before = structuredClone(heir.data);
+    if (edge === 'release') release(t);
+    else if (edge === 'strain') t.sys._drop('strained');
+    else { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    const cmd = consumePhysicsCommand(heir);
+    assert.ok(!cmd || cmd.impulses.length === 0, `${edge} cannot move the new occupant`);
+    assert.deepEqual(heir.data, before, `${edge} cannot arm or unmark the new occupant`);
+    assert.equal(t.sys._rt.phase, 'off');
+    assert.equal(t.sys._rt.coreId, null);
+    if (edge !== 'strain') assert.equal(t.state.gyreSnare?.coreId ?? null, null);
+  }
+});
+
 test('oversized cores stay whole and report TOO HEAVY instead of IN NET', () => {
   const t = boot();
   // Fit is a size question, never a tonnage one: both bodies are over maxClumpRadius,
@@ -2096,6 +2121,8 @@ test('a small meal into a heavy clump still knocks at the Δv floor', async () =
   // Mass-proportional knock would give Δv = 6·3/800 ≈ 0.02 wu/s — dead at the
   // fantasy's climax. The floor must rescue it to coreMass·0.15 = 120 impulse.
   const meal = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  // Isolate the powered flinch: co-moving matter contributes no relative linear impulse.
+  meal.vel.x = core.vel.x; meal.vel.z = core.vel.z;
   const dx = core.pos.x - meal.pos.x, dz = core.pos.z - meal.pos.z;
   const dist = Math.hypot(dx, dz);
   consumePhysicsCommand(core); // drain pending lane impulses so only the knock remains
@@ -2120,6 +2147,8 @@ test('a light clump keeps the mass-proportional knock (floor never fires)', asyn
   assert.equal(t.sys._rt.coreId, core.id);
   // 6·3 = 18 impulse ≫ 6·0.15 = 0.9 — the pebble branch is untouched.
   const meal = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+  // Isolate the powered flinch: co-moving matter contributes no relative linear impulse.
+  meal.vel.x = core.vel.x; meal.vel.z = core.vel.z;
   const dx = core.pos.x - meal.pos.x, dz = core.pos.z - meal.pos.z;
   const dist = Math.hypot(dx, dz);
   consumePhysicsCommand(core);
@@ -2133,51 +2162,34 @@ test('a light clump keeps the mass-proportional knock (floor never fires)', asyn
   t.cleanup();
 });
 
-test('a spiraling meal deposits its angular momentum on the merge — clamped on a railgun feed', async () => {
+test('spiraling meals retain COM angular momentum and the holder bounds the spin change', async () => {
   const t = await bootPhysics();
-  // A heavy clump: big inertia means a slow feed lands unclamped, so the exact
-  // deposit (L = m·v_t·d) is assertable; the same clump still clamps a railgun.
-  const core = rock(t.sim, T.mawDist, 0, 800, 8);
-  hold(t);
-  for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  assert.equal(t.sys._rt.coreId, core.id);
-  // A meal parked on -x corkscrewing in on -z: the approach axis is +x, so the
-  // whole velocity is tangential — and -z at -x is the funnel's own co-rotating
-  // tangent (dz,-dx)/dist, so this feed rides the vortex. 3 wu/s is well above
-  // the clump's own ~1 wu/s orbit drift so the chirality can't flake. L = m·v_t·d
-  // must land on the core as a +y torque — a funnel-fed meal joins the spin.
-  const slow = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
-  slow.vel = { x: 0, y: 0, z: -3 };
-  let dx = core.pos.x - slow.pos.x, dz = core.pos.z - slow.pos.z;
-  const dist = Math.hypot(dx, dz);
-  consumePhysicsCommand(core);
-  t.sys._absorb(t.state, t.sys._rt, core, slow, dx, dz, dist);
-  let cmd = consumePhysicsCommand(core);
-  assert.ok(cmd && cmd.torqueImpulses.length >= 1, 'the deposit crossed the membrane');
-  // The impulse IS the meal's angular momentum m·v_t·d (Δω = L/I lands via
-  // inertia·Δω) — mirror the production formula so the clump's own orbit drift
-  // (a real core slides ~1 wu/s on its slot) can't flake the exact value.
-  let relZ = slow.vel.z - (core.vel && core.vel.z || 0);
-  let relX = slow.vel.x - (core.vel && core.vel.x || 0);
-  const wantY = 6 * (relX * (dz / dist) - relZ * (dx / dist)) * dist;
-  let inertia = Math.max(8, Math.round(t.sys._rt.clumpMass * t.sys._rt.clumpRadius * t.sys._rt.clumpRadius * 0.4));
-  assert.ok(Math.abs(wantY / inertia) < 0.5, 'slow feed is unclamped on this clump');
-  assert.ok(Math.abs(cmd.torqueImpulses[0].y - wantY) < 1e-6,
-    `slow feed deposits m·v_t·d on the core (got ${cmd.torqueImpulses[0].y}, want ${wantY})`);
-  assert.equal(Math.sign(cmd.torqueImpulses[0].y), Math.sign(wantY), 'the deposit keeps the feed\'s chirality');
-  assert.ok(cmd.torqueImpulses[0].y > 0, 'a funnel-riding meal deposits +spin (co-rotating, not counter-spinning)');
-  // A railgun-fast feed quickens rather than spins out — the same clamp bounds it.
-  const fast = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
-  fast.vel = { x: 0, y: 0, z: -80 };
-  dx = core.pos.x - fast.pos.x; dz = core.pos.z - fast.pos.z;
-  const dist2 = Math.hypot(dx, dz);
-  consumePhysicsCommand(core);
-  t.sys._absorb(t.state, t.sys._rt, core, fast, dx, dz, dist2);
-  cmd = consumePhysicsCommand(core);
-  inertia = Math.max(8, Math.round(t.sys._rt.clumpMass * t.sys._rt.clumpRadius * t.sys._rt.clumpRadius * 0.4));
-  assert.ok(Math.abs(cmd.torqueImpulses[0].y - inertia * 0.5) < 1e-6,
-    `railgun feed clamps at inertia·0.5 (got ${cmd.torqueImpulses[0].y}, want ${inertia * 0.5})`);
-  t.cleanup();
+  try {
+    const core = rock(t.sim, T.mawDist, 0, 800, 8);
+    hold(t);
+    for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+    for (const incomingSpeed of [-3, -8000]) {
+      const meal = rock(t.sim, core.pos.x - 30, core.pos.z, 6, 4);
+      meal.vel.x = 0; meal.vel.z = incomingSpeed; meal.angVel = -0.2;
+      const m = core.physicsBody.mass, oldI = core.physicsBody.inertiaY, oldW = core.angVel;
+      const dx = meal.pos.x - core.pos.x, dz = meal.pos.z - core.pos.z;
+      // Intrinsic angular momentum about the common COM, including the meal's own spin.
+      const reducedMass = m * 6 / (m + 6);
+      const L = oldI * oldW + meal.physicsBody.inertiaY * meal.angVel
+        + reducedMass * (dx * (meal.vel.z - core.vel.z) - dz * (meal.vel.x - core.vel.x));
+      consumePhysicsCommand(core);
+      t.sys._absorb(t.state, t.sys._rt, core, meal, -dx, -dz, Math.hypot(dx, dz));
+      const cmd = consumePhysicsCommand(core);
+      const inertia = core.physicsBody.inertiaY;
+      const inherited = L - inertia * oldW;
+      const expected = inertia * Math.max(-0.5, Math.min(0.5, inherited / inertia));
+      const actual = cmd.torqueImpulses.reduce((sum, impulse) => sum + impulse.y, 0);
+      assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} != ${expected}`);
+      assert.ok(Math.abs(actual / inertia) <= 0.5 + 1e-9, 'holder reaction prevents a railgun spin-out');
+      if (incomingSpeed === -3) assert.ok(Math.abs(inherited / inertia) < 0.5, 'ordinary matter transfers without clipping');
+      else assert.ok(Math.abs(inherited / inertia) > 0.5, 'the extreme feed actually reaches the holder limit');
+    }
+  } finally { t.cleanup(); }
 });
 
 // -- coverage: basinCount skips persistent/exempt bodies inside the cone --
@@ -4102,15 +4114,21 @@ test('a same-tick multi-absorb publishes absorbR for the BIGGEST meal', async ()
   for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
   const core = t.state.entities.get(t.sys._rt.coreId);
-  // Both land on the clump in the same absorb pass — the publish ledger used to
-  // carry whichever body resolved LAST, so a wreck-then-pebble batch under-
-  // graded the HUD eat-pop it feeds.
-  rock(t.sim, core.pos.x + 1, core.pos.z, 2, 4);
-  rock(t.sim, core.pos.x - 1, core.pos.z, 8, 12);
-  t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers
-  t.state.input.actions.gyreSnare = true; t.sim.step();
+  // Both land on the clump inside one tick — the publish ledger used to carry whichever
+  // body resolved LAST, so a wreck-then-pebble batch under-graded the HUD eat-pop it feeds.
+  // The suck pass now staggers merges (D.absorbGapTicks, measured in gyre-baseline-loop) so a
+  // pile folds in over several ticks; the max-ledger stays for any caller that merges two
+  // bodies in one tick (direct absorbs, adopters), and is pinned here through that seam.
+  const pebble = rock(t.sim, core.pos.x + 1, core.pos.z, 2, 4);
+  const wreckMeal = rock(t.sim, core.pos.x - 1, core.pos.z, 8, 12);
+  t.sys._rt.absorbRadius = 0;
+  assert.equal(t.sys._absorb(t.state, t.sys._rt, core, wreckMeal, 1, 0, 1), true);
+  assert.equal(t.sys._absorb(t.state, t.sys._rt, core, pebble, 1, 0, 1), true);
+  t.sys._publish(t.state, t.player);
   assert.equal(t.state.gyreSnare.absorbR, 12,
     `the publish ledger carries the biggest meal's radius (got ${t.state.gyreSnare.absorbR})`);
+  t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.absorbR, 0, 'the next suck pass re-reads a quiet tick');
   // The ledger is PER TICK — a later small meal re-reads its own radius instead
   // of ratcheting to the hold's lifetime wreck.
   rock(t.sim, core.pos.x, core.pos.z + 1, 2, 5);

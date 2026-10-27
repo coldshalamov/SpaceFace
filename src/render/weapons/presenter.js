@@ -195,7 +195,7 @@ export class WeaponVfxPresenter {
     this._prevLocal = { x: 0, z: 0 };
     this._flightColors = { core: '#ffffff', sheath: '#ffffff' };
     this._boltSpec = {
-      entityId: -1, x: 0, y: 0, z: 0, prevX: 0, prevY: 0, prevZ: 0,
+      entityId: -1, occupantGeneration: null, x: 0, y: 0, z: 0, prevX: 0, prevY: 0, prevZ: 0,
       ax: 1, ay: 0, az: 0, length: 0, width: 0, intensity: 0, variant: 0,
       coreR: 1, coreG: 1, coreB: 1, sheathR: 1, sheathG: 1, sheathB: 1, minPixels: 0,
     };
@@ -702,6 +702,7 @@ export class WeaponVfxPresenter {
       const lodScale = dist > FULL_LOD_DISTANCE ? 0.92 : 1;
       const bolt = this._boltSpec;
       bolt.entityId = entity.id;
+      bolt.occupantGeneration = entity.occupantGeneration;
       bolt.x = currLocal.x; bolt.y = y; bolt.z = currLocal.z;
       bolt.prevX = prevLocal.x; bolt.prevY = y; bolt.prevZ = prevLocal.z;
       bolt.ax = vx / speed; bolt.ay = 0; bolt.az = vz / speed;

@@ -37,7 +37,7 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 const SEED = 4242;
 const settingsFor = (scheme, bindings = null) => ({ settings: { controls: { bindings }, gameplay: { controlScheme: scheme } } });
 
-test('the number row is the five powers in every scheme; the Line keeps Space/F only', () => {
+test('the five powers keep 1-5, pylons take 6, and the Line keeps Space/F in every scheme', () => {
   for (const scheme of ['pilot', 'classic', 'helm-assist']) {
     const st = settingsFor(scheme);
     assert.deepEqual(resolveActionCodes(st, 'pull'), ['Digit1'], `${scheme} pull`);
@@ -51,7 +51,7 @@ test('the number row is the five powers in every scheme; the Line keeps Space/F 
   // The bomb keeps the old charge-throw letter of each scheme.
   assert.deepEqual(resolveActionCodes(settingsFor('pilot'), 'bomb'), ['Digit4', 'KeyY']);
   assert.deepEqual(resolveActionCodes(settingsFor('helm-assist'), 'bomb'), ['Digit4', 'KeyQ']);
-  // No digit 6–9 seat is left behind, and no two flight actions share a number-row digit.
+  // Pylons have their own equipment key; no two flight actions share a number-row digit.
   for (const [name, table] of Object.entries(DEFAULTS.SCHEMES)) {
     const seen = new Map();
     for (const [action, codes] of Object.entries(table)) {
@@ -61,7 +61,8 @@ test('the number row is the five powers in every scheme; the Line keeps Space/F 
         seen.set(code, action);
       }
     }
-    assert.deepEqual([...seen.keys()].sort(), ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'], `${name} digit seats`);
+    assert.deepEqual([...seen.keys()].sort(), ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6'], `${name} digit seats`);
+    assert.equal(seen.get('Digit6'), 'deployShieldPylon', `${name}: the sixth key is the dedicated shield verb`);
   }
   for (const power of POWER_VERBS) assert.ok(TAUGHT_FLIGHT_ACTIONS.includes(power), `${power} is taught`);
 });
@@ -88,9 +89,10 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.pin], ['l1+dDown']);
   assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.rig], ['l1+dRight']);
   for (const legacy of Object.keys(POWER_VERB_ALIASES)) assert.equal(GAMEPAD_DEFAULT_BINDINGS[legacy], undefined, `${legacy} has no pad seat of its own`);
-  // RB + D-Pad Left is a chord the merge freed (the old charge throw), so the share rules accept it.
+  // An older remap can already own the new pylon default; introducing equipment cannot steal it.
   const pad = resolveGamepadBindings({ controls: { gamepad: { bindings: { deployWell: ['r1+dLeft'] } } } });
   assert.deepEqual(pad.pull, ['r1+dLeft'], 'a pad remap saved under the old Well name drives Pull');
+  assert.deepEqual(pad.deployShieldPylon, [], 'the new action stays honestly unbound instead of changing an existing remap');
 });
 
 test('RIG picks the cone in open space and the scoop inside a planet band; an open rig folds first', () => {
@@ -224,7 +226,8 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6].map((i) => labels[i]), ['1', '2', '3', '4', '5', 'Space']);
   const groups = buildOrdnanceGroups({ pull: ['Digit1'], shove: ['Digit2'], pin: ['Digit3'], bomb: ['Digit4'], rig: ['Digit5'], tether: ['Space'] });
   assert.deepEqual(groups.filter((g) => g.power).map((g) => `${g.name} ${g.slots.map((s) => s.key).join(' ')}`),
-    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space'], 'each power prints by name with its key');
+    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space', 'Gyre —', 'Cloak —'],
+    'each power prints by name with its key; the Gyre and the cloak ride after the Line, unbound here so no phantom key');
   const state = {
     simTime: 10, playerId: 1, mode: 'flight', entities: new Map([[1, { id: 1, alive: true, data: {} }]]), entityList: [],
     fields: { cooldowns: { well: 14 } },

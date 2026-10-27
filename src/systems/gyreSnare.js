@@ -38,6 +38,16 @@ import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidF
 import { occupantGenerationOf } from '../core/entity.js';
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
 import { environmentMaterialOf } from '../data/environmentMaterials.js';
+import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import {
+  MATTER_REFUSAL, explainRefusal, createCaptureLedger, memberRef, refMatches, grownRadius, launchPlan, burstPlan,
+  makeBody, mergeBodies, mergeImpulse, solidInertia, springAccel, glancingImpulse,
+} from '../matter/aggregateMass.js';
+import {
+  matterRefusal, matterMass, matterRadius, matterIsDynamic, hasProtectedContent,
+} from '../matter/aggregateEligibility.js';
+import { planMeal, applyMeal } from '../matter/aggregateCapture.js';
+import { stashLifetime, restoreLifetime } from '../matter/aggregateLifetime.js';
 
 const D = GYRE_SNARE;
 const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold
@@ -60,59 +70,42 @@ const PROV_TAG = 'gyre_snare';
 function finite(v, d = 0) { return Number.isFinite(v) ? v : d; }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-function entityMass(e) {
-  const m = Number(e && e.physicsBody && e.physicsBody.mass);
-  if (Number.isFinite(m) && m > 0) return m;
-  const top = Number(e && e.mass);
-  return Number.isFinite(top) && top > 0 ? top : 1;
-}
+// The shared matter predicates (src/matter/aggregateEligibility.js) — Gyre and the Pull collector
+// ask the same questions in the same order and speak the same refusal vocabulary.
+const entityMass = matterMass;
+const entityRadius = matterRadius;
+const isDynamic = matterIsDynamic;
+const GYRE_RULES = Object.freeze({ types: ABSORBABLE, maxRadius: D.maxClumpRadius });
 
-function entityRadius(e) {
-  // Prefer the collider radius: the absorb trigger rests just outside rapier contact,
-  // so keying on the visual would grind a fat-collider/thin-skin body against the
-  // clump's surface without ever crossing the absorb distance.
-  const r = Number(e && ((e.physicsBody && e.physicsBody.radius) || e.radius));
-  return Number.isFinite(r) && r > 0 ? r : 4;
-}
-
-function isDynamic(e) {
-  // isDynamicPhysicsBodyEntity is the shared substance convention — record-less bodies
-  // count as dynamic (SG-02 materializes the record in a tick), matching every other
-  // pull lane in the tree. The local collides guard stays on top of it.
-  return !!(e && e.collides !== false && isDynamicPhysicsBodyEntity(e));
-}
-
-// Read current custody/content at the destructive boundary. A former claim alone
-// does not protect empty scrap; live cargo, a quest hook, or a durable world body does.
-function hasProtectedContent(e) {
-  if (e.flags && (e.flags.persistent || e.flags.missionPinned)) return true;
-  const data = e.data || {};
-  if (data.persistent || data.persistenceOwner || data.missionPinned
-    || data.missionTargetSlot != null || data.worldRecordId != null
-    || data.worldRecordSlotId != null || data.wreckMissionId != null
-    || data.isCommunicator === true) return true;
-  if (data.salvagePool && Object.values(data.salvagePool).some((qty) => Number(qty) > 0)) return true;
-  if (Array.isArray(data.loot) && data.loot.some((lot) => lot && Number(lot.qty ?? lot.amount ?? 1) > 0)) return true;
-  if (Array.isArray(data.cargoManifest?.lines)
-    && data.cargoManifest.lines.some((line) => line && Number(line.qty) > 0)) return true;
-  const freight = data.freightCustodyPod;
-  return !!(freight && Number(freight.qty) > 0 && (!freight.status || freight.status === 'live'));
-}
-
+// null = may join; otherwise a MATTER_REFUSAL code. The historical 'too-heavy' / 'protected'
+// strings are unchanged (HUD + tests compare them); 'unavailable' is now split into the specific
+// reasons (anchored / collectible / not-matter / claimed / unavailable).
 function ingestionReason(e) {
-  if (!e || e.alive === false || !ABSORBABLE.has(e.type) || !isDynamic(e)
-    || e.physicsBody === false || e.physicsBody?.material === 'sensor'
-    || e.data?.gyreCore || e.data?.gyreLaunched) return 'unavailable';
-  if (hasProtectedContent(e)) return 'protected';
-  // Fit is a size question, never a tonnage one: a body fatter than the clump's own
-  // radius cap cannot go in whole, and partial-body disappearance is not a thing.
-  if (entityRadius(e) > D.maxClumpRadius) return 'too-heavy';
-  return null;
+  return matterRefusal(e, GYRE_RULES);
 }
 
 /** Capacity is the member ledger, not tonnage: a full ball stops eating AND pulling. */
 function clumpFull(rt) {
   return rt.members.length >= D.maxAbsorbRecords;
+}
+
+const REFUSE_KEYS = Object.freeze(['protected', 'too-heavy', 'anchored', 'collectible', 'claimed', 'saturated']);
+// Which refusal the pilot is told about first when several stand in the net at once.
+const REFUSE_PRIORITY = Object.freeze(['saturated', 'too-heavy', 'anchored', 'protected', 'collectible', 'claimed']);
+
+function resetRefuse(rt) {
+  const r = rt.refuse;
+  for (let i = 0; i < REFUSE_KEYS.length; i++) r[REFUSE_KEYS[i]] = 0;
+}
+
+/** Count a refusal this tick. Codes that are not pilot-meaningful (not-matter, unavailable) are ignored. */
+function tallyRefusal(rt, code) {
+  if (code != null && Object.prototype.hasOwnProperty.call(rt.refuse, code)) rt.refuse[code] += 1;
+}
+
+function topRefusal(refuse) {
+  for (let i = 0; i < REFUSE_PRIORITY.length; i++) if (refuse[REFUSE_PRIORITY[i]] > 0) return REFUSE_PRIORITY[i];
+  return null;
 }
 
 function freshRuntime() {
@@ -128,9 +121,19 @@ function freshRuntime() {
                            // the drawn edge agree (a body doesn't slide pre-reach)
     // Clump ledger (hold phase): the core entity + what it has eaten.
     coreId: null,
+    coreGeneration: null, // original occupant, shared by HOLD and the launch coil/burst
     clumpMass: 0,          // t — bookkeeping mass (base core + absorbed members)
     clumpRadius: 0,        // wu — volumetric union radius (for visuals/absorb tests)
     members: [],           // bounded absorb records for the clump lumps VFX
+    // The capture transaction ledger (src/matter/aggregateMass.js): a body is RESERVED here before
+    // any mass moves, so a reentrant event, a repeated contact or a save callback cannot count it
+    // twice. Bounded to the member capacity; generation-safe refs; reset with the clump.
+    capture: createCaptureLedger({ capacity: D.maxAbsorbRecords }),
+    nextAbsorbTick: 0,     // earliest tick the next meal may merge (D.absorbGapTicks stagger)
+    // Per-tick refusal tally by MATTER_REFUSAL code (published as pub.refusals): why the net is not
+    // taking something. Reset every tick the tool is live; edge-latched cues ride `refuseLatched`.
+    refuse: { protected: 0, 'too-heavy': 0, anchored: 0, collectible: 0, claimed: 0, saturated: 0 },
+    refuseLatched: { protected: false, anchored: false, collectible: false, saturated: false },
     absorbDir: { x: 0, z: 0 }, // newest meal's approach dir — UNBOUNDED channel (the
                              // ledger caps at 28; a frozen gulp dir past that is stale)
     absorbRadius: 0,       // biggest meal's collider radius this tick — the gulp reads scale by it
@@ -235,7 +238,45 @@ export const gyreSnare = {
       on('save:loaded', () => this._drop('save_loaded'));
       on('game:newGame', () => this._drop('new_game'));
       on('sector:exit', () => this._drop('sector_exit'));
+      // A thrown aggregate that strikes a loose body OFF-CENTRE spins it (packet 05): the solver's
+      // contact is frictionless, so without this an off-centre hit moves a rock and turns nothing.
+      on('physics:impact', (p) => this._onBallImpact(p));
     }
+  },
+
+  /** Grip of the thrown rubble on what it grazes: equal-and-opposite tangential impulse + torque. */
+  _onBallImpact(p) {
+    const state = this.state;
+    if (!state || !state.entities || !p) return;
+    const a = state.entities.get(p.aId), b = state.entities.get(p.bId);
+    let ball = null, other = null;
+    if (a && a.alive !== false && a.data && a.data.gyreLaunched) { ball = a; other = b; }
+    else if (b && b.alive !== false && b.data && b.data.gyreLaunched) { ball = b; other = a; }
+    if (!ball || !other || other.alive === false || other.id === state.playerId || !other.pos || !ball.pos) return;
+    if (other.data && other.data.gyreLaunched) return; // two thrown balls: not a graze, a collision
+    if (other.type === 'projectile' || other.type === 'fx' || other.physicsBody === false) return;
+    if (isAnchoredPhysicalBody(other) || !isDynamic(other)) return;
+    const J = finite(p.impulse);
+    if (!(J > 0)) return;
+    // One graze is one application: the solver reports a few events while the pair stays in contact.
+    const tick = state.tick | 0;
+    const seen = this._glanceSeen || (this._glanceSeen = new Map());
+    const last = seen.get(other.id);
+    if (last !== undefined && tick - last < D.glanceGapTicks) return;
+    if (seen.size >= 32) seen.clear(); // bounded: forgetting only re-arms a graze
+    seen.set(other.id, tick);
+    const snap = (e) => ({
+      m: entityMass(e), x: e.pos.x, z: e.pos.z, vx: finite(e.vel && e.vel.x), vz: finite(e.vel && e.vel.z),
+      w: finite(e.angVel), r: entityRadius(e),
+      I: finite(e.physicsBody && e.physicsBody.inertiaY) || solidInertia(entityMass(e), entityRadius(e)),
+    });
+    const g = glancingImpulse(snap(ball), snap(other), J, undefined, this._glanceScratch || (this._glanceScratch = {}));
+    if (!(g.jt > 0)) return;
+    const evidence = this._evidence(state.tick);
+    queuePhysicsImpulse(other, { x: g.tx * g.jt, y: 0, z: g.tz * g.jt }, evidence);
+    queuePhysicsImpulse(ball, { x: -g.tx * g.jt, y: 0, z: -g.tz * g.jt }, evidence);
+    if (g.torqueB) queuePhysicsTorqueImpulse(other, { x: 0, y: g.torqueB, z: 0 }, evidence);
+    if (g.torqueA) queuePhysicsTorqueImpulse(ball, { x: 0, y: g.torqueA, z: 0 }, evidence);
   },
 
   destroy() {
@@ -260,6 +301,7 @@ export const gyreSnare = {
     const rt = this._rt;
     const wasOff = rt.phase === PHASE.OFF;
     const coreId = rt.coreId;
+    const droppedCore = this._heldCore(this.state);
     const boundary = reason === 'save_loaded' || reason === 'new_game' || reason === 'sector_exit';
     if (boundary) {
       // The tracked core is current-timeline: clear its mark through the normal path so
@@ -289,7 +331,7 @@ export const gyreSnare = {
     // and must NOT be handed back; the throwing ball's own retire lane
     // already shed it. On divergence there is no abort victim at all.
     const coilAbortId = !boundary && droppedPhase === PHASE.LAUNCH
-      && rt.launchLeft === D.launchTicks && rt.launchedId === rt.coreId
+      && rt.launchLeft === D.launchTicks && rt.launchedId === rt.coreId && droppedCore
       ? rt.coreId : null;
     // The tear snap's whip scale — captured before the reset zeroes clumpRadius
     // (which would unfloor the ponderous rate). Strain drops only.
@@ -307,9 +349,11 @@ export const gyreSnare = {
     if (!wasOff) rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
+    rt.coreGeneration = null;
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.capture.reset();
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
@@ -324,8 +368,7 @@ export const gyreSnare = {
       // never re-enters it and the mirror retires via ballId like an
       // ordinary adoption (alive, unmarked → no grave).
       this._unwatchBall(coilAbortId);
-      const coilVictim = this.state && this.state.entities
-        ? this.state.entities.get(coilAbortId) : null;
+      const coilVictim = droppedCore;
       if (coilVictim && coilVictim.alive !== false && coilVictim.data) {
         this._handBack(coilVictim);
       }
@@ -337,6 +380,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0; // dead-state hygiene — the lag read is HOLD-only but resets like the rest
@@ -397,7 +441,7 @@ export const gyreSnare = {
     // thrown (or winding), so a live id would read as a clump torn off the lash when
     // the real story is "launch burst truncated" — pad/audio consumers take the
     // quieter empty-drop channel for it.
-    const emitId = droppedPhase === PHASE.LAUNCH ? null : coreId;
+    const emitId = droppedPhase === PHASE.LAUNCH || !droppedCore ? null : coreId;
     // Docking, mode flips, and player loss are context resets too — the verb ends
     // without a player choice, so they stay silent like boundaries (they do NOT join
     // `boundary` itself: the residue sweep + ball-mirror wipe belong to map swaps
@@ -407,7 +451,7 @@ export const gyreSnare = {
     // lives outside the bus guard below (a strain break's whip isn't a cue).
     if (!wasOff && reason === 'strained' && emitId != null) {
       const st = this.state;
-      const torn = st && st.entities ? st.entities.get(emitId) : null;
+      const torn = droppedCore;
       const pl = st && st.entities ? st.entities.get(st.playerId) : null;
       if (torn && torn.pos && pl && pl.pos) {
         const mw = this._maw(pl, this._dropMaw || (this._dropMaw = { x: 0, z: 0 }));
@@ -450,7 +494,7 @@ export const gyreSnare = {
       // real body plainly floats away. No snap, no whip dir — those are the
       // tear's own. The alive-gate rejects gone cores ('core_lost' never follows).
       const st = this.state;
-      const torn = st && st.entities ? st.entities.get(emitId) : null;
+      const torn = droppedCore;
       if (torn && torn.alive !== false && torn.pos) {
         // gentle: the freed body stays alive under its mission owner — the
         // rubble's exit is a de-rez, not a debris scatter under a live body.
@@ -523,79 +567,19 @@ export const gyreSnare = {
   },
 
   _restoreLifetime(e, futureOnly = false) {
-    // Stashed at snag: a freed (non-launched) core resumes its authored deadlines
-    // instead of living forever as stasis residue.
-    if (!e || !e.data) return;
-    // 'in' not '!== undefined': an absent authored despawnAt stashes undefined and
-    // must restore ABSENT (and still consume the stash key) — otherwise every freed
-    // core that had no authored deadline carries a dead residue key forever.
-    if ('gyrePrevDespawnAt' in e.data) {
-      // '!(v > 0)' not '== null': a serialized stash that was non-finite at
-      // write round-trips as null, and a legacy/foreign 0 stash is the same
-      // absent contract — restoring despawnAt = 0 would be an insta-kill, not
-      // an authored deadline.
-      if (!(e.data.gyrePrevDespawnAt > 0)) {
-        if (!futureOnly) delete e.data.despawnAt; // absent authored → restore absent
-        // futureOnly: a foreign owner's own deadline (if any) wins — leave it.
-        delete e.data.gyrePrevDespawnAt;
-      } else {
-        // futureOnly (hand-back): the body's CURRENT owner keeps its deadline. Restore
-        // the authored stash only when nothing else set one AND it's still in the
-        // future — resurrecting a stale stash assassinates an adopted body on the next
-        // lifetime sweep, and clobbering a live launch deadline would cut a still-
-        // flying overflow ball's flight short.
-        const now = this.state && this.state.simTime;
-        // A non-finite now can't prove the stash is stale — treat unprovable
-        // as unfresh and skip the restore rather than writing a possibly-past
-        // deadline into a body we can't sweep honestly anyway.
-        if (futureOnly && (e.data.despawnAt != null
-          || !Number.isFinite(now)
-          || e.data.gyrePrevDespawnAt <= now)) {
-          delete e.data.gyrePrevDespawnAt;
-        } else {
-          e.data.despawnAt = e.data.gyrePrevDespawnAt;
-          delete e.data.gyrePrevDespawnAt;
-        }
-      }
-    }
-    // 'in' not '!== undefined': an absent authored ttl stashes undefined and must
-    // restore ABSENT (e.ttl = undefined) — otherwise a released body keeps the
-    // Infinity the snag planted instead of round-tripping as authored.
-    if ('gyrePrevTtl' in e.data) {
-      // The countdown channel is RELATIVE — frozen at snag, it can't go stale like an
-      // absolute despawnAt. Resuming it under futureOnly is the honest authored state:
-      // an adopter keeping the body strips deadlines itself, and a released hand-back
-      // must not leave immortal debris. A non-positive stash restores nothing.
-      if (futureOnly) {
-        // Same current-owner guard as the despawnAt branch: a foreign owner that
-        // assigns its own finite ttl keeps it — the snag only planted Infinity, so a
-        // finite e.ttl here is owner-set and wins. Infinity still restores authored.
-        // An absent OR non-positive stash restores nothing — and must not leave the
-        // snag's planted Infinity behind either (immortal debris): delete instead.
-        if (!(e.data.gyrePrevTtl > 0)) {
-          if (!Number.isFinite(e.ttl)) delete e.ttl;
-        } else if (!Number.isFinite(e.ttl)) {
-          e.ttl = e.data.gyrePrevTtl;
-        }
-        delete e.data.gyrePrevTtl;
-      } else {
-        // Same '!(v > 0)' absent contract as the despawnAt branch: a null or
-        // non-positive stash (absent authored, or a serialized non-finite that
-        // round-tripped as 0 before the write-side normalization) restores
-        // ABSENT — writing e.ttl = 0 would decrement a corpse deadline into
-        // the body and kill it on the next lifetime tick.
-        if (!(e.data.gyrePrevTtl > 0)) delete e.ttl;
-        else e.ttl = e.data.gyrePrevTtl;
-        delete e.data.gyrePrevTtl;
-      }
-    }
+    restoreLifetime(e, futureOnly, this.state && this.state.simTime);
+  },
+
+  _heldCore(state) {
+    const rt = this._rt;
+    const core = rt?.coreId != null ? state?.entities?.get(rt.coreId) : null;
+    return core && refMatches(core, { id: rt.coreId, gen: rt.coreGeneration }, occupantGenerationOf) ? core : null;
   },
 
   _clearCoreMark() {
     const rt = this._rt;
     if (!rt) return; // destroy() before init() — nothing tracked
-    const core = rt.coreId != null && this.state && this.state.entities
-      ? this.state.entities.get(rt.coreId) : null;
+    const core = this._heldCore(this.state);
     if (core && core.data && core.data.gyreCore) {
       delete core.data.gyreCore;
       this._restoreLifetime(core);
@@ -968,7 +952,14 @@ export const gyreSnare = {
       const e = cands[i];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.id === state.playerId) continue;
-      if (!isDynamic(e)) continue;
+      if (!isDynamic(e)) {
+        // A station, gate or landmark under the glass is not "nothing there": say it is anchored.
+        if (isAnchoredPhysicalBody(e)
+          && Math.hypot(e.pos.x - maw.x, e.pos.z - maw.z) <= D.basinRadius + entityRadius(e)) {
+          tallyRefusal(this._rt, MATTER_REFUSAL.ANCHORED);
+        }
+        continue;
+      }
       // physicsBody:false is an authored opt-out (dropped bombs, snare sentinels): no
       // rapier body ever materializes, so queued impulses just accumulate unread.
       if (e.physicsBody === false) continue;
@@ -1016,6 +1007,11 @@ export const gyreSnare = {
       }
       const admission = ingestionReason(e);
       const absorbable = admission === null;
+      // Why-not ledger: what stands inside the drawn glass and is not being taken, by reason.
+      if (!absorbable && (inBasin || lipT === 0) && e.type !== 'projectile') tallyRefusal(this._rt, admission);
+      else if (absorbable && (inBasin || lipT === 0) && this._rt.phase === PHASE.HOLD && clumpFull(this._rt)) {
+        tallyRefusal(this._rt, MATTER_REFUSAL.SATURATED); // a full net eats nothing more
+      }
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
       // The "IN NET" read names mass actually inside the glass — bodies easing through
@@ -1191,9 +1187,12 @@ export const gyreSnare = {
     const rt = this._rt;
     rt.phase = PHASE.HOLD;
     rt.coreId = best.id;
+    rt.coreGeneration = occupantGenerationOf(best);
     rt.clumpMass = entityMass(best);
     rt.clumpRadius = entityRadius(best);
     rt.totalAbsorbed = 0; // new clump ledger — the HUD count restarts with the core
+    rt.capture.reset();   // a fresh clump starts a fresh capture transaction ledger
+    rt.nextAbsorbTick = 0;
     rt.fullCueLatched = false;
     rt.fuseCueLatched = false; // the latch's contract is 'once per hold' — a warn spent
                              // searching must not silence the hold it was actually for
@@ -1223,13 +1222,8 @@ export const gyreSnare = {
     // fail the absent check on restore, and insta-kill the body. Absent and
     // non-finite authored values stash as null (deadline-free), positive
     // finite values stash verbatim.
-    best.data.gyrePrevDespawnAt = Number.isFinite(best.data.despawnAt) ? best.data.despawnAt : null;
-    best.data.gyrePrevTtl = Number.isFinite(best.ttl) ? best.ttl : null;
-    delete best.data.despawnAt;
-    // Acknowledged foreign-field ride: `ttl` belongs to the lifetime sweep, outside
-    // the declared data.* namespace — stashed and restored symmetrically on both
-    // the drop and the future-only hand-back so the sweep's own contract resumes.
-    best.ttl = Infinity;
+    stashLifetime(best); // both channels (aggregateLifetime.js): `ttl` belongs to the lifetime sweep, so
+    // it is stashed and restored symmetrically on the drop and the future-only hand-back alike.
     if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(best);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.snagged, {
@@ -1256,7 +1250,7 @@ export const gyreSnare = {
   /** Hold phase: orbit the core around the maw; suck absorbables onto the clump. */
   _holdPass(dt, state, player, maw, nose) {
     const rt = this._rt;
-    const core = state.entities ? state.entities.get(rt.coreId) : null;
+    const core = this._heldCore(state);
     if (!core || core.alive === false || !core.pos) { this._drop('core_lost'); return; }
     if (hasProtectedContent(core)) { this._releaseProtectedCore(core); return; }
     const t = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
@@ -1296,13 +1290,9 @@ export const gyreSnare = {
     // Spring → orbit slot, damped vs ship frame so the ball tracks the ship.
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
-    let ax = (tx - core.pos.x) * D.holdSpringK - (finite(core.vel && core.vel.x) - shipVx) * D.holdDamping;
-    let az = (tz - core.pos.z) * D.holdSpringK - (finite(core.vel && core.vel.z) - shipVz) * D.holdDamping;
-    const a2 = ax * ax + az * az;
-    if (a2 > D.holdMaxAccel * D.holdMaxAccel) {
-      const s = D.holdMaxAccel / Math.sqrt(a2);
-      ax *= s; az *= s;
-    }
+    const spring = springAccel(core.pos.x, core.pos.z, finite(core.vel && core.vel.x), finite(core.vel && core.vel.z),
+      tx, tz, shipVx, shipVz, D.holdSpringK, D.holdDamping, D.holdMaxAccel, this._springScratch || (this._springScratch = { ax: 0, az: 0 }));
+    const ax = spring.ax, az = spring.az;
     // The authored body carries the real clump mass (grown on every absorb via
     // syncDerivedPhysicsMass), so impulse = a·m·dt produces the authored Δv regardless of how
     // big the ball has become — the lash holds a 2400 t clump as surely as a 6 t pebble.
@@ -1334,6 +1324,7 @@ export const gyreSnare = {
     // the suck lane's annulus count from the same tick. deflectCount rides the same
     // reset point (its basin half lands in _pullPass too).
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     // The clump's merge is the one irreversible sim mutation — a wreck eaten
@@ -1409,6 +1400,7 @@ export const gyreSnare = {
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
       const admission = ingestionReason(e);
       const absorbable = admission === null;
+      if (!absorbable && e.type !== 'projectile') tallyRefusal(rt, admission);
       if (admission === 'too-heavy') {
         // Too heavy to EAT — not too heavy to feel: falls through to the courtesy tug
         // below so the strongest gravity zone (inside owned.r, where the basin lane is
@@ -1477,7 +1469,12 @@ export const gyreSnare = {
         // The merge is the one irreversible lane — it freezes under a live modal
         // (a wreck eaten behind a screen can't be unseen); the meal rests at
         // contact and lands on the first visible tick.
-        if (!modal) this._absorb(state, rt, core, e, dx, dz, dist);
+        if (clumpFull(rt)) tallyRefusal(rt, MATTER_REFUSAL.SATURATED); // resting at the skin, refused: full
+        else if (!modal && (state.tick | 0) >= rt.nextAbsorbTick) {
+          // One meal per gap: a pile already touching the core folds in as x2, x3, x4 instead of
+          // one pop. The rest rest at the skin (still pulled, still in contact) until their turn.
+          if (this._absorb(state, rt, core, e, dx, dz, dist)) rt.nextAbsorbTick = (state.tick | 0) + D.absorbGapTicks;
+        }
         continue;
       }
       // Below the merge check: a body absorbed THIS tick is the clump's mass, not
@@ -1487,7 +1484,7 @@ export const gyreSnare = {
         // A FULL clump can't keep another gram — stop vacuuming meals it will never
         // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
         // capped ball doesn't drag leeches against its skin forever.
-        if (clumpFull(rt)) continue;
+        if (clumpFull(rt)) { tallyRefusal(rt, MATTER_REFUSAL.SATURATED); continue; }
         const couple = couplingScale(this._profile(e));
         const pull = D.suckAccel * couple * wake;
         const mass = entityMass(e);
@@ -1541,91 +1538,56 @@ export const gyreSnare = {
   _absorb(state, rt, core, e, dx, dz, dist) {
     if (clumpFull(rt)) return false;
     if (ingestionReason(e) !== null) return false;
-    const em = entityMass(e);
-    const er = entityRadius(e);
-    const massBefore = rt.clumpMass;
-    rt.clumpMass = massBefore + em;
+    // Capture is a representation transaction: RESERVE before any mass moves. A reentrant call
+    // (an event subscriber, a repeated contact, a save callback) finds the ticket and is refused,
+    // so one body can never be counted twice. The ref carries the occupant generation, so a
+    // recycled id is a different body.
+    const reservation = rt.capture.reserve(memberRef(e, occupantGenerationOf), entityMass(e));
+    if (!reservation.ok) return false;
+    const before = { mass: rt.clumpMass, radius: rt.clumpRadius, total: rt.totalAbsorbed };
+    try {
+      return this._mergeMeal(state, rt, core, e, dx, dz, dist, reservation.ticket);
+    } catch (err) {
+      // A throw before the commit leaves the meal alive and the ledger as it was: give the
+      // ticket back and undo the bookkeeping, then let the failure surface.
+      if (rt.capture.cancel(reservation.ticket)) {
+        rt.clumpMass = before.mass; rt.clumpRadius = before.radius; rt.totalAbsorbed = before.total;
+      }
+      throw err;
+    }
+  },
+
+  _mergeMeal(state, rt, core, e, dx, dz, dist, ticket) {
+    // The merge itself is the shared seam (src/matter/aggregateCapture.js): plan everything off the
+    // core's pre-merge state, then perform it through the physics membrane and the entity remover.
+    // The knock is a declared EXTERNAL-tool impulse — the lash is what holds the ball — and the
+    // grown inertia is one number for the meal's angular momentum and the physics rebuild.
+    const plan = planMeal(core, e, { mass: rt.clumpMass, radius: rt.clumpRadius }, { dx, dz, dist }, D, D.maxClumpRadius, this._planScratch || (this._planScratch = {}));
+    const em = plan.em;
+    const er = plan.er;
+    const nx = plan.nx;
+    const nz = plan.nz;
+    rt.clumpMass = plan.mass;
     // Ingestion is whole-body: if the meal cannot fit it stays alive with all its mass.
-    rt.clumpRadius = Math.min(
-      D.maxClumpRadius,
-      Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
-    );
+    rt.clumpRadius = plan.radius;
     // Each member keeps its actual surface and approach so the clump is visibly made
     // from what the player collected. The member ceiling stops further ingestion.
     rt.totalAbsorbed += 1;
-    const nx = dist > 1e-4 ? -dx / dist : 0;
-    const nz = dist > 1e-4 ? -dz / dist : 0;
     // The gulp direction is a per-tick channel; the full ledger remains the payload.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
     // Publish carries the tick's BIGGEST meal (last-write used to under-grade a
     // wreck-then-pebble batch — every per-meal channel grades on its own em/er
     // locals, only this publish ledger needed the max).
     rt.absorbRadius = Math.max(rt.absorbRadius || 0, er);
-    // Katamari knock: the ball physically flinches off the meal's approach — a
-    // mass-scaled shove so a wreck visibly rocks the tether (a pebble is a tap,
-    // and a heavier ball shrugs more since Δv = impulse/mass). The hold spring
-    // recovers it in ~half a second — a rock, never a displacement.
-    // The grown clump's inertia — hoisted so the meal's angular momentum below
-    // and the physics rebuild at the bottom of the absorb agree on it.
-    const newInertia = Math.max(8, Math.round(rt.clumpMass * rt.clumpRadius * rt.clumpRadius * 0.4));
-    if (dist > 1e-4) {
-      // Mass-proportional impulse alone shrugs to nothing at the fantasy's
-      // climax (40 t into 2400 t ≈ 0.05 wu/s) — a Δv floor keeps big meals
-      // felt on big balls without touching the pebble branch.
-      // Speed-graded: a 200 wu/s inbound wreck should rock the tether harder
-      // than a drifter — closing speed along the approach axis, clamped so a
-      // railgun-fast meal can't detonate the hold spring (≤2.5× the authored).
-      const relX = finite(e.vel && e.vel.x) - finite(core.vel && core.vel.x);
-      const relZ = finite(e.vel && e.vel.z) - finite(core.vel && core.vel.z);
-      const closing = Math.max(0, relX * (dx / dist) + relZ * (dz / dist));
-      const speedK = 1 + Math.min(1.5, closing / Math.max(1, D.absorbKnockSpeedRef));
-      const knock = Math.max(em * D.absorbKnockPerMass, entityMass(core) * D.absorbKnockFloor) * speedK;
-      queuePhysicsImpulse(core,
-        { x: (dx / dist) * knock,
-          y: 0,
-          z: (dz / dist) * knock },
-        this._evidence(state.tick));
-      // The meal's ANGULAR momentum lands too — a spiraling feed doesn't die
-      // spinless at the merge. Δω = L/I with L ≈ m·v_t·d, the lever arm being
-      // the CONTACT distance (the meal struck at dist, not at clumpRadius).
-      // v_t is the relative velocity projected on the funnel's OWN co-rotating
-      // tangent (dz,−dx)/dist — the same axis the pull lanes corkscrew on — so a
-      // meal arriving WITH the vortex deposits +angVel (the +0.55 tumble servo
-      // target's sense) instead of counter-spinning against the chirality it
-      // was fed on. Capped so a railgun meal quickens, not spins out.
-      const tangential = relX * (dz / dist) - relZ * (dx / dist);
-      const dOmega = Math.max(-0.5, Math.min(0.5, em * tangential * dist / newInertia));
-      if (Math.abs(dOmega) > 1e-3) {
-        queuePhysicsTorqueImpulse(core, { x: 0, y: newInertia * dOmega, z: 0 }, this._evidence(state.tick));
-      }
-    }
     if (rt.members.length < D.maxAbsorbRecords) {
       rt.members.push({ type: e.type, material: environmentMaterialOf(e),
         typeId: e.data?.typeId || null, mass: em, radius: er, nx, nz });
     }
-    if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
-    else e.alive = false;
-    // Grow the AUTHORED body record (mass/inertia/radius + revision bump → the physics owner
-    // rebuilds the ball with the new spec). A one-tick writePhysicsBodyResponse would revert
-    // on the next pass; this is the real katamari — the rapier body genuinely gains mass and
-    // a bigger collider, which also keeps the skin-touch absorb threshold honest.
-    // `=== false` is an authored opt-out — the same guard _launch carries.
-    if (core.physicsBody !== false) {
-      syncDerivedPhysicsMass(
-        core,
-        rt.clumpMass,
-        newInertia,
-        rt.clumpRadius,
-      );
-    }
-    // The clump's HEART visibly grows too: entity.radius is what the motion presenters scale
-    // the core's mesh off — keep it in step with the physics record so growth is visceral.
-    if (!finite(core.radius) || core.radius < rt.clumpRadius) {
-      core.radius = rt.clumpRadius;
-      if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') {
-        this.helpers.markEntityVisualChanged(core);
-      }
-    }
+    applyMeal({
+      helpers: this.helpers, evidence: this._evidence(state.tick), ledger: rt.capture,
+      markVisual: this.helpers && typeof this.helpers.markEntityVisualChanged === 'function'
+        ? this.helpers.markEntityVisualChanged : null,
+    }, core, e, plan, ticket);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.absorbed, {
         id: e.id, coreId: core.id, victimId: e.id, victimType: e.type, mass: em,
@@ -1704,7 +1666,7 @@ export const gyreSnare = {
   /** Release: bowl the clump along the nose. */
   _launch(state, player) {
     const rt = this._rt;
-    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
+    const core = this._heldCore(state);
     if (!player || !core || core.alive === false || !core.pos) {
       this._drop(!player ? 'player_lost' : 'launch_without_core');
       return;
@@ -1717,8 +1679,11 @@ export const gyreSnare = {
     // The heave grades by payload like the pull distance already does: a capped
     // moon takes the longer bow (+3 ticks ≈ 150 ms) while a pebble keeps the
     // snappy ~100 ms draw — the fantasy's biggest throw visibly loads.
-    rt.launchWindupTotal = D.launchWindupTicks
-      + Math.round(D.launchWindupTicksMass * Math.min(1, rt.clumpMass / D.maxClumpMass));
+    // One plan for the whole throw (src/matter/aggregateMass.js): the coil, the commanded speed, the
+    // impact scale and the recoil all come from the same object the preview reads, so the line the
+    // pilot sees and the burst that executes cannot disagree.
+    const plan = launchPlan(rt.clumpMass, D);
+    rt.launchWindupTotal = plan.windupTicks;
     rt.launchWindup = rt.launchWindupTotal;
     rt.launchCarry = 0;
     // The aim freezes at the RELEASE edge — the slingshot read. The ball doesn't fly
@@ -1734,6 +1699,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;    // HOLD-only channel — nothing may read a stale drag residual
@@ -1751,72 +1717,17 @@ export const gyreSnare = {
     // pebble — heavy reads heavy in the ARC, not just growl/recoil. Computed HERE,
     // off the frozen ballMass, so provenance/kill-credit magnitude sees the real
     // thrown Δv and the burst just consumes it.
-    rt.launchSpeedEff = D.launchSpeed
-      * (1 - D.launchMassPenalty * Math.min(1, rt.ballMass / D.maxClumpMass));
+    rt.launchSpeedEff = plan.speed;
     // The katamari lumps are part of the thrown payload — freeze the ledger so the glass
     // clump overlay keeps riding the ball through its whole flight instead of shedding at OFF.
     rt.ballMembers = rt.members.slice();
     rt.ballClumpRadius = rt.clumpRadius;
     rt.ballAbsorbs = rt.totalAbsorbed;
-    // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
-    // bounded flight so the map doesn't keep it forever.
-    const scale = Math.min(
-      D.launchImpactScaleMax,
-      D.launchImpactScaleBase + rt.clumpMass / D.launchImpactScalePerMass,
-    );
-    core.data = core.data || {};
-    if (core.physicsBody !== false) {
-      // physicsBody===false is an authored opt-out — materializing a record here
-      // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
-      core.physicsBody = core.physicsBody || {};
-      // Stash any authored scale so the adoption hand-back restores it rather than
-      // leaving the entity un-damped (or keeping the weapon scale) forever. ?? null:
-      // clonePlain/JSON drops undefined-valued keys — a serialized ball would load
-      // armed but ledger-less, and _disarmBall's 'in' gate would early-return on it
-      // forever (a permanently-armed collider). null round-trips; ?? preserves an
-      // authored 0 (0 ?? null === 0).
-      core.data.gyrePrevImpactScale = core.physicsBody.impactDamageScale ?? null;
-      core.physicsBody.impactDamageScale = scale;
-      // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
-      // authored-spec write must invalidate or the resolved spec reads stale.
-      core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
-    }
-    delete core.data.gyreCore;
-    // Launch stamps its own TTL. The authored-lifetime stashes ride on the ball so an
-    // adoption hand-back can restore them — symmetric with the drop contract; a boundary
-    // sweep drops them as old-timeline residue.
-    core.data.gyreLaunched = true;
-    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60) + D.ballTtlS;
-    recordImpulseProvenance(core, {
-      actorId: state.playerId,
-      weaponId: WEAPON_ID,
-      tag: 'gyre_launch',
-      appliedTick: state.tick | 0,
-      magnitude: rt.clumpMass * rt.launchSpeedEff,
+    this._armBall(state, core, {
+      impactScale: plan.impactScale, magnitude: rt.clumpMass * rt.launchSpeedEff,
+      clumpRadius: rt.clumpRadius, absorbs: rt.ballAbsorbs, members: rt.ballMembers,
+      weaponId: WEAPON_ID, tag: 'gyre_launch', clearMark: 'gyreCore',
     });
-    holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * TICKS_PER_S), state.tick | 0);
-    // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
-    // weapon scale but loses its entity-keyed provenance — the boundary sweep re-stamps
-    // kill credit from this meta. holdUntilSim rides despawnAt, the flight's outer bound.
-    core.data.gyreLaunchMeta = {
-      actorId: state.playerId == null ? null : state.playerId,
-      weaponId: WEAPON_ID,
-      tag: 'gyre_launch',
-      magnitude: rt.clumpMass * rt.launchSpeedEff,
-      holdUntilSim: core.data.despawnAt,
-      clumpRadius: rt.clumpRadius,
-      // The absorb ledger serializes too — a re-adopted ball republishes its real
-      // ×N and the glass-clump overlay rebuilds its lumps instead of collapsing to
-      // the bare collider silhouette.
-      absorbs: rt.ballAbsorbs,
-      members: rt.ballMembers ? rt.ballMembers.slice() : null,
-    };
-    // Watch every launched id, not just the newest: a second launch or a save-load
-    // that keeps the entity alive would otherwise orphan gyreLaunched + weapon scale
-    // forever. AFTER the marks: the overflow scan prefers an unmarked slot, and a
-    // freshly-pushed pre-mark ball would read as one and evict itself.
-    this._trackBall(core.id);
-    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(core);
     if (this.bus) {
       this.bus.emit(GYRE_EVENTS.launched, {
         id: core.id, coreId: core.id, mass: rt.clumpMass, radius: rt.clumpRadius,
@@ -1835,6 +1746,104 @@ export const gyreSnare = {
     // recipe attack is 1 ms: emitted here it would fire a beat early, against the design.
   },
 
+  /**
+   * Arm a body as a thrown aggregate: the weapon payload (authored impact scale), the kill-credit
+   * provenance, a bounded flight, the serializable meta shadow and a seat in the watch ledger. One
+   * seam for Gyre's own release and for an aggregate another owner (the Pull collector) throws, so a
+   * thrown knot has exactly one lifecycle: watch, retire, hand-back, save, boundary sweep.
+   * spec = { impactScale, magnitude, clumpRadius, absorbs, members, weaponId, tag, clearMark }.
+   */
+  _armBall(state, core, spec) {
+    const rt = this._rt;
+    // The ball becomes a weapon: authored impact scale + provenance for kill credit + a
+    // bounded flight so the map doesn't keep it forever.
+    const scale = spec.impactScale;
+    core.data = core.data || {};
+    if (core.physicsBody !== false) {
+      // physicsBody===false is an authored opt-out — materializing a record here
+      // would make shouldSyncPhysicsBodyEntity spawn a body the entity declined.
+      core.physicsBody = core.physicsBody || {};
+      // Stash any authored scale so the adoption hand-back restores it rather than
+      // leaving the entity un-damped (or keeping the weapon scale) forever. ?? null:
+      // clonePlain/JSON drops undefined-valued keys — a serialized ball would load
+      // armed but ledger-less, and _disarmBall's 'in' gate would early-return on it
+      // forever (a permanently-armed collider). null round-trips; ?? preserves an
+      // authored 0 (0 ?? null === 0).
+      core.data.gyrePrevImpactScale = core.physicsBody.impactDamageScale ?? null;
+      core.physicsBody.impactDamageScale = scale;
+      // Bump the body revision — RESOLVED_BODY_CACHE keys on (body, revision), so the
+      // authored-spec write must invalidate or the resolved spec reads stale.
+      core.physicsBody.revision = Math.max(0, Math.trunc(finite(core.physicsBody.revision))) + 1;
+    }
+    delete core.data[spec.clearMark || 'gyreCore'];
+    // Launch stamps its own TTL. The authored-lifetime stashes ride on the ball so an
+    // adoption hand-back can restore them — symmetric with the drop contract; a boundary
+    // sweep drops them as old-timeline residue.
+    core.data.gyreLaunched = true;
+    core.data.despawnAt = (Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60) + D.ballTtlS;
+    recordImpulseProvenance(core, {
+      actorId: state.playerId,
+      weaponId: spec.weaponId,
+      tag: spec.tag,
+      appliedTick: state.tick | 0,
+      magnitude: spec.magnitude,
+    });
+    holdImpulseProvenance(core, (state.tick | 0) + Math.round(D.launchProvenanceHoldS * TICKS_PER_S), state.tick | 0);
+    // Serializable shadow of the WeakMap record: a save:loaded ball keeps despawnAt +
+    // weapon scale but loses its entity-keyed provenance — the boundary sweep re-stamps
+    // kill credit from this meta. holdUntilSim rides despawnAt, the flight's outer bound.
+    core.data.gyreLaunchMeta = {
+      actorId: state.playerId == null ? null : state.playerId,
+      weaponId: spec.weaponId,
+      tag: spec.tag,
+      magnitude: spec.magnitude,
+      holdUntilSim: core.data.despawnAt,
+      clumpRadius: spec.clumpRadius,
+      // The absorb ledger serializes too — a re-adopted ball republishes its real
+      // ×N and the glass-clump overlay rebuilds its lumps instead of collapsing to
+      // the bare collider silhouette.
+      absorbs: spec.absorbs,
+      members: spec.members ? spec.members.slice() : null,
+    };
+    // Watch every launched id, not just the newest: a second launch or a save-load
+    // that keeps the entity alive would otherwise orphan gyreLaunched + weapon scale
+    // forever. AFTER the marks: the overflow scan prefers an unmarked slot, and a
+    // freshly-pushed pre-mark ball would read as one and evict itself.
+    this._trackBall(core.id);
+    if (this.helpers && typeof this.helpers.markEntityVisualChanged === 'function') this.helpers.markEntityVisualChanged(core);
+  },
+
+  /**
+   * Take a thrown aggregate from another owner (the Pull collector). The caller has already decided
+   * and paid; this stamps the flight, mirrors it for the HUD/glass and watches it. The burst itself is
+   * the caller's. Returns the launch plan the caller should execute, or null.
+   */
+  adoptThrownAggregate(core, spec) {
+    const state = this.state;
+    const rt = this._rt;
+    if (!state || !rt || !core || core.alive === false || !core.pos) return null;
+    const plan = launchPlan(spec.mass, spec.tuning || D);
+    const members = Array.isArray(spec.members) ? spec.members.slice() : [];
+    rt.ballId = core.id;
+    rt.ballMass = spec.mass;
+    rt.ballMembers = members;
+    rt.ballClumpRadius = spec.radius;
+    rt.ballAbsorbs = spec.absorbs | 0;
+    this._armBall(state, core, {
+      impactScale: plan.impactScale, magnitude: spec.mass * plan.speed, clumpRadius: spec.radius,
+      absorbs: rt.ballAbsorbs, members, weaponId: spec.weaponId || WEAPON_ID, tag: spec.tag || 'gyre_launch',
+      clearMark: spec.clearMark || 'gyreCore',
+    });
+    if (this.bus) {
+      this.bus.emit(GYRE_EVENTS.launched, {
+        id: core.id, coreId: core.id, mass: spec.mass, radius: spec.radius, speed: plan.speed,
+        dir: spec.dir ? { x: spec.dir.x, z: spec.dir.z } : { x: 1, z: 0 }, members: members.length,
+        absorbs: rt.ballAbsorbs, tick: state.tick, source: spec.source || 'external',
+      });
+    }
+    return plan;
+  },
+
   _finishLaunch(state) {
     const rt = this._rt;
     rt.phase = PHASE.OFF;
@@ -1843,9 +1852,11 @@ export const gyreSnare = {
     // latch so next tick's rising edge re-opens the beam instead of eating the press.
     if (this._held(state)) rt.wasHeld = false;
     rt.coreId = null;
+    rt.coreGeneration = null;
     rt.clumpMass = 0;
     rt.clumpRadius = 0;
     rt.members.length = 0;
+    rt.capture.reset();
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchWindup = 0;
     rt.launchWindupTotal = 0;
@@ -1871,6 +1882,7 @@ export const gyreSnare = {
     rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
+    resetRefuse(rt);
     rt.deflectCount = 0;
     rt.tooHeavyCount = 0;
     rt.holdLag = 0;
@@ -1917,6 +1929,14 @@ export const gyreSnare = {
   // still writes rt inside _publish by design: those gate the emits' own
   // edges, ride published values, and mutate nothing any other lane reads.)
   // Runs in update() immediately before the mirror write.
+  /** The adopted-throw producer cancels through the same payload/lifetime owner as Gyre. */
+  handBackThrownAggregate(core) {
+    if (!core || core.alive === false || this.state?.entities?.get(core.id) !== core || !core.data) return false;
+    this._handBack(core);
+    this._unwatchBall(core.id);
+    return true;
+  },
+
   _sweepBallWatch(state) {
     const rt = this._rt;
     if (!rt || !state) return;
@@ -1952,7 +1972,7 @@ export const gyreSnare = {
           // despawnAt != null: an unwatched adoptee whose deadline a foreign owner
           // stripped is an immortal disarmed body, not a ball still flying to a grave —
           // it must not pin the tail forever (watched adoptees shed via _handBack).
-          if (e.data.despawnAt != null) n++;
+          if (e.data.despawnAt != null && !hasProtectedContent(e)) n++;
           // And it's not just a miscount: an adopted unwatched body skipped by the
           // recount would stay marked — pull/snag/suck-immune — until a boundary
           // sweep happened to re-watch it. Hand it back: shed the mark + the lash's
@@ -1980,6 +2000,11 @@ export const gyreSnare = {
     if (rt.ballIds.length && state && state.entities) {
       for (let i = rt.ballIds.length - 1; i >= 0; i--) {
         const e = state.entities.get(rt.ballIds[i]);
+        // Collector throws and completed Gyre bursts no longer run the LAUNCH-phase adoption
+        // guard. A new cargo/mission owner still takes the physical body, never its weapon payload.
+        // The active Gyre coil retains its own hand-back + feedback path below in update().
+        if (e && e.alive !== false && e.data?.gyreLaunched && hasProtectedContent(e)
+          && !(rt.phase === PHASE.LAUNCH && this._heldCore(state) === e)) this._handBack(e);
         // A non-primary ball's quiet-TTL grave: the lifetime sweep kills and compacts it
         // later this same step, so the shatter sings HERE on its last live tick — same
         // rule the primary ballId path uses below. A 2400t ball deserves a grave.
@@ -2234,7 +2259,28 @@ export const gyreSnare = {
       // init and the first publish tick sees these too, not undefined.
       suckRadius: 0, swirlBlend: 1, orbitSeed: 0,
       ballTtlS: 0, full: false,
+      // Why the net is not taking something, by MATTER_REFUSAL code (counts this tick), and the one
+      // the pilot should hear about first. The words live in explainRefusal(), not here.
+      refusals: { protected: 0, 'too-heavy': 0, anchored: 0, collectible: 0, claimed: 0, saturated: 0 },
+      refusal: null,
     });
+  },
+
+  /** The refusal edges: first time a class of body stands in the net and is not taken, say so once. */
+  _refusalCues(state, rt) {
+    if (!this.bus) return;
+    const live = rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD;
+    const latched = rt.refuseLatched;
+    for (const code of Object.keys(latched)) {
+      const count = live ? rt.refuse[code] : 0;
+      if (count > 0 && !latched[code]) {
+        latched[code] = true;
+        const words = explainRefusal(code);
+        this.bus.emit('matter:refused', {
+          tool: 'gyre', code, count, short: words.short, text: words.text, tick: state.tick,
+        });
+      } else if (count === 0) latched[code] = false;
+    }
   },
 
   _publish(state, player) {
@@ -2245,7 +2291,7 @@ export const gyreSnare = {
     for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
     pub.phase = rt.phase;
     pub.dropReason = rt.dropReason;
-    const materialCore = state.entities?.get(rt.coreId ?? rt.ballId);
+    const materialCore = rt.coreId != null ? this._heldCore(state) : state.entities?.get(rt.ballId);
     pub.coreMaterial = materialCore?.alive !== false ? environmentMaterialOf(materialCore) : null;
     pub.coreTypeId = materialCore?.alive !== false ? materialCore?.data?.typeId || null : null;
     // Torn-core follow: ~0.5 s of the strain-freed body's live pos so the close
@@ -2286,6 +2332,9 @@ export const gyreSnare = {
     pub.deflectLane = rt.deflectLane;
     pub.ballOverflow = rt.ballOverflow || 0;
     pub.tooHeavyCount = rt.tooHeavyCount || 0;
+    for (let i = 0; i < REFUSE_KEYS.length; i++) pub.refusals[REFUSE_KEYS[i]] = rt.refuse[REFUSE_KEYS[i]] | 0;
+    pub.refusal = topRefusal(rt.refuse);
+    this._refusalCues(state, rt);
     // Live-ball count publishes on EVERY phase incl. OFF — the HUD's '+N' counts balls
     // still flying while the lash is closed; freezing it here would pin a phantom
     // extra-ball pip until the next beam opened.
@@ -2377,7 +2426,7 @@ export const gyreSnare = {
     pub.maw.x = maw.x; pub.maw.z = maw.z;
     // Fetched here (not just at the publish below) so the escalation tick can
     // position at the clump's LIVE seat — pub.corePos is one publish stale.
-    const core = rt.coreId != null && state.entities ? state.entities.get(rt.coreId) : null;
+    const core = this._heldCore(state);
     // The +N lane deltas feed the escalation ratchet's seat pick inside the bus
     // block — but the prevN ledgers must re-seed EVERY publish tick, bus or not
     // (their field comments promise per-tick re-seed), so they live outside the
@@ -2695,6 +2744,11 @@ export const gyreSnare = {
         if (this.bus) {
           this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
           this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
+          this.bus.emit('matter:refused', {
+            tool: 'gyre', code: MATTER_REFUSAL.DRY, count: 1, need: D.capActivateMin, have: cap,
+            short: explainRefusal(MATTER_REFUSAL.DRY).short, text: explainRefusal(MATTER_REFUSAL.DRY).text,
+            tick: state.tick,
+          });
         }
       }
     }
@@ -2771,8 +2825,7 @@ export const gyreSnare = {
       // thrown beat / recoil along the dead ball's frozen axis. On divergence
       // (promote or null) core is null → the else truncates → _finishLaunch
       // ends the phase cleanly; the retire lane already shed what adoption took.
-      const core = rt.coreId != null && rt.launchedId === rt.coreId && state.entities
-        ? state.entities.get(rt.coreId) : null;
+      const core = rt.launchedId === rt.coreId ? this._heldCore(state) : null;
       // The coil+burst takes ~11 ticks — the same protected-content contract HOLD
       // and the launch edge enforce must hold HERE too: a pin landing mid-throw
       // means the ball is a mission owner's body now, not our projectile. Hand it
@@ -2833,46 +2886,37 @@ export const gyreSnare = {
         const wz = player.pos.z + rt.launchDir.z * (D.mawDist - pullWu);
         const shipVx = finite(player.vel && player.vel.x);
         const shipVz = finite(player.vel && player.vel.z);
-        let ax = (wx - core.pos.x) * D.launchWindupSpringK
-          - (finite(core.vel && core.vel.x) - shipVx) * D.launchWindupDamping;
-        let az = (wz - core.pos.z) * D.launchWindupSpringK
-          - (finite(core.vel && core.vel.z) - shipVz) * D.launchWindupDamping;
-        const wa2 = ax * ax + az * az;
-        const wCap = D.launchWindupMaxAccel || D.holdMaxAccel;
-        if (wa2 > wCap * wCap) {
-          const s = wCap / Math.sqrt(wa2);
-          ax *= s; az *= s;
-        }
+        const coil = springAccel(core.pos.x, core.pos.z, finite(core.vel && core.vel.x), finite(core.vel && core.vel.z),
+          wx, wz, shipVx, shipVz, D.launchWindupSpringK, D.launchWindupDamping,
+          D.launchWindupMaxAccel || D.holdMaxAccel, this._springScratch || (this._springScratch = { ax: 0, az: 0 }));
+        const ax = coil.ax, az = coil.az;
         const mass = entityMass(core);
         queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
-        let lateralImpulse = 0;
+        let lateralX = 0, lateralZ = 0;
         if (rt.launchLeft === D.launchTicks) {
-          // The coil's residual AFT-velocity is repaid by the burst — the effective
-          // launch speed is a FLOOR on launch-direction flight speed: an aft-moving
-          // ball still lands at pace (a heavy draw can't undercook the read), while
-          // forward residual — e.g. the ship translating into the throw — keeps
-          // riding. Δv floor semantics, not a hard cap: a moving ship bowls hotter.
-          const fwd = finite(core.vel && core.vel.x) * rt.launchDir.x
-            + finite(core.vel && core.vel.z) * rt.launchDir.z;
-          rt.launchCarry = Math.max(0, -fwd);
-          rt.launchFwd = fwd;
-          // Strip the hold orbit's sideways motion in the carrier's moving frame.
-          // Do this once at release into flight: later collisions must still deflect
-          // the ball, and deliberate ship strafing must carry into the throw.
-          const relativeVx = finite(player.vel && player.vel.x) - finite(core.vel && core.vel.x);
-          const relativeVz = finite(player.vel && player.vel.z) - finite(core.vel && core.vel.z);
-          lateralImpulse = mass * (-rt.launchDir.z * relativeVx + rt.launchDir.x * relativeVz);
-          // launchSpeedEff was frozen in _launch off ballMass — the burst just
-          // repays coil carry on top of it.
+          // The burst's impulse plan (src/matter/aggregateMass.js burstPlan — the SAME function the
+          // preview integrates from). The coil's residual AFT-velocity is repaid by the burst: the
+          // effective launch speed is a FLOOR on launch-direction flight speed, so an aft-moving ball
+          // still lands at pace while forward residual — the ship translating into the throw — keeps
+          // riding (Δv floor semantics, not a hard cap: a moving ship bowls hotter). The hold orbit's
+          // sideways motion is stripped once, in the carrier's frame, so later collisions still
+          // deflect the ball and deliberate strafing carries into the throw.
+          const burst = burstPlan({
+            mass, dir: rt.launchDir, coreVel: core.vel, refVel: player.vel,
+            speed: rt.launchSpeedEff, ticks: D.launchTicks,
+          });
+          rt.launchCarry = burst.carry;
+          rt.launchFwd = burst.fwd;
+          lateralX = burst.lateral.x; lateralZ = burst.lateral.z;
         }
-        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
+        // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff + carry.
         const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
-          x: rt.launchDir.x * j - rt.launchDir.z * lateralImpulse,
+          x: rt.launchDir.x * j + lateralX,
           y: 0,
-          z: rt.launchDir.z * j + rt.launchDir.x * lateralImpulse,
+          z: rt.launchDir.z * j + lateralZ,
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {
@@ -2922,7 +2966,7 @@ export const gyreSnare = {
           // Newton: throwing a small moon pushes back. A mass-scaled counter-Δv
           // (capped 18 wu/s — a capital throw lands ~7% of cruise, a pebble ~2 —
           // a nudge, not a knockback) physically sells the heave.
-          const recoilDv = Math.min(18, 2 + rt.ballMass / 200);
+          const recoilDv = launchPlan(rt.ballMass, D).recoilDv;
           const shipMass = entityMass(player);
           queuePhysicsImpulse(player, {
             x: -rt.launchDir.x * recoilDv * shipMass, y: 0, z: -rt.launchDir.z * recoilDv * shipMass,
@@ -2937,6 +2981,7 @@ export const gyreSnare = {
       if (rt.phase === PHASE.LAUNCH && rt.launchWindup <= 0 && rt.launchLeft <= 0) this._finishLaunch(state);
     } else if (rt.phase === PHASE.BEAM) {
       rt.towCount = 0;
+      resetRefuse(rt);
       rt.deflectCount = 0;
       rt.tooHeavyCount = 0;
       this._pullPass(dt, state, player, maw, nose);

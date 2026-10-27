@@ -162,8 +162,19 @@ test('production init + update order lengths match the live browser baseline', (
   // salvageTender + industrialDisasters before physics, salvageOutfits after
   // borrowedVoice — the three event-only prompts (tender/outfits) and the
   // yard browser init-only as glass/presentation.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 257);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 200);
+  // 257 -> 258 init / 200 -> 201 update: Controlled Chaos packet 08 registers dyingHull — the
+  // bounded failure interval between a decisive kill and its single rupture, right after
+  // aftermathWrecks, on the table clock.
+  // 258 -> 259 init / 201 -> 202 update: Controlled Chaos packet 06 registers shieldPylons — the
+  // linked shield pylons' lifecycle, hull interception and the single energy debit, right after
+  // gyreSnare in the pre-physics slot, on the table clock.
+  // 259 -> 260 init / 202 -> 203 update: packet 06 also registers pylonHud — the DOM-guarded
+  // next-operation label and wall-state pill (massSeedHud / gyreHud sibling).
+  // Current master also registers the furnaceIntake owner; preserve it through integration.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 261);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 204);
+  assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
     assert.ok(PRODUCTION_INIT_ORDER.includes(id));
     assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));

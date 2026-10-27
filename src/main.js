@@ -405,6 +405,7 @@ async function boot() {
     const slowFrameOffer = installSlowFrameOffer({ state, bus });
     registerToastAction(SLOW_OFFER_ACTION_ID, () => slowFrameOffer.accept());
     loopController = startLoop(state, registry, {
+      bus,
       // Under the flip the presentation lane reads the transport journal and
       // steps the worker-backed runner; identical shapes on the main lane.
       presentationJournal: simLaneRuntime ? simLaneRuntime.journal : presentationJournal,

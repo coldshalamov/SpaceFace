@@ -8,9 +8,16 @@
 // The rule: the live SELECTION wins, because selection is also what aims a Massline throw. The
 // engaged gun target only subjects when there is no live selection, so the guns never fire at a
 // ship with no mark anywhere in the world. Dead or positionless bodies never subject.
+//
+// Packet 02: both answers come from the ONE target-truth projection (src/combat/targetTruth.js),
+// not from the weapons-written gunTargetId mirror. That makes the mark generation-safe (a recycled
+// id is not the picked body) and sensor-true (a cloak-hidden hull gets no mark).
 
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { createTargetTruth, projectTargetTruth } from '../combat/targetTruth.js';
+
+const _truth = createTargetTruth();
 
 /**
  * The live subject entity, or null when nothing is marked. Consumers that must CLASSIFY the subject
@@ -22,11 +29,12 @@ export function resolveTargetContourEntity(state) {
   const player = (state && state.player) || null;
   const entities = state && state.entities;
   if (!player || !entities || typeof entities.get !== 'function') return null;
-  const selId = player.targetId != null ? player.targetId : null;
+  const truth = projectTargetTruth(state, _truth);
+  const selId = truth.selectedId;
   const selection = selId != null ? resolveWorldPresentationEntity(state, selId) : null;
-  const liveSelection = selection && selection.alive && selection.pos ? selection : null;
-  if (liveSelection) return liveSelection;
-  const gunId = player.gunTargetId != null && player.gunTargetId !== selId ? player.gunTargetId : null;
+  if (selection && selection.alive && selection.pos) return selection;
+  const gunId = truth.effectiveGunTargetId != null && truth.effectiveGunTargetId !== selId
+    ? truth.effectiveGunTargetId : null;
   const engagedCandidate = gunId != null ? entities.get(gunId) : null;
   return engagedCandidate && engagedCandidate.alive && engagedCandidate.pos ? engagedCandidate : null;
 }

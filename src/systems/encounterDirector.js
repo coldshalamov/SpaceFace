@@ -49,6 +49,7 @@ import {
 import { raceLeaseActive } from './racingSteer.js';
 import { tickEarlyTrailerEncounters } from './trailerEncounterStaging.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { isGuidedOnboardingActive } from '../onboarding/opportunityAdmission.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -355,6 +356,7 @@ export const encounterDirector = {
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
       this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
       this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
       this.bus.on('moralMemory:vengefulReturn', (p) => markMoralDebtReturned(this.state, (p || {}).id));
@@ -1514,6 +1516,10 @@ export const encounterDirector = {
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
     const shape = ENCOUNTERS[payload.shapeId];
     if (!shape) return { ok: false, reason: 'missing_shape' };
+    // Admission protects the guide's floor even for forced authored requests, before any fire receipt.
+    if (shape.gates?.deferDuringGuidedOnboarding && isGuidedOnboardingActive(state)) {
+      return { ok: false, reason: 'onboarding' };
+    }
     if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
     if (payload.respectPacing) {
       const reason = encounterPacingBlockReason(dir, state, shape, state.simTime || 0);
@@ -5225,8 +5231,7 @@ function encounterEngagesPlayer(live, state, now) {
 }
 
 function isTutorialActive(state) {
-  const ob = state.onboarding;
-  return !!(ob && ob.active && !ob.finished);
+  return isGuidedOnboardingActive(state);
 }
 
 /** Items whose shape pins earlyWindowGuaranteeDay are the authored opening beats themselves:

@@ -36,10 +36,11 @@ import {
 } from '../systems/powerVerbs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { readRailModel } from '../ui/powerRail.js';
+import { planGyreThrow, planCollectorRelease } from './throwForecast.js';
 
 /** Per-power preview tint (05 §7.2 — the same colour the rail and Cluster use). */
 export const POWER_PREVIEW_TINT = Object.freeze({
-  pull: 'amber', shove: 'red', pin: 'blue', bomb: 'orange', rig: 'white',
+  pull: 'amber', shove: 'red', pin: 'blue', bomb: 'orange', rig: 'white', gyre: 'white',
 });
 
 /**
@@ -90,6 +91,10 @@ export function powerHeld(state) {
     const a = acts[p];
     if (a && (a.held === true || a === true)) return p;
   }
+  // Gyre Snare's armed release (packet 05): the lash is holding a clump and the key is down, so the
+  // throw it would make is drawn. Not one of the five powers; it shares the preview presenter.
+  const lash = state && state.gyreSnare;
+  if (lash && lash.phase === 'holding' && acts.gyreSnare === true) return 'gyre';
   return null;
 }
 
@@ -309,6 +314,9 @@ function blastKicks(state, player, { x, z, radius, impulse, falloff, t = 0, excl
 
 function planPull(state, player, rail, opts) {
   if (!fieldsFlag('enabled')) return null; // a profile without fields: the press deploys nothing
+  // A fitted Collector Maw with a knot: Pull is that knot's focus, so the line is its throw.
+  const knotThrow = planCollectorRelease(state, player);
+  if (knotThrow) return knotThrow;
   const spec = playerFieldSpec('well', player, state);
   const areas = [fieldArea('field', spec)];
   const slot = rail[1];
@@ -549,14 +557,15 @@ function planRig(state, player, rail, opts) {
  */
 export function powerPreviewPlan(state, power, opts = {}) {
   const p = power === undefined || power === null ? powerHeld(state) : power;
-  if (!p || !POWER_VERBS.includes(p)) return null;
+  if (!p || !(POWER_VERBS.includes(p) || p === 'gyre')) return null;
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId) : null;
   if (!player || !player.pos || player.alive === false) return null;
   const rail = readRailModel(state, simNow(state));
   const o = { registry: opts.registry || null };
   let plan;
-  if (p === 'pull') plan = planPull(state, player, rail, o);
+  if (p === 'gyre') plan = planGyreThrow(state, player);
+  else if (p === 'pull') plan = planPull(state, player, rail, o);
   else if (p === 'shove') plan = planShove(state, player, rail, o);
   else if (p === 'pin') plan = planPin(state, player, rail);
   else if (p === 'bomb') plan = bombUsesCharge(state) ? planChargeThrow(state, player) : planDriftBomb(state, player, rail);

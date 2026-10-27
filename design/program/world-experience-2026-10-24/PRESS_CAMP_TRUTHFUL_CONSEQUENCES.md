@@ -1,5 +1,17 @@
 # Press Camp: truthful consequences, powered escape and capture cleanup
 
+## Nonlethal Line extraction
+
+The pilot can latch the original captive inside the camp, tow it at least 360 WU from the hardstand,
+and deliberately cut the Line. The captive calls when clear and then uses its existing powered escape
+and capture-cleanup owner. The camp and garrison stay alive; the rescue grants Free standing without
+the demolition award. A snapped Line can be reattached, while an early cut, missing/recycled body,
+foreign control, or a late release cannot manufacture a rescue. Existing destruction outcomes remain.
+
+The native fixture uses the stock Kestrel, default FlightV3 and standard Line with raw forward input;
+the original Mule moves under real Rapier before the canonical cut and continues under its own drive.
+The unchanged save envelope retains settlement without replaying its reward.
+
 ## Historical guard-only increment (1bf56445)
 
 The following sections describe the independent guard-only head, not the powered successor below.

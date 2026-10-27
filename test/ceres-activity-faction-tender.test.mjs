@@ -491,11 +491,15 @@ test('the tender steers to a safe berth off its client through the existing job 
     assert.ok(separation > 0.25,
       'the fixture makes servicing the real client causally distinct from the authored waypoint');
 
-    tender.rot = liveAim;
+    const initialSpec = runtime._currentCeresRealTargetBinding(entry, tender).spec;
+    const initialStandoff = Math.max(initialSpec.standoffWU, tender.radius + client.radius + 12);
+    const expectedAim = Math.hypot(client.pos.x-tender.pos.x,client.pos.z-tender.pos.z)>=initialStandoff
+      ? liveAim : Math.atan2(tender.pos.z-client.pos.z,tender.pos.x-client.pos.x);
+    tender.rot = expectedAim;
     runtime._drive(entry, tender);
-    assert.ok(Math.abs(tender.data.intent.aimAngle - liveAim) < 1e-9,
-      'the tender aims at its live client, not at the authored coordinate');
-    assert.ok(tender.data.intent.moveZ > 0, 'and closes on it rather than holding station');
+    assert.ok(Math.abs(tender.data.intent.aimAngle - expectedAim) < 1e-9,
+      'the tender approaches or backs out to its live-client berth, not the authored coordinate');
+    assert.ok(tender.data.intent.moveZ > 0, 'it corrects its real-client berth distance rather than holding');
 
     // A safe berth means it stops CLEAR of the casualty rather than intersecting it. Both hulls have
     // real size here, so the clearance that matters is the sum of the two radii — checking only the
@@ -510,7 +514,9 @@ test('the tender steers to a safe berth off its client through the existing job 
     tender.pos = { x: client.pos.x + standoff, z: client.pos.z };
     tender.vel = { x: 0, z: 0 };
     runtime._drive(entry, tender);
-    assert.equal(tender.data.intent.brake, true, 'at the berth the tender holds rather than closing');
+    assert.equal(tender.data.intent.brake, false, 'settled PulsePlate tender holds with RCS, not brake-charge');
+    assert.equal(tender.data.intent.boost, false);
+    assert.equal(Math.abs(tender.data.intent.moveX), 0);
     assert.equal(tender.data.intent.moveZ, 0);
   } finally {
     sim.dispose();

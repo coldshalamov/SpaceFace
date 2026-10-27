@@ -79,6 +79,7 @@ import { countermeasures } from '../systems/countermeasures.js';
 import { combat } from '../systems/combat.js';
 import { combatOutcome } from '../systems/combatOutcome.js';
 import { aftermathWrecks } from '../systems/aftermathWrecks.js';
+import { dyingHull } from '../systems/dyingHull.js';
 import { uniqueWrecks } from '../systems/uniqueWrecks.js';
 import { uniqueLootAbilities } from '../systems/uniqueLootAbilities.js';
 import { titlesSystem } from '../systems/titles.js';
@@ -93,6 +94,7 @@ import { hullBurst } from '../systems/hullBurst.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
 import { gyreSnare } from '../systems/gyreSnare.js';
+import { shieldPylons } from '../systems/shieldPylons.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentMaterials } from '../systems/environmentMaterials.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
@@ -100,6 +102,7 @@ import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
 import { gyreHud } from '../ui/gyreHud.js';
+import { pylonHud } from '../ui/pylonHud.js';
 import { planetHud } from '../ui/planetHud.js';
 import { miningHud } from '../ui/miningHud.js';
 import { survivalHud } from '../ui/survivalHud.js';
@@ -337,6 +340,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['gyreSnare', gyreSnare],
+    ['shieldPylons', shieldPylons],
     ['latchNine', latchNine],
     ['scissorwake', scissorwake],
     ['tallyThree', tallyThree],
@@ -368,6 +372,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
+    ['dyingHull', dyingHull],
     // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
     // registry) so Node runs the identical observe/spawnWing ports.
     ['capitalBossEncounters', capitalBossEncounters],
@@ -501,6 +506,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
     ['gyreHud', gyreHud],
+    ['pylonHud', pylonHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['survivalHud', survivalHud],

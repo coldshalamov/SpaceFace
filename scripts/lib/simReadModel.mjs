@@ -116,6 +116,16 @@ function foldAiState(row, fields) {
   row.data.ai.state = fields.aiFsm;
 }
 
+function foldPallasSeamVitals(row, fields) {
+  if (fields.pallasSeamCutting === undefined && fields.pallasSeamStandbyTick === undefined) return;
+  if (!row.data || typeof row.data !== 'object') row.data = {};
+  const data = row.data;
+  if (typeof fields.pallasSeamCutting === 'boolean') data.minerShiftActive = fields.pallasSeamCutting;
+  if (fields.pallasSeamStandbyTick === null || Number.isSafeInteger(fields.pallasSeamStandbyTick)) {
+    data.pallasSeamStandbyTick = fields.pallasSeamStandbyTick;
+  }
+}
+
 // Retain one small presentation object per deployment so VFX can follow later replies.
 function foldCountermeasureVitals(row, fields) {
   if (fields.cmEffectId === undefined) return;
@@ -220,6 +230,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
       foldEcologyVitals(row, info.vitals);
       foldCountermeasureVitals(row, info.vitals);
       foldAiState(row, info.vitals);
+      foldPallasSeamVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -301,6 +312,7 @@ export function applyEntityVitals(readModel, vitals) {
     foldEcologyVitals(row, fields);
     foldCountermeasureVitals(row, fields);
     foldAiState(row, fields);
+    foldPallasSeamVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.
@@ -631,6 +643,10 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'world.frameOrigin', 'world.frameOriginSeq', 'world.frontierRumors',
   'world.scanPings', 'world.activeSector', 'world.records.byId',
   'world.vestaOreCache', 'world.pallasHiddenCache',
+  // Bounded paired-passage receipt for main-side Pallas Hail, not the traffic owner graph.
+  'traffic.pallasWorkLoop',
+  // The existing survey ledger caps this sector at24 plain records; no global history mirror.
+  'npcJobs.surveyMarks.sector_pallas_drift',
   // Fold-authored ui.* fields the worker owns but main still reads: docked gates
   // presentationFreeze/uiStage/doDock re-entry, and the soak probe reads the
   // facade's ui.docked. Without these mirrors the fold write never reaches main.

@@ -3,8 +3,9 @@
 // Nothing imports this file from the game. The harness loads it into a live debug page through a
 // <script type="module"> tag and calls installPlayerTruthReader(window) — until then it is inert.
 // It reads window.SF.state, the render scene/camera and the event bus; it never writes game
-// state, never emits on the bus, never changes a mesh, material or camera. Listeners it adds are
-// passive and only record (first input time, kill events, long tasks).
+// state or emits on the bus. Offscreen diagnostic draws temporarily isolate presentation layers
+// and restore them synchronously; the displayed frame and camera are never changed. Listeners
+// are passive and only record (first input time, kill events, long tasks).
 //
 // One sample per animation frame (registered after the game's own frame callback, so the camera
 // and meshes are the ones the player just saw). Expensive VFX and pixel readback passes are
@@ -14,6 +15,7 @@
 
 import { encodePlayerTruthRows } from './packedRows.js';
 import { isKnownGeometryPreservingShaderHook } from '../../render/shaderPoseProvenance.js';
+import { withProjectileBodyHidden } from '../../render/projectileBodyProvenance.js';
 
 export const PLAYER_TRUTH_CLASSES = Object.freeze([
   'player', 'enemy', 'asteroid', 'projectile', 'pickup', 'fx', 'neutral', 'station', 'other',
@@ -581,7 +583,7 @@ export function installPlayerTruthReader(win, opts = {}) {
   // before post-processing (bloom). Point shaders use the live drawing-buffer height and clamp
   // their pixel sizes: a 160×90 target enlarged those stars relative to every projected hull.
   // Keep the native raster, including DPR, rather than changing the authored shaders for a probe.
-  let PW = 0; let PH = 0; let pxTarget = null; let bufA = null; let bufB = null; let bufC = null;
+  let PW = 0; let PH = 0; let pxTarget = null; let bufA = null; let bufB = null; let bufC = null; let bufBody = null;
   let cMask = null; let bMask = null;
   const pxSize = new THREE.Vector2();
   function preparePixelRaster(renderer, vw, vh) {
@@ -600,6 +602,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       else pxTarget = new THREE.WebGLRenderTarget(width, height, { colorSpace: THREE.NoColorSpace });
       PW = width; PH = height;
       bufA = nextA; bufB = nextB; bufC = nextC;
+      bufBody = new Uint8Array(pixels * 4);
       cMask = nextCombatMask; bMask = nextBackdropMask;
     } else {
       cMask.fill(0); bMask.fill(0);
@@ -712,7 +715,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     }
     return receipt;
   }
-  function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes, playerMesh, bodies) {
+  function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes, threatSubjects, playerMesh, bodies) {
     if (!renderer || !renderer.isWebGLRenderer || !renderer.readRenderTargetPixels) return { err: 'renderer is not WebGL' };
     const rasterError = preparePixelRaster(renderer, vw, vh);
     if (rasterError) return { err: rasterError };
@@ -748,18 +751,67 @@ export function installPlayerTruthReader(win, opts = {}) {
       if (a - lum(bufC, i) >= LUM) { bMask[k] = 1; bN++; }
     }
     // readRenderTargetPixels rows run bottom-up.
-    const boxFrac = (mask, b) => {
+    const boxFrac = (mask, b, bodyRaster = null) => {
       if (!b) return null;
       const x0 = Math.max(0, Math.floor(b[0] / vw * PW)); const x1 = Math.min(PW - 1, Math.floor(b[2] / vw * PW));
       const y0 = Math.max(0, Math.floor(b[1] / vh * PH)); const y1 = Math.min(PH - 1, Math.floor(b[3] / vh * PH));
       if (x1 < x0 || y1 < y0) return null;
       let n = 0; let c = 0;
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { n++; if (mask[(PH - 1 - y) * PW + x]) c++; }
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const k = (PH - 1 - y) * PW + x;
+        n++;
+        if (bodyRaster ? lum(bodyRaster, k * 4) - lum(bufB, k * 4) >= LUM : mask[k]) c++;
+      }
       return n ? c / n : null;
     };
     const occ = (mask) => { let tn = 0; let tc = 0; for (const b of threatBoxes) { const f = boxFrac(mask, b); if (f != null) { tn++; if (f >= 0.5) tc++; } } return tn ? +(tc / tn).toFixed(3) : null; };
     const pc = boxFrac(cMask, playerBox); const pb = boxFrac(bMask, playerBox);
-    const ct = occ(cMask);
+    const ctRaw = occ(cMask);
+    // An emissive projectile is a threat body as well as a combat-layer contributor. Its own
+    // pixels cannot hide it from itself. Remove only the exact presented life for one native
+    // counterfactual draw; every other bolt/effect and every enemy-ship box remain measured.
+    // Unsupported identities and exhausted/error cases retain the original strict result.
+    const projectileBodies = { limit: 12, extraDraws: 0, measured: 0, strictFallback: 0, rows: [] };
+    let tn = 0; let tc = 0;
+    for (let index = 0; index < threatBoxes.length; index++) {
+      const b = threatBoxes[index]; let fraction = boxFrac(cMask, b);
+      if (fraction == null) continue;
+      tn++;
+      const subject = threatSubjects[index];
+      if (subject?.projectile && fraction >= 0.5) {
+        let measured = false;
+        if (projectileBodies.extraDraws < projectileBodies.limit) {
+          const target = renderer.getRenderTarget(); const auto = renderer.info.autoReset;
+          const shadow = renderer.shadowMap?.autoUpdate;
+          // Three's internal frame is an upload-cache generation, not a display counter.
+          // Keep it monotonic or the next draw can reuse the temporarily hidden GPU endpoints.
+          const { calls, triangles, points, lines } = renderer.info.render;
+          const info = { calls, triangles, points, lines };
+          try {
+            renderer.info.autoReset = false;
+            if (renderer.shadowMap) renderer.shadowMap.autoUpdate = false;
+            measured = withProjectileBodyHidden(combat, subject, () => {
+              projectileBodies.extraDraws++;
+              draw(bufBody);
+            });
+            if (measured) {
+              fraction = boxFrac(null, b, bufBody);
+              projectileBodies.measured++;
+              projectileBodies.rows.push({ id: subject.id, occupantGeneration: subject.occupantGeneration,
+                otherCoverage: +fraction.toFixed(3) });
+            }
+          } catch { /* A diagnostic failure never discounts the original coverage. */ }
+          finally {
+            renderer.setRenderTarget(target); renderer.info.autoReset = auto;
+            if (renderer.shadowMap) renderer.shadowMap.autoUpdate = shadow;
+            Object.assign(renderer.info.render, info);
+          }
+        }
+        if (!measured) projectileBodies.strictFallback++;
+      }
+      if (fraction >= 0.5) tc++;
+    }
+    const ct = tn ? +(tc / tn).toFixed(3) : null;
     let attribution = null;
     const activePlay = SF.state.mode === 'flight'
       && (!(opts.rounds ?? (SF.state.run?.kind === 'survival')) || SF.state.run?.phase === 'active');
@@ -774,7 +826,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       silhouette: bufB, ownership: bufC,
     }) : null;
     return { c: +(cN / (PW * PH)).toFixed(3), b: +(bN / (PW * PH)).toFixed(3), cp: pc == null ? null : +pc.toFixed(3), bp: pb == null ? null : +pb.toFixed(3),
-      ct, bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments, rw: PW, rh: PH,
+      ct, ctRaw, projectileBodies, bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments, rw: PW, rh: PH,
       ...(attribution ? { attribution } : {}), ...(bodyOcclusion ? { bodyOcclusion } : {}) };
   }
 
@@ -800,14 +852,14 @@ export function installPlayerTruthReader(win, opts = {}) {
     // behind the veil it used to delay the game's own first draw by that much.
     const flightSample = st.mode === 'flight' && r.flightVeilHoldsSim !== true;
     const skipWorldCensus = PREPARATION_MODES.has(st.mode);
-    let threatBoxes = null; let bodies = null;
+    let threatBoxes = null; let threatSubjects = null; let bodies = null;
     if (!skipWorldCensus) {
       const list = st.entityList || [];
       let player = null;
       for (const e of list) if (e.id === st.playerId) { player = e; break; }
       const playerTeam = player ? player.team : 1;
       if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
-      threatBoxes = []; bodies = [];
+      threatBoxes = []; threatSubjects = []; bodies = [];
       for (const e of list) {
           if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
           const cls = classifyEntity(e, st.playerId, playerTeam);
@@ -834,6 +886,8 @@ export function installPlayerTruthReader(win, opts = {}) {
               || e.team != null && e.team === playerTeam);
             if ((cls === 'enemy' || cls === 'projectile' && !friendlyShot) && sc.inView) {
               threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
+              threatSubjects.push({ id: e.id, occupantGeneration: e.occupantGeneration,
+                projectile: cls === 'projectile' });
             }
           }
           const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
@@ -852,7 +906,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     if (flightSample && cam && scene && pxEvery && frame % pxEvery === 0
         && wallDue(lastPxAt, pixelEveryMs)) {
       lastPxAt = t;
-      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes || [],
+      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes || [], threatSubjects || [],
         meshes?.get(st.playerId), bodies || []); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
     // Harness window: wall ms this sample spent on the main thread (scan, vfx census, pixel
@@ -905,7 +959,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       if (pxTarget) pxTarget.dispose();
       for (const material of bodyMaskMaterials.values()) material.dispose();
       bodyMaskMaterials.clear();
-      pxTarget = null; bufA = null; bufB = null; bufC = null; cMask = null; bMask = null;
+      pxTarget = null; bufA = null; bufB = null; bufC = null; bufBody = null; cMask = null; bMask = null;
       PW = 0; PH = 0;
       for (const name of INPUT_EVENTS) win.removeEventListener(name, onInput, { capture: true });
       for (const u of unsubs) try { u(); } catch { /* observer teardown */ }

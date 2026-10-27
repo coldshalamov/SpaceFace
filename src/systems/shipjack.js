@@ -13,6 +13,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { advanceFleetOperations, executeFleetOperation } from '../shipjack/fleetOperations.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { isGuidedOnboardingActive } from '../onboarding/opportunityAdmission.js';
 
 const YARD_ACTIONS = new Set(['sell','return','extract','repair_module','register','settle_title','forge_broadcast','repaint','settle_lien']);
 const TERMINAL = new Set(['aborted','escaped','destroyed','expired']);
@@ -25,14 +26,14 @@ export const shipjack = {
   name:'shipjack',
   init(ctx) {
     this.destroy(); this.state=ctx.state;this.bus=ctx.bus;this.helpers=ctx.helpers || {};this.registry=ctx.registry;
-    this._subs=[];this._nextWork=0;this._pendingEntry=false;
+    this._subs=[];this._nextWork=0;this._pendingEntry=false;this._opportunitiesDeferred=false;
     const on=(name,fn)=>{const off=this.bus.on(name,fn);this._subs.push(typeof off==='function'?off:()=>this.bus.off(name,fn));};
     on('ui:shipjack',p=>this.command(p || {}));
-    on('game:new',()=>{if(this.state.player)delete this.state.player.shipjack;delete this.state.shipjack;this._pendingEntry=false;});
+    on('game:new',()=>{if(this.state.player)delete this.state.player.shipjack;delete this.state.shipjack;this._pendingEntry=false;this._opportunitiesDeferred=false;});
     on('game:started',()=>{this._pendingEntry=true;this._nextWork=0;});
     on('sector:enter',()=>{this._pendingEntry=true;this._nextWork=0;});
     on('sector:exit',()=>this.parkSector());
-    on('save:restoring',()=>{delete this.state.shipjack;this._pendingEntry=false;});
+    on('save:restoring',()=>{delete this.state.shipjack;this._pendingEntry=false;this._opportunitiesDeferred=false;});
     on('save:loaded',()=>{
       const normalized=normalizeShipjack(this.state.player?.shipjack);
       if(normalized){this.state.player.shipjack=normalized;this.state.shipjack=normalized;}
@@ -64,8 +65,8 @@ export const shipjack = {
     // flight settles here, once docked state is real, at its originating berth (after berthAt).
     on('dock:committed',()=>{if(isBlackFlagAdventure(this.state))advanceYardOperations({state:this.state,bus:this.bus,registry:this.registry});});
   },
-  destroy(){for(const off of this._subs || [])off();this._subs=[];},
-  newGame(){if(this.state?.player)delete this.state.player.shipjack;if(this.state)delete this.state.shipjack;this._pendingEntry=true;},
+  destroy(){for(const off of this._subs || [])off();this._subs=[];this._pendingEntry=false;this._opportunitiesDeferred=false;},
+  newGame(){if(this.state?.player)delete this.state.player.shipjack;if(this.state)delete this.state.shipjack;this._pendingEntry=true;this._opportunitiesDeferred=false;},
   dirty(){this.bus.emit('save:dirty',{kind:'player',payload:{source:'shipjack'}});},
   say(text,kind='info'){
     this.bus.emit('toast',{text,kind,ttl:4,source:'shipjack'});
@@ -258,6 +259,7 @@ export const shipjack = {
   },
   update(dt,state){
     if(!isBlackFlagAdventure(state)||state.mode!=='flight')return;
+    if(this._opportunitiesDeferred&&!isGuidedOnboardingActive(state)){this._opportunitiesDeferred=false;this._pendingEntry=true;}
     if(this._pendingEntry && state.entities.get(state.playerId)?.alive){this._pendingEntry=false;this.enterSector();}
     const own=peekShipjack(state);if(!own)return;
     advanceYardOperations({state,bus:this.bus,registry:this.registry},dt);
@@ -393,6 +395,9 @@ export const shipjack = {
       for(const e of state.entityList || []){const v=vesselForEntity(state,e);if(v&&e.alive){v.location.entityId=e.id;v.generation=e.data.shipjackGeneration;}}
       for(const v of Object.values(own.vesselsById))if(v.materializationOwner==='shipjack'&&v.location.kind==='remote'&&v.location.sectorId===currentSector(state))this.rematerialize(v);
     }
+    // Deferred admission is a runtime retry edge, not a consumed encounter or save field.
+    if(isGuidedOnboardingActive(state)){this._opportunitiesDeferred=true;return;}
+    this._opportunitiesDeferred=false;
     // Borrowed circuits admit no new campaign opportunities; retained custody still reconciles above.
     if(isRacingCorridorSession(state))return;
     for(const row of BLACK_FLAG_ENCOUNTERS){

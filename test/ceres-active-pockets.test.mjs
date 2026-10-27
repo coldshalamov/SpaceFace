@@ -399,8 +399,17 @@ test('R5A route bearings are taken from Ceres geography rather than chosen', () 
   const spawnToMark = bearingDeg(
     tender.spawnOffset.x, tender.spawnOffset.z, clientMark.offset.x, clientMark.offset.z,
   );
+  // West staging and berth clear the actual station/anvil neighborhood. Retain the
+  // original >0.5-radian live-client distinction rather than the rejected spawn's relaxation.
+  assert.deepEqual(hull, { x: -65, z: -65 });
+  assert.deepEqual(clientMark.offset, { x: 90, z: -75 });
+  const berth = tender.route.marks.find((mark) => mark.id === 'refinery_tender_berth');
+  assert.deepEqual(berth.offset, { x: -120, z: 15 });
+  assert.ok(separationDeg(bearingDeg(0, 0, tender.spawnOffset.x, tender.spawnOffset.z),
+    bearingDeg(0, 0, berth.offset.x, berth.offset.z)) < 10,
+  'the collision-clear staging position remains on the berth side of the station');
   assert.ok(separationDeg(spawnToHull, spawnToMark) / DEG > 0.5,
-    'the tender approaches its authored mark and its real client on distinct headings');
+    'the tender approaches its authored mark and its real client on causally distinct headings');
 });
 
 // The `activity:` namespace means "abstract choreography — no object is or ever will be this". That

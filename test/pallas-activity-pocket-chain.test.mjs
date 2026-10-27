@@ -193,7 +193,7 @@ test('the Pallas chain is the drift day: seam, hub, ambush, grave', () => {
   const miner = activityActorSlotById('pallas_seam_miner');
   assert.equal(miner.jobKind, 'miner');
   const surveyor = activityActorSlotById('pallas_seam_surveyor');
-  assert.equal(surveyor.jobKind, 'miner', 'the seam crew covers different ground, not a second role');
+  assert.equal(surveyor.jobKind, 'surveyor', 'the second hull measures the field without inventing ore lots');
   assert.notEqual(miner.route.id, surveyor.route.id, 'the two cuts are two authored routes');
   const firstMarkGap = Math.hypot(
     miner.route.marks[0].offset.x - surveyor.route.marks[0].offset.x,

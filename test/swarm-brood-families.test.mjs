@@ -413,8 +413,8 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   const scene = { objects: [], add(o) { this.objects.push(o); }, remove(o) { const i = this.objects.indexOf(o); if (i >= 0) this.objects.splice(i, 1); } };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: 0 });
-  assert.equal(scene.objects.length, 6, 'bodies + marks + pools + lines + lobs + tendril segs');
-  const [mesh, rings, pools, lines, lobs, segs] = scene.objects;
+  assert.equal(scene.objects.length, 7, 'bodies + marks + pools + lines + lanes + lobs + tendril segs');
+  const [mesh, rings, pools, lines, lanes, lobs, segs] = scene.objects;
   assert.equal(segs.count, 0, 'no champion wave, no worm — the chain mesh stays empty');
   assert.equal(mesh.count, engine.census().alive);
 
@@ -434,6 +434,7 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   pres.update(engine.view, DT, { simTime: 0.1 });
   assert.ok(rings.count >= 1, 'the spitter marker is drawn');
   assert.ok(lines.count >= 1, 'the charger line is drawn');
+  assert.equal(lanes.count, lines.count, 'every committed line carries its damage-query lane (packet 02)');
   // The lob lands and leaves its pool: the instruments follow the facts.
   h.player.pos.x = engine._bodies.teleX[si];
   h.player.pos.z = engine._bodies.teleZ[si];

@@ -54,6 +54,9 @@ import {
 } from './orbitNodeRuntime.js';
 import { planNpcFieldDeploy, npcFieldRole } from '../ai/npcFieldDeploy.js';
 import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '../core/fields/thermalFields.js';
+import { createCollectorKnots } from '../matter/collectorKnot.js';
+import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
+import { maxFittedModuleMod } from '../core/fittedModules.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
@@ -355,6 +358,14 @@ function npcOwnedFieldCount(kernel) {
     if (list[i] && list[i].tag === 'npc') n++;
   }
   return n;
+}
+
+/**
+ * Is a Collector Maw fitted (any fitted module carrying `mods.pullCollector`)? Fitting is the role
+ * choice that makes Pull drop a collector; the rail and the held-key preview read the same answer.
+ */
+export function collectorFitted(state) {
+  return maxFittedModuleMod(state, 'pullCollector', 0) > 0;
 }
 
 /**
@@ -697,6 +708,9 @@ export const fields = {
     this._seedLockFieldId = null;
     this._insideRing = new Map();
     this._fieldsIdleQuiet = null;
+    // Pull collector knots (packet 05): a library between this emitter owner, the shared capture
+    // seam and Gyre's thrown-aggregate lifecycle. Runtime only, never serialized.
+    this._knots = createCollectorKnots(this);
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -1207,6 +1221,8 @@ export const fields = {
     this._syncAnchoredFields(state, rt);
     this._syncOrbit(state);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
+    this._knots.tick(state, rt, dt);
+    this._knots.publish(state, collectorFitted(state));
     this._syncSeedLockField(state, rt);
     this._syncHitches(state, rt);
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
@@ -1370,7 +1386,26 @@ export const fields = {
   _deployRadial(state, rt, kind) {
     const player = this._player(state);
     if (this._deployBlocked(state, player)) return;
-    const def = FIELD_DEFS[kind];
+    // The Collector Maw (packet 05) makes Pull a collector with an explicit next action: with a knot
+    // the key is its focus/commit (never a second deploy that could steal the ball), with an empty
+    // collector it replaces it, otherwise it drops one. Fitting is the role choice; the rail and the
+    // held-key preview print the current role and next action.
+    let collector = false;
+    let replacing = null;
+    if (kind === 'well' && collectorFitted(state)) {
+      const intent = this._knots.intent(state, rt);
+      if (intent === 'busy') return;
+      if (intent === 'release') {
+        this._knots.commit(state, rt, player);
+        this._knots.publish(state, true);
+        return;
+      }
+      collector = true;
+      if (intent === 'replace') replacing = this._knots.own(state, rt);
+    }
+    const def = collector
+      ? { ...FIELD_DEFS.well, durationS: COLLECTOR_KNOT.durationS, cooldownS: COLLECTOR_KNOT.cooldownS, hull: COLLECTOR_KNOT.hull }
+      : FIELD_DEFS[kind];
     const now = nowOf(state);
     const cd = rt.cooldowns[kind] || 0;
     if (now < cd) {
@@ -1385,9 +1420,16 @@ export const fields = {
 
     // Placement: the Well is thrown to the aim point (up to deployRange); the Repulsor drops at the
     // ship (behind you mid-chase). The one rule the held-key preview also reads.
-    const spec = playerFieldSpec(kind, player, state);
+    const spec = collector
+      ? { ...playerFieldSpec(kind, player, state), durationS: def.durationS }
+      : playerFieldSpec(kind, player, state);
     const cx = spec.center.x, cz = spec.center.z;
 
+    // Replacing an empty collector: recall the old emitter first (its cooldown gate passed above).
+    if (replacing) {
+      this._retireDeployed(state, rt, replacing.rec, FIELD_END_REASONS.replaced);
+      this.bus.emit('toast', { text: 'Collector recalled — new one dropped', kind: 'info', ttl: 1.4 });
+    }
     // Enforce the active-field cap by retiring the oldest deployed emitter (bounded work + read).
     this._enforceCap(state, rt);
 
@@ -1418,6 +1460,7 @@ export const fields = {
         ownerId: player.id,
         radius: def.radius,
         expireAt,
+        collector: collector || undefined,
       },
     });
     if (!emitter) return;
@@ -1433,13 +1476,18 @@ export const fields = {
       // well dropped on the cursor yanks the player's own approach path.
       filters: { excludeId: player.id },
     });
-    rt.deployed[fieldId] = { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt };
+    rt.deployed[fieldId] = collector
+      ? { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt, collector: true }
+      : { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt };
     rt.cooldowns[kind] = now + def.cooldownS;
     rt.lastDenial = null;
 
-    this.bus.emit('fields:deployed', { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
+    this.bus.emit('fields:deployed', collector
+      ? { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt, collector: true }
+      : { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
     this._emitDeployCue(kind, cx, cz, def.radius);
     if (kind === 'well') this._pullMarkLockedTarget(state, player, cx, cz, def.radius, fieldId);
+    if (collector) this._knots.publish(state, true);
     // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
     // fields:deployed → accessibility-cue path in audioSystem.
   },
@@ -1730,12 +1778,18 @@ export const fields = {
   _retireDeployed(state, rt, rec, reason) {
     this._kernel.unregister(rec.fieldId);
     delete rt.deployed[rec.fieldId];
+    // A collector's knot is physical matter: when its emitter leaves (expired, shot down, replaced)
+    // the knot is set free as an ordinary body with its authored lifetime back — never deleted.
+    if (rec.collector && this._knots) {
+      this._knots.free(rec.fieldId, reason);
+      this._knots.publish(state, collectorFitted(state));
+    }
     const entity = state.entities && state.entities.get ? state.entities.get(rec.emitterId) : null;
     if (entity && entity.alive !== false && reason !== FIELD_END_REASONS.expired) entity.alive = false;
     // Cooldown starts when a deployed field actually leaves the field (not on a replacement).
     // Planted hostile fields must not write the player's well/repulsor cooldown.
     if (reason !== FIELD_END_REASONS.replaced && !rec.planted && rt.cooldowns[rec.kind] != null && FIELD_DEFS[rec.kind]) {
-      rt.cooldowns[rec.kind] = nowOf(state) + FIELD_DEFS[rec.kind].cooldownS;
+      rt.cooldowns[rec.kind] = nowOf(state) + (rec.collector ? COLLECTOR_KNOT : FIELD_DEFS[rec.kind]).cooldownS;
     }
     if (rt.hitches) {
       for (const id of Object.keys(rt.hitches)) {
@@ -1753,7 +1807,7 @@ export const fields = {
     this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason });
     if (reason === FIELD_END_REASONS.destroyed || reason === FIELD_END_REASONS.expired) {
       this.bus.emit('audio:cue', { id: 'sfx_explosion_small', gain: 0.35 });
-    } else if (reason === FIELD_END_REASONS.replaced && !rec.planted) {
+    } else if (reason === FIELD_END_REASONS.replaced && !rec.planted && !rec.collector) {
       // Cap replacement has no explosion cue. Only the player's own oldest emitter is announced.
       this.bus.emit('toast', {
         text: `Oldest ${rec.kind === 'well' ? 'Pull well' : 'Shove field'} was replaced`,
@@ -1767,6 +1821,7 @@ export const fields = {
     const state = this.state;
     if (!state) return;
     const rt = ensureRuntime(state);
+    if (this._knots) this._knots.clear(why || reason); // set every knot free before its emitter goes
     for (const id of Object.keys(rt.deployed)) {
       const rec = rt.deployed[id];
       const entity = state.entities && state.entities.get ? state.entities.get(rec.emitterId) : null;
@@ -1803,6 +1858,7 @@ export const fields = {
     }
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
+    if (this._knots) this._knots.publish(state, collectorFitted(state)); // mirror follows the reset
     this._fieldsIdleQuiet = null;
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
