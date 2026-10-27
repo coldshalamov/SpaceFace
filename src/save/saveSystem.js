@@ -911,6 +911,9 @@ export const save = {
       ['economy', () => this._callSerialize('economy') || {}],
       ['economyContracts', () => this._callSerialize('economyContracts') || {}],
       ['factions', () => this._callSerialize('factions') || {}],
+      // The Verge border record (paid permits, incident ledger, receipt dedupe keys,
+      // court, live marks) rides the same boundary — additive slot, absent owner → {}.
+      ['vergeCourt', () => this._callSerialize('vergeCourt') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
@@ -1089,6 +1092,9 @@ export const save = {
     yield 'serialize:economyContracts';
     data.factions = this._callSerialize('factions') || {};
     yield 'serialize:factions';
+    // Same slot as the capture plan — the envelope checksum is insertion-order sensitive.
+    data.vergeCourt = this._callSerialize('vergeCourt') || {};
+    yield 'serialize:vergeCourt';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
     data.reactiveMatter = this._callSerialize('reactiveMatter');
@@ -6790,6 +6796,8 @@ export const save = {
       this._callDeserialize('economyContracts', data.economyContracts);
       yield 'economy-contracts-restored';
       this._callDeserialize('factions', data.factions);
+      // Absent on older saves — the verge deserialize heals a missing bag to fresh state.
+      this._callDeserialize('vergeCourt', data.vergeCourt);
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
