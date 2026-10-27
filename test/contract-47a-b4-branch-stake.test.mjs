@@ -57,7 +57,7 @@ function harness(outcome) {
   state.story.flags.elroy_outcome = outcome;
   missions._syncCampaignSidecarAfterAdvance();
   missions._refreshNavigation({ forceStory: true, silent: true });
-  return { state, bus, missions, credits, rep, toasts };
+  return { state, bus, missions, helpers, credits, rep, toasts };
 }
 
 function completePhysicalIntro(h, mission) {
@@ -70,6 +70,33 @@ function completePhysicalIntro(h, mission) {
   }
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  for (const targetId of [...mission.targetEntityIds]) {
+    h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
+  }
+}
+
+/** W-BOOKS-3-4: the door's operation is its own posted contract — Spine Break is
+ *  an escort (the convoy lead must dock alive), the Weighing a patrol clear. */
+function completeDoorOperation(h, mission) {
+  h.state.world.currentSectorId = mission.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  h.missions.spawnTargetsForSector(mission.destSectorId);
+  h.missions._ensureMissionTargets(mission);
+  if (mission.type === 'escort') {
+    const berth = [...h.state.entities.values()].find((entity) => (
+      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
+    )) || h.helpers.spawnEntity({
+      type: 'station', pos: { x: 0, z: 0 },
+      data: { stationId: mission.destStationId, dockRadius: 140 },
+    });
+    const lead = h.state.entities.get(mission._escorteeId);
+    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
+    lead.pos = { x: berth.pos.x + 20, z: berth.pos.z };
+    h.missions.update(0.016, h.state);
+    assert.equal(mission._escorteeArrived, true, 'the convoy lead reaches the dock ring');
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   for (const targetId of [...mission.targetEntityIds]) {
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
@@ -100,16 +127,25 @@ function exerciseOutcome(outcome) {
   assert.equal(h.credits.filter((row) => row.reason === 'story:pick_a_side').length, 0);
 
   completePhysicalIntro(h, mission);
-  assert.equal(h.state.story.beatIndex, 5);
+  // W-BOOKS-3-4: the intro settles the door; the book closes on the door's operation.
   assert.equal(h.state.story.branch, expected.branch);
+  assert.equal(h.state.story.beatIndex, 4, 'the door operation still owes');
   assert.equal(h.state.story.flags.pick_a_side_stake, outcome === 'custody' ? 'evidence_patrol' : 'manifest_charter');
-  assert.equal(h.credits.filter((row) => row.reason === 'story:pick_a_side').length, 1);
   assert.equal(h.rep.filter((row) => row.reason === 'story_branch').length, 1);
   assert.equal(h.rep.filter((row) => row.reason === 'story_branch_opposing').length, 1);
 
-  completePhysicalIntro(h, mission);
+  const opOffer = h.missions.ensureBoard(expected.stationId).slots
+    .find((row) => row.storyTag === 'campaign47a:b4:operation');
+  assert.ok(opOffer, 'the door operation posts after the intro settles');
+  assert.equal(h.missions.acceptMission(opOffer.id), true, 'op accept fails');
+  const op = h.state.missions.active.find((row) => row.sourceOfferId === opOffer.id)
+    || h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b4:operation');
+  assert.ok(op);
+  completeDoorOperation(h, op);
   assert.equal(h.state.story.beatIndex, 5);
-  assert.equal(h.credits.filter((row) => row.reason === 'story:pick_a_side').length, 1, 'B4 reward is exact-once');
+  // The posted contract pays its own reward — the beat grant stays skipped,
+  // the same no-double-pay pattern B1–B3's book contracts already follow.
+  assert.equal(h.credits.filter((row) => row.reason === 'story:pick_a_side').length, 0);
 }
 
 test('47-A B4 makes custody and force distinct completed faction stakes', () => {

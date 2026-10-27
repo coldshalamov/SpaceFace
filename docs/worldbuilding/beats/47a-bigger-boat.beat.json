@@ -95,14 +95,14 @@
     {
       "id": "comms.47a.b3.primary",
       "speaker": "SLATE",
-      "line": "Tow the slag core. Line or sling.",
+      "line": "Variance Adjustment posts first. Maw and Foreman follow.",
       "consequence": "Player hitches leftover slag_core. The long tow starts. No menu.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b3.primary"
     },
     {
       "id": "comms.47a.b3.recovery",
       "speaker": "SLATE",
-      "line": "Core still waits. Tow it in.",
+      "line": "The yard list holds. The book re-posts the job.",
       "consequence": "Leftover recovery. The tow is still the verb.",
       "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b3.recovery"
     }

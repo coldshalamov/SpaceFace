@@ -6,6 +6,7 @@ const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
+const RD = `html:root:not([data-sf-mobile="1"]) ${R.replace(/^html /, '')}`;
 const CSS = `
 ${D} .orr-prep-daily { color:var(--dp-phos); font:500 14px var(--dp-face-body,'Instrument Sans'),sans-serif; margin:8px 0 16px; }
 ${D} .orr-cabinet-preview { position:absolute; top:4%; right:8%; width:80%; max-width:380px; z-index:3; pointer-events:none; background:var(--dp-void); }
@@ -351,16 +352,22 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
 /* Refit without the hull plan (narrow or short plates): a plain hardpoint list. Each row is a
    ruled block (numeral, name, slot tag and Empty spaced apart), its sentence wraps inside the row,
    and the stage opens at its first row instead of cutting it under the title. */
-${R} > .sf-cru-stage:not(.orr-hull--on) { padding-top:6px !important; scroll-padding:28px 0; -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); }
-${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows { display:flex !important; flex-direction:column; gap:0; margin:0 !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) { position:relative !important; display:flex !important; flex-direction:column; min-height:0 !important; overflow:visible !important; padding-top:6px !important; -webkit-mask-image:none !important; mask-image:none !important; }
+${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows { display:flex !important; flex-direction:column; flex:1 1 auto; min-height:0; overflow:auto; gap:0; margin:0 !important; scroll-padding:28px 0; scrollbar-width:thin; scrollbar-color:var(--dp-line-hi) transparent; -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 min(22px, 8%), #000 calc(100% - min(22px, 8%)), transparent 100%); mask-image:linear-gradient(to bottom, transparent 0, #000 min(22px, 8%), #000 calc(100% - min(22px, 8%)), transparent 100%); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hull-fitcount { position:absolute; left:16px; right:16px; bottom:calc(100% + 8px); z-index:2; margin:0; padding:0; color:rgb(${BONE} / .84); font:500 12px/1.4 var(--dp-face-label); letter-spacing:.08em; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows, ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { width:100% !important; max-width:100% !important; min-width:0 !important; box-sizing:border-box; }
-${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; align-items:start; column-gap:20px; padding:10px 0 12px !important; min-height:0 !important; border-bottom:1px solid rgb(${BONE} / .1); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-row { flex:none !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; align-items:start; column-gap:20px; padding:10px 0 12px !important; min-height:0 !important; border-bottom:1px solid rgb(${BONE} / .1); }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__body { display:flex; flex-direction:column; gap:4px; min-width:0; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__head { display:flex; align-items:baseline; gap:12px; min-width:0; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__n { font-variant-numeric:tabular-nums; color:rgb(${BONE} / .6); min-width:2ch; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .k-row__name { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; min-width:0; overflow:visible; white-space:normal; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__empty { color:rgb(${BONE} / .6); font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__line { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__spares { display:flex; flex-wrap:wrap; gap:6px 16px; min-width:0; }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__spare { all:unset; box-sizing:border-box; display:inline-flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; padding:4px 0; cursor:pointer; color:rgb(${BONE} / .72); border-bottom:1px solid currentColor; font:500 14px/1.4 var(--dp-face-label); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__spare[aria-checked="true"] { color:rgb(${BONE} / .96); border-bottom-color:var(--dp-hand); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__spare-stat { font:400 12px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif; color:rgb(${BONE} / .72); }
+${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__spare:is(:hover,:focus-visible) { color:var(--dp-hand); border-bottom-color:var(--dp-hand); box-shadow:0 1px 0 var(--dp-hand); }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .orr-hp__contrast { margin:2px 0 0 !important; white-space:normal !important; overflow-wrap:anywhere; line-height:1.4; color:rgb(${BONE} / .72); max-width:min(72ch, 100%) !important; }
 ${R} > .sf-cru-stage:not(.orr-hull--on) .sf-cru-act { align-self:center; }
 @media (max-width:760px) {
@@ -621,7 +628,7 @@ ${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { color:rgb(${BONE} / .78)
 ${R} > .sf-cru-stage.orr-hull--on .orr-hp__empty { color:rgb(${BONE} / .78) !important; }
 ${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare { color:rgb(${BONE} / .78) !important; }
 ${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name::before { color:rgb(${BONE} / .72) !important; }
-${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { color:rgb(${BONE} / .84) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { color:rgb(${BONE} / .84) !important; bottom:var(--orr-hull-count-bottom, 150px) !important; }
 ${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { fill:rgb(${BONE} / .8) !important; }
 ${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { fill:rgb(${BONE} / .7) !important; }
 
@@ -653,7 +660,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
 /* Short plates: keep the void rail, but don't bury the fit count under a tall foot. */
 @media (max-height:820px) {
   ${R} > .k-foot { padding:8px 0 4px !important; box-shadow:0 -8px 12px 0 rgb(${VOID} / .85) !important; }
-  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:178px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:var(--orr-hull-count-bottom, 178px) !important; }
 }
 
 /* 1080p lift — type/spacing without CSS zoom (door/armory lesson: zoom clips the foot). */
@@ -666,7 +673,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
   ${R} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-size:13px !important; }
   ${R} > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size:13px !important; }
   ${R} .k-foot .k-word { font-size:17px !important; }
-  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:172px; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:var(--orr-hull-count-bottom, 172px); }
   ${R} > .k-foot { padding:18px 0 12px !important; }
 }
 
@@ -728,6 +735,25 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
    it pushed PURCHASE half under the foot, so there it stays one line too. */
 @media (min-width:761px) and (max-height:400px) {
   html[data-sf-mobile="1"] ${A.replace(/^html /, '')} > .k-title .sf-cru-preview { display:block !important; white-space:nowrap; -webkit-line-clamp:unset; line-clamp:none; }
+}
+/* Narrow desktop refit (480–699 wide, 600+ tall: 600×844, 640×1000). The jig's compact label
+   columns are ~150px: a nowrap head ran "EMPTY THRUSTER M" off the left edge ("PTY"), the STRIP
+   verb squeezed fitted names to a word per line, and the fit count hid under the two-row foot.
+   Here the head wraps, the verb takes its own row under the name, and the name steps down to
+   15px. Desktop only; selectors and IDs are unchanged. */
+@media (min-width:480px) and (max-width:699px) and (min-height:600px) {
+  ${RD} > .sf-cru-stage.orr-hull--on .k-row__name { flex-wrap:wrap !important; white-space:normal !important; row-gap:2px !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { letter-spacing:.14em !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__line { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__line > .orr-hp__value { flex:1 1 100% !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__value { font-size:15px !important; }
+  /* A focused SELL also carries an ENTER hint; keep the whole control inside its label. */
+  ${RD} > .sf-cru-stage.orr-hull--on .sf-cru-act { max-width:100% !important; white-space:normal !important; }
+  /* a spare's stat reads on the line under its name, not as a three-line sliver beside it */
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__spare { flex-wrap:wrap !important; row-gap:0 !important; }
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { flex:1 0 100% !important; }
+  /* the "N of 8 fitted" engraving sat under the two-row foot; it rides just above it */
+  ${RD} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:var(--orr-hull-count-bottom, 228px) !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {

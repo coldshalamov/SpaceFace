@@ -322,6 +322,7 @@ export const GRAFFITI = {
   WELD_KNOWS:                'THE WELD KNOWS WHO CUT IT TWICE.',       // B3 shipyard (Slate's line)
   VARIANCE_ADJUSTMENT:       'VARIANCE ADJUSTMENT',                    // B3 ship name on a hull (Kessler's terminology — the tell)
   EVERY_MAN_PAYS_TWICE:      'EVERY MAN PAYS TWICE. FIRST IN FLESH. THEN IN COIN.', // B4 clearing (MTS)
+  YOU_READ_THE_TAG:          'YOU READ THE TAG.',                     // B4 doubled contract — the wall line, canon only when the job was taken
   WALLS_NEVER_PRISON:        'THE WALLS WERE NEVER THE REAL PRISON.',  // B5 chain dest (Quiet)
   HELIOS_NOT_NEEDED:         "HELIOS DIDN'T NEED IT. THEY TOOK IT ANYWAY.", // B0 foreshadow — the wrong-grid reveal (paid off at Ashfall Reach)
 

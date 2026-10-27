@@ -4,7 +4,8 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
-import { CONTRACT_47A_B3_TAG, missions as missionsProto } from '../src/systems/missions.js';
+import { missions as missionsProto } from '../src/systems/missions.js';
+import { getBeatStepStatus } from '../src/story/campaign47a/index.js';
 
 function harness() {
   const state = createGameState(473);
@@ -55,23 +56,28 @@ function harness() {
   return { state, bus, missions, credits };
 }
 
-test('47-A B3 is the long tow, not a shipyard choice', () => {
+// W-BOOKS-3-4 (§34.7 Book 3): B3 is now Slate's yard list — the berth delivery of
+// VARIANCE ADJUSTMENT is still the long tow, but the tow alone no longer closes the
+// book; Feed the Maw and the Foreman still owe. A hull buy never settles it.
+test('47-A B3 opens on the berth tow, not a shipyard choice', () => {
   const h = harness();
   assert.equal(h.state.nav.waypoint.storyBeat, 3);
-  assert.match(h.state.nav.waypoint.reason, /tow the (\d+ t )?slag core/i);
+  assert.match(h.state.nav.waypoint.reason, /VARIANCE ADJUSTMENT/i);
 
   h.bus.emit('dock:docked', { stationId: 'station_tethys' });
   h.bus.emit('ship:purchased', { defId: 'ship_drifter', price: 9000, stationId: 'station_tethys' });
   assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle Bigger Boat');
 
   h.bus.emit('dock:undocked', {});
-  const mission = h.state.missions.active.find((row) => row.storyTag === CONTRACT_47A_B3_TAG);
-  assert.ok(mission, 'departing Tethys dispatches the long tow');
+  const mission = h.state.missions.active.find((row) => row.storyTag === 'campaign47a:b3:berth');
+  assert.ok(mission, 'departing Tethys dispatches the berth delivery');
   assert.equal(mission.type, 'tow_recovery');
   assert.equal(mission.title, 'Tow the slag core');
 
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  h.missions.spawnTargetsForSector(mission.destSectorId);
+  h.missions._ensureMissionTargets(mission);
   const core = mission.targetEntityIds
     .map((id) => h.state.entities.get(id))
     .find((entity) => entity && entity.data && entity.data.physicalRole === 'slag_core');
@@ -91,9 +97,15 @@ test('47-A B3 is the long tow, not a shipyard choice', () => {
   core.pos = { x: berth.pos.x, z: berth.pos.z };
   h.bus.emit('dock:docked', { stationId: mission.destStationId });
 
-  assert.equal(h.state.story.beatIndex, 4);
-  assert.equal(h.credits.filter((row) => row.amount === 1000).length, 1);
+  assert.equal(mission.status, 'completed', 'the berth tow settles');
+  assert.deepEqual(getBeatStepStatus(h.state, 3).completed, ['delivery'],
+    'the delivery records as the yard list\u2019s first step');
+  assert.equal(h.state.story.beatIndex, 3, 'the delivery alone cannot close the yard list');
   h.bus.emit('ship:purchased', { defId: 'ship_hornet', price: 12000 });
-  assert.equal(h.state.story.beatIndex, 4);
-  assert.equal(h.credits.filter((row) => row.amount === 1000).length, 1, 'B3 reward is exact-once');
+  assert.equal(h.state.story.beatIndex, 3, 'a second hull buy still cannot settle Bigger Boat');
+
+  // The list re-posts its next job — Feed the Maw follows the delivery.
+  const maw = h.missions.ensureBoard('station_tethys').slots
+    .find((row) => row && row.storyTag === 'campaign47a:b3:maw');
+  assert.ok(maw, 'the board posts Feed the Maw once the berth settles');
 });

@@ -331,6 +331,24 @@ function completePhysicalMission(h, mission) {
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   h.missions.spawnTargetsForSector(mission.destSectorId);
   assert.ok(mission.targetEntityIds.length > 0, `${mission.storyTag} must materialize physical targets`);
+  // W-BOOKS-3-4: Spine Break is an escort — the convoy lead must reach the dock
+  // ring alive, then the berth read settles it. Killing the escortee fails the op.
+  if (mission.type === 'escort') {
+    h.missions._ensureMissionTargets(mission);
+    const berth = [...h.state.entities.values()].find((entity) => (
+      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
+    )) || h.helpers.spawnEntity({
+      type: 'station', pos: { x: 0, z: 0 }, radius: 40,
+      data: { stationId: mission.destStationId, dockRadius: 140 },
+    });
+    const lead = h.state.entities.get(mission._escorteeId);
+    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
+    lead.pos = { x: berth.pos.x + 20, z: berth.pos.z };
+    h.missions.update(0.016, h.state);
+    assert.equal(mission._escorteeArrived, true, 'the convoy lead reaches the dock ring');
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   for (const targetId of [...mission.targetEntityIds]) {
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
@@ -341,9 +359,32 @@ function completeB3(h, outcome) {
   h.bus.emit('ship:purchased', {
     defId: 'ship_drifter', hullId: 'ship_drifter', stationId: 'station_tethys', price: 9000,
   });
-  assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle the long tow');
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
-  assert.equal(h.state.story.beatIndex, 4, 'B3 is the long tow');
+  assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle the yard list');
+  // W-BOOKS-3-4: Bigger Boat is Slate's authored list — the VARIANCE ADJUSTMENT
+  // berth delivery, Feed the Maw on the reactor approach, then the Mirrorjaw
+  // Foreman's yard feud. The book closes only when the list is done.
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:berth'));
+  assert.equal(h.state.story.beatIndex, 3, 'the berth delivery alone cannot close the book');
+
+  const maw = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  h.state.world.currentSectorId = maw.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: maw.destSectorId });
+  h.missions.spawnTargetsForSector(maw.destSectorId);
+  h.missions._ensureMissionTargets(maw);
+  const mawBody = maw.targetEntityIds
+    .map((id) => h.state.entities.get(id))
+    .find((e) => e && e.data && e.data.furnaceMaw === true);
+  assert.ok(mawBody, 'the maw materializes as a furnace-marked body');
+  for (let i = 0; i < (maw.params.mawStunsNeeded || 3); i++) {
+    h.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  }
+  completeSpineSetPiece(h, maw);
+  assert.equal(maw.status, 'completed', 'three slag stuns and the maw tows off the lane');
+  assert.equal(h.state.story.beatIndex, 3, 'the maw alone cannot close the book');
+
+  const foreman = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:foreman');
+  completePhysicalMission(h, foreman);
+  assert.equal(h.state.story.beatIndex, 4, 'B3 is the yard list');
 }
 
 function acceptCurrentStoryOffer(h, stationId, tagPrefix) {
@@ -361,8 +402,13 @@ function completeB4(h, outcome) {
   const mission = acceptCurrentStoryOffer(h, route.b4StationId, STORY_BRANCH_INTRO_TAG);
   assert.equal(h.state.story.beatIndex, 4, 'accepting B4 cannot settle the stake');
   completePhysicalMission(h, mission);
-  assert.equal(h.state.story.beatIndex, 5);
+  // W-BOOKS-3-4: finishing the intro settles the door; the door's own operation
+  // (Spine Break / the Weighing) posts next and closes Pick a Side on completion.
   assert.equal(h.state.story.branch, route.branch);
+  assert.equal(h.state.story.beatIndex, 4, 'the door operation still owes');
+  const op = acceptCurrentStoryOffer(h, route.b4StationId, 'campaign47a:b4:operation');
+  completePhysicalMission(h, op);
+  assert.equal(h.state.story.beatIndex, 5);
 }
 
 function completeB5(h, outcome) {
@@ -477,6 +523,13 @@ function completeB4Live(h, branch) {
   assert.equal(h.state.story.flags.pick_a_side_pending, branch);
   completePhysicalMission(h, mission);
   assert.equal(h.state.story.branch, branch);
+  // W-BOOKS-3-4: the door's operation closes the book — Spine Break (escort) for
+  // Meridian, the Weighing (patrol_clear) for Concord, Barn Raising (tow) for Free.
+  assert.equal(h.state.story.beatIndex, 4, 'the live door operation still owes');
+  const op = acceptCurrentStoryOffer(h, route.chainStationId, 'campaign47a:b4:operation');
+  if (op.type === 'tow_recovery') completeSpineSetPiece(h, op);
+  else completePhysicalMission(h, op);
+  assert.equal(op.status, 'completed', `${branch} door operation settles`);
   assert.equal(h.state.story.beatIndex, 5);
 }
 
@@ -560,10 +613,9 @@ check('one canonical story reward grant per beat advance (B0–B6 credits)', () 
   const h = makeLiveHarness();
   advanceToB7(h, 'traders');
   const storyReasons = storyGrants(h).map((g) => g.reason);
-  // B1/B2 pay through their authored mission exactly once; the other beats retain story grants.
+  // B1–B4 pay through their authored missions exactly once; the other beats retain story grants.
   const expected = [
     'story:cold_start',
-    'story:pick_a_side',
     'story:proving_ground',
     'story:empire_seed',
   ];
@@ -574,6 +626,7 @@ check('one canonical story reward grant per beat advance (B0–B6 credits)', () 
   assert.equal(storyReasons.includes('story:honest_work'), false, 'B1 must not double-pay its mission reward');
   assert.equal(storyReasons.includes('story:first_blood'), false, 'B2 must not double-pay its mission reward');
   assert.equal(storyReasons.includes('story:bigger_boat'), false, 'B3 must not double-pay its mission reward');
+  assert.equal(storyReasons.includes('story:pick_a_side'), false, 'B4 must not double-pay its mission reward');
   // No duplicate story:beatAdvanced for same fromIndex
   const froms = h.beatAdvances.map((b) => b.fromIndex);
   const uniqueFroms = new Set(froms.filter((f, i) => !(f === 7 && h.beatAdvances[i].toIndex === 7)));
@@ -609,7 +662,10 @@ check('B4 live story.branch_intro + single opposing rep map', () => {
   assert.equal(h.state.story.branch, null, 'acceptance alone does not settle the branch');
   completePhysicalMission(h, mission);
   assert.equal(h.state.story.branch, 'traders');
-  assert.equal(h.state.story.beatIndex, 5);
+  assert.equal(h.state.story.beatIndex, 4, 'the intro settles the door, not the book');
+  const op = acceptCurrentStoryOffer(h, 'station_tethys', 'campaign47a:b4:operation');
+  completePhysicalMission(h, op);
+  assert.equal(h.state.story.beatIndex, 5, 'the door operation closes Pick a Side');
 
   const chosen = h.repDeltas.find((r) => r.reason === 'story_branch' && r.factionId === 'faction_mts');
   const opposing = h.repDeltas.filter((r) => r.reason === 'story_branch_opposing');

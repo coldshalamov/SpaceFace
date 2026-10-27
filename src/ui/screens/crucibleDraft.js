@@ -2326,8 +2326,16 @@ export const crucibleRefitScreen = {
     const jig = this._jig;
     const states = this._jigStates;
     if (!stage || !jig || !states || !states.length) return;
+    // The same count stays useful when cramped columns give way to the scrollable rows.
+    if (this._fitCount) {
+      const text = `${states.filter((s) => s === 'fitted').length} of ${states.length} fitted`;
+      if (this._fitCount.dataset.raw !== text) {
+        this._fitCount.dataset.raw = text;
+        this._fitCount.textContent = text;
+      }
+    }
     if (typeof jig.active !== 'function' || !jig.active()) {
-      if (this._fitCount) this._fitCount.hidden = true;
+      if (this._fitCount) this._fitCount.hidden = false;
       return;
     }
     if (typeof stage.querySelectorAll !== 'function') return;
@@ -2376,12 +2384,6 @@ export const crucibleRefitScreen = {
     }
     // The fitted count, inline under the hull only while the arc is gone.
     if (this._fitCount) {
-      const fitted = states.filter((s) => s === 'fitted').length;
-      const text = `${fitted} of ${n} fitted`;
-      if (this._fitCount.dataset.raw !== text) {
-        this._fitCount.dataset.raw = text;
-        this._fitCount.textContent = text;
-      }
       this._fitCount.hidden = stage.querySelectorAll('.orr-hull__fitted').length !== 0;
     }
   },

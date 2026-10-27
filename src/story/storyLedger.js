@@ -69,6 +69,20 @@ const STEP_SPEECH = Object.freeze({
     id: 'b3', rank: 50,
     doing: 'towing the slag core', so: 'towed the slag core', then: 'the contract closed',
   }),
+  // W-BOOKS-3-4: B3's authored yard list retells leg by leg (the maw is not the
+  // delivery, and the feud is not a tow).
+  '3:delivery': Object.freeze({
+    id: 'b3-delivery', rank: 50,
+    doing: 'delivering VARIANCE ADJUSTMENT', so: 'delivered the Hawser to the yard', then: 'the berth took the tug',
+  }),
+  '3:feed_the_maw': Object.freeze({
+    id: 'b3-maw', rank: 51,
+    doing: 'feeding the furnace maw', so: 'fed the maw off the lane', then: 'the lane cleared',
+  }),
+  '3:foreman': Object.freeze({
+    id: 'b3-foreman', rank: 52,
+    doing: "settling the Foreman's yard feud", so: 'settled the yard feud', then: 'the yard ledger closed',
+  }),
   '6:asset_deploy': Object.freeze({
     id: 'b6', rank: 80,
     doing: 'deploying the asset', so: 'deployed the asset', then: 'the plot took it',
@@ -232,6 +246,20 @@ function branchSpeech(branch) {
   };
 }
 
+// W-BOOKS-3-4: B4's second step is the chosen door's own operation — the ledger
+// names the operation run, not "the intro" again.
+const OPERATION_SPEECH = Object.freeze({
+  traders: Object.freeze({ doing: 'running Spine Break', so: 'held the cargo spine', then: 'the spine held' }),
+  patrol: Object.freeze({ doing: 'running the Weighing', so: 'unmasked the too-perfect pack', then: 'the pack resolved' }),
+  free: Object.freeze({ doing: 'raising the barn', so: 'raised the barn', then: 'the frame held' }),
+});
+
+function operationSpeech(branch) {
+  const row = branch && OPERATION_SPEECH[branch];
+  if (!row) return null;
+  return { id: 'b4-op', rank: 61, ...row };
+}
+
 function chainSpeech(branch, progress, target, complete) {
   const name = branch === 'traders' ? "the traders'"
     : branch === 'patrol' ? 'the patrol'
@@ -331,6 +359,10 @@ function expandCompletedBeat(map, beatIndex, at, timed, story) {
       put(map, speakAct(chainSpeech(story.branch, 0, 0, true), at, { timed }));
       continue;
     }
+    if (step.id === 'operation') {
+      put(map, speakAct(operationSpeech(story.branch), at, { timed }));
+      continue;
+    }
     const speech = stepSpeech(def.beat, step.id, null);
     put(map, speakAct(speech, at, { timed }));
   }
@@ -391,6 +423,34 @@ function readCampaignReceipts(map, state) {
       continue;
     }
     if (kind !== 'step_progress') continue;
+    const beatIndex = Number.isFinite(raw.beatIndex) ? raw.beatIndex : null;
+    const stepId = clean(raw.stepId);
+    if (beatIndex != null && stepId) {
+      if (stepId === 'branch_intro_accept') {
+        put(map, speakAct(branchSpeech(raw.branch || story.branch), at, { timed: true }));
+        continue;
+      }
+      if (stepId === 'chain_complete') {
+        put(map, speakAct(chainSpeech(raw.branch || story.branch, 0, 0, true), at, { timed: true }));
+        continue;
+      }
+      if (beatIndex === 4 && stepId === 'operation') {
+        put(map, speakAct(operationSpeech(raw.branch || story.branch), at, { timed: true }));
+        continue;
+      }
+      if (beatIndex === 6 && stepId === 'asset_deploy') {
+        put(map, speakAct(assetSpeech(clean(raw.assetKind)), at, { timed: true }));
+        continue;
+      }
+      // W-BOOKS-3-4: an authored book step speaks its own clause ahead of the
+      // generic completion-method rewrite — the yard list's legs are not
+      // interchangeable tows, and the door operation is not the intro.
+      const authored = stepSpeech(beatIndex, stepId, clean(raw.signal));
+      if (authored) {
+        put(map, speakAct(authored, at, { timed: true, then: authored.then }));
+        continue;
+      }
+    }
     const methodSpeech = METHOD_SPEECH[clean(raw.completionMethod)];
     if (methodSpeech) {
       put(map, speakAct(methodSpeech, at, { timed: true, specific: true }));
@@ -403,30 +463,25 @@ function readCampaignReceipts(map, state) {
       put(map, speakAct(verbSpeech, at, { timed: true, specific: true }));
       continue;
     }
-    const beatIndex = Number.isFinite(raw.beatIndex) ? raw.beatIndex : null;
-    const stepId = clean(raw.stepId);
-    if (beatIndex == null || !stepId) continue;
-    if (stepId === 'branch_intro_accept') {
-      put(map, speakAct(branchSpeech(raw.branch || story.branch), at, { timed: true }));
-      continue;
-    }
-    if (stepId === 'chain_complete') {
-      put(map, speakAct(chainSpeech(raw.branch || story.branch, 0, 0, true), at, { timed: true }));
-      continue;
-    }
-    if (beatIndex === 6 && stepId === 'asset_deploy') {
-      put(map, speakAct(assetSpeech(clean(raw.assetKind)), at, { timed: true }));
-      continue;
-    }
-    const speech = stepSpeech(beatIndex, stepId, clean(raw.signal));
-    put(map, speakAct(speech, at, { timed: true, then: speech && speech.then }));
   }
 }
+
+// Legacy single-contract tags whose whole-beat fill still needs the generic
+// completion-method rewrite — the method is the only signal that differentiates
+// the retell there. Book-route tags speak leg-by-leg from their step receipts, so
+// a method receipt for the same tag would double-speak the leg.
+const LEGACY_SINGLE_CONTRACT_TAGS = new Set([
+  'campaign47a:b1:honest_work',
+  'campaign47a:b2:elroy',
+  'campaign47a:b3:bigger_boat',
+]);
 
 function readMethodReceipts(map, state) {
   const missions = state && state.missions && typeof state.missions === 'object' ? state.missions : {};
   for (const raw of asList(missions.receipts)) {
     if (!raw || (raw.outcome && raw.outcome !== 'completed')) continue;
+    const tag = clean(raw.storyTag);
+    if (tag && tag.startsWith('campaign47a:b') && !LEGACY_SINGLE_CONTRACT_TAGS.has(tag)) continue;
     const method = clean(raw.completionMethod);
     const speech = method && METHOD_SPEECH[method];
     if (!speech) continue;

@@ -365,6 +365,13 @@
   :is(#screens .sx-observatory, .sx-observatory) :is(button,input,select,textarea) { background: ButtonFace; color: ButtonText; border: 1px solid ButtonText; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-tile.is-active { outline: 2px solid Highlight; outline-offset: -3px; }:is(#screens .sx-observatory, .sx-observatory) .so-dock-indicator { display: none; }
   :is(#screens .sx-observatory, .sx-observatory) .sx-mkt-table .is-active { outline: 2px solid Highlight; outline-offset: -2px; }
+  /* The Unfold palette's etched edges are background gradients — forced away — so HC re-draws its
+     border for real; the row tick is a background pseudo, so selection gets a Highlight outline;
+     and the search input's outline was suppressed with !important for the lit-underline recipe,
+     which HC strips — the platform ring returns. */
+  :is(#screens .sx-observatory, .sx-observatory) .so-command-palette { border: 1px solid CanvasText; }
+  :is(#screens .sx-observatory, .sx-observatory) .so-command-search input:focus { outline: 2px solid Highlight !important; outline-offset: -2px; }
+  :is(#screens .sx-observatory, .sx-observatory) #so-command-results > li[aria-selected=true] { outline: 2px solid Highlight; outline-offset: -2px; }
 }
 
 @media (max-width:900px) {

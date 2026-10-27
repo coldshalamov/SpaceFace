@@ -684,8 +684,10 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
     objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')) },
     packages,
     schedule,
-    // An authored act round owns its room: the act table's phase wins over the cycle.
-    arenaPhase: (act && act.arenaPhase) || swarmArenaPhase(w),
+    // An authored act round owns its room: the act table's phase wins over the cycle. A pact
+    // mutator that rewrites the room's law (shutter_alternating) wins over both — the same
+    // applyMutators the recipe path runs, and the authored blurb contracts every wave.
+    arenaPhase: applyMutators((act && act.arenaPhase) || swarmArenaPhase(w), mutators),
     rewards,
     draftExpectation: isSwarmRefitWave(w)
       ? { kind: 'refit', choices: null }

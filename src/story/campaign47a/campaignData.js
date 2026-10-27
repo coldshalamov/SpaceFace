@@ -232,15 +232,53 @@ export const CAMPAIGN_BEATS = Object.freeze([
     beat: 3,
     id: 'bigger_boat',
     title: 'Bigger Boat',
-    objective: 'Tow the slag core the long way into the yard.',
+    // W-BOOKS-3-4 (§34.7 Book 3): VARIANCE ADJUSTMENT — the Hawser-class tug whose seam
+    // lets go at the fourth strain spike — then Feed the Maw and the Mirrorjaw Foreman.
+    // The first Gate Audit (Kepler) welds on the road while the book runs; it is recorded
+    // when the world-pressure schedule lands it and never gates the list.
+    objective: 'Take delivery of VARIANCE ADJUSTMENT, feed the Furnace maw, settle the Foreman\u2019s yard feud.',
     headlineVerb: 'tow',
-    setPiece: 'long tow',
+    setPiece: 'variance adjustment + feed the maw + foreman',
     steps: Object.freeze([
       Object.freeze({
-        id: 'tow',
+        // THE BERTH: the long tow is the delivery run and the shakedown both.
+        id: 'delivery',
         order: 0,
         accept: Object.freeze(['mission:completed']),
-        label: 'Tow the slag core',
+        match: Object.freeze({ storyTag: 'campaign47a:b3:berth' }),
+        contractId: 'campaign47a:b3:berth',
+        label: 'Take delivery of VARIANCE ADJUSTMENT — Slate\u2019s berth',
+      }),
+      Object.freeze({
+        // E-38: stun the Furnace maw with hot slag, then tow it out of the lane.
+        id: 'feed_the_maw',
+        order: 1,
+        accept: Object.freeze(['mission:completed']),
+        match: Object.freeze({ storyTag: 'campaign47a:b3:maw' }),
+        contractId: 'campaign47a:b3:maw',
+        label: 'Stun the Furnace maw; tow it off the lane',
+        requiresPrior: Object.freeze(['delivery']),
+      }),
+      Object.freeze({
+        // The Mirrorjaw Foreman: the capital-boss yard feud on the Vesta line.
+        id: 'foreman',
+        order: 2,
+        accept: Object.freeze(['mission:completed']),
+        match: Object.freeze({ storyTag: 'campaign47a:b3:foreman' }),
+        contractId: 'campaign47a:b3:foreman',
+        label: 'The Mirrorjaw Foreman — the yard feud',
+        requiresPrior: Object.freeze(['delivery']),
+      }),
+      Object.freeze({
+        // The world thread: the first Gate Audit (Kepler gate) welds on the road while
+        // Book 3 runs. World pressure owns the schedule; the step is recorded evidence,
+        // not a gate — `optional` keeps the required list honest.
+        id: 'gate_audit_kepler',
+        order: 3,
+        optional: true,
+        accept: Object.freeze(['worldPressure:auditAnnounced', 'worldPressure:gateClosed']),
+        match: Object.freeze({ book: 3 }),
+        label: 'the Kepler gate welds shut — the first Gate Audit',
       }),
     ]),
     observeOnly: false,
@@ -250,7 +288,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
     next: 4,
     recovery: Object.freeze({
       rearmOn: Object.freeze(['dock:docked', 'mission:failed']),
-      line: 'The core still waits. Tow it in.',
+      line: 'The yard still holds the book. The next job re-posts.',
     }),
   },
   {
@@ -258,7 +296,11 @@ export const CAMPAIGN_BEATS = Object.freeze([
     id: 'pick_a_side',
     title: 'Pick a Side',
     headlineVerbs: BRANCH_HEADLINE_VERBS,
-    objective: 'Complete the faction intro selected by the Elroy outcome.',
+    // W-BOOKS-3-4 (§34.7 Book 4): three doors, three operations — Spine Break (traders),
+    // the Weighing + the Too-Perfect Pack (patrol), Barn Raising (free). The doubled
+    // interdiction contract stays a free player choice beside the door; its wall line
+    // is canon only when taken. The Nereid audit welds on the road, recorded optionally.
+    objective: 'Pick a door at the clearing station, then run its operation.',
     steps: Object.freeze([
       Object.freeze({
         id: 'branch_intro_accept',
@@ -267,6 +309,24 @@ export const CAMPAIGN_BEATS = Object.freeze([
         requireStoryTag: STORY_BRANCH_INTRO_TAG,
         requireLiveIntroTypes: Object.freeze(['bulk_trade', 'patrol_clear', 'smuggling_run']),
         label: 'Commit to a live branch intro; missions settles on completion',
+      }),
+      Object.freeze({
+        // The door's operation is its own contract — the book closes on it, not the intro.
+        id: 'operation',
+        order: 1,
+        accept: Object.freeze(['mission:completed']),
+        match: Object.freeze({ storyTag: 'campaign47a:b4:operation' }),
+        contractId: 'campaign47a:b4:operation',
+        label: 'Run the door\u2019s operation — Spine Break, the Weighing, or Barn Raising',
+        requiresPrior: Object.freeze(['branch_intro_accept']),
+      }),
+      Object.freeze({
+        id: 'gate_audit_io',
+        order: 2,
+        optional: true,
+        accept: Object.freeze(['worldPressure:auditAnnounced', 'worldPressure:gateClosed']),
+        match: Object.freeze({ book: 4 }),
+        label: 'the Nereid gate welds shut — the second Gate Audit',
       }),
     ]),
     observeOnly: false,

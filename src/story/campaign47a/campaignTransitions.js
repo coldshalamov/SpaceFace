@@ -160,9 +160,28 @@ export function recordBeatStep(state, signal, payload = {}, simTime = 0) {
     };
   }
 
-  // B4: require live branch-intro acceptance payload.
+  // B4: the intro acceptance lands first; once it is recorded the door's operation
+  // and the optional audit step run through the same ordered recorder (W-BOOKS-3-4).
   if (beatIndex === 4) {
-    return recordBranchIntroStep(state, own, signal, payload, t, canon);
+    const bucket4 = getOrCreateStepBucket(own, 4, t);
+    if (!bucket4.completed.includes('branch_intro_accept')) {
+      return recordBranchIntroStep(state, own, signal, payload, t, canon);
+    }
+    // A re-accepted door intro (abandon + re-accept, or the other door while the first
+    // is still live) is acknowledged, not rejected — missions re-pins the pending door.
+    if (signal === 'mission:accepted' && isLiveBranchIntroPayload(payload)) {
+      return {
+        ok: true,
+        reason: 'intro_already_recorded',
+        own,
+        stepId: 'branch_intro_accept',
+        stepsComplete: false,
+        completedSteps: bucket4.completed.slice(),
+        canonical: canon,
+        advancedCanonicalBeat: false,
+      };
+    }
+    return recordOrderedSteps(state, own, def, signal, payload, t, canon);
   }
 
   // B5: require actual chain completions against live branch + counts.
@@ -200,61 +219,76 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
   const bucket = getOrCreateStepBucket(own, def.beat, simTime);
   const completed = new Set(bucket.completed);
 
-  // Find the next expected step in order (AND / ordered).
+  // W-BOOKS-3-4: `optional` steps are recorded evidence that never gates the ordered
+  // list — the Gate Audit welds on the world's schedule, so its step lands whenever
+  // its signal arrives (before, between, or after the required work) without becoming
+  // an out-of-order rejection or a false "needs step" blocker.
+  const optionalHit = steps.find((s) => s && s.optional === true && !completed.has(s.id)
+    && stepAcceptsSignal(s, signal) && stepMatchesPayload(s, signal, payload));
+
+  // Find the next expected REQUIRED step in order (AND / ordered). Optional steps are
+  // skipped here — a list whose only pending rows are optional is already satisfied.
   let nextStep = null;
   for (const step of steps) {
+    if (step && step.optional === true) continue;
     if (!completed.has(step.id)) {
       nextStep = step;
       break;
     }
   }
 
-  if (!nextStep) {
-    return {
-      ok: true,
-      reason: 'already_complete',
-      own,
-      stepsComplete: true,
-      completedSteps: bucket.completed.slice(),
-      intents: [],
-    };
-  }
-
-  if (!stepAcceptsSignal(nextStep, signal) || !stepMatchesPayload(nextStep, signal, payload)) {
-    // Out-of-order or wrong signal — reject without completing later steps early.
-    // Also reject if signal matches a later step before prior ones.
-    const laterHit = steps.find((s) => !completed.has(s.id) && s.id !== nextStep.id && stepAcceptsSignal(s, signal) && stepMatchesPayload(s, signal, payload));
-    if (laterHit) {
+  let hitStep = null;
+  if (optionalHit) {
+    hitStep = optionalHit;
+  } else {
+    if (!nextStep) {
       return {
-        ok: false,
-        reason: `step_out_of_order:need_${nextStep.id}`,
+        ok: true,
+        reason: 'already_complete',
         own,
-        needStep: nextStep.id,
-        gotSignal: signal,
+        stepsComplete: true,
+        completedSteps: bucket.completed.slice(),
+        intents: [],
       };
     }
-    return { ok: false, reason: `signal_mismatch:${signal}`, own, needStep: nextStep.id };
-  }
 
-  // Prior requirements
-  if (nextStep.requiresPrior) {
-    for (const prior of nextStep.requiresPrior) {
-      if (!completed.has(prior)) {
-        return { ok: false, reason: `requires_prior:${prior}`, own };
+    if (!stepAcceptsSignal(nextStep, signal) || !stepMatchesPayload(nextStep, signal, payload)) {
+      // Out-of-order or wrong signal — reject without completing later steps early.
+      // Also reject if signal matches a later required step before prior ones.
+      const laterHit = steps.find((s) => !s.optional && !completed.has(s.id) && s.id !== nextStep.id && stepAcceptsSignal(s, signal) && stepMatchesPayload(s, signal, payload));
+      if (laterHit) {
+        return {
+          ok: false,
+          reason: `step_out_of_order:need_${nextStep.id}`,
+          own,
+          needStep: nextStep.id,
+          gotSignal: signal,
+        };
+      }
+      return { ok: false, reason: `signal_mismatch:${signal}`, own, needStep: nextStep.id };
+    }
+
+    // Prior requirements
+    if (nextStep.requiresPrior) {
+      for (const prior of nextStep.requiresPrior) {
+        if (!completed.has(prior)) {
+          return { ok: false, reason: `requires_prior:${prior}`, own };
+        }
       }
     }
+    hitStep = nextStep;
   }
 
-  bucket.completed.push(nextStep.id);
+  bucket.completed.push(hitStep.id);
   bucket.updatedAtS = simTime;
   own.beatStatus = BEAT_STATUS.TRACKING;
   own.observedBeatIndex = def.beat;
 
-  const stepsComplete = steps.every((s) => bucket.completed.includes(s.id));
+  const stepsComplete = steps.every((s) => s.optional === true || bucket.completed.includes(s.id));
   const completionMethod = methodFromPayload(payload, def.beat, canon.branch);
   const receipt = buildStepProgressReceipt({
     beatIndex: def.beat,
-    stepId: nextStep.id,
+    stepId: hitStep.id,
     signal,
     completedSteps: bucket.completed,
     stepsComplete,
@@ -265,12 +299,12 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
   });
   pushCampaignReceipt(own, receipt);
   noteSpineStep(state, own, {
-    beat: def.beat, stepId: nextStep.id, payload, simTime, stepsComplete,
+    beat: def.beat, stepId: hitStep.id, payload, simTime, stepsComplete,
   });
   pushCampaignHistory(own, {
     kind: 'step_progress',
     beatIndex: def.beat,
-    stepId: nextStep.id,
+    stepId: hitStep.id,
     signal,
     stepsComplete,
   }, simTime);
@@ -278,7 +312,7 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
   return {
     ok: true,
     own,
-    stepId: nextStep.id,
+    stepId: hitStep.id,
     stepsComplete,
     completedSteps: bucket.completed.slice(),
     receipt,
@@ -620,7 +654,8 @@ export function isBeatStepsComplete(state, beatIndex = null) {
   if (!steps.length) return false;
   const bucket = own.stepProgress && own.stepProgress[String(idx)];
   const completed = (bucket && bucket.completed) || [];
-  return steps.every((s) => completed.includes(s.id));
+  // W-BOOKS-3-4: `optional` steps (the Gate Audit welds) never gate completion.
+  return steps.every((s) => s.optional === true || completed.includes(s.id));
 }
 
 export function getBeatStepStatus(state, beatIndex = null) {
@@ -634,6 +669,7 @@ export function getBeatStepStatus(state, beatIndex = null) {
   const steps = (def.steps || []).map((s) => ({
     id: s.id,
     order: s.order,
+    optional: s.optional === true,
     done: bucket.completed.includes(s.id),
     accept: s.accept ? s.accept.slice() : [],
   }));

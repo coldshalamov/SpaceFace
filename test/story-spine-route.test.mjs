@@ -171,6 +171,24 @@ function completePhysicalMission(h, mission) {
   h.state.world.currentSectorId = mission.destSectorId;
   h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   h.missions.spawnTargetsForSector(mission.destSectorId);
+  // W-BOOKS-3-4: Spine Break is an escort — the convoy lead must reach the dock
+  // ring alive, then the berth read settles it. Killing the escortee fails the op.
+  if (mission.type === 'escort') {
+    h.missions._ensureMissionTargets(mission);
+    const berth = [...h.state.entities.values()].find((entity) => (
+      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
+    )) || h.helpers.spawnEntity({
+      type: 'station', pos: { x: 0, z: 0 }, radius: 40,
+      data: { stationId: mission.destStationId, dockRadius: 140 },
+    });
+    const lead = h.state.entities.get(mission._escorteeId);
+    assert.ok(lead, `${mission.storyTag} must spawn a convoy lead`);
+    lead.pos = { x: berth.pos.x + 20, z: berth.pos.z };
+    h.missions.update(0.016, h.state);
+    assert.equal(mission._escorteeArrived, true, 'the convoy lead reaches the dock ring');
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
   for (const targetId of [...mission.targetEntityIds]) {
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
@@ -223,6 +241,27 @@ function playBookBeat2(h) {
   h.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_spine', fedMass: 10 });
   h.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
   completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
+}
+
+// W-BOOKS-3-4 (§34.7): Book 3 is Slate's yard list — the berth tow, the maw fed
+// on three slag stuns, then the Foreman's capital hull down.
+function playBookBeat3(h) {
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:berth'));
+  const maw = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:maw');
+  h.state.world.currentSectorId = maw.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: maw.destSectorId });
+  h.missions.spawnTargetsForSector(maw.destSectorId);
+  h.missions._ensureMissionTargets(maw);
+  const mawBody = maw.targetEntityIds
+    .map((id) => h.state.entities.get(id))
+    .find((e) => e && e.data && e.data.furnaceMaw === true);
+  assert.ok(mawBody, 'the maw materializes as a furnace-marked body');
+  for (let i = 0; i < (maw.params.mawStunsNeeded || 3); i++) {
+    h.bus.emit('tether:whipImpact', { victimId: mawBody.id, rating: 'solid' });
+  }
+  completeSpineSetPiece(h, maw);
+  assert.equal(maw.status, 'completed', 'three slag stuns and the maw tows off the lane');
+  completePhysicalMission(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:foreman'));
 }
 
 test('Cold Start ignores freight and a kill, then remembers the sample and R-07', () => {
@@ -308,7 +347,7 @@ test('the played road survives save and Continue and is cited at the ending', ()
     defId: 'ship_drifter', hullId: 'ship_drifter', stationId: 'station_tethys', price: 9000,
   });
   assert.equal(h.state.story.beatIndex, 3, 'buying a hull does not tow the core');
-  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
+  playBookBeat3(h);
   assert.equal(h.state.story.beatIndex, 4);
 
   const intro = acceptStoryOffer(h, 'station_tethys', STORY_BRANCH_INTRO_TAG);
@@ -316,6 +355,10 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.equal(readSpine(h.state).door, 'traders');
   completePhysicalMission(h, intro);
   assert.equal(h.state.story.branch, 'traders');
+  // W-BOOKS-3-4: the intro settles the door; the door's own operation closes the book.
+  assert.equal(h.state.story.beatIndex, 4, 'the door operation still owes');
+  const doorOp = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b4:operation');
+  completePhysicalMission(h, doorOp);
   assert.equal(h.state.story.beatIndex, 5);
   assert.deepEqual(readSpine(h.state).refused.slice().sort(), ['free', 'patrol']);
 
@@ -347,7 +390,9 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.equal(road.door, 'traders');
   assert.equal(road.solved['1'].verb, 'burn');
   assert.equal(road.solved['2'].verb, 'hunt');
-  assert.equal(road.solved['3'].verb, 'tow');
+  // W-BOOKS-3-4: the yard list's last filed verb is the Foreman's feud.
+  assert.equal(road.solved['3'].verb, 'throw');
+  assert.equal(road.solved['3'].stepId, 'foreman');
 
   const blob = JSON.parse(JSON.stringify(h.missions.serialize()));
   const continued = makeHarness();
@@ -369,7 +414,8 @@ test('the played road survives save and Continue and is cited at the ending', ()
   assert.match(facts.spineRoad.cite, /the variance sample docked/);
   assert.match(facts.spineRoad.cite, /the hauler fed to the furnace/);
   assert.match(facts.spineRoad.cite, /the register answered/);
-  assert.match(facts.spineRoad.cite, /the core towed/);
+  assert.match(facts.spineRoad.cite, /the yard feud settled/);
+  assert.match(facts.spineRoad.cite, /the cargo spine held/);
   assert.match(facts.spineRoad.cite, /the proving runs finished/);
   assert.match(facts.spineRoad.cite, /the yard drone deployed/);
   assert.match(facts.spineRoad.cite, /the siege finished/);

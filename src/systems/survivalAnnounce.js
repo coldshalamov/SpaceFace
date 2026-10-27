@@ -52,6 +52,17 @@ export const NAMED_KILL_PRIORITY = 105;
 export const MAX_HINTS_PER_WAVE = 1;
 
 /**
+ * A brood family tell is a beat, not a sermon. Many cells commit in the same breath, so the
+ * voice keeps at most this many telegraph lines a wave — each still counted against
+ * MAX_LINES_PER_WAVE through _alert, because the bound is hard.
+ */
+export const MAX_BROOD_TELEGRAPH_LINES_PER_WAVE = 2;
+/** Sim seconds before the same family may speak its tell again inside one wave. */
+export const BROOD_TELEGRAPH_GAP_S = 8;
+/** Reading time for a tell — short, since the attack lands a breath behind it. */
+const BROOD_TELEGRAPH_TTL_S = 3;
+
+/**
  * Gate id → world bearing, in words.
  *
  * These are WORLD directions, not player-relative ones: waveMaterialization.js:117-118 takes the
@@ -345,6 +356,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveMaterialized', (p) => this._onWaveMaterialized(p)));
     this._unsubs.push(this.bus.on('swarm:pressureTelegraph', (p) => this._onPressureTelegraph(p)));
+    this._unsubs.push(this.bus.on('swarm:broodTelegraph', (p) => this._onBroodTelegraph(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', (p) => this._onOpeningLessonReleased(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -385,6 +397,8 @@ export const survivalAnnounce = {
     this._waveIntroArmed = 0;
     this._waveIntroTicks = 0;
     this._compassWave = 0;
+    this._broodTeleAt = new Map(); // family id -> simTime it last spoke a tell
+    this._broodTeleLines = 0;      // telegraph lines spent this wave
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -565,6 +579,33 @@ export const survivalAnnounce = {
       ? `${capitalize(countWord(stored))} ${stored === 1 ? 'hostile' : 'hostiles'}`
       : 'Hostile reinforcement';
     this._say('objective', `survival:w${wave}:surge:${payload && payload.tick != null ? payload.tick : 0}`, `Inbound surge. ${countText} on approach.`, 4);
+  },
+
+  /**
+   * SWARM-07 B2 — a brood family's tell, heard. The engine emits once per cell that commits
+   * to the attack language (a buried family cracking out of the rock, the mother's first
+   * birth, a splitter's break), each carrying the family's authored {bark,line}. A burst of
+   * cells is one warning, never a chorus: one line per family per gap, a small count per
+   * wave, and the shared per-wave bound through _alert. Warn-sev on the alert lane — above
+   * the chatter it must beat to be useful, below a danger line.
+   */
+  _onBroodTelegraph(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    const familyId = payload && payload.familyId;
+    const line = payload && payload.line;
+    if (typeof familyId !== 'string' || !familyId) return;
+    if (typeof line !== 'string' || !line) return;
+    if (this._broodTeleLines >= MAX_BROOD_TELEGRAPH_LINES_PER_WAVE) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const last = this._broodTeleAt.get(familyId);
+    if (last != null && now - last < BROOD_TELEGRAPH_GAP_S) return;
+    // Finite ttl is the alerts.js law — a persistent pill has no bus seam to clear it. The
+    // stable key also coalesces a repeated tell in the arbiter instead of stacking it.
+    const sev = payload.bark === 'danger' ? 'danger' : 'warn';
+    if (!this._alert(`brood-telegraph:${familyId}`, sev, line, BROOD_TELEGRAPH_TTL_S)) return;
+    this._broodTeleAt.set(familyId, now);
+    this._broodTeleLines += 1;
   },
 
   /** The lesson's held pack arriving early is still an arrival — name it, or the room fills silently. */

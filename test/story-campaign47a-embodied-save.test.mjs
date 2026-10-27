@@ -123,9 +123,16 @@ function postIntro(h, branch = 'traders') {
 
 function toB7(h) {
   toB3(h);
-  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
+  // W-BOOKS-3-4: Book 3 is the yard list — berth, maw, Foreman — three posts in order.
+  for (const tag of ['campaign47a:b3:berth', 'campaign47a:b3:maw', 'campaign47a:b3:foreman']) {
+    completeMission(h, acceptStoryOffer(h, 'station_tethys', tag));
+  }
   assert.equal(h.state.story.beatIndex, 4);
   postIntro(h, 'traders');
+  // This save shape settles through the legacy door path (the writ's raw completion
+  // stamped elroy_outcome_legacy), so the whole book closes at the intro — there is
+  // no separate operation post on a legacy save.
+  assert.equal(h.state.story.branch, 'traders');
   assert.equal(h.state.story.beatIndex, 5);
   for (let i = 0; i < BRANCH_CHAIN.traders.count; i++) {
     const mission = {
