@@ -294,6 +294,18 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-talk__head .sx-talk__memory { margin-top:4px !important; }
   ${D} .sx-talk__head > .sx-talk__avatar { width:44px !important; height:44px !important; }
 }
+/* …the reading there is ~174px tall, so the contact's opener pushed the second and third questions out of sight and an
+   answer pushed out the rest: a tap read as doing nothing. The role (already on the contact's row) and the key hint step
+   aside, the portrait shrinks beside the name, and once a question is answered the answer stands in for the opener. */
+@media (max-width:480px) and (min-height:801px) {
+  ${D} .sx-bar__stage .sx-talk__head { align-self:stretch !important; row-gap:0 !important; grid-template-rows:minmax(26px, auto) auto !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__role, ${D} .sx-bar__stage .sx-talk__keys { display:none !important; }
+  ${D} .sx-bar__stage .sx-talk__name { grid-row:1 !important; align-self:center !important; }
+  ${D} .sx-bar__stage .sx-talk__head > .sx-talk__avatar { grid-row:1 !important; width:26px !important; height:26px !important; margin:0 !important; transform:none !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__memory { grid-row:2 !important; }
+  ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
+}
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
