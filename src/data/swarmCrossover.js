@@ -12,9 +12,17 @@
 //     inside the run's cleared span. Once the ledger carries it, Adventure shipyards sell the
 //     hull like any other earned line. Credits never cross.
 //
+//   * THE SECOND ENTRY is the Yard Chit: the Zone 2 boss (wave 20) proves a pilot every
+//     Adventure berth can read off the same ledger. The chit is a credential, not a credit
+//     transfer — a docked yard's service rate (economy.serviceUnitCr, repair and refuel, the
+//     one number quote and charge share) comes down the row's tenth on top of whatever
+//     standing already earns. Off-station work never sees it.
+//
 // Pure frozen data + pure functions. No bus, no RNG, no DOM.
 
 export const SWARM_SAUCER_EARN_WAVE = 30;
+export const SWARM_YARD_CHIT_EARN_WAVE = 20;
+export const SWARM_YARD_CHIT_SERVICE_DISCOUNT = 0.10;
 
 export const SWARM_CROSSOVER_CATALOG = Object.freeze([
   Object.freeze({
@@ -24,6 +32,14 @@ export const SWARM_CROSSOVER_CATALOG = Object.freeze([
     name: 'Saucer',
     earnWave: SWARM_SAUCER_EARN_WAVE,
     blurb: 'Fell the Zone 3 boss — the disc answers at any Adventure shipyard.',
+  }),
+  Object.freeze({
+    id: 'permit:yard_chit',
+    kind: 'permit',
+    name: 'Yard Chit',
+    earnWave: SWARM_YARD_CHIT_EARN_WAVE,
+    serviceDiscount: SWARM_YARD_CHIT_SERVICE_DISCOUNT,
+    blurb: 'Fell the Zone 2 boss — docked yards take a tenth off the service rate for the pilot who proved it.',
   }),
 ]);
 
@@ -145,4 +161,20 @@ export function swarmEarnedHullDefIds() {
     if (entry && entry.kind === 'hull' && typeof entry.defId === 'string') out.push(entry.defId);
   }
   return out;
+}
+
+/**
+ * The docked-service discount the proven permits pay — the largest `serviceDiscount` among
+ * earned permit rows, or 0 when the ledger carries none. economy.serviceUnitCr multiplies
+ * the docked unit rate by (1 - this); no reader and no earn both answer 0, never a guess.
+ */
+export function swarmCrossoverServiceDiscount() {
+  let best = 0;
+  for (const id of swarmEarnedCrossoverIds()) {
+    const entry = CROSSOVER_BY_ID.get(id);
+    if (entry && entry.kind === 'permit' && Number.isFinite(entry.serviceDiscount)) {
+      best = Math.max(best, entry.serviceDiscount);
+    }
+  }
+  return best;
 }

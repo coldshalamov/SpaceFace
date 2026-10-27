@@ -97,6 +97,7 @@ import { exposedDeadDropStacks, takeExposedDeadDrop } from './boreDeadDrop.js';
 import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankServiceDiscount } from './factions.js';
+import { swarmCrossoverServiceDiscount } from '../data/swarmCrossover.js';
 import { endingStationTradeMults } from '../story/endings/worldAfter.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
@@ -218,6 +219,8 @@ export const SERVICE_PRICES = Object.freeze({
  * the charge both read, so the number on the button is the number the yard takes. The rank
  * that matters is the player's standing with the docked station's own faction; only a docked
  * service honors it, so the off-station emergency reserve and depot running costs stay at list.
+ * A proven Swarm Yard Chit rides beside standing under the same docked-only rule — the crossover
+ * ledger's own credential, stacked on whatever the berth's faction already grants (SWARM-06 §8).
  */
 export function serviceUnitCr(state, baseCr, service = null) {
   const stationId = state && state.ui && state.ui.dockedStationId;
@@ -225,7 +228,8 @@ export function serviceUnitCr(state, baseCr, service = null) {
   // THE WORLD REMEMBERS — a strike makes the yard costlier, a boom makes it cheaper. Only a named
   // yard service ('repair' | 'refuel') reads the berth's condition.
   const condition = stationId && service ? stationServiceMult(state, stationId, service) : 1;
-  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId)) * condition;
+  const chit = stationId ? swarmCrossoverServiceDiscount() : 0;
+  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId)) * (1 - chit) * condition;
 }
 
 /**
