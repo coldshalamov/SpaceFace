@@ -2971,6 +2971,16 @@ function isNamedAceEntity(entity) {
     || data.isAce === true;
 }
 
+// The cooldown ledger is keyed actor:attachment and attachment ids only ever grow, so an entry
+// that has outlived the cooldown can never block a cut again — a missing key already reads as
+// "ready". Dropping the expired ones on every write bounds the map to the cuts of the last
+// cooldown window instead of one row per bridle ever cut in the session.
+function pruneExpiredBridleCuts(ticks, currentTick) {
+  for (const [key, lastTick] of ticks) {
+    if (!Number.isFinite(lastTick) || currentTick - lastTick >= NPC_BRIDLE_CUT_COOLDOWN_TICKS) ticks.delete(key);
+  }
+}
+
 function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {}) {
   const state = host && host.state;
   const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -3009,6 +3019,7 @@ function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {})
   const result = attachments.breakAttachment(nearest, reason || 'specialist_cut', actor.id);
   if (!result || !result.ok) return null;
   if (!host._npcBridleCutTicks) host._npcBridleCutTicks = new Map();
+  pruneExpiredBridleCuts(host._npcBridleCutTicks, currentTick);
   host._npcBridleCutTicks.set(key, currentTick);
   if (host.bus && typeof host.bus.emit === 'function') {
     host.bus.emit('massline:npcCounterplay', {
