@@ -35,7 +35,7 @@ async function snapshot() {
         .some(el => /^Play$/i.test(el.textContent.trim()) && el.getBoundingClientRect().width > 0),
       motionAsk: visible('[data-screen="motionAsk"]'), pauseScreen: visible('[data-screen="pause"]'),
       launch: visible('.sf-ng-launch'), gun: visible('.mf-gun'), pause: visible('.mf-pause'),
-      journal, body: document.body?.innerText?.slice(-1800) || '' };
+      journal, inputEvents: window.__SF_IOS_PROBE_INPUT__ || [], body: document.body?.innerText?.slice(-1800) || '' };
   `);
 }
 async function click(selector, text = null) {
@@ -49,7 +49,14 @@ async function click(selector, text = null) {
   if (!element) return false;
   const id = element['element-6066-11e4-a52e-4f735466cecf'] || element.ELEMENT;
   if (!id) throw new Error('SafariDriver did not return a clickable element');
-  await command('POST', `/session/${session}/element/${id}/click`, {});
+  await command('POST', `/session/${session}/actions`, { actions: [{
+    type: 'pointer', id: 'ios-finger', parameters: { pointerType: 'touch' }, actions: [
+      { type: 'pointerMove', duration: 0, origin: element, x: 0, y: 0 },
+      { type: 'pointerDown', button: 0 }, { type: 'pause', duration: 80 },
+      { type: 'pointerUp', button: 0 },
+    ],
+  }] });
+  report.lastTap = { selector, text, at: Date.now() };
   return true;
 }
 async function capture(name) {
@@ -86,6 +93,17 @@ try {
   if (!session) throw new Error('SafariDriver created no session');
   report.phase = 'navigate'; await persist();
   await command('POST', `/session/${session}/url`, { url: target.href }, 180000);
+  await execute(`
+    window.__SF_IOS_PROBE_INPUT__ = [];
+    for (const type of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click']) {
+      window.addEventListener(type, event => {
+        const item = { type, trusted: event.isTrusted, target: event.target?.className,
+          text: event.target?.textContent?.trim()?.slice(0, 60), prevented: event.defaultPrevented };
+        window.__SF_IOS_PROBE_INPUT__.push(item);
+        if (window.__SF_IOS_PROBE_INPUT__.length > 12) window.__SF_IOS_PROBE_INPUT__.shift();
+      });
+    }
+  `);
   report.phase = 'menu';
   await waitFor('menu', state => state.menu && !state.cinematicBegin && !state.firstLightPlay && !state.motionAsk, 180000, async () => {
     await click('#cinematic-splash .cine-begin');
