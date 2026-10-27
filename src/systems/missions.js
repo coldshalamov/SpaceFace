@@ -1,3 +1,4 @@
+import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
@@ -3734,6 +3735,10 @@ export const missions = {
       sectorId: currentSectorId,
       sectorName: sector && sector.name || null,
     };
+    if (beat.beat === 1) {
+      const scale = kesslerScaleWaypoint(state);
+      if (scale) return { ...base, ...scale };
+    }
     if (beat.beat === 0) {
       const asteroid = this._nearestAsteroid();
       if (asteroid) return { ...base, label: 'Cold Start: Mine Asteroid', pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
@@ -3859,6 +3864,10 @@ export const missions = {
     const existing = state.nav && state.nav.waypoint;
     const force = !!(options.forceStory || options.force);
     const allowReplaceTrade = force || !!options.preferStory;
+    // The optional physical weigh follows delivery; never hijack a pilot's own
+    // course (even the completion path's forceStory refresh) to perform it.
+    if (kesslerScalePending(state) && existing
+        && (existing.kind === 'local' || existing.kind === 'trade' || existing.onboarding)) return false;
     if (existing && existing.onboarding && !force) return false;
     if (existing && existing.kind === 'mission') return false;
     if (existing && existing.kind === 'trade' && !allowReplaceTrade) return false;

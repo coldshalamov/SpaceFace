@@ -137,7 +137,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
         accept: Object.freeze(['mission:completed']),
         match: Object.freeze({ storyTag: 'campaign47a:b1:alloy_run' }),
         contractId: 'campaign47a:b1:alloy_run',
-        label: 'Deliver sealed alloys to Tycho — manifest lies',
+        label: 'Deliver sealed alloys — compare the manifest',
       }),
       Object.freeze({
         // §34.7 Book 1: SCALE 4 — the delivered crate weighs 0.94 on the Tethys scale and the

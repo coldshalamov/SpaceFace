@@ -143,8 +143,8 @@ export const EMBODIED_MISSIONS = Object.freeze([
       B({
         stepId: 'alloy_run',
         type: 'cargo_delivery', storyTag: 'campaign47a:b1:alloy_run',
-        title: 'Weigh-In — sealed alloys for Tycho',
-        brief: 'Sealed manifest. Carry the crate to Tycho intact; compare the manifest on arrival.',
+        title: 'Weigh-In — sealed alloy delivery',
+        brief: 'Sealed manifest. Carry the crate to the receiving station intact; compare the manifest on arrival.',
         factionId: 'faction_mts',
         stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
         reward_cr: 600, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
