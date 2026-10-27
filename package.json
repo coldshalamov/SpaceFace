@@ -675,7 +675,7 @@
     "check:lifetime-sweep-quiet-clocks-skip": "node --test test/lifetime-sweep-quiet-clocks-skip.test.mjs",
     "check:runtime-manifest-startup": "node --test test/authoritative-manifest-startup.test.mjs",
     "check:bar-probe-milestones": "node --test test/bar-probe-lifecycle.test.mjs",
-    "check:caption-format-bridge": "node --test test/caption-format-bridge-contract.test.mjs test/inf50-al-pr-13.test.mjs test/inf50-al-pr-15.test.mjs",
+    "check:caption-format-bridge": "node --test test/caption-format-bridge-contract.test.mjs test/inf50-al-pr-13.test.mjs test/inf50-al-pr-15.test.mjs test/audio-recipe-caption-admission.test.mjs",
     "check:first-trade-decant-custody": "node --test test/first-trade-decant-custody.test.mjs",
     "check:bounty-choice-standing": "node --test test/bounty-choice-standing.test.mjs",
     "check:bounty-refuge-authority": "node --test test/bounty-refuge-authority.test.mjs test/bounty-escape-gratitude.test.mjs",

@@ -6573,7 +6573,7 @@ export const audio = {
   },
 
   _onMineCapReached(payload) {
-    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65 });
+    this.play(MINE_CAP_REFUSAL_RECIPE, { gain: 0.65, captionOwned: true });
     const cap = payload && Number.isFinite(payload.cap) ? payload.cap : 6;
     this._emitPresentationCaption(`Mine Cap Reached (${cap})`, {
       assertive: true,
@@ -7355,6 +7355,7 @@ export const audio = {
       startTime: onGrid ? this._stuntGridTime(nowS) : undefined,
       lockRate: onGrid,
       critical: isCritical,
+      captionOwned: opts.captionOwned === true,
     });
     if (clearCadence) this.play('sfx_stunt_link', {
       gain: 0.3, rate: this._noteFreq('E', 5) / 880, lockRate: true,
@@ -9548,13 +9549,13 @@ export const audio = {
       if (targetClass === 'core') {
         if (ctx.currentTime - (rt._lastBellTime || 0) >= 45) {
           rt._lastBellTime = ctx.currentTime;
-          this.play('sfx_core_bell', { gain: 0.25 });
+          this.play('sfx_core_bell', { gain: 0.25, captionOwned: true });
         }
       } else if (targetClass === 'fringe') {
         const nextTickDelay = rt._nextRadioTickTime || 0;
         if (ctx.currentTime >= nextTickDelay) {
           rt._nextRadioTickTime = ctx.currentTime + 2.0 + Math.random() * 4.0;
-          this.play('sfx_fringe_tick', { gain: 0.15 });
+          this.play('sfx_fringe_tick', { gain: 0.15, captionOwned: true });
         }
       }
       this._updateAnomalyEvidence();
@@ -9584,7 +9585,7 @@ export const audio = {
     if (rt._docked) {
       if (now - (rt._lastMachineryAt || 0) >= 6 + Math.random() * 8) {
         rt._lastMachineryAt = now;
-        this.play('sfx_station_machinery', { gain: 0.12 });
+        this.play('sfx_station_machinery', { gain: 0.12, captionOwned: true });
       }
       return;
     }
@@ -9596,7 +9597,7 @@ export const audio = {
 
     if (now - (rt._lastTrafficBlipAt || 0) >= 14 + Math.random() * 18) {
       rt._lastTrafficBlipAt = now;
-      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25 });
+      this.play('sfx_traffic_blip', { gain: 0.08, rate: 0.9 + Math.random() * 0.25, captionOwned: true });
     }
   },
 

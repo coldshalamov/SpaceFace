@@ -15,7 +15,8 @@ const RECEIPT_CAPTIONED = new Set([
 export function localizedCaptionText(text, clock) {
   // English stays on the cheap literal path; other languages use the same reviewed
   // phrase/catalog pipeline as the rest of the interface, including its preview rules.
-  return formatCaptionText(text, clock, gameLocalization.locale === 'en-US' ? undefined : localizeText);
+  const bearing = Number.isInteger(clock) && clock >= 1 && clock <= 12 ? clock : undefined;
+  return formatCaptionText(text, bearing, gameLocalization.locale === 'en-US' ? undefined : localizeText);
 }
 
 export function emitAdmittedRecipeCaption(owner, recipeId, recipe, opts, busName) {
