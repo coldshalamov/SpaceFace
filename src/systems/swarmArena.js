@@ -39,6 +39,7 @@
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
+import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
 import { mulberry32 } from '../core/rng.js';
 import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -1118,6 +1119,7 @@ export const swarmArena = {
     // that drifts across the sector would stop topping up while flying through empty space.
     const nearbySolids = [];
     let mine = 0;
+    let openingPocketCount = 0;
     const surviving = [];
     const index = state.entityIndex;
     const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
@@ -1138,7 +1140,10 @@ export const swarmArena = {
       if (inReach) {
         nearbySolids.push({ x: entity.pos.x, z: entity.pos.z, radius: entity.radius || 0 });
         // Counted only if it is close enough to be part of the fight — see SWARM_DEBRIS_FIGHT_RADIUS.
-        if (ours && inFight) mine++;
+        if (ours && inFight) {
+          mine++;
+          if (entity.data.openingPocket || entity.data.openingLesson) openingPocketCount++;
+        }
       }
       if (ours) {
         surviving.push(entity.id);
@@ -1173,7 +1178,13 @@ export const swarmArena = {
       ratingT: Number(state && state.rockCore && state.rockCore.ratingT) || 0,
     });
     const layout = (reef ? null : swarmArenaDebrisLayout(ladderTier)) || debrisLayoutForArena(run && run.arenaId);
-    const target = reef ? REEF_DEBRIS_TARGET : layout.target;
+    const openingStage = swarmOpeningTerrainStage({
+      arenaId: run.arenaId, wave, lineTier: ladderTier.lineTier,
+      altered: reef || ballast || (Array.isArray(run.arenaMutators) && run.arenaMutators.length > 0),
+    });
+    const target = reef ? REEF_DEBRIS_TARGET
+      : Math.min(layout.target, openingStage ? openingStage.count : layout.target)
+        + (openingStage ? openingPocketCount : 0);
     const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
       SWARM_DEBRIS_MAX * 2 - surviving.length);
     this._terrainRetry = mine < target && want <= 0;
@@ -1183,7 +1194,12 @@ export const swarmArena = {
       Number.isInteger(run.seed) ? run.seed : 1,
       Number.isInteger(wave) ? wave : 1,
     ));
-    const spots = reef
+    // First rooms are authored courts, not a random ring. Later waves and all
+    // variant arenas retain the existing seeded planner. No random fallback may
+    // close the court's flight lane when a native body blocks an authored slot.
+    const spots = openingStage
+      ? planSwarmOpeningTerrain({ stage: openingStage, anchor, existing: nearbySolids, want, layout })
+      : reef
       ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
       : planSwarmDebris({
         anchor,
@@ -1192,11 +1208,12 @@ export const swarmArena = {
         rng,
         layout: { ...layout, axis: { x: 1, z: 0 } },
       });
+    if (openingStage && spots.length < want) this._terrainRetry = true;
     const spawnedIds = [];
     const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
       && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= SWARM_DEBRIS_FIGHT_RADIUS).map(environmentMaterialOf));
     const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
-    if (spots.length < Math.min(want, missingMaterials.length)) {
+    if (!openingStage && spots.length < Math.min(want, missingMaterials.length)) {
       // Tight arena lanes can exhaust their placement search. Their missing toys sit on
       // a safe outer shoulder rather than silently disappearing from this arena's grammar.
       spots.push(...planSwarmDebris({ anchor, existing: nearbySolids.concat(spots),
@@ -1213,10 +1230,11 @@ export const swarmArena = {
       }
       const material = ballast
         ? 'debris'
-        : missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+        : spot.material || missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
       materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
-        { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material });
+        { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material,
+          ...(openingStage ? { openingTerrainSlot: spot.openingTerrainSlot } : {}) });
       if (id != null) spawnedIds.push(id);
     }
     if (spawnedIds.length === 0) return;
@@ -1225,7 +1243,7 @@ export const swarmArena = {
       wave,
       added: spawnedIds.length,
       total: this._ids.length,
-      layoutId: reef ? REEF_LAYOUT_ID : layout.id,
+      layoutId: openingStage ? openingStage.id : reef ? REEF_LAYOUT_ID : layout.id,
     });
   },
 
