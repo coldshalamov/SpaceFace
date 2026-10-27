@@ -1,6 +1,6 @@
 // Sweep Window — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
-import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { createSweepWindowRuntime } from '../../systems/sweepWindowRuntime.js';
 
 export const spec = {
   "id": "scene_sweep_window",
@@ -95,7 +95,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The runner crossed on your count. The sweep read an empty lane.",
+      "line": "The runner reached the far marker on your count. Crossing filed.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -194,7 +194,7 @@ export const trigger = deepFreeze({
     "externalOnly": true
   }
 });
-export const runtime = compileVignette(spec);
+export const runtime = createSweepWindowRuntime(spec);
 export default defineEncounter(trigger, {
   "shape": {
     "situation": "patrol",
@@ -232,8 +232,9 @@ export default defineEncounter(trigger, {
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The runner crossed on your count. The sweep read an empty lane.",
+    "a": "The runner reached the far marker on your count. Crossing filed.",
     "b": "The cutter got one more bearing. The margin kept its count.",
     "c": "You kept your count. The weir kept its schedule."
   }
 });
+
