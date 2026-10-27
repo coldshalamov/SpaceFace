@@ -9,14 +9,19 @@
 //   Hornet@cruise 84 → light 119.700 WU, player 4.200 WU. Screen miss.
 //   Head-on reversed the player 95 WU.
 // After: dump the shunter's own normal speed at liveDumpVsLight 1. Travel is
-// measured over B3's 1.2 s screen-crossing (126 WU at Wasp cruise).
+// measured over a fixed 1.2 s coast, retaining the 126 WU displacement bar.
+// Fast cruise was restored by e8d10fed7; this horizon is not today's screen-crossing time.
 //
 // Seed 26002. Ballistic coast — no Rapier bounce, no drive, no AI brake.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
+import { ActionVfx } from '../src/render/actionVfx.js';
 
 import { HITSTUN_IMPULSE_EVENT, readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { deliverPhysicalImpulse } from '../src/combat/physicalEffects.js';
+import { PLAYER_EXTERNAL_RESPONSE } from '../src/core/physicalResponse.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createBus } from '../src/core/eventBus.js';
 import {
@@ -197,6 +202,9 @@ function headOnImpact(state, player, target, closingSpeed, causalActorId = playe
 function ram(shunterShip, shunterVelX, targetVelX, {
   causalIsTarget = false,
   plateOnTarget = false,
+  playerId = 1,
+  beforeImpact = null,
+  captureSecondaryVfx = false,
 } = {}) {
   const playerFit = plateOnTarget ? [] : [INERTIAL_SHUNT_WEAPON_ID];
   const targetFit = plateOnTarget ? [INERTIAL_SHUNT_WEAPON_ID] : [];
@@ -205,12 +213,18 @@ function ram(shunterShip, shunterVelX, targetVelX, {
   player.pos.x = 0;
   light.pos.x = shunterShip.collisionRadius + WASP.collisionRadius;
   const state = combatState(player, light);
-  const { bus } = armWeapons(state);
+  state.playerId = playerId;
+  const { bus, host } = armWeapons(state);
+  if (beforeImpact) beforeImpact({ state, player, light, bus, host });
 
   let receipt = null;
   let vfxCue = null;
   let hitstun = null;
-  bus.on('weapons:inertialShunt', (payload) => { receipt = payload; });
+  const secondaryVfx = captureSecondaryVfx ? new ActionVfx(new THREE.Scene()) : null;
+  bus.on('weapons:inertialShunt', (payload) => {
+    receipt = payload;
+    secondaryVfx?.emit('weapons:inertialShunt', payload, state);
+  });
   bus.on('presentation:vfxCue', (payload) => { vfxCue = payload; });
   bus.on(HITSTUN_IMPULSE_EVENT, (payload) => { hitstun = payload; });
 
@@ -227,7 +241,10 @@ function ram(shunterShip, shunterVelX, targetVelX, {
   const playerKick = applyQueuedDeltaV(player);
   const lightKick = applyQueuedDeltaV(light);
   const momentumAfter = pairMomentumX(player, light);
+  const secondaryEffects = secondaryVfx?.slots.filter(slot => slot.alive).map(slot => ({ id: slot.id, radius: slot.radius })) || [];
+  secondaryVfx?.dispose();
   return {
+    secondaryEffects,
     receipt,
     vfxCue,
     hitstun,
@@ -246,6 +263,7 @@ function ram(shunterShip, shunterVelX, targetVelX, {
     lightTravel: coast(light, COAST_S),
     playerTravel: coast(player, COAST_S),
     lightProvenance: readRecentImpulseProvenance(light, state.tick),
+    playerProvenance: readRecentImpulseProvenance(player, state.tick),
   };
 }
 
@@ -286,11 +304,14 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   );
 });
 
+// e8d10fed7e restored fast cruise ceilings: the governed combat speeds doubled (PR 498 pins the
+// fixed shunt coast and screen depth explicitly so the later literals are derived from real constants).
 test('PQ-026.02 route cruise numbers are the live catalog', () => {
-  // e8d10fed7e restored fast cruise ceilings: the governed combat speeds doubled.
   assert.equal(governedCruise(WASP), 210, 'Wasp governed cruise is 210');
   assert.equal(governedCruise(HITCH), 195, 'Hitch governed cruise is 195');
   assert.equal(governedCruise(HORNET), 168, 'Hornet governed cruise is 168');
+  assert.equal(SCREEN, 126, 'reference displacement depth remains unchanged');
+  assert.equal(COAST_S, 1.2, 'fixed shunt measurement horizon remains unchanged');
   // The screen stays a fixed 126 WU of space — the faster cruise crosses it in half the time.
   near(SCREEN / governedCruise(WASP), COAST_S / 2, 'B3 screen-crossing time at the restored ceiling');
   assert.equal(driveProfile(HITCH).boostSpeedMult, 1.55, 'Hitch boost cap multiplier');
@@ -382,17 +403,103 @@ test('PQ-026.02 parked plate does not invent closing speed', () => {
   assert.equal(result.lightKick.applied, false);
 });
 
-test('PQ-026.02 NPC plate-wearer is a shunter: Wasp ram stops the Wasp and nudges the player within the external budget', () => {
-  const result = ram(HITCH, 0, -governedCruise(WASP), { plateOnTarget: true, causalIsTarget: true });
-  assert.ok(result.receipt, 'an NPC with the plate fitted uses the same live hook');
-  assert.equal(result.receipt.shunterId, 2, 'the Wasp is the shunter');
+// 1f864d1e pins the owner-specified player membrane; an NPC attack is not a
+// deliberate player maneuver. Keep full transfer/conservation on unprotected pairs.
+test('PQ-026.02 NPC plate nudges the protected pilot and receipts only admitted momentum', () => {
+  const result = ram(HITCH, 0, -governedCruise(WASP), {
+    plateOnTarget: true, causalIsTarget: true, captureSecondaryVfx: true,
+    beforeImpact({ host }) { host._shuntTorque.y = 14; }, // reused scratch from a prior NPC throw
+  });
+  const planned = WASP.mass * governedCruise(WASP);
+  const admittedDv = Math.min(planned / HITCH.mass * PLAYER_EXTERNAL_RESPONSE.scale,
+    PLAYER_EXTERNAL_RESPONSE.impulseBudget);
+  assert.ok(result.receipt);
+  assert.equal(result.receipt.shunterId, 2);
   assert.equal(result.receipt.targetId, 1);
-  near(result.lightVelAfterX, 0, 'the NPC dumps its own speed and stops');
-  // PLAYER_EXTERNAL_RESPONSE (7a2389fe3f): external tools cannot launch the player — the
-  // transfer is capped at the 5 WU/s budget, so no helm-loss and no free momentum either.
-  assert.ok(result.playerKick.deltaV > 1, 'the player still feels the contact');
-  assert.ok(result.playerKick.deltaV <= 5.01, `the external budget caps the launch (${result.playerKick.deltaV.toFixed(3)})`);
-  assert.equal(result.hitstun, null, 'the player keeps the helm — no hitstun on a player target');
+  near(result.lightVelAfterX, 0, 'NPC recoil policy still stops the shunter');
+  near(result.playerKick.deltaV, admittedDv, 'hostile shove uses the exact player membrane');
+  near(result.receipt.targetDeltaV, result.playerKick.deltaV, 'receipt measures admitted kick');
+  near(result.receipt.shunterDeltaV, result.lightKick.deltaV, 'receipt measures recoil');
+  near(result.receipt.plannedTargetDeltaV, planned / HITCH.mass, 'requested kick remains inspectable');
+  near(result.receipt.plannedMomentumTransferred, planned, 'planned momentum');
+  near(result.receipt.momentumTransferred, admittedDv * HITCH.mass, 'delivered momentum');
+  near(result.receipt.targetMomentumAdjustment, planned - admittedDv * HITCH.mass, 'undelivered remainder');
+  near(result.receipt.momentumResidual, result.momentumResidual, 'actual pair residual is not invented conservation');
+  assert.ok(result.momentumResidual > 0);
+  assert.equal(result.receipt.targetImpulseAccepted, true);
+  assert.equal(result.hitstun, null, 'the player retains the helm');
+  assert.equal(result.playerKick.torque, 0);
+  assert.equal(result.receipt.tumbled, false, 'stale torque scratch is not a queued tumble');
+  near(result.playerProvenance.magnitude, admittedDv * HITCH.mass, 'target provenance measures delivery');
+  near(result.lightProvenance.magnitude, planned, 'shunter provenance measures recoil');
+  near(result.vfxCue.magnitude, admittedDv / SCREEN, 'VFX measures admitted kick');
+  assert.deepEqual(result.secondaryEffects, [{ id: 1, radius: 8 }], 'secondary consumer shows only the admitted nudge');
+});
+
+test('PQ-026.02 NPC-to-NPC ram preserves full launch, helm loss and conservation', () => {
+  const result = ram(HITCH, 0, -governedCruise(WASP), {
+    plateOnTarget: true, causalIsTarget: true, playerId: 99,
+  });
+  const expectedDv = WASP.mass * governedCruise(WASP) / HITCH.mass;
+  near(result.playerKick.deltaV, expectedDv, 'unprotected Hitch receives the entire throw');
+  near(result.lightVelAfterX, 0, 'NPC shunter stops');
+  assert.ok(result.playerTravel >= SCREEN);
+  assert.ok(result.playerKick.torque > 0);
+  assert.equal(result.receipt.tumbled, true);
+  assert.ok(result.hitstun && result.hitstun.victimId === 1);
+  near(result.receipt.targetDeltaV, expectedDv, 'receipt matches full delivery');
+  near(result.receipt.targetMomentumAdjustment, 0, 'no reduction');
+  near(result.receipt.momentumResidual, result.momentumResidual, 'conservative receipt');
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
+});
+
+for (const refusal of ['exhausted budget', 'docked target']) {
+  test(`PQ-026.02 ${refusal} reports no target delivery or fabricated transfer cues`, () => {
+    const result = ram(HITCH, 0, -governedCruise(WASP), {
+      plateOnTarget: true, causalIsTarget: true, captureSecondaryVfx: true,
+      beforeImpact({ state, player, host }) {
+        host._shuntTorque.y = 14;
+        if (refusal === 'docked target') player.flags = { docked: true };
+        else {
+          deliverPhysicalImpulse(state, player, { x: 10000, z: 0 });
+          consumePhysicsCommand(player); // prior event spent this tick's budget; isolate this ram
+        }
+      },
+    });
+    const planned = WASP.mass * governedCruise(WASP);
+    assert.ok(result.receipt, 'the existing recoil action still happened');
+    assert.equal(result.playerKick.applied, false);
+    near(result.lightVelAfterX, 0, 'refused target delivery does not rebalance recoil');
+    assert.equal(result.receipt.targetImpulseAccepted, false);
+    assert.equal(result.receipt.targetDeltaV, 0);
+    assert.equal(result.receipt.momentumTransferred, 0);
+    near(result.receipt.targetMomentumAdjustment, planned, 'generic undelivered amount, not a claimed cause');
+    near(result.receipt.momentumResidual, result.momentumResidual, 'receipt tracks actual unpaired recoil');
+    assert.equal(result.receipt.tumbled, false);
+    assert.equal(result.playerProvenance, null);
+    assert.equal(result.hitstun, null);
+    assert.equal(result.vfxCue, null, 'no transfer streak for an undelivered kick');
+    assert.deepEqual(result.secondaryEffects, [], 'real ActionVfx consumer also refuses the undelivered target response');
+  });
+}
+
+test('PQ-026.02 environmental scaling is receipted as delivered momentum, not mislabeled protection', () => {
+  const result = ram(HITCH, governedCruise(HITCH), 0, {
+    beforeImpact({ light }) {
+      light.type = 'asteroid';
+      light.mass = light.physicsBody.mass = 1600;
+      light.radius = light.physicsBody.radius = 16;
+    },
+  });
+  assert.ok(result.receipt.targetImpulseAccepted);
+  assert.ok(result.receipt.momentumTransferred > result.receipt.plannedMomentumTransferred,
+    'authored environmental response can amplify rather than absorb an impulse');
+  near(result.receipt.targetDeltaV, result.lightKick.deltaV, 'delivered environmental deltaV');
+  near(result.receipt.momentumTransferred, result.lightKick.deltaV * 1600, 'delivered environmental momentum');
+  near(result.receipt.targetMomentumAdjustment,
+    result.receipt.momentumTransferred - result.receipt.plannedMomentumTransferred, 'magnitude of scaling adjustment');
+  near(result.receipt.momentumResidual, result.momentumResidual, 'actual environmental pair residual');
+  near(result.lightProvenance.magnitude, result.receipt.momentumTransferred, 'environmental delivery provenance');
 });
 
 test('PQ-026.02 throw path crosses a rock — the redirect goes somewhere that matters', () => {

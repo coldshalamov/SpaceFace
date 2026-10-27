@@ -3645,6 +3645,7 @@ function orientShuntNormal(payload, shunter, target, shunterIsA) {
  * Live ram-plate path. Relative closing is the ram floor. The dump is the shunter's own
  * speed along the contact normal, fully redirected, equal-and-opposite. That is a momentum
  * swap with the light, not a thruster and not a reverse-throw into an oncoming hull.
+ * The target response policy can reduce/refuse delivery; receipts distinguish that from the plan.
  */
 export function applyInertialShuntFromImpact(
   state,
@@ -3714,21 +3715,34 @@ export function applyInertialShuntFromImpact(
     return null;
   }
 
-  queuePhysicsImpulse(shunter, shunterOut);
-  deliverPhysicalImpulse(state, target, targetOut, { actorId: shunter.id, weaponId: 'wpn_inertial_shunt_s', tag: 'inertial_shunt', appliedTick: tick });
+  // The planner is conservative; delivery may be reduced or refused by the target's
+  // physical-response policy. Keep recoil policy unchanged, but receipt only queued work.
+  const shunterAccepted = queuePhysicsImpulse(shunter, shunterOut);
+  const delivery = deliverPhysicalImpulseDetailed(state, target, targetOut, {
+    actorId: shunter.id, weaponId: INERTIAL_SHUNT_WEAPON_ID, tag: 'inertial_shunt', appliedTick: tick,
+  });
   const mT = authoredMass(target);
   const mS = authoredMass(shunter);
-  const couple = Math.max(0.08, Math.min(1, INERTIAL_SHUNT_LIVE_TUNING.refMass / Math.max(mT, INERTIAL_SHUNT_LIVE_TUNING.refMass)));
-  if (torqueOut && target.id !== state.playerId) {
-    torqueOut.x = 0;
-    torqueOut.y = finiteShunt(INERTIAL_SHUNT_TUNING.tumbleTorque) * couple;
-    torqueOut.z = 0;
-    queuePhysicsTorqueImpulse(target, torqueOut);
-  }
-  const transferred = Math.hypot(targetOut.x, targetOut.z);
-  const residual = Math.hypot(shunterOut.x + targetOut.x, shunterOut.z + targetOut.z);
+  const plannedTransferred = Math.hypot(targetOut.x, targetOut.z);
+  const deliveredX = delivery.accepted ? delivery.impulse.x : 0;
+  const deliveredZ = delivery.accepted ? delivery.impulse.z : 0;
+  const transferred = Math.hypot(deliveredX, deliveredZ);
+  const recoilX = shunterAccepted ? shunterOut.x : 0;
+  const recoilZ = shunterAccepted ? shunterOut.z : 0;
+  const residual = Math.hypot(recoilX + deliveredX, recoilZ + deliveredZ);
   const targetDeltaV = transferred / mT;
-  const shunterDeltaV = Math.hypot(shunterOut.x, shunterOut.z) / mS;
+  const shunterDeltaV = Math.hypot(recoilX, recoilZ) / mS;
+  const couple = Math.max(0.08, Math.min(1, INERTIAL_SHUNT_LIVE_TUNING.refMass / Math.max(mT, INERTIAL_SHUNT_LIVE_TUNING.refMass)));
+  let tumbled = false;
+  if (torqueOut) {
+    torqueOut.x = 0;
+    torqueOut.y = 0;
+    torqueOut.z = 0;
+    if (transferred > 0 && target.id !== state.playerId) {
+      torqueOut.y = finiteShunt(INERTIAL_SHUNT_TUNING.tumbleTorque) * couple;
+      tumbled = torqueOut.y !== 0 && queuePhysicsTorqueImpulse(target, torqueOut);
+    }
+  }
   const provenance = {
     actorId: shunter.id,
     weaponId: INERTIAL_SHUNT_WEAPON_ID,
@@ -3736,9 +3750,11 @@ export function applyInertialShuntFromImpact(
     appliedTick: tick,
     magnitude: transferred,
   };
-  recordImpulseProvenance(shunter, provenance);
-  recordImpulseProvenance(target, provenance);
-  if (bus && typeof bus.emit === 'function') {
+  if (shunterAccepted) recordImpulseProvenance(shunter, {
+    ...provenance, magnitude: Math.hypot(recoilX, recoilZ),
+  });
+  if (transferred > 0) recordImpulseProvenance(target, provenance);
+  if (bus && typeof bus.emit === 'function' && transferred > 0) {
     if (target.id !== state.playerId) publishHitstunImpulse(bus, {
       source: 'weapon',
       victimId: target.id,
@@ -3748,7 +3764,7 @@ export function applyInertialShuntFromImpact(
       deltaV: targetDeltaV,
       dirX: axis.x,
       dirZ: axis.z,
-      hitSide: signedHitSide(target, targetOut, null, target.id),
+      hitSide: signedHitSide(target, delivery.impulse, null, target.id),
       provenance,
       tick,
     });
@@ -3780,8 +3796,13 @@ export function applyInertialShuntFromImpact(
     shunterDeltaV,
     momentumTransferred: transferred,
     momentumResidual: residual,
+    plannedTargetDeltaV: plannedTransferred / mT,
+    plannedMomentumTransferred: plannedTransferred,
+    targetImpulseAccepted: delivery.accepted,
+    // Difference from the plan, not a cause: protection, environmental scaling, or refusal.
+    targetMomentumAdjustment: Math.hypot(targetOut.x - deliveredX, targetOut.z - deliveredZ),
     axisX: axis.x,
     axisZ: axis.z,
-    tumbled: !!(torqueOut && torqueOut.y > 0),
+    tumbled,
   };
 }
