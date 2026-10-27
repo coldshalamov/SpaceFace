@@ -244,6 +244,12 @@ export function mountMobileView({ state, model, activate, reset, config, saveCon
     let role = button?.dataset.role;
     if (target.closest?.('.mf-edge')) role = 'wheel';
     if (!role) {
+      // These bounded text panes are real scroll surfaces on a phone, not empty flight
+      // space. Exempt only a pane that actually overflows; short text still flies through.
+      // Do not capture/preventDefault: the pane's pan-y scrolling owns this gesture.
+      const scrollPane = target.closest?.('.sf-leftcontext,[id="alerts"]');
+      if (doc.documentElement.dataset.sfMobileWheel !== '1' && scrollPane
+        && scrollPane.clientHeight > 0 && scrollPane.scrollHeight > scrollPane.clientHeight + 1) return;
       if (target.closest?.(UI_SELECTOR) || target.closest?.(NO_FLY_SELECTOR)) return;
       if (pinned) closeWheel(); // a tap in open space puts the wheel away and flies on, in one touch
       const magnet = nearestMiss(e.clientX, e.clientY);

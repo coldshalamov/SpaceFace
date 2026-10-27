@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = (p) => fileURLToPath(new URL('../' + p, import.meta.url));
 const hudStylesSrc = readFileSync(root('src/ui/views/hudStyles.js'), 'utf8');
+const mobileStylesSrc = readFileSync(root('src/systems/mobile/styles.js'), 'utf8');
 
 // The phone rules live inside one media block; slice it so each assertion reads that block only.
 function smallScreenBlock() {
@@ -31,14 +32,19 @@ test('D202b: a real phone keeps a text-scale floor of >= 0.75 below 960x600; a s
   assert.ok(parseFloat(mobile[2]) >= 0.78, `phone --sf-vtape-fit (${mobile[2]}) must be >= 0.78`);
 });
 
-test('D202b: phone flight HUD prevents compound double-scaling of radar and right dock', () => {
-  // Pre-change defect: on mobile flight, .sf-radar-wrap was scaled by 0.4 on top of .sf-rightdock scaled by 0.62,
-  // producing compound 0.248x scale (radar readouts at ~3px, ring legends at ~1.7px).
-  const hasDockTransformReset = /\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\]\s+#hud\s+\.sf-rightdock\s*\{[^}]*transform:\s*none/i.test(hudStylesSrc);
-  assert.ok(hasDockTransformReset, 'mobile flight rightdock must reset transform to prevent compound scaling of nested radar');
-
-  const hasRadarScaleFloor = /\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\]\s+#hud\s+\.sf-radar-wrap\s*\{[^}]*transform:\s*scale\(\s*0?\.7[5-9]/i.test(hudStylesSrc);
-  assert.ok(hasRadarScaleFloor, 'mobile flight radar wrap must enforce a scale floor of >= 0.75');
+test('D202b: phone flight instruments have no compound scale and retain the effective type floor', () => {
+  // Explicit compact geometry replaces the former .75 wrapper floor, not its legibility.
+  for (const selector of ['.sf-rightdock', '.sf-radar-wrap']) {
+    const block = mobileStylesSrc.slice(mobileStylesSrc.indexOf('/* Mobile flight lanes:')).split('#hud ' + selector + ' {')[1]?.split('}')[0];
+    assert.ok(block?.includes('transform:none!important'), selector + ' must not compound-scale');
+  }
+  assert.doesNotMatch(hudStylesSrc, /data-sf-mobile-flight="1"[^}]+transform:scale/);
+  assert.match(mobileStylesSrc, /\.sf-radar-orrery text \{ font-size:24px!important/);
+  assert.ok(24 * 96 / 208 >= 9, 'compact SVG type meets the effective floor');
+  assert.ok(32 * 96 / 290 >= 9, 'expanded SVG type meets the effective floor');
+  assert.ok(24 * 80 / 208 >= 9 && 36 * 80 / 290 >= 9, 'narrow portrait keeps both floors');
+  assert.match(mobileStylesSrc, /font-size:12px!important; line-height:1\.3; letter-spacing:\.04em/,
+    'unscaled detail text retains the 12px declared floor');
 });
 
 test('D202b: phone viewports keep ring legends and dial micro-text at >= 9px effective', () => {

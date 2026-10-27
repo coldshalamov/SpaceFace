@@ -444,3 +444,39 @@ test('the gyre verb latches on the touch deck and reaches acts.gyreSnare', () =>
   touch.tick(1 / 60, { ...state, tick: 2 }, host);
   assert.equal(host._held(state, 'gyreSnare'), false, 'the second tap releases the latch');
 });
+
+
+for (const name of ['context', 'alerts']) {
+  test(`overflowing ${name} text keeps its native scroll gesture without stealing flight thumbs`, () => {
+    const w = mount();
+    try {
+      const pane = w.doc.createElement('div');
+      if (name === 'context') pane.className = 'sf-leftcontext'; else pane.id = 'alerts';
+      pane.clientHeight = 56; pane.scrollHeight = 220;
+      const text = w.doc.createElement('span'); pane.append(text); w.doc.body.append(pane);
+      w.finger.down(1, 120, 600);
+      w.finger.down(2, 330, 700, w.q('.mf-gun'));
+      const scroll = w.finger.down(3, 40, 190, text);
+      assert.equal(scroll.defaultPrevented, false, 'native panning is not cancelled');
+      assert.equal(scroll.stopped, false, 'the DOM scroll surface receives its event');
+      assert.equal(w.model.pointers.size, 2, 'scroll finger never enters the flight model');
+      assert.equal(w.model.pointers.has(3), false);
+      assert.equal(w.canvas.captured.has(3), false);
+      assert.equal(w.finger.move(3, 40, 160, text).defaultPrevented, false);
+      assert.equal(w.finger.cancel(3, 40, 160, text).defaultPrevented, false);
+      assert.equal(w.model.pointers.size, 2, 'scroll cancellation does not release another thumb');
+      assert.equal(w.model.held('fire'), true);
+      w.win.innerWidth = 844; w.win.innerHeight = 390; w.fire('resize');
+      assert.equal(w.model.pointers.size, 0, 'rotation still clears the real flight contacts');
+      pane.scrollHeight = pane.clientHeight;
+      const ordinary = w.finger.down(4, 40, 190, text);
+      assert.equal(ordinary.defaultPrevented, true, 'non-overflowing text remains flight space');
+      assert.ok(w.model.stick);
+      w.finger.cancel(4, 40, 190, text);
+      assert.equal(w.model.pointers.size, 0);
+      pane.clientHeight = 0; pane.scrollHeight = 220;
+      assert.equal(w.finger.down(5, 40, 190, text).defaultPrevented, true, 'zero-size pane is not a dead zone');
+      w.finger.cancel(5, 40, 190, text);
+    } finally { w.dispose(); }
+  });
+}
