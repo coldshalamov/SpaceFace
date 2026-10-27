@@ -250,6 +250,7 @@ export function leftoverRumorLine(state, stationId) {
     entry
     && entry.kind === 'piracy'
     && entry.source === 'pirateRumor:headline'
+    && leftoverRumorMatchesBerth(entry, state)
     && leftoverLine(entry.text)
   ));
   return rec ? leftoverLine(rec.text) : null;
