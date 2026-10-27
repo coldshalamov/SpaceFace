@@ -480,14 +480,24 @@ export function swarmBroodLateReserve(wave, roll) {
 // would be padding. Instead the Hive stops inventing silhouettes and adulterates the
 // flesh it already floods: from wave 83 a seeded share of the wave's MITE share hatches
 // carrying a strain — the ship-side veteran-affix law (swarmThreats.js §6.4) moved onto
-// the brood's own per-body buffers. One strain, one honored effect, one mark byte per
-// body: 'volatile' pops where it dies — a small blast and a shove on the signature,
-// never a kill on the pack — so the solved verb (sweep the fodder where it lands on
-// your hull) is taxed for the rest of the run. Champion waves stay exempt — the boss
-// is that room's pressure story, same law as the late reserve.
+// the brood's own per-body buffers. One mark byte per body, one honored effect per
+// strain, and ONE strain per wave — the picker's first draw chooses which cooking the
+// room fields, so the plateau alternates its lessons (a card can only teach one trick;
+// a wave that mixed marks would have no lesson at all). The strains tax different
+// solved verbs, never the same one twice:
+//   * 'volatile' (83+) pops where it dies — a small blast and a shove on the
+//     signature, never a kill on the pack — taxing WHERE the fodder dies (sweep the
+//     marked ones out there — never on your hull).
+//   * 'plated' (97+) carries the keelback's shell law on a single body — only mass
+//     cracks it (collision/terrain); a blast it survives still throws it — taxing
+//     WHAT kills the fodder (the detonation that used to clear the room).
+// Champion waves stay exempt — the boss is that room's pressure story, same law as
+// the late reserve.
 
 /** First wave a non-champion room may hatch marked fodder. */
 export const SWARM_BROOD_STRAIN_FROM_WAVE = 83;
+/** First wave the plated cooking joins the draw (its own debut wave, own card). */
+export const SWARM_BROOD_STRAIN_PLATED_FROM_WAVE = 97;
 /** The marked share of the wave's mite row, seeded inside this band each wave. */
 export const SWARM_BROOD_STRAIN_SHARE_MIN = 0.12;
 export const SWARM_BROOD_STRAIN_SHARE_MAX = 0.22;
@@ -497,12 +507,15 @@ export const SWARM_BROOD_STRAIN_MIN_MARKED = 6;
 /**
  * The brood strain catalog — the veteran-affix vocabulary's brood half. `familyId` is
  * the carrier: which family's bodies may hatch marked (the strain rides the wave's
- * own planned bodies — it never adds one). `blastRadius`/`blastDamage`/`shoveDv` are
- * the volatile pop's authored size: a burst, never a kill on neighbouring cells —
- * the pop is the pilot's problem, not free crowd-clearing. `counter` is the slam-card
- * lesson at the debut; `tint` is the standing read on the field. A strain owns no
- * telegraph — the mark is a standing property, like the glassback's shell: the card
- * says it once, the colour keeps saying it.
+ * own planned bodies — it never adds one). Each row owns exactly ONE honored effect,
+ * spoken in the engine's existing law vocabulary: `blastRadius`/`blastDamage`/`shoveDv`
+ * are the volatile pop's authored size (a burst, never a kill on neighbouring cells —
+ * the pop is the pilot's problem, not free crowd-clearing); `massOnly` is the
+ * keelback's kill-gate moved onto the single body (only collision/terrain cracks it —
+ * a refused blast still throws it). `counter` is the slam-card lesson at the debut;
+ * `tint` is the standing read on the field. A strain owns no telegraph — the mark is a
+ * standing property, like the glassback's shell: the card says it once, the colour
+ * keeps saying it.
  */
 export const SWARM_BROOD_STRAINS = Object.freeze([
   Object.freeze({
@@ -517,13 +530,29 @@ export const SWARM_BROOD_STRAINS = Object.freeze([
     // The presentation tint the marked bodies burn toward — pale-hot over the mite's rust.
     tint: Object.freeze([1.0, 0.74, 0.22]),
   }),
+  Object.freeze({
+    id: 'plated',
+    name: 'Plated Brood',
+    fromWave: SWARM_BROOD_STRAIN_PLATED_FROM_WAVE,
+    familyId: 'mite',
+    // The keelback's shell law on the fodder: a marked mite refuses every cause but
+    // mass — the blast that can't crack it still throws it. The counter verbs are the
+    // tier's own: whip it, ram it, feed it a rock.
+    massOnly: true,
+    counter: 'The iron-pale mites only crack under mass — blasts just scatter them. Whip them, ram them, feed them a rock.',
+    // Cold iron sheen over the mite's rust — the glazed shell reads before it pings.
+    tint: Object.freeze([0.66, 0.74, 0.88]),
+  }),
 ]);
 
 /**
  * The wave's strain pick, or null when the room hatches clean: below the gate, a
  * champion wave, or too few mites to mark. `miteCount` is the wave's planned mite row
  * AFTER every hold-back — the share is of the fodder that actually fields. Exactly
- * two draws (strain, then share) so the same (seed, wave) hatches the same mark.
+ * two draws (strain, then share) so the same (seed, wave) hatches the same mark. The
+ * strain draw is over the rows the wave has unlocked — one cooking per room, never a
+ * mix: waves 97+ alternate volatile and plated as the seed deals them, each wave's
+ * card still teaching a single trick.
  */
 export function swarmBroodStrainFor(wave, miteCount, roll) {
   const w = Math.max(1, Math.trunc(Number(wave) || 1));
@@ -667,13 +696,24 @@ export function swarmBroodLateIssues() {
     if (typeof strain.counter !== 'string' || strain.counter.length < 10) {
       issues.push({ path, message: `${strain.id} has no counter card line` });
     }
+    // The mark's tint is its standing read — every strain needs one.
+    if (!Array.isArray(strain.tint) || strain.tint.length !== 3) {
+      issues.push({ path, message: `${strain.id} needs a mark tint` });
+    }
+    // Every strain owns ONE honored effect in the engine's existing vocabulary: a
+    // death burst (the volatile blast numbers) or a kill-gate (plated's massOnly).
+    // A row with neither marks fodder that obeys nothing — tint without a law.
+    const ownsBurst = strain.blastRadius > 0 && strain.shoveDv > 0;
+    if (strain.massOnly !== true && !ownsBurst) {
+      issues.push({ path, message: `${strain.id} carries no honored effect` });
+    }
     if (strain.id === 'volatile') {
       if (!(strain.blastRadius > 0) || !(strain.blastDamage >= 0) || !(strain.shoveDv > 0)) {
         issues.push({ path, message: 'volatile needs a positive blast radius and shove' });
       }
-      if (!Array.isArray(strain.tint) || strain.tint.length !== 3) {
-        issues.push({ path, message: 'volatile needs a mark tint' });
-      }
+    }
+    if (strain.id === 'plated' && strain.massOnly !== true) {
+      issues.push({ path, message: 'plated needs its massOnly kill-gate' });
     }
   });
   return issues;

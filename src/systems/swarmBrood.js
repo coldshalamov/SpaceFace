@@ -239,9 +239,10 @@ export function createBroodEngine(deps = {}) {
   // when the drag actually bites, cleared when the body loses the signature's radius.
   const dragTold = new Uint8Array(CAP);
   // B6 — the strain mark: the ship-affix byte moved onto the brood's own buffer. 0 is
-  // unmarked; 1+n indexes SWARM_BROOD_STRAINS. One honored effect per strain (volatile
-  // pops where it dies), stamped at spawn out of the wave's own mite share — the mark
-  // rides bodies the plan already budgeted, never a new one.
+  // unmarked; 1+n indexes SWARM_BROOD_STRAINS. One honored effect per strain — volatile
+  // pops where it dies (the death seam), plated refuses every cause but mass (the kill
+  // gate) — stamped at spawn out of the wave's own mite share. The mark rides bodies
+  // the plan already budgeted, never a new one.
   const affix = new Uint8Array(CAP);
 
   // spatial hash
@@ -405,10 +406,11 @@ export function createBroodEngine(deps = {}) {
   //
   // From the strain gate wave, a seeded share of the wave's mite row hatches carrying
   // the wave's strain: the veteran-affix law (a marked minority carries one trick, not
-  // a bigger number) on the second population. `strainLeft` is the wave's mark budget —
-  // any carrier-family body that spawns while it holds takes the byte, at the open or
-  // born of the wave's own tide. The mark is spent from the SAME plan total — it rides
-  // budgeted bodies, it never mints one.
+  // a bigger number) on the second population. The picker deals ONE strain per wave —
+  // waves 97+ alternate volatile and plated as the seed deals them. `strainLeft` is the
+  // wave's mark budget — any carrier-family body that spawns while it holds takes the
+  // byte, at the open or born of the wave's own tide. The mark is spent from the SAME
+  // plan total — it rides budgeted bodies, it never mints one.
   let strainDef = null;
   let strainMark = 0;
   let strainLeft = 0;
@@ -1909,7 +1911,11 @@ export function createBroodEngine(deps = {}) {
       const dz = pz[i] - ez;
       const d2 = dx * dx + dz * dz;
       if (d2 > shoveR2) continue;
-      if (d2 <= killR2) {
+      // B6 — a mark that refuses the blast (plated's massOnly) skips the kill branch
+      // but not the throw: the detonation scatters what it cannot crack. Family gates
+      // (the keelback's own massOnly) keep the old full-pass — their mass reads the
+      // blast the way the family's card taught it.
+      if (d2 <= killR2 && !markRefuses(i, 'explosive')) {
         kill(i, 'explosive', ex, ez, credited || creditUntil[i] > finite(state.simTime));
         continue;
       }
@@ -1932,13 +1938,15 @@ export function createBroodEngine(deps = {}) {
     publish();
   }
 
-  // B6 — the strain's one honored effect: a marked body POPS where it dies. The pack
-  // feels only a shove (a pop that killed the flock would be free crowd-clearing, not
-  // the pilot's problem); the signature inside the radius takes the authored chip of
-  // damage and the same mass-shared shove the family's own bursts land. The ordinary
-  // broodBurst receipt carries the blast — juice/VFX read it like any other burst.
+  // B6 — the strain's on-death honored effect: a volatile-marked body POPS where it
+  // dies. The pack feels only a shove (a pop that killed the flock would be free
+  // crowd-clearing, not the pilot's problem); the signature inside the radius takes
+  // the authored chip of damage and the same mass-shared shove the family's own
+  // bursts land. The ordinary broodBurst receipt carries the blast — juice/VFX read
+  // it like any other burst. A strain whose law lives elsewhere (plated's kill-gate)
+  // carries no blast numbers and passes through untouched.
   function broodStrainBurst(i, credited) {
-    const strain = SWARM_BROOD_STRAINS[affix[i] - 1];
+    const strain = strainForSlot(i);
     if (!strain) return;
     const bx = px[i];
     const bz = pz[i];
@@ -1992,6 +2000,19 @@ export function createBroodEngine(deps = {}) {
     if (def.massOnly && cause !== 'collision' && cause !== 'terrain') return false;
     if (def.blastOnly && cause !== 'explosive') return false;
     return true;
+  }
+
+  // B6 — the mark's OWN kill-gate: the same shell law one layer down, on the body the
+  // strain stamped. A plated mite refuses every cause but mass — the keelback's answer
+  // moved from the family's whole silhouette to a marked share of the fodder. The gate
+  // means "this cause cannot crack it", not "the body ignores physics": a refused blast
+  // still throws it (the shove-through in onExplosion).
+  function strainForSlot(i) {
+    return affix[i] > 0 ? SWARM_BROOD_STRAINS[affix[i] - 1] : null;
+  }
+  function markRefuses(i, cause) {
+    const strain = strainForSlot(i);
+    return !!(strain && strain.massOnly && cause !== 'collision' && cause !== 'terrain');
   }
 
   let burstGuard = false;
@@ -2053,6 +2074,7 @@ export function createBroodEngine(deps = {}) {
     if (!alive[i]) return;
     const def = liveFamilyDef[family[i]];
     if (!killLawAllows(def, cause)) return;
+    if (markRefuses(i, cause)) return;
     if (def && def.swells && cause !== 'explosive' && swellStage[i] === 0) {
       // First strike inflates: the fuse starts, the second strike (or the clock) detonates.
       swellStage[i] = 1;
