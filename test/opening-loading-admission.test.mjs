@@ -17,6 +17,11 @@ import {
   createOpeningLoadingAdmission, waitForOpeningFirstPicture, holdOpeningPresentationUntilPaint,
   openingFirstPictureIsReady,
 } from '../src/render/pipelineReadiness.js';
+import { __setStartupBudgetScaleForTests } from '../src/render/startupPacing.js';
+
+// Budget assertions below test the wiring, not this host's device class — pin the scale so
+// a contended/small dev host cannot read a multiplied ceiling as a contract change.
+__setStartupBudgetScaleForTests(1);
 
 const deferred = () => {
   let resolve, reject;
