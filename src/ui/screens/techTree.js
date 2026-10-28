@@ -459,6 +459,8 @@ export const techTreeScreen = {
 
   onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
 
+  dispose() { if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; } },
+
   /**
    * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,
    * styled in tech-treeLayouts.js). The ladder's shade cannot be trusted to occlude by itself:
@@ -547,7 +549,10 @@ export const techTreeScreen = {
         const top = items.length ? items[0].offsetTop : 0;
         items.forEach((r, i) => { if (i && r.offsetTop > top) r.hidden = true; });
       };
-      new ResizeObserver(fitRungs).observe(rungs);
+      // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
+      if (this._rungsObserver) this._rungsObserver.disconnect();
+      this._rungsObserver = new ResizeObserver(fitRungs);
+      this._rungsObserver.observe(rungs);
     }
     btn.addEventListener('pointerenter', open);
     btn.addEventListener('mouseenter', open); // synthetic hovers (the walk) dispatch mouseenter only
