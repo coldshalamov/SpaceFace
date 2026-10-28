@@ -13,7 +13,7 @@ The owner does not read code and cannot finish anything you leave behind. Unfini
 - "Blocked" means a file, system or asset does not exist yet. Building it is the work. A red test you did not write, a busy lane, a noisy host or a failed tool route is not a blocker: work around it, log it in one line, take the next packet.
 - If a packet truly cannot move, mark it SKIPPED with a one-line reason and start the next one at once. Revisit skipped packets after every wave.
 - If you hit the usage limit, the edits on disk survive. When you resume, re-read your board and continue exactly where it says.
-- When the ordered list drains you are not done: run your audit findings, then your INFERENCE lines, then re-measure, then audit again, until the finish line is met.
+- When the ordered list drains you are not done: finish the systems review (section 6A — every system you own, reviewed and brought to the studio bar), run your audit findings, then your INFERENCE lines, then re-measure, then audit again, until the finish line is met.
 
 =====================================================================
 1. READ FIRST, IN THIS ORDER (then start working)
@@ -91,6 +91,16 @@ Design bar for every C and E row: it must produce "Holy shit, I did that" moment
 - Browser test servers set SPACEFACE_PLAYER_STORE_DIR='' so they never mount the owner's save drawer.
 
 =====================================================================
+6A. BEYOND THE PLAN — REVIEW AND IMPROVE EVERY SYSTEM YOU OWN (README section 5.7)
+=====================================================================
+The board's rows are not the whole finish. Agents built this game one packet at a time; few systems got the most professional implementation on the first pass, and the repo has changed under all of them since. Things were left behind that no plan names. Finding and fixing them is half your job, and the owner expects you to use your own intelligence, taste and creativity to do it.
+- Your board has a "Systems review" section naming your CRITICAL systems. For each: (1) a Grok or Gemini run reads every line of it and its callers and writes the inventory and findings; (2) Codex GPT 6.1 Sol extra-high does a DEEP REVIEW — reads the whole system, scores it against the studio bar below, fixes the defects it is sure of, and writes a ranked list of what would make it professional; (3) you turn that list into packets and run them through the normal loop (three reviews, Codex batch). Then do the same for every other system you own, ranked by how much a player touches it.
+- The studio bar: it does what a player expects every time (no edge-case breakage, no stand-ins, no silent paths); one clear owner and one way to do each thing; cheap per frame/tick at a 150-body crowd; deterministic where it must be; readable to the player (they can see what it did and why); connected (its facts have readers, its events have consequences); data-driven where content varies; tested by behaviour, not source text; small enough to hold in mind (split what is not).
+- A system that fails the bar badly may be rewritten (ruling 6). First write one paragraph on your board: what is wrong, the replacement, how the default route stays playable during the change, how you will prove it better.
+- Parallelize it: keep at least one system under review at all times from your first day. Run two or three Codex deep reviews at once on disjoint systems in the background (Codex has its own usage limit) while your Claude subagents implement the previous system's packets and Grok/Gemini read the next one. Track each system on the board: UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>.
+- Deep-review packet template for Codex (.devshots/finish/lane2/review-<system>/PACKET.md): "You are a principal engineer and game-feel reviewer doing a deep review of <system> (<paths>) in SpaceFace. Read every line of it and of its direct callers. Score it against this bar: <paste the studio bar>. Fix every defect you are certain of inside <paths> only. Then write REVIEW.md: a scored verdict per bar item, every defect found (fixed or not), and a ranked list of the changes that would make this system professional and the most impressive version of itself for the player — be ambitious. Do not commit or run git add, stash, reset, checkout or clean."
+
+=====================================================================
 7. THE AUDIT AND INFERENCE
 =====================================================================
 - Audit: split everything you own into modules of ≤ ~3k lines and hand them evenly to Grok and Gemini from your first hour; each reads every line and writes .devshots/finish/lane2/audit/<module>.md (bugs, determinism leaks, single-writer violations, O(n²) loops, per-tick allocation, dead code, duplicated systems, three cheapest wins). Real findings become packets on your board.
@@ -104,6 +114,7 @@ Never re-record test/*.expected.json to pass. Never run check:all or check in on
 =====================================================================
 9. YOU ARE FINISHED WHEN — AND ONLY WHEN
 =====================================================================
+- Every system in your board's Systems review list is AT BAR, each critical one after a Codex deep review.
 - Every packet on your board is LANDED (or SKIPPED with a reason you then went back and resolved).
 - Your Defects section is empty and R-36df771 is deleted from LANDED_REVIEW.md.
 - The 150-body Crucible sim step is ≤ 8 ms and wave 15 sim p95 ≤ 8 ms on this laptop, recorded on your board on the final build.

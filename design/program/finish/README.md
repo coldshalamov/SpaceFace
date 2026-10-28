@@ -142,7 +142,8 @@ Lane 1's first packet re-records the baseline with today's build and writes it i
 | 30-minute Adventure soak + one forced context loss | "Graphics interrupted" at ~172 s | zero terminal panes | zero terminal panes, zero frames > 250 ms after load |
 
 **The game is finished when** all three boards read finished: every listed row closed in code on
-the default route, every Defects section empty, every INFERENCE line shipped, the bars above at or
+the default route, every owned system reviewed and brought to the professional bar (§5.7), every
+Defects section empty, every INFERENCE line shipped, the bars above at or
 past their target, the Codex batch review of the final batch green, and the document surface cut to
 what an agent can read in one sitting (§7).
 
@@ -210,6 +211,33 @@ logged in one line on the board, and the next packet starts. "Blocked" means a m
 or asset — and building the missing thing is the work. When the board's list drains, the lane runs
 its audit findings, then its INFERENCE lines, then re-measures the bars, then audits again. A lane
 is finished only when §4's line is met for its rows.
+
+### 5.7 Beyond the plan: the professional review of every system
+**The plans do not contain the whole finish.** Agents built this game one packet at a time; few
+systems got the most professional implementation on the first pass, and the repo has changed under
+all of them since. So every lane also reviews and improves **every system it owns** to a studio bar,
+whether or not a row names it. Agents are expected to use their own intelligence, taste and creativity
+here — inspect, judge, rewrite where it is worth it. This is not optional cleanup; it is half the job.
+
+- **The bar (judge each system against all of it):** it does what a player expects, every time
+  (no edge-case breakage, no stand-ins, no silent paths); one clear owner and one way to do each thing
+  (no duplicated or competing implementations); cheap per frame/tick at a 150-body crowd; deterministic
+  where it must be; readable to the player (they can see what it did and why); connected (its facts
+  have readers, its events have consequences); data-driven where content varies; tested by behaviour,
+  not by source text; small enough that an agent can hold it in mind (split what is not).
+- **How:** each lane lists its systems on its board (*Systems review* section), ranked by how much a
+  player touches them. For each: (1) a Grok or Gemini read of every line produces the inventory and
+  findings; (2) for the lane's **critical systems** (named on each board) Codex GPT 6.1 Sol extra-high
+  does a **deep review** — reads the whole system and its callers, scores it against the bar, fixes the
+  defects it is sure of, and writes a ranked list of the improvements that would make it professional;
+  (3) the lane turns that list into packets and runs them through the normal loop. Run two or three
+  Codex deep reviews at once on disjoint systems — Codex draws on a separate limit — while the lane's
+  own subagents implement the previous system's packets.
+- **Freedom:** a system that fails the bar badly may be rewritten (ruling 6). Before rewriting, write
+  one paragraph on the board: what is wrong, what the replacement is, how the default route stays
+  playable during the change, how it will be proven better.
+- **Order:** each lane interleaves this with its planned waves from the start — at least one system
+  under review at all times — and finishes it before the lane can be called finished.
 
 ## 6. INFERENCE in this program
 

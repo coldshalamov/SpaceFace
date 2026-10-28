@@ -114,6 +114,19 @@ INFERENCE law (fold `INFERENCE_LANES.md` + `design/inference-workflows/` + `INFE
 `NOW.md`/`FINISH_LANES.md`/`FINISH_THE_GAME.md` folded or archived, every nested `AGENTS.md` still true.
 Write the new front door so the next agent after this program knows where the game stands.
 
+## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+
+**Critical systems — each gets a Codex deep review, then packets:** the economy and markets
+(`economy.js`, `src/economy/**`, trade), missions and contracts (`missions.js`, `src/missions/**`,
+`src/contracts/**`), the world and sector simulation (`world.js`, `src/world/**`, `traffic.js`,
+`npcJobsRuntime.js`), law and heat (`lawSecurity.js`), the encounter director (`encounterDirector.js`),
+story, factions, characters and careers (`src/story/**`, `src/characters/**`, `src/careers/**`),
+onboarding and the first hour (`onboarding.js`), save and migrations (`src/save/saveSystem.js`), the
+HUD and UI root (`hud.js`, `uiRoot.js`, the ORRERY library `src/ui/orrery/`), the galaxy map
+(`galaxyMap.js`), station screens, audio (`src/audio/audioSystem.js`), localization (`src/localization/**`).
+**Then everything else you own**, ranked by how much a player touches it. Keep the list here with a
+status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+
 ## The audit — read every line you own
 
 Split your owned paths (`src/ui/**`, `styles/**`, the world/economy/story systems, `src/world/**`,

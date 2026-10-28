@@ -119,6 +119,19 @@ Start with SC-01 and SC-12 (the playground and the scenario forge make every lat
   behaviour tests as you touch them (ruling 7); keep a running count here.
 - **T4 — Test time.** Find the slowest 50 tests; make them fast or move them to a slower tier.
 
+## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+
+**Critical systems — each gets a Codex deep review, then packets:** flight (`flightV3.js`,
+`src/core/flight/**`, the feel contract), tactical AI (`tacticalAI.js`, `src/ai/**`, `aiPorts.js`,
+`engagementAuthority.js`), physics authority and Rapier integration (`physicsAuthority.js`, contacts,
+CCD, sleeping), the Massline/tether (`tetherGameplay.js` and its verbs), weapons and damage
+(`src/combat/**`, `physicalEffects.js`, projectiles, heat), the five powers (Pull/Shove/Pin/Bomb/Rig),
+spawning and directors for Swarm/Crucible (waves, arenas, draft, round flow), enemy and creature
+behaviour, loot and salvage, the registry and system order (`registry.js`,
+`authoritativeSystemManifest.js`), input-to-action (`input.js` — focused validation required).
+**Then everything else you own**, ranked by how much a player feels it. Keep the list here with a
+status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+
 ## The audit — read every line you own
 
 Split your owned paths (`src/systems/**` combat/flight/swarm/physics/AI files, `src/ai/**`,

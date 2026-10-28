@@ -181,6 +181,20 @@ the existing camera/presentation owners; prove it with Lane 2's SC-01 playground
 **R1** deployed route on desktop and phone (`probe-deployed-mobile.mjs`), **R2** the 30-minute soak at
 target, **R3** a final README §4 table on the final build.
 
+## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+
+**Critical systems — each gets a Codex deep review, then packets:** the render frame loop and entity
+sync (`renderer.js` `render` object), program admission and readiness (`pipelineReadiness.js`,
+`shaderLinkReporter.js`, `programBinaryCache.js`), presentation and recovery (`presentationRunner.js`,
+`packageCpuDetach.js`, context loss), the sim-worker lane (`simLane*.js`, `wholeSimBrowserWorker.js`),
+post-processing (`bloom.js` chain + composite), the VFX library (`vfx.js`, `render/vfx/**`, pools,
+`weaponLights.js`), asset loading and residency (`assetLoader.js`, `partsLibrary.js`, render packages,
+`glbPrepassWorker.js`), quality governance (`adaptiveQuality.js`, `slowFrameOffer.js`), the boot and
+loading pipeline (`bootEntry.js`, `bootShellPacing.js`, `loading*.js`, `bootRingWorker.js`), camera
+presentation, the Electron shell (`electron/main.cjs`).
+**Then everything else you own**, ranked by how much a player sees it. Keep the list here with a
+status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+
 ## The audit — read every line you own
 
 Split `src/render/**`, the core frame/boot pipeline, the boot/loading UI and `electron/**` into
