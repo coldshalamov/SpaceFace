@@ -1,3 +1,4 @@
+import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { inheritWinnowSplit } from '../world/vestaWinnowRecovery.js';
 import { inheritCharonSupplySplit } from '../world/charonSalvageSupply.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
