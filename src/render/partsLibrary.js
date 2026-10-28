@@ -9711,19 +9711,41 @@ export function mountPackagePoolCandidateInstancedTwins(root) {
   if (!root || typeof root.traverse !== 'function') return null;
   const twins = [];
   const seenPairs = new Set();
+  const pairKeyOf = (geometry, material) => `${geometry.uuid}:${Array.isArray(material)
+    ? material.map((entry) => entry && entry.uuid).join('/')
+    : material.uuid}`;
   root.traverse((object) => {
-    if (object.isMesh !== true) return;
-    if (!object.userData || object.userData.spacefacePackagePoolCandidate !== true) return;
+    if (object.name === 'SF_PoolCandidate_InstanceTwin' || object.name === 'SF_PoolMember_DirectTwin') return;
+    const ud = object.userData || {};
     const geometry = object.geometry;
     const material = object.material;
     if (!geometry || !material) return;
+    // Pooled members (a promoted proxy, or the pool chunk's own InstancedMesh) only ever
+    // compile the USE_INSTANCING variant here. The plain variant of the same (geometry,
+    // material) pair is shared with single-owner draws elsewhere — e.g. the opening wreck's
+    // Forge_bastion_gunmetal program is the one Forge_ore_barge_paint first binds — so once a
+    // prewarm exemplar pushes the wreck onto a pool chunk, nothing links the plain variant
+    // before lift and it links in flight (1.9-3.0 s, perf lane oc1v26/oc1v27). Mount a detached
+    // direct-mesh twin so both variants link inside this admission.
+    const pooled = ud.spacefaceRenderPackagePooled === true
+      || (object.isInstancedMesh === true && ud.spacefacePackageAdmissionPending === true);
+    const candidate = object.isMesh === true && ud.spacefacePackagePoolCandidate === true;
+    if (!pooled && !candidate) return;
     // Geometry feeds the program key too (vertexTangents/uv defines), so dedupe on the same
     // (geometry, material) pair identity the pool chunks key on — not on material alone.
-    const pairKey = `${geometry.uuid}:${Array.isArray(material)
-      ? material.map((entry) => entry && entry.uuid).join('/')
-      : material.uuid}`;
+    const pairKey = `${pooled ? 'direct' : 'instanced'}:${pairKeyOf(geometry, material)}`;
     if (seenPairs.has(pairKey)) return;
     seenPairs.add(pairKey);
+    if (pooled) {
+      const twin = new THREE.Mesh(geometry, material);
+      twin.visible = true;
+      twin.frustumCulled = false;
+      twin.castShadow = object.castShadow === true;
+      twin.receiveShadow = object.receiveShadow === true;
+      twin.name = 'SF_PoolMember_DirectTwin';
+      twins.push(twin);
+      return;
+    }
     const twin = new THREE.InstancedMesh(geometry, material, 1);
     twin.count = 0;
     twin.visible = true;
