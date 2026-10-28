@@ -146,3 +146,36 @@ Helios trade hub renders with its `forge-v1` materials, 1024 maps and role tags 
 Budgets live in `scripts/check-asset-census.mjs` and are set from the measured tree with
 headroom. Raise one on purpose, in the same commit that ships the asset that needs it, and say
 what it buys the player.
+
+## 7. The Crucible, measured (2026-10-28) - what the profile says, and a correction to section 4
+
+Tool: `node scripts/probe-crucible-programs.mjs [--duration=90] [--headless]` drives the real route (menu, Crucible, armory, round 1)
+headed on the real GPU, wraps WebGL2 `linkProgram`/`getProgramParameter`, records every shader program with its `#define` set, how long the
+first link-status read blocked, the sim phase at that moment, long tasks and slow frames, and takes a 1 ms CPU profile of the active round.
+Output: `.devshots/program-census/<stamp>.json` (+ `.cpuprofile`). Owner laptop, Core Ultra 7 155U iGPU, other agents' probes running.
+
+**Shader programs (203 in one run).** 196 were created before round 1 started (menu, draft, loading) and **7 after it; none blocked the main thread
+for more than 1 ms, and the whole run blocked 170 ms**. So inside a Crucible round program-link stalls are NOT the pole (they are the pole for first
+sight in Adventure, section 4.1; the Crucible links up front). What splits near-identical programs, counted as programs that would disappear if the
+variation were unified: batching/instancing variants 57 of 203, vertex-colour variants 39, light-count variants 37, shadow variants 37. A fixed light
+count or baking colour into vertex colour is therefore worth ~18-20% fewer programs each - a load-time and memory saving, not an in-round one.
+
+**1-9 s freezes** happen in the loading/draft phases (slow frames up to 8.8 s with only 170 ms of link blocking in the whole run), so they are not
+links either. Undiagnosed; first suspects are main-thread GLB/meshopt decode, GPU uploads and physics warm. Profile the draft phase next.
+
+**The active round was CPU-wasteful in two UI paths, now fixed.** Before: `salvageOutfits/presentation.js draw()` 20.3% of all sampled main-thread
+time (it re-set the canvas font and saved/restored canvas state every frame with no salvage meeting in the sector) and `stuntCallout.js
+seatClearOfSpeedDial` 9.3% (a synchronous HUD layout read on every callout line). After: 0.0% and 1.9%. Slow-frame p90 140 -> 118 ms, long tasks of
+250 ms or more 46 -> 29 over the same 90 s, entities ~154 in both. Nothing drawn differently.
+
+**What is left in the active round (after the fix, 93 s sampled):** simulation step 32% (physics 9%, of which contact-impact emission and its
+listeners ~8%; tactical AI 3%), `WebGLRenderer.render` 16% (`setProgram` 7.9%, `renderBufferDirect` 10.6%, buffer/texture `upload` 3.6%),
+`unreadyDrawGuard` (bloom.js, wraps object draws) 12.5% inclusive, and **native `(program)` time 32%** - the main thread waiting on the graphics
+driver/GPU. Median slow frame is still ~76 ms (about 13 fps) at ~150 entities: the arena is now GPU/driver-limited on this iGPU and the GPU side is
+not measured here (no timer queries). Correction to section 4: `setProgram` at 7.9% says **material/program fragmentation is a CPU lever in the
+render loop, not only a link-time one** - fewer program switches per frame (merge same-material primitives, bake hull tint into vertex colour,
+section 4.2) helps every frame, so it moved up the list.
+
+Next measurements, in order: (1) the draft/loading freezes (what runs for 5-9 s); (2) GPU time per pass (try `EXT_disjoint_timer_query_webgl2` inside the probe; if the browser hides it, a Spector capture on the real
+laptop, `scripts/capture-spector-frame.mjs`); (3) `unreadyDrawGuard` and
+physics contact-impact emission, which are small enough to fix and large enough to matter.
