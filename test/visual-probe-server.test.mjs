@@ -1,3 +1,5 @@
+import './ship-mesh-identity-diagnostics.test.mjs';
+import './ship-headlamp-admission.test.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createServer as createHttpServer } from 'node:http';
