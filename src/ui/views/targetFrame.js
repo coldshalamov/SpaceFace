@@ -16,11 +16,10 @@ export function targetFrameHtml() {
     </div>
     <div class="sf-target__rangerow">
       <span class="sf-target__rangebar" aria-hidden="true"><i class="sf-target__rangefill"></i></span>
-      <span class="sf-target__dist mono">0 wu</span>
+      <span class="sf-target__dist mono">0</span>
     </div>
     <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
       style="display:none;margin-top:2px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-signal);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
-    <div class="sf-target__identity mono" style="display:none"></div>
     <div class="sf-target__bounty mono" style="display:none;color:var(--k-gold);"></div>
     <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-bone-62);"></div>
     <!-- PB-ORD-A: delivered-condition row (SF-035 denied-vs-recovering, SF-036 burn stacks,
@@ -28,15 +27,19 @@ export function targetFrameHtml() {
          combat runtime; hidden on clean hulls. -->
     <div class="sf-target__condition mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-signal);"></div>
     <div class="sf-target__object mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-bone-62);"></div>
+    <!-- The identity line folded into the meta bits (owner 2026-10-27: the readout was a wall of
+         text; ship + role already live in the head beside the faction chip). -->
     <div class="sf-target__meta">
+      <span class="sf-target__idbits mono"></span>
       <span class="sf-target__range mono" style="color:var(--k-bone-62);"></span>
       <span class="sf-target__closing mono"><span data-glyph aria-hidden="true"></span><span data-txt></span></span>
     </div>
-    <div class="sf-target__triangle" style="display:none">
-      <span class="sf-target__tri-label mono">Weapon effect</span>
-      <span class="sf-tri sf-tri--e" tabindex="0" role="img" aria-label="Vulnerability to energy weapons" data-why="Energy"><span class="sf-tri__k">Energy</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
-      <span class="sf-tri sf-tri--k" tabindex="0" role="img" aria-label="Vulnerability to kinetic weapons" data-why="Kinetic"><span class="sf-tri__k">Kinetic</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
-      <span class="sf-tri sf-tri--x" tabindex="0" role="img" aria-label="Vulnerability to explosives" data-why="Explosive"><span class="sf-tri__k">Explosive</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+    <!-- One row, not a stacked grid; the printed words live in the aria labels and the layer
+         word, so the panel spends one line on "what should I shoot". -->
+    <div class="sf-target__triangle" style="display:none" role="group" aria-label="Weapon effect">
+      <span class="sf-tri sf-tri--e" tabindex="0" role="img" aria-label="Vulnerability to energy weapons" data-why="Energy"><span class="sf-tri__k">E</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+      <span class="sf-tri sf-tri--k" tabindex="0" role="img" aria-label="Vulnerability to kinetic weapons" data-why="Kinetic"><span class="sf-tri__k">K</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
+      <span class="sf-tri sf-tri--x" tabindex="0" role="img" aria-label="Vulnerability to explosives" data-why="Explosive"><span class="sf-tri__k">X</span><span class="sf-tri__bar"><span class="sf-tri__fill"></span></span></span>
       <span class="sf-target__tri-layer mono"></span>
     </div>
     <div class="sf-target__weak mono" style="display:none"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>

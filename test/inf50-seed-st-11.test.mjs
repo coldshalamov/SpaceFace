@@ -1,4 +1,5 @@
-// SEED-ST-11: the speed readout spells world units. The visible unit stays WU/S.
+// SEED-ST-11: the speed readout spells world units for speech. The visible unit is u/s — the
+// owner dropped the WU jargon from the HUD (2026-10-27); speech keeps the spelled-out words.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,25 +13,25 @@ import {
 
 const HUD_SRC = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 
-test('seed 4242 speed readout spells world units and keeps the WU/S mark', () => {
+test('seed 4242 speed readout spells world units and keeps the u/s mark', () => {
   const state = createGameState(4242);
   assert.equal(state.meta.seed, 4242);
   assert.equal(speedUnitSpeech(40), '40 world units per second');
   assert.equal(speedUnitSpeech(40, true), '40 world units per second, earned');
 
   const plain = buildVelocityReadout(40, 100);
-  assert.equal(plain.text, '40 WU/S');
+  assert.equal(plain.text, '40 u/s');
   assert.equal(plain.spoken, '40 world units per second');
   assert.doesNotMatch(plain.text, /world units/);
 
   const earned = buildVelocityReadout(140, 100);
-  assert.equal(earned.text, '140 WU/S · EARNED');
+  assert.equal(earned.text, '140 u/s · EARNED');
   assert.equal(earned.spoken, '140 world units per second, earned');
 
   const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 30, z: 40 } };
   const travelState = { playerId: 1, entities: new Map([[1, player]]) };
   const travel = objectiveTravelReadout(travelState, { pos: { x: 300, z: 400 } });
-  assert.equal(travel.distanceText, '500 WU');
+  assert.equal(travel.distanceText, '500 u');
   assert.equal(travel.distanceSpoken, undefined, 'the travel record keeps its pinned shape');
   assert.equal(distanceUnitSpeech(travel.distanceText), '500 world units');
   assert.equal(distanceUnitSpeech('1.0k WU'), '1.0k world units');

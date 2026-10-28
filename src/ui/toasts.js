@@ -612,8 +612,8 @@ export function bindSlingPassReceipts(bus) {
     if (!payload || typeof bus.emit !== 'function') return;
     const speed = Math.round(Number(payload.exitSpeedWuS) || 0);
     const text = payload.aligned === false
-      ? `Sling ring — thrown wide at ${speed} wu/s.`
-      : `Sling ring — slung forward at ${speed} wu/s.`;
+      ? `Sling ring — thrown wide at ${speed} u/s.`
+      : `Sling ring — slung forward at ${speed} u/s.`;
     bus.emit('toast', { text, kind: 'info', ttl: 4 });
   });
 }

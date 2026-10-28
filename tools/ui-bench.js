@@ -141,7 +141,7 @@ function seededState() {
   // The board the docked station posts: the game's own offers, so the contracts tab is reviewed full.
   state.missions.boards = { station_helios: structuredClone(BENCH_HELIOS_BOARD) };
   state.nav.waypoint = {
-    label: 'Beacon 419 WU', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+    label: 'Beacon 419 u', pos: { x: 420, z: -180 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
   };
   // the real sector the bench's station stands in (a made-up id read as "Helios" beside saves filed in "Helios Prime")
   state.world.currentSectorId = 'sector_helios_prime';
