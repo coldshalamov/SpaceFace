@@ -666,14 +666,20 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D}:has(.sx-mkt.orr-market) { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
 }
-/* …and the same cap for the two tabs a ~208px head starves outright at 651–800: Shipworks'
-   stage collapsed to 0px (its callouts piled at the origin) and the Missions dossier was left
-   ~0px of reading column. The head scrolls its services; the tab takes the rest. Shipworks'
+/* …and the same cap for every other tab at 651–800, which a ~208px head starves outright:
+   Shipworks' stage collapsed to 0px (its callouts piled at the origin), the Missions dossier was
+   left ~0px of reading column, and Industry, Factions, the Bar and the Ledger drew nothing at all
+   between the head and the destination rail. The head scrolls its services; the tab takes the rest. Shipworks'
    stage also needs a real floor — seven one-line callout cards under the nameplate want
    ~150px that a 420px window cannot show at once — so its cell keeps 200px and the berth
    scrolls to the verb row below the fold, as the 651-1100 band above does at 230px. */
 @media (min-width:651px) and (max-width:800px) and (max-height:460px) {
-  ${D}:has(:is(.sx-sw, .sx-ct)) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
+  /* the capped head fades out over its last 16px, so the dials' verbs read as scrolling on
+     rather than sliced through by the tab's top edge */
+  ${D} .sxb-berth.dp-frame__head { overscroll-behavior:contain; padding-bottom:12px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
   ${D}:has(.sx-sw) { grid-template-rows:max-content minmax(200px,1fr) max-content !important; }
 }
 /* A narrow, tall desktop window (≤650 wide, 801+ tall, e.g. 600×844): the head stacked five dials one under another
