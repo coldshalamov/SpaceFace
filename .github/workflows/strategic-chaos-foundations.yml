@@ -1,0 +1,52 @@
+name: strategic-chaos-foundations
+on:
+  pull_request:
+    paths:
+      - 'scripts/strategic-chaos.mjs'
+      - 'scripts/lib/strategicChaos*.mjs'
+      - 'test/strategic-chaos-*.test.mjs'
+      - 'design/program/strategic-chaos/**'
+      - '.github/workflows/strategic-chaos-foundations.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: strategic-chaos-foundations-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/
+            /test/
+            /src/
+            /design/program/strategic-chaos/
+            /AGENTS.md
+            /build_map.md
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Real foundation modules, CLI and disposable-Git regressions
+        shell: bash
+        run: |
+          mkdir -p .devshots/strategic-chaos
+          node --test test/strategic-chaos-*.test.mjs | tee .devshots/strategic-chaos/foundation-tests.tap
+      - name: Verify packet documents and actual owner paths
+        run: node scripts/strategic-chaos.mjs validate
+      - name: Preview the additive board integration without changing it
+        run: node scripts/strategic-chaos.mjs map
+      - name: Preserve focused evidence, not a gameplay certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strategic-chaos-foundations-${{ github.run_id }}
+          path: .devshots/strategic-chaos/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

@@ -271,7 +271,6 @@ function runBuild(timeoutMs) {
   return new Promise((resolveBuild) => {
     const env = { ...process.env };
     delete env.VERCEL_URL;        // would pin chunk URLs to /_releases/<deployment>/
-    delete env.SPACEFACE_DEMO;    // retail, not the demo flavour
     const child = spawn(process.execPath, [join(ROOT, 'scripts', 'build-bundle.mjs')], { cwd: ROOT, env, stdio: 'inherit' });
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; child.kill(); }, timeoutMs);

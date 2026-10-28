@@ -20,8 +20,8 @@ export default defineEncounter(trigger, {
   title: 'THE LOVE LETTER BUOY', factionId: 'faction_free', noCombat: true, noCredits: true,
   primaryLine: 'BUOY: Nera, I will hold the corridor until your light returns.',
   choices: [
-    { id: 'reseed', label: 'Re-seed on the grave route', playerLine: 'Take the letter where they waited.' },
-    { id: 'listen', label: 'Let it play', playerLine: 'Let the letter finish.' },
+    { id: 'reseed', label: 'Service the buoy · re-seed its grave-route transmission', playerLine: 'I will come alongside and re-seed the letter.' },
+    { id: 'listen', label: 'Leave the letter broadcasting', playerLine: 'Let the letter keep its date.' },
   ],
   timeoutChoice: 'listen',
   receipts: {

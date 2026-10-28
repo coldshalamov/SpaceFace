@@ -78,6 +78,14 @@ function boot({ credits = 50000 } = {}) {
   });
   bus.on('economy:chargeCredits', (p) => {
     if (!p) return;
+    if (p.requireFull === true) {
+      // The economy's exact-charge contract: the live balance must match, the commit runs
+      // first, and only then does the money move.
+      p.result = false;
+      const live = state.player.credits;
+      if (live !== p.expectedCredits || live < p.amount || typeof p.commit !== 'function' || p.commit() !== true) return;
+      p.result = true;
+    }
     state.player.credits = Math.max(0, Math.round(state.player.credits - Math.round(p.amount || 0)));
     events.charges.push(p);
   });
@@ -879,10 +887,23 @@ test('burned Quiet papers cost flagged prices at the wash; a paid wash repairs t
     const cover = ensureCoverState(t.state);
     cover.quality = 40;
     cover.burned['faction_quiet'] = { until: t.state.simTime + 300, filedAt: t.state.simTime, by: 'checks' };
+    // The wash is the explicit per-pod service: dock at the den, ask the price, confirm one pod.
+    t.sim.spawn({ type: 'station', pos: { x: 0, z: 0 }, radius: 20, data: { stationId: OUTLAW } });
+    t.state.ui.docked = true;
+    t.state.ui.dockedStationId = OUTLAW;
     hotPod(t);
     const base = launderCutCredits('cmdty_narcotics', 8, 0);
-    const receipt = t.sim.registry.get('pirateDisguise').launderAtDock({ stationId: OUTLAW });
+    const sys = t.sim.registry.get('pirateDisguise');
+    const ask = { stationId: OUTLAW, contextId: 'ctx:flagged' };
+    const quoted = sys.launderAtDock({ ...ask, requestId: 'req:quote', action: 'quote' });
+    assert.equal(quoted.accepted, true);
+    assert.equal(quoted.quotes.length, 1);
+    assert.equal(quoted.quotes[0].flagged, true, 'the price shows the surcharge before any money moves');
+    assert.equal(quoted.quotes[0].cut, Math.ceil(base * COVER_BURN.flaggedCutMult));
+    assert.equal(charged(t.events, 'launder:').length, 0, 'asking the price charges nothing');
+    const receipt = sys.launderAtDock({ ...ask, requestId: 'req:confirm', action: 'confirm', quoteId: quoted.quotes[0].quoteId });
     assert.equal(receipt.accepted, true);
+    assert.equal(charged(t.events, 'launder:').length, 1, 'the cut is charged once');
     assert.equal(receipt.flagged, true);
     assert.equal(receipt.cut, Math.ceil(base * COVER_BURN.flaggedCutMult), 'flagged paper pays the surcharge');
     assert.equal(receipt.coverRestored, COVER_QUALITY.launderRestore);

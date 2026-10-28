@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { audio, playRelayPulse } from '../src/audio/audioSystem.js';
 import { createBus } from '../src/core/eventBus.js';
-import { localizedCaptionText } from '../src/audio/recipeCaptions.js';
+import { emitAdmittedRecipeCaption, localizedCaptionText } from '../src/audio/recipeCaptions.js';
 import { gameLocalization } from '../src/localization/gameLocalization.js';
 import { createTrailerStaging } from '../src/render/trailerStaging.js';
 import { TRAILER_MOMENTS } from '../src/data/trailerMoments.js';
@@ -100,6 +100,22 @@ test('caption ownership, UI blips and disabled captions suppress only the genera
     assert.equal(h.captions.length, 0);
     assert.equal(h.host.rt.voices.length, 3);
   } finally { h.host.destroy(); }
+});
+
+test('helper keeps the canonical base text and passes a clock, not a baked direction', () => {
+  const got = [];
+  const owner = {
+    rt: {},
+    state: { playerId: 'p', entities: new Map([['p', { pos: { x: 0, y: 0, z: 0 }, rot: 0 }]]), settings: {} },
+    _emitPresentationCaption(text, opts) { got.push({ text, opts }); },
+  };
+  emitAdmittedRecipeCaption(owner, 'sfx_respawn_chime', { category: 'cue' }, { position: { x: 3, z: 4 } }, 'cue');
+  assert.equal(got.length, 1);
+  assert.equal(got[0].text, 'Respawn chime.');
+  assert.ok(!/o'clock/.test(got[0].text), 'direction is formatted by the presentation owner, not baked in');
+  assert.ok(Number.isInteger(got[0].opts.clock) && got[0].opts.clock >= 1 && got[0].opts.clock <= 12);
+  emitAdmittedRecipeCaption(owner, 'sfx_player_death', {}, { captionOwned: true }, 'cue');
+  assert.equal(got.length, 1, 'a caption-owned voice adds no generated line');
 });
 
 test('caption formatting uses canonical localization and a bounded clock', () => {

@@ -1,0 +1,412 @@
+{
+  "assetId": "place_archive_instrument_cradle",
+  "category": "research",
+  "description": "Split-keel field instrument cradle; mast seat at Y=0; no resident or result implied.",
+  "unit": "metre",
+  "coordinateSystem": "glTF +X forward +Y up +Z starboard",
+  "source": "tools/blender/forge/ships/place_archive_instrument_cradle.py",
+  "runtimeStatus": "authoring-library candidate; not registered or accepted for live runtime",
+  "surfaceGeometryRemaster": "forge-v1",
+  "sockets": [
+    {
+      "name": "SOCKET_MastSeat",
+      "position": [
+        0.0,
+        0.0,
+        -0.0
+      ],
+      "forward": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    },
+    {
+      "name": "SOCKET_ServiceBack",
+      "position": [
+        9.4,
+        -1.7,
+        -0.0
+      ],
+      "forward": [
+        1.0,
+        0.0,
+        -0.0
+      ],
+      "up": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "role": "attachment",
+      "metadataFrame": "asset bind pose; use node world transform for motion"
+    }
+  ],
+  "collision": {
+    "type": "compound-boxes",
+    "solids": [
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -2.5,
+          -6.0
+        ],
+        "size": [
+          20,
+          1.4,
+          3.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.2,
+          -0.85,
+          -6.0
+        ],
+        "size": [
+          18,
+          1.9,
+          3.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          2.0,
+          0.2,
+          -6.0
+        ],
+        "size": [
+          14,
+          0.4,
+          2.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          9.45,
+          -0.65,
+          -6.0
+        ],
+        "size": [
+          1.0,
+          2.3,
+          3.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.5,
+          -2.5,
+          6.0
+        ],
+        "size": [
+          17,
+          1.4,
+          3.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          1.7,
+          -0.85,
+          6.0
+        ],
+        "size": [
+          15,
+          1.9,
+          3.1
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          3.5,
+          0.2,
+          6.0
+        ],
+        "size": [
+          11,
+          0.4,
+          2.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          9.45,
+          -0.65,
+          6.0
+        ],
+        "size": [
+          1.0,
+          2.3,
+          3.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          7.6,
+          -1.7,
+          -0.0
+        ],
+        "size": [
+          3.6,
+          2.2,
+          9.3
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          7.6,
+          -0.48,
+          -0.0
+        ],
+        "size": [
+          3.2,
+          0.25,
+          8.5
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -0.4,
+          -0.0
+        ],
+        "size": [
+          5.6,
+          0.8,
+          4.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -1.55,
+          -0.0
+        ],
+        "size": [
+          3.2,
+          1.5,
+          4.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          0.0,
+          -2.6,
+          -0.0
+        ],
+        "size": [
+          2.6,
+          1.0,
+          12.2
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          3.8,
+          -1.15,
+          -0.0
+        ],
+        "size": [
+          7.6,
+          0.7,
+          1.6
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.7,
+          -0.55,
+          -0.0
+        ],
+        "size": [
+          3.9,
+          0.5,
+          2.7
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "type": "box",
+        "center": [
+          4.3,
+          0.17,
+          -0.0
+        ],
+        "size": [
+          1.15,
+          0.3,
+          1.8
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "status": "authored approximate solids",
+    "clearanceValidation": "not certified; inspect listed solids for intended assembly"
+  },
+  "motionGroups": [],
+  "tags": [
+    "Archive",
+    "research",
+    "structural",
+    "unregistered"
+  ],
+  "bounds": {
+    "min": [
+      -10.0,
+      -3.200000047683716,
+      -7.800000190734863
+    ],
+    "max": [
+      10.0,
+      0.6800000071525574,
+      7.800000190734863
+    ]
+  },
+  "costPolicy": "measured per LOD; assembly-specific performance validation pending",
+  "lods": [
+    {
+      "level": 0,
+      "file": "place_archive_instrument_cradle_lod0.glb",
+      "triangles": 5556,
+      "draws": 8,
+      "bytes": 532724,
+      "method": "source",
+      "sha256": "1e0e3929ff50bee60833cfeaab2b143dcf6c53b44c08473dd0ab729824afdf2d"
+    },
+    {
+      "level": 1,
+      "file": "place_archive_instrument_cradle_lod1.glb",
+      "triangles": 1364,
+      "draws": 8,
+      "bytes": 317752,
+      "method": "authored-topology",
+      "sha256": "38ad9e337adb0eb7c842868cf40e9a95b22111e25ea3c886fe08b1887b9ce656"
+    },
+    {
+      "level": 2,
+      "file": "place_archive_instrument_cradle_lod2.glb",
+      "triangles": 1216,
+      "draws": 6,
+      "bytes": 300304,
+      "method": "authored-topology",
+      "sha256": "8048b077205cd3a51887fe87fd410023412ac47ca8d3dcec3bcd13a80ec5cd5a"
+    }
+  ]
+}

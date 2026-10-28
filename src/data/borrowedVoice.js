@@ -60,3 +60,43 @@ export function borrowedVoiceJournalPlate(state){const row=normalizeBorrowedVoic
       :'Hypotheses: retained maintenance memory, or a damaged repeating circuit. The record cannot establish a second crew.',
     completedAt:row.archiveReceipt?.at||0};
 }
+
+// Read-only wording from original-source outcomes and a transient physical projection.
+// Missing/unready bodies are not evidence of destruction, and recovered words outlive housings.
+export function borrowedVoiceRecoveryGuidance(raw,physical={}){
+  const row=normalizeBorrowedVoice(raw),recovered=new Set(row.recoveredFragmentIds);
+  const remaining=BORROWED_VOICE_RECORDERS.filter(r=>!recovered.has(r.evidenceId));
+  const lost=remaining.filter(r=>['destroyed','lost'].includes(row.recorderOutcomeIds[r.id].status));
+  const available=remaining.filter(r=>!lost.includes(r));
+  const ringLost=['destroyed','lost'].includes(row.ringOutcome);
+  const isolated=row.disposition==='quarantine';
+  const instructions=`Tow an original housing clear of shielding and aim its antenna toward the broken ring. Hold a clear signal for ${BORROWED_VOICE.clearSeconds} seconds, then scan that housing within ${BORROWED_VOICE.scanRange} m.`;
+  const sources=BORROWED_VOICE_RECORDERS.map(r=>{
+    const phase=recovered.has(r.evidenceId)?'recovered':isolated?'quarantine'
+      :['destroyed','lost'].includes(row.recorderOutcomeIds[r.id].status)?'lost'
+      :ringLost?'receiver-lost':physical[r.id]?.phase||'unavailable';
+    const detail={recovered:'Words retained in the journal.',quarantine:'Signal isolated; unrecovered words remain unknown.',
+      lost:'Original housing lost; its unrecovered words remain unknown.',
+      'receiver-lost':'Original receiver lost; no further words can be recovered.',
+      unavailable:'Signal unavailable. No clear reading from the original housing and receiver yet.',
+      interference:instructions,holding:`Signal holding. Keep it clear for ${BORROWED_VOICE.clearSeconds} seconds, then scan this housing within ${BORROWED_VOICE.scanRange} m.`,
+      ready:`Signal ready. Scan this housing within ${BORROWED_VOICE.scanRange} m to recover its words.`}[phase];
+    return {id:r.id,phase,detail};
+  });
+  let text=isolated?'Signal isolated. This circuit cannot resume recovery.'
+    :!remaining.length?'All three original fragments are retained. Source continuity remains unconfirmed.'
+    :ringLost?'The original receiver is lost. No further words can be recovered from the surviving housings.'
+    :!available.length?'No unrecovered original housing survives. Missing words remain unknown.'
+    :available.every(r=>!physical[r.id]||physical[r.id].phase==='unavailable')
+      ?'The original housings and receiver have no current readable signal. Recovery is unavailable for now.'
+      :instructions;
+  if(lost.length)text+=` Lost unrecovered sources: ${lost.map(r=>r.name).join('; ')}. Their words remain unknown.`;
+  const live=available.map(r=>sources.find(s=>s.id===r.id));
+  if(!isolated&&!ringLost&&available.length){
+    const labels={unavailable:'reading unavailable',interference:'interference',holding:'holding clear',ready:'ready to scan'};
+    text+='\n'+available.map(r=>`${r.name}: ${labels[sources.find(s=>s.id===r.id).phase]||'reading unavailable'}`).join('; ')+'.';
+  }
+  if(row.disposition==='archive')text+=' The archive payment is complete; further recovered words add evidence, not another payment.';
+  const canInvestigate=!isolated&&!ringLost&&live.some(s=>['interference','holding','ready'].includes(s.phase));
+  return {text,sources,dismissLabel:canInvestigate?'KEEP INVESTIGATING':'CLOSE RECORD'};
+}

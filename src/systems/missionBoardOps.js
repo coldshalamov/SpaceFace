@@ -18,6 +18,7 @@ import { effectiveDangerTierFor } from './sectorSim.js';
 import { dangerTier } from '../data/sectors.js';
 import { rollBountyMark } from '../data/bountyMarks.js';
 import { isFragileCommodity } from './fragileCargo.js';
+import { sectorFieldOreWeights } from '../data/mining.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
 import { ALL_STATIONS, BRANCH_INTRO_BY_FACTION, BULK_HAUL_FEE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_TYPE, CMDTY_BY_ID, CONTRABAND_CMDTYS, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, ONBOARDING_CHOICE_LOOPS, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, SECTOR_BY_ID, SIZE_TIER, STATION_INFO, TYPE_BY_ID, TYPE_ORDER, campaign47aOutcomeKey, campaign47aRouteKind, cargoFootprint, clamp, completedEndgamePull, isCapitalBossMission, isCompetingStarvedRow, isFingerprintBoardSource, missionOfferMinRep, missions, mulberryLocal, passengerIdentityFor, round, sectorDistanceWu, setPieceUpfrontCost, stampAuthoredTwist, stampCapitalBossTwist, stationInfoFor, withClauseBriefSuffix } from './missions.js';
@@ -1804,7 +1805,24 @@ export const missionBoardOps = {
         return { cmdtyId, qty, progress: 0, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: qty * 1.5 };
       }
       case 'mining_quota': {
-        const cmdtyId = pick(MINEABLE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= Math.max(info.sectorTier || 0,dest?.sectorTier || 0)));
+        // A quota names ore the posting sector's fields can actually fill: weighted by the
+        // authored field mix, filtered to mineable + tier-legal ores. Fieldless sectors fall
+        // back to the ordinary tier draw. D266: an unfillable quota (ice/hydrogen at Helios)
+        // is a dead offer to the mining-first player.
+        const tierCap = Math.max(info.sectorTier || 0, dest?.sectorTier || 0);
+        const tierOk = (id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= tierCap;
+        const fieldOres = sectorFieldOreWeights(SECTOR_BY_ID.get((dest && dest.sectorId) || info.sectorId));
+        const fillable = [...fieldOres.keys()].filter((id) => MINEABLE_CMDTYS.includes(id) && tierOk(id));
+        let cmdtyId;
+        if (fillable.length) {
+          let total = 0;
+          for (const id of fillable) total += fieldOres.get(id) || 0;
+          let roll = rng() * total;
+          cmdtyId = fillable[fillable.length - 1];
+          for (const id of fillable) { roll -= fieldOres.get(id) || 0; if (roll <= 0) { cmdtyId = id; break; } }
+        } else {
+          cmdtyId = pick(MINEABLE_CMDTYS.filter(tierOk));
+        }
         const qty = 10 + Math.floor(rng() * 30); // 10..39u
         const unitVal = CMDTY_BY_ID.get(cmdtyId).basePrice || 30;
         const cargoValue = unitVal * qty;

@@ -230,7 +230,11 @@ function sectorDressingRows(sector, palette, seed) {
       poiId: poi.id,
       pos: poi.pos || poi.anchor || { x: 0, z: 0 },
     }));
-  const stations = (sector.stations || []).map((st) => (st && st.pos) || { x: 0, z: 0 });
+  // Keep named anchors for authored kit composition during seed-only Continue warmup.
+  const stations = (sector.stations || []).map((st) => ({
+    stationId: st && st.id,
+    pos: (st && st.pos) || { x: 0, z: 0 },
+  }));
   const hasGates = !!(sector.wormholeTo)
     || (Array.isArray(sector.gates) && sector.gates.length > 0)
     || (sector.neighbors || []).length > 0;

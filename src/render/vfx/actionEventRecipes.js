@@ -259,11 +259,18 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     return {...p, targetId: ent.id, sourceId: p.ownerId, pos: copyPoint(ent.pos)};
   }
   if (name==='weapons:inertialShunt') {
+    // This ephemeral receipt is not a saved compatibility format. Old/partial receipts
+    // cannot prove target delivery: fail closed, without suppressing the source receipt.
+    if (p.targetImpulseAccepted !== true || !Number.isFinite(p.targetDeltaV) || p.targetDeltaV <= 0
+      || !Number.isFinite(p.momentumTransferred) || p.momentumTransferred <= 0) return null;
     const a=body(state,p.shunterId), b=body(state,p.targetId);
     if (!point(a?.pos) || !point(b?.pos)) return null;
     // The receipt has no manifold point. A directed body response is honest; an
     // invented exact contact or an outgoing projectile would not be.
-    return {...p,sourceId:p.shunterId,direction:{x:b.pos.x-a.pos.x,z:b.pos.z-a.pos.z}};
+    // Reuse the shove family's bounded visual envelope, driven only by admitted delta-V.
+    // A caller's blastRadius or planned impulse must not inflate a protected nudge.
+    return {...p,sourceId:p.shunterId,blastRadius:p.targetDeltaV,
+      direction:{x:b.pos.x-a.pos.x,z:b.pos.z-a.pos.z}};
   }
   if (name==='cargo:volatileCorrosive' || name==='cargo:volatileCryo') {
     return {...p,sourceId:p.podId};

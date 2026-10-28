@@ -170,7 +170,7 @@ async function main() {
   const pageErrors = [];
   // The player-store endpoint is intentionally unmounted under the isolated save drawer
   // (SPACEFACE_PLAYER_STORE_DIR=''), so its boot-time 404 is designed-optional noise — the same
-  // filter probe-demo-path.mjs and check-game-playable.mjs apply.
+  // filter probe-playtest.mjs and check-game-playable.mjs apply.
   const ignorable = (text) => /__spaceface_player_store/.test(text);
   page.on('pageerror', (err) => {
     const text = String(err && err.message || err);

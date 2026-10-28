@@ -3,8 +3,8 @@
 // Listens to the existing scanner pulse event and reveals disguised pirate traffic. Scanner/HUD
 // remain unchanged; after reveal, their existing contact readers see ordinary hostile AI fields.
 //
-// PQ-151.02 — the same system owns the corrupt-port papers wash. Docking at an outlaw berth
-// with a hot pod in range is the verb: they stamp the pod clean and take a cut. Reputation
+// PQ-151.02 — the same system owns the corrupt-port papers wash. Explicit per-pod confirmation at an outlaw berth
+// stamps only the chosen nearby pod and takes the reviewed cut. Reputation
 // with the port's faction pays the cut down. Credits still move through economy:chargeCredits.
 // Heat is not bought off here — WANTED still escapes by leaving the zone or breaking a net.
 //
@@ -41,6 +41,8 @@ import {
   launderCutFrac,
   stationRecordById,
 } from '../data/salvageLegality.js';
+import { cargoIdentityOf } from '../data/cargoIdentity.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { isJettisonedCargoPod } from './lootShards.js';
 import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 import {
@@ -405,6 +407,8 @@ function liveWitnessRows(state, cover) {
   return cover.witnesses.filter((row) => !row.closed && witnessRowLive(state, row));
 }
 
+let nextLaunderQuote = 0; // Runtime-only tokens never rewind with a saved game.
+
 export const pirateDisguise = {
   name: 'pirateDisguise',
 
@@ -415,6 +419,11 @@ export const pirateDisguise = {
     this._lastBeatAt = null;
     if (this.state) ensureCoverState(this.state);
     this._onScanPulse = (p) => this._scan(p);
+    this._launderQuotes = new Map();
+    this._launderContext = null;
+    // Anything that ends the berth, the sector, or the save invalidates every open quote.
+    this._launderResetEvents = ['dock:undocked', 'sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'game:load', 'save:restoring', 'save:loaded'];
+    this._onLaunderReset = () => this._invalidateLaunderQuotes();
     this._onDocked = (p) => this._handleDocked(p);
     this._onLaunderIntent = (p) => this.launderAtDock(p);
     this._onEntityKilled = (p) => this._onKilled(p);
@@ -424,6 +433,7 @@ export const pirateDisguise = {
       this.bus.on('scan:pulse', this._onScanPulse);
       this.bus.on('dock:docked', this._onDocked);
       this.bus.on('dock:launder', this._onLaunderIntent);
+      for (const event of this._launderResetEvents) this.bus.on(event, this._onLaunderReset);
       this.bus.on('entity:killed', this._onEntityKilled);
       this.bus.on('dock:undocked', this._onUndocked);
       this.bus.on('save:loaded', this._onSaveLoaded);
@@ -751,67 +761,106 @@ export const pirateDisguise = {
     return out;
   },
 
-  /**
-   * Dock verb at a corrupt port: wash nearby hot pods for a cut.
-   * Not a WANTED buy-out — papers only. Returns the receipt or null.
-   */
-  launderAtDock(payload) {
+  /** Papers are an explicit, per-pod service. Dock/open/quote never charges. */
+  _invalidateLaunderQuotes() {
+    this._launderQuotes?.clear();
+    this._launderContext = null;
+  },
+
+  _launderBerth(stationId) {
     const state = this.state;
-    if (!state || !payload) return null;
-    const stationId = payload.stationId
-      || (payload.station && payload.station.id)
-      || null;
-    const station = (payload.station && typeof payload.station === 'object')
-      ? payload.station
-      : (stationRecordById(stationId) || {
-        id: stationId,
-        type: payload.stationType,
-        services: payload.services,
-        factionId: payload.factionId,
-      });
-    const stationKey = station.id || stationId;
-    if (stationKey === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
-      const denial = { accepted: false, reason: 'black_market_locked', stationId: stationKey };
-      this._emit('cargo:laundered', denial);
-      return denial;
+    const player = state?.entities?.get(state.playerId);
+    const station = stationRecordById(stationId);
+    if (!player?.alive || state.mode !== 'flight' || state.ui?.docked !== true
+        || state.ui.dockedStationId !== stationId) return { reason: 'not_docked' };
+    if (!station || !canLaunderSalvageAtStation(station)) return { reason: 'unavailable' };
+    if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
+      return { reason: 'black_market_locked' };
     }
-    if (!canLaunderSalvageAtStation(station) && !canLaunderSalvageAtStation(stationKey)) {
+    const berth = (state.entityIndex?.stations || state.entityList || []).find(e =>
+      e?.alive && e.type === 'station' && e.data?.stationId === stationId
+      && state.entities.get(e.id) === e);
+    if (!berth || occupantGenerationOf(berth) == null || occupantGenerationOf(player) == null) return { reason: 'station_changed' };
+    return { player, station, berth };
+  },
+
+  launderAtDock(payload = {}) {
+    const state = this.state;
+    const { action, contextId, requestId, stationId } = payload;
+    if (action === 'close') {
+      if (contextId === this._launderContext) this._invalidateLaunderQuotes();
       return null;
     }
-
-    const player = state.player;
-    if (!player) return null;
-    const origin = launderOrigin(state);
-    if (!origin) return null;
-
-    const pods = nearbyHotPods(state, origin, LAUNDER_DOCK_RANGE);
-    if (pods.length === 0) return null;
-
-    const cover = ensureCoverState(state);
+    if (action !== 'quote' && action !== 'confirm') return null;
+    const reply = { stationId, contextId, requestId };
+    const fail = (reason, extra) => {
+      const denial = { ...reply, accepted: false, reason, source: 'pirateDisguise', ...extra };
+      this._emit(action === 'quote' ? 'cargo:launderQuoted' : 'cargo:laundered', denial);
+      return denial;
+    };
+    if (typeof contextId !== 'string' || !contextId || contextId.length > 120
+        || typeof requestId !== 'string' || !requestId || requestId.length > 120) return fail('invalid_request');
+    const current = this._launderBerth(stationId);
+    if (current.reason) { this._invalidateLaunderQuotes(); return fail(current.reason); }
+    const { player, station, berth } = current;
     const factionId = station.factionId || 'faction_quiet';
-    const rec = state.factions && state.factions[factionId];
-    const reputation = rec && Number.isFinite(rec.rep) ? rec.rep : 0;
+    const reputation = Number.isFinite(state.factions?.[factionId]?.rep) ? state.factions[factionId].rep : 0;
+    const cutFrac = launderCutFrac(reputation);
+    const cover = ensureCoverState(state);
+    // A burned file at this faction reprices the wash; the quote and the confirm read the same flag.
     const flagged = isObj(cover.burned[factionId]) && num(state.simTime) < num(cover.burned[factionId].until);
-
-    let cut = 0;
-    for (let i = 0; i < pods.length; i++) {
-      const data = pods[i].data;
-      cut += launderCutCredits(data.commodityId, data.amount, reputation);
+    const cutFor = (pod) => {
+      const base = launderCutCredits(pod.data.commodityId, pod.data.amount, reputation);
+      return flagged ? Math.ceil(base * COVER_BURN.flaggedCutMult) : base;
+    };
+    if (action === 'quote') {
+      this._invalidateLaunderQuotes();
+      this._launderContext = contextId;
+      const quotes = [];
+      const nearby = nearbyHotPods(state, player.pos, LAUNDER_DOCK_RANGE).sort((a,b) => Math.hypot(a.pos.x-player.pos.x,a.pos.z-player.pos.z)-Math.hypot(b.pos.x-player.pos.x,b.pos.z-player.pos.z));
+      for (const pod of nearby.slice(0, 32)) {
+        if (state.entities.get(pod.id) !== pod || occupantGenerationOf(pod) == null) continue;
+        const cut = cutFor(pod);
+        const quoteId = `papers:${++nextLaunderQuote}`;
+        this._launderQuotes.set(quoteId, {
+          player, playerGeneration: occupantGenerationOf(player),
+          pod, podGeneration: occupantGenerationOf(pod), berth, berthGeneration: occupantGenerationOf(berth),
+          sectorId: state.world?.currentSectorId, enterSerial: state.world?.enterSerial,
+          stationId, contextId, fingerprint: launderFingerprint(pod), cut, cutFrac, reputation,
+        });
+        const identity = cargoIdentityOf(pod);
+        quotes.push({ quoteId, podId: pod.id, commodityId: pod.data.commodityId,
+          amount: pod.data.amount, ownerId: pod.data.ownerId ?? null,
+          ownerName: identity?.ownerName ?? null,
+          label: pod.data.cargoIdentity?.label || pod.data.label || pod.name || null,
+          factionId: pod.data.factionId || pod.data.cargoIdentity?.factionId || null,
+          distance: Math.round(Math.hypot(pod.pos.x-player.pos.x,pod.pos.z-player.pos.z)), cut, cutFrac, flagged,
+          affordable: Number(state.player.credits) >= cut });
+      }
+      const result = { ...reply, accepted: true, quotes, truncated: nearby.length > quotes.length, range: LAUNDER_DOCK_RANGE };
+      this._emit('cargo:launderQuoted', result);
+      return result;
     }
-    if (flagged) cut = Math.ceil(cut * COVER_BURN.flaggedCutMult);
-    const credits = Math.max(0, Math.floor(Number(player.credits) || 0));
-    if (cut > 0 && credits < cut) {
-      const denial = {
-        accepted: false,
-        reason: 'short',
-        source: 'pirateDisguise',
-        stationId: stationKey,
-        factionId,
-        cut,
-        credits,
-        reputation,
-      };
-      this._emit('cargo:laundered', denial);
+    const quote = this._launderQuotes.get(payload.quoteId);
+    // Consume before validation/dispatch. No denial or repeated event can charge this quote later.
+    this._launderQuotes.delete(payload.quoteId);
+    if (!quote || quote.contextId !== contextId || this._launderContext !== contextId) return fail('stale_quote');
+    const pod = quote.pod;
+    if (quote.stationId !== stationId || quote.player !== player || quote.berth !== berth
+        || quote.playerGeneration !== occupantGenerationOf(player) || quote.berthGeneration !== occupantGenerationOf(berth)
+        || state.entities.get(pod.id) !== pod || quote.podGeneration !== occupantGenerationOf(pod)
+        || quote.sectorId !== state.world?.currentSectorId || quote.enterSerial !== state.world?.enterSerial
+        || !isJettisonedCargoPod(pod) || pod.data.laundered
+        || !isHotLaunderCargo(pod.data.commodityId, pod.data.legality)
+        || launderFingerprint(pod) !== quote.fingerprint) return fail('cargo_changed');
+    if (!finiteLaunderPoint(player.pos) || !finiteLaunderPoint(pod.pos)
+        || Math.hypot(pod.pos.x-player.pos.x, pod.pos.z-player.pos.z) > LAUNDER_DOCK_RANGE) return fail('out_of_range');
+    const cut = cutFor(pod);
+    if (cut !== quote.cut || cutFrac !== quote.cutFrac || reputation !== quote.reputation) return fail('price_changed');
+    const credits = Math.max(0, Math.floor(Number(state.player.credits) || 0));
+    if (credits < cut) {
+      // A short wash says the cut and what the pocket holds, and leaves the pod hot.
+      const denial = fail('short', { factionId, cut, credits, reputation });
       this._emit('toast', {
         text: `Papers refused — the cut is ${cut} cr and you are holding ${credits}.`,
         kind: 'warn',
@@ -819,65 +868,37 @@ export const pirateDisguise = {
       });
       return denial;
     }
-
-    const stamped = [];
-    for (let i = 0; i < pods.length; i++) {
-      const pod = pods[i];
-      const result = applyLaunderStamp(pod.data, stationKey || station);
-      if (result) stamped.push({ podId: pod.id, ...result });
-    }
-    if (stamped.length === 0) return null;
-
-    if (cut > 0) {
-      this._emit('economy:chargeCredits', { amount: cut, reason: 'launder:cut' });
-    }
-
-    // The wash is also a small cover repair — fresh paper reads fresh.
-    const coverRestored = Math.min(COVER_QUALITY.launderRestore, COVER_QUALITY.max - cover.quality);
-    cover.quality = Math.min(COVER_QUALITY.max, cover.quality + coverRestored);
-
-    const entry = recordLaunderLedger(state, {
-      stationId: stationKey,
-      factionId,
-      cut,
-      cutFrac: launderCutFrac(reputation),
-      reputation,
-      pods: stamped,
-    });
-    const receipt = {
-      accepted: true,
-      source: 'pirateDisguise',
-      stationId: entry.stationId,
-      factionId,
-      cut,
-      cutFrac: entry.cutFrac,
-      reputation,
-      podIds: stamped.map((row) => row.podId),
-      pods: stamped,
-      receiptId: entry.receiptId,
-      seenAt: entry.seenAt,
-      coverRestored,
-      flagged: flagged === true,
+    let stamped, entry, coverRestored = 0;
+    const payment = { amount: cut, reason: 'launder:cut', requireFull: true, expectedCredits: credits, result: false,
+      commit: () => {
+        stamped = [{ podId: pod.id, ...applyLaunderStamp(pod.data, stationId) }];
+        entry = recordLaunderLedger(state, { stationId, factionId, cut, cutFrac, reputation, pods: stamped });
+        // The wash is also a small cover repair — fresh paper reads fresh.
+        coverRestored = Math.min(COVER_QUALITY.launderRestore, COVER_QUALITY.max - cover.quality);
+        cover.quality = Math.min(COVER_QUALITY.max, cover.quality + coverRestored);
+        return true;
+      },
     };
-    recordCoverLog(state, cover, { kind: 'laundered', factionId, stationId: stationKey, cut });
+    this._emit('economy:chargeCredits', payment);
+    if (payment.result !== true) return fail('payment_unavailable');
+    const receipt = { ...reply, accepted: true, source: 'pirateDisguise', stationId,
+      factionId, cut, cutFrac, reputation, podIds: [pod.id], pods: stamped,
+      receiptId: entry.receiptId, seenAt: entry.seenAt, coverRestored, flagged: flagged === true };
+    recordCoverLog(state, cover, { kind: 'laundered', factionId, stationId, cut });
     this._emit('cargo:laundered', receipt);
-    this._emit('toast', {
-      text: `Papers washed — cut ${cut} cr`,
-      kind: 'pirateDisguise',
-      ttl: 2,
-    });
+    this._emit('toast', { text: `Papers washed — cut ${cut} cr`, kind: 'pirateDisguise', ttl: 2 });
     return receipt;
   },
 
   /**
-   * dock:docked — the wash runs first, then the cover book works the berth: an
-   * outlaw port posts fixer offers; a lawful berth reads your papers and files
-   * the hot hold it can smell.
+   * dock:docked — never washes or charges (papers are the explicit dock:launder service):
+   * it drops any quote left from a previous berth, then the cover book works the berth:
+   * an outlaw port posts fixer offers; a lawful berth reads your papers and files the hot
+   * hold it can smell.
    */
   _handleDocked(payload) {
-    const receipt = this.launderAtDock(payload);
+    this._invalidateLaunderQuotes();
     this._dockCoverPass(payload);
-    return receipt;
   },
 
   _dockCoverPass(payload) {
@@ -1356,18 +1377,31 @@ export const pirateDisguise = {
       if (this._onScanPulse) this.bus.off('scan:pulse', this._onScanPulse);
       if (this._onDocked) this.bus.off('dock:docked', this._onDocked);
       if (this._onLaunderIntent) this.bus.off('dock:launder', this._onLaunderIntent);
+      for (const event of this._launderResetEvents || []) this.bus.off(event, this._onLaunderReset);
       if (this._onEntityKilled) this.bus.off('entity:killed', this._onEntityKilled);
       if (this._onUndocked) this.bus.off('dock:undocked', this._onUndocked);
       if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
     }
+    this._invalidateLaunderQuotes();
     this._onScanPulse = null;
     this._onDocked = null;
+    this._onLaunderReset = null;
     this._onLaunderIntent = null;
     this._onEntityKilled = null;
     this._onUndocked = null;
     this._onSaveLoaded = null;
   },
 };
+
+function finiteLaunderPoint(pos) {
+  return !!pos && Number.isFinite(pos.x) && Number.isFinite(pos.z);
+}
+
+function launderFingerprint(pod) {
+  const data = pod.data;
+  return JSON.stringify([cargoIdentityOf(pod), pod.name, data.commodityId, data.amount, data.legality, data.laundered,
+    data.ownerId, data.ownerName, data.label, data.factionId, data.ownership, data.cargoIdentity, data.salvagePool]);
+}
 
 /**
  * The deterministic read a faction's check rolls against: score over the warn line,
@@ -1391,13 +1425,15 @@ function launderOrigin(state) {
 }
 
 function nearbyHotPods(state, origin, range) {
+  if (!finiteLaunderPoint(origin)) return [];
   const list = indexedTypeScan(state, 'payloads');
   const reach = Number(range);
   const reach2 = reach * reach;
   const out = [];
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
-    if (!isJettisonedCargoPod(entity) || !entity.pos || !entity.data) continue;
+    if (!isJettisonedCargoPod(entity) || !finiteLaunderPoint(entity.pos) || !entity.data
+        || !Number.isSafeInteger(entity.data.amount) || entity.data.amount <= 0) continue;
     if (entity.data.laundered) continue;
     if (!isHotLaunderCargo(entity.data.commodityId, entity.data.legality)) continue;
     const dx = (entity.pos.x || 0) - (origin.x || 0);

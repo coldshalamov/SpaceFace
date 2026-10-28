@@ -145,7 +145,6 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/help.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/credits.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/crucible.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/ui/screens/demoEnd.js" />
   <!-- The deferred wave (SCREEN_MODULES minus BOOT_SCREEN_EXPORTS in uiRoot.js): registration
        still batches in menu idle and never gates interaction — these are fetch-only hints so a
        fast launch→undock never discovers a cold module inside the flight loop. Keep in sync
@@ -472,7 +471,6 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/core/coordinates.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/core/coreSystem.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/core/deepSpaceAddress.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/core/demoMode.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/core/devMode.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/core/dirtyJournal.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/core/dockAccess.js" />
@@ -614,7 +612,6 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/crew.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/curlField.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/deedPhrases.js" />
-  <link rel="modulepreload" fetchpriority="low" href="./src/data/demoConfig.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/deniableAftermath.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/difficulty.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/discoveryAudio.js" />
@@ -1084,6 +1081,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/killRewards.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/kilnback.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/kilnbackBody.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/kiteCornerProgram.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/lampChannels.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/lamplighter.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/landmarkMissions.js" />
@@ -1201,6 +1199,8 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/secondRinse.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/secondRinseAudio.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/sectorActivityPockets.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/tethysTallyPassage.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/systems/tethysTallyPassage.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/sectorAnchors.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/sectorCausalChains.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/sectorCompositions.js" />
@@ -1224,6 +1224,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/sites.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/slate.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/solstice.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/soriComparisonReturn.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/spectrum/constants.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/spectrum/placements.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/spectrum/props.js" />
@@ -1274,6 +1275,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/tare.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/tech.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/techVerbLadder.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/tethysWatchOverlook.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/theBolus.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/throwForecast.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/titles.js" />
@@ -1282,7 +1284,9 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/trailerMoments.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/travelChoices.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/travelLaneRoutes.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/tritonFieldLabDressing.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/uniqueWrecks.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/veilResearchEdge.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/velocityPlane.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/vesper.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/vestaOreCache.js" />
@@ -2465,6 +2469,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/hullSchematic.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/industryGlyphs.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/instruments.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/kiteCornerProgram.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/lampKey.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/ledgerTape.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/orrery/logbookLayouts.js" />
@@ -2683,6 +2688,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/world/charonSalvageSupply.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/charonSupplyReadout.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/customsWeir.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/world/cutIntakeCourtesy.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/dressingTable.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/embodimentRecipes.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/encounterCausality.js" />
@@ -2697,6 +2703,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/world/resourceBodyRecords.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/solidDressing.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/tallyThreeIdentity.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/world/tritonResearchArrival.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/veilRayNursery.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/vestaWinnowRecovery.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/world/worldCatchup.js" />

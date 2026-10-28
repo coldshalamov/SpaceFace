@@ -65,8 +65,20 @@ async function restored(saved){
 const scene=()=>[body(0,0,0,{team:0,mass:400}),body(1,35,0,{vz:110,mass:28,combatSpeed:95}),body(2,-90,33,{hull:60,mass:10,combatSpeed:95}),body(3,-155,37,{hull:3,mass:10,combatSpeed:95})];
 const release=tick=>tick===31;
 
-test('a save between release and impact restores the pending root; the impact settles once with the saved identity',async()=>{
-  const live=await world(scene());live.rope();
+// The unchanged full-hull wingman takes sub-material damage under today's physical response.
+// Attribution must survive even when no extra style is earned. Wounded variants below
+// separately prove actual lethal amendments, without reseating bodies or altering damage gates.
+const woundedScene=()=>{const entities=scene();entities[3].hull=0.5;return entities;};
+function assertWingmanEvidence(w,rootId,{lethal=false}={}){
+  const hit=w.consequences.find(c=>c.targetId===3&&c.otherId===2);
+  assert.ok(hit?.damageApplied,'the native wingman collision deals actual damage');
+  assert.equal(hit.provenance.actorId,0);assert.equal(hit.stuntEvidence.root.id,rootId);
+  assert.equal(hit.stuntEvidence.path.edges,2);assert.equal(hit.targetKilled,lethal);
+  if(!lethal)assert.ok(hit.hullDamage<0.25*hit.targetHullMax||hit.helmLossSeconds<1,'nonlethal damage needs both quarter-hull loss and one second helm loss to become material');
+}
+
+for(const wounded of [false,true])test(`a save between release and impact preserves root identity (${wounded?'wounded lethal':'full-hull nonmaterial'} wingman)`,async()=>{
+  const live=await world(wounded?woundedScene():scene());live.rope();
   let saved;
   try{
     live.run(45,tick=>{if(release(tick)){live.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});live.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
@@ -85,7 +97,8 @@ test('a save between release and impact restores the pending root; the impact se
       assert.equal(after.detected.length,1,JSON.stringify(after.detected.map(t=>t.trickId)));
       assert.equal(after.detected[0].trickId,'bolas');assert.equal(after.detected[0].episodeId,rootId);
       assert.equal(after.detected[0].modifiers.razorRelease,'razor');
-      assert.equal(after.amended.length,1,'the restored lineage still carries the wingman collision');
+      assertWingmanEvidence(after,rootId,{lethal:wounded});
+      assert.equal(after.amended.length,wounded?1:0,'only a material collision earns an amendment');
     }finally{after.close();}
   }finally{live.close();}
 });
@@ -103,8 +116,8 @@ test('a moved body cannot inherit the pending root; the impact is then an unclai
     }finally{after.close();}
   }finally{live.close();}
 });
-test('a save after the first payoff keeps the amendment window: the wingman collision amends the saved incident and a replay pays nothing',async()=>{
-  const live=await world(scene());live.rope();
+test('a save after the first payoff keeps the amendment window: an actually wounded wingman amends the saved incident and a replay pays nothing',async()=>{
+  const live=await world(woundedScene());live.rope();
   try{
     live.run(90,tick=>{if(release(tick)){live.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});live.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
     assert.equal(live.detected.length,1);assert.equal(live.amended.length,0);
@@ -119,6 +132,7 @@ test('a save after the first payoff keeps the amendment window: the wingman coll
       assert.equal(readTumbleStatus(after.state,2)?.data.until,readTumbleStatus(live.state,2)?.data.until,'Continue preserves the existing loose-hull lifetime');
       after.run(200);
       assert.equal(after.detected.length,0,'the settled first payoff is not re-detected after reload');
+      assertWingmanEvidence(after,live.detected[0].episodeId,{lethal:true});
       assert.equal(after.amended.length,1);
       assert.equal(after.amended[0].episodeId,live.detected[0].episodeId);
       assert.equal(after.amended[0].modifiers.collateralCount,2);
@@ -127,10 +141,31 @@ test('a save after the first payoff keeps the amendment window: the wingman coll
       const settled=after.snapshot();
       const again=await restored(settled);
       try{
+        const beforeReplay=structuredClone(again.state.stunts.combo);
         again.bus.emit('combat:collisionConsequence',after.consequences.find(c=>c.targetId===3&&c.targetKilled));
         again.bus.emit('combat:collisionConsequence',live.consequences.find(c=>c.targetId===2&&c.otherId===1));
         assert.equal(again.detected.length+again.amended.length,0,'replayed settled receipts never pay after a reload');
+        assert.deepEqual(again.state.stunts.combo,beforeReplay,'replay cannot increase settled style or combo payout');
       }finally{again.close();}
     }finally{after.close();}
   }finally{live.close();}
+});
+
+for(const wounded of [false,true])test(`uninterrupted and post-payoff Continue retain the same native causal outcome (${wounded?'wounded':'full-hull'})`,async()=>{
+  let expected;
+  for(const checkpoint of [null,72,90]){
+    let w=await world(wounded?woundedScene():scene());w.rope();
+    try{
+      w.run(checkpoint??90,tick=>{if(release(tick)){w.owner.cutAttachment({attachmentId:'rope',reason:'tether_cut',tick});w.bus.emit('tether:releaseRated',{targetId:1,classification:'razor',tick});}});
+      const rootId=w.detected[0].episodeId;
+      const carried=journalFor(w.state).bodies.get(journalFor(w.state).lives.get('number:2').id);
+      assert.equal(carried.origin.tick,71,'receipt gaps must not relabel the first player push as natural motion');
+      assert.deepEqual(carried.origin.before,{x:0,z:0});
+      if(checkpoint){const save=w.snapshot();w.close();w=await restored(save);}
+      w.run(200);assertWingmanEvidence(w,rootId,{lethal:wounded});
+      const outcome={rootId,amendments:w.amended.length,total:w.state.stunts.totalTricksDetected,rows:w.state.stunts.recentTricks.length,killed:w.state.entities.get(3).alive===false};
+      assert.equal(outcome.amendments,wounded?1:0);
+      if(expected)assert.deepEqual(outcome,expected);else expected=outcome;
+    }finally{w.close();}
+  }
 });

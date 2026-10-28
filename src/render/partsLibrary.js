@@ -3122,25 +3122,53 @@ const REFUSAL_TRIGGER_PACED_STATUSES = new Set([
   // pace is the only break on the ping-pong.
   'regrade-evict-cooloff',
 ]);
+// One shared wake-up serves every paced re-arm. A Crucible arena refuses hundreds of boundary
+// upgrades in the same tick ('deferred-arena-dressing'), and the old one-timer-plus-one-document-
+// listener per refusal made addEventListener alone cost ~2 s of a 5 s loading freeze (every add scans
+// the existing list for a duplicate, so adding N distinct listeners is O(N^2)). Semantics are unchanged:
+// each arm() runs once, no earlier than REFUSAL_TRIGGER_REARM_DELAY_MS after its refusal - from the
+// timer, or from the first visibility return after the delay when a hidden tab throttled the timer.
+const pendingRearms = [];
+let rearmTimer = null;
+let rearmVisibilityHooked = false;
+
+function runDueRearms() {
+  if (rearmTimer !== null) { clearTimeout(rearmTimer); rearmTimer = null; }
+  const now = monotonicNow();
+  const due = [];
+  let nextDue = Infinity;
+  for (let i = 0; i < pendingRearms.length; i += 1) {
+    const entry = pendingRearms[i];
+    if (entry.dueAt <= now) due.push(entry);
+    else if (entry.dueAt < nextDue) nextDue = entry.dueAt;
+  }
+  if (due.length) {
+    const keep = pendingRearms.filter((entry) => entry.dueAt > now);
+    pendingRearms.length = 0;
+    for (const entry of keep) pendingRearms.push(entry);
+  }
+  if (pendingRearms.length && Number.isFinite(nextDue)) {
+    rearmTimer = setTimeout(runDueRearms, Math.max(1, nextDue - now));
+    if (rearmTimer && typeof rearmTimer.unref === 'function') rearmTimer.unref();
+  }
+  for (const entry of due) {
+    try { entry.arm(); } catch (error) { console.error('[partsLibrary] refusal re-arm failed:', error); }
+  }
+}
+
 function scheduleRefusalTriggerRearm(status, arm) {
   if (!REFUSAL_TRIGGER_PACED_STATUSES.has(status)) { arm(); return; }
-  const dueAt = monotonicNow() + REFUSAL_TRIGGER_REARM_DELAY_MS;
-  const doc = typeof document !== 'undefined' ? document : null;
-  const onWake = () => {
-    if (!doc || doc.visibilityState !== 'visible' || monotonicNow() < dueAt) return;
-    doc.removeEventListener('visibilitychange', onWake);
-    clearTimeout(timer);
-    arm();
-  };
-  const timer = setTimeout(() => {
-    if (doc) doc.removeEventListener('visibilitychange', onWake);
-    arm();
-  }, REFUSAL_TRIGGER_REARM_DELAY_MS);
-  if (timer && typeof timer.unref === 'function') timer.unref();
-  // A hidden tab throttles the 1s timeout into minutes — the defer outlives its class
+  pendingRearms.push({ dueAt: monotonicNow() + REFUSAL_TRIGGER_REARM_DELAY_MS, arm });
+  if (rearmTimer === null) {
+    rearmTimer = setTimeout(runDueRearms, REFUSAL_TRIGGER_REARM_DELAY_MS);
+    if (rearmTimer && typeof rearmTimer.unref === 'function') rearmTimer.unref();
+  }
+  // A hidden tab throttles the 1s timeout into minutes - the defer outlives its class
   // entirely. Re-arm on the visibility return once the delay has elapsed instead.
-  if (doc && typeof doc.addEventListener === 'function') {
-    doc.addEventListener('visibilitychange', onWake);
+  const doc = typeof document !== 'undefined' ? document : null;
+  if (!rearmVisibilityHooked && doc && typeof doc.addEventListener === 'function') {
+    rearmVisibilityHooked = true;
+    doc.addEventListener('visibilitychange', () => { if (doc.visibilityState === 'visible') runDueRearms(); });
   }
 }
 

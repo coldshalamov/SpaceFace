@@ -18,16 +18,13 @@
 //     first shove, first dock, first heat, plus difficulty-ramp and career progression milestones.
 //
 // Entry point: createTelemetry(bus, state, options). No-op-safe singleton (a second call disposes
-// the prior instance). Mirrors to window.__SF_TELEMETRY__ for dev. `options.demo` overrides the
-// bundle flag for tests; it defaults to IS_DEMO.
+// the prior instance). Mirrors to window.__SF_TELEMETRY__ for dev.
 
 import {
   buildSessionReportData,
   renderSessionReportMarkdown,
   exportSessionReportJson,
-  DEMO_FUNNEL_STEPS,
 } from '../observability/sessionReport.js';
-import { IS_DEMO } from '../core/demoMode.js';
 import {
   pairLeftoverDeathTelegraph,
   leftoverTelegraphKind,
@@ -110,11 +107,6 @@ function emptyAggregates() {
       first1000crAt: -1, firstModuleAt: -1,
     },
 
-    // Demo funnel (ZERO_TO_HERO §7.5): ordered demo-path steps keyed by DEMO_FUNNEL_STEPS,
-    // same -1/unreached contract as funnel. The object exists in every session so the schema
-    // stays uniform; non-demo sessions simply never reach a step.
-    demoFunnel: Object.fromEntries(DEMO_FUNNEL_STEPS.map((step) => [step, -1])),
-
     deathLog: [],   // [{ atMs, simTime, cause, killerId, killerType, killerFaction, killerName, pos:{x,z}, lifespanMs }]
   };
 }
@@ -161,20 +153,7 @@ export function createTelemetry(bus, state, options) {
     }
   }
 
-  // Demo funnel (ZERO_TO_HERO §7.5): gated on demo mode so non-demo builds subscribe but
-  // never record. First reach latches the offset; repeats are no-ops. Offsets measure from
-  // the sink's own boot mark — NOT startedSimMark, which the play-start rebase moves; the
-  // belt handoff itself triggers a new-game transition, so a rebased origin would stamp
-  // later steps before earlier ones.
-  const demoOn = options && typeof options.demo === 'boolean' ? options.demo : IS_DEMO;
-  let demoOrigin = session.startedSimMark;
-  function markDemo(step) {
-    const f = session.demoFunnel;
-    if (demoOn && f && f[step] < 0) {
-      f[step] = Math.max(0, now() - demoOrigin);
-    }
-  }
-  markDemo('boot');
+
 
   // ----------------------------------------------------------------------------------------------
   // persistence — debounced; flush also bound to page lifecycle below
@@ -228,7 +207,7 @@ export function createTelemetry(bus, state, options) {
       trades: s.trades, credits: s.credits, kills: s.kills, deaths: s.deaths,
       ore: s.ore, missions: s.missions, progression: s.progression,
       navigation: s.navigation, verbs: s.verbs || {}, funnel: s.funnel,
-      demoFunnel: s.demoFunnel, deathLog: s.deathLog,
+      deathLog: s.deathLog,
     };
   }
 
@@ -751,38 +730,6 @@ export function createTelemetry(bus, state, options) {
     scheduleSave();
   });
 
-  // DEMO FUNNEL (ZERO_TO_HERO §7.5) — real bus events only, in funnel order:
-  //   boot                — latched at construction above (the sink boots with the app).
-  //   crucibleEntered     — run:started kind 'survival' (runSession commits the Crucible begin).
-  //   round3Reached       — run:wavePlanned carrying wave >= 3 (survivalRun publishes the plan).
-  //   resultsShown        — run:resultsReady, minus the voluntary-abort payload uiRoot refuses
-  //                         to plate (walkouts show no results surface; wave_plan_failed does).
-  //   adventureEntered    — game:started where the run envelope is not a scored run. The
-  //                         "Take it to the belt" handoff and ordinary New Game both land
-  //                         here. The Crucible launch emits game:new + game:started too —
-  //                         payload inspection cannot discriminate (its game:new is just
-  //                         {seed}) — but game:scenePrepared early-applies its survival
-  //                         setup, so state.run.kind is 'survival' by the time this
-  //                         dispatch reaches us. Plain adventure keeps 'adventure'.
-  //   endCardShown        — ui:pushScreen id 'demoEnd' (onboarding's _maybeShowDemoEndCard).
-  sub('run:started', (p) => {
-    if (p && p.kind === 'survival') markDemo('crucibleEntered');
-  });
-  sub('run:wavePlanned', (p) => {
-    if (p && Number.isInteger(p.wave) && p.wave >= 3) markDemo('round3Reached');
-  });
-  sub('run:resultsReady', (p) => {
-    if (!p || (p.outcome === 'aborted' && p.stopReason !== 'wave_plan_failed')) return;
-    markDemo('resultsShown');
-  });
-  sub('game:started', () => {
-    const kind = state && state.run && state.run.kind;
-    if (!kind || kind === 'adventure') markDemo('adventureEntered');
-  });
-  sub('ui:pushScreen', (p) => {
-    if (p && p.id === 'demoEnd') markDemo('endCardShown');
-  });
-
   // ----------------------------------------------------------------------------------------------
   // page-lifecycle flush — there is NO session-end gameplay event (see EVENT_TAXONOMY gaps), so we
   // lean on the browser to flush a final snapshot. These are browser listeners, not file edits.
@@ -877,16 +824,6 @@ export function createTelemetry(bus, state, options) {
     return steps.map(([key, at]) => ({ step: key, reached: at >= 0, atMs: at >= 0 ? at : null }));
   }
 
-  // Demo funnel: ordered DEMO_FUNNEL_STEPS with reached-flag + first-reach offset.
-  function getDemoFunnel() {
-    const f = session.demoFunnel || {};
-    return DEMO_FUNNEL_STEPS.map((step) => {
-      const at = f[step];
-      const reached = Number.isFinite(at) && at >= 0;
-      return { step, reached, atMs: reached ? at : null };
-    });
-  }
-
   // Death heatmap: world positions + cause for a spatial overlay. CAREER-WIDE (persisted sessions +
   // the live one) — grouped with getCareerStats(), a heatmap is conventionally cumulative. Pass
   // `sessionOnly === true` for just the current session.
@@ -961,7 +898,6 @@ export function createTelemetry(bus, state, options) {
   // clear localStorage). A fresh session id is minted so the next persist() appends cleanly.
   function reset(clearStored) {
     session = emptyAggregates();
-    demoOrigin = session.startedSimMark;
     ring.length = 0;
     telegraphLog.length = 0;
     ringSeq = 0;
@@ -997,7 +933,7 @@ export function createTelemetry(bus, state, options) {
 
   const api = {
     name: 'telemetry',
-    getSessionStats, getCareerStats, getFunnel, getDemoFunnel, getDeathHeatmap,
+    getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
     getRecentEvents, getStorySoFar, reset, dispose,
     getTelegraphCoverage,
     recordVerb, getSessionReport, exportSessionReport,

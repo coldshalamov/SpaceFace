@@ -1119,7 +1119,9 @@ export function createContractsScreen(ctx) {
         ring.setAttribute('aria-hidden', 'true');
         accept.appendChild(ring);
       }
-      dressLampKey(accept, { hold: true, note: holdNote });
+      // the note names the gesture: a bare "hold" next to the route rail reads as a label, not an
+      // instruction (the pinned contractAcceptHoldNote stays the yes/no signal; this is its wording)
+      dressLampKey(accept, { hold: true, note: holdNote ? 'hold to accept' : '' });
     } else if (accept) {
       dressLampKey(accept);
     }

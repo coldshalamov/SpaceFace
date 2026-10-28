@@ -24,8 +24,17 @@ import {
   isEverydaySpaceKitPlaceId,
 } from '../src/data/everydaySpaceKitDressing.js';
 import { OCCUPATIONAL_YARD_PLACE_IDS } from '../src/data/occupationalYardDressing.js';
+import {
+  TETHYS_WATCH_OVERLOOK_ANCHOR,
+  TETHYS_WATCH_OVERLOOK_PROPS,
+} from '../src/data/tethysWatchOverlook.js';
 import { resolvePlaceFileForEntity } from '../src/render/partsLibrary.js';
 import { world } from '../src/systems/world.js';
+import {
+  VEIL_RESEARCH_EDGE_ANCHOR,
+  VEIL_RESEARCH_EDGE_MODELS,
+  VEIL_RESEARCH_EDGE_PROPS,
+} from '../src/data/veilResearchEdge.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const SEEDS = Object.freeze([47, 101, 202, 303, 404, 505, 606, 707]);
@@ -35,10 +44,11 @@ const ORDINARY_SECTORS = Object.freeze([
   'sector_tethys_junction',
   'sector_vesta_forge',
   'sector_pallas_drift',
+  'sector_veil_nebula',
 ]);
-// Eight seeds across five ordinary sectors, cap 4–6 per sector, forty-six
-// identities. A collapsed picker still fails below this floor; saturation of
-// all 46 is not required.
+// Eight seeds across the original five ordinary sectors, cap 4–6 per sector,
+// forty-six identities. Authored Veil is checked separately below and does not
+// contribute to this diversity floor. Saturation of all 46 is not required.
 const MIN_DISTINCT_ACROSS_SEEDS = 16;
 const MIN_PROMOTED_ACROSS_SEEDS = 6;
 
@@ -71,7 +81,7 @@ function collectKit(seed, sectorId) {
   sim.state.playerId = player.id;
   sim.registry.get('world').enterSector(sectorId, { placePlayer: false });
   const active = sim.state.world.sectorContents[sectorId] || {};
-  const stations = (active.stations || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
+  const stations = (active.stations || []).map((row) => ({ stationId: row.stationId, x: Number(row.pos.x), z: Number(row.pos.z) }));
   const gates = (active.gates || []).map((row) => ({ x: Number(row.pos.x), z: Number(row.pos.z) }));
   const fields = (active.fields || []).map((row) => ({ x: Number(row.center.x), z: Number(row.center.z) }));
   const wrecks = (active.pois || [])
@@ -92,6 +102,7 @@ function collectKit(seed, sectorId) {
       x: Number(ent.pos && ent.pos.x),
       z: Number(ent.pos && ent.pos.z),
       name: ent.data.name,
+      radius: ent.radius,
     });
   }
   sim.dispose();
@@ -138,6 +149,8 @@ test('forty-six legal kit identities route through the release place family', ()
       'place_nyx_false_gate',
       'place_orcus_signal_plinth',
       'place_phoebe_shard_sphere',
+      'place_proteus_funnel',
+      'place_rhea_slag_hauler',
       'place_sedna_ringworld_arc',
       'place_triton_aperture_monolith',
     ],
@@ -192,6 +205,29 @@ test('a handful of seeds yields distinct kit models, including the extended set'
         assert.equal(placed.filter((row) => row.placeId === 'place_transponder_gate').length, 0);
         assert.equal(placed.filter((row) => row.placeId === 'place_interdiction_buoy').length, 0);
       }
+      if (sectorId === 'sector_veil_nebula') {
+        // Veil deliberately borrows the already released occupational locker,
+        // not a forty-seventh random-kit identity. Keep every other sector's
+        // original membership/map/proximity assertions below unchanged.
+        assert.equal(placed.length, 4);
+        assert.equal(EVERYDAY_SPACE_KIT_LEGAL_MODELS.length, 46);
+        assert.equal(isEverydaySpaceKitPlaceId('place_cold_locker'), false);
+        assert.equal(EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID.place_cold_locker, undefined);
+        const veil = stations.find(row => row.stationId === VEIL_RESEARCH_EDGE_ANCHOR.stationId);
+        assert.ok(veil, 'Veil must resolve its unique named station');
+        assert.deepEqual(placed.map(row => row.placeId), VEIL_RESEARCH_EDGE_PROPS.map(row => row.placeId));
+        for (const row of placed) {
+          const prop = VEIL_RESEARCH_EDGE_PROPS.find(item => item.placeId === row.placeId);
+          const model = VEIL_RESEARCH_EDGE_MODELS.find(item => item.id === row.placeId);
+          assert.ok(prop && model);
+          assert.equal(row.name, prop.name);
+          assert.equal(row.radius, model.radius);
+          assert.equal(row.x, veil.x + prop.pos.x - VEIL_RESEARCH_EDGE_ANCHOR.x);
+          assert.equal(row.z, veil.z + prop.pos.z - VEIL_RESEARCH_EDGE_ANCHOR.z);
+          assert.equal(row.file, model.file, 'actual resolver must load every Veil body');
+        }
+        continue;
+      }
       for (const row of placed) {
         assert.ok(isEverydaySpaceKitPlaceId(row.placeId));
         assert.equal(row.file, EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[row.placeId],
@@ -200,6 +236,18 @@ test('a handful of seeds yields distinct kit models, including the extended set'
         if (EVERYDAY_SPACE_KIT_PROMOTED_IDS.includes(row.placeId)) promoted.add(row.placeId);
         const model = EVERYDAY_SPACE_KIT_LEGAL_MODELS.find((item) => item.id === row.placeId);
         assert.ok(model);
+        if (sectorId === 'sector_tethys_junction') {
+          // Tethys uses the same four kit slots for an authored log-yard pass,
+          // not a random <=240 WU station ring. Verify the actual translated
+          // placement instead of weakening the proximity rule for other sectors.
+          const prop = TETHYS_WATCH_OVERLOOK_PROPS.find((item) => item.placeId === row.placeId);
+          const customs = stations.find((item) => item.stationId === TETHYS_WATCH_OVERLOOK_ANCHOR.stationId);
+          assert.ok(prop && customs, 'Tethys must resolve its authored kit and named station');
+          assert.equal(row.name, prop.name);
+          assert.equal(row.x, customs.x + prop.pos.x - TETHYS_WATCH_OVERLOOK_ANCHOR.x);
+          assert.equal(row.z, customs.z + prop.pos.z - TETHYS_WATCH_OVERLOOK_ANCHOR.z);
+          continue;
+        }
         const sites = model.anchor === 'lane' ? gates
           : (model.anchor === 'work' ? fields
             : (model.anchor === 'wreck' ? wrecks : stations));

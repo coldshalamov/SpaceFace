@@ -10,7 +10,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const tests=[
   'living-vfx','vfx-particle-transport','vfx-radiance-upgrade','vfx-radiance-materials',
   'vfx-force-language','vfx-field-lifecycle','flow-environment','field-force-quiet-empty-latch',
-  'quarks-vfx-system','explosion-rupture','plasma-stream-thruster','weapon-vfx-techniques',
+  'quarks-vfx-system','explosion-rupture','plasma-stream-thruster','weapon-vfx-techniques','action-vfx',
 ].map(n=>`test/${n}.test.mjs`);
 const run=spawnSync(process.execPath,['--test',...tests],{cwd:root,stdio:'inherit'});
 if(run.status!==0)process.exit(run.status||1);

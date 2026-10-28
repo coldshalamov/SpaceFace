@@ -50,7 +50,7 @@ function hostBusyPct(a, b) {
   return t > 0 ? 100 * (1 - (b.idle - a.idle) / t) : 0;
 }
 
-// Boot the game. `query` is the URL search string (e.g. '?demo=1' or '' for the normal route).
+// Boot the game. `query` is the URL search string ('' for the normal route).
 export async function bootPlaytest({ outDir, query = '', headless = true, viewport = { width: 1600, height: 900 } } = {}) {
   const { chromium } = await loadPlaywright();
   fs.mkdirSync(outDir, { recursive: true });
@@ -147,7 +147,7 @@ export async function bootPlaytest({ outDir, query = '', headless = true, viewpo
       };
     };
 
-    // In-page seam helpers (same contract probe-demo-path installs): autopilot to a station,
+    // In-page seam helpers (the playtest probe contract): autopilot to a station,
     // dock/undock through the real bus events, and proximity queries used by travel logic.
     const H = window.__SF_PT_HELPERS__ = {
       st: () => window.SF.state,

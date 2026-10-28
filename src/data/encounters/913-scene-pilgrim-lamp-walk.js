@@ -20,34 +20,34 @@ export const spec = {
       "role": "ship_1",
       "archetype": "choir_zealot",
       "factionId": "faction_choir",
-      "dx": -150,
-      "dz": 90,
+      "dx": -90,
+      "dz": 0,
       "scanLabel": "PILGRIM 2"
     },
     {
       "role": "ship_2",
       "archetype": "choir_zealot",
       "factionId": "faction_choir",
-      "dx": 160,
-      "dz": 70,
+      "dx": -180,
+      "dz": 0,
       "scanLabel": "PILGRIM 3"
     }
   ],
   "choices": [
     {
       "id": "a",
-      "label": "Keep their passage",
-      "playerLine": "I will hold the lane while the lamp procession passes."
+      "label": "Escort the last lamp",
+      "playerLine": "I will follow the last pilgrim and match its drift."
     },
     {
       "id": "b",
-      "label": "Cross the line",
-      "playerLine": "I will cross their bearing before the last lamp fades."
+      "label": "Dismiss the cantor (-1 Choir standing)",
+      "playerLine": "Your procession is not worth my time."
     },
     {
       "id": "c",
-      "label": "Wait beyond",
-      "playerLine": "I will wait beyond the procession and its lamps."
+      "label": "Decline the escort",
+      "playerLine": "Not this passage. Keep your lamps together."
     }
   ],
   "timeoutChoice": "c",
@@ -60,14 +60,14 @@ export const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: We walk the lamp line where the Veil loses its edges.",
+      "line": "CANTOR: Three lamps are ready. Will you follow the last through the dark?",
       "channel": "info",
       "primary": true,
       "next": "run"
     },
     {
       "id": "run",
-      "verb": "motion",
+      "verb": "noop",
       "motion": "column",
       "seconds": 6,
       "next": "a0"
@@ -75,17 +75,17 @@ export const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "Each hull leaves one measured length for the next.",
+      "line": "The lamp line waits for your answer.",
       "channel": "info",
       "next": "offer"
     },
     {
       "id": "offer",
       "verb": "offer",
-      "motion": "column",
+      "motion": null,
       "windowS": 22,
       "onChoice": {
-        "a": "say_a",
+        "a": "escort_instruction",
         "b": "say_b",
         "c": "say_c"
       }
@@ -93,7 +93,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The last lamp crossed without losing the first.",
+      "line": "You matched the last pilgrim's wake. The Choir acknowledges your escort.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -120,7 +120,7 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The line opened once, then closed behind your hull.",
+      "line": "The cantor heard your dismissal and closed the channel.",
       "channel": "info",
       "next": "rep_b_authority"
     },
@@ -140,7 +140,7 @@ export const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You waited beyond the measured wake.",
+      "line": "You declined the escort. The lamp line remains the crew's work.",
       "channel": "info",
       "next": "resolve_c"
     },
@@ -148,6 +148,39 @@ export const spec = {
       "id": "resolve_c",
       "verb": "resolve",
       "outcome": "c"
+    },
+    {
+      "id": "escort_instruction",
+      "verb": "say",
+      "channel": "info",
+      "line": "CANTOR: Stay 60–180 WU behind PILGRIM 3 and match its drift. Hold the wake for eight seconds once we're underway; wait for my acknowledgment.",
+      "next": "escort_launch"
+    },
+    {
+      "id": "escort_launch",
+      "verb": "motion",
+      "motion": "column",
+      "seconds": 1,
+      "next": "escort_last_lamp"
+    },
+    {
+      "id": "escort_last_lamp",
+      "verb": "await",
+      "keepMotion": true,
+      "timeoutS": 120,
+      "timeoutLine": "CANTOR: The escort ended unfinished. No courtesy is owed.",
+      "steps": [
+        {
+          "kind": "trail",
+          "of": "ship_2",
+          "min": 60,
+          "max": 180,
+          "maxRelSpeed": 8,
+          "holdS": 8,
+          "leaderProgress": 100
+        }
+      ],
+      "next": "say_a"
     }
   ]
 };
@@ -184,7 +217,22 @@ export const trigger = deepFreeze({
     "externalOnly": true
   }
 });
-export const runtime = compileVignette(spec);
+const compiledRuntime = compileVignette(spec);
+export const runtime = Object.freeze({
+  ...compiledRuntime,
+  fire(d, live, state) {
+    const axis = live.data && live.data.sceneAxis;
+    const length = axis && Math.hypot(axis.ux, axis.uz);
+    const ux = length > 0 && Number.isFinite(length) ? axis.ux / length : 1;
+    const uz = length > 0 && Number.isFinite(length) ? axis.uz / length : 0;
+    // Only initial spawn coordinates rotate. Native navigation owns every later pose.
+    const aligned = { ...spec, cast: spec.cast.map((member) => ({
+      ...member, dx: member.dx * ux - member.dz * uz,
+      dz: member.dx * uz + member.dz * ux,
+    })) };
+    compileVignette(aligned).fire(d, live, state);
+  },
+});
 export default defineEncounter(trigger, {
   "shape": {
     "situation": "wake",
@@ -203,29 +251,30 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "Pilgrim Lamp Walk",
-  "primaryLine": "CANTOR: We walk the lamp line where the Veil loses its edges.",
+  "primaryLine": "CANTOR: Three lamps are ready. Will you follow the last through the dark?",
   "factionId": "faction_choir",
   "choices": [
     {
       "id": "a",
-      "label": "Keep their passage",
-      "playerLine": "I will hold the lane while the lamp procession passes."
+      "label": "Escort the last lamp",
+      "playerLine": "I will follow the last pilgrim and match its drift."
     },
     {
       "id": "b",
-      "label": "Cross the line",
-      "playerLine": "I will cross their bearing before the last lamp fades."
+      "label": "Dismiss the cantor (-1 Choir standing)",
+      "playerLine": "Your procession is not worth my time."
     },
     {
       "id": "c",
-      "label": "Wait beyond",
-      "playerLine": "I will wait beyond the procession and its lamps."
+      "label": "Decline the escort",
+      "playerLine": "Not this passage. Keep your lamps together."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The last lamp crossed without losing the first.",
-    "b": "The line opened once, then closed behind your hull.",
-    "c": "You waited beyond the measured wake."
-  }
+    "a": "You matched the last pilgrim's wake. The Choir acknowledges your escort.",
+    "b": "The cantor heard your dismissal and closed the channel.",
+    "c": "You declined the escort. The lamp line remains the crew's work."
+  },
+  "livedRotation": true
 });

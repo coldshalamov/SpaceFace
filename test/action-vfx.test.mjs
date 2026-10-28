@@ -128,7 +128,7 @@ test('typed cloak, snare, and shunt receipts preserve their owning body and dire
     out.clear();out.emit('massline:snareCaught',{anchorId:3,targetId:2,pos:{x:22,z:31}},s);
     assert.equal(out.slots[0].sourceId,3);assert.deepEqual([out.slots[0].x,out.slots[0].z],[22,31]);
     assert.ok(Math.hypot(out.slots[0].sx-anchor.pos.x,out.slots[0].sz-anchor.pos.z)<=anchor.radius);
-    out.clear();out.emit('weapons:inertialShunt',{shunterId:3,targetId:2},s);
+    out.clear();out.emit('weapons:inertialShunt',{shunterId:3,targetId:2,targetImpulseAccepted:true,targetDeltaV:100,momentumTransferred:1600},s);
     assert.equal(out.slots[0].sourceId,3);assert.equal(out.slots[0].provenance,'body');
     assert.equal(out.slots[0].angle,Math.atan2(30-80,20-(-30)));
   }finally{out.dispose();}
@@ -338,5 +338,35 @@ test('a receipted hit normal follows a rotated hull exactly once',()=>{
     assert.ok(out.emit('hull:fractured',{victimId:2,pos:{x:20,z:34},normal:{x:1,z:0}},s));
     s.simTime+=.05;out.update(s);
     assert.ok(Math.abs(out.slots[0].angle)<1e-8,'a +x world normal keeps its own 0 heading');
+  }finally{out.dispose();}
+});
+
+
+test('shunt secondary presentation requires positive admitted delivery, never planned or legacy guesses',()=>{
+  const state=fixture(),out=new ActionVfx(new THREE.Scene());
+  const admitted={shunterId:1,targetId:2,targetImpulseAccepted:true,targetDeltaV:5,momentumTransferred:80,
+    plannedTargetDeltaV:200,plannedMomentumTransferred:3200,blastRadius:10000};
+  try{
+    for(const bad of [
+      {shunterId:1,targetId:2},
+      {...admitted,targetImpulseAccepted:undefined},
+      {...admitted,targetImpulseAccepted:false},
+      {...admitted,targetDeltaV:0,momentumTransferred:0},
+      {...admitted,targetDeltaV:NaN},
+      {...admitted,targetDeltaV:Infinity},
+      {...admitted,targetDeltaV:'5'},
+      {...admitted,momentumTransferred:undefined},
+      {...admitted,momentumTransferred:NaN},
+      {...admitted,momentumTransferred:-1},
+    ]){
+      assert.equal(out.emit('weapons:inertialShunt',bad,state),false);
+      assert.equal(out.slots.filter(slot=>slot.alive).length,0,'no fabricated target shove');
+    }
+    assert.equal(out.emit('weapons:inertialShunt',admitted,state),true);
+    const protectedRadius=out.slots.find(slot=>slot.alive).radius;
+    assert.equal(protectedRadius,8,'admitted nudge uses the authored minimum, not supplied/planned amplitude');
+    out.clear();
+    assert.equal(out.emit('weapons:inertialShunt',{...admitted,targetDeltaV:200,momentumTransferred:3200},state),true);
+    assert.ok(out.slots.find(slot=>slot.alive).radius>protectedRadius,'full admitted launch reads larger');
   }finally{out.dispose();}
 });

@@ -667,7 +667,9 @@ function buildBolusFauna(colors, species) {
       const buffer = new THREE.BufferGeometry();
       buffer.setAttribute('position', new THREE.Float32BufferAttribute(part.positions, 3));
       if (part.indices) buffer.setIndex(part.indices.slice());
-      buffer.computeVertexNormals();
+      if (part.uvs) buffer.setAttribute('uv', new THREE.Float32BufferAttribute(part.uvs, 2));
+      if (part.normals) buffer.setAttribute('normal', new THREE.Float32BufferAttribute(part.normals, 3));
+      else buffer.computeVertexNormals();
       return buffer;
     });
     const material = part.glow ? glowMat(part.color, 0.9) : tissueMat(part.color || colors.tissue);

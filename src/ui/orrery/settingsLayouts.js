@@ -100,7 +100,9 @@ ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
 ${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:5px 13px 6px !important; cursor:pointer;
   ${PLAIN} ${LABEL} font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .78) !important; background:rgb(8 10 14 / .88) !important;
   border:0 !important; border-radius:0 !important; }
-${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:rgb(${BONE} / .6); }
+${S} > .orr-set-more::after { content:""; display:inline-block; width:8px; height:5px; margin-left:8px; vertical-align:2px;
+  background:rgb(${BONE} / .6); clip-path:polygon(0 0, 100% 0, 50% 100%); }
+${S} > .orr-set-more:hover::after { background:rgb(${BONE} / .95); }
 ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
 ${S} > .orr-set-more:hover { color:rgb(${BONE}) !important; }
 @keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }

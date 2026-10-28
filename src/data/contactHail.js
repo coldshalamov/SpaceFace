@@ -4,6 +4,7 @@ import { charonSupplyPresentation } from '../world/charonSupplyReadout.js';
 import { ANVIL_RETURN_GAS, ANVIL_RENDEZVOUS, ANVIL_CANCEL_RENDEZVOUS, anvilSpillReturnOffer } from '../world/anvilSpillRecovery.js';
 import { orchardReceiverRepairFacts, orchardReceiverRepairGuidance } from '../world/anvilOrchardShiftEncounter.js';
 import { anvilCollectorWorkStatus, anvilReceiverWorkStatus } from '../systems/anvilWork.js';
+import { TETHYS_TALLY, isTallyCourier } from './tethysTallyPassage.js';
 import { isOrchardReceiver, orchardTowQuote } from '../world/anvilOrchardTowAssist.js';
 // Deterministic contact-hail classification and copy.
 //
@@ -531,6 +532,7 @@ function priorityCourierItinerary(state, entity) {
 function priorityCourierState(state, entity, itinerary = priorityCourierItinerary(state, entity)) {
   if (!itinerary) return null;
   const stamped = String(entity && entity.data && entity.data.priorityCourierState || '').toUpperCase();
+  if (stamped === 'COUNT_HOLD' && isTallyCourier(entity)) return stamped;
   if (stamped === 'BERTH' || stamped === 'ON_TIME' || stamped === 'LATE' || stamped === 'INTERRUPTED') {
     return stamped;
   }
@@ -1784,6 +1786,10 @@ function routeText(state, target) {
     return `ROUTE · ${stationLabel(state, destinationId)}`;
   }
   const itinerary = target.data && target.data.itinerary;
+  if (isTallyCourier(target) && itinerary.destinationStationId === TETHYS_TALLY.customsId
+    && itinerary.tallyPassage?.id === TETHYS_TALLY.id) {
+    return 'ROUTE · CUSTOMS SCAN GATE → COUNT LANE → CUSTOMS BERTH. Passage does not release impounded cargo.';
+  }
   const destinationId = itinerary && itinerary.destinationStationId || record && record.targetId;
   return `ROUTE · ${stationLabel(state, destinationId)}`;
 }
@@ -1793,9 +1799,15 @@ function priorityCourierStatusText(state, target) {
   if (!itinerary) return null;
   const status = priorityCourierState(state, target, itinerary);
   const escort = itinerary.escort && typeof itinerary.escort === 'object' ? itinerary.escort : {};
+  if (isTallyCourier(target) && itinerary.tallyPassage?.id === TETHYS_TALLY.id
+    && itinerary.tallyPassage.reason === 'removed') return 'STATUS · COUNT LANE BODY REMOVED · No safe placement or cargo release recorded.';
+  if (status === 'COUNT_HOLD') return itinerary.tallyPassage?.reason === 'unobserved'
+    ? 'STATUS · COUNT LANE HOLD · KEG POSITION UNCONFIRMED. No clearance or cargo release recorded.'
+    : 'STATUS · COUNT LANE HOLD · DISPUTED KEG IN THE HULL CORRIDOR. Moving it clear is not a cargo release.';
   if (status === 'INTERRUPTED') return 'STATUS · PRIORITY COURIER INTERRUPTED · ESCORT REQUEST OPEN';
   if (status === 'LATE') return 'STATUS · PRIORITY COURIER LATE · ESCORT REQUEST OPEN';
   if (status === 'BERTH') return 'STATUS · PRIORITY COURIER BERTHED · SCHEDULED DEPARTURE';
+  if (itinerary.countRouteId === TETHYS_TALLY.id) return 'STATUS · CUSTOMS RUN · SCAN GATE AND COUNT LANE';
   if (escort.usedLegSeq === itinerary.legSeq) return 'STATUS · PRIORITY SPRINT · ESCORT CREDIT CONFIRMED';
   return 'STATUS · PRIORITY SPRINT · ON SCHEDULE';
 }

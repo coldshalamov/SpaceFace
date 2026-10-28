@@ -121,7 +121,9 @@ test('acceptance: holding station through the window commits by actual custody �
   player.pos.x = seller.pos.x + 100;
   player.pos.z = seller.pos.z;
   sim.runTicks(60 * 8);
-  assert.equal(live.outcome, 'contact_made');
+  assert.equal(live.data.custodyCommit?.settled, true, 'the original player bond settles immediately');
+  assert.notEqual(live.phase, 'done', 'NPC manifest remains live after acceptance');
+  assert.equal(live.ids.length, 2, 'the original cast stays for the unfinished trade');
 
   const commit = live.data.custodyCommit;
   assert.ok(commit && commit.playerId === player.id, 'a recorded commitment names the player');
@@ -155,6 +157,8 @@ test('acceptance: holding station through the window commits by actual custody �
   assert.equal(events.filter((e) => e.name === 'grant').length, 1, 'no second settle');
   assert.equal(state.entities.get(commit.podId).data.ownerId, player.id,
     'the manifest stamp survives — a late cancel cannot reverse a physical sale');
+  finishDirectorOnlyRemainder(sim, state, live);
+  assert.equal(events.filter((e) => e.name === 'grant').length, 1);
 });
 
 test('withdraw then return: the honest verdict survives — backing out once does not forfeit the deal', () => {
@@ -170,9 +174,11 @@ test('withdraw then return: the honest verdict survives — backing out once doe
   assert.equal(live.data.parleySince, null, 'the window reset');
   player.pos.x = seller.pos.x + 100;  // return and hold
   sim.runTicks(60 * 8);
-  assert.equal(live.outcome, 'contact_made', 'the deal can still be taken honestly');
+  assert.equal(live.data.custodyCommit?.settled, true, 'the bond can still be taken honestly');
+  assert.notEqual(live.phase, 'done', 'NPC delivery has not happened in this no-physics fixture');
   assert.equal(events.filter((e) => e.name === 'grant').length, 1);
   assert.equal(live.data.custodyCommit.playerId, player.id);
+  finishDirectorOnlyRemainder(sim, state, live);
 });
 
 test('counterexample: robbery during inspection is still robbery — conduct witnessed', () => {
@@ -193,3 +199,16 @@ test('counterexample: robbery during inspection is still robbery — conduct wit
     && e.payload.factionId === 'faction_quiet' && e.payload.delta < 0), 'the Quiet ledger remembers');
   assert.equal(live.data.custodyCommit, null, 'robbery is not acceptance');
 });
+
+// Director-only boundary fixture: explicitly arrange arrival, not a native-motion proof.
+// Real Flight/Rapier continuation is covered by handoff-stationkeeping-native.test.mjs.
+function finishDirectorOnlyRemainder(sim, state, live) {
+  const buyer = state.entities.get(live.data.buyerId);
+  const originals = live.data.pods.map(id => state.entities.get(id));
+  for (const pod of originals) pod.pos = { ...buyer.pos };
+  sim.runTicks(90);
+  assert.equal(live.outcome, 'contact_made', 'terminal contact follows the remaining manifest receipt');
+  assert.ok(originals.every(pod => pod.data.ownerId === buyer.id));
+  assert.equal(live.data.delivered, originals.length);
+  assert.equal(live.ids.length, 0, 'cast releases only after actual terminal processing');
+}

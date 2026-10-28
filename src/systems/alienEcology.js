@@ -83,6 +83,8 @@ import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
   handleVeilNurseryEvent, applyNurseryDrive, nurserySiteCenter, veilNurseryMemory,
   nurseryDisturbance } from '../world/veilRayNursery.js';
 
+import { nurseryInitialHabitatOffset, nurseryHabitatGoal } from '../world/veilRayHabitat.js';
+
 const TWO_PI = Math.PI * 2;
 
 /** Membership lanes for the sector fauna cast — members are type 'fauna' only. */
@@ -391,7 +393,9 @@ export function materializeAlienEcology(world, sector, active, onlySites = null)
       const species = faunaSpeciesById(member.speciesId);
       if (!species) continue;
       const scatterAnchor = rec.nursery?.relocation?.scatterAnchors?.[member.faunaKey];
-      const pos = world._toGlobal(scatterAnchor || { x: site.center.x + member.dx, z: site.center.z + member.dz }, sector.id);
+      const habitat = nurseryInitialHabitatOffset(site, rec, member, state.simTime);
+      const pos = world._toGlobal(scatterAnchor || { x: site.center.x + (habitat?.x ?? member.dx),
+        z: site.center.z + (habitat?.z ?? member.dz) }, sector.id);
       // AL-RACE-2: solid ambient fauna are incidental scenery on a temporary circuit —
       // nudged clear at materialization; their own migration owns them after.
       if (species.physicsBody) {
@@ -2438,6 +2442,15 @@ function tickFauna(world, e, site, rec, coherent, shepherds, player, now, dt, se
     speed = species.speed * speedMult;
   }
 
+  // Nursery goals refine this owner's ordinary kinematic steering. Panic/flinch,
+  // active substrate travel and persistent scatter keep their existing goals.
+  const habitatGoal = site.nursery ? nurseryHabitatGoal(site, rec, e,
+    world._toGlobal(nurserySiteCenter(state, site), sectorId), now) : null;
+  if (habitatGoal) {
+    targetX = habitatGoal.x; targetZ = habitatGoal.z;
+    // Turn before closing: constant-speed pursuit can orbit a nearby point forever.
+    speed = Math.min(speed, Math.hypot(targetX - e.pos.x, targetZ - e.pos.z) * .6);
+  }
   if (site.siteId === HEAT_SITE_ID) speed *= wasteHeatMotionMult(rec.heatOnline, species.id);
   if (targetX == null) return;
   const desired = Math.atan2(targetZ - e.pos.z, targetX - e.pos.x);

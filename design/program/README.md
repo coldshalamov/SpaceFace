@@ -9,6 +9,7 @@ orient without ingesting the repository's history.
 
 | Need | Read |
 |---|---|
+| Build inhabited districts, optional military heists, huge surfaces/interiors and a coherent reactive story | [THE OPEN REACH](living-world/README.md) — eight source-grounded district briefs, native contracts, model commissions and executable agent handoffs; future gameplay remains planned |
 | Mature the existing game through concrete workflows and ten bounded cloud assignments | [Maturity and cloud implementation pack](maturity-cloud-2026-10-20/README.md) — source-backed companion to existing build-map rows, not a second queue |
 | Owner-directed production-quality planning and physics-playground first wave | [`PRODUCTION_QUALITY_COMPOUNDING.md`](./PRODUCTION_QUALITY_COMPOUNDING.md) — six finite bundles preserving NXB-001–060, resolved first-wave designs, bounded architecture; supporting plan, not a queue |
 | Design the mature world and commission genuinely missing 3D/content families | [World-depth target and production slices](world-depth-2026-10-02/README.md); routed through existing FINISH_LANES and INFERENCE §0.2, not another queue |

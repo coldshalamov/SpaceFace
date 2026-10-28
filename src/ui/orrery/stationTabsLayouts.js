@@ -294,6 +294,18 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-talk__head .sx-talk__memory { margin-top:4px !important; }
   ${D} .sx-talk__head > .sx-talk__avatar { width:44px !important; height:44px !important; }
 }
+/* …the reading there is ~174px tall, so the contact's opener pushed the second and third questions out of sight and an
+   answer pushed out the rest: a tap read as doing nothing. The role (already on the contact's row) and the key hint step
+   aside, the portrait shrinks beside the name, and once a question is answered the answer stands in for the opener. */
+@media (max-width:480px) and (min-height:801px) {
+  ${D} .sx-bar__stage .sx-talk__head { align-self:stretch !important; row-gap:0 !important; grid-template-rows:minmax(26px, auto) auto !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__role, ${D} .sx-bar__stage .sx-talk__keys { display:none !important; }
+  ${D} .sx-bar__stage .sx-talk__name { grid-row:1 !important; align-self:center !important; }
+  ${D} .sx-bar__stage .sx-talk__head > .sx-talk__avatar { grid-row:1 !important; width:26px !important; height:26px !important; margin:0 !important; transform:none !important; }
+  ${D} .sx-bar__stage .sx-talk__head .sx-talk__memory { grid-row:2 !important; }
+  ${D} .sx-bar__stage .sx-talk__choices > li .sx-choice { padding-top:4px !important; padding-bottom:4px !important; }
+  ${D} .sx-bar__stage .sx-talk:has(.sx-talk__reply.is-said) .sx-talk__memory { display:none !important; }
+}
 /* under 481 wide two halves would be ~170px and cut every job title: the board stands over the dossier */
 @media (max-width:480px) and (min-height:801px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:minmax(0, 4fr) minmax(0, 5fr) !important; row-gap:10px !important; }
@@ -1924,6 +1936,29 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-talk__avatar { height:min(104%, 300px) !important; right:-4% !important; }
   ${D} .sx-talk__memory { font-size:13px !important; line-height:1.4 !important; max-width:none !important; }
   ${D} .sx-talk__reply { max-width:calc(100% - 330px) !important; }
+}
+/* Bar in a short laptop window (801–1100 × 461–600, e.g. 960×540): the stage is ~160px, so her words take two
+   lines (the arc and its dial still clear them) and the reply scale closes up; all three replies read without a scroll */
+@media (min-width:801px) and (max-width:1100px) and (min-height:461px) and (max-height:600px) {
+  ${D} .sx-talk__id { max-width:calc(100% - 250px) !important; }
+  ${D} .sx-talk__id > * + * { margin-top:4px !important; }
+  ${D} .sx-talk__memory { line-height:1.3 !important; }
+  ${D} .sx-talk__choices { padding-top:0 !important; margin-top:2px !important; gap:0 !important; }
+  ${D} .sx-talk__choices > li .sx-choice { padding-top:2px !important; padding-bottom:2px !important; line-height:16px !important; }
+}
+/* …and in a narrow window (651–800 × ≤800): the 330px reserve left her words a 38px column ("HUL / L / GHO / ST");
+   the portrait steps down to 140px so the words keep ~170px clear of the arc's reply dial, and the arc follows the smaller face */
+@media (min-width:651px) and (max-width:800px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { width:140px !important; height:140px !important; right:-2% !important; top:0 !important; }
+  ${D} .sx-talk__id { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__reply { max-width:calc(100% - 200px) !important; }
+  ${D} .sx-talk__name { white-space:normal !important; }
+}
+/* at 651–760 that column is under 120px whatever the face's size, so the portrait (and the arc drawn on it) stands down
+   and her words and the replies take the stage's whole width; the ladder still names her */
+@media (min-width:651px) and (max-width:760px) and (max-height:800px) {
+  ${D} .sx-talk__avatar { display:none !important; }
+  ${D} :is(.sx-talk__id, .sx-talk__reply) { max-width:none !important; }
 }
 @media (max-width:1100px) and (max-height:640px) {
   /* Industry: every material keeps room for its name, count and wrapped Source verb.
