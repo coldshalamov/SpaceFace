@@ -1,5 +1,7 @@
 import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
+import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp } from '../missions/cinderRoute.js';
+import { syncFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { MARK_HAIL_RANGE_WU, bountyMarkHail, markArchetypePoolFor } from '../data/bountyMarks.js';
@@ -36,6 +38,7 @@ export const missionSpawningOps = {
    * ghost-pack nest ids, and set-piece/capital encounter actors.
    */
   _missionTargetArchetypes(m) {
+    if (authoredCinderRoute(m)) return ['wasp_swarmer'];
     const archetypes = new Set(markArchetypePoolFor(m && m.riskTier));
     if (m && m.storyTarget && m.storyTarget.archetype) archetypes.add(m.storyTarget.archetype);
     if (m && (m.type === 'escort' || m.type === 'salvage_retrieval')) archetypes.add('mule_trader');
@@ -156,11 +159,11 @@ export const missionSpawningOps = {
         || e.data?.starterWorkdayVersion !== m.params.starterWorkdayVersion
         || e.data?.starterJobId !== m.params.starterJobId || e.data?.starterStep !== m.params.starterStep)) return false;
       const mid = missionIdentityOf(e);
-      return mid != null && String(mid) === String(m.id);
+      return mid != null && String(mid) === String(cinderTargetOwner(m));
     });
     candidates.sort((a, b) => {
-      const aSlot = missionTargetSlotOf(a, m.id);
-      const bSlot = missionTargetSlotOf(b, m.id);
+      const aSlot = missionTargetSlotOf(a, cinderTargetOwner(m));
+      const bSlot = missionTargetSlotOf(b, cinderTargetOwner(m));
       if (aSlot != null && bSlot != null && aSlot !== bSlot) return aSlot - bSlot;
       if (aSlot != null) return -1;
       if (bSlot != null) return 1;
@@ -172,12 +175,20 @@ export const missionSpawningOps = {
     const usedB2ActorIndices = new Map();
     const ordered = [];
     for (const e of candidates) {
-      let slot = missionTargetSlotOf(e, m.id);
+      let slot = missionTargetSlotOf(e, cinderTargetOwner(m));
+      if (authoredCinderRoute(m) && (!Number.isInteger(slot) || slot < 0 || slot >= 3
+        || usedSlots.has(slot) || completedMissionTargetSlots(m).has(slot))) {
+        // Same finite cast only: never rename a duplicate/cleared survivor to a fourth Wasp.
+        // These exact-owned stale duplicates have no new kill, reward or replacement slot.
+        if (Number.isInteger(slot) && slot >= 0 && slot < 3) e.alive = false;
+        continue;
+      }
       if (slot == null || usedSlots.has(slot)) slot = lowestVacantSlot(usedSlots);
       usedSlots.add(slot);
       // Re-stamp durable mission identity if rematerialize omitted a field. Never compact a
       // survivor merely because a lower slot is absent; its mission+slot identity is the save seam.
       this._stampMissionTargetIdentity(e, m, slot);
+      stampCinderWasp(m, e, slot);
       if (b2Outcomes) {
         const role = physicalRoleOf(e);
         const actor = role === PHYSICAL_ROLE.POD
@@ -350,8 +361,9 @@ export const missionSpawningOps = {
       || ent.homeSectorId
       || ent.data.homeSectorId
       || (this.state.world && this.state.world.currentSectorId);
-    ent.data.missionTag = m.id;
-    ent.data.missionId = m.id;
+    const targetOwner = cinderTargetOwner(m);
+    ent.data.missionTag = targetOwner;
+    ent.data.missionId = targetOwner;
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
     const physicalTarget = PHYSICAL_TYPE_SET.has(m.type);
@@ -370,7 +382,7 @@ export const missionSpawningOps = {
       const playerId = this.state.playerId;
       const player = this.state.entities && this.state.entities.get(playerId);
       ai.spawnContext = 'mission';
-      ai.squadId = `mission:${m.id}`;
+      ai.squadId = `mission:${targetOwner}`;
       ai.preferredRole = 'attack';
       ai.motive = 'accepted_combat_contract';
       ai.engagementTrigger = 'accepted_warrant';
@@ -404,7 +416,7 @@ export const missionSpawningOps = {
       return;
     }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
-    const key = `mission:${m.id}:${durableSlot}`;
+    const key = `mission:${targetOwner}:${durableSlot}`;
     ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.MISSION_TARGET, key);
     ent.data.identityKey = key;
     ent.data.durable = true;
@@ -432,7 +444,7 @@ export const missionSpawningOps = {
       const data = ent && ent.data;
       const ai = data && data.ai;
       if (!ent || ent.alive === false || !ai || ai.lawful || ai.passive) continue;
-      if (String(missionIdentityOf(ent)) !== String(m.id)) continue;
+      if (String(missionIdentityOf(ent)) !== String(cinderTargetOwner(m))) continue;
       const activity = ai.activity;
       if (activity && activity.targetId !== player.id) {
         ai.activity = Object.freeze({ ...activity, targetId: player.id });
@@ -473,6 +485,7 @@ export const missionSpawningOps = {
   },
 
   _spawnTargetsFor(m) {
+    if (syncFurnaceWorksite(this, m)) return;
     const helpers = this.helpers;
     if (!helpers || !helpers.spawnEntity) return;
     // Prefer live rematerialized hosts (Continue) over fresh spawns.
@@ -534,6 +547,7 @@ export const missionSpawningOps = {
     }
 
     if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
+      const cinder = authoredCinderRoute(m);
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
       // partial clear doesn't re-spawn already-killed hostiles and leave an orphan.
       // Adopted rematerialized hosts count toward the remaining quota.
@@ -542,7 +556,9 @@ export const missionSpawningOps = {
       const remaining = Math.max(0, (m.objectiveTarget || 1) - (m.objectiveProgress || 0));
       const adopted = (m.targetEntityIds || []).length;
       const want = (m.type === 'patrol_clear' || ghostPack) ? remaining : Math.min(1, remaining);
-      const n = Math.max(0, want - adopted);
+      const knownSlots = new Set((m.targetEntityIds || []).map(id => missionTargetSlotOf(this.state.entities.get(id), cinderTargetOwner(m))));
+      const cinderSlots = cinderAvailableSlots(m, knownSlots);
+      const n = cinder ? cinderSlots.length : Math.max(0, want - adopted);
       if (n <= 0) {
         if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
         return;
@@ -555,11 +571,11 @@ export const missionSpawningOps = {
       if (grant < n) this._noteMissionSpawnDeferred(m, n, grant);
       if (grant <= 0) return;
       const occupiedSlots = new Set((m.targetEntityIds || []).map((id) => (
-        missionTargetSlotOf(this.state.entities.get(id), m.id)
+        missionTargetSlotOf(this.state.entities.get(id), cinderTargetOwner(m))
       )).filter((slot) => slot != null));
       const completedSlots = completedMissionTargetSlots(m);
-      const vacantSlots = [];
-      for (let slot = 0; vacantSlots.length < n; slot++) {
+      const vacantSlots = cinder ? cinderSlots : [];
+      for (let slot = 0; !cinder && vacantSlots.length < n; slot++) {
         if (!occupiedSlots.has(slot) && !completedSlots.has(slot)) vacantSlots.push(slot);
       }
       // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
@@ -575,7 +591,7 @@ export const missionSpawningOps = {
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
         // Nest composition mirrors the live scavenger-ambush doctrine (020/215): one reaver anchor
         // holding the seam, wasp cutters working around it. Ordinary bounties keep their tier pool.
-        const typeId = storyTarget && storyTarget.archetype
+        const typeId = cinder ? 'wasp_swarmer' : storyTarget && storyTarget.archetype
           || (ghostPack
             ? (durableSlot === 0 ? 'reaver_pirate' : 'wasp_swarmer')
             : pool[Math.floor(rng() * pool.length)]);
@@ -583,7 +599,7 @@ export const missionSpawningOps = {
         // The whole ghost pack rings the storyTarget anchor (the authored lane feature the rumor
         // pointed at) so the nest is a PLACE; fall back to the player ring if the anchor fails to
         // resolve — an unresolvable anchor must never silently void the spawn.
-        let pos = null;
+        let pos = cinder ? cinderWaspPosition(durableSlot) : null;
         if (storyTarget) pos = missionStoryTargetSpawnPos(m, storyTarget, rng);
         if (!pos && ghostPack && m.storyTarget) pos = missionStoryTargetSpawnPos(m, m.storyTarget, rng);
         if (!pos) pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
@@ -638,6 +654,7 @@ export const missionSpawningOps = {
         if (ent) {
           if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
           this._stampMissionTargetIdentity(ent, m, durableSlot);
+          stampCinderWasp(m, ent, durableSlot);
           m.targetEntityIds.push(ent.id);
           spawned++;
           if (storyTarget && storyTarget.namedCaptainId) {

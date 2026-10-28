@@ -1,6 +1,10 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace Build Map
 
+> **Dispatch moved (owner, 2026-10-28):** the Finish Program in
+> [`design/program/finish/`](design/program/finish/README.md) is where agents get their job. Its three
+> lane boards name the open rows below; the rows here remain the detailed spec for those names.
+
 <!-- strategic-chaos-foundations:start -->
 The owner-directed [Strategic Chaos program](design/program/strategic-chaos/README.md)
 connects strategic command, readable physics, multi-party operations and lasting consequences.

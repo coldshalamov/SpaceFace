@@ -427,7 +427,10 @@ function closingBucketOf(closing) {
 }
 
 function buildMissileGlyph() {
+  // Bordered + shaded chevron: two stroke chevrons over a filled plate (fill-opacity rides CSS).
+  // The plate is geometry, not a glow filter — the flight floor bans live filters on HUD vectors.
   return '<svg class="sf-threat-halo__chev" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + '<path class="sf-threat-halo__chev-plate" d="M3 5.4 L11 13.4 L19 5.4 L20.6 7 L11 16.6 L1.4 7 Z"/>'
     + '<path d="M3 5 L11 13 L19 5"/>'
     + '<path d="M5 11 L11 17 L17 11"/>'
     + '</svg>';
@@ -1152,7 +1155,9 @@ export function createThreatHalo(root, busOrOpts) {
   }
 
   // The cue paints itself from the authored force palette (PQ-161.02): channel attribute for the
-  // rules layer, inline border colour so the palette hex wins over any stylesheet default.
+  // rules layer, inline colour + border so the palette hex drives the WHOLE instrument — the
+  // carriage's wash, hairline, ticks and bloom all read currentColor (hudStyles), so one inline
+  // write retints border and shading together.
   function setForceHue(slot, arc, channel, hex) {
     if (!slot) return;
     const channelKey = channel || '';
@@ -1166,6 +1171,7 @@ export function createThreatHalo(root, busOrOpts) {
     if (arc._sfForceColor !== colorKey) {
       arc._sfForceColor = colorKey;
       arc.style.borderColor = colorKey;
+      arc.style.color = colorKey;
     }
   }
 

@@ -46,10 +46,12 @@
 import {
   readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason,
 } from '../ai/tensionPolicy.js';
+import { applyNestSavedSpawnSpec, applyNestBroodSpawnSpec, NEST_BAY_OFFSETS, normalizeNestSnapshot, settleRestoredNestDeath } from '../data/encounters/705-the-nest.js';
+import { tickNestVisit, captureNestVisit, recordNestOutcome, leaveNestVisit, nestSiteClear } from './nestVisit.js';
+import { normalizeNestVisit } from '../data/nestVisit.js';
 import { raceLeaseActive } from './racingSteer.js';
 import { tickEarlyTrailerEncounters } from './trailerEncounterStaging.js';
 import { hash32, mulberry32 } from '../core/rng.js';
-import { isGuidedOnboardingActive } from '../onboarding/opportunityAdmission.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { bumpCollidesFlipEpoch, indexedShipLikeOrEntitiesScan, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -321,6 +323,8 @@ export const encounterDirector = {
     this._saveRestoring = false;
     this._freightCustodyRebindPasses = 0;
     ensureDirectorState(this.state);
+    // Serializer/rollback reads must not resolve encounters or mutate the live ledger.
+    this.helpers.captureNestVisit = () => captureNestVisit(this, { settle: false, persist: false });
     this.helpers.captureEncounterFreightControl = (entity) => captureFreightCustodyControl(this.state, entity);
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -328,6 +332,8 @@ export const encounterDirector = {
       this.bus.on('day:tick', () => this._planSector(this._currentSectorId()));
       this.bus.on('sector:exit', (p) => this._onSectorExit(p));
       // Durable-merge on load: keep named captains / receipts / cooldowns, rebuild transients.
+      // Settle an already-proven kill before any story/trophy snapshot is captured.
+      this.bus.on('save:started', () => { if (!this._saveRestoring) captureNestVisit(this); });
       this.bus.on('save:restoring', () => {
         this._saveRestoring = true;
         // Restore is a transport boundary, not a custody outcome. The already-serialized stats
@@ -361,7 +367,15 @@ export const encounterDirector = {
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
-      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
+      // Only705 consumes native contacts; do not fan every collision into unrelated runtimes.
+      this.bus.on('physics:impact', (p) => {
+        const liveById = this.state && this.state.encounterDirector && this.state.encounterDirector.live;
+        if (!liveById) return;
+        for (const id in liveById) {
+          const live = liveById[id];
+          if (live.shapeId === 'the_nest' && live.phase !== 'done') this._scriptEvent(live, 'physicsImpact', p);
+        }
+      });
       this.bus.on('moralMemory:remember', (p) => rememberMoralDebt(this.state, p || {}));
       this.bus.on('aceMemory:transition', (p) => rememberAceMemoryTransition(this.state, p || {}));
       this.bus.on('moralMemory:vengefulReturn', (p) => markMoralDebtReturned(this.state, (p || {}).id));
@@ -408,6 +422,9 @@ export const encounterDirector = {
   newGame() {
     this._persistentEncounterLifecycle('retire', 'new_game');
     this._saveRestoring = false;
+    this._nestVisitNextTry = 0;
+    this._nestClearanceCueAt = null;
+    this._nestWaitReason = null;
     this._routeToScript('convoy', 'lifecycle', { reason: 'new_game' });
     clearAllPredationBindings(this.state, 'new_game');
     this.state.encounterDirector = freshState();
@@ -427,6 +444,7 @@ export const encounterDirector = {
       this._restorePersistedFreightCustodies();
       this._rebindPersistedFreightCustodyCarriers();
     }
+    if (this._saveRestoring) return;
     const dir = ensureDirectorState(state);
     this._sampleCeresActivityAmbush(dir, state);
     const now = state.simTime || 0;
@@ -452,11 +470,13 @@ export const encounterDirector = {
     // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
     if (!isDocked(state) && !raceLeaseActive(state)) {
+      tickNestVisit(this);
       this._pump(dir, state, now);
       // Row 497 cadence governor: after the pump so the verdict sees this tick's admission.
       this._tickCadence(dir, state, now, step);
     }
     this._tickLive(dir, state, now);
+    captureNestVisit(this);
     this._tickStaleEncounters(dir, state, now);
     this._tickHarassMercy(dir, state, now);
     this._tickHostilePursuitResolution(dir, state, now);
@@ -577,6 +597,9 @@ export const encounterDirector = {
       const live = dir.live[lid];
       if (!live || live.phase === 'done' || live.deck !== 'combat') continue;
       if (live.script === 'namedHunter') continue;
+      //705 owns finite brood and genuine departure; inactivity is neither an escape
+      // receipt nor a reason to tear down and reconstruct its persistent cast.
+      if (live.shapeId === 'the_nest') continue;
       if (live.data && live.data.adoptedWorldActors === true) continue;
       const lastTouch = Math.max(live.startedAt || 0, live.lastPlayerExchangeAt || 0);
       if (now - lastTouch <= STALE_ENCOUNTER_S) continue;
@@ -680,6 +703,7 @@ export const encounterDirector = {
       if (live.script === 'namedHunter' && script) {
         script._depart(this, live, !!(live.data && live.data.engaged));
       } else {
+        if (leaveNestVisit(this, live)) continue;
         if (live.script === 'convoy') this._scriptEvent(live, 'lifecycle', { reason: 'sector_exit' });
         this.abort(live, 'sector_exit');
       }
@@ -707,6 +731,8 @@ export const encounterDirector = {
       if (prev.cooldowns && typeof prev.cooldowns === 'object') fresh.cooldowns = prev.cooldowns;
       if (prev.stats && typeof prev.stats === 'object') fresh.stats = { ...fresh.stats, ...prev.stats };
     }
+    if (Object.prototype.hasOwnProperty.call(prev || {}, 'nestVisit')) fresh.nestVisit = normalizeNestVisit(prev.nestVisit);
+    this._nestVisitNextTry = 0;
     state.encounterDirector = fresh;
     ensureNamed(fresh);
     for (const runtime of SELF_REGISTERED_RUNTIME_BY_ID.values()) {
@@ -1547,12 +1573,10 @@ export const encounterDirector = {
     if (this._currentSectorId() !== payload.sectorId) return { ok: false, reason: 'wrong_sector' };
     const shape = ENCOUNTERS[payload.shapeId];
     if (!shape) return { ok: false, reason: 'missing_shape' };
-    // Admission protects the guide's floor even for forced authored requests, before any fire receipt.
-    if (shape.gates?.deferDuringGuidedOnboarding && isGuidedOnboardingActive(state)) {
-      return { ok: false, reason: 'onboarding' };
-    }
     if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
-    if (payload.respectPacing) {
+    const nestResume = payload.shapeId === 'the_nest' && payload.encounterId === this._nestResumePermit
+      && dir.nestVisit?.status === 'active' && payload.data?.nestResume === true;
+    if (payload.respectPacing && !nestResume) {
       const reason = encounterPacingBlockReason(dir, state, shape, state.simTime || 0);
       if (reason) return { ok: false, reason };
     }
@@ -1698,21 +1722,25 @@ export const encounterDirector = {
   },
 
   _fire(dir, state, item, shape, now) {
-    dir.pressure[shape.deck] = Math.max(0, dir.pressure[shape.deck] - shape.pressureCost);
-    dir.window.push({ t: now, tier: shape.tier });
-    if (shape.tier === 'ambient') dir.lastAmbientAt = now;
-    else dir.lastMeaningfulAt = now;
-    if (shape.tier === 'major') dir.lastMajorAt = now;
+    if (shape.id === 'the_nest' && Object.values(dir.live).some(l => l?.shapeId === 'the_nest' && l.phase !== 'done')) return;
+    const nestResume = shape.id === 'the_nest' && item.encounterId === this._nestResumePermit && item.data?.nestResume === true;
+    if (!nestResume) {
+      dir.pressure[shape.deck] = Math.max(0, dir.pressure[shape.deck] - shape.pressureCost);
+      dir.window.push({ t: now, tier: shape.tier });
+      if (shape.tier === 'ambient') dir.lastAmbientAt = now;
+      else dir.lastMeaningfulAt = now;
+      if (shape.tier === 'major') dir.lastMajorAt = now;
+    }
 
     // A shape may author fireWithinWu (A1's "inside about two screen-depths"): when the gated
     // fight comes due with its victim anchor still beyond that reach, the whole formation —
     // zoneCenter included — slides toward the player until the anchor sits at the reach.
-    if (Number.isFinite(shape.fireWithinWu)) this._anchorItemWithinPlayerReach(item, shape.fireWithinWu);
+    if (Number.isFinite(shape.fireWithinWu) && !(shape.id === 'the_nest' && item.data?.authoredNestVisit === true)) this._anchorItemWithinPlayerReach(item, shape.fireWithinWu);
 
     const live = makeEncounterLiveRecord(state, item, shape, now);
     dir.live[live.id] = live;
     noteScriptProbeRow(dir, live, +1);
-    dir.stats.fired++;
+    if (!nestResume) dir.stats.fired++;
     if (live.data.ceresActivityAmbush === true) {
       dir.stats.ceresActivityAmbush = { phase: 'revealed' };
     }
@@ -1989,6 +2017,17 @@ export const encounterDirector = {
         // entity data before the first classification pass so the pin holds from spawn
         // (check-living-universe-events §J; activityRuntime ctx.missionCritical).
         if (sh.transitCritical === true) spec.data.transitCritical = true;
+        if (live.shapeId === 'the_nest') {
+          const slot = sh.role === 'squad' ? 'carrier' : /^wasp:[0-5]$/.test(sh.nestActorSlot || '') ? sh.nestActorSlot : null;
+          if (slot) { spec.data.nestEncounterId = live.id; spec.data.nestSlot = slot; }
+          if (slot === 'carrier') {
+            spec.data.nestCarrier = true;
+            spec.data.nestBayOffsets = NEST_BAY_OFFSETS;
+            spec.data.nestBayStates = [false, false];
+          }
+          applyNestBroodSpawnSpec(spec, live, slot);
+          if (sh.nestSavedActor) applyNestSavedSpawnSpec(spec, sh.nestSavedActor);
+        }
         const ent = spawnEntity(spec);
         if (ent && ent.id != null) {
           spawned.push(ent.id);
@@ -2039,10 +2078,55 @@ export const encounterDirector = {
     });
   },
 
+  restoreNestTerminal(visit) {
+    if (this._saveRestoring) return false;
+    const own = normalizeNestVisit(visit), snapshot = normalizeNestSnapshot(own?.snapshot);
+    if (own?.status !== 'active' || !snapshot?.contactEstablished
+        || snapshot.carrier.status !== 'dead' || !snapshot.pendingCarrierOutcome) return false;
+    const dir = ensureDirectorState(this.state);
+    if (dir.nestVisit?.receipt || dir.live[own.encounterId]) return false;
+    const shape = ENCOUNTERS.the_nest;
+    if (!shape) return false;
+    const item = { encounterId: own.encounterId, squadId: own.encounterId,
+      sectorId: own.sectorId, zoneCenter: own.anchor, ships: [],
+      zoneId: 'charon_nest_nursery_v1', zoneName: 'South radiation-lane nursery',
+      data: { authoredNestVisit: true } };
+    const live = makeEncounterLiveRecord(this.state, item, shape, this.now());
+    live.phase = 'conflict';
+    dir.live[live.id] = live;
+    if (settleRestoredNestDeath(this, live, this.state, snapshot)) return true;
+    delete dir.live[live.id];
+    return false;
+  },
+
+  adoptNestActor(live, entity, role) {
+    if (live?.shapeId !== 'the_nest' || this.state.entities.get(entity?.id) !== entity
+        || entity?.data?.nestEncounterId !== live.id || entity.alive === false) return false;
+    if (!live.ids.includes(entity.id)) live.ids.push(entity.id);
+    live.roles[entity.id] = role;
+    indexSquadMember(ensureDirectorState(this.state), live, entity.id);
+    const adopted = live.data.nestAdoptedIds || (live.data.nestAdoptedIds = []);
+    if (!adopted.includes(entity.id)) adopted.push(entity.id);
+    return true;
+  },
+
+  releaseNestActor(live, entity) {
+    if (live?.shapeId !== 'the_nest' || !live.data?.nestAdoptedIds?.includes(entity?.id)) return false;
+    live.ids = live.ids.filter(id => id !== entity.id);
+    delete live.roles[entity.id];
+    dropSquadMember(ensureDirectorState(this.state), live, entity.id);
+    live.data.nestAdoptedIds = live.data.nestAdoptedIds.filter(id => id !== entity.id);
+    return true;
+  },
+
+  canSpawnNestActor(pos, radius) {
+    return nestSiteClear(this.state, pos, radius);
+  },
+
   spawnProp(live, opts) {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function' || !opts || !opts.pos) return null;
-    return spawnEntity({
+    const spec = {
       type: opts.type || 'beacon',
       pos: { x: opts.pos.x, z: opts.pos.z },
       vel: { x: 0, z: 0 },
@@ -2055,10 +2139,16 @@ export const encounterDirector = {
         scanLabel: opts.scanLabel || 'Encounter signal',
         encounterId: live.id,
         storyPropKind: opts.storyPropKind || null,
+        ...(live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door'
+          && opts.packagedPropFile === 'places/place_aftermath_aft_cargo_module.glb'
+          ? { packagedPropFile: opts.packagedPropFile, packagedPropRadius: 12,
+              nestEncounterId: live.id, nestSlot: /^door:[01]$/.test(opts.nestActorSlot || '') ? opts.nestActorSlot : null } : {}),
         assetRef: opts.assetRef || null,
         tetherable: opts.tetherable !== false,
       },
-    });
+    };
+    if (live.shapeId === 'the_nest' && opts.storyPropKind === 'nest_door' && opts.nestSavedActor) applyNestSavedSpawnSpec(spec, opts.nestSavedActor);
+    return spawnEntity(spec);
   },
 
   /** A loose physical cargo pod on the field — the same jettisoned-cargo path the player
@@ -2372,6 +2462,7 @@ export const encounterDirector = {
     if (!dir.live[live.id] || live.phase === 'done') return;
     encounterScriptFor(live)?.retire?.(this, live, this.state, 'terminal');
     const now = this.now();
+    recordNestOutcome(this, live, outcome);
     live.phase = 'done';
     live.outcome = outcome;
     clearPredationBindingsForLive(this.state, live, `encounter_${outcome}`);
@@ -2400,7 +2491,7 @@ export const encounterDirector = {
       for (const e of this.entsOf(live)) {
         // SF-150: a durable or foreign-owned roster member is released intact — the encounter
         // only retires the stragglers it actually spawned.
-        if (!encounterMayScheduleDespawn(e)) continue;
+        if (!encounterMayScheduleDespawn(e) || (live.shapeId === 'the_nest' && live.data?.nestAdoptedIds?.includes(e.id))) continue;
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
     }
@@ -2907,6 +2998,7 @@ export const encounterDirector = {
         // lifecycle: mercy cannot stand them down, so it must not claim a disengage that never
         // happens — the strikes bump would re-qualify the pin in 90 s and repeat a false toast.
         if (live.data && live.data.adoptedWorldActors === true) return;
+        if (live.shapeId === 'the_nest') return; // finite authored cast owns genuine departure
         if (live.phase !== 'done') {
           encounterId = live.id;
           this.resolve(live, 'escaped');
@@ -5268,7 +5360,8 @@ function encounterEngagesPlayer(live, state, now) {
 }
 
 function isTutorialActive(state) {
-  return isGuidedOnboardingActive(state);
+  const ob = state.onboarding;
+  return !!(ob && ob.active && !ob.finished);
 }
 
 /** Items whose shape pins earlyWindowGuaranteeDay are the authored opening beats themselves:

@@ -1,3 +1,6 @@
+import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
+import { snapshotFurnaceWorksite, retireFurnaceWorksite, syncFurnaceWorksite, snapshotFurnaceAftermath, restoreFurnaceAftermath, normalizeFurnaceAftermath, materializeFurnaceAftermath } from '../missions/furnaceWorksiteRuntime.js';
+import { authoredFurnaceWorksite } from '../missions/furnaceWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
@@ -1073,6 +1076,13 @@ export const missionStoryOps = {
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
   _cleanupTargets(m) {
+    if (retainCinderRetry(this, m)) return;
+    if (m?.storyTag === 'campaign47a:b1:infested' && m.params?.furnaceWorksiteVersion === 1) {
+      // Ecology owns these living actors and its permanent clearance ledger. Settlement
+      // releases borrowed references; it is neither a kill nor permission to delete fauna.
+      retireFurnaceWorksite(this, m);
+      return;
+    }
     // Capital boss contracts hand the authored score back at the settlement boundary. The detach
     // is DEFERRED to this system's next update tick: settlement can land synchronously inside the
     // kill event, before the score's fixed-tick step has emitted capitalBoss:ended with its final
@@ -1396,6 +1406,11 @@ export const missionStoryOps = {
   // Generator twin: each mission's adopt/spawn is atomic, so yields sit only between missions.
   *spawnTargetsForSectorChunked(sectorId) {
     if (!sectorId) return;
+    materializeFurnaceAftermath(this, sectorId);
+    // Clearance and delivery are separate legs: completed kill quota must not suppress pods.
+    for (const mission of this.state.missions.active || []) {
+      if (authoredFurnaceWorksite(mission)) syncFurnaceWorksite(this, mission);
+    }
     // Continue runs this pass twice — restore step 13 and the save:loaded navigation refresh —
     // each O(missions × living-actors) via _adoptLiveMissionTargets. When the mission fields the
     // body reads and the entity index both sit unchanged since the previous pass, a repeat can
@@ -1451,6 +1466,13 @@ export const missionStoryOps = {
   _onSectorExit(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    for (const m of this.state.missions.active || []) {
+      if (m.destSectorId !== sectorId) continue;
+      snapshotFurnaceWorksite(this, m);
+      // Borrowed fauna stay ecology-owned. Held/gyre/stunt/custody pods remain live under
+      // their current owner on every exit; reentry adopts them rather than cloning.
+      if (authoredFurnaceWorksite(m)) m.targetEntityIds = [];
+    }
     // PQ-019C: mark the run BEFORE any continuous-handoff early-return below. `entity:destroyed` is
     // the generic "left the world" event, so without this a player who simply flew out of Tethys
     // would be told the capsule was destroyed rather than lost. See heistMissionRuntime.onSectorExit.
@@ -1474,6 +1496,9 @@ export const missionStoryOps = {
     }
     // Hard leave retires mission-pinned targets explicitly; world correctly refuses to evict them.
     for (const m of this.state.missions.active) {
+      // Cinder is a finite cast, not a respawn quota. Existing mission-pinned/world-record
+      // ownership retains the real survivors; a hard exit is not their destruction.
+      if (authoredCinderRoute(m)) continue;
       if (m.needsTargets && m.destSectorId === sectorId) {
         if (m.params?.workingBattlefield) snapshotWorkingBattlefield(this, m);
         snapshotReckoning(this, m);
@@ -2454,6 +2479,10 @@ export const missionStoryOps = {
     const popup = (sender, text, ttl = 7) => this.bus.emit('comms:popup', {
       id: `b34_accept_${scene}_${inst.id}`, sender, category: 'story', ttl, persist: true, text,
     });
+    if (scene === 'cinder_board' && authoredCinderRoute(inst)) {
+      popup("ROOK'S BOOTH", 'Cinder One, Two and Three hold the Ashfall approach in Charon. Clear all three; tow one of their actual marked hulls to my lit ring at Expanse. Brake the hull inside it. Keep one intact — I do not buy a story about a wreck.', 10);
+      return true;
+    }
     if (scene === 'variance_delivery') {
       popup('SLATE', 'She is called VARIANCE ADJUSTMENT. Hawser class, mine — two passes on the seam, hand-set. Tow the core in and fly her like you mean it.', 8);
       return true;
@@ -2490,7 +2519,7 @@ export const missionStoryOps = {
    * book's pending contract is resolved from the sidecar step log (so an active legacy
    * contract still tracks, and a world-work gap in the list posts nothing).
    */
-  _activateBookContractOnDeparture(beatIndex) {
+  _activateBookContractOnDeparture(beatIndex, departedStationId = null) {
     const story = this.state && this.state.story;
     if (!story || story.beatIndex !== beatIndex) return false;
     const prefix = `campaign47a:b${beatIndex}:`;
@@ -2512,6 +2541,7 @@ export const missionStoryOps = {
       legacy: campaign47aRouteKind(this.state) === 'legacy',
     });
     if (!offer || !offer.stationId) return false;
+    if (authoredCinderRoute(offer) && departedStationId !== offer.stationId) return false;
     const board = this.ensureBoard(offer.stationId);
     const row = board && board.slots && board.slots.find((c) => c && c.storyTag === offer.storyTag);
     if (!row) return false;
@@ -2522,8 +2552,8 @@ export const missionStoryOps = {
     return this._activateBookContractOnDeparture(1);
   },
 
-  _activateContract47aB2OnDeparture() {
-    return this._activateBookContractOnDeparture(2);
+  _activateContract47aB2OnDeparture(departedStationId = null) {
+    return this._activateBookContractOnDeparture(2, departedStationId);
   },
 
   _activateContract47aB3OnDeparture() {
@@ -2548,6 +2578,8 @@ export const missionStoryOps = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.cinderRetry;
+    delete state.missions.furnaceWorksiteAftermath;
     delete state.missions.blackFlagJobs;
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
@@ -2673,6 +2705,7 @@ export const missionStoryOps = {
       : (m.active || []);
     // Strip transient runtime fields (entity ids) from active missions.
     const active = source.map((a) => {
+      snapshotFurnaceWorksite(this, a);
       if (a.params?.cleanCylinder) this._snapshotCleanCylinder(a);
       if (a.params?.workingBattlefield) snapshotWorkingBattlefield(this, a);
       snapshotReckoning(this, a);
@@ -2686,11 +2719,14 @@ export const missionStoryOps = {
       if (a.counterweight) row.counterweight = counterweightRuntime.serialize(a.counterweight);
       return row;
     });
+    snapshotFurnaceAftermath(this);
     const serialized = {
       boards: m.boards, active, completedLog: m.completedLog, receipts: normalizeMissionReceipts(m.receipts),
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    if (m.furnaceWorksiteAftermath) serialized.furnaceWorksiteAftermath = m.furnaceWorksiteAftermath;
+    if (m.cinderRetry) serialized.cinderRetry = JSON.parse(JSON.stringify(m.cinderRetry));
     if (m.blackFlagJobs) serialized.blackFlagJobs = normalizeBlackFlagJobs(m.blackFlagJobs);
     if (m.redKiteFirstReward) serialized.redKiteFirstReward = { ...m.redKiteFirstReward };
     if (m.ilexArkReward) serialized.ilexArkReward = { ...m.ilexArkReward, deliveredVaultIds: [...m.ilexArkReward.deliveredVaultIds] };
@@ -2739,6 +2775,9 @@ export const missionStoryOps = {
     resetRacingGhostSession(this.state);
     if (!data) return;
     const state = this.state;
+    restoreFurnaceAftermath(this, data.furnaceWorksiteAftermath);
+    if (authoredCinderRoute(data.cinderRetry)) state.missions.cinderRetry = JSON.parse(JSON.stringify(data.cinderRetry));
+    else delete state.missions.cinderRetry;
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
@@ -2817,6 +2856,13 @@ export const missionStoryOps = {
         ...a, targetEntityIds: [], _escorteeId: null, _escorteeArrived: false,
         status: a.status || 'active',
       };
+      if (authoredFurnaceWorksite(row) && Array.isArray(row.params?.furnaceLots)) {
+        const ledger = normalizeFurnaceAftermath({ version: 1, missionId: row.id, lots: row.params.furnaceLots });
+        row.params = ledger ? { ...row.params, furnaceLots: ledger.lots,
+          furnaceFeeds: ledger.lots.filter(lot => lot.received).length,
+          furnaceLosses: ledger.lots.filter(lot => lot.lost && !lot.received).length }
+          : { ...row.params, furnaceLots: [], furnaceLedgerInvalid: true };
+      }
       // PQ-019C: rebuild the arbiter and reconcile against a world that does not remember the
       // capsule. `state.heistFacilities` and `state.lawSecurity` are NOT in the save capture plan
       // (PQ-019B §4) and the capsule is a transient entity, so after a load there is no schedule, no

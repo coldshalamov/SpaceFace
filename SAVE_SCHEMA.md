@@ -89,6 +89,7 @@ Current save version: `22`
 - `bandRadio`
 - `v2Flavor`
 - `aftermathWrecks`
+- `understoryGardens`
 - `lawSecurity`
 - `fieldDepletion`
 - `livingPoiBehaviors`
@@ -546,7 +547,7 @@ Current save version: `22`
 | `$.settings.video.arcadeEffects` | string | full |
 | `$.settings.video.bloom` | boolean | true |
 | `$.settings.video.bloomLevels` | number | 2 |
-| `$.settings.video.bloomStrength` | number | 0.52 |
+| `$.settings.video.bloomStrength` | number | 0.4 |
 | `$.settings.video.bloomThreshold` | number | 1 |
 | `$.settings.video.chaseClose` | boolean | false |
 | `$.settings.video.dynamicResolution` | boolean | false |
@@ -610,6 +611,7 @@ Current save version: `22`
 | `$.uiScreenMemory.bags` | object | {} |
 | `$.uiScreenMemory.v` | number | 1 |
 | `$.uiWatchlist` | array | length 0 |
+| `$.understoryGardens` | null | null |
 | `$.v2Flavor` | object | {} |
 | `$.vael` | object | {} |
 | `$.vergeCourt` | object | {} |

@@ -4,6 +4,12 @@
 // has it arrived at rest inside the ring, and what does the book owe for it.
 
 import { ROOK_BOOTH } from '../data/rook.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+
+/** The authored pad stays sector-local; every live consumer uses this one transform. */
+export function rookPadPosition() {
+  return sectorLocalToGlobalForSector(ROOK_BOOTH.pad, ROOK_BOOTH.sectorId);
+}
 
 function finiteXZ(v) {
   return Number.isFinite(v && v.x) && Number.isFinite(v && v.z);
@@ -46,7 +52,7 @@ export function rookBoothEligible(entity) {
 }
 
 /** Arrival truth: inside the ring and at rest — swept by speed, never by a fast pass. */
-export function rookDeliveryCheck(entity, pad = ROOK_BOOTH.pad, padRadius = ROOK_BOOTH.padRadius, restSpeed = ROOK_BOOTH.restSpeed) {
+export function rookDeliveryCheck(entity, pad = rookPadPosition(), padRadius = ROOK_BOOTH.padRadius, restSpeed = ROOK_BOOTH.restSpeed) {
   const pos = entity && entity.pos;
   if (!finiteXZ(pos) || !finiteXZ(pad)) return { inZone: false, speed: Infinity, arrived: false };
   const vel = entity && entity.vel;

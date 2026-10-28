@@ -5,11 +5,14 @@
 // own stamp reads true. The first variance a pilot notices files kessler_variance_seen
 // for the campaign to read.
 //
-// WHAT THIS OWNS — one beacon marking the deck (same event-driven seams as every
+// WHAT THIS OWNS — the open measuring ring and its flanking worksite (same seams as every
 // one-off: init / deferred sector-enter / save:loaded / newGame) plus the calendar
 // read pass. The deck never buys or takes a pod — it reports, the freight stays yours.
 // Reads latch per pod per visit via data.kesslerRead so a parked pod is read once,
 // not polled.
+import { kesslerWorksiteSpecs, kesslerReceiptLabel, kesslerPadPosition } from './kesslerScaleWorksite.js';
+import { insertDressingRow, dropDressingRow } from '../world/dressingTable.js';
+import { stampSolidDressing } from '../world/solidDressing.js';
 import { KESSLER_SCALE } from '../data/kessler.js';
 import { kesslerPodEligible, kesslerReadCheck, kesslerPlateRead, kesslerTrueRead, kesslerVarianceSeen } from '../characters/kesslerRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
@@ -17,13 +20,15 @@ import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 export function kesslerScaleSpec() {
   return {
     type: 'beacon',
-    pos: { ...KESSLER_SCALE.pad }, vel: { x: 0, z: 0 },
+    pos: kesslerPadPosition(), vel: { x: 0, z: 0 },
     radius: 12, mass: 1e6, hull: 1, hullMax: 1,
-    collides: false,
+    collides: false, physicsBody: false,
     homeSectorId: KESSLER_SCALE.sectorId,
     data: {
-      kesslerScale: true, parentType: 'story_prop',
-      scanLabel: 'Scale deck · weigh-slip plate',
+      kesslerScale: true, kesslerWorksiteVersion: 1, parentType: 'story_prop',
+      scanLabel: 'Scale 4 · rest a cargo pod inside the ring · freight retained',
+      circuitMark: true, ringRadius: KESSLER_SCALE.padRadius,
+      visualRadius: KESSLER_SCALE.padRadius,
       scannerSignalKind: 'salvage',
       homeSectorId: KESSLER_SCALE.sectorId,
     },
@@ -37,6 +42,7 @@ export function createKesslerScale() {
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = [];
+      this._settlingPods = new Set();
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
@@ -67,6 +73,7 @@ export function createKesslerScale() {
       }
       this._cookProvider = null;
       this._removeOwned();
+      this._settlingPods?.clear();
     },
     _flags() {
       const flags = this.state?.story?.flags;
@@ -79,19 +86,46 @@ export function createKesslerScale() {
     },
     _beacon() {
       for (const e of this.state?.entityList || []) {
-        if (e?.alive && e.data?.kesslerScale === true) return e;
+        if (e?.alive && e.data?.kesslerScale === true
+            && e.data.kesslerWorksiteVersion === 1) return e;
       }
       return null;
     },
     _removeOwned() {
+      for (const row of [...(this.state?.world?.dressing?.rows || [])]) {
+        if (row?.data?.kesslerWorksite) dropDressingRow(this.state, row.id);
+      }
+      this._settlingPods?.clear();
       for (const e of this.state?.entityList || []) {
-        if (e?.alive && e.data?.kesslerScale === true) this.helpers?.removeEntity?.(e.id);
+        if (e?.alive && e.data?.kesslerScale === true && e.physicsBody === false)
+          this.helpers?.removeEntity?.(e.id);
       }
     },
     _sync() {
       if (!this.state?.story) return;
       if (!this._adventure()) { this._removeOwned(); return; }
+      // Only explicitly nonphysical legacy markers can be retired here. The old
+      // collides:false beacon could still have a native body: preserve it (and every
+      // legacy pod) rather than teleporting or destroying someone else's physics.
+      for (const e of this.state.entityList || []) {
+        if (e?.alive && e.data?.kesslerScale === true
+            && e.data.kesslerWorksiteVersion !== 1 && e.physicsBody === false) {
+          this.helpers.removeEntity?.(e.id);
+        }
+      }
       if (!this._beacon() && this.helpers.spawnEntity) this.helpers.spawnEntity(kesslerScaleSpec());
+      // Dressing-table rows participate in the normal render and measured static-body
+      // paths without becoming extra scanner/nav contacts. Save/re-entry repairs only
+      // missing pieces; never duplicates foreign scenery or transfers freight.
+      for (const spec of kesslerWorksiteSpecs()) {
+        if ((this.state.world?.dressing?.rows || []).some((r) =>
+          r.alive !== false && r.data?.kesslerWorksite === spec.data.kesslerWorksite)) continue;
+        const solid = stampSolidDressing(spec.data, { radius: spec.radius });
+        insertDressingRow(this.state, {
+          ...spec, collides: !!solid,
+          ...(solid ? { physicsBody: { dynamic: false, material: 'prop' } } : {}),
+        });
+      }
       const flags = this._flags();
       if (flags && flags[KESSLER_SCALE.announceFlag] !== true) {
         flags[KESSLER_SCALE.announceFlag] = true;
@@ -108,13 +142,33 @@ export function createKesslerScale() {
       if (!s || !this._adventure()) return;
       const flags = this._flags();
       if (!flags) return;
+      const settling = new Set();
+      const pad = kesslerPadPosition();
       for (const e of s.entityList || []) {
         if (!kesslerPodEligible(e)) continue;
-        if (!kesslerReadCheck(e).arrived) continue;
+        const check = kesslerReadCheck(e, pad);
+        if (!check.arrived) {
+          if (check.inZone && Number.isFinite(check.speed)) {
+            settling.add(e.id);
+            if (!this._settlingPods?.has(e.id)) this.bus?.emit('comms:popup', {
+              id: `kessler_settle_${e.id}`, sender: KESSLER_SCALE.sender, category: 'story',
+              text: `Scale 4 · load moving at ${check.speed.toFixed(1)} WU/s. Reading waits at ${KESSLER_SCALE.restSpeed} WU/s or below. Freight stays yours.`,
+              ttl: 5, persist: false,
+            });
+          }
+          continue;
+        }
         e.data.kesslerRead = true;
         const plate = kesslerPlateRead(e.mass);
         const honest = kesslerTrueRead(e.mass);
         const variance = kesslerVarianceSeen(plate, honest);
+        // Retain the paired reading on this very pod for the existing lock/hover readout.
+        // The original cargo stamp/commodity name remains intact; no cargo ledger write.
+        const label = e.data.scanLabel || e.data.name || 'Cargo pod';
+        e.data.kesslerReceipt = { plateRead: plate, trueRead: honest };
+        e.data.scanLabel = `${label} · ${kesslerReceiptLabel(plate, honest)}`;
+        const beacon = this._beacon();
+        if (beacon) beacon.data.scanLabel = kesslerReceiptLabel(plate, honest);
         const firstVariance = variance && flags[KESSLER_SCALE.varianceFlag] !== true;
         if (variance) flags[KESSLER_SCALE.varianceFlag] = true;
         const count = (Number(flags[KESSLER_SCALE.countFlag]) || 0) + 1;
@@ -130,8 +184,10 @@ export function createKesslerScale() {
           variance, firstVariance, count,
         });
       }
+      this._settlingPods = settling;
     },
   };
 }
 
 export const kesslerScale = createKesslerScale();
+

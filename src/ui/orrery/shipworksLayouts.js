@@ -326,6 +326,9 @@ ${W} .sx-sw-circuit__core .k-hero__n { font-family:var(--dp-face-display, "Archi
   font-size:34px !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${W} .sx-sw-circuit__core .k-hero__w { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .62) !important; }
 ${W} :is(.sx-sw-flow, .sx-sw-rack__cell) { ${PLAIN} padding:5px 0 !important; min-height:0 !important; }
+  /* the flow rows keep the Ladder's 26px left gutter: station.css draws the spine and the
+     ::before tick inside it, and a flush-left row puts the name's first glyph under the tick. */
+  ${W} .sx-sw-flow { padding-left:26px !important; }
 ${W} .sx-sw-flow { display:grid !important; grid-template-columns:minmax(0, 1fr) 84px 56px; align-items:baseline; column-gap:6px; }
 ${W} .sx-sw-flow .sx-sw-flow__copy { grid-column:1 / 3; display:flex !important; flex-direction:row !important; justify-content:space-between; align-items:baseline; gap:8px; min-width:0; }
 ${W} .sx-sw-flow .sx-sw-flow__copy > .k-row__sub { text-align:right; flex:none; font-variant-numeric:tabular-nums; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; max-width:none !important; }

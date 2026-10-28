@@ -50,6 +50,9 @@ import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { cargoIdentityOf, identityFromManifest } from '../data/cargoIdentity.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
+import { gardenGrowthRadius } from '../data/understoryReceiver.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
@@ -66,6 +69,7 @@ function catchNetsMembershipVersion(state) {
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
+const COMPOST_COMMODITY_MASS = new Map(COMMODITIES.map(row => [row.id, row.massPerU]));
 
 /** Live-resident cap for civilian-manifest cargo bodies (see file header). */
 export const MAX_CIVILIAN_MANIFEST_PAYLOADS = 6;
@@ -428,6 +432,9 @@ function applyJettisonedCargoData(target, spec) {
   target.commodityId = commodityId;
   target.amount = amount;
   target.jettisonedCargo = true;
+  // Player custody outlives the numeric ship id (ship transfer / Save-Continue). Only
+  // this actual producer can originate the stamp; every ownership mirror must still agree.
+  if (spec.playerJettisonOrigin) target.playerJettisonOrigin = Object.freeze({ ...spec.playerJettisonOrigin });
   if (richSource) target.richLotSource = { ...richSource, richQty: amount };
   if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
   if (target.despawnAt != null) delete target.despawnAt;
@@ -457,6 +464,8 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
     originId: spec.originId ?? spec.originStationId,
     destinationId: spec.destinationId ?? spec.destStationId,
     cargoIdentity: spec.cargoIdentity,
+    playerJettisonOrigin: Number.isSafeInteger(state?.playerId) && state.playerId > 0
+      && spec.ownerId === state.playerId ? { version: 1, ownerId: state.playerId } : null,
   };
 
   const spawnHelpers = helpers && typeof helpers.spawnEntity === 'function'
@@ -601,6 +610,65 @@ export const lootShards = {
         this._unsubs.push(this.bus.on(evt, resetTransient));
       }
     }
+  },
+
+  /** Read only: edible contents of this ordinary player-jettisoned pod, not its physics floor. */
+  gardenFeedMass(entity) {
+    const state = this.state, data = entity && entity.data, flags = entity && entity.flags || {};
+    const origin = data?.playerJettisonOrigin, playerOwnerId = origin?.ownerId;
+    if (!origin || origin.version !== 1 || !Number.isSafeInteger(playerOwnerId) || playerOwnerId <= 0) return null;
+    if (!state || state.playerId == null || !isJettisonedCargoPod(entity)
+      || state.entities?.get(entity.id) !== entity || data.jettisonedCargo !== true
+      || data.kind !== 'cargo' || data.ownerId !== playerOwnerId
+      || (entity.ownerId != null && entity.ownerId !== playerOwnerId)
+      || (data.ownership?.ownerId != null && data.ownership.ownerId !== playerOwnerId)
+      || !Number.isFinite(entity.hull) || entity.hull <= 0 || !Number.isFinite(entity.mass) || entity.mass <= 0
+      || data.understoryConsumed === true || Object.isFrozen(data)) return null;
+    // Persistence alone is ordinary for this producer. Every other custody/mission/site
+    // identity remains protected; a jettison stamp is never an ownership override.
+    if (flags.missionPinned || flags.durable || flags.invuln || flags.protected
+      || data.missionId || data.missionTag || data.missionPinned || data.wreckMissionId
+      || data.persistenceOwner || data.runtimeOwner || data.worldRecordId || data.identityKey
+      || data.resourceBodyId || data.worldSiteId || data.worldSitePayloadId || data.worldSiteStructural
+      || data.worldObjectId || data.siteId || data.activityObjectSlotId || data.durable
+      || data.claimId || data.claimedBy || data.custodyOwner || data.freightCustodyPod || data.freightCustody
+      || data.caughtByNet || data.contractClaimSiteOf || data.salvorClaimedBy || data.recoveryEncounterId
+      || data.survivorPod || data.storyPropKind || data.authored || data.authoredCharacter
+      || data.uniqueWreckId || data.authoredWreckId || data.poiId || data.protected || data.anchored
+      || data.interventionId || data.onboarding || data.worldOneOff || data.oneOffId || data.berthConsign
+      || data.physicalCustodyOnly || data.orchardId || data.alienSiteId || data.fieldId
+      || data.markerId || data.provenance || data.claimable || data.living || data.playerOwned
+      || data.persistent || data.arenaShardOf || data.reefMineId || data.reefMine
+      || data.originId || data.destinationId || data.originStationId || data.destStationId
+      || (data.cargoIdentity?.ownerId != null && String(data.cargoIdentity.ownerId) !== String(playerOwnerId))
+      || data.cargoIdentity?.originId || data.cargoIdentity?.destinationId) return null;
+    const identity = cargoIdentityOf(entity);
+    if (!identity || identity.ownerId !== String(playerOwnerId) || identity.originId || identity.destinationId) return null;
+    const amount = data.amount, pool = data.salvagePool, commodityId = data.commodityId;
+    const unitMass = COMPOST_COMMODITY_MASS.get(commodityId);
+    if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isFinite(unitMass) || unitMass <= 0
+      || !pool || typeof pool !== 'object' || Array.isArray(pool)
+      || Object.keys(pool).length !== 1 || pool[commodityId] !== amount) return null;
+    const mass = amount * unitMass;
+    // A partially stripped pod keeps a conservative collider mass; only real remaining
+    // commodity units count. One iron unit never turns the 20t collider floor into 20t food.
+    return Number.isFinite(mass) && mass > 0 && mass <= entity.mass + 1e-6 ? mass : null;
+  },
+
+  /** Retire both pickup and salvage views before the garden removes this exact live pod. */
+  consumeByGarden(entity, garden) {
+    const mass = this.gardenFeedMass(entity);
+    if (!(mass > 0) || !garden || this.state.entities?.get(garden.id) !== garden
+      || garden.alive === false || garden.type !== 'garden' || garden.factionId !== 'faction_understory'
+      || garden.data?.understoryGarden !== true || !garden.data.gardenId
+      || garden.data.gardenDestroyed === true || garden.data.gardenRetired === true
+      || !Number.isFinite(garden.hull) || garden.hull <= 0
+      || !Number.isFinite(garden.radius) || garden.radius <= 0) return null;
+    const reach = gardenGrowthRadius(garden) * UNDERSTORY_GARDENS.absorbPadding + Math.max(0, Number(entity.radius) || 0);
+    const distance = Math.hypot(entity.pos?.x - garden.pos?.x, entity.pos?.z - garden.pos?.z);
+    if (!Number.isFinite(reach) || reach <= 0 || !Number.isFinite(distance) || distance > reach) return null;
+    writePickupRemainder(entity.data, 0);
+    return mass;
   },
 
   destroy() {

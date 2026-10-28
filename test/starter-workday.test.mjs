@@ -5,9 +5,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { starterWorkSite, authoredStarterSite, starterBuoySpec, starterMiningFocus, starterMiningReceiptMatches, starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord, STARTER_WORKDAY_VERSION, registerStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { activeOwnedShip, nextStarterStep } from '../src/data/starterJobs.js';
+import * as cinderRoute from '../src/missions/cinderRoute.js';
+import { registerMassScaleTow } from '../src/systems/cargoCustody.js';
 const src = p => readFileSync(new URL('../'+p, import.meta.url),'utf8');
 const loadOps = (p, name, deps) => {
  deps={forEachFieldRock,registerStarterBuoyTow,...deps};
+ if(p==='src/systems/missionSpawningOps.js')deps={...cinderRoute,registerMassScaleTow,...deps};
  const code=src(p).replace(/\r\n/g,'\n').replace(/^import[\s\S]*?;\n/gm,'').replace(`export const ${name}`,`const ${name}`);
  return Function(...Object.keys(deps),code+`;return ${name};`)(...Object.values(deps));
 };
@@ -192,7 +195,7 @@ test('actual durable capture/normalize/restore preserves moved damaged buoy and 
 
    const start=worldSource.indexOf('  _captureSectorDurableRecords(sectorId, opts = {}) {');
    const method=worldSource.slice(start,worldSource.indexOf('\n  /**',start));
-   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
+   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,captureBolusRib:()=>{},TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
    const capture=Function(...Object.keys(captureDeps),`return ({${method}})._captureSectorDurableRecords;`)(...Object.values(captureDeps));
    const ordinaryPayload={...e,id:91,data:{...e.data,starterWorkdayVersion:undefined,worldRecordId:'ordinary_payload'}};
    const captureState={world:{currentSectorId:m.destSectorId},entityList:[e,ordinaryPayload],entities:new Map([[90,e],[91,ordinaryPayload]]),

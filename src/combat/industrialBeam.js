@@ -1,3 +1,4 @@
+import { isFurnaceOwnedLot } from '../missions/furnaceWorksite.js';
 // src/combat/industrialBeam.js — PQ-016 Contextual Industrial Beam Verb Resolver & Handlers
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
