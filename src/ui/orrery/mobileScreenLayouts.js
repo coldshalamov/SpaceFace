@@ -151,6 +151,10 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; }
   ${B} .sxb-tape .sxb-event__body { font-size:12px !important; line-height:15px !important; opacity:.74; white-space:normal !important;
     overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
+  /* The hull reading is the mechanic's whole sentence (a scar, a carried-over hull, a ledger recap can run
+     three or four lines at 360-390 wide): it reads whole at 12px instead of clipping at the two-line clamp.
+     The station event and ledger cards beside it keep their two-line swipe strip. */
+  ${B} .sxb-tape > .sxb-berth__mechanic:not([hidden]) { -webkit-line-clamp:none; max-height:none; }
   /* Bay screen and station wire: one swipeable two-line strip under the next step, like the tape, instead of two
      full-width cards (~170px at 390x844). The second sign peeks in from the right. */
   ${B} .sxb-signs { grid-area:signs; display:flex !important; flex-wrap:nowrap !important; gap:12px !important; min-width:0 !important;
@@ -322,6 +326,9 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
     ${B} .sxb-vital__label { letter-spacing:.02em !important; }
+    /* The tape's title tracks tighter so the hull reading ends on its second line instead of "close…". */
+    ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { letter-spacing:.06em !important; }
+    ${B} .sxb-tape .sxb-event > * { margin-right:4px !important; }
   }
   /* A phone on its side has ~390px: the berth scrolls as one page there, with the destination foot pinned. */
   @media (max-height:560px) {
