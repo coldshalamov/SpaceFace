@@ -116,7 +116,7 @@ verification column names the file; do not extend a prescription without opening
    (COMMAND_DECK reduced-motion law).
 9. **Budgets are telemetry, not wishes.** Every pooled count, cadence, and cap in this bible is
    either an existing shipped constant or a number the implementer must derive from measured
-   frame telemetry (`design/PERF_BUDGET.md`: VFX owns 2.5 ms of the 16.7 ms frame) and record in
+   frame telemetry (`design/archive/perf/PERF_BUDGET.md`: VFX owns 2.5 ms of the 16.7 ms frame) and record in
    the owning system's `inspect()` — never an arbitrary cap picked in prose.
 
 ---

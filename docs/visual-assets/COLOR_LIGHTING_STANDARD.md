@@ -123,7 +123,7 @@ Rules:
   Cost: about 0.06 ms (0.056–0.062) on a 0.9–1.0 ms composite pass on the Intel
   iGPU at 1600x1000, about 0.035 ms at render scale 0.75 — from an isolated
   timing of the composite shader on a synthetic scene, not an in-game capture.
-  `design/PERF_BUDGET.md` §6 still asks for a before/after capture if the
+  `design/archive/perf/PERF_BUDGET.md` §6 still asks for a before/after capture if the
   budget presets matter. The opt-in render-graph photo-filter route
   (`post/spaceRenderGraph.js`) writes the dither into a half-float grade target
   and `PHOTO_GRADE_FRAG` does the single 8-bit write without a dither of its
@@ -140,7 +140,7 @@ Rules:
 - Colored bloom is bounded: hot cores may bloom white/colored; shadowed paint
   must not bloom at any setting.
 
-## 6. Budget (authored source: `design/PERF_BUDGET.md`)
+## 6. Budget (authored source: `design/archive/perf/PERF_BUDGET.md`)
 
 Light-count cost is per-fragment on every lit material: NUM_POINT_LIGHTS 0→6→22
 measured 77→119→329 ms on the reference D3D11 probe. Hence the fixed 8.

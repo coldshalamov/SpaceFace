@@ -27,4 +27,4 @@ Make the game *look shipped* and *read* to a new player, and accessible to playe
 map/trade/dock; colorblind palette + text-scale persist in save; contact badges render.
 
 ## Dependencies
-BP-08 (PBR maps, HUD art); Wave-2 render lane; perf budget (`design/PERF_BUDGET.md`).
+BP-08 (PBR maps, HUD art); Wave-2 render lane; perf budget (`design/archive/perf/PERF_BUDGET.md`).

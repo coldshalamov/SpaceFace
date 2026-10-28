@@ -6,7 +6,7 @@
 
 The generated concept is an atmosphere and relationship reference: player / taut line / heavy load / struck raider / receiving infrastructure. It is not an orthographic drawing, a collision manifest or evidence of shipped game quality. Its camera, complexity and asteroid density are not instructions to overload the real scene.
 
-The pinned repo has a newer UI authority: `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md` (PQ-194). Its approved frames and common art direction outrank older packet screenshots. Preserve the real three-anchor HUD and Power Rail. The lab’s standalone load card demonstrates information priority; **do not install it as a fourth permanent game HUD anchor**. Bind the new read model into the established contextual EDGE surface.
+The pinned repo has a newer UI authority: `design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md` (PQ-194). Its approved frames and common art direction outrank older packet screenshots. Preserve the real three-anchor HUD and Power Rail. The lab’s standalone load card demonstrates information priority; **do not install it as a fourth permanent game HUD anchor**. Bind the new read model into the established contextual EDGE surface.
 
 ## 2. What has been authored here
 

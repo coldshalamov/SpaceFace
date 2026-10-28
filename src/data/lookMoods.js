@@ -109,13 +109,13 @@ export const LOOK_BASE = deepFreeze({
 // beam geometry is ever drawn. Material-physics-like: the same lamp in every mood.
 export const LOOK_HEADLIGHT = deepFreeze({
   colorHex: 0xffe6c4,      // warm sodium-white
-  intensity: 220,          // candela-like; physical falloff below
-  decay: 1.0,              // gentler than inverse-square so the pool still reads at mid range
-  range: 420,              // WU; hard cutoff of the light
-  angle: 0.36,             // radians, half-angle of the cone (~21°)
-  penumbra: 0.65,          // soft-edged pool, no hard disc
-  height: 26,              // WU above the play plane: a lamp high on the bow, pitched down
-  aimDistance: 90,         // WU ahead of the bow where the beam's axis meets...
+  intensity: 25200,        // calibrated to the previous lamp at a 60 WU reference distance
+  decay: 2.0,              // physical inverse-square response shared by NOCTURNE local lights
+  range: 450,              // WU; hard cutoff of the light
+  angle: 0.46,             // radians, half-angle of the cone (~26°)
+  penumbra: 0.75,          // soft-edged pool, no hard disc
+  height: 20,              // WU above the play plane: a lamp high on the bow, pitched down
+  aimDistance: 105,        // WU ahead of the bow where the beam's axis meets...
   aimHeight: 0,            // ...this height (the play plane), so the pool lands on what is ahead
   noseFactor: 0.7,         // bow offset as a share of the entity radius
   npcReach: 380,           // NPC hulls within this distance of the player may carry a lit lamp

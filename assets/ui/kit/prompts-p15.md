@@ -14,7 +14,7 @@ Art extrapolation: P15 scene layouts and power-coupler equipment are original mo
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/plates/plate-crucible-door.png`
+- `design/archive/frontend-direction/approved/plates/plate-crucible-door.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.arena.ricochet-foundry.png` (1672x941). SHA-256: `43a3482a7cf36714d771216354ea8c368161b0f42b8c5022bdb978cf1e013060`.
 
@@ -93,7 +93,7 @@ Subject: Storm Lattice. A sparse working array of charged pylons: three clear pa
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/frames/frame-title-v2.png`
+- `design/archive/frontend-direction/approved/frames/frame-title-v2.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.difficulty.1.png` (1774x887). SHA-256: `321afd094ea524c09365b212944ebbab382ce9f2034009d5b86d3f028b7d7b5a`.
 
@@ -107,7 +107,7 @@ Use case: product-mockup; one original physical SpaceFace difficulty equipment t
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/frames/frame-title-v2.png`
+- `design/archive/frontend-direction/approved/frames/frame-title-v2.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/plate.backdrop.hangar-wall.png` (1672x941). SHA-256: `3e4fcfec68435f92cb4de8f6f2f9516cc54d432f2bb24cc948cfdbdbaf458411`.
 
@@ -153,7 +153,7 @@ Canvas outpainting / native-resolution delivery correction only. The supplied ba
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/plates/plate-crucible-door.png`
+- `design/archive/frontend-direction/approved/plates/plate-crucible-door.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.mode.swarm.png` (1254x1254). SHA-256: `7f2dc3a3ef8ae6aead9c038d061aefd2def7bc46975a61d82a0eb5a04dd7caf8`.
 
@@ -168,7 +168,7 @@ Subject Swarm: a WALL OF LIGHT SPACECRAFT charging towards the viewer through th
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/plates/plate-crucible-door.png`
+- `design/archive/frontend-direction/approved/plates/plate-crucible-door.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.mode.gauntlet.png` (1254x1254). SHA-256: `2e4d2e6fe0ff99d808b795cd64421a1f06cff97feffcef187ed469db6de20d33`.
 
@@ -183,7 +183,7 @@ Subject Gauntlet: corridor of three heavy rectangular industrial gates, receding
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/plates/plate-crucible-door.png`
+- `design/archive/frontend-direction/approved/plates/plate-crucible-door.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.mode.daily.png` (1254x1254). SHA-256: `520157d1f3a019a021cfb649ad77a28fd09ebb2df78aabf63b7d6c2ea94848f6`.
 
@@ -198,7 +198,7 @@ Subject Daily: a calendar-stamped berth. A substantial little berth service pad 
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/plates/plate-crucible-door.png`
+- `design/archive/frontend-direction/approved/plates/plate-crucible-door.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.mode.weekly.png` (1254x1254). SHA-256: `93d15f1188272ed8fde2a30e8e3c66de8b992bc97a42d65b9b3bb0f9a96ccbaa`.
 
@@ -213,7 +213,7 @@ Subject Weekly: a week-long route board built as real worker-used hardware. One 
 
 Tool: built-in `image_gen`.
 Reference image(s):
-- `design/frontend/direction/approved/frames/frame-title-v2.png`
+- `design/archive/frontend-direction/approved/frames/frame-title-v2.png`
 
 Native output: `.devshots/ui-packets/S2-work/P15/masters/tile.mode.ghost.png` (1254x1254). SHA-256: `29dba3e6932b230e783cfa4bcb31e411bdc57fd20dbc30377b103f1f9f2687dd`.
 

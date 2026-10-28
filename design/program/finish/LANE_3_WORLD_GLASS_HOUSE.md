@@ -20,8 +20,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 |---|---|---|---|
 | D261 | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 |
 | D267 | Flight HUD tests red on clean master (`test/hud-contact-roster-visibility.test.mjs` 2 of 7) | HUD contact roster | packet G1 |
-| D265 | Charon authored salvor hull absent on sector enter (seed 4242) | `charon_colony_salvor` slot; `src/systems/traffic.js`, `src/world/charonSalvageSupply.js` | packet W0 |
-| D266 | Miner research pacing red in the 90-minute prospector cohort | `test/m3-career-cohorts.test.mjs`, `src/data/researchGrants.js` | packet W0 |
+| D266 | Miner research pacing red in the 90-minute prospector cohort | `test/m3-career-cohorts.test.mjs`, `src/data/researchGrants.js` | packet W0 — in flight (beat-0 skim trace) |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
 
 ## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)
@@ -35,15 +34,30 @@ docs that describe it.
 ## The ordered packets
 
 ### H0 — The first razor cut (do first, so every lane navigates a smaller repo)
-`git mv` the obviously dated material into `design/archive/` and `docs/archive/` (README §7 lists it).
-Fix the links and any doc-check script that breaks. Do not move anything this folder's files cite, and
-never touch `design/program/vm-drop/`. Add the pointer banner to `DEMO_READINESS_2026-09-20.md` §6
-("during the Finish Program the defect ledger lives in the three lane boards") and to the top of
-`build_map.md` ("dispatch moved to `design/program/finish/`; rows here are detail references").
-Done when the design/docs markdown count is under 1,500 and the doc checks are green.
+**LANDED a054f36530a (2026-10-28).** 2,820 files moved via `git mv` into `design/archive/` +
+`docs/archive/` (dated run folders, finish-expansion pack, roadmap receipts/evidence/retired/sprint
+docs minus the live keepers `README`/`00_EXECUTION_PROTOCOL`/`program-queue.json`/`active/`/
+`receipts/playtests/`, ~59 PERF_* folded into `design/perf/README.md`, superseded frontend direction,
+docs/ui-polish+perf-evidence+handoffs). 1,470+ kept-file refs rewritten to archive paths incl.
+`program-queue.json`; banners on `design/program/README.md`, `build_map.md` (pre-existing) and
+DEMO_READINESS §6. **design+docs markdown outside archive/vm-drop: 3,662 → 951.** Checks green:
+check-program-docs PASS, check-plan-integrity PASS, check-inference-control PASS.
+Deferred to H1: `design/inference-workflows/` (pinned by check-inference-control until the new
+INFERENCE law exists), `docs/worldbuilding` (live data readers), program root `*.md` control
+surface, `design/program/{jules,atlas,special-500,starter-integration,lab,receipts}` (live-script
+readers/provenance, tiny). Judgment calls recorded: `attention/` (179 md), `player-truth/` (108),
+`experience/` (54), `demo-prep-2026-10-27` (9) archived as obviously dated beyond the §7 list —
+needed to reach the count; all recoverable under `design/archive/program/`.
 
 ### W0 — Green the world floor
 D265 and D266 (above). Done when both tests are green on seed 4242.
+- **D265 DONE 1406c221a39** — the salvor already flew a real job; the red was a committed
+  duplicate import making `test/lived-frontier-pockets.test.mjs` a SyntaxError. 28/28 green.
+- **D266 in flight** — implementer tracing why `story:skimResolved` never fires on the plain
+  mine→dock route (beat 0 `cold_start` = mine→skim→dock; 4 RP + 400 cr stays dark).
+- Pipeline live: audit split wrote 303 packets (669k lines); wave 1 = 12 packets on 4
+  launchers (2 Grok + 2 Gemini, window-free direct-node invocation — no .cmd shims, real-user
+  env). Codex day-one batch of 7 LANDED_REVIEW rows running in background.
 
 ### Wave W1 — the first hour is gold (M1)
 Rows are the spec (`build_map.md` §31–§32; read each row's prose before briefing):

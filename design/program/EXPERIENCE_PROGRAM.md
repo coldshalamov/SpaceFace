@@ -49,7 +49,7 @@ hope.
    [`FIRST_SESSION_MAP.md`](./FIRST_SESSION_MAP.md) first (it documents
    already-true guarantees — e.g. encounter 344's real day-0 pirate,
    the 585 wonder, the Ceres run — don't re-litigate them), then code,
-   dossiers in `design/program/attention/`, and renders.
+   dossiers in `design/archive/program/attention/`, and renders.
 2. **Persona drafts + tribunal** — same personas and rubric as the attention
    program (`ATTENTION_PROGRAM.md`); synthesize one plan for the phase.
 3. **3× rule** — audit, plan, and implementation each need three consecutive
@@ -57,7 +57,7 @@ hope.
 4. **Implement + land** — normal pathspec flow; board row + LANDED_REVIEW
    entry per standing law.
 
-**Artifacts live in `design/program/experience/`** (tracked). P0–P2 rows
+**Artifacts live in `design/archive/program/experience/`** (tracked). P0–P2 rows
 share minutes 0–60 with the M1 First Hour Gold integration lane (board row
 454, seam `m1-first-hour`, claimed claude-beta-oct23) — coordinate exact
 paths against its per-sitting claims before starting an early-phase row:

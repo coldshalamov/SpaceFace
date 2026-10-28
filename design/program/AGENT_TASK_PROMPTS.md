@@ -360,7 +360,7 @@ Do not stop after one ship. Do not touch Hitch. Do not model a cabin.
 
 ```text
 This is a campaign, not one task. The game is hitching. Start at
-build_map.md §8.4 and design/program/PERF_HITCH_CAMPAIGN.md.
+build_map.md §8.4 and design/archive/perf/PERF_HITCH_CAMPAIGN.md.
 Do not use INFERENCE. Do not take PQ-050. Do not lower default quality.
 
 Run node scripts/program-dispatch.mjs --id PQ-129 and take the first

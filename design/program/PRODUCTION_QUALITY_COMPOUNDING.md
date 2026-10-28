@@ -37,7 +37,7 @@ Architecture decisions are in [ARCHITECTURE](PRODUCTION_QUALITY_ARCHITECTURE.md)
 
 | Finding | Evidence | Consequence for the next work |
 |---|---|---|
-| The intended quality and concrete ideas are already documented | [arcade notebook](../vision/ARCADE_DESIGN_NOTEBOOK.md), [physical-play grammar](../PHYSICAL_PLAY_GRAMMAR.md), [M01](../finish-expansion-2026-09/missions/M01.md), [M02](../finish-expansion-2026-09/missions/M02.md) | Reuse and resolve these ideas. Do not count renaming them as new design work. |
+| The intended quality and concrete ideas are already documented | [arcade notebook](../vision/ARCADE_DESIGN_NOTEBOOK.md), [physical-play grammar](../PHYSICAL_PLAY_GRAMMAR.md), [M01](../archive/finish-expansion-2026-09/missions/M01.md), [M02](../archive/finish-expansion-2026-09/missions/M02.md) | Reuse and resolve these ideas. Do not count renaming them as new design work. |
 | Batching is already policy | [nine finish lanes](FINISH_LANES.md), [FABLE first batches](../planbank/SpaceFace_Planbank_FABLE_2026-09-28/FIRST_BATCHES.md) | Change selected outcomes and their grouping; do not install another controller. |
 | Hull bursts are real selected mechanics | [runtime](../../src/systems/hullBurst.js), [definitions](../../src/data/hullBurst.js) | Continue the existing Gravity/Grip/Lance family instead of commissioning another ram framework. |
 | The hull-burst handoff records unresolved chain/residency, counterplay and property coverage | [dated handoff](../../docs/plans/2026-09-30-hull-burst-handoff.md) | Reproduce the relevant current failure once. This dated report is a lead, not proof a later build remains broken. |

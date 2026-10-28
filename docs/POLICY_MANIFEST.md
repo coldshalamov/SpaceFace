@@ -11,7 +11,7 @@ This file identifies which repository surfaces may direct an agent. It is a rout
 | `ACTIVE_MANUAL` | current contract or selected plan | `ARCHITECTURE.md`, `GDD_2_0.md`, active packet | only when root routing or the task selects it |
 | `MACHINE_ENFORCED` | executable behavioral/structural contract | tests, schemas, validation manifests, focused checks | when relevant to changed seams |
 | `GENERATED` | index derived from live source | `EVENT_ROUTING.md`, `SYSTEM_REGISTRY.md` | reference only; regenerate from owner |
-| `HISTORICAL` | evidence or superseded decision | `docs/handoffs/`, old reviews, archived plans | archaeology only unless explicitly reactivated |
+| `HISTORICAL` | evidence or superseded decision | `docs/archive/handoffs/`, old reviews, archived plans | archaeology only unless explicitly reactivated |
 | `IGNORED_RESIDUE` | local tool state, captures, transcripts, builds, scratch | `.campaign/`, `.zcode/`, `.serena/`, `.devshots/`, `build/` | never authority; inspect for a named forensic need |
 
 ## Document lifetimes

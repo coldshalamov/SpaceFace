@@ -383,7 +383,7 @@ Faction dial: `.sx-dial` (svg ring). Buttons: `.sx-btn-primary`, `.sx-btn-ghost`
 
 ## 10. Hard constraints
 
-### 10.1 Performance — `design/PERF_BUDGET.md`
+### 10.1 Performance — `design/archive/perf/PERF_BUDGET.md`
 Frame targets 16.7 ms (60 fps desktop), 33.3 ms floor (low-end). Per-frame allocation budget includes
 **UI ≈ 1.2 ms** (the modal screen replaces the flight HUD while open, but the rAF loop + canvas-2D draw
 + label layout must stay cheap). Forbidden as default "fixes": lowering renderScale/pixelRatio/bloom/
@@ -462,7 +462,7 @@ prove visual quality or usability (`AGENTS.md` §9, `STATION_SHELL_CONTRACT.md` 
 **Policy / contracts**
 - `design/STATION_SHELL_CONTRACT.md` (interaction loop §1, representation rule §4, quality boundary §5).
 - `design/revamp/BP-03_ONE_MAP.md` (the open map-cutover spec + parity checklist).
-- `design/PERF_BUDGET.md`, `design/GDD_2_0.md` §9.4, `design/vision/00_CONSTITUTION.md` §5.
+- `design/archive/perf/PERF_BUDGET.md`, `design/GDD_2_0.md` §9.4, `design/vision/00_CONSTITUTION.md` §5.
 - `AGENTS.md` (root), `src/ui/AGENTS.md`, `styles/AGENTS.md`.
 
 ---

@@ -7260,7 +7260,7 @@ async function runSeed47ToolkitCameraReposition() {
   let stageClearanceTargets = [];
   const stageMinimumHullGaps = Object.create(null);
   const applyPublicControls = (controls) => {
-    for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Digit0', 'Digit6', 'ShiftLeft']) {
+    for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Digit0', 'Digit2', 'ShiftLeft']) {
       inputSystem._keys[key] = false;
     }
     if (Number(controls.moveZ) > 0) inputSystem._keys.KeyW = true;
@@ -7271,7 +7271,7 @@ async function runSeed47ToolkitCameraReposition() {
       inputSystem._keys.Digit0 = true;
     }
     if (controls.boost === true) inputSystem._keys.ShiftLeft = true;
-    if (controls.deployRepulsor === true) inputSystem._keys.Digit6 = true;
+    if (controls.deployRepulsor === true) inputSystem._keys.Digit2 = true;
   };
   const step = (count, input = {}) => {
     for (let index = 0; index < count; index += 1) {

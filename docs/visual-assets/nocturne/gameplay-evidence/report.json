@@ -1,0 +1,67 @@
+{
+  "base": "6a9eec796e3b25e2b08526cd4412503d32cccb12",
+  "route": "real main page / New Game / Launch",
+  "hardware": "Chromium SwiftShader; software-only validation, not hardware GPU acceptance",
+  "errors": [],
+  "warnings": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[SpaceFace] game module failed to load TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:35115/src/main.js"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    },
+    {
+      "type": "error",
+      "text": "[SpaceFace] game module failed to load TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:35115/src/main.js"
+    }
+  ],
+  "failures": [
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:35115/src/audio/trailerScore.js"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:35115/src/audio/recipeCaptions.js"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:35115/src/audio/trailerScore.js"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:35115/src/audio/recipeCaptions.js"
+    }
+  ],
+  "downloaded": [
+    {
+      "path": "assets/ui/app-icon/favicon.svg",
+      "bytes": 2914
+    }
+  ],
+  "checkpoints": [
+    {
+      "label": "obstacle",
+      "renderer": null,
+      "lights": [],
+      "body": "SPACEFACE · FLIGHT SYSTEMS\n00:01\nSPACEFACE\nSTARTUP COULD NOT FINISH\nReload to retry. Your saved games have not been changed. (Failed to fetch dynamically imported module: http://127.0.0.1:35115/src/main.js)",
+      "buttons": []
+    }
+  ],
+  "stage": "boot",
+  "obstacle": "Error: Visible Play button not available\n    at clickVisible (file:///workspace/scratch/32008c4ea6e0/SpaceFace/scripts/check-nocturne-gameplay.mjs:56:9)\n    at async file:///workspace/scratch/32008c4ea6e0/SpaceFace/scripts/check-nocturne-gameplay.mjs:138:3"
+}

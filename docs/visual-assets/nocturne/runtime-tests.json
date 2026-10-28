@@ -1,0 +1,216 @@
+{
+  "kind": "focused-runtime-tests",
+  "createdAt": "2026-10-23T17:02:03.305Z",
+  "node": "v24.19.0",
+  "sourceBefore": {
+    "src/render/nocturne/atmosphere.js": "e1d909c6751eefbc6abb8aef5d851c378b420f4988edaa741100dbebf7b00bd2",
+    "src/render/nocturne/bridge.js": "6d0d662b64751ed4a61f93ddbcdd4ecdf431aba1cf796427191ef114d36cdecd",
+    "src/render/nocturne/content.js": "f038abf267b1b63ac9ee73caf07a034914d919dfc0ec037a15bdcd91d5896c37",
+    "src/render/nocturne/director.js": "94d5a205b485a1132f1b25375550d39437ce42c2c36ae3a5140f0d9f700b8568",
+    "src/render/nocturne/headlightSources.js": "5df223898963bb7b129a04d20b37b7b147c59a2b4bc766b12dceb1922e35f21d",
+    "src/render/nocturne/probes.js": "ede65dd20ab52d85891d916aa1ed9b1e18ea7a881549e1ac137213883f5d5363",
+    "src/render/nocturne/registry.js": "797ed8ac9bf315845625942865c477ad227687a9c0f373a8d2341f9ffc26a867",
+    "src/render/nocturne/runtime.js": "9484fed1fe708a0e748e881681d7e7564687ce9103f380cc947266cfee4e5737",
+    "src/render/nocturne/shadows.js": "d4b9a50d9f64f8afe51199cc0852d8b302d916d5a135d280034599ab181bbf57",
+    "src/data/nocturneLighting.js": "45046a2e62cfa23446be493a71ae86fd8b5176097fafa9e93d2c249561b66085",
+    "src/data/lookMoods.js": "f05a7b41957f4afc7350f8359b8a7a64d3558c0afd148cf47d775c0a9a1f98d8",
+    "src/render/renderer.js": "de1b9cf7c3138bc5f679132962fcfad08efa3b31d955fce57c33670b8d9d7beb",
+    "src/render/illustratedSurface.js": "353f20f21be74e3b3acda222b65f6a0de3501d2727a35109bf0c76a47fd09674",
+    "src/render/bloom.js": "b2b83640b86f14e37d2fb2c5bf12b189610f33fe585584208df6fecef66fa863",
+    "src/render/post/spaceRenderGraph.js": "c83718f8a4a617b6cac0d7feca2efcb44dfe569c5b240c8efdf2bcfd8ce0a1e2",
+    "src/render/shadowDepthAdmission.js": "99937a70ee9130bd66bbfd47fb6cdeebdd4053cb13078b2d496312c6c8f45cd5",
+    "src/render/vfx.js": "d63f7789c2b9dc6e163c736612173e58c261b1efa9f9183162e3be4b753e9848",
+    "src/render/weapons/weaponLights.js": "3acd66956bb4c743a917117a95d874308a8c6461724eea5e4b97349852eecee1",
+    "test/nocturne-director.test.mjs": "50c3a3e606d7f035259ee4b931cb0a42c77623a350ec8993e9e8a6d9eb43803c",
+    "test/nocturne-director-admission.test.mjs": "6bcff27dc6c669bbda92f7489fff150b69d4b354c40035b17f71b393c425464e",
+    "test/nocturne-content.test.mjs": "c32aec4067b80d75334fcf1b3779079e15390216b0f03fe3a5d6c291a3aabc72",
+    "test/nocturne-bridge.test.mjs": "136afcba5ece04fc3d1a929213f01fbce860b1c81223a50260c9b0f972c8d9cd",
+    "test/nocturne-atmosphere.test.mjs": "aa2c0b093acc845542386aec94d5f49d9852836f922a30d56c43f4b4ae26260f",
+    "test/nocturne-atmosphere-graph.test.mjs": "11d764b75b4a6a880189c8abc0923419b4b25ff81e1fac35fb7a887427637f77",
+    "test/nocturne-settings.test.mjs": "58472a32440471274642dd7fba38bde159965dd4369a344274cf1b3f7ac38d5a",
+    "test/shadow-depth-admission.test.mjs": "4961a2fe724e6545979c874bd959c1cbbe1eea621c9aa92e9455d5c3263aef6a",
+    "test/headlights.test.mjs": "3cf42d592bf82651d235f468b69f96de7f46d5547654fedb9ada1f70005d2e6c",
+    "test/ambient-fixtures.test.mjs": "29283a266224ac469ab4ff0b8bb725245b773e2dbe0c4ba47df3cb2471f6cb49",
+    "test/illustrated-surface.test.mjs": "f2a903f5d94fc8cd44c166ce2774527f250bc80d1f4bd63bd0a69b187f0a31ea",
+    "test/illustrated-shader-identifiers.test.mjs": "39e6ba24686e3c15c30eb9224a970797a1c7c06c579a81a4f5032fc381f79b5d",
+    "test/bloom-distortion.test.mjs": "77c71166663a53e6094b518d18a8645848c0ef172f9e5c82822f9190008d7b43",
+    "test/bloom-packed-hdr.test.mjs": "e4ddf8ee762afc95b7cbdad8110180dd19a8ab1b68f8f6bfe5ff39a4e46cc6f8",
+    "test/bloom-contrast-lut.test.mjs": "316ba95ba6faaaf695e40cc049e3b1f2904cd117d5a96eca6cc9b79d25f77a64",
+    "test/bloom-pass-timing-scratch.test.mjs": "1822c8b55adaae85a46fa7c60bba95a1d8cdba525988862696961c2a0075be23"
+  },
+  "suites": [
+    {
+      "name": "nocturne-director",
+      "cases": 14,
+      "passed": true,
+      "error": null,
+      "output": "✔ logical admission is bounded, stale handles retire, and TTL/envelopes do not touch owners (1.85548ms)\n✔ authored sockets inherit hierarchy transforms and detach or missing sockets go dark (1.436764ms)\n✔ 500 logical emitters preserve the adopted point/spot census and bounded memory records (31.896224ms)\n✔ frustum influence rejects offscreen decoration while a light volume can enter from offscreen (1.301895ms)\n✔ hysteresis holds near-equal residents but yields to a consequential critical event (0.98525ms)\n✔ preallocated event enable transitions admit immediately and retired records cannot ghost (0.560125ms)\n✔ a malformed moving source cannot upload a NaN pose between selection cadences (0.614124ms)\n✔ handoff fades at the old location before moving the GPU light (0.891481ms)\n✔ only one real shadow resource is resident and occlusion-required lamps never leak through fallback (1.301094ms)\n✔ stationary shadows cache until a changed caster, moving lamps update at bounded cadence (1.086759ms)\n✔ a skipped draw preserves a requested map until the renderer consumes it (0.477633ms)\n✔ optional directional adoption changes no rig membership (0.793678ms)\n✔ context-loss teardown detaches owned and adopted lights without GPU dispose events (1.431126ms)\n✔ normal teardown releases each owned map and light once (0.582216ms)\nℹ tests 14\nℹ suites 0\nℹ pass 14\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 52.674927\n"
+    },
+    {
+      "name": "nocturne-director-admission",
+      "cases": 2,
+      "passed": true,
+      "error": null,
+      "output": "✔ local shadow culling poses the refreshed spot before submission and retains cached-map projection (3.277753ms)\n✔ local spotlight depth admission preserves the exact light census and independent shadow resources (8.023871ms)\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 16.951398\n"
+    },
+    {
+      "name": "nocturne-content",
+      "cases": 20,
+      "passed": true,
+      "error": null,
+      "output": "✔ actual model sockets bind real sources and track animated, scaled parents without sim writes (6.941444ms)\n✔ power loss immediately extinguishes fixtures and probe contribution; repair restores it (1.399789ms)\n✔ a dark mesh or missing named authored socket never invents a light at its origin (1.545263ms)\n✔ automatic lamp fallback uses visible emissive geometry, not radius-based imaginary bulbs (1.673703ms)\n✔ removed and same-id rematerialized entities release old handles, never leak source residency (0.939722ms)\n✔ source and media capacities stay bounded when the yard is dense (28.62158ms)\n✔ stationary light shadows invalidate when an ordinary nearby non-emitting caster moves (0.888597ms)\n✔ vacuum and combat have no participating medium; derelict smoke requires an active source (0.695744ms)\n✔ classification is explicit for luminous rocks/biology and all explicit opt-outs win (0.246533ms)\n✔ probe irradiance has compact spatial support and true normal-dependent colour response (0.572382ms)\n✔ static reflection binding isolates shared materials and restores/disposes only owned clones (0.953303ms)\n✔ invalid medium metadata fails closed and explicit false leaves vacuum optically clear (0.898142ms)\n✔ visible LOD replacement retargets sources without keeping hidden emitters alive (0.595717ms)\n✔ native vented reactor state extinguishes its removed core and fauna emits without invented gas (0.495149ms)\n✔ one-slot headlight census stays bounded and explicit power-off states extinguish it (1.011158ms)\n✔ headlights rebind a hidden LOD socket to its visible replacement instead of following stale geometry (0.752807ms)\n✔ a named emissive socket is reserved once and its material power controls indirect composition (1.745909ms)\n✔ authoring descriptors reject malformed identifiers, fractional priorities and unsafe numeric output (0.762142ms)\n✔ native fabrication and Sker anchors retain industrial identity even with generic station packages (0.189619ms)\n✔ lost-context content disposal restores reflection materials without dispatching GPU disposal (1.555309ms)\nℹ tests 20\nℹ suites 0\nℹ pass 20\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 60.663157\n"
+    },
+    {
+      "name": "nocturne-bridge",
+      "cases": 9,
+      "passed": true,
+      "error": null,
+      "output": " Particle system powered by three.quarks. https://quarks.art/\n✔ real VFX, weapon and engine adapters share eight GPU points and three spots (13.2662ms)\n✔ normalized existing event priorities retain their gameplay meaning (1.836782ms)\n✔ material contact stays secondary while a gyre payload uses the normalized major-event priority (2.027674ms)\n✔ VFX teardown retires logical sources before reinitialization in the same renderer (2.444087ms)\n✔ retiring an old bridge generation cannot dispose its replacement (2.625443ms)\n✔ manual lighting controls apply to an immediate flush and respect the saved preference (2.887248ms)\n✔ actual save, game and sector boundaries clear transient light without removing GPU residency (5.55879ms)\n✔ exiting to menu retires VFX CPU envelopes before the next light update (2.305061ms)\n✔ retained runtime handles release old world references and dispose only once (5.601232ms)\nℹ tests 9\nℹ suites 0\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 46.066093\n"
+    },
+    {
+      "name": "nocturne-atmosphere",
+      "cases": 11,
+      "passed": true,
+      "error": null,
+      "output": "✔ Beer-Lambert attenuation composes over adjacent segments and vacuum is exactly clear (1.295897ms)\n✔ bounded medium intersection respects anisotropic radii and camera-inside cases (0.390945ms)\n✔ vacuum and disabled atmosphere submit no rendering and cannot reuse a stale illuminated history (5.805663ms)\n✔ steady scenes reuse bounded targets/materials; changed sources and camera cuts reject history (5.982943ms)\n✔ input caps, disabled sources and source records are respected without writing authored data (6.861556ms)\n✔ switching post routes at equal sizes rejects history from a different scene depth source (0.709494ms)\n✔ only a ready real spotlight shadow map enables volumetric source occlusion (0.763604ms)\n✔ a later strong explosion enters the bounded scatter set while the ready shadow source stays pinned (1.176571ms)\n✔ lost-context teardown clears references without dispatching stale GPU disposal events (1.431807ms)\n✔ quality changes resize history without material variants; disposal is idempotent (1.022084ms)\n✔ unsupported WebGL capabilities fail clear without advertising an unprepared shader (0.451314ms)\nℹ tests 11\nℹ suites 0\nℹ pass 11\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 33.03604\n"
+    },
+    {
+      "name": "nocturne-atmosphere-graph",
+      "cases": 4,
+      "passed": true,
+      "error": null,
+      "output": "✔ graph uses its existing resolved scene depth and composes transport after AO, before final presentation (11.042358ms)\n✔ graph honors transport toggles, vacuum, scale changes and detach without destroying the shared pass (1.527257ms)\n✔ graph warm-up includes atmospheric targets/programs and context cleanup exposes every shared resource (1.434531ms)\n✔ bloom detaches atmospheric depth without GPU disposal events after context loss (2.301036ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 23.722556\n"
+    },
+    {
+      "name": "nocturne-settings",
+      "cases": 3,
+      "passed": true,
+      "error": null,
+      "output": "✔ lighting preferences are part of preset matching and automatic quality scales by hardware (3.1465ms)\n✔ lighting toggles and quality survive a real profile round trip (5.345545ms)\n✔ old and malformed profiles inherit the same lighting defaults without changing simulation data (1.405518ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 18.223259\n"
+    },
+    {
+      "name": "shadow-depth-admission",
+      "cases": 21,
+      "passed": true,
+      "error": null,
+      "output": "✔ collects mesh casters from a root and skips non-casters (2.307426ms)\n✔ shadow depth compile runs the real shadow pass on exact casters and restores homes (1.809523ms)\n✔ shadow depth admission records the actual generated depth binding and restores an existing driver hook (0.382653ms)\n✔ shadow depth admission fails closed when its actual depth draw has no program binding (0.388291ms)\n✔ shadow depth admission restores the prior renderBufferDirect hook when the shadow pass throws (0.566784ms)\n✔ hidden zero-count instanced casters are revealed for the shadow pass (0.54365ms)\n✔ inactive shadows skip unless forceEnable is set (0.269827ms)\n✔ armAdmissionShadows toggles live shadow state only when enabled (0.176069ms)\n✔ shadow depth admission stages a private key-light clone and never writes the live shadow map (6.602475ms)\n✔ repeat shadow depth admission reuses the cached private light and its shadow map (1.951681ms)\n✔ shadow depth admission restores renderer flags, hook, and target when the staged pass throws (0.882608ms)\n✔ disposeAdmissionShadowResources retires cached private shadow resources and re-creates on next admission (2.915981ms)\n✔ shadow depth admission stages the source light's world transform under a transformed parent (1.858474ms)\n✔ disposeAdmissionShadowResources retires the private shadow through its canonical mapPass path (0.601215ms)\n✔ disposeAdmissionShadowResources clears references without GL calls when the context is lost (0.515909ms)\n✔ shadow depth admission restores renderer flags and live maps when the depth render throws (0.752066ms)\n✔ staged depth signatures dedup under the live light census (0.98493ms)\n✔ a pending live shadow refresh survives an interleaved private admission pass (0.703525ms)\n✔ staging session pays the census warm once and slices stage without re-ceremony (0.455891ms)\n✔ a closed mid-drive stepped slice aborts instead of parking casters unmarked (0.597299ms)\n✔ an exhausted collect wallet returns the OVER_COVER sentinel, not an array (0.292581ms)\nℹ tests 21\nℹ suites 0\nℹ pass 21\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 34.375311\n"
+    },
+    {
+      "name": "headlights",
+      "cases": 5,
+      "passed": true,
+      "error": null,
+      "output": " Particle system powered by three.quarks. https://quarks.art/\n✔ headlights are real SpotLights with no geometry, and the light count never changes (3.635649ms)\n✔ the player lamp rides the bow, pitched down onto what is ahead, and fades in (0.700131ms)\n✔ NPC lamps go to the nearest powered hulls in reach and hold them (2.269529ms)\n✔ a lamp follows the drawn hull when the presented root is available (1.283809ms)\n✔ a running power reads as light: the player field first, following its envelope (67.252849ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 86.447532\n"
+    },
+    {
+      "name": "ambient-fixtures",
+      "cases": 4,
+      "passed": true,
+      "error": null,
+      "output": "✔ only physically credible emissive sources receive fixtures (1.199435ms)\n✔ fixed two-slot selector stays sticky, never lights dead or distant objects (1.233956ms)\n✔ rebases and entity replacement cannot leave old lights pinned (0.220454ms)\n✔ vacancy selection ranks nearest actual sources irrespective of entity iteration order (0.219774ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 11.246723\n"
+    },
+    {
+      "name": "illustrated-surface",
+      "cases": 12,
+      "passed": true,
+      "error": null,
+      "output": "✔ a late-attached packed-ORM clone still collapses after a second canonicalize (2.693262ms)\n✔ compose leftover unique keys collapse on first presentation bind (0.544671ms)\n✔ packed-ORM compose that concatenated onBeforeCompile source still collapses (0.495238ms)\n✔ unpatched standard materials replace Three default compile-source keys (0.613532ms)\n✔ shader materials keep leftover uniqueness through object canonicalize (0.282916ms)\n✔ two hulls with unique leftover cache keys share one illustrated program family (0.480356ms)\n✔ illustration preserves authored inputs and chains the live physical shader once (1.258411ms)\n✔ reapplying authored profiles does not recursively wrap the shader (3.702338ms)\n✔ rough rock reflection is role scoped and preserves its scanned material inputs (1.00582ms)\n✔ glass and shader effects retain their optical response (0.599372ms)\n✔ packed ORM can own the AO include before the illustration hook is installed (0.512414ms)\n✔ clearcoat sun lobe skips zero-facing lights before half-vector work (0.116301ms)\nℹ tests 12\nℹ suites 0\nℹ pass 12\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 19.868865\n"
+    },
+    {
+      "name": "illustrated-shader-identifiers",
+      "cases": 3,
+      "passed": true,
+      "error": null,
+      "output": "✔ illustrated surface chunks use no undeclared sf identifiers (6.047779ms)\n✔ the guard reports the sfFineVisibility regression that broke every hull link (1.455151ms)\n✔ the guard reports an undeclared identifier anywhere in the chunk surface (1.967966ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 14.976607\n"
+    },
+    {
+      "name": "bloom-distortion",
+      "cases": 4,
+      "passed": true,
+      "error": null,
+      "output": " Particle system powered by three.quarks. https://quarks.art/\n✔ default bloom has no distortion target or draw without an attached producer (5.288631ms)\n✔ native weapon and Well producers share one default-route target, then sleep at expiry (50.41289ms)\n✔ distortion participates in opening admission, resize, context rebuild and disposal (1.384267ms)\n✔ native presenter switches active compositor and unregisters on disposal (13.659178ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 76.130401\n"
+    },
+    {
+      "name": "bloom-packed-hdr",
+      "cases": 4,
+      "passed": true,
+      "error": null,
+      "output": "✔ packed HDR mode normalizes and preserves explicit target formats (0.748601ms)\n✔ packed HDR capability probe restores the caller target and fails closed (2.261567ms)\n✔ bloom keeps HalfFloat by default, supports pyramid/all opt-in modes, and re-probes restore (3.879869ms)\n✔ residency accounts packed RGB HDR as one four-byte word per pixel (0.962156ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 13.340409\n"
+    },
+    {
+      "name": "bloom-contrast-lut",
+      "cases": 5,
+      "passed": true,
+      "error": null,
+      "output": "✔ default shader uses one power while retaining every authored contrast and mood transition (18.802281ms)\n✔ single-power contrast preserves dark, saturated and HDR presentation values (5.780996ms)\n✔ unusual tuning retains the original two-power denominator floor and endpoint behavior (0.659451ms)\n✔ contrast LUT uses portable RG8 encoding and stays within one final sRGB byte (18.469182ms)\n✔ contrast LUT is opt-in, rebuilds on contrast changes, and fails closed without WebGL2 (5.241372ms)\nℹ tests 5\nℹ suites 0\nℹ pass 5\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 55.968869\n"
+    },
+    {
+      "name": "bloom-pass-timing-scratch",
+      "cases": 4,
+      "passed": true,
+      "error": null,
+      "output": "✔ bloom keeps exact pass order and instrumentation without per-frame timing callbacks (7.143862ms)\n✔ one-level bloom keeps its exact target, draw, and Tier-1 pixel contract (2.237652ms)\n✔ every failing timed pass closes its matching GPU and CPU group exactly once (2.019682ms)\n✔ shipping render reuses createBloom-lifetime pass functions with fixed argument slots (1.225062ms)\nℹ tests 4\nℹ suites 0\nℹ pass 4\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 19.301145\n"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "scripts/check-nocturne-authoring.mjs"
+      ],
+      "passed": true,
+      "error": null,
+      "output": "NOCTURNE authoring: 18 profiles, 21 fixture descriptors, 5 compositions valid.\n"
+    },
+    {
+      "command": [
+        "scripts/sync-modulepreload.mjs",
+        "--check"
+      ],
+      "passed": true,
+      "error": null,
+      "output": "[modulepreload] in sync — 38 main + 2267 registry imports covered.\n"
+    }
+  ],
+  "gameplayAcceptance": false,
+  "hardwareAcceptance": false,
+  "sourceAfter": {
+    "src/render/nocturne/atmosphere.js": "e1d909c6751eefbc6abb8aef5d851c378b420f4988edaa741100dbebf7b00bd2",
+    "src/render/nocturne/bridge.js": "6d0d662b64751ed4a61f93ddbcdd4ecdf431aba1cf796427191ef114d36cdecd",
+    "src/render/nocturne/content.js": "f038abf267b1b63ac9ee73caf07a034914d919dfc0ec037a15bdcd91d5896c37",
+    "src/render/nocturne/director.js": "94d5a205b485a1132f1b25375550d39437ce42c2c36ae3a5140f0d9f700b8568",
+    "src/render/nocturne/headlightSources.js": "5df223898963bb7b129a04d20b37b7b147c59a2b4bc766b12dceb1922e35f21d",
+    "src/render/nocturne/probes.js": "ede65dd20ab52d85891d916aa1ed9b1e18ea7a881549e1ac137213883f5d5363",
+    "src/render/nocturne/registry.js": "797ed8ac9bf315845625942865c477ad227687a9c0f373a8d2341f9ffc26a867",
+    "src/render/nocturne/runtime.js": "9484fed1fe708a0e748e881681d7e7564687ce9103f380cc947266cfee4e5737",
+    "src/render/nocturne/shadows.js": "d4b9a50d9f64f8afe51199cc0852d8b302d916d5a135d280034599ab181bbf57",
+    "src/data/nocturneLighting.js": "45046a2e62cfa23446be493a71ae86fd8b5176097fafa9e93d2c249561b66085",
+    "src/data/lookMoods.js": "f05a7b41957f4afc7350f8359b8a7a64d3558c0afd148cf47d775c0a9a1f98d8",
+    "src/render/renderer.js": "de1b9cf7c3138bc5f679132962fcfad08efa3b31d955fce57c33670b8d9d7beb",
+    "src/render/illustratedSurface.js": "353f20f21be74e3b3acda222b65f6a0de3501d2727a35109bf0c76a47fd09674",
+    "src/render/bloom.js": "b2b83640b86f14e37d2fb2c5bf12b189610f33fe585584208df6fecef66fa863",
+    "src/render/post/spaceRenderGraph.js": "c83718f8a4a617b6cac0d7feca2efcb44dfe569c5b240c8efdf2bcfd8ce0a1e2",
+    "src/render/shadowDepthAdmission.js": "99937a70ee9130bd66bbfd47fb6cdeebdd4053cb13078b2d496312c6c8f45cd5",
+    "src/render/vfx.js": "d63f7789c2b9dc6e163c736612173e58c261b1efa9f9183162e3be4b753e9848",
+    "src/render/weapons/weaponLights.js": "3acd66956bb4c743a917117a95d874308a8c6461724eea5e4b97349852eecee1",
+    "test/nocturne-director.test.mjs": "50c3a3e606d7f035259ee4b931cb0a42c77623a350ec8993e9e8a6d9eb43803c",
+    "test/nocturne-director-admission.test.mjs": "6bcff27dc6c669bbda92f7489fff150b69d4b354c40035b17f71b393c425464e",
+    "test/nocturne-content.test.mjs": "c32aec4067b80d75334fcf1b3779079e15390216b0f03fe3a5d6c291a3aabc72",
+    "test/nocturne-bridge.test.mjs": "136afcba5ece04fc3d1a929213f01fbce860b1c81223a50260c9b0f972c8d9cd",
+    "test/nocturne-atmosphere.test.mjs": "aa2c0b093acc845542386aec94d5f49d9852836f922a30d56c43f4b4ae26260f",
+    "test/nocturne-atmosphere-graph.test.mjs": "11d764b75b4a6a880189c8abc0923419b4b25ff81e1fac35fb7a887427637f77",
+    "test/nocturne-settings.test.mjs": "58472a32440471274642dd7fba38bde159965dd4369a344274cf1b3f7ac38d5a",
+    "test/shadow-depth-admission.test.mjs": "4961a2fe724e6545979c874bd959c1cbbe1eea621c9aa92e9455d5c3263aef6a",
+    "test/headlights.test.mjs": "3cf42d592bf82651d235f468b69f96de7f46d5547654fedb9ada1f70005d2e6c",
+    "test/ambient-fixtures.test.mjs": "29283a266224ac469ab4ff0b8bb725245b773e2dbe0c4ba47df3cb2471f6cb49",
+    "test/illustrated-surface.test.mjs": "f2a903f5d94fc8cd44c166ce2774527f250bc80d1f4bd63bd0a69b187f0a31ea",
+    "test/illustrated-shader-identifiers.test.mjs": "39e6ba24686e3c15c30eb9224a970797a1c7c06c579a81a4f5032fc381f79b5d",
+    "test/bloom-distortion.test.mjs": "77c71166663a53e6094b518d18a8645848c0ef172f9e5c82822f9190008d7b43",
+    "test/bloom-packed-hdr.test.mjs": "e4ddf8ee762afc95b7cbdad8110180dd19a8ab1b68f8f6bfe5ff39a4e46cc6f8",
+    "test/bloom-contrast-lut.test.mjs": "316ba95ba6faaaf695e40cc049e3b1f2904cd117d5a96eca6cc9b79d25f77a64",
+    "test/bloom-pass-timing-scratch.test.mjs": "1822c8b55adaae85a46fa7c60bba95a1d8cdba525988862696961c2a0075be23"
+  },
+  "sourceStable": true,
+  "cases": 125,
+  "failedChecks": 0,
+  "passed": true
+}

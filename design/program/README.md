@@ -1,6 +1,10 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace program control surface
 
+> **Front door moved (owner, 2026-10-28):** the [Finish Program](./finish/README.md) is where an
+> agent gets its job — three lane boards, three ordered packet lists. The control surface below
+> stays for mutation windows (`NOW.md`), the queue index and retained detail.
+
 This directory is the only whole-program status and acceptance surface. It separates short live
 mutation windows, machine-indexed work, executable packets, and retained evidence so an agent can
 orient without ingesting the repository's history.
@@ -10,14 +14,14 @@ orient without ingesting the repository's history.
 | Need | Read |
 |---|---|
 | Build inhabited districts, optional military heists, huge surfaces/interiors and a coherent reactive story | [THE OPEN REACH](living-world/README.md) — eight source-grounded district briefs, native contracts, model commissions and executable agent handoffs; future gameplay remains planned |
-| Mature the existing game through concrete workflows and ten bounded cloud assignments | [Maturity and cloud implementation pack](maturity-cloud-2026-10-20/README.md) — source-backed companion to existing build-map rows, not a second queue |
+| Mature the existing game through concrete workflows and ten bounded cloud assignments | [Maturity and cloud implementation pack](../archive/program/maturity-cloud-2026-10-20/README.md) — source-backed companion to existing build-map rows, not a second queue |
 | Owner-directed production-quality planning and physics-playground first wave | [`PRODUCTION_QUALITY_COMPOUNDING.md`](./PRODUCTION_QUALITY_COMPOUNDING.md) — six finite bundles preserving NXB-001–060, resolved first-wave designs, bounded architecture; supporting plan, not a queue |
-| Design the mature world and commission genuinely missing 3D/content families | [World-depth target and production slices](world-depth-2026-10-02/README.md); routed through existing FINISH_LANES and INFERENCE §0.2, not another queue |
+| Design the mature world and commission genuinely missing 3D/content families | [World-depth target and production slices](../archive/program/world-depth-2026-10-02/README.md); routed through existing FINISH_LANES and INFERENCE §0.2, not another queue |
 | Make the game better with INFERENCE (look, infer, rotate — detect is a hint) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) (prompt [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt)). Thin rows do not count |
 | INFERENCE overlay when the sim is busy but undesigned | [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md) (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt)). Fun Loop still owns guts |
 | Close the gap between the build and the owner's vision (combat feel, visual energy, living world, rewards) | [`VISION_ALIGNMENT_PLAN.md`](./VISION_ALIGNMENT_PLAN.md) — audited file-level gap map, the Big Five unlocks, phased fixes |
 | Harvest leftover worktrees / unused models | [`ORPHAN_HARVEST_GOAL.txt`](./ORPHAN_HARVEST_GOAL.txt) → [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md) |
-| The game is hitching / not playing smoothly | [`PERF_HITCH_CAMPAIGN.md`](./PERF_HITCH_CAMPAIGN.md) → `node scripts/program-dispatch.mjs --id PQ-129` |
+| The game is hitching / not playing smoothly | the Finish Program's [Lane 1 board](./finish/LANE_1_MACHINE_AND_PICTURE.md) owns performance; [`design/perf/`](../perf/README.md) is the folded perf index |
 | Copy-ready prompt for any thread | [`AGENT_TASK_PROMPTS.md`](./AGENT_TASK_PROMPTS.md) |
 | First exact ready unit, every ready unit, or one parent row | `node scripts/program-dispatch.mjs --next`, `--ready`, or `--id PQ-XXX` |
 | Threads editing now and exact dirty hunks to preserve | [`NOW.md`](./NOW.md) |

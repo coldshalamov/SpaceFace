@@ -89,6 +89,13 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .sf-go-recap { height:calc(var(--r) * 2 + 110px * var(--sv)); }
   ${GO} > .sf-go-tape { height:112px; }
 }
+/* short stacked windows (641-1100w, <=640h, e.g. 960x540): the 66px headline ran to three lines and
+   pushed the recovery verbs and the career record below the fold, so it takes the short-desktop size */
+@media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} > .k-title .k-caps { margin-bottom:calc(8px * var(--sv)) !important; }
+  ${GO} > .k-title .k-t-title { font-size:calc(40px * var(--sv)) !important; max-width:24ch; }
+  ${GO} > .k-title .k-sentence { margin-top:calc(8px * var(--sv)) !important; }
+}
 /* stacked (<=1100): the screen scrolls, so the rays and the scrim hold to the window instead of
    stretching the scroll sideways and past the tape into bare backdrop */
 @media (max-width:1100px) {
@@ -100,7 +107,7 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
    small dial over a two-up list of its figures (the rim stations need ~750px) */
 @media (max-width:640px) {
   ${GO} { --sv:1; --r:76px; padding:28px 22px 24px !important; row-gap:22px !important; }
-  ${GO} > .k-title .k-t-title { font-size:clamp(28px, 9vw, 42px) !important; line-height:.98 !important; max-width:none; overflow-wrap:break-word; }
+  ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:none; text-wrap:pretty; overflow-wrap:break-word; }
   ${GO} .sf-go-grid { gap:14px 28px !important; }
   ${GO} .sf-go-foot, ${GO} .sf-go-foot > .k-words { width:100%; }
   ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; column-gap:28px !important; row-gap:4px !important; }

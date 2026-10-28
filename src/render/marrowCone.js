@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { BOLUS_SECTOR_ID } from '../data/theBolus.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
+import { nocturneForScene } from './nocturne/bridge.js';
 
 const DIM = Object.freeze({ ambient: 0.35, key: 0.28, rim: 0.45, fill: 0.4 });
 const scratch = { x: 0, z: 0 };
@@ -29,12 +30,15 @@ export function syncMarrowCone(renderer) {
   const spot = ensureSpot(renderer);
   // The spot stays mounted and visible; gating on intensity keeps the rendered-light census
   // constant across the sector boundary — a .visible flip relinks every material program.
-  spot.intensity = inside ? 14 : 0;
+  spot.intensity = inside ? (spot._nocturneSource ? 14 * Math.pow(48, 0.8) : 14) : 0;
   if (!inside) return;
   const player = renderer.state.playerId != null && renderer.state.entities
     ? renderer.state.entities.get(renderer.state.playerId)
     : null;
-  if (!player || !player.pos || !renderer._frameMembrane) return;
+  if (!player || player.alive === false || !player.pos || !renderer._frameMembrane) {
+    spot.intensity = 0;
+    return;
+  }
   const local = renderer._frameMembrane.toLocal(player.pos, scratch);
   const rot = player.rot || 0;
   const fx = Math.cos(rot);
@@ -45,14 +49,21 @@ export function syncMarrowCone(renderer) {
 }
 
 function ensureSpot(renderer) {
-  if (renderer._marrowSpot?.parent === renderer.scene) return renderer._marrowSpot;
+  if (renderer._marrowSpot?._nocturneSource?.registered
+    || renderer._marrowSpot?.parent === renderer.scene) return renderer._marrowSpot;
   disposeMarrowCone(renderer);
-  const spot = new THREE.SpotLight(0xffc2a8, 0, 340, (18 * Math.PI) / 180, 0.45, 1.2);
-  spot.intensity = 14;
-  spot.castShadow = false;
-  renderer.scene.add(spot);
-  renderer.scene.add(spot.target);
-  noteShadowCensusLightMutation();
+  const nocturne = nocturneForScene(renderer.scene);
+  const spot = nocturne
+    ? nocturne.createLight('bolus:marrow-searchlight', 'spot', { color: 0xffc2a8,
+      range: 340, angle: (18 * Math.PI) / 180, penumbra: 0.45, decay: 2,
+      priority: 4, critical: true, shadow: true })
+    : new THREE.SpotLight(0xffc2a8, 0, 340, (18 * Math.PI) / 180, 0.45, 1.2);
+  if (!nocturne) {
+    spot.castShadow = false;
+    renderer.scene.add(spot);
+    renderer.scene.add(spot.target);
+    noteShadowCensusLightMutation();
+  }
   renderer._marrowSpot = spot;
   return spot;
 }
@@ -60,6 +71,11 @@ function ensureSpot(renderer) {
 export function disposeMarrowCone(renderer, { disposeGpu = true } = {}) {
   const spot = renderer?._marrowSpot;
   if (!spot) return;
+  if (spot._nocturneSource) {
+    spot.dispose();
+    renderer._marrowSpot = null;
+    return;
+  }
   const wasMounted = spot.parent != null;
   spot.removeFromParent();
   spot.target.removeFromParent();

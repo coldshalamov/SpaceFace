@@ -753,8 +753,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (prev && isPhoneLayout()) {
       // Phone tabs share the berth's page scroll. A shorter destination must not inherit the
       // market's bottom-of-page offset and appear blank after its tab was touched.
+      // Where the berth itself doesn't scroll (a portrait phone off the Market tab), that same
+      // offset would hide the berth header with no way back: put the berth back at its top instead.
       requestAnimationFrame(() => {
-        if (activeId === id && shown && rootEl.isConnected) bodyEl.scrollIntoView({ block: 'start' });
+        if (activeId !== id || !shown || !rootEl.isConnected) return;
+        const view = rootEl.ownerDocument?.defaultView;
+        const oy = view?.getComputedStyle ? view.getComputedStyle(rootEl).overflowY : 'auto';
+        if (oy === 'hidden' || oy === 'clip') rootEl.scrollTop = 0;
+        else bodyEl.scrollIntoView({ block: 'start' });
       });
     }
   }

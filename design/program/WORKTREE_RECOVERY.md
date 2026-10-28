@@ -8,7 +8,7 @@ production work without treating age, branch names, or raw file counts as eviden
 The latest completed transaction is recorded in
 [`roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
 That closeout deletes the external `SpaceFace-archives` parking lot. The earlier
-[`roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md)
+[`roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md`](../archive/program/roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md)
 transaction remains durable for the 13 harvested `_recovery` sources.
 
 Current leftover checkouts under `C:\sf-agents` and unused in-repo models are

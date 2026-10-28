@@ -5,7 +5,7 @@ Claimable rows for the ATTENTION PROGRAM (`ATTENTION_PROGRAM.md`). One row = one
 surface + one audit → drafts → tribunal → implement cycle, each gate stamped
 `✓3` (the 3× rule). Status stages: `open → audit✓3 → plan✓3 → impl✓3 → landed`.
 Mark a row `CLAIMED <agent> <stage>` in place while working; artifacts live in
-`design/program/attention/`.
+`design/archive/program/attention/`.
 
 Row format: `id | surface | what the player sees | register | sanctioned detail | status`
 

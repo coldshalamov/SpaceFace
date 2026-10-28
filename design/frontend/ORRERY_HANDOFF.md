@@ -29,7 +29,7 @@ subagent scores it **>= 8/10 overall with no axis below 7**, looking at real scr
 ## 2. Status board (2026-09-28)
 
 Since 2026-09-25 late the bar is the OWNER'S: every surface must also answer (a) no thin wireframe / generic
-elements and (b) one distinct signature interaction (`design/frontend/OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
+elements and (b) one distinct signature interaction (`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md` §1, §2.1 —
 a band counts as body only at >= 2:1 on the glass, measured). Screens marked "letter" passed ORRERY before
 that bar existed and are re-scored after the weight sweep. Live per-surface status: the plan's §4 table.
 Latest critic report per surface: `design/frontend/review/reports/`. 31 surfaces approved — Wave 2

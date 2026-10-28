@@ -76,7 +76,7 @@ blocking decision retired. Deleted, and `check-asset-census` now fails on any GL
 The live numbers say it plainly.
 
 - A frame at the start of flight costs **~4.5 ms of an available 16.7 ms with ~60 draw calls**
-  ([`PERF_TOP10_AND_BACKLOG_2026-09-13.md`](../perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md)).
+  ([`PERF_TOP10_AND_BACKLOG_2026-09-13.md`](../archive/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md)).
   Drawing less geometry is not a lever at that size.
 - The worst live route receipt (`.devshots/frame-solid/2026-10-21T09-15-30-938Z.json`, adventure,
   seed 4242, headed) shows **frame p50 23.2 ms, p95 53.5 ms, p99 109.4 ms, longest 324 ms**,

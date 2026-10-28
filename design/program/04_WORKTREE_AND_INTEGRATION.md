@@ -142,7 +142,7 @@ move after this document is written. Use [`NOW.md`](./NOW.md) for volatile owner
 
 The eight ChatGPT portfolio branches each contain one reviewed historical handoff (the performance
 branch contains a two-commit correction chain). Their content is preserved under
-`docs/handoffs/chatgpt-portfolio-20260723/`; this is reference integration, not packet integration or
+`docs/archive/handoffs/chatgpt-portfolio-20260723/`; this is reference integration, not packet integration or
 route acceptance. The separate async-canary branch remains a transport demonstration and is not
 needed for product planning.
 

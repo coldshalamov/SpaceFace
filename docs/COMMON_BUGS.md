@@ -303,7 +303,7 @@ first-fire rules, route them through `engagementAuthority.js`; squad voting rema
 - Changing bloom/exposure globally without representative material and same-framing review.
 - Letting shader precompile coverage drift from the live pooled VFX/material variants.
 
-See `design/PERF_BUDGET.md` and read the current performance artifact; dated numbers in prose are not
+See `design/archive/perf/PERF_BUDGET.md` and read the current performance artifact; dated numbers in prose are not
 the performance truth.
 
 ---

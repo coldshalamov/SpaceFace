@@ -79,7 +79,7 @@ counts on FINISH_LANES or other lanes whose own law differs.
 
 ## Artifact home
 
-All program artifacts live in `design/program/attention/` (tracked — not
+All program artifacts live in `design/archive/program/attention/` (tracked — not
 `.devshots`, which is gitignored): `dossier-*.md` for the evidence phase,
 `<row>-audit.md`, `<row>-draft-<persona>.md`, `<row>-plan.md` with its
 Approvals footer, and `<row>-impl-note.md` on landing.
@@ -97,7 +97,7 @@ Approvals footer, and `<row>-impl-note.md` on landing.
 
 ## Evidence already gathered (dossier phase)
 
-`design/program/attention/` holds the first dossier:
+`design/archive/program/attention/` holds the first dossier:
 `dossier-first-hour.md` (audit of the onboarding rail and hour-1→10 emptiness
 — measured: 0 missions completed in 60 sim-hours), plus audio/feel,
 world-memory, and economy/failure dossiers as they land. Every catalog step

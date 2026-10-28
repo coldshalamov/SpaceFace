@@ -41,6 +41,10 @@ import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
 import {
+  createAtmosphereCompositeUniforms,
+  NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL,
+} from './nocturne/atmosphere.js';
+import {
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
   preparePresentedDraw,
@@ -1200,6 +1204,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform vec2 uSceneTexel; // 1/allocated scene size (WebGL1-safe; no textureSize)
 
   ${SPACE_POST_PRESENTATION_GLSL}
+  ${NOCTURNE_ATMOSPHERE_COMPOSITE_GLSL}
 
   uniform vec2 uUvScale;   // contentSize / allocatedSize for tScene / pyramid sub-rects
   uniform vec2 uUvOffset;
@@ -1218,6 +1223,9 @@ const COMPOSITE_FRAG = /* glsl */`
         * step(1e-5, distortion.z) * uUvScale, vec2(0.0), vec2(1.0));
     }
     vec3 scene = sampleSpaceIllustratedScene(tScene, sceneUv);
+    // Participating media transports linear HDR radiance before the one exposure/tone-map/encode.
+    // Vacuum is an exact uniform-disabled path; bloom never stands in for surface illumination.
+    scene = composeNocturneAtmosphere(scene, (sceneUv - uUvOffset) / uUvScale, sceneUv);
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     // Pyramid targets share the same content/allocated ratio, so one UV remap serves all.
     vec3 bloom = vec3(0.0);
@@ -1771,6 +1779,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let W = Math.max(1, width | 0);
   let H = Math.max(1, height | 0);
   let instrument = instrumentation && typeof instrumentation === 'object' ? instrumentation : null;
+  let atmosphere = null;
+  let atmosphereCamera = null;
+  const atmosphereUvScale = new THREE.Vector2(1, 1);
 
   // tunables (overridable via setOptions; defaults match settings.video.*)
   let enabled = true;
@@ -1940,6 +1951,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   function createRenderTargets(reason = 'init') {
     const rtScene = allocRenderTarget(W, H, sceneRtOpts, reason);
+    if (atmosphere?.supported) attachSceneDepth(rtScene);
     const halfW = Math.max(1, W >> 1);
     const halfH = Math.max(1, H >> 1);
     const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
@@ -1976,6 +1988,38 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let contentScale = 1;
   let contentW = W;
   let contentH = H;
+
+  function attachSceneDepth(target) {
+    target.depthTexture = new THREE.DepthTexture(W, H, THREE.UnsignedIntType);
+    target.depthTexture.name = 'Bloom:NOCTURNE:SceneDepth';
+    target.depthTexture.minFilter = THREE.NearestFilter;
+    target.depthTexture.magFilter = THREE.NearestFilter;
+    target.depthTexture.generateMipmaps = false;
+    target.resolveDepthBuffer = true;
+  }
+
+  // The runtime owns the pass's lifetime. Attachment happens before opening warm-up, so its depth
+  // attachment, MRT history targets and shader are admitted while the loading screen still owns time.
+  function attachAtmosphere(pass, { disposeGpu = true } = {}) {
+    if (pass === atmosphere) return;
+    atmosphere = pass || null;
+    atmosphereCamera = null;
+    if (atmosphere?.supported && !rtScene.depthTexture) {
+      if (disposeGpu) rtScene.dispose();
+      attachSceneDepth(rtScene);
+    } else if (!atmosphere?.supported && rtScene.depthTexture) {
+      if (disposeGpu) rtScene.dispose();
+      rtScene.depthTexture = null;
+    }
+    compositeMat.uniforms.uNocturneAtmosphere.value = 0;
+    compositeMat.uniforms.tNocturneScatter.value = null;
+    compositeMat.uniforms.tNocturneDepth.value = null;
+    compositeMat.uniforms.tNocturneSceneDepth.value = null;
+    if (atmosphere) {
+      atmosphere.setSize(W, H);
+      atmosphere.invalidateHistory('compositor-attached');
+    }
+  }
 
   // Producers own bounded effect geometry; this compositor owns only their shared vector target.
   // Allocate on attachment so prepareResources admits it before combat, never on the first shot.
@@ -2101,6 +2145,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     uSharpen:    { value: 0 },        // 0 = default picture; integrated preset opt-in
     uSceneTexel: { value: new THREE.Vector2(1 / W, 1 / H) },
     tLookContrastLut: { value: null },
+    ...createAtmosphereCompositeUniforms(),
     // Shared objects: look.js writes the mood once and every composite reads it.
     ...LOOK_POST_UNIFORMS,
   });
@@ -2228,6 +2273,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tBloom1.value = null;
     compositeMat.uniforms.tBloom2.value = null;
     compositeMat.uniforms.tDistortion.value = null;
+    compositeMat.uniforms.tNocturneScatter.value = null;
+    compositeMat.uniforms.tNocturneDepth.value = null;
+    compositeMat.uniforms.tNocturneSceneDepth.value = null;
     casMat.uniforms.tSrc.value = null;
     const glState = renderer && renderer.state;
     if (!glState || typeof glState.unbindTexture !== 'function') return;
@@ -2667,6 +2715,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compositeMat.uniforms.tBloom2.value = wide;
     compositeMat.uniforms.tDistortion.value = distortionLiveCount > 0 ? rtDistortion.texture : rtScene.texture;
     compositeMat.uniforms.uDistortion.value = distortionLiveCount > 0 ? 1 : 0;
+    if (atmosphere) atmosphere.bindComposite(compositeMat.uniforms, rtScene.depthTexture, atmosphereCamera, rtScene.texture);
+    else {
+      compositeMat.uniforms.uNocturneAtmosphere.value = 0;
+      compositeMat.uniforms.tNocturneScatter.value = rtScene.texture;
+      compositeMat.uniforms.tNocturneDepth.value = rtScene.texture;
+      compositeMat.uniforms.tNocturneSceneDepth.value = rtScene.texture;
+    }
     compositeMat.uniforms.uBloomW0.value = bloomActive ? 1.0 : 0.0;
     compositeMat.uniforms.uBloomW1.value = bloomActive && levels > 1 ? BLOOM_MID_WEIGHT : 0.0;
     compositeMat.uniforms.uBloomW2.value = bloomActive && levels > 2 ? BLOOM_WIDE_WEIGHT : 0.0;
@@ -2700,6 +2755,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     instrument = next && typeof next === 'object' ? next : null;
   }
 
+  function renderAtmospherePass(camera, tier1) {
+    atmosphereCamera = camera;
+    // The runtime shares one transport pass with the optional graph, whose internal scale may
+    // differ. Reconcile only at a route/size change; setSize is allocation-free when unchanged.
+    atmosphere.setSize(W, H);
+    atmosphereUvScale.set(contentW / W, contentH / H);
+    const drawn = atmosphere?.render(rtScene.depthTexture, camera, atmosphereUvScale);
+    if (drawn && tier1) tier1.countRenderPassPixels(atmosphere.lowWidth * atmosphere.lowHeight, 'nocturne-atmosphere');
+  }
+
   function render(scene, camera) {
     // Sampler unbind already clears Three's per-unit texture cache. resetState() also
     // drops VAO/program/framebuffer caches every frame; do not re-admit that hitch.
@@ -2717,6 +2782,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
     // from here we only draw the full-screen quad; disable autoClear so blits don't wipe each other
     renderer.autoClear = false;
+
+    if (atmosphere) timePassGroup('nocturneAtmosphere', renderAtmospherePass, camera, tier1);
 
     // ---- downsample chain: full -> ½ (bright-pass) -> ¼ ----
     // level 0 reads the full-res scene with the bright-pass; deeper levels pass through.
@@ -2757,6 +2824,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   async function prepareResources(yieldToMain = () => Promise.resolve()) {
     if (typeof renderer.initRenderTarget !== 'function') {
       return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
+    }
+    if (atmosphere) {
+      atmosphere.setSize(W, H);
+      await atmosphere.prepareResources(yieldToMain);
     }
     const targets = [rtScene, rtPost, rtDistortion, ...down].filter(Boolean);
     const allocations = [];
@@ -2818,6 +2889,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // recreate the whole pyramid at the current size so the next frame can render cleanly.
     // Re-probe the opt-in packed target against the restored context before allocating replacement
     // targets; unsupported restore paths fall back to the ordinary HalfFloat descriptors.
+    if (atmosphere) atmosphere.rebuild();
     selectPackedHdrMode();
     // Apply the (possibly flipped) packed-HDR descriptor FIRST: the MSAA probe below allocates
     // its proof target from `{ ...sceneRtOpts, samples }`, so it must prove the exact color
@@ -2888,11 +2960,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       compositeMat,
       casMat,
       contrastLutTexture,
+      ...(atmosphere ? atmosphere.contextLossResources() : []),
     ].filter(Boolean))];
   }
 
   function openingProgramMaterials() {
-    return [downsampleMat, compositeMat, casMat];
+    return [downsampleMat, compositeMat, casMat, ...(atmosphere ? atmosphere.openingProgramMaterials() : [])];
   }
 
   function setSize(w, h, displayW, displayH) {
@@ -2914,6 +2987,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         compositeMat.uniforms.uSceneTexel.value.set(1 / W, 1 / H);
       }
       resizeRenderTarget(rtScene, W, H, 'resize');
+      if (atmosphere) atmosphere.setSize(W, H);
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
       while (down.length < newLevels) {
         const i = down.length;
@@ -2950,6 +3024,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     contentScale = nextScale;
     contentW = nextW;
     contentH = nextH;
+    if (atmosphere) atmosphere.invalidateHistory('content-scale');
   }
 
   // Accept partial option updates (wired from settings:changed by the render layer).
@@ -3024,6 +3099,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         // sector-post transition options object carries no sceneSamples key.
         rtScene.dispose();
         rtScene = allocRenderTarget(W, H, sceneRtOpts, 'scene-samples');
+        if (atmosphere?.supported) {
+          attachSceneDepth(rtScene);
+          atmosphere.invalidateHistory('scene-samples');
+        }
       }
     }
     if (typeof o.sharpen === 'boolean') sharpenAmount = o.sharpen ? 0.35 : 0;
@@ -3034,6 +3113,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function diagnostics() {
+    const atmosphereStats = atmosphere ? atmosphere.getDiagnostics() : null;
     return {
       enabled,
       width: W,
@@ -3058,9 +3138,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       upsampleTargets: 0,
       sharedQuadGeometry: true,
-      targets: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0),
-      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0),
+      targets: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0) + (atmosphereStats?.targets || 0),
+      renderTargetCount: 1 + down.length + (rtPost ? 1 : 0) + (rtDistortion ? 1 : 0) + (atmosphereStats?.targets || 0),
       distortionAttached: !!distortionProducers,
+      atmosphere: atmosphereStats,
       distortionTarget: rtDistortion ? { width: rtDistortion.width, height: rtDistortion.height } : null,
       drawingBufferWidth: W,
       drawingBufferHeight: H,
@@ -3094,6 +3175,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         bloom: enabled && strength > 0.0001 ? down.length : 0,
         distortion: distortionLiveCount > 0 ? 1 : 0,
         distortionProducers: distortionLiveCount,
+        atmosphere: atmosphere?.active ? 1 : 0,
         composite: 1,
         cas: casActive && rtPost ? 1 : 0,
       },
@@ -3101,6 +3183,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function dispose() {
+    atmosphere = null;
+    atmosphereCamera = null;
     attachDistortionProducers(null);
     singleDistortionProducer[0] = null;
     rtScene.dispose();
@@ -3117,6 +3201,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   return {
     render,
+    attachAtmosphere,
     attachDistortionProducers,
     attachDistortionField,
     compileScenePipelines,

@@ -220,7 +220,7 @@ These are not optional extras. A feature gate that passes while one of these fai
   post-interrupt, and post-arrival** — precisely the states most likely to break.
 
 ### 7.5 Performance
-- No per-frame allocation on sim/render/UI hot paths (`design/PERF_BUDGET.md`). The former lane path
+- No per-frame allocation on sim/render/UI hot paths (`design/archive/perf/PERF_BUDGET.md`). The former lane path
   built projection/status/signature/traffic containers every tick. Its real steady scenario measured
   2,537 → 696 B/op before the final immutable-profile ceiling cache; the shipping path now retains
   all of those values and PQ-033 owns one clean-platform run against the predeclared 256 B/op ceiling.

@@ -10486,8 +10486,8 @@
     "tier": "B",
     "componentReferenceDecision": "not_needed",
     "authority": [
-      "design/program/world-depth-2026-10-02/TWENTY_CONCEPT_AMENDMENT.md#sf20-02",
-      "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/02_sable_venn.md"
+      "design/archive/program/world-depth-2026-10-02/TWENTY_CONCEPT_AMENDMENT.md#sf20-02",
+      "design/archive/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/02_sable_venn.md"
     ],
     "supportedViews": [
       "chase-144",

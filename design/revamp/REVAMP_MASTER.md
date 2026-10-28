@@ -204,7 +204,7 @@ The lead was given four planning passes. Two are already absorbed into the curat
 |---|---|---|---|
 | **AI research spec** (21-game study, SG-06 spine, spawn director, doctrines, maneuver library, 8-phase roadmap) | No file | **→ BP-13** (pirate doctrines, named aces) + `BP-02.1` (maneuver library) + §11 (corrections) | Its "spawn director" is the shipped `encounterDirector` + `spawnBudget`, not a new system (§9.2). |
 | **Design audit R2** (25-game benchmark, 660 ideas, Waves 0–6) | **Yes** = `DETAIL_BRAINSTORM_R2.md` (already curated into 91 gold packets) | Already home | Its Waves 0–6 map onto our Wave 0–3 + the new tracks in §12–§14. |
-| **Performance queue** (13 quality-preserving perf prompts) | No file; ~half its scripts now exist | **→ §14** (verification track) + `design/PERF_BUDGET.md` | The "quality-preserving" doctrine is already repo policy (`AGENTS.md §6`); §14 *enforces* it with checks. |
+| **Performance queue** (13 quality-preserving perf prompts) | No file; ~half its scripts now exist | **→ §14** (verification track) + `design/archive/perf/PERF_BUDGET.md` | The "quality-preserving" doctrine is already repo policy (`AGENTS.md §6`); §14 *enforces* it with checks. |
 | **Massline ladder** (24 atomic prompts: telemetry → release → load → snap → reel → arc → whip → 47-A beats) | No file; its rungs ARE the Wave-2 massline lane | **→ Wave 2** (status in §10.1) | Formerly in-flight; now folded into the unified track (T3/T4, §11) per lead direction 2026-07-06. |
 
 ### 9.2 Hallucination corrections — systems the quarries/docs call "missing" that EXIST

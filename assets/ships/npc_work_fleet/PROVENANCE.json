@@ -31,7 +31,7 @@
   },
   "gateStatus": {
     "evidenceReady": true,
-    "wholeAssetG1G2G4": "OPEN — no independent hash-bound visual review has been obtained for this family; see design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md",
+    "wholeAssetG1G2G4": "OPEN — no independent hash-bound visual review has been obtained for this family; see design/archive/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md",
     "g7Independent": "OPEN"
   }
 }
