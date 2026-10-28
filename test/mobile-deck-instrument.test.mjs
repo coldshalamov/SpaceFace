@@ -294,7 +294,11 @@ for (const [width,height,safeLeft,safeRight] of [[844,390,0,0],[667,375,0,0],[56
     // Full phones carry two labeled keys side by side; the 568-wide class compacts to the
     // authored 2x2 grid (styles.js compact row) — the rail keeps its 100px label floor.
     assert.ok(right - left >= (width >= 660 ? 180 : 100), 'keys keep room for their labels');
-    assert.ok(top + 44 + 12 + 12 <= radarTop, 'touch row and padding clear the compass');
+    // The rail lives in the clear strip between the hint band (alerts ~45, tutorial card
+    // ~102) and the resting stick ghost (~220 on 390-tall phones, styles.js bottom:104 +
+    // 132px svg) — it cannot share the alert band or ride onto the ring.
+    assert.ok(top >= 104, 'rail clears the alert and tutorial-card band');
+    assert.ok(top + 56 <= 220, 'rail clears the resting stick ring');
   });
 }
 

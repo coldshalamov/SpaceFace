@@ -47,17 +47,16 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     right:calc(90px + var(--sf-safe-right,0px))!important;
     width:min(236px,32vw)!important;
   }
-  /* The 44px touch keys use the top-centre lane, between the status strip and Pause.
-     They finish before the radar begins instead of sitting across its compass and contacts.
-     Same fixed-vs-dock defect as portrait: absolute against the dock puts the tape at
-     viewport ~10 (dock top 80 - 70), its right edge ending before the radar's left edge
-     (dock right - 161 -> 593 on 844, radar starts 601). */
+  /* The 44px touch keys take the lane below the alert line and the tutorial card and left
+     of the radar — the only clear horizontal strip on a short phone (the alert band y22-45
+     and card y70-102 own the top, the ghost ring owns the left bottom). absolute against the
+     dock: dock top 80 + 28 = viewport 108, right edge 595 ends before the radar's 601. */
   ${FLIGHT} #race-tape[data-compact="true"] {
     position:absolute!important;
-    top:-70px;
+    top:28px;
     bottom:auto!important; left:auto!important;
-    right:calc(161px + var(--sf-safe-right,0px));
-    /* On the shortest phones (568x320) 180px can't clear both the 202px status lane and
+    right:calc(159px + var(--sf-safe-right,0px));
+    /* On the shortest phones (568x320) 180px can't clear both the status lane and
        the radar; the tape compacts its keys 2x2 and yields before it collides. */
     width:min(180px,calc(100vw - 453px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     min-width:100px;
@@ -69,6 +68,15 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
   ${FLIGHT} #hud > .sf-leftcontext {
     top:calc(110px + var(--sf-safe-top,0px))!important;
     max-width:min(250px,64vw)!important;
+  }
+  /* The receipt/ticker line sat at top:118 (styles.js) straight over the objective text.
+     Give it its own row under the objective, right of the stick ghost (ends x~260) and left
+     of the radar (starts x~601). */
+  ${FLIGHT} #toasts {
+    top:calc(216px + var(--sf-safe-top,0px))!important;
+    left:calc(268px + var(--sf-safe-left,0px))!important;
+    right:auto!important; bottom:auto!important;
+    width:min(320px,calc(100vw - 600px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
   }
 }
 /* Portrait receipts share the objective's left lane, not the radar caption's right lane.
