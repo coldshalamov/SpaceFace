@@ -62,30 +62,30 @@ test('collapsed nodes speak the effective verb: words, authored mark, state and 
   try {
     view = mount(state, t);
     const pull = socketOf(view.root, 'Pull');
-    assert.equal(wordsOf(pull), 'Pull · Well');
+    assert.equal(wordsOf(pull), 'Pull · Draws in');
     assert.match(iconOf(pull).innerHTML, /data-arsenal="field_well_standard"/, 'a collapsed node draws the same authored mark as an unfolded key');
     assert.equal(iconOf(pull).getAttribute('data-glyph-source'), 'authored');
     assert.match(pull.className, /\bis-node\b/, 'it is still a node');
     assert.match(pull.className, /\bis-cooldown\b/, 'and it carries the live state, not just the unfolded key');
-    assert.match(pull.getAttribute('data-why'), /^Pull · Well — Place a gravity well at your aim point/);
-    assert.match(wordsOf(socketOf(view.root, 'Shove')), /^Shove · Repulse \+ 2 detonate$/);
+    assert.match(pull.getAttribute('data-why'), /^Pull · Draws in — Place a gravity well at your aim point/);
+    assert.match(wordsOf(socketOf(view.root, 'Shove')), /^Shove · Pushes away \+ 2 blasts$/);
     assert.equal(wordsOf(socketOf(view.root, 'Gyre')), 'Gyre · Release', 'the Gyre is holding a ball in the fixture');
     assert.equal(wordsOf(socketOf(view.root, 'Cloak')), 'Cloak · Ready');
     // the rig follows the planet band — words, mark and tip together, before any press
-    assert.equal(wordsOf(socketOf(view.root, 'Rig')), 'Rig · Cone');
+    assert.equal(wordsOf(socketOf(view.root, 'Rig')), 'Rig · Clear a path');
     state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
     view.mounted.update(state, view.player, true);
     const rig = socketOf(view.root, 'Rig');
-    assert.equal(wordsOf(rig), 'Rig · Scoop');
+    assert.equal(wordsOf(rig), 'Rig · Harvest ore');
     assert.match(iconOf(rig).innerHTML, /data-arsenal="field_skim_standard"/);
-    assert.match(rig.getAttribute('data-why'), /^Rig · Scoop — You are in a planet band, so Rig opens the skim scoop/);
+    assert.match(rig.getAttribute('data-why'), /^Rig · Harvest ore — You are in a planet band, so Rig opens the skim scoop/);
     // the bomb names its payload and stock; a dry rack keeps the family mark and says so
-    assert.equal(wordsOf(socketOf(view.root, 'Bomb')), 'Bomb · Charge ×3 · throw');
+    assert.equal(wordsOf(socketOf(view.root, 'Bomb')), 'Bomb · throw Charge ×3');
     state.player.cargo.items.cmdty_impulse_charge = 0;
     state.bombs = { selectedId: null, rack: { cells: [null, null] } };
     view.mounted.update(state, view.player, true);
     const bomb = socketOf(view.root, 'Bomb');
-    assert.equal(wordsOf(bomb), 'Bomb · Rack empty');
+    assert.equal(wordsOf(bomb), 'Bomb · none left');
     assert.equal(iconOf(bomb).getAttribute('data-glyph-source'), 'family', 'no authored drawing: the generic mark is marked generic');
   } finally { view?.mounted.dispose(); t.restore(); }
 });
@@ -114,8 +114,8 @@ test('the readout model names every verb, its effective label, and the owners\' 
   const state = fixture();
   const model = readOrdnanceModel(state, null, undefined);
   assert.deepEqual(Object.keys(model).sort(), ['0', '1', '2', '3', '4', '5', '6', '7', '8']);
-  assert.equal(model['1'].label, 'Pull · Well');
-  assert.equal(model['4'].label, 'Bomb · Charge ×3 · throw');
+  assert.equal(model['1'].label, 'Pull · Draws in');
+  assert.equal(model['4'].label, 'Bomb · throw Charge ×3');
   assert.equal(model['4'].count, 3);
   assert.equal(model['7'].state, 'armed', 'a held ball is the armed Gyre');
   assert.equal(model['8'].passive, true, 'the cloak is a latch, not the Hand\'s choice');

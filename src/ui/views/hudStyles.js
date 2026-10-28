@@ -2,6 +2,7 @@
 // uiRoot invokes this same one-time style owner; no copied CSS or substitute runtime.
 // The flight HUD is the first surface built on the deckplate design system (src/ui/deckplate/*);
 // injectDeckplate runs before the HUD sheet so the register's var(--dp-*) references resolve.
+import { MOBILE_FLIGHT_LAYOUT_CSS } from '../orrery/mobileFlightLayouts.js';
 import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -386,6 +387,12 @@ export function injectHudCss() {
   .sf-lockring[data-stage="locked"] .sf-lockring__fill,
   .sf-lockring.locked .sf-lockring__fill { stroke:var(--dp-lamp, #f2b950); }
   .sf-lockring[data-stage="locked"] .sf-lockring__pip { fill:var(--dp-lamp-hot, #ffd98c); stroke:var(--dp-lamp, #f2b950); }
+  /* Locked bloom is geometry: the track (same radius, under the fill) widens into a translucent
+     halo stroke and the 96-division scale tints — no drop-shadow filter in flight. */
+  .sf-lockring[data-stage="locked"] .sf-lockring__track { stroke:var(--dp-lamp, #f2b950);
+    stroke-opacity:.24; stroke-width:6; }
+  .sf-lockring[data-stage="locked"] .sf-lockring__scale { stroke:var(--dp-lamp, #f2b950);
+    stroke-opacity:.45; }
   .sf-lockring[data-stage="locked"] .sf-lockring__label,
   .sf-lockring.locked .sf-lockring__label { color:var(--dp-lamp, #f2b950); font-weight:700; }
   .sf-lockring[data-stage="locked"] .sf-lockring__brackets { color:var(--dp-lamp, #f2b950); }
@@ -443,8 +450,14 @@ export function injectHudCss() {
   .sf-lockdiamond.visible { visibility:visible; opacity:1; transition:opacity .12s ease; }
   .sf-lockdiamond__inner { position:absolute; inset:2px; color:var(--k-bone-62); will-change:transform; }
   .sf-lockdiamond__inner svg { display:block; width:100%; height:100%; overflow:visible;
-    fill:none; stroke:currentColor; stroke-width:1.5; stroke-linejoin:round;
+    fill:none; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round;
     animation:sf-sigilpulse 1s ease-in-out infinite alternate; }
+  /* Shaded sigil: the emblem's primary figure carries a translucent fill so the marker reads as
+     a bordered plate, not a bare outline; the finer tick ring keeps the hostile mark instrument-
+     like instead of one flat bead circle. Fill hits only each emblem's FIRST path — the closed
+     figure — never the open spoke strokes behind it. */
+  .sf-lockdiamond__emblem path:first-of-type { fill:currentColor; fill-opacity:.2; }
+  .sf-lockdiamond__emblem--hostile circle { stroke-dasharray:.75 1.14; stroke-opacity:.85; }
   @keyframes sf-sigilpulse {
     from { transform:scale(.92); }
     to { transform:scale(1.04); } }
@@ -456,7 +469,11 @@ export function injectHudCss() {
   .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { color:var(--dp-lamp, #f2b950); }
   .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner svg,
   .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner svg { animation:none; }
-  .sf-lockdiamond.locked-tgt .sf-lockdiamond__inner { color:var(--k-red); }
+  /* Missile-locked target: the sigil goes red and a shade heavier — the one red DOM mark on a
+     hull, and it keeps its fill shading so it reads as a bordered plate, not a bare ring. */
+  .sf-lockdiamond.locked-tgt .sf-lockdiamond__inner { color:var(--k-red, #ff4d3d); }
+  .sf-lockdiamond.locked-tgt .sf-lockdiamond__inner svg { stroke-width:1.8; }
+  .sf-lockdiamond.locked-tgt .sf-lockdiamond__emblem path:first-of-type { fill-opacity:.18; }
 
   /* G-LOC tunnel vision vignette — sleeps out of the compositor tree until the first
      fade-in; hud.js drives display block/none so opacity:0 never holds a live layer. */
@@ -572,10 +589,14 @@ export function injectHudCss() {
   .sf-cmark[data-relation="hostile"] { color:var(--sf-hostile); }
   .sf-cmark[data-relation="friendly"] { color:var(--sf-friendly); }
   .sf-cmark svg { display:block; width:100%; height:100%; overflow:visible; fill:none;
-    stroke:currentColor; stroke-width:1.5; stroke-linejoin:round; }
-  .sf-cmark[data-variant="down"] .sf-cmark__shape { stroke-dasharray:2 2; }
+    stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+  /* Bordered + shaded at radar-IFF scale: the IFF shape carries a translucent fill so it reads
+     as a plate at 17px, and the "on-you" variant's core swells via the SVG r property (a filled
+     pip inside the outlined triangle), not a second element. */
+  .sf-cmark__shape { fill:currentColor; fill-opacity:.16; }
+  .sf-cmark[data-variant="down"] .sf-cmark__shape { stroke-dasharray:2 2; fill-opacity:.07; }
   .sf-cmark__core { display:none; fill:currentColor; stroke:none; }
-  .sf-cmark[data-variant="on-you"] .sf-cmark__core { display:inline; }
+  .sf-cmark[data-variant="on-you"] .sf-cmark__core { display:inline; r:2.6px; }
 
   /* Prograde tick (FR-1) — the kit's twin-tick prograde bracket (assets/ui/kit/assets/svg/
      reticle/reticle-pro-tick.svg) ported as light: a bloom stroke under a core stroke, token
@@ -587,30 +608,85 @@ export function injectHudCss() {
     stroke-width:2; vector-effect:non-scaling-stroke; }
   .sf-protick__bloom { opacity:.24; stroke-width:6; }
 
+  /* Contact/threat markers — bordered, shaded, glow-by-geometry (no live filters in flight).
+     Colour rides the CSS color property (currentColor) so the JS channel palette (setForceHue)
+     retints the whole instrument — border, fill wash, bloom and ticks — with one inline write. */
   .sf-threat-halo { display:none; position:absolute; inset:0; pointer-events:none; z-index:13; }
   .sf-threat-halo__slot { display:none; position:absolute; left:0; top:0; opacity:.55; }
+  /* Off-screen hostile carriage: a bordered plate that sits ON the frame edge — 1.5px core
+     border all round, a heavier 3px foot on the screen edge, a translucent channel wash, an
+     inner hairline frame (::before) and three tick marks on the foot (::after). The 54x18 box
+     is mirrored by the placement solver (ARC_SPAN_PX / ARC_DEPTH_PX) — keep them in sync. */
   .sf-threat-halo__slot--arc .sf-threat-halo__arc {
+    position:relative;
     width:54px; height:18px; box-sizing:border-box;
-    border:2px solid var(--k-red);
+    color:var(--k-red, #ff4d3d);
+    border:1.5px solid currentColor;
+    border-radius:2px;
+    background-image:linear-gradient(to bottom,
+      color-mix(in srgb, currentColor 22%, transparent),
+      color-mix(in srgb, currentColor 5%, transparent));
+    box-shadow:0 0 7px color-mix(in srgb, currentColor 32%, transparent);
+  }
+  .sf-threat-halo__slot--arc .sf-threat-halo__arc::before {
+    content:''; position:absolute; inset:2px; pointer-events:none;
+    border:1px solid color-mix(in srgb, currentColor 38%, transparent);
+    border-radius:1px;
+  }
+  /* The tick comb on the frame-edge foot: hairline teeth pointing inward, like a ruler edge.
+     The comb axis follows the edge, so the teeth always grow from the screen edge. */
+  .sf-threat-halo__slot--arc .sf-threat-halo__arc::after {
+    content:''; position:absolute; pointer-events:none;
+    background:repeating-linear-gradient(to right,
+      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
   }
   .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__arc {
-    border-bottom:none;
+    border-top-width:3px;
+  }
+  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__arc::after {
+    left:5px; right:5px; top:3px; height:4px;
   }
   .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__arc {
-    border-top:none;
+    border-bottom-width:3px;
+    background-image:linear-gradient(to top,
+      color-mix(in srgb, currentColor 22%, transparent),
+      color-mix(in srgb, currentColor 5%, transparent));
+  }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__arc::after {
+    left:5px; right:5px; bottom:3px; height:4px;
   }
   .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__arc {
-    width:18px; height:54px; border-right:none;
+    width:18px; height:54px; border-left-width:3px;
+    background-image:linear-gradient(to right,
+      color-mix(in srgb, currentColor 22%, transparent),
+      color-mix(in srgb, currentColor 5%, transparent));
+  }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__arc::after {
+    top:5px; bottom:5px; left:3px; width:4px;
+    background:repeating-linear-gradient(to bottom,
+      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
   }
   .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__arc {
-    width:18px; height:54px; border-left:none;
+    width:18px; height:54px; border-right-width:3px;
+    background-image:linear-gradient(to left,
+      color-mix(in srgb, currentColor 22%, transparent),
+      color-mix(in srgb, currentColor 5%, transparent));
+  }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__arc::after {
+    top:5px; bottom:5px; right:3px; width:4px;
+    background:repeating-linear-gradient(to bottom,
+      color-mix(in srgb, currentColor 80%, transparent) 0 1.5px, transparent 1.5px 6px);
   }
   .sf-threat-halo__slot--missile .sf-threat-halo__chev {
     width:22px; height:22px; display:block; color:var(--k-signal, #e6b478);
-    filter:drop-shadow(0 0 6px color-mix(in srgb, var(--k-signal, #e6b478) 80%, transparent));
+    overflow:visible;
   }
   .sf-threat-halo__slot--missile .sf-threat-halo__chev path {
-    fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;
+    fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+  }
+  /* The shaded chevron plate under the strokes: the fill is geometry, not a filter glow. */
+  .sf-threat-halo__slot--missile .sf-threat-halo__chev .sf-threat-halo__chev-plate {
+    fill:currentColor; fill-opacity:.18; stroke:none;
   }
   .sf-threat-halo__slot--missile[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg); }
   .sf-threat-halo__slot--missile[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg); }
@@ -626,42 +702,31 @@ export function injectHudCss() {
     color:var(--k-signal, #e6b478);
   }
   .sf-threat-halo__slot--arc .sf-threat-halo__chev path {
-    fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;
+    fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
   }
   .sf-threat-halo__slot--arc[data-closing="boost"] {
     animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
   }
   .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__arc {
-    border-color: var(--k-signal, #e6b478);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--k-signal, #e6b478) 70%, transparent);
+    color:var(--k-signal, #e6b478);
   }
   .sf-threat-halo__slot--arc[data-closing="boost"] .sf-threat-halo__chev { display:block; }
   .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__chev { transform:translateY(13px); }
   .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg) translateY(13px); }
   .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg) translateY(13px); }
   .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg) translateY(13px); }
-  .sf-threat-halo__slot--telegraph .sf-threat-halo__arc {
-    border-color: var(--k-gold, #e6b478);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--k-gold, #e6b478) 70%, transparent);
-  }
-  .sf-threat-halo__slot--telegraph[data-telegraph-kind="weapon_charge"] .sf-threat-halo__arc {
-    border-color: var(--k-signal, #e6b478);
-  }
-  .sf-threat-halo__slot--telegraph[data-telegraph-kind="attach_spool"] .sf-threat-halo__arc {
-    border-color: var(--k-good, #a5d2b0);
-  }
-  .sf-threat-halo__slot--telegraph[data-telegraph-kind="wake_mines"] .sf-threat-halo__arc {
-    border-color: var(--k-red, #ff9a89);
-  }
+  /* Telegraph states ride the JS-set inline channel colour (setForceHue) — border, wash, hairline,
+     ticks and bloom all read currentColor, so no per-kind colour overrides live here anymore. */
   .sf-threat-halo__slot--telegraph {
     animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
   }
+  /* Telegraph pulse rides opacity only — the flight HUD never animates a live filter. */
   @keyframes sf-threat-halo-telegraph {
-    0%, 100% { filter: brightness(1.15); }
-    50% { filter: brightness(1.55); }
+    0%, 100% { opacity:.68; }
+    50% { opacity:1; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .sf-threat-halo__slot--telegraph { animation: none; filter: brightness(1.35); }
+    .sf-threat-halo__slot--telegraph { animation: none; opacity:.9; }
   }
   html.sf-reduce-flash .sf-threat-halo__slot--missile,
   html.sf-reduce-flash .sf-threat-halo__slot--arc[data-closing="boost"],
@@ -804,7 +869,7 @@ export function injectHudCss() {
       display: none !important;
     }
 
-    /* Mobile flight geometry belongs to mobile/styles.js. In particular, never scale the
+    /* Mobile flight geometry belongs to mobileFlightLayouts.js. In particular, never scale the
        right dock and then its radar: the compact instrument has an explicit CSS size. */
     /* D202b: Ensure ring legends, compass engraving, and micro text maintain >= 9px effective rendered size */
     :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-micro text {
@@ -820,7 +885,11 @@ export function injectHudCss() {
       font-size: 15px !important;
     }
 
-
+    /* D202b: Prevent clipping and overlap of contextual strip on phone heights */
+    :root[data-sf-mobile="1"] #hud > .sf-leftcontext {
+      max-height: calc(100dvh - 190px) !important;
+      overflow: visible !important;
+    }
   }
   @media (max-width: 1279px), (max-height: 719px) {
     #hud .orr-hud-cluster,
@@ -3172,38 +3241,7 @@ export function injectHudCss() {
     .sf-objarrow__chev, .sf-objarrow__mark { fill:CanvasText; stroke:CanvasText; }
     .sf-objarrow__mark-bloom { display:none; }
   }
-
-  /* AL-HUD-1: compact flight controls share the contact stack's normal flow. */
-  #hud .sf-rightdock {
-    max-height:calc(100vh - 96px); max-height:calc(100dvh - 96px);
-    min-height:0; overflow-y:auto; overflow-x:hidden;
-  }
-  #hud .sf-rightdock > * { flex:0 0 auto; min-width:0; }
-  #hud .sf-rightdock > #race-tape[data-compact="true"] {
-    position:relative; top:auto; right:auto; left:auto; bottom:auto; transform:none;
-    width:100%; min-width:0; box-sizing:border-box; grid-template-columns:minmax(0,1fr);
-  }
-  #hud .sf-rightdock > #race-tape[data-compact="true"] .race-tape-actions { flex-wrap:wrap; min-width:0; }
-  #hud .sf-rightdock .sf-target__name,
-  #hud .sf-rightdock .sf-target__identity,
-  #hud .sf-rightdock .sf-target__intent,
-  #hud .sf-rightdock .sf-target__object,
-  #hud .sf-rightdock .sf-overview-footer {
-    min-width:0; white-space:normal; overflow-wrap:anywhere;
-  }
-  #hud .sf-rightdock .sf-target__triangle {
-    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 8px;
-  }
-  #hud .sf-rightdock .sf-target__tri-label { grid-column:1; grid-row:1; }
-  #hud .sf-rightdock .sf-target__tri-layer { grid-column:2; grid-row:1; }
-  #hud .sf-rightdock .sf-tri {
-    display:grid; grid-column:1 / -1; grid-template-columns:minmax(0,1fr) 52px; min-width:0;
-  }
-  #hud .sf-rightdock .sf-tri--e { grid-row:2; }
-  #hud .sf-rightdock .sf-tri--k { grid-row:3; }
-  #hud .sf-rightdock .sf-tri--x { grid-row:4; }
-  #hud .sf-rightdock .sf-tri__k { width:auto; min-width:0; text-align:left; overflow-wrap:anywhere; }
-  #hud .sf-rightdock .sf-tri__bar { width:52px; }
+  ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
   document.head.appendChild(s);
 }

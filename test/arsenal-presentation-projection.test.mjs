@@ -50,7 +50,7 @@ test('every figure is a read of its owner, and each entry records which owner su
   assert.equal(entries.pull.range.reachWu, well.deployRange);
   assert.equal(entries.pull.range.radiusWu, well.radius);
   assert.equal(entries.pull.cooldown.seconds, well.cooldownS);
-  assert.ok(entries.pull.sentence.includes(`${well.deployRange} wu`), 'the placement reach is quoted from the field def');
+  assert.ok(entries.pull.sentence.includes(`${well.deployRange} units`), 'the placement reach is quoted from the field def');
   assert.ok(entries.pull.sentence.includes(`${GRAVITY_MARK_FIELD_COUPLING}x`), 'the locked-target grip is the combat def');
   assert.equal(entries.shove.range.radiusWu, FIELD_DEFS.repulsor.radius);
   assert.equal(entries.shove.cooldown.seconds, FIELD_DEFS.repulsor.cooldownS);
@@ -77,12 +77,12 @@ test('every figure is a read of its owner, and each entry records which owner su
 test('the labels name what the NEXT press does: Pull well, Shove with a detonation count, Pin anchor with no root implied', () => {
   const state = makeState();
   let { entries } = read(state);
-  assert.equal(entries.pull.label, 'Pull · Well');
+  assert.equal(entries.pull.label, 'Pull · Draws in');
   assert.match(entries.pull.sentence, /^Place a gravity well at your aim point/);
   assert.match(entries.pull.sentence, /gather/);
-  assert.equal(entries.shove.label, 'Shove · Repulse');
+  assert.equal(entries.shove.label, 'Shove · Pushes away');
   assert.equal(entries.shove.detonates.total, 0);
-  assert.equal(entries.pin.label, 'Pin · Anchor');
+  assert.equal(entries.pin.label, 'Pin · Drop anchor');
   assert.match(entries.pin.sentence, /does not hold or root enemies/, 'no universal root is implied');
   assert.doesNotMatch(entries.pin.sentence, /\b(freezes?|stuns?|roots? them)\b/i);
   // Shove: count what the owners' own predicates will detonate.
@@ -97,7 +97,7 @@ test('the labels name what the NEXT press does: Pull well, Shove with a detonati
   state.emergent = { stickies: [{ ownerId: 1, armed: true }, { ownerId: 99, armed: true }] };
   assert.deepEqual(armedOrdnanceCounts(state, 50), { charges: 1, bombs: 1, plants: 1, total: 3 });
   ({ entries } = read(state));
-  assert.equal(entries.shove.label, 'Shove · Repulse + 3 detonate');
+  assert.equal(entries.shove.label, 'Shove · Pushes away + 3 blasts');
   assert.match(entries.shove.sentence, /1 charge \+ 1 drift bomb \+ 1 planted charge will go off/);
   assert.equal(entries.shove.ready.state, 'armed');
 });
@@ -105,22 +105,22 @@ test('the labels name what the NEXT press does: Pull well, Shove with a detonati
 test('RIG shows the CURRENT function before use, and a context change swaps the label with the action', () => {
   const state = makeState();
   let { entries } = read(state);
-  assert.equal(entries.rig.label, 'Rig · Cone');
+  assert.equal(entries.rig.label, 'Rig · Clear a path');
   assert.equal(entries.rig.glyph, 'field_cone_standard');
   assert.match(entries.rig.limits[0], /planet band this same key opens the skim scoop/, 'the other function is stated before it surprises');
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Scoop', 'inside a planet band the same key is the scoop');
+  assert.equal(entries.rig.label, 'Rig · Harvest ore', 'inside a planet band the same key harvests ore');
   assert.equal(entries.rig.glyph, 'field_skim_standard', 'and its mark changes with it');
   assert.match(entries.rig.limits[0], /clearing cone instead/);
   state.planet.player.collectorOn = true;
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Scoop on');
+  assert.equal(entries.rig.label, 'Rig · Harvesting ore');
   assert.match(entries.rig.sentence, /Press to close it/);
   // An open cone folds first, even inside a band (resolveRigTarget): the label follows the press.
   state.fields.coneActive = true;
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Cone on');
+  assert.equal(entries.rig.label, 'Rig · Clearing a path');
   assert.match(entries.rig.sentence, /Press to fold it/);
 });
 
@@ -128,33 +128,33 @@ test('BOMB names the exact payload, its stock, and whether the next press throws
   const state = makeState();
   state.bombs = { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 4 }] } };
   let { entries } = read(state);
-  assert.equal(entries.bomb.label, 'Bomb · Frag ×4 · drop');
+  assert.equal(entries.bomb.label, 'Bomb · drop Frag ×4');
   assert.deepEqual(entries.bomb.payload, { id: 'bomb_frag', name: BOMB_DEFS.bomb_frag.name, stock: 4, capacity: BOMB_DEFS.bomb_frag.magazine, next: 'drop' });
   assert.equal(entries.bomb.glyph, 'bomb_frag');
   assert.match(entries.bomb.sentence, /^Next press: drop Frag cassette ×4\./);
   // a sticky charge aboard becomes the default ordnance
   state.player.cargo.items.cmdty_impulse_charge = 3;
   ({ entries } = read(state));
-  assert.equal(entries.bomb.label, 'Bomb · Charge ×3 · throw');
+  assert.equal(entries.bomb.label, 'Bomb · throw Charge ×3');
   assert.equal(entries.bomb.glyph, 'power_charge');
   // unless the cycle explicitly chose the bay bomb
   state.bombs.bombChosen = true;
   ({ entries } = read(state));
-  assert.equal(entries.bomb.label, 'Bomb · Frag ×4 · drop');
+  assert.equal(entries.bomb.label, 'Bomb · drop Frag ×4');
   // a stocked swarm call-in outranks the bay bomb on the press, so the label names it
   state.bombs.bombChosen = false; delete state.bombs.bombChosen;
   state.player.cargo.items.cmdty_impulse_charge = 0;
   state.run = { kind: 'survival', phase: 'active', ruleset: SWARM_RULESET,
     modifiers: [{ kind: SWARM_CALLIN_RECORD_KIND, callinId: 'smart_bomb', count: 2 }] };
   ({ entries } = read(state));
-  assert.equal(entries.bomb.label, 'Bomb · Smart Bomb ×2 · call in');
+  assert.equal(entries.bomb.label, 'Bomb · call in Smart Bomb ×2');
   assert.equal(entries.bomb.glyph, 'callin_smart_bomb');
   assert.equal(entries.bomb.payload.next, 'callin');
   // an empty rack says so instead of showing a stale payload
   state.run = null;
   state.bombs = { selectedId: null, rack: { cells: [null, null] } };
   ({ entries } = read(state));
-  assert.equal(entries.bomb.label, 'Bomb · Rack empty');
+  assert.equal(entries.bomb.label, 'Bomb · none left');
   assert.equal(resolveBombAction(state).action, 'empty');
 });
 
@@ -163,7 +163,7 @@ test('a retired payload still in an old rack keeps its own name, never a power\'
     const state = makeState({ bombs: { selectedId: def.id, rack: { cells: [{ id: def.id, count: 2 }] } } });
     const bomb = read(state).entries.bomb;
     assert.equal(bomb.glyph, def.id, `${def.id} draws its own mark`);
-    assert.match(bomb.label, /^Bomb · .+ ×2 · drop$/);
+    assert.match(bomb.label, /^Bomb · drop .+ ×2$/);
     assert.doesNotMatch(bomb.label, /^Bomb · (Pull|Shove|Pin|Rig|Line|Gyre) ×/, `${def.id}: the payload is never named like a power`);
     assert.ok(bomb.sentence.includes(def.name), `${def.id}: the sentence names the payload`);
   }
@@ -218,10 +218,10 @@ test('the label agrees with the real press: charge throws, swarm call-in calls i
   assert.deepEqual(press('Digit4'), ['dropBomb']);
   // 5. rig: the cone in open space, the scoop in a planet band — the same key, the label before the press
   t.state.player.cargo.items.cmdty_impulse_charge = 0;
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Cone');
+  assert.equal(read(t.state).entries.rig.label, 'Rig · Clear a path');
   assert.deepEqual(press('Digit5'), ['toggleClearingCone']);
   t.state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Scoop');
+  assert.equal(read(t.state).entries.rig.label, 'Rig · Harvest ore');
   assert.deepEqual(press('Digit5'), ['toggleSkimCollector']);
 });
 
@@ -306,7 +306,7 @@ test('the cloak "ready" threshold is the cloak system\'s own engage floor', () =
 
 test('the Gyre reads gather / release from the Gyre system\'s own phase', () => {
   const state = makeState();
-  assert.equal(read(state).entries.gyre.label, 'Gyre · Gather');
+  assert.equal(read(state).entries.gyre.label, 'Gyre · Gathers rocks');
   state.gyreSnare = { phase: 'beaming', tooHeavyCount: 2 };
   let e = read(state).entries.gyre;
   assert.equal(e.label, 'Gyre · Gathering');
@@ -333,7 +333,7 @@ test('fitted weapons describe the COMPILED result, and a chain module states its
   assert.equal(weapon.defId, 'wpn_pulse_laser_s');
   assert.equal(weapon.glyph, 'wpn_pulse_laser_s');
   assert.ok(weapon.changes.some((line) => /^Bounces off up to 1 surface\.$/.test(line)), weapon.changes.join(' | '));
-  const hop = weapon.changes.find((line) => /jumps to up to \d+ more hulls? within \d+ wu, never the same one twice/.test(line));
+  const hop = weapon.changes.find((line) => /jumps to up to \d+ more hulls? within \d+ units, never the same one twice/.test(line));
   assert.ok(hop, `a chain module describes its hop rule: ${weapon.changes.join(' | ')}`);
   assert.doesNotMatch(weapon.changes.join(' '), /root sibling|lineage|generation|proc budget|compatibility emitter/i);
   // an unfitted modifier changes nothing

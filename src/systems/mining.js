@@ -1,3 +1,4 @@
+import { isHeliosClaimCutter } from './heliosClaimOpening.js';
 import { inheritWinnowSplit } from '../world/vestaWinnowRecovery.js';
 import { inheritCharonSupplySplit } from '../world/charonSalvageSupply.js';
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
@@ -1157,14 +1158,16 @@ export const mining = {
     const delivered = lost * yieldPerHp * seam.yieldMult;
     d._oreCarry += delivered;
     let richClaim = null;
-    if (destroyed && minerId === state.playerId) {
+    const claimKind = minerId === state.playerId ? 'player'
+      : isHeliosClaimCutter(state, miner, ast) ? 'npc' : null;
+    if (destroyed && claimKind) {
       richClaim = claimRichSeamOpportunity(state, {
         fieldId: d.fieldId,
         activityObjectSlotId: d.activityObjectSlotId,
-        claimId: `player-rich-seam:${state.playerId}:${ast.id}:${state.tick | 0}`,
-        claimedByKind: 'player',
-        claimedById: state.playerId,
-        resolution: 'exploit',
+        claimId: `${claimKind}-rich-seam:${minerId}:${ast.id}:${state.tick | 0}`,
+        claimedByKind: claimKind,
+        claimedById: minerId,
+        resolution: claimKind === 'player' ? 'exploit' : 'work',
         simTime: state.simTime,
       });
       if (richClaim) {
@@ -1175,8 +1178,8 @@ export const mining = {
           richBonusU: richClaim.claimedBonusU,
           fieldId: d.fieldId,
           activityObjectSlotId: d.activityObjectSlotId,
-          richResolution: richClaim.resolution || 'exploit',
-          sourceOwner: 'player',
+          richResolution: richClaim.resolution || 'work',
+          sourceOwner: claimKind,
         };
         recordFieldExtraction(state, {
           fieldId: d.fieldId,
@@ -1187,12 +1190,12 @@ export const mining = {
           tick: state.tick,
           destroyed: false,
           event: 'rich_seam_bonus',
-          source: 'player_mining',
+          source: claimKind === 'player' ? 'player_mining' : 'npc_mining',
           jobId: richClaim.claimId,
         });
         this.bus.emit('field:richSeamWorked', {
           ...richClaim,
-          minerId: state.playerId,
+          minerId,
           asteroidId: ast.id,
           commodityId: d.commodityId || this._dominantOre(def),
           extractedU: richClaim.claimedBonusU,
@@ -1837,6 +1840,7 @@ export const mining = {
     const aftermathPlan = aftermathOwner && typeof aftermathOwner.immediateWreckPlan === 'function'
       ? aftermathOwner.immediateWreckPlan(p)
       : null;
+    if (aftermathPlan?.deferred === true) return null;
     // A duplicate kill notification for a marker whose wreck is already live must not mint a second
     // salvage pool. The durable owner has already checked entity liveness for this exact marker.
     if (aftermathPlan && aftermathPlan.entityId != null) {
@@ -3560,3 +3564,4 @@ export function isMasslineLatchedPickup(state, player, entity) {
 
   return false;
 }
+

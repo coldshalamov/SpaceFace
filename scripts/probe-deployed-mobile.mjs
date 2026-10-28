@@ -612,8 +612,8 @@ try {
         await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
         nextObservationAt = Date.now() + 10000;
       }
-      if (state.available !== false && state.cinematicBeginVisible) {
-        try { await tapControl('#cinematic-splash .cine-begin'); }
+      if (state.available !== false && state.cinematicBeginVisible && Date.now() < deadline) {
+        try { await tapControl('#cinematic-splash .cine-begin', { timeout: Math.max(1, Math.min(20000, deadline - Date.now())) }); }
         catch (error) { state.cinematicTapError = String(error?.message || error); }
       }
       if (state.available !== false && state.firstLightPlayVisible) {
@@ -624,7 +624,7 @@ try {
       }
       if (state.available !== false && state.motionFullVisible) {
         const motion = page.locator('[data-screen="motionAsk"] button').filter({ hasText: /^Full/i }).first();
-        try { await tapControl(motion); }
+        try { await tapControl(motion, { timeout: Math.max(1, Math.min(20000, deadline - Date.now())) }); }
         catch (error) { state.motionAskTapError = String(error?.message || error); }
       }
       await page.waitForTimeout(Math.min(1000, Math.max(1, deadline - Date.now())));

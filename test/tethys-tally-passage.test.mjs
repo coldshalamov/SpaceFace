@@ -92,7 +92,7 @@ test('production authored roster admits exactly one Kess without replacing its e
   const h=await tethysTallyNativeFixture({native:false,seed});
   try {
    const residents=h.state.traffic.freighters.filter(r=>r.authoredActivityCast).map(r=>r.id);
-   assert.equal(residents.length,8);assert.ok(currentKess(h));
+   assert.equal(residents.length,12);assert.ok(currentKess(h));
    const before=h.state.traffic.freighters.length;
    for(let i=0;i<3;i++)h.owner._onSectorEnter({sector:SECTORS.find(s=>s.id===C.sectorId),continuous:true});
    assert.equal(h.state.traffic.freighters.length,before);

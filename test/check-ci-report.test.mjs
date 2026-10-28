@@ -497,3 +497,10 @@ test('nested failing TAP labels retain nonzero failure without claiming golden e
   assert.equal(result.classification.category, 'assertion_failure');
   assert.match(result.reason, /expected live body/);
 });
+
+test('optional Charon flag keeps matrix cold-open timeout at its existing180s class',()=>{
+ const matrix=ciReport.buildCommandMatrix('npm run check:47a:live-cold-open',{
+  'check:47a:live-cold-open':'node scripts/check-47a-live-cold-open.mjs --charon-camera-diagnostic',
+ });
+ assert.equal(matrix[0].id,'check-47a-live-cold-open');assert.equal(matrix[0].timeoutMs,180000);
+});

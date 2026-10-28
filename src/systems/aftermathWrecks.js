@@ -20,9 +20,12 @@ import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
-import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
+import { globalToSectorLocalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { wreckClassById, WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { SECTORS } from '../data/sectors.js';
+import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
+import { gardenGrowthRadius } from '../data/understoryReceiver.js';
+import { cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
 import {
   causalAftermath,
   causeContractOffer,
@@ -131,6 +134,20 @@ export function aftermathForSector(state, sectorId) {
   const own = ensureAftermathState(state);
   if (!own || !sectorId || !Array.isArray(own.bySector[sectorId])) return [];
   return own.bySector[sectorId].slice();
+}
+
+// Incident sector/bucket stays immutable lore. Physical residency follows the saved
+// global pose, so a hull carried across a corridor boundary returns where it was left.
+function physicalWreckSector(marker, pos = marker && marker.pos) {
+  if (!marker || isArenaWreckSectorId(marker.sectorId)) return marker && marker.sectorId;
+  return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+    ? sectorMembershipAtGlobal(pos) || marker.sectorId : marker.sectorId;
+}
+
+function physicalWrecksForSector(state, sectorId) {
+  const own = ensureAftermathState(state);
+  return Object.values(own && own.bySector || {}).flatMap(rows => Array.isArray(rows) ? rows : [])
+    .filter(marker => marker && physicalWreckSector(marker) === sectorId);
 }
 
 export function isPlayerWreckMarker(marker) {
@@ -373,6 +390,17 @@ function normalizeVictimVisual(input) {
   return victimVisualFor(input);
 }
 
+// Optional provenance captured from the actual dying mission target. It identifies
+// origin only: never a mission pin, sale permit, replacement body or payment owner.
+function normalizeVictimMission(input) {
+  if (!input || typeof input !== 'object') return null;
+  const id = boundedIdentityText(input.id);
+  const storyTag = boundedIdentityText(input.storyTag);
+  if (!id || !storyTag || !Number.isSafeInteger(input.slot) || input.slot < 0
+    || !Number.isSafeInteger(input.version) || input.version < 1) return null;
+  return { id, slot: input.slot, storyTag, version: input.version };
+}
+
 // Pose is inherited as-is. Finite-or-zero only — not a new clamp, not drag.
 function boundedPoseAngle(value) {
   const n = Number(value);
@@ -539,6 +567,17 @@ function isBoundWreck(entity, markerId) {
     && data.provenance && data.provenance.markerId === markerId);
 }
 
+// Wreck integrity, not the victim's hull (the victim is already dead). Old markers
+// carried no integrity and keep the historical one-point hull; an explicit zero is
+// unavailable, never a request for that legacy fallback or proof of a kill receipt.
+function wreckIntegrity(input) {
+  const max = Number.isFinite(input && input.wreckHullMax) && input.wreckHullMax > 0
+    ? input.wreckHullMax : 1;
+  const hull = Number.isFinite(input && input.wreckHull)
+    ? Math.max(0, Math.min(max, input.wreckHull)) : max;
+  return { wreckHull: hull, wreckHullMax: max };
+}
+
 // The marker owns the pool. Live immediate/rematerialized wrecks receive this same object, so
 // partial salvage cannot fork an anonymous combat pool from the durable aftermath pool.
 function poolForMarker(marker) {
@@ -639,6 +678,10 @@ function makeMarker(state, payload, entity) {
 
   const victimClass = victimClassFor(entity, payload);
   const data = entity && entity.data || {};
+  const victimMission = normalizeVictimMission({
+    id: data.missionId || data.missionTag, slot: data.missionTargetSlot,
+    storyTag: data.missionStoryTag, version: data.missionRouteVersion,
+  }) || normalizeVictimMission(cinderVictimMission(state, entity));
   const encounterCausality = data.encounterCausality && typeof data.encounterCausality === 'object'
     ? clonePlain(data.encounterCausality) : null;
   const encounterFingerprint = data.encounterFingerprint
@@ -660,6 +703,7 @@ function makeMarker(state, payload, entity) {
     pos,
     victimId,
     victimClass,
+    ...(victimMission ? { victimMission } : {}),
     // The marker records how the hull actually died — its real velocity, spin, and radius —
     // sanity-bounded at record time. The tighter drift/tumble clamps belong to the re-entry
     // spawn path (_specForMarker), not to the record of the death.
@@ -839,6 +883,30 @@ function rememberCause(state, bus, payload) {
   return merged;
 }
 
+// Select a single canonical row for each retained identity across the entire bag. A
+// corrupt save may repeat the same id in many buckets; those copies cannot multiply
+// the route's at-most-three-record overflow. Unrelated protected rows keep their law.
+function retainedCinderRows(state, bySector, incomingMarker = null) {
+  const canonical = new Map();
+  const normalized = [];
+  for (const [sectorId, rows] of Object.entries(bySector || {})) {
+    for (const row of Array.isArray(rows) ? rows : []) {
+      if (!row || row.sectorId !== sectorId || canonical.has(row.markerId)) continue;
+      const marker = normalizeMarker(row);
+      if (!marker) continue;
+      canonical.set(marker.markerId, row);
+      normalized.push(marker);
+    }
+  }
+  const ids = cinderRetentionIds(state, incomingMarker, normalized);
+  return new Map([...ids].filter(id => canonical.has(id)).map(id => [id, canonical.get(id)]));
+}
+
+function isDuplicateRetainedRow(row, retained) {
+  return row && retained.has(row.markerId) && retained.get(row.markerId) !== row
+    && !isProtectedMarker(row);
+}
+
 function rememberMarker(state, bus, marker, onEvicted = null, { publishNews = true } = {}) {
   const own = ensureAftermathState(state);
   if (!own || !marker || !marker.sectorId || !marker.markerId) return null;
@@ -848,12 +916,21 @@ function rememberMarker(state, bus, marker, onEvicted = null, { publishNews = tr
     marker.cause = clonePlain(own.causes[marker.encounterFingerprint]);
   }
   arr.unshift(marker);
+  const retained = retainedCinderRows(state, own.bySector, marker);
+  for (const rows of Object.values(own.bySector)) {
+    if (!Array.isArray(rows)) continue;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (isDuplicateRetainedRow(rows[i], retained)) rows.splice(i, 1);
+    }
+  }
   if (arr.length > MAX_PER_SECTOR) {
+    // At most three real Cinder hull records may share the existing protected-row
+    // overflow rule. This is metadata retention, never a live-body pin or sale permit.
     const evicted = [];
     while (arr.length > MAX_PER_SECTOR) {
       let idx = -1;
       for (let i = arr.length - 1; i >= 0; i--) {
-        if (!isProtectedMarker(arr[i])) {
+        if (!isProtectedMarker(arr[i]) && retained.get(arr[i]?.markerId) !== arr[i]) {
           idx = i;
           break;
         }
@@ -906,6 +983,7 @@ function normalizeMarker(input) {
   const x = Number(input.pos.x);
   const z = Number(input.pos.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  const victimMission = normalizeVictimMission(input.victimMission);
   const marker = {
     schemaVersion: STATE_VERSION,
     markerId: String(input.markerId),
@@ -917,6 +995,7 @@ function normalizeMarker(input) {
     pos: { x, z },
     victimId: input.victimId == null ? null : input.victimId,
     victimClass: input.victimClass || 'ship',
+    ...(victimMission ? { victimMission } : {}),
     victimVel: boundedKillVel(input.victimVel),
     victimAngVel: boundedKillTumble(input.victimAngVel),
     victimMass: boundedVictimMass(input.victimMass),
@@ -948,6 +1027,7 @@ function normalizeMarker(input) {
     cause: normalizeCausalAftermath(input.cause),
     headline: boundedIdentityText(input.headline),
     structurePatch: normalizeStructurePatch(input.structurePatch),
+    ...wreckIntegrity(input),
   };
   // Restore the residue BEFORE the salvage pool fallback: a marker saved without an explicit
   // pool rebuilds its pool from its own residue, not from the generic class default.
@@ -963,11 +1043,13 @@ function normalizeMarker(input) {
   return marker;
 }
 
-function trimAndSort(markers) {
-  const normalized = markers.map(normalizeMarker).filter(Boolean);
-  const protectedMarkers = normalized.filter(isProtectedMarker);
+function trimAndSort(markers, retained) {
+  const normalized = markers.filter(row => !isDuplicateRetainedRow(row, retained))
+    .map(row => ({ row, marker: normalizeMarker(row) })).filter(item => item.marker);
+  const keep = item => isProtectedMarker(item.marker) || retained.get(item.marker.markerId) === item.row;
+  const protectedMarkers = normalized.filter(keep).map(item => item.marker);
   const rest = normalized
-    .filter((marker) => !isProtectedMarker(marker))
+    .filter((item) => !keep(item)).map(item => item.marker)
     .sort((a, b) => (b.tick - a.tick) || (b.t - a.t) || String(a.markerId).localeCompare(String(b.markerId)))
     .slice(0, Math.max(0, MAX_PER_SECTOR - protectedMarkers.length));
   return [...protectedMarkers, ...rest].sort((a, b) => (b.tick - a.tick) || (b.t - a.t)
@@ -986,6 +1068,9 @@ export const aftermathWrecks = {
     this.helpers = ctx && ctx.helpers || {};
     this.registry = ctx && ctx.registry || null;
     this._spawned = new Map();
+    // Transient object identity, not another persistence ledger. A recycled numeric id
+    // (even with copied marker data) is not the body this owner actually bound.
+    this._boundWreckMarkers = new WeakMap();
     // Companion debris bodies, keyed by the marker whose kill threw them. Unbound (no
     // markerId/provenance on the entity) so no durable marker owns them — the map is their
     // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
@@ -1001,6 +1086,7 @@ export const aftermathWrecks = {
 
     this._onKilled = (payload) => {
       this._noteInhabitantGone(payload && payload.id);
+      if (this._retireKilledWreck(payload)) return;
       this._recordKill(payload || {});
     };
     this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
@@ -1633,6 +1719,7 @@ export const aftermathWrecks = {
     // A duplicate kill receipt must not mint a second body on the same marker.
     const bound = this._resolveBoundWreck(marker.markerId);
     if (bound && bound.alive !== false) return bound;
+    if (this._cinderBodyDeferred(marker)) return null;
     // Fresh-window peek: a slam note whose kill never landed in-window must not suppress this
     // wreck or its companion shard (D168 — the tickless peek used to read stale notes as live).
     if (skipIfFracture && peekPendingSlam(marker.victimId, this.state && this.state.tick)) return null;
@@ -1899,6 +1986,11 @@ export const aftermathWrecks = {
       .find((item) => item && item.markerId === candidate.markerId);
     if (!marker) return null;
     const existing = this._resolveBoundWreck(marker.markerId);
+    // Mining must respect the durable owner's capacity refusal rather than create an
+    // anonymous fallback body beside a real deferred marker.
+    if (!existing && this._cinderBodyDeferred(marker)) {
+      return { markerId: marker.markerId, entityId: null, spec: null, deferred: true };
+    }
     return {
       markerId: marker.markerId,
       entityId: existing && existing.alive !== false ? existing.id : null,
@@ -1931,7 +2023,8 @@ export const aftermathWrecks = {
     }
     // Sector teardown reads the top-level field: an adopted mining body otherwise stays homeless
     // and survives eviction beside the marker's own respawn (same hole as the spec stamp).
-    if (marker.sectorId) entity.homeSectorId = marker.sectorId;
+    const residentSector = physicalWreckSector(marker, entity.pos);
+    if (residentSector) entity.homeSectorId = entity.data.homeSectorId = residentSector;
     syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
     // Adopt dead-man's motion only onto a wreck that is not already moving. A wreck mining spawned
     // from this same spec already carries the inherited momentum and must never be overwritten.
@@ -1997,6 +2090,128 @@ export const aftermathWrecks = {
       if (marker) return marker;
     }
     return null;
+  },
+
+  _cinderBodyDeferred(marker) {
+    if (!marker || !cinderRetentionIds(this.state, marker).has(marker.markerId)) return false;
+    let live = 0;
+    const seen = new Set();
+    for (const entity of indexedTypeScan(this.state, 'wrecks')) {
+      const id = entity?.data?.markerId;
+      if (!id || seen.has(id) || !isBoundWreck(entity, id)) continue;
+      const record = this._markerById(id);
+      if (!record || physicalWreckSector(record, entity.pos) !== physicalWreckSector(marker)) continue;
+      if (id === marker.markerId) return false;
+      seen.add(id);
+      live++;
+    }
+    return live >= MAX_SPAWNED_PER_SECTOR;
+  },
+
+  // entity:killed is synchronous while the actual dead body is still in the store.
+  // entity:destroyed is deliberately NOT used: residency and save teardown emit it too.
+  _retireKilledWreck(payload) {
+    if (!payload || payload.type !== 'wreck') return false;
+    const entity = entityFor(this.state, payload.id);
+    const markerId = entity && entity.data && entity.data.markerId;
+    if (!entity || entity.type !== 'wreck' || entity.alive !== false
+      || (payload.entity && payload.entity !== entity)
+      || !Number.isFinite(entity.hull) || entity.hull > 0
+      || entity.data.persistenceOwner !== 'aftermathWrecks'
+      || !markerId || entity.data.provenance?.markerId !== markerId
+      || this._spawned?.get(markerId) !== entity.id
+      || this._boundWreckMarkers?.get(entity) !== markerId) return false;
+    // Resolve the canonical row through the bound body's recorded sector. A malformed
+    // earlier bucket containing the same id must neither authorize nor block retirement.
+    const sectorId = entity.data.provenance.sectorId;
+    const records = this.state.aftermathWrecks?.bySector?.[sectorId];
+    const marker = Array.isArray(records)
+      ? records.find(row => row?.markerId === markerId && row.sectorId === sectorId) : null;
+    return this._retireDestroyedMarker(marker, entity.id);
+  },
+
+  _retireDestroyedMarker(marker, entityId = null, reason = 'destroyed') {
+    if (!marker || !this.state) return false;
+    const own = ensureAftermathState(this.state);
+    const rows = own.bySector[marker.sectorId];
+    const index = Array.isArray(rows) ? rows.indexOf(marker) : -1;
+    if (index < 0) return false;
+    // A malformed/restored bag may contain the same durable id twice. Retiring one
+    // row would leave the other able to recreate a second life for the same wreck.
+    for (const sectorId of Object.keys(own.bySector)) {
+      const list = own.bySector[sectorId];
+      if (Array.isArray(list)) own.bySector[sectorId] = list.filter((row) => row?.markerId !== marker.markerId);
+    }
+    this._spawned?.delete(marker.markerId);
+    this._retireMarkerShard(marker.markerId);
+    this.bus?.emit('aftermathWreck:retired', {
+      markerId: marker.markerId, entityId, sectorId: marker.sectorId, reason,
+    });
+    return true;
+  },
+
+  /** Read only: exact canonical loose mass available for an Understory intake. */
+  gardenFeedMass(entity) {
+    const data = entity && entity.data, flags = entity && entity.flags || {};
+    const markerId = data && data.markerId;
+    if (!entity || entity.id === this.state?.playerId || !markerId
+      || entityFor(this.state, entity.id) !== entity
+      || !isBoundWreck(entity, markerId) || !Number.isFinite(entity.hull) || entity.hull <= 0
+      || !Number.isFinite(entity.mass) || entity.mass <= 0
+      || data.persistenceOwner !== 'aftermathWrecks'
+      || this._spawned?.get(markerId) !== entity.id
+      || this._boundWreckMarkers?.get(entity) !== markerId) return null;
+    // Canonical does not mean unclaimed: recovery offers, authored sites, mission freight
+    // and another owner's durable body retain their own custody/settlement authority.
+    if (flags.persistent || flags.durable || flags.missionPinned || flags.invuln || flags.protected
+      || data.missionId || data.missionPinned || data.missionTag || data.wreckMissionId
+      || data.runtimeOwner || data.worldRecordId || data.identityKey || data.durable
+      || data.uniqueWreckId || data.authoredWreckId || data.worldSiteStructural
+      || data.poiId || data.authored || data.authoredCharacter || data.storyPropKind
+      || data.contractClaimSiteOf || data.salvorClaimedBy || data.recoveryEncounterId
+      || data.survivorPod || data.interventionId || data.onboarding
+      || data.worldOneOff || data.oneOffId || data.berthConsign || data.rookClaimed
+      || data.arenaShardOf || data.reefMineId || data.reefMine
+      || data.physicalCustodyOnly || data.orchardId || data.alienSiteId || data.fieldId
+      || data.resourceBodyId || data.worldSiteId || data.worldSitePayloadId || data.worldObjectId
+      || data.siteId || data.activityObjectSlotId || data.claimId || data.claimedBy || data.custodyOwner
+      || data.freightCustodyPod || data.freightCustody || data.caughtByNet || data.claimable
+      || data.protected || data.anchored || data.living || data.playerOwned || data.persistent
+      || data.originId || data.destinationId || data.originStationId || data.destStationId
+      || data.cargoIdentity || data.ownership
+      || (entity.ownerId != null && entity.ownerId !== this.state.playerId)
+      || (data.ownerId != null && data.ownerId !== this.state.playerId)) return null;
+    const sectorId = data.provenance.sectorId;
+    const rows = this.state.aftermathWrecks?.bySector?.[sectorId];
+    const marker = Array.isArray(rows)
+      ? rows.find(row => row?.markerId === markerId && row.sectorId === sectorId) : null;
+    if (!marker || marker.pinWreck === true) return null;
+    // The one unresolved Cinder route still owns its marked tow choices. Its ordinary
+    // completion releases any unsold survivors; eating them early must not strand Rook.
+    if (cinderRetentionIds(this.state, marker).has(markerId)) return null;
+    return entity.mass;
+  },
+
+  /**
+   * Terminal handoff while the exact physical hull is still live. Not salvage or a kill:
+   * the caller removes only after true. Neither absence nor entity:destroyed is proof.
+   */
+  consumeByGarden(entity, garden) {
+    if (!(this.gardenFeedMass(entity) > 0)) return false;
+    if (!garden || entityFor(this.state, garden.id) !== garden || garden.alive === false
+      || garden.type !== 'garden' || garden.factionId !== 'faction_understory'
+      || garden.data?.understoryGarden !== true || !garden.data.gardenId
+      || garden.data.gardenRetired === true || garden.data.gardenDestroyed === true
+      || !Number.isFinite(garden.hull) || garden.hull <= 0
+      || !Number.isFinite(garden.radius) || garden.radius <= 0) return false;
+    const reach = gardenGrowthRadius(garden) * UNDERSTORY_GARDENS.absorbPadding
+      + Math.max(0, Number(entity.radius) || 0);
+    const distance = Math.hypot(entity.pos?.x - garden.pos?.x, entity.pos?.z - garden.pos?.z);
+    if (!Number.isFinite(reach) || reach <= 0 || !Number.isFinite(distance) || distance > reach) return false;
+    const markerId = entity.data.markerId, sectorId = entity.data.provenance.sectorId;
+    const marker = this.state.aftermathWrecks.bySector[sectorId]
+      .find(row => row?.markerId === markerId && row.sectorId === sectorId);
+    return this._retireDestroyedMarker(marker, entity.id, 'understory_garden');
   },
 
   _raidCausality(encounterId) {
@@ -2168,12 +2383,20 @@ export const aftermathWrecks = {
     // as orphaned, salvageable wrecks. The save:loaded edge below owns the one post-deserialize spawn.
     if (this._saveRestoring) return 0;
     if (!state || !sectorId || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
-    const listed = aftermathForSector(state, sectorId);
+    // Explicit saved zero is unavailable, not proof of a kill receipt. Keep its
+    // canonical row for diagnosis; never mint a healed body or a false retirement.
+    this._writeBackAllBound();
+    const listed = physicalWrecksForSector(state, sectorId)
+      .filter((marker) => wreckIntegrity(marker).wreckHull > 0);
     const own = ensureAftermathState(state);
+    const retained = cinderRetentionIds(state);
     const player = listed.filter(isPlayerWreckMarker);
-    const rest = listed.filter((marker) => !isPlayerWreckMarker(marker))
-      .slice(0, Math.max(0, MAX_SPAWNED_PER_SECTOR - player.length));
-    const markers = [...player, ...rest];
+    const pinned = listed.filter(marker => !isPlayerWreckMarker(marker) && isProtectedMarker(marker));
+    const route = listed.filter(marker => !isProtectedMarker(marker) && retained.has(marker.markerId));
+    const rest = listed.filter(marker => !isProtectedMarker(marker) && !retained.has(marker.markerId));
+    // Record overflow never raises the six-body materialization budget. Existing
+    // protected recovery bodies take precedence; Cinder waits as real marker data.
+    const markers = [...player, ...pinned, ...route, ...rest].slice(0, MAX_SPAWNED_PER_SECTOR);
     // A live wreck that already carries a marker — a body that outlived residency churn or a
     // record shell — IS that marker's wreck; spawning beside it was the D89 duplicate. Adopt the
     // first claimant (bindImmediateWreck upgrades it to the full spec) and retire the rest.
@@ -2207,9 +2430,10 @@ export const aftermathWrecks = {
         }
       }
       if (this._resolveBoundWreck(marker.markerId)) continue;
+      if (this._cinderBodyDeferred(marker)) continue;
       // Markers retire mid-slice (salvage completion, arena cap) while this pass is
       // suspended — spawning for a dead marker leaves an orphan body that claims nothing.
-      const liveBag = own.bySector[sectorId];
+      const liveBag = own.bySector[marker.sectorId];
       if (Array.isArray(liveBag) && liveBag.indexOf(marker) === -1) continue;
       const entity = this.helpers.spawnEntity(this._specForMarker(marker));
       if (!entity) continue;
@@ -2225,6 +2449,8 @@ export const aftermathWrecks = {
     if (!isBoundWreck(entity, marker.markerId)) return false;
     const alreadyBound = this._spawned.get(marker.markerId) === entity.id;
     this._spawned.set(marker.markerId, entity.id);
+    if (!this._boundWreckMarkers) this._boundWreckMarkers = new WeakMap();
+    this._boundWreckMarkers.set(entity, marker.markerId);
     if (!alreadyBound && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('aftermathWreck:spawned', {
         markerId: marker.markerId,
@@ -2249,6 +2475,7 @@ export const aftermathWrecks = {
     const rot = boundedPoseAngle(marker.victimRot);
     const pitch = boundedPoseAngle(marker.victimPitch);
     const bank = boundedPoseAngle(marker.victimBank);
+    const integrity = wreckIntegrity(marker);
     return {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
@@ -2263,18 +2490,18 @@ export const aftermathWrecks = {
       // Dead man's mass: the victim's real mass so the wreck is shoveable. 1e6 only when no mass
       // was ever recorded (legacy markers).
       mass: mass != null ? mass : 1e6,
-      hull: 1,
-      hullMax: 1,
+      hull: integrity.wreckHull,
+      hullMax: integrity.wreckHullMax,
       // SFQ-B025: the named operational mass rides the body spec itself — without an authored
       // physicsBody.mass the normalizer re-derives a wreck-density mass (0.10·R³) that has
       // nothing to do with the victim's real mass, and every rope/impact consumer that reads
       // physicsBody.mass first would see the wrong number.
       physicsBody: { shape: 'capsule', mass: mass != null ? mass : 1e6 },
-      // The marker's sector owns this body: without homeSectorId the wreck survived sector
+      // The physical residence owns this body, not its incident provenance: without homeSectorId it survived sector
       // teardown live and unbound, and the marker's re-entry spawn doubled it (D89).
-      homeSectorId: marker.sectorId,
+      homeSectorId: physicalWreckSector(marker),
       data: {
-        homeSectorId: marker.sectorId,
+        homeSectorId: physicalWreckSector(marker),
         sectorId: marker.sectorId,
         // The marker in state.aftermathWrecks IS this body's durable record: world.records and the
         // far-actor shelf must never persist a second copy of it.
@@ -2362,12 +2589,17 @@ export const aftermathWrecks = {
       if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
       return;
     }
-    const markers = aftermathForSector(this.state, sectorId);
+    // Exit precedes the world's residency teardown and currentSector change. Refresh
+    // actual global pose/home first; a carried hull in another sector keeps its binding.
+    this._writeBackAllBound();
+    const markers = physicalWrecksForSector(this.state, sectorId);
     for (const marker of markers) {
       // Once-per-unbind receipt of where the body actually is. Without this a drifted wreck would
       // teleport back to its kill point on sector re-entry / Continue.
       if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
-      this._spawned.delete(marker.markerId);
+      // Membership exit does not prove residency removal: the old sector may stay
+      // resident, and a real live hull must still be able to die or be consumed once.
+      if (!this._resolveBoundWreck(marker.markerId)) this._spawned.delete(marker.markerId);
       // The companion shard is unbound and non-durable: dropping the handle is the whole
       // unbind (arena teardown kills entities anyway; adventure kills leave none).
       if (this._shards) this._shards.delete(marker.markerId);
@@ -2385,6 +2617,11 @@ export const aftermathWrecks = {
     if (!entity) return false;
     if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
       marker.pos = { x: entity.pos.x, z: entity.pos.z };
+      const residentSector = physicalWreckSector(marker);
+      if (residentSector) {
+        entity.homeSectorId = entity.data.homeSectorId = residentSector;
+        syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
+      }
     }
     // Pool truth lives on the marker and is normally the SAME object the live wreck drains
     // (player beam, scavenger). A foreign drainer may have REPLACED the live pool object
@@ -2400,6 +2637,7 @@ export const aftermathWrecks = {
     marker.victimRot = boundedPoseAngle(entity.rot);
     marker.victimPitch = boundedPoseAngle(entity.pitch);
     marker.victimBank = boundedPoseAngle(entity.bank);
+    Object.assign(marker, wreckIntegrity({ wreckHull: entity.hull, wreckHullMax: entity.hullMax }));
     // The rupture clip already fired on the live piece — carry that so a rematerialized
     // fragment doesn't replay the kick long after the kill.
     if (entity.data && entity.data.fractureRuptureFired === true) marker.fractureRuptureFired = true;
@@ -2427,31 +2665,35 @@ export const aftermathWrecks = {
     if (wreckId == null || !claimedMarkerId || !this._spawned || !this.state) return false;
     if (this._spawned.get(claimedMarkerId) !== wreckId) return false;
     const live = this._resolveBoundWreck(claimedMarkerId);
-    if (!live || live.id !== wreckId) return false;
+    if (!live || live.id !== wreckId || live.data?.persistenceOwner !== 'aftermathWrecks'
+      || this._boundWreckMarkers?.get(live) !== claimedMarkerId) return false;
     const markerId = claimedMarkerId;
     const own = ensureAftermathState(this.state);
-    for (const sectorId of Object.keys(own.bySector)) {
-      const before = own.bySector[sectorId] || [];
-      const after = before.filter((marker) => marker && marker.markerId !== markerId);
-      if (after.length !== before.length) {
-        own.bySector[sectorId] = after;
-        this._spawned.delete(markerId);
-        this._retireMarkerShard(markerId);
-        if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
-        }
-        return true;
-      }
+    const sectorId = live.data.provenance.sectorId;
+    const canonical = own.bySector[sectorId];
+    if (!Array.isArray(canonical)
+      || !canonical.some(marker => marker?.markerId === markerId && marker.sectorId === sectorId)) return false;
+    // One real consumed body retires every malformed duplicate of its durable id,
+    // never a second completion or a hull that can be sold again after Continue.
+    for (const key of Object.keys(own.bySector)) {
+      const rows = own.bySector[key];
+      if (Array.isArray(rows)) own.bySector[key] = rows.filter(marker => marker?.markerId !== markerId);
     }
-    return false;
+    this._spawned.delete(markerId);
+    this._retireMarkerShard(markerId);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('aftermathWreck:completed', { markerId, wreckId, sectorId });
+    }
+    return true;
   },
 
   serialize() {
     const own = ensureAftermathState(this.state);
     this._writeBackAllBound();
+    const retained = retainedCinderRows(this.state, own.bySector);
     const bySector = {};
     for (const sectorId of Object.keys(own.bySector)) {
-      const markers = trimAndSort(Array.isArray(own.bySector[sectorId]) ? own.bySector[sectorId] : []);
+      const markers = trimAndSort(Array.isArray(own.bySector[sectorId]) ? own.bySector[sectorId] : [], retained);
       if (markers.length) bySector[sectorId] = markers;
     }
     return {
@@ -2472,6 +2714,10 @@ export const aftermathWrecks = {
   // sector boundaries so order and RNG consumption stay identical.
   *deserializeChunked(data) {
     const own = ensureAftermathState(this.state);
+    const bySector = data && data.bySector && typeof data.bySector === 'object' ? data.bySector : {};
+    // Choose one worksite globally from the incoming canonical snapshot BEFORE clearing
+    // the outgoing bag. Per-sector selection could grant three extras to every fake route.
+    const retained = retainedCinderRows(this.state, bySector);
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
     own.runToken = data && Number.isFinite(data.runToken) && data.runToken >= 0 ? data.runToken >>> 0 : 0;
     own.bySector = {};
@@ -2481,9 +2727,8 @@ export const aftermathWrecks = {
     // inherit the outgoing session's timestamp (it would suppress publishes until simTime
     // overtook it).
     own.lastAmbientNewsAt = 0;
-    const bySector = data && data.bySector && typeof data.bySector === 'object' ? data.bySector : {};
     for (const sectorId of Object.keys(bySector)) {
-      const markers = trimAndSort(Array.isArray(bySector[sectorId]) ? bySector[sectorId] : []);
+      const markers = trimAndSort(Array.isArray(bySector[sectorId]) ? bySector[sectorId] : [], retained);
       for (const marker of markers) {
         if (marker.encounterFingerprint && own.causes[marker.encounterFingerprint]) {
           marker.cause = clonePlain(own.causes[marker.encounterFingerprint]);

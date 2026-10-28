@@ -9,13 +9,13 @@ import { captureStationHandoffScreenshot } from '../scripts/lib/stationHandoffDi
 const source = (await readFile(new URL('../scripts/check-47a-live-cold-open.mjs', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
 const block = source.match(/  try \{\n    const screenshot = await captureDiagnosticScreenshot[\s\S]*?\n  \}\n(?=  assert\.deepEqual\(issues\.errorIssues)/)?.[0];
 assert.ok(block, 'bounded diagnostic block must precede the unchanged console gate');
-const run = new (Object.getPrototypeOf(async function(){}).constructor)('captureDiagnosticScreenshot', 'page', 'console', block);
+const run = new (Object.getPrototypeOf(async function(){}).constructor)('captureFlightPicturePair', 'page', 'console', 'graphicsObserver', block);
 
 test('camera evidence is after original actor/safety assertions and before console acceptance', () => {
   const at = source.indexOf(block);
   assert.ok(at > source.indexOf('live cold open should not contain a hostile firing intent'));
   assert.ok(at < source.indexOf("assert.deepEqual(issues.errorIssues(), []"));
-  assert.match(source, /captureStationHandoffScreenshot as captureDiagnosticScreenshot/);
+  assert.match(source, /captureFlightPicturePair, observeGraphicsMessages/);
 });
 
 test('capture failure remains diagnostic and does not mask the later acceptance gate', async () => {
@@ -28,8 +28,8 @@ test('capture failure remains diagnostic and does not mask the later acceptance 
 
 test('capture reports actual artifact path without claiming the whole check passed', async () => {
   const logs = [], page = {};
-  await run(async (actualPage, context) => { assert.equal(actualPage, page); assert.equal(context.boundary, '47a-actors-bound'); return '/artifact/actual-camera.png'; }, page, { log: value => logs.push(value), warn() { throw new Error('unexpected warning'); } });
-  assert.deepEqual(logs, ['47-A game-camera diagnostic: /artifact/actual-camera.png']);
+  await run(async (actualPage, context) => { assert.equal(actualPage, page); assert.equal(typeof context.graphicsMessages, 'function'); return { path: '/artifact/pair.json', report: { status: 'telemetry-incomplete' } }; }, page, { log: value => logs.push(value), warn() { throw new Error('unexpected warning'); } });
+  assert.deepEqual(logs, ['47-A game-camera diagnostic: /artifact/pair.json (telemetry-incomplete)']);
 });
 
 test('existing screenshot helper preserves default animation semantics and a two-second bound', async () => {

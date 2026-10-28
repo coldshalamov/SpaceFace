@@ -5,7 +5,7 @@
 // the pane's recorded fields and the reader's decision are exercised directly.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readStartupFailure, startupFailureQuote } from '../scripts/player-truth/routes.mjs';
+import { bootToMenu, readStartupFailure, startupFailureQuote } from '../scripts/player-truth/routes.mjs';
 import { quoteLoadError } from '../scripts/player-truth/environment.mjs';
 
 // Fields exactly as the frozen capture presented them (loadingPresenter.showStartupFailure).
@@ -78,4 +78,31 @@ test("the boot shell's failed import is quoted with the module cause, and a sche
   // The presenter's own reader must accept the shell shape too, not only the pane shape.
   const page = { evaluate: async () => shell };
   assert.match(await readStartupFailure(page), /^startup failed during boot import/);
+});
+
+test('the menu route starts readiness polling at document commit while game modules initialize', async () => {
+  let navigation = null;
+  let evaluations = 0;
+  const page = {
+    async goto(_url, options) {
+      navigation = options;
+      assert.equal(options.waitUntil, 'commit', 'boot polling must not wait for slow module evaluation');
+    },
+    async evaluate() {
+      evaluations += 1;
+      if (evaluations === 1) return '';
+      if (evaluations === 2) return { found: false };
+      return true;
+    },
+    async waitForTimeout() {},
+    locator() {
+      return { first() { return this; }, async isVisible() { return false; } };
+    },
+  };
+  const steps = [];
+
+  await bootToMenu(page, 'http://127.0.0.1:8123/', (...step) => steps.push(step));
+
+  assert.deepEqual(navigation, { waitUntil: 'commit' });
+  assert.deepEqual(steps, [['main menu', true, 'menu visible']]);
 });

@@ -39,33 +39,35 @@ async function boot(t){
   return {sim,state,get,native,player,target,jack,kernel,denials,press,identify,hail,disable,tick};
 }
 
-test('starter tier-zero line physically latches consenting drive-disabled Empty Seat through actual combat, hail and native attachment owners',async t=>{
+test('starter tier-zero Massline latches a physical hull without granting Shipjack recovery consent',async t=>{
   const h=await boot(t);assert.equal(h.identify().ok,true);
-  h.press();assert.match(h.denials.at(-1).reason,/line tier 1 required/);assert.equal(h.native.attachments.size,0);
-  assert.equal(h.hail().ok,true,'evacuated crew terms are explicit consent, not ownership');
-  h.press();assert.equal(h.native.attachments.size,0,'consent cannot make powered machinery a tier-zero load');
-  h.disable();
-  const drive=h.state.combat.entities[h.target.id].subsystems.subsystem_drive;
-  assert.equal(drive.destroyed,true);assert.equal(h.target.alive,true);
-  assert.deepEqual(h.target.data.weapons,[],'unarmed civilian has no live hardpoints despite generic weapon subsystem');
+  assert.equal(hasRecoveryTowConsent(h.state,h.target),false);
   const before=JSON.stringify(h.state.rockCore);h.press();
   assert.equal(h.state.player.tether.active,true,JSON.stringify({denials:h.denials,preview:h.state.masslineAcquisition}));
   const line=h.kernel.attachments.get(h.state.player.tether.attachmentId);
   assert.equal(line.targetId,h.target.id);assert.equal(line.targetGeneration,h.target.occupantGeneration);
   assert.equal(h.native.attachments.size,1,'a genuine native Massline exists');
+  assert.equal(hasRecoveryTowConsent(h.state,h.target),false,'physical attachment is not recovery consent');
   assert.equal(JSON.stringify(h.state.rockCore),before,'eligibility did not grant or mutate Line progress');
   assert.equal(h.target.radius,18);assert.ok(h.target.mass>=55,'the real hauler geometry/mass remain');
 });
 
-test('stale-generation consent, armed/automated defenders and obstruction remain denied at starter tier',async t=>{
+test('Shipjack consent and crew state do not gate physical latching; line obstruction still does',async t=>{
   for(const kind of ['generation','armed','automated','blocked']){
     const h=await boot(t);h.identify();h.disable();h.hail();
     if(kind==='generation')h.state.player.shipjack.custodyAttempts[h.target.data.vesselId].generation='obsolete';
     if(kind==='armed')h.target.data.weapons=[{defId:'wpn_pulse_laser_s'}];
     if(kind==='automated')h.state.player.shipjack.vesselsById[h.target.data.vesselId].crew='automated';
     if(kind==='blocked')h.sim.helpers.isMasslineObstructed=()=>true;
-    h.press();assert.equal(h.native.attachments.size,0,kind);assert.equal(h.state.rockCore.tier,0,kind);
-    assert.match(h.denials.at(-1).reason,kind==='blocked'?/blocked/:/line tier 1 required/,kind);
+    const consentBefore=hasRecoveryTowConsent(h.state,h.target);
+    h.press();assert.equal(h.state.rockCore.tier,0,kind);
+    if(kind==='blocked'){
+      assert.equal(h.native.attachments.size,0,kind);
+      assert.match(h.denials.at(-1).reason,/blocked/);
+    }else{
+      assert.equal(h.native.attachments.size,1,kind);
+    }
+    assert.equal(hasRecoveryTowConsent(h.state,h.target),consentBefore,`${kind}: physical latching does not change recovery consent`);
   }
 });
 
@@ -80,21 +82,24 @@ test('canonical surrendered recovery consent is bound to the live body and canno
   assert.equal(hasRecoveryTowConsent(h.state,recycled),false,'copied annotation lacks canonical recovery instance identity');
 });
 
-test('Ctrl-nearest enforces ordinary tier limits and permits only the same consenting disabled recovery load',async t=>{
+test('Ctrl-nearest latches a physical hull at tier zero without requiring Shipjack consent',async t=>{
   const h=await boot(t);h.state.input.tetherMode='nearest';
-  h.press();assert.match(h.denials.at(-1).reason,/line tier 1 required/);assert.equal(h.native.attachments.size,0);
-  h.identify();h.hail();h.disable();h.press();
+  h.press();
   assert.equal(h.native.attachments.size,1);assert.equal(h.state.player.tether.targetId,h.target.id);
   assert.equal(h.state.rockCore.tier,0);
 });
 
-test('ordinary boulders retain their tier gate and temporary modes cannot use recovery consent',async t=>{
+test('tier-zero Massline latches boulders in Adventure and temporary flight modes',async t=>{
   const h=await boot(t);h.sim.helpers.removeEntity(h.target.id);
   const rock=h.sim.spawn({type:'asteroid',pos:{x:80,z:0},radius:18,mass:100,hull:100,hullMax:100,data:{}});
   h.native.syncFromEntities(h.state.entityList);h.state.player.targetId=rock.id;h.state.input.tetherMode='nearest';
-  h.press();assert.match(h.denials.at(-1).reason,/line tier 1 required/);assert.equal(h.native.attachments.size,0);
-  const other=await boot(t);other.identify();other.disable();other.hail();other.state.run={kind:'crucible'};
-  other.press();assert.equal(other.native.attachments.size,0);assert.equal(other.state.rockCore.tier,0);
+  h.press();assert.equal(h.native.attachments.size,1);assert.equal(h.state.player.tether.targetId,rock.id);
+  assert.equal(h.state.rockCore.tier,0);
+  const other=await boot(t);other.sim.helpers.removeEntity(other.target.id);
+  const otherRock=other.sim.spawn({type:'asteroid',pos:{x:80,z:0},radius:18,mass:100,hull:100,hullMax:100,data:{}});
+  other.native.syncFromEntities(other.state.entityList);other.state.run={kind:'crucible'};other.state.input.tetherMode='nearest';
+  other.press();assert.equal(other.native.attachments.size,1);assert.equal(other.state.player.tether.targetId,otherRock.id);
+  assert.equal(other.state.rockCore.tier,0);
 });
 
 test('existing scripted powered teaching catch remains available at tier zero in scored and nearest input',async t=>{

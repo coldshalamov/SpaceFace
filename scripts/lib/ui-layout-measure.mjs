@@ -99,6 +99,27 @@ export function layoutProbe(arg) {
         hiddenCache.set(node, true);
         return true;
       }
+      // The screen-reader pattern's clip half: clip:rect(0 0 0 0) on a positioned box (and
+      // clip-path:inset(50%|100%) on any box) paints nothing for the whole subtree while the
+      // children keep layout rects — the b inside span.gm-level reads 40x14 but is invisible.
+      const clipZero = (style.position === 'absolute' || style.position === 'fixed')
+        && /^rect\(\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*\)$/.test(style.clip || '');
+      const clipPathZero = /^inset\((?:50%|100%)(?:\s+50%|100%){0,3}(?:\s+round\b[^)]*)?\)$/
+        .test(style.clipPath || '');
+      if (clipZero || clipPathZero) {
+        hiddenCache.set(node, true);
+        return true;
+      }
+      // A closed <details> hides non-summary children through its slot, not display:none — they
+      // keep layout rects but never paint and never hit-test. Disclosed-only content is a
+      // reachability choice, not dead or occluded geometry.
+      if (cur.tagName === 'DETAILS' && !cur.open) {
+        let inSummary = false;
+        for (let inner = node; inner && inner !== cur; inner = inner.parentElement) {
+          if (inner.tagName === 'SUMMARY') { inSummary = true; break; }
+        }
+        if (!inSummary) { hiddenCache.set(node, true); return true; }
+      }
       if (cur === document.body) break;
       cur = cur.parentElement;
     }
@@ -520,6 +541,24 @@ export function hoverBegin() {
     const style = getComputedStyle(node);
     if (style.display === 'none' || style.visibility === 'hidden'
       || parseFloat(style.opacity || '1') <= 0.01) continue;
+    // Phantom layout rects under a closed <details> (outside the summary) or a zero-clipped
+    // ancestor paint nothing — they must not be counted "seen" or the reveal diff ignores a
+    // real reveal when the disclosure later opens.
+    let slotHidden = false;
+    for (let cur = node; cur && cur.nodeType === 1; cur = cur.parentElement) {
+      if (cur.tagName === 'DETAILS' && !cur.open) {
+        let inSummary = false;
+        for (let inner = node; inner && inner !== cur; inner = inner.parentElement) {
+          if (inner.tagName === 'SUMMARY') { inSummary = true; break; }
+        }
+        if (!inSummary) { slotHidden = true; break; }
+      }
+      const s = getComputedStyle(cur);
+      if ((s.position === 'absolute' || s.position === 'fixed')
+        && /^rect\(\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*\)$/.test(s.clip || '')) { slotHidden = true; break; }
+      if (/^inset\((?:50%|100%)(?:\s+50%|100%){0,3}(?:\s+round\b[^)]*)?\)$/.test(s.clipPath || '')) { slotHidden = true; break; }
+    }
+    if (slotHidden) continue;
     seen.add(node);
   }
   window.__sfLayoutSeen = seen;
@@ -536,15 +575,28 @@ export function hoverTriggers(rootSelectors) {
   const scope = roots.length ? roots : [document.body];
   const triggers = [];
   const seen = new Set();
-  const sel = 'button, a[href], input, select, [role="button"], [role="tab"],'
-    + ' [title], [data-tip], [aria-describedby], [data-why], [tabindex]:not([tabindex="-1"])';
+  // A control inside a closed <details> (or a zero-clipped ancestor) reports a nonzero layout
+  // rect but paints nothing — hovering its phantom coordinates lands on unrelated paint.
+  const slotHidden = (node) => {
+    for (let cur = node; cur && cur.nodeType === 1; cur = cur.parentElement) {
+      const s = getComputedStyle(cur);
+      if (s.display === 'none' || s.visibility === 'hidden') return true;
+      if (cur.tagName === 'DETAILS' && !cur.open) {
+        let inSummary = false;
+        for (let inner = node; inner && inner !== cur; inner = inner.parentElement) {
+          if (inner.tagName === 'SUMMARY') { inSummary = true; break; }
+        }
+        if (!inSummary) return true;
+      }
+    }
+    return false;
+  };
   for (const rootEl of scope) {
     for (const node of rootEl.querySelectorAll(sel)) {
       if (seen.has(node)) continue;
       const rect = node.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) continue;
-      const style = getComputedStyle(node);
-      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (slotHidden(node)) continue;
       seen.add(node);
       triggers.push({
         x: Math.min(Math.max(rect.left + rect.width / 2, 1), window.innerWidth - 1),
@@ -588,6 +640,25 @@ export function hoverDiff() {
     const style = getComputedStyle(node);
     if (style.display === 'none' || style.visibility === 'hidden'
       || parseFloat(style.opacity || '1') <= 0.01) continue;
+    // The same phantom-rect rule as hoverTriggers: a nonzero layout rect under a closed
+    // <details> (outside the summary) or a zero-clipped ancestor is still unpainted — it
+    // cannot be a "revealed" element, so it is never judged.
+    let slotHidden = false;
+    for (let cur = node; cur && cur.nodeType === 1; cur = cur.parentElement) {
+      const s = getComputedStyle(cur);
+      if (s.display === 'none' || s.visibility === 'hidden') { slotHidden = true; break; }
+      if (cur.tagName === 'DETAILS' && !cur.open) {
+        let inSummary = false;
+        for (let inner = node; inner && inner !== cur; inner = inner.parentElement) {
+          if (inner.tagName === 'SUMMARY') { inSummary = true; break; }
+        }
+        if (!inSummary) { slotHidden = true; break; }
+      }
+      if ((s.position === 'absolute' || s.position === 'fixed')
+        && /^rect\(\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*,\s*0(px)?\s*\)$/.test(s.clip || '')) { slotHidden = true; break; }
+      if (/^inset\((?:50%|100%)(?:\s+50%|100%){0,3}(?:\s+round\b[^)]*)?\)$/.test(s.clipPath || '')) { slotHidden = true; break; }
+    }
+    if (slotHidden) continue;
     seen.add(node); // revealed now — do not re-report for the next trigger
     // Clip-aware centre: a tip revealed inside a clipping ancestor only paints inside the clip
     // box; its raw rect can point at pixels it never produces.
@@ -682,7 +753,19 @@ export function hoverDiff() {
       path = path ? part + ' > ' + path : part;
       cur = cur.parentElement;
     }
+    // A reveal that carries nothing to read and nothing to click is a painted underlay — the
+    // cursor-spotlight glows (.orr-spot, .orr-film__spot) and decorative strokes that reveal
+    // themselves exactly so content can sit ON them. Burial and clipping are meaningless when
+    // there is no payload to reach, so they are not reported.
     const text = (node.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+    const tag = node.tagName;
+    const payloadControl = 'button, a[href], input, select, textarea, [role="button"], [role="link"],'
+      + ' [role="tab"], [role="menuitem"], [role="switch"], [role="checkbox"], [tabindex]:not([tabindex="-1"])';
+    const isDecor = !text
+      && tag !== 'CANVAS' && tag !== 'IMG' && tag !== 'VIDEO' && tag !== 'PICTURE'
+      && !(node.matches && node.matches(payloadControl))
+      && !(node.querySelector && node.querySelector(payloadControl));
+    if (isDecor) continue;
     revealed.push({
       path,
       text,

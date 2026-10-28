@@ -2705,6 +2705,12 @@ export function createHud(ctx, alerts) {
   root.appendChild(liveAssertive);
   let captionHideTimer = 0;
   let captionFadeTimer = 0;
+  // Restarting the fade-in needs a style flush between remove('show') and add('show'), and reading
+  // offsetWidth forces a synchronous layout of the whole HUD. A burst of captions in one frame (game
+  // start posts dozens) paid that flush every time - ~1 s of a 2.5 s loading freeze. The first caption of
+  // a frame restarts the fade; later ones in the same frame only swap the text (the fade is already running).
+  let captionFlushedThisFrame = false;
+  const releaseCaptionFlush = () => { captionFlushedThisFrame = false; };
   on('presentation:caption', (p) => {
     if (!p || !p.text) return;
     clearTimeout(captionHideTimer);
@@ -2725,7 +2731,13 @@ export function createHud(ctx, alerts) {
     caption.textContent = p.text;
     caption.hidden = false;
     caption.classList.toggle('assertive', !!p.assertive);
-    caption.classList.remove('show'); void caption.offsetWidth; // restart fade-in
+    caption.classList.remove('show');
+    if (!captionFlushedThisFrame) {
+      void caption.offsetWidth; // restart fade-in (one forced layout per frame at most)
+      captionFlushedThisFrame = true;
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(releaseCaptionFlush);
+      else setTimeout(releaseCaptionFlush, 16);
+    }
     caption.classList.add('show');
     // A voice body carries its real duration — the caption outlives a long slow-register bark
     // instead of dying mid-word (assertive/polite defaults stand for non-voice captions).

@@ -111,7 +111,10 @@ function startupFailureError(quote) {
 
 export async function bootToMenu(page, baseUrl, step) {
   await installFirstLightPromptHandler(page, step);
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  // The module entrypoint can keep DOMContentLoaded pending while the game initializes. Commit
+  // is enough to begin polling the public startup surface; the readiness loop below owns the
+  // longer menu deadline and can report the game's terminal startup pane directly.
+  await page.goto(baseUrl, { waitUntil: 'commit' });
   const deadline = Date.now() + 180000;
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);

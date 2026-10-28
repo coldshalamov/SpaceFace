@@ -962,6 +962,7 @@ function projectDomainLeaf(rule, v, state) {
   // npcJobs.byId is authoritative in the worker but a presentation mirror on the main side.
   // Project before canonicalization so the expensive planner/cargo/sidecar fields do not enter
   // the signed string or structured-clone update.  The worker state itself is never modified.
+  if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardForecast') return resolveOrchardForecast(state);
   if (rule?.project === 'ilexGreenhouse') return projectIlexGreenhouse(state);
   if (rule?.project === 'orchardExposure') return projectOrchardExposure(state, v);

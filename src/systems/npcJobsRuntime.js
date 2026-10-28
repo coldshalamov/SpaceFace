@@ -1,6 +1,7 @@
 import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
 import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
 import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
+import { heliosClaimAwaitingWitness } from './heliosClaimOpening.js';
 import { orchardTowIntercept } from './orchardTowIntercept.js';
 import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
@@ -4145,7 +4146,7 @@ export const npcJobsRuntime = {
     const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
     let best = null;
     forEachFieldRock(this.state, (rock) => {
-      if (!starterRockMineable(rock)) return;
+      if (!starterRockMineable(rock) || heliosClaimAwaitingWitness(this.state, rock)) return;
       const dx = rock.pos.x - ax;
       const dz = rock.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -4165,7 +4166,7 @@ export const npcJobsRuntime = {
         && this.state.entities && this.state.entities.get
         ? this.state.entities.get(this._heliosStarterRockId) : null)
       : this._asteroidForFieldWaypoint(field.waypoint);
-    return starterRockMineable(rock) ? rock : null;
+    return starterRockMineable(rock) && !heliosClaimAwaitingWitness(this.state, rock) ? rock : null;
   },
 
   /** The cutting stop of a Helios miner: a `field:` waypoint, or the authored claim's ore face. */
@@ -4218,7 +4219,7 @@ export const npcJobsRuntime = {
     const rock = this.state.entities && this.state.entities.get
       ? this.state.entities.get(this._heliosStarterRockId)
       : null;
-    if (!starterRockMineable(rock)) {
+    if (!starterRockMineable(rock) || heliosClaimAwaitingWitness(this.state, rock)) {
       entry.heliosShiftStopped = true;
       stop();
       return;
@@ -4433,13 +4434,15 @@ export const npcJobsRuntime = {
       const pallasTarget = !claimedBeforeAdvance && this.helpers.traffic?.pallasWorkTarget?.(entry, entity);
       const physicalPose = physicalTarget?.workPose || entity;
       const holdingForArrival = tallyTarget ? (tallyTarget.blocked || tallyTarget.holdClock || (!tallyTarget.moving && !tallyTarget.reached))
-        : (pallasTarget || physicalTarget?.blocked || physicalTarget?.ready === false || physicalTarget)
-        && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
-        && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
-          && entry.worldRecordId === this._heliosStarterMinerRecordId)
-        && (physicalTarget.settled === false || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
-          || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
-            (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
+        : (pallasTarget || physicalTarget?.blocked || physicalTarget?.ready === false
+          || (physicalTarget
+            && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
+            && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
+              && entry.worldRecordId === this._heliosStarterMinerRecordId)
+            && (physicalTarget.settled === false
+              || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+              || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
+                (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8)));
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.
@@ -7051,3 +7054,4 @@ export const npcJobsRuntime = {
 };
 
 export default npcJobsRuntime;
+

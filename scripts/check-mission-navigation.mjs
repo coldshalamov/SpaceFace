@@ -5,18 +5,47 @@ import { missions } from '../src/systems/missions.js';
 function createBus() {
   const handlers = new Map();
   const events = [];
+  const off = (name, fn) => {
+    const set = handlers.get(name);
+    if (!set) return;
+    set.delete(fn);
+    if (!set.size) handlers.delete(name);
+  };
   return {
     events,
     on(name, fn) {
-      if (!handlers.has(name)) handlers.set(name, []);
-      handlers.get(name).push(fn);
+      if (!handlers.has(name)) handlers.set(name, new Set());
+      handlers.get(name).add(fn);
+      // Capture this bus, not the singleton mission host's next harness bus.
+      return () => off(name, fn);
     },
+    off,
     emit(name, payload) {
       events.push({ name, payload });
-      for (const fn of handlers.get(name) || []) fn(payload);
+      for (const fn of [...(handlers.get(name) || [])]) fn(payload);
     },
   };
 }
+
+function checkBusLifecycle() {
+  const oldBus = createBus(), nextBus = createBus();
+  let oldCalls = 0, nextCalls = 0;
+  const oldHandler = () => { oldCalls++; };
+  const unsubscribe = oldBus.on('probe', oldHandler);
+  oldBus.on('probe', oldHandler); // production registration is idempotent
+  const nextHandler = () => { nextCalls++; };
+  const nextUnsubscribe = nextBus.on('probe', nextHandler);
+  oldBus.emit('probe');
+  assert.equal(oldCalls, 1);
+  unsubscribe(); unsubscribe(); // repeated disposal is harmless
+  oldBus.emit('probe'); nextBus.emit('probe');
+  assert.equal(oldCalls, 1, 'old listener must not survive disposal');
+  assert.equal(nextCalls, 1, 'old disposer must not remove a new bus listener');
+  nextBus.off('probe', nextHandler); nextUnsubscribe();
+  nextBus.emit('probe');
+  assert.equal(nextCalls, 1, 'explicit off and returned disposer share ownership');
+}
+checkBusLifecycle();
 
 function createState() {
   return {

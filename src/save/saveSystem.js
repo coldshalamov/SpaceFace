@@ -1021,6 +1021,8 @@ export const save = {
       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
       ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
       ['aftermathWrecks', () => this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {})],
+      // Garden live state rides persistent entities; this optional owner section retains finite loss.
+      ['understoryGardens', () => this._callSerialize('understoryGardens')],
       // Discovered-crime bookkeeping: the unreported-kill docket + priced-incident ledger.
       // Without it a save boundary launders unwitnessed kills — the wreck can never convict.
       ['lawSecurity', () => this._callSerialize('lawSecurity') || {}],
@@ -1249,6 +1251,8 @@ export const save = {
     yield 'serialize:v2Flavor';
     data.aftermathWrecks = this._callSerialize('aftermathWrecks') || clonePlain(state.aftermathWrecks || {});
     yield 'serialize:aftermathWrecks';
+    data.understoryGardens = this._callSerialize('understoryGardens');
+    yield 'serialize:understoryGardens';
     data.lawSecurity = this._callSerialize('lawSecurity') || {};
     yield 'serialize:lawSecurity';
     data.fieldDepletion = this._callSerialize('fieldDepletion') || clonePlain(state.fieldDepletion || {});
@@ -1602,7 +1606,9 @@ export const save = {
   _serializeEncounterDirector() {
     const d = this.state.encounterDirector;
     if (!d || typeof d !== 'object') return {};
+    const nestVisit = this.helpers?.captureNestVisit ? this.helpers.captureNestVisit() : d.nestVisit;
     const snapshot = clonePlain({
+      ...(nestVisit !== undefined ? { nestVisit } : {}),
       named: d.named || {},
       receipts: Array.isArray(d.receipts) ? d.receipts.slice(-12) : [],
       cooldowns: d.cooldowns || {},
@@ -6900,6 +6906,8 @@ export const save = {
       this._spawnPlayer(savedPlayer, entityIdRemap);
       // K1 presence is semantic run state. Restore it after the current player has a fresh id but
       // before world re-entry emits sector:enter and rematerializes route/presence actors.
+      // Restore the singleton terminal garden before sector entry; saved live bodies adopt on save:loaded.
+      this._callDeserialize('understoryGardens', data.understoryGardens);
       this._callDeserialize('factionPresence', data.factionPresence);
       yield 'deserialized-faction-presence';
       this._callDeserialize('bandRadio', data.bandRadio);

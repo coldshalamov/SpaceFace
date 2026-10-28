@@ -1,5 +1,3 @@
-import { isOriginalMassScaleTow } from './cargoCustody.js';
-import { isOriginalStarterBuoyTow } from '../missions/starterWorkday.js';
 // Tether gameplay system (GDD 2.0 §4.3, BUILD_PLAN WS-D1).
 // Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
 // service into player flight. SG-02 owns momentum exchange; this system only targets,
@@ -17,9 +15,6 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed, resolveWinchBrace, WINCH_BRACE } from '../combat/attachments.js';
-import { lineThrowTierForBody } from '../data/lineRating.js'; // row 483 Line-rating throw gate
-import { isBlackFlagAdventure, peekShipjack, vesselForEntity } from '../shipjack/model.js';
-import { hasRecoveryTowConsent, isSurrenderedContact } from './surrenderRecovery.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { occupantGenerationOf } from '../core/entity.js';
@@ -1332,13 +1327,9 @@ export const tetherGameplay = {
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     // A published pick whose occupant token no longer matches means the id recycled between
     // preview and press — the latch must name the dead pick as lost, not weld onto its heir.
-    let denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
+    const denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
       ? 'target-lost'
       : validateAcquisitionTarget(this, player, target, def, state, null, admissionSource);
-    if (!denial && Number.isFinite(state.rockCore?.tier)) {
-      const requiredTier = recoveryTowRequiredTier(state, target);
-      if (requiredTier > state.rockCore.tier) denial = `line tier ${requiredTier} required`;
-    }
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
       invalidateAcquisitionReceipt(state, denial);
@@ -1361,15 +1352,9 @@ export const tetherGameplay = {
     const obstacles = collectAcquisitionObstacles(this, state, player, entities);
     let nearest = null;
     let nearestSurfaceDistance = Infinity;
-    let tierDenial = null;
     for (const entity of entities) {
       if (!isAttachable(entity, player.id)) continue;
       if (validateAcquisitionTarget(this, player, entity, def, state, obstacles)) continue;
-      const requiredTier = recoveryTowRequiredTier(state, entity);
-      if (Number.isFinite(state.rockCore?.tier) && requiredTier > state.rockCore.tier) {
-        tierDenial ||= { reason: `line tier ${requiredTier} required`, targetId: entity.id };
-        continue;
-      }
       const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius)));
       if (surfaceDistance < nearestSurfaceDistance
@@ -1379,7 +1364,7 @@ export const tetherGameplay = {
       }
     }
     if (!nearest) {
-      this._lastLatchDenial = tierDenial || {
+      this._lastLatchDenial = {
         reason: 'no-target',
         maxLength,
       };
@@ -3243,41 +3228,8 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
     isObstructed: (entity) => denialById.get(entity.id) === 'blocked',
     ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
-    // Row 483: the Line rating gates which body classes the massline can move. When rockCore
-    // has published a tier, over-class bodies score 'immovable'; absent the owner the gate
-    // is inert (legacy behavior preserved).
-    lineTier: Number.isFinite(state?.rockCore?.tier) ? state.rockCore.tier : null,
-    throwTierOf: entity => recoveryTowRequiredTier(state, entity),
   });
   return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
-}
-
-/** A consenting powerless hull is a recovery load, not an unwilling throw-class target. */
-function recoveryTowRequiredTier(state, entity) {
-  // Preserve the scorer's existing scripted teaching catch across fresh/nearest admission.
-  if (entity?.data?.onboarding === true) return 0;
-  // Accepted recovery cargo consents to towing; its actual mass/forces still apply.
-  if (isOriginalStarterBuoyTow(state,entity)) return 0;
-  // Issued manifest recovery is consenting cargo; only the owner-registered original qualifies.
-  if (isOriginalMassScaleTow(state,entity)) return 0;
-  const ordinary = lineThrowTierForBody(entity);
-  if (!isBlackFlagAdventure(state) || entity?.type !== 'ship' || !entity.alive || !(entity.hull > 0)
-    || state.entities?.get(entity.id) !== entity) return ordinary;
-  const runtime = state.combat?.entities?.[entity.id];
-  const disabled = id => runtime?.subsystems?.[id]?.destroyed === true
-    || runtime?.subsystems?.[id]?.effectiveDisabled === true;
-  if (!disabled('subsystem_drive') && runtime?.capabilities?.drive !== false) return ordinary;
-  const vessel = vesselForEntity(state, entity), attempt = peekShipjack(state)?.custodyAttempts?.[vessel?.vesselId];
-  const generation = entity.data?.shipjackGeneration;
-  const parley = generation != null && vessel?.generation === generation && attempt?.generation === generation
-    && vessel.location?.entityId === entity.id && attempt.surrendered === true
-    && !['aborted','expired','destroyed','escaped'].includes(attempt.phase);
-  if (!parley && !hasRecoveryTowConsent(state, entity)) return ordinary;
-  const weaponsSuppressed = disabled('subsystem_weapon') || runtime?.capabilities?.weapon === false;
-  // A generic weapon subsystem can be healthy on an unarmed civilian: use actual hardpoints.
-  if (!weaponsSuppressed && !isSurrenderedContact(entity)
-    && (!Array.isArray(entity.data?.weapons) || entity.data.weapons.length > 0 || vessel?.crew === 'automated')) return ordinary;
-  return 0;
 }
 
 function emptyAcquisitionSnapshot(denial, intent) {

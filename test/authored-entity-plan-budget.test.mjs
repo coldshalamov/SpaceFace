@@ -417,6 +417,7 @@ async function composeWithFixtureLoader(entity) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(boundary.userData.authoredPreparePhase, undefined, 'settled wait restores existing phase semantics');
 
   const demandRequests = requests.map(relativeFile).filter((file) => !BOOT_FILES.has(file));
   const result = {
@@ -564,7 +565,8 @@ test('an evicted matching authored record is reloaded before a repeated entity p
   partsLibrary.invalidatePartsLibraryCaches(renderer);
 });
 
-test('a resolved authored ship still awaits exact pipeline admission before publication', async () => {
+for (const stalePipeline of [false, true]) {
+test(`a resolved authored ship ${stalePipeline?'cannot overwrite a newer admission phase':'still awaits exact pipeline admission before publication'}`, async () => {
   const renderer = {};
   const scene = new THREE.Scene();
   const entity = {
@@ -631,7 +633,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     const boundary = partsLibrary.wrapShipWithAuthoredParts(entity, fallback, options);
     entity.mesh = boundary;
     scene.add(boundary);
-    boundary.userData.requestAuthoredUpgrade(renderer, scene);
+    const upgradeDone = boundary.userData.requestAuthoredUpgrade(renderer, scene);
 
     assert.equal(boundary.userData.authoredAssetState, 'loading');
     assert.equal(boundary.children.includes(fallback), true,
@@ -648,10 +650,24 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
     assert.ok(compiledRoot, 'the resolved composition must enter the exact GPU pipeline compiler');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines:root=renderer-compile-chain;pendingPools=0');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline work cannot publish the authored root early');
     assert.equal(compiledRoot.parent, null, 'pipeline admission compiles the detached authored root');
 
+    if (stalePipeline) {
+      boundary.userData.admissionEpoch = (boundary.userData.admissionEpoch || 0) + 1;
+      boundary.userData.authoredPreparePhase = 'newer-owner-phase';
+      releasePipeline({ skipped:false });releaseResidency({ skipped:false });
+      let settled=false;upgradeDone.then(()=>{settled=true;});
+      for(let turn=0;turn<150&&!settled;turn++){
+        while(scheduledFrames.length)scheduledFrames.shift()();await Promise.resolve();
+      }
+      assert.equal(settled,true);await upgradeDone;
+      assert.equal(boundary.userData.authoredPreparePhase,'newer-owner-phase');
+      assert.notEqual(boundary.userData.authoredAssetState,'authored');
+      return;
+    }
     releasePipeline({ skipped: false, programCount: 1 });
     for (let turn = 0; turn < 50 && !residentRoot; turn++) {
       while (scheduledFrames.length) scheduledFrames.shift()();
@@ -661,6 +677,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     assert.equal(residentRoot, compiledRoot,
       'the exact compiled root must enter texture residency before publication');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
+    assert.equal(boundary.userData.authoredPreparePhase, 'preparing-pipelines:root=gpu-residency;pendingPools=0');
     assert.equal(boundary.children.includes(fallback), true,
       'pipeline readiness alone cannot publish a root whose hidden LOD textures are not resident');
 
@@ -671,6 +688,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     }
 
     assert.equal(boundary.userData.authoredAssetState, 'authored');
+    assert.equal(boundary.userData.authoredPreparePhase, undefined, 'settled wait restores existing phase semantics');
     assert.equal(boundary.children.includes(fallback), false);
     assert.equal(boundary.children.includes(compiledRoot), true,
       'the exact compiled root is the one atomically published');
@@ -684,6 +702,8 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     partsLibrary.invalidatePartsLibraryCaches(renderer);
   }
 });
+
+}
 
 // PQ-033.02 v6 warning class "whole-ship LOD demotion failed … release mode
 // requires …": the demotion's residency owner can die while the scoped
@@ -765,5 +785,165 @@ test('an owner that dies mid-preload aborts the whole-ship demand instead of res
       'a body released by the owner-gone sweep must abort the preload, not compose blind',
     );
     partsLibrary.invalidatePartsLibraryCaches(renderer);
+  }
+});
+
+for (const evicted of [false,true]) {
+ test(`a ${evicted?'nonresident':'resident'} current plan ${evicted?'joins':'does not wait behind'} unrelated serial decode`,async()=>{
+  const renderer={},loads=[];let releaseCold,startedCold;
+  const coldGate=new Promise(resolve=>{releaseCold=resolve;});
+  const started=new Promise(resolve=>{startedCold=resolve;});
+  const warm={id:'warm-mule',type:'ship',alive:true,data:{defId:'ship_mule'}};
+  const cold={id:'cold-pelican',type:'ship',alive:true,data:{defId:'ship_pelican'}};
+  const warmFile=partsLibrary.authoredPreloadPlanForEntity(warm).hull[0];
+  const coldFile=partsLibrary.authoredPreloadPlanForEntity(cold).hull[0];
+  const options={releaseMode:true,loadAuthoredPart:async url=>{
+   loads.push(url);if(url.endsWith(coldFile)){startedCold();await coldGate;}
+   const record=fixtureRecord(url);record.residency={state:'resident'};return record;
+  }};
+  let coldDemand,warmDemand;
+  try {
+   await partsLibrary.preloadAuthoredPartLibrary(renderer,options);
+   const library=await partsLibrary.preloadAuthoredAssetsForEntity(renderer,warm,options);
+   const warmRecord=library.get('hull').find(row=>row.url.endsWith(warmFile));
+   if(evicted)warmRecord.residency.state='evicted';
+   coldDemand=partsLibrary.preloadAuthoredAssetsForEntity(renderer,cold,options);await started;
+   let settled=false;
+   warmDemand=partsLibrary.preloadAuthoredAssetsForEntity(renderer,warm,{...options,admissionVisible:true}).then(value=>{settled=true;return value;});
+   for(let i=0;i<40;i++)await Promise.resolve();
+   assert.equal(settled,!evicted,'only an already-resident exact plan avoids serial decode admission');
+   assert.equal(loads.filter(url=>url.endsWith(warmFile)).length,1,'a queued reload cannot overlap the active cold decode');
+   releaseCold();assert.equal(await warmDemand,library);await coldDemand;
+   assert.equal(loads.filter(url=>url.endsWith(warmFile)).length,evicted?2:1);
+  }finally{releaseCold();await Promise.allSettled([coldDemand,warmDemand]);partsLibrary.invalidatePartsLibraryCaches(renderer);}
+ });
+}
+
+for (const scenario of ['pending-old', 'failed-old', 'late-failed-old', 'failed-current', 'cancelled-owner']) {
+test(`current identity owns admission independently of speculative work: ${scenario}`, async () => {
+  const renderer = {}, scene = new THREE.Scene(), frames = [];
+  const entity = {id:'changing-prefetch',type:'ship',alive:true,team:2,factionId:'faction_union',radius:20,
+    pos:{x:0,z:0},activity:{presentationTier:'R0_GLASS'},data:{defId:'ship_mule',sectorId:'sector_helios_prime'}};
+  let releaseOld, rejectOld, oldStarted=false, compiled=null, releasePipeline, ownerActive=true, currentFailed=false;
+  const oldGate=new Promise((resolve,reject)=>{releaseOld=resolve;rejectOld=reject;});
+  const pipelineGate=new Promise(resolve=>{releasePipeline=resolve;});
+  const oldEntity={...entity,data:{...entity.data,defId:'ship_pelican'}};
+  const oldFiles=new Set(flattenUnique(partsLibrary.authoredPreloadPlanForEntity(oldEntity)));
+  const currentFiles=new Set(flattenUnique(partsLibrary.authoredPreloadPlanForEntity(entity)));
+  const loadAuthoredPart=async url=>{if(oldFiles.has(relativeFile(url))){oldStarted=true;await oldGate;}
+    if(scenario==='failed-current'&&currentFiles.has(relativeFile(url))){currentFailed=true;throw new Error('exact-current-plan-failed');}
+    return fixtureRecord(url);};
+  const options={releaseMode:true,loadAuthoredPart,isResidencyOwnerActive:()=>ownerActive};
+  await partsLibrary.preloadAuthoredPartLibrary(renderer,options);
+  if(scenario!=='failed-current')await partsLibrary.preloadAuthoredAssetsForEntity(renderer,entity,options);
+  const previous={window:globalThis.window,raf:globalThis.requestAnimationFrame,scheduler:globalThis.scheduler};
+  globalThis.requestAnimationFrame=fn=>{frames.push(fn);return frames.length;};
+  globalThis.scheduler={postTask:fn=>{frames.push(fn);return frames.length;}};
+  globalThis.window={SF:{state:{mode:'flight',entities:new Map([[entity.id,entity]]),world:{currentSectorId:'sector_helios_prime'},render:{scene,firstPlayableFrameAt:1,
+    compileObjectPipelines(root){compiled=root;return pipelineGate;},prepareAuthoredGpuResidency(){return {skipped:false};}}}}};
+  let done;
+  const pump=async n=>{for(let i=0;i<n;i++){const pending=frames.splice(0);for(const fn of pending)fn();await Promise.resolve();}};
+  try {
+    entity.data.defId='ship_pelican';
+    const fallback=fallbackShip();fallback.userData.authoredAdmissionSubstrate=true;
+    const boundary=partsLibrary.wrapShipWithAuthoredParts(entity,fallback,options);entity.mesh=boundary;scene.add(boundary);
+    done=boundary.userData.requestAuthoredUpgrade(renderer,scene);
+    assert.equal(partsLibrary.holdAuthoredUpgradeQueueForFirstFlight(scene),true);
+    for(let i=0;i<100&&!oldStarted;i++)await Promise.resolve();
+    assert.equal(oldStarted,true,'real queued prefetch must start its old exact plan before admission');
+    if(scenario==='failed-current'){releaseOld();for(let i=0;i<150;i++)await Promise.resolve();}
+    entity.data.defId='ship_mule';
+    if(scenario==='failed-old')rejectOld(new Error('obsolete-prefetch-failed'));
+    await pump(250);
+    if(scenario==='failed-current'){
+      assert.equal(compiled,null,'successful old decode cannot replace failed current plan');
+      assert.notEqual(boundary.userData.authoredAssetState,'authored');
+      assert.equal(currentFailed,true,'the exact current plan error must be reached');
+      assert.equal(boundary.userData.authoredAssetState,'unavailable');
+      return;
+    }
+    assert.ok(compiled,'current resident plan must reach its real pipeline gate without the obsolete prefetch');
+    assert.equal(boundary.userData.authoredPreparePhase,'preparing-pipelines:root=renderer-compile-chain;pendingPools=0');
+    assert.notEqual(boundary.userData.authoredAssetState,'authored','pipeline remains authoritative');
+    if(scenario==='cancelled-owner'){ownerActive=false;entity.alive=false;boundary.userData.authoredPreparePhase='retired-owner-phase';}
+    releasePipeline({skipped:false});await pump(200);
+    if(scenario==='cancelled-owner'){assert.notEqual(boundary.userData.authoredAssetState,'authored');assert.equal(boundary.userData.authoredPreparePhase,'retired-owner-phase');return;}
+    assert.equal(boundary.userData.authoredAssetState,'authored');
+    assert.deepEqual(flattenUnique(boundary.userData.authoredSlots),flattenUnique(partsLibrary.authoredPreloadPlanForEntity(entity)));
+    if(scenario==='pending-old'){
+      await done;
+      const children=[...boundary.children],phase=boundary.userData.authoredPreparePhase;
+      releaseOld();await pump(150);
+      assert.equal(boundary.userData.authoredAssetState,'authored');
+      assert.deepEqual(boundary.children,children,'settled admission must fence late speculative completion without queue cancellation');
+      assert.equal(boundary.userData.authoredPreparePhase,phase);
+    }
+    if(scenario==='late-failed-old'){
+      rejectOld(new Error('obsolete-prefetch-failed-after-publication'));
+      await pump(100);await new Promise(resolve=>setTimeout(resolve,0));
+      assert.equal(boundary.userData.authoredAssetState,'authored','late speculative failure cannot revoke current authored success');
+    }
+  } finally {
+    partsLibrary.cancelAuthoredUpgradeQueue(scene,'fixture-cleanup');
+    releaseOld();releasePipeline({skipped:false});await pump(500);
+    partsLibrary.invalidatePartsLibraryCaches(renderer);
+    if(previous.window===undefined)delete globalThis.window;else globalThis.window=previous.window;
+    if(previous.raf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=previous.raf;
+    if(previous.scheduler===undefined)delete globalThis.scheduler;else globalThis.scheduler=previous.scheduler;
+  }
+});
+
+}
+
+test('pipeline substage observation reports actual waits and cannot change success or error', async () => {
+  for (const broken of [false, true]) {
+    const phases=[];let releaseCompile,releaseResidency;
+    const compile=new Promise(r=>{releaseCompile=r;}),residency=new Promise(r=>{releaseResidency=r;});
+    const options={prepareAuthoredPipelines:()=>compile,prepareAuthoredGpuResidency:()=>residency};
+    Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('unrelated-option-getter');}});
+    const result=partsLibrary.prepareAuthoredVisualPipelines(new THREE.Group(),options,
+      phase=>{phases.push(phase);if(broken)throw new Error('observer-only');});
+    for(let i=0;i<50;i++)await Promise.resolve();
+    assert.equal(phases.at(-1),'renderer-compile-chain');
+    releaseCompile({skipped:false});for(let i=0;i<50;i++)await Promise.resolve();
+    assert.equal(phases.at(-1),'gpu-residency');
+    releaseResidency({skipped:false});await result;
+    assert.deepEqual(phases,['material-policies','renderer-compile-chain','present-yield','gpu-residency','complete']);
+  }
+  const original=new Error('pipeline-original-error');
+  const options={prepareAuthoredPipelines:()=>Promise.reject(original)};
+  Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('observer-getter');}});
+  await assert.rejects(partsLibrary.prepareAuthoredVisualPipelines(new THREE.Group(),options,()=>{throw new Error('observer-only');}),e=>e===original);
+});
+
+test('ship pipeline aggregate distinguishes pending pool siblings from completed or rejected root', async () => {
+  const source=readFileSync(process.env.ENTRY_PARTS_SOURCE || new URL('../src/render/partsLibrary.js',import.meta.url),'utf8');
+  const start=source.indexOf('async function prepareAuthoredShipVisualPipelines(');
+  const end=source.indexOf('export async function retryAuthoredPartLibrary',start);
+  const reportStart=source.indexOf('function reportAuthoredPipelinePhase(');
+  const reportEnd=source.indexOf('export async function prepareAuthoredVisualPipelines',reportStart);
+  assert.ok(start>=0&&end>start&&reportStart>=0&&reportEnd>reportStart);
+  for(const failRoot of [false,true]){
+    let resolveRoot,rejectRoot,resolvePool,activated=0;
+    const root=new Promise((yes,no)=>{resolveRoot=yes;rejectRoot=no;}),pool=new Promise(r=>{resolvePool=r;});
+    const phases=[],original=new Error('root-original-error'),options={};
+    Object.defineProperty(options,'onAuthoredPipelinePhase',{get(){throw new Error('unrelated-option-getter');}});
+    const env={EMPTY_ARRAY:[],authoredRuntimeState:()=>null,
+      prepareAuthoredVisualPipelines:(_root,_options,observer)=>{observer('renderer-compile-chain');return root;},
+      prepareRenderPackagePoolAdmission:(_pool,poolOptions)=>{assert.equal(poolOptions,options,'pool retains original option identity and getters');return pool;},
+      activateRenderPackagePoolAdmission:()=>{activated++;}};
+    const prepare=new Function('env',`with(env){${source.slice(reportStart,reportEnd)}\n${source.slice(start,end)};return prepareAuthoredShipVisualPipelines;}`)(env);
+    let settled=false;
+    const result=prepare({root:{},packagePoolAdmissions:[{}]},options,phase=>{phases.push(phase);throw new Error('observer-only');});
+    result.then(()=>{settled=true;},()=>{settled=true;});
+    if(failRoot)rejectRoot(original);else resolveRoot({ok:true});
+    for(let i=0;i<20;i++)await Promise.resolve();
+    assert.equal(settled,false,'root settlement must still wait for package pool work');
+    assert.equal(phases.at(-1),`preparing-pipelines:root=${failRoot?'rejected':'complete'};pendingPools=1`);
+    resolvePool({ok:true});
+    if(failRoot)await assert.rejects(result,error=>error instanceof AggregateError&&error.errors[0]===original);
+    else assert.deepEqual(await result,{ok:true});
+    assert.equal(phases.at(-1),`preparing-pipelines:root=${failRoot?'rejected':'complete'};pendingPools=0`);
+    assert.equal(activated,failRoot?0:1);
   }
 });

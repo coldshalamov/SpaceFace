@@ -61,7 +61,9 @@ test('a mood only restates base keys, so a typo cannot silently do nothing', () 
 });
 
 test('paint never emits: the pigment ceiling sits under the bloom knee in every mood', () => {
-  // bloom.js: threshold 1.0, knee 0.25 -> spill starts at 0.75 scene-linear luminance.
+  // bloom.js: threshold 1.0, knee 0.10 (owner 2026-10-27 bloom discipline) -> spill starts at
+  // 0.90 scene-linear luminance. The 0.75 bound below is kept as a conservative floor, so paint
+  // stays clear of the knee even if a later pass widens it again.
   for (const id of Object.keys(LOOK_MOODS)) {
     assert.ok(resolveLookMood(id).surface.paintCeiling <= 0.75, `${id} paint ceiling`);
     // A coat-tint channel above 1 could push glints past the bloom threshold: paint never emits.
