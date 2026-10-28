@@ -1,3 +1,4 @@
+import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 import { commodityDisplayName } from './commodityNames.js';
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
