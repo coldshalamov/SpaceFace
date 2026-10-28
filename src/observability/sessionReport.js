@@ -44,26 +44,6 @@ export const CORE_FIRST_HOUR_STEPS = [
   'firstHeat',
 ];
 
-// Demo session funnel (ZERO_TO_HERO §7.5): the ordered path a demo build is meant to walk.
-// Recorded only in demo builds; values follow the funnel contract (-1 until first reach).
-export const DEMO_FUNNEL_STEPS = [
-  'boot',
-  'crucibleEntered',
-  'round3Reached',
-  'resultsShown',
-  'adventureEntered',
-  'endCardShown',
-];
-
-export const DEMO_FUNNEL_LABELS = {
-  boot: 'Boot',
-  crucibleEntered: 'Crucible Entered',
-  round3Reached: 'Round 3 Reached',
-  resultsShown: 'Run Results Shown',
-  adventureEntered: 'Adventure Entered (Take it to the belt)',
-  endCardShown: 'Demo End Card Shown',
-};
-
 /**
  * Formats a millisecond duration into human-readable MM:SS or HH:MM:SS string.
  * @param {number} ms Duration in milliseconds
@@ -141,22 +121,6 @@ export function buildSessionReportData(session) {
   const coreReachedCount = coreSteps.filter((step) => step.reached).length;
   const coreCompletionRate = Math.round((coreReachedCount / CORE_FIRST_HOUR_STEPS.length) * 1000) / 10;
 
-  // 1b. Demo funnel — only when this session actually recorded a demo step, so non-demo
-  // sessions keep a clean schema with no demo block at all (demoFunnel: null).
-  const rawDemoFunnel = s.demoFunnel || {};
-  const demoSteps = DEMO_FUNNEL_STEPS.map((key) => {
-    const at = rawDemoFunnel[key];
-    const reached = Number.isFinite(at) && at >= 0;
-    return {
-      step: key,
-      label: DEMO_FUNNEL_LABELS[key] || key,
-      reached,
-      atMs: reached ? at : null,
-      atFormatted: reached ? formatDuration(at) : 'Not Reached',
-    };
-  });
-  const demoReachedCount = demoSteps.filter((step) => step.reached).length;
-
   // 2. Physical Verbs analysis
   const rawVerbs = s.verbs || {};
   const verbCounts = { ...rawVerbs };
@@ -210,13 +174,6 @@ export function buildSessionReportData(session) {
       coreCompletionRate,
       firstHourComplete: coreReachedCount === CORE_FIRST_HOUR_STEPS.length,
     },
-
-    demoFunnel: demoReachedCount > 0 ? {
-      steps: demoSteps,
-      reachedCount: demoReachedCount,
-      totalCount: DEMO_FUNNEL_STEPS.length,
-      complete: demoReachedCount === DEMO_FUNNEL_STEPS.length,
-    } : null,
 
     verbs: {
       totalCount: totalVerbs,
@@ -310,19 +267,6 @@ export function renderSessionReportMarkdown(session) {
     lines.push(`| ${step.label} | ${reachedIcon} | ${step.atFormatted} | ≤ ${step.targetFormatted} | ${paceIcon} |`);
   }
   lines.push(``);
-
-  if (data.demoFunnel) {
-    lines.push(`## Demo Funnel`);
-    lines.push(``);
-    lines.push(`| Step | Reached | Time Offset |`);
-    lines.push(`|---|:---:|:---:|`);
-    for (const step of data.demoFunnel.steps) {
-      lines.push(`| ${step.label} | ${step.reached ? 'YES' : 'NO'} | ${step.atFormatted} |`);
-    }
-    lines.push(``);
-    lines.push(`- **Funnel completion:** ${data.demoFunnel.reachedCount}/${data.demoFunnel.totalCount}${data.demoFunnel.complete ? ' — complete path walked' : ''}`);
-    lines.push(``);
-  }
 
   lines.push(`## 2. Physical Verbs & Rhythm`);
   lines.push(``);
