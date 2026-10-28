@@ -142,6 +142,14 @@ export const MOBILE_SCREEN_CSS = `
     scroll-snap-align:start; margin:0 !important; padding:0 !important; background:none !important; border:0 !important;
     box-shadow:none !important; font-size:12px !important; line-height:15px !important; white-space:normal !important; }
   ${B} .sxb-tape:has(> .sxb-event:not([hidden]) ~ .sxb-event:not([hidden])) > .sxb-event:not([hidden]) { flex-basis:86% !important; }
+  /* The arrival ticker line rides in the tape too once a re-render writes it (seen after Bar on a short phone):
+     as a bare flex item it shrank to a word per line, ~400px tall and off to the right, and the tape grew with
+     it until the tab row and Undock fell below the screen. It takes the same two-line card as its neighbours. */
+  ${B} .sxb-tape > .sxb-berth__news:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+    flex:0 0 86% !important; min-width:0 !important; max-width:100% !important; max-height:30px; overflow:hidden !important;
+    scroll-snap-align:start; margin:0 !important; padding:0 0 0 12px !important; border-left:1px solid rgb(236 230 216 / .22) !important;
+    font-size:12px !important; line-height:15px !important; white-space:normal !important; }
+  ${B} .sxb-tape:has(> .sxb-berth__news:not([hidden])) > .sxb-event:not([hidden]) { flex-basis:86% !important; }
   /* The hull reading leads (a re-render keeps the strip on it); event and ledger peek in from the right. */
   ${B} .sxb-tape > .sxb-berth__mechanic { order:-1; }
   ${B} .sxb-tape:has(> .sxb-berth__mechanic:not([hidden])) > .sxb-event:not(.sxb-berth__mechanic):not([hidden]),
