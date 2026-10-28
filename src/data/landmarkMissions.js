@@ -695,3 +695,40 @@ export function validateLandmarkQuestOffer(offer) {
 }
 
 export default CAVED_SHAFT_PROBE;
+
+/** C6-only journal projection. No board, discovery, mission or saved state is written here. */
+export function cavedShaftReturnGuidance(state) {
+  const definition = CAVED_SHAFT_PROBE;
+  const record = discoveryRecord(state, definition);
+  if (!isFound(record)) return null;
+  // The same stable artifact identity used by offer eligibility is completion authority.
+  // Render authored text, not arbitrary text carried by a stale or edited artifact payload.
+  if (questComplete(state, definition)) return { phase: 'returned', text: '', artifact: definition.artifact };
+  const missions = state && state.missions || {};
+  const active = Array.isArray(missions.active) ? missions.active : [];
+  const receipts = Array.isArray(missions.receipts) ? missions.receipts : [];
+  const matchesReceipt = (row) => row && (row.sourceOfferId === definition.id
+    || row.causeFingerprint === definition.causeFingerprint);
+  const isCanonicalMission = (row) => {
+    if (!row || row.sourceOfferId !== definition.id || row.sourceRef !== definition.targetRef) return false;
+    const probe = row.params && row.params.landmarkProbe;
+    return validateLandmarkQuestOffer({ ...row, id: row.sourceOfferId, minRep: definition.minRep })
+      && probe.targetLocalPos.x === definition.targetLocalPos.x
+      && probe.targetLocalPos.z === definition.targetLocalPos.z
+      && probe.maxRangeWu === definition.maxRangeWu
+      && probe.artifact.title === definition.artifact.title
+      && probe.artifact.body === definition.artifact.body;
+  };
+  // The mission owner's receipt dedupe also retires failed/abandoned contracts. A receipt is
+  // not a recovered frame, and a stale active row must not promise another payout or pulse.
+  if (receipts.some(matchesReceipt) || active.some(row => isCanonicalMission(row)
+    && (row.status !== 'active' || row.params.landmarkProbe.returned))) {
+    return { phase: 'closed', text: 'The hardened-probe contract is closed. There is nothing left to file from the shaft.', artifact: null };
+  }
+  if (active.some(row => row.status === 'active' && isCanonicalMission(row))) {
+    return { phase: 'active', text: 'Hardened probe accepted at Cut Refinery. Fly back to the Caved Shaft and fire one close scanner pulse within 300 WU.', artifact: null };
+  }
+  // A lead, not an availability promise: standing, board lifecycle and acceptance remain
+  // mission-owned. Merely learning the site must never accept a job or grant its reward.
+  return { phase: 'lead', text: 'For hardened-probe work, check Cut Refinery’s Jobs board. Ordinary probes return blank; the refinery wants the exact reading, even if it is only a frame.', artifact: null };
+}
