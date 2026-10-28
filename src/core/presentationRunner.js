@@ -1160,10 +1160,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
-  // One warm sim step per veil hold (see advanceSimulation). Reset whenever the hold is re-armed.
-  const veilWarm = { done: false, armed: false, sawHold: false };
+  // Warm sim steps behind the veil (see advanceSimulation): one per presented frame, at most
+  // VEIL_WARM_MAX_STEPS per hold. Reset whenever the hold is re-armed.
+  const VEIL_WARM_MAX_STEPS = 8;
+  const veilWarm = { count: 0, sawHold: false };
   function shouldTakeVeilWarmStep() {
-    if (veilWarm.done) return false;
+    if (veilWarm.count >= VEIL_WARM_MAX_STEPS) return false;
     if (shouldSkipFullTickSystems(state)) return false;
     if (!(Number(state.timeScale) > 0)) return false;
     const r = state.render;
@@ -1180,22 +1182,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // The flight reveal veil (loadingPresenter) also holds the main-lane sim at its spawn state
     // until the world is on screen.
     const veilHeld = flightVeilHeld();
-    if (veilHeld && !veilWarm.sawHold) { veilWarm.done = false; veilWarm.armed = false; }
+    if (veilHeld && !veilWarm.sawHold) veilWarm.count = 0;
     veilWarm.sawHold = veilHeld;
     bindFlightVeilHook();
     syncFlightVeilClock();
     const warmStep = !restoring && !workerPumpOwnsClock && veilHeld && shouldTakeVeilWarmStep();
-    if (!veilHeld && veilWarm.armed) {
-      // First advance after the hold lifts: no catch-up burst on top of the reveal.
-      veilWarm.armed = false;
-      stepCap = 1;
-    }
     if (warmStep) {
-      // Veil warm step: run ONE fixed step behind the opaque veil once the first playable frame
-      // is on screen, so the first step the player can see is not the cold one (first-time
-      // NPC/traffic/AI wake-up, first emits, JIT). The picture under the veil moves by one tick.
-      veilWarm.done = true;
-      veilWarm.armed = true;
+      // Veil warm steps: one fixed step per presented frame behind the opaque veil (up to
+      // VEIL_WARM_MAX_STEPS, ending with the hold) once the first playable frame is on screen, so
+      // the cold first step and the first interval ticks of slower systems land behind the veil
+      // instead of in the first seconds the player sees. After release, normal catch-up applies.
+      veilWarm.count++;
       diagnostics.veilWarmSteps = (diagnostics.veilWarmSteps || 0) + 1;
     }
     const warmDt = Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT;
