@@ -439,6 +439,13 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
+      // Close-quarters control hands over continuously to inertial flight as speed rises.
+      // Navigation, draw-flight and ropes keep their own trajectory controllers; NPCs use
+      // the motor planner. This packet flag is derived each tick and never enters saves.
+      input.precisionAssist = !saucer && !pathActive && !input.drawFlight
+        && !(autopilot && autopilot.active)
+        && !(tether && tether.active === true)
+        && playerFlightControlsActive(state, entity);
       if (!gridHeld) debitTravelBurn(this, entity, input, dt, state);
     }
 
@@ -489,6 +496,9 @@ export const flightV3 = {
         autopilotActive: !!(autopilot && autopilot.active),
       });
       pursuitSlot = pursuitSlotStep;
+      // The slot controller brakes relative to its moving target. World-relative precision
+      // would otherwise pull a correctly co-moving player out of that slot.
+      if (pursuitSlot.active) input.precisionAssist = false;
       if (pursuitSlot.active && pursuitSlot.impulse) {
         queuePhysicsImpulse(entity, pursuitSlot.impulse);
       }
@@ -1354,6 +1364,10 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
+  o.precisionAssist = undefined;
+  // Civilian approach guidance shares the flight computer's bounded moving-frame servo.
+  // A following craft (or manual player tick) must never inherit the previous request.
+  o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;
@@ -2277,6 +2291,14 @@ export function npcFlightNeedsCommand(entity) {
 function npcIntentIsLive(entity, intent) {
   if (!intent || typeof intent !== 'object') return false;
   if (intent.boost || intent.fire) return true;
+  const rendezvous = intent.rendezvous;
+  if (rendezvous && Number.isFinite(rendezvous.velocity?.x)
+    && Number.isFinite(rendezvous.velocity?.z) && Number.isFinite(rendezvous.heading)) {
+    const vx = rendezvous.velocity.x - finite(entity.vel?.x);
+    const vz = rendezvous.velocity.z - finite(entity.vel?.z);
+    if (vx * vx + vz * vz > 1e-8
+      || Math.abs(wrapAngle(rendezvous.heading - finite(entity.rot))) > 0.01) return true;
+  }
   const mx = Number(intent.moveX) || 0;
   const mz = Number(intent.moveZ) || 0;
   const turn = Number(intent.turnIntent) || 0;
@@ -2305,7 +2327,7 @@ function emitThrustCue(bus, state, entity, input, frame) {
     ? frame.speed
     : Math.hypot(finite(entity.vel && entity.vel.x), finite(entity.vel && entity.vel.z));
   const neutralAssistBrake = frame &&
-    frame.assistReason === 'neutral-counterthrust' &&
+    (frame.assistReason === 'neutral-counterthrust' || frame.assistReason === 'precision-assist') &&
     frame.assistMode === 'assisted' &&
     !manual &&
     speed > 1.2;

@@ -55,6 +55,9 @@ export class TacticalAIStack {
     this.selector = new ShipUtilitySelector({ trace: traceForLayer(activeTrace, TraceLayer.UTILITY), config: { ...(config.utility || {}), freezeResults: this.freezeResults } });
     this.executor = new BehaviorExecutor({ actionPort: this.ports.actions, trace: traceForLayer(activeTrace, TraceLayer.BEHAVIOR), config: { ...(config.behavior || {}), freezeResults: this.freezeResults } });
     const maneuverConfig = { ...(config.maneuver || {}), freezeResults: this.freezeResults };
+    if (typeof this.ports.sensors.motionFor === 'function') {
+      maneuverConfig.resolveMotion = (entityId, tick) => this.ports.sensors.motionFor(entityId, tick);
+    }
     if (!this.freezeResults && maneuverConfig.includeTrajectory === undefined) maneuverConfig.includeTrajectory = false;
     this.maneuver = new ManeuverPlanner({ seed: this.seed, trace: traceForLayer(activeTrace, TraceLayer.MANEUVER), config: maneuverConfig });
     this.combatDoctrine = new CombatDoctrineRuntime({ seed: this.seed });

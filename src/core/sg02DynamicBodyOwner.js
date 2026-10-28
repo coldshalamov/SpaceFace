@@ -1759,6 +1759,7 @@ export class Sg02DynamicBodyOwner {
     // by the give pass and _enforcePlane; fields a give rewrites are flagged so the plane pass
     // re-reads the authoritative value instead of the stale scratch.
     this._stepContactReceipts = stepReceipts;
+    this._prepareContactMotionBudgets(stepReceipts);
     const looseContactIds = this._looseContactIds || (this._looseContactIds = new Set());
     looseContactIds.clear();
     for (let i = 0; i < stepReceipts.length; i++) {
@@ -1787,6 +1788,7 @@ export class Sg02DynamicBodyOwner {
       this._readPostStepKinematics(rec);
       this._applyStructuralGive(rec);
     }
+    this._enforceContactIslandEnergy();
     this._stepContactReceipts = null;
 
     if (journalFor()) for (const receipt of stepReceipts) {
@@ -2155,6 +2157,182 @@ export class Sg02DynamicBodyOwner {
     }
     if (!involved) return Infinity;
     return (rec._tumbling === true ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV) + slack;
+  }
+
+  // Penetration correction is position work, not an engine. Bound contact-sourced motion
+  // by the kinetic energy entering each connected DYNAMIC contact island. Pair-only bounds
+  // erase genuine A -> B -> C transfers: BC may have zero pre-solve closure, and AB may
+  // already be separating when the same solve transmits resistance from C back to A.
+  // The island centre-of-mass frame keeps common coasting speed out of the budget; a fixed
+  // contact anchors that frame at rest but never connects unrelated ships through a station.
+  // Command/weapon/spring impulses are already in expected. Legacy native joints solve
+  // afterwards, so their unmeasured in-step work keeps the existing structural-give policy.
+  _prepareContactMotionBudgets(receipts) {
+    if (!receipts.length) return;
+    const jointEndpoints = this._contactMotionJointEndpoints || (this._contactMotionJointEndpoints = new Set());
+    const nodes = this._contactMotionNodes || (this._contactMotionNodes = []);
+    jointEndpoints.clear();
+    nodes.length = 0;
+    for (const attachment of this.attachments.values()) {
+      if (!attachment.contactJoint) continue;
+      jointEndpoints.add(attachment.owner);
+      jointEndpoints.add(attachment.target);
+    }
+    // Union-find touches only records in real contact receipts. Retained nodes and tick
+    // stamps avoid both fresh per-body allocations and a bodies x contacts scan.
+    for (const receipt of receipts) {
+      const a = this.records.get(receipt.aId);
+      const b = this.records.get(receipt.bId);
+      for (let endpoint = 0; endpoint < 2; endpoint++) {
+        const rec = endpoint === 0 ? a : b;
+        if (!rec?.spec?.dynamic || rec._contactMotionNodeTick === this.tick) continue;
+        rec._contactMotionNodeTick = this.tick;
+        rec._contactMotionParent = rec;
+        rec._contactMotionRank = 0;
+        rec._contactMotionAnchored = false;
+        rec._contactMotionUnmeasured = jointEndpoints.has(rec)
+          || !Number.isFinite(rec.expected?.vx) || !Number.isFinite(rec.expected?.vz)
+          || !Number.isFinite(rec.expected?.wy);
+        rec._contactMotionMass = effectiveMass(rec);
+        rec._contactMotionInertia = positive(rec.effectiveInertiaY, rec.spec.inertiaY);
+        nodes.push(rec);
+      }
+      const dynamicA = a?.spec?.dynamic, dynamicB = b?.spec?.dynamic;
+      const root = dynamicA && dynamicB ? unionContactMotionNodes(a, b)
+        : contactMotionRoot(dynamicA ? a : (dynamicB ? b : null));
+      if (!root) continue;
+      if ((a && !dynamicA) || (b && !dynamicB)) root._contactMotionAnchored = true;
+      if (!a || !b || !Number.isFinite(receipt.preSolveClosingSpeed)) root._contactMotionUnmeasured = true;
+      // Anchored recoil is a driven kinematic body despite spec.dynamic=false. Its support
+      // can do real work during this solve; a settled fixed anchor supplies no such energy.
+      const recoilA = !dynamicA && a?.entity?.physicsBody?.anchorRecoil;
+      const recoilB = !dynamicB && b?.entity?.physicsBody?.anchorRecoil;
+      if ((recoilA && recoilA.settled !== true) || (recoilB && recoilB.settled !== true)) {
+        root._contactMotionUnmeasured = true;
+      }
+    }
+    for (const rec of nodes) {
+      const root = contactMotionRoot(rec);
+      if (root._contactMotionTotalsTick !== this.tick) {
+        root._contactMotionTotalsTick = this.tick;
+        root._contactMotionTotalMass = 0;
+        root._contactMotionMomentumX = 0;
+        root._contactMotionMomentumZ = 0;
+        root._contactMotionTwiceEnergy = 0;
+      }
+      const mass = rec._contactMotionMass;
+      root._contactMotionTotalMass += mass;
+      // Accumulate offsets from one body's velocity, avoiding cancellation at high common
+      // coasting speeds. Energy is summed directly in the final frame in the next pass.
+      root._contactMotionMomentumX += mass * (finite(rec.expected.vx) - finite(root.expected.vx));
+      root._contactMotionMomentumZ += mass * (finite(rec.expected.vz) - finite(root.expected.vz));
+    }
+    for (const rec of nodes) {
+      const root = contactMotionRoot(rec), e = rec.expected;
+      const comX = root._contactMotionAnchored ? 0
+        : finite(root.expected.vx) + root._contactMotionMomentumX / root._contactMotionTotalMass;
+      const comZ = root._contactMotionAnchored ? 0
+        : finite(root.expected.vz) + root._contactMotionMomentumZ / root._contactMotionTotalMass;
+      root._contactMotionComX = comX;
+      root._contactMotionComZ = comZ;
+      const vx = finite(e.vx) - comX, vz = finite(e.vz) - comZ;
+      rec._contactMotionRelativeSpeed = Math.hypot(vx, vz);
+      root._contactMotionTwiceEnergy += rec._contactMotionMass * (vx * vx + vz * vz)
+        + rec._contactMotionInertia * finite(e.wy) ** 2;
+    }
+    for (const rec of nodes) {
+      const root = contactMotionRoot(rec);
+      rec._contactMotionBudgetTick = this.tick;
+      if (root._contactMotionUnmeasured) {
+        rec._contactLinearBudget = rec._contactAngularBudget = Infinity;
+        continue;
+      }
+      const energy = root._contactMotionTwiceEnergy;
+      // A numerical residual below 0.0001 WU/s must not seed a new separation engine.
+      if (!(energy > root._contactMotionTotalMass * 1e-8)) {
+        rec._contactLinearBudget = rec._contactAngularBudget = 0;
+        continue;
+      }
+      // Momentum conservation reduces the free-island maximum: the other bodies must carry
+      // equal opposite momentum. With a fixed support, that support can absorb momentum.
+      const inverseMass = 1 / rec._contactMotionMass
+        - (root._contactMotionAnchored ? 0 : 1 / root._contactMotionTotalMass);
+      rec._contactLinearBudget = rec._contactMotionRelativeSpeed + Math.sqrt(energy * Math.max(0, inverseMass));
+      rec._contactAngularBudget = Math.abs(finite(rec.expected.wy)) + Math.sqrt(energy / rec._contactMotionInertia);
+    }
+    for (const receipt of receipts) {
+      const a = this.records.get(receipt.aId), b = this.records.get(receipt.bId);
+      // These are available motion bounds, not invented measurements of pair closure.
+      // Consequences need the same island allowance for real same-step chain impacts.
+      if (a?._contactMotionBudgetTick === this.tick) {
+        receipt.availableContactDeltaVA = Number.isFinite(a._contactLinearBudget)
+          ? a._contactLinearBudget : receipt.impulse / a._contactMotionMass;
+      }
+      if (b?._contactMotionBudgetTick === this.tick) {
+        receipt.availableContactDeltaVB = Number.isFinite(b._contactLinearBudget)
+          ? b._contactLinearBudget : receipt.impulse / b._contactMotionMass;
+      }
+    }
+  }
+
+  _enforceContactIslandEnergy() {
+    const nodes = this._contactMotionNodes;
+    if (!nodes?.length || !this._stepContactReceipts?.length) return;
+    // Individual elastic bounds alone could let N overlapping bodies each spend the entire
+    // island's energy. Measure the aggregate once and, only if it grew, shrink contact deltas
+    // toward the trusted pre-solve motion. This preserves authored forces and real dissipative
+    // chain collisions without giving repeated shallow overlaps a fresh energy source.
+    for (const rec of nodes) {
+      const root = contactMotionRoot(rec);
+      if (root._contactMotionUnmeasured || rec._postStepSleepSkip) continue;
+      if (root._contactMotionEnergyTick !== this.tick) {
+        root._contactMotionEnergyTick = this.tick;
+        root._contactMotionCross = 0;
+        root._contactMotionDeltaEnergy = 0;
+        root._contactMotionPlayerLoss = 0;
+      }
+      const post = rec.postStep;
+      const v = post && !post.vDirty ? post.v : rec.body.linvel();
+      const w = post && !post.wDirty ? post.w : rec.body.angvel();
+      const e = rec.expected;
+      const dx = finite(v.x) - e.vx, dz = finite(v.z) - e.vz, dw = -finite(w.y) - e.wy;
+      rec._contactMotionDeltaX = dx;
+      rec._contactMotionDeltaZ = dz;
+      rec._contactMotionDeltaYaw = dw;
+      const mass = rec._contactMotionMass, inertia = rec._contactMotionInertia;
+      const cross = mass * ((e.vx - root._contactMotionComX) * dx + (e.vz - root._contactMotionComZ) * dz)
+        + inertia * e.wy * dw;
+      const deltaEnergy = mass * (dx * dx + dz * dz) + inertia * dw * dw;
+      if (rec.entity?.isPlayer === true) {
+        // The player's existing slide/helm policy owns that body. Its genuine loss of energy
+        // can fund the other bodies' response, without a second player-motion writer here.
+        root._contactMotionPlayerLoss += Math.min(0, 2 * cross + deltaEnergy);
+      } else {
+        root._contactMotionCross += cross;
+        root._contactMotionDeltaEnergy += deltaEnergy;
+      }
+    }
+    for (const rec of nodes) {
+      const root = contactMotionRoot(rec);
+      if (root._contactMotionUnmeasured || rec._postStepSleepSkip || rec.entity?.isPlayer === true) continue;
+      const a = root._contactMotionDeltaEnergy, b = root._contactMotionCross, c = root._contactMotionPlayerLoss;
+      const tolerance = Math.max(1e-8, root._contactMotionTwiceEnergy * 1e-6);
+      if (!(a + 2 * b + c > tolerance) || !(a > 0)) continue;
+      const scale = clamp((-b + Math.sqrt(Math.max(0, b * b - a * c))) / a, 0, 1);
+      const e = rec.expected;
+      _vecWriteScratch.x = e.vx + rec._contactMotionDeltaX * scale;
+      _vecWriteScratch.y = 0;
+      _vecWriteScratch.z = e.vz + rec._contactMotionDeltaZ * scale;
+      rec.body.setLinvel(_vecWriteScratch, true);
+      _vecWriteScratch.x = 0;
+      _vecWriteScratch.y = -(e.wy + rec._contactMotionDeltaYaw * scale);
+      _vecWriteScratch.z = 0;
+      rec.body.setAngvel(_vecWriteScratch, true);
+      if (rec.postStep) {
+        rec.postStep.vDirty = true;
+        rec.postStep.wDirty = true;
+      }
+    }
   }
 
   _playerContactClosingFraction(rec) {
@@ -2695,7 +2873,10 @@ export class Sg02DynamicBodyOwner {
     const closingDv = Math.hypot(e.vx, e.vz);
     const baseLimit = rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
       ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV;
-    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
+    const motionBudgetActive = rec._contactMotionBudgetTick === this.tick;
+    const linearBudget = motionBudgetActive ? rec._contactLinearBudget : Infinity;
+    const angularBudget = motionBudgetActive ? rec._contactAngularBudget : Infinity;
+    const maxContactDv = Math.min(Math.max(baseLimit, closingDv + baseLimit), linearBudget);
     if (dv > maxContactDv) {
       const scale = maxContactDv / dv;
       vx = e.vx + dvx * scale;
@@ -2705,8 +2886,9 @@ export class Sg02DynamicBodyOwner {
     const dw = wy - e.wy;
     const helmLocked = craftKeepsHelmThroughContact(rec) && rec._tumbling !== true;
     const contactYaw = helmLocked && Math.abs(dw) > CRAFT_CONTACT_YAW_EPS;
-    const yawCap = helmLocked ? 0 : (rec._tumbling === true ? SANE_MAX_YAW_RATE : MAX_CONTACT_DW);
-    if (Math.abs(dw) > (helmLocked ? CRAFT_CONTACT_YAW_EPS : yawCap)) {
+    const yawCap = helmLocked ? 0 : Math.min(
+      rec._tumbling === true ? SANE_MAX_YAW_RATE : MAX_CONTACT_DW, angularBudget);
+    if (Math.abs(dw) > (helmLocked ? Math.min(CRAFT_CONTACT_YAW_EPS, angularBudget) : yawCap)) {
       wy = e.wy + Math.sign(dw) * yawCap;
       touched = true;
     }
@@ -3422,6 +3604,19 @@ export class Sg02DynamicBodyOwner {
       // the centroid axis otherwise mistakes native wall braking for an external shove
       // and restores thrust velocity while the solver correctly keeps the hull outside.
       const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, normal.x, normal.z);
+      // Gameplay +yaw rotates +X toward +Z (Rapier's native y angular rate is negated
+      // into expected.wy). Surface velocity is therefore v + (-wy * rz, wy * rx).
+      // Keep centre closure as its existing channel; a rotating wreck can strike a hull
+      // with stationary centres, and its real surface motion must survive the noise guard.
+      const aWy = a.spec.dynamic ? finite(aExpected?.wy) : 0;
+      const bWy = b.spec.dynamic ? finite(bExpected?.wy) : 0;
+      const surfaceClosingSpeed = preSolveRadialClosingSpeed(
+        aVx - aWy * (pointScratch.z - aKinematics.z),
+        aVz + aWy * (pointScratch.x - aKinematics.x),
+        bVx - bWy * (pointScratch.z - bKinematics.z),
+        bVz + bWy * (pointScratch.x - bKinematics.x),
+        normal.x, normal.z,
+      );
       const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const preSolveClosingNormal = existing && closingSpeed <= finite(existing.preSolveClosingSpeed, -Infinity)
         ? (existing.preSolveClosingNormal || existing.normal)
@@ -3441,6 +3636,9 @@ export class Sg02DynamicBodyOwner {
         preSolveClosingSpeed: existing
           ? Math.max(existing.preSolveClosingSpeed, closingSpeed)
           : closingSpeed,
+        preSolveContactSpeed: existing
+          ? Math.max(existing.preSolveContactSpeed, surfaceClosingSpeed)
+          : surfaceClosingSpeed,
       };
       if (isPlayerReceipt) {
         // Compound pairs may report several force events in one step. Keep the normal beside
@@ -4482,6 +4680,31 @@ function reducedMass(a, b) {
   if (!Number.isFinite(mb)) return positive(ma, 0);
   const sum = ma + mb;
   return sum > 0 ? (ma * mb) / sum : 0;
+}
+
+function contactMotionRoot(rec) {
+  if (!rec) return null;
+  let root = rec;
+  while (root._contactMotionParent !== root) root = root._contactMotionParent;
+  while (rec._contactMotionParent !== root) {
+    const parent = rec._contactMotionParent;
+    rec._contactMotionParent = root;
+    rec = parent;
+  }
+  return root;
+}
+
+function unionContactMotionNodes(a, b) {
+  let root = contactMotionRoot(a), other = contactMotionRoot(b);
+  if (root === other) return root;
+  if (root._contactMotionRank < other._contactMotionRank) {
+    const swap = root; root = other; other = swap;
+  }
+  other._contactMotionParent = root;
+  if (root._contactMotionRank === other._contactMotionRank) root._contactMotionRank++;
+  root._contactMotionAnchored ||= other._contactMotionAnchored;
+  root._contactMotionUnmeasured ||= other._contactMotionUnmeasured;
+  return root;
 }
 
 function effectiveMass(rec) {

@@ -33,10 +33,11 @@ function installDomHarness() {
   return documentListeners;
 }
 
-function press(listeners, key, code) {
+function press(listeners, key, code, { repeat = false } = {}) {
   const event = {
     key,
     code: code || ('Key' + String(key).toUpperCase()),
+    repeat,
     target: globalThis.document.body,
     defaultPrevented: false,
     propagationStopped: false,
@@ -85,16 +86,16 @@ function makeHarness({ inRange }) {
   };
   const ctx = { state, bus, gamepad: null, registry: { get() { return null; } } };
   const screenManager = {
-    isOpen() { return false },
+    isOpen() { return state.ui.screenStack.length > 0; },
     hasScreen() { return true },
     pushScreen(id) { state.ui.screenStack.push(id); },
-    getActiveScreenDef() { return null; },
-    popScreen() {},
+    getActiveScreenDef() { return state.ui.screenStack.length ? { id: state.ui.screenStack.at(-1) } : null; },
+    popScreen() { state.ui.screenStack.pop(); },
   };
   const input = createUiInput(ctx, screenManager);
   // Physics publishes the dock prompt; replay it so the UI owner's dockInRange reflects the fixture.
   bus.emit('dock:range', { stationId: 'station_helios', inRange });
-  return { listeners, events, state, input };
+  return { listeners, events, state, input, bus, station };
 }
 
 check('the dock key is bound to a flight verb in the shipped schemes — so exclusivity matters', () => {
@@ -132,6 +133,49 @@ check('out of dock range the key falls through untouched so ordinary strafing st
   const ev = press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code);
   assert.equal(ev.defaultPrevented, false, 'away from a dock the key must reach normal flight input');
   assert.equal(ev.propagationStopped, false, 'away from a dock the key must not be swallowed');
+  h.input.dispose();
+});
+
+check('holding strafe into dock range requires a fresh press before docking', () => {
+  const h = makeHarness({ inRange: false });
+  press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code);
+  h.station.pos.x = 20;
+  h.bus.emit('dock:range', { stationId: 'station_helios', inRange: true });
+  const repeated = press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code, { repeat: true });
+  assert.equal(h.events.filter((event) => event.name === 'dock:attempt').length, 0,
+    'keyboard repeat from a held strafe must not become a newly available dock command');
+  assert.equal(repeated.propagationStopped, false, 'a held flight action should remain available to flight input');
+  press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code);
+  assert.equal(h.events.filter((event) => event.name === 'dock:docked').length, 1,
+    'releasing and pressing the dock key should still dock');
+  h.input.dispose();
+});
+
+check('Enter also requires a fresh press to issue a dock command', () => {
+  const h = makeHarness({ inRange: true });
+  press(h.listeners, 'Enter', 'Enter', { repeat: true });
+  assert.equal(h.events.filter((event) => event.name === 'dock:attempt').length, 0,
+    'holding Enter must not repeat a newly available dock command');
+  press(h.listeners, 'Enter', 'Enter');
+  assert.equal(h.events.filter((event) => event.name === 'dock:docked').length, 1);
+  h.input.dispose();
+});
+
+check('holding the docking key through the station transition cannot immediately undock', () => {
+  const h = makeHarness({ inRange: true });
+  press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code);
+  assert.equal(h.events.filter((event) => event.name === 'dock:docked').length, 1);
+  // uiRoot owns this transition in the browser; model its committed result before the next keydown.
+  h.state.ui.docked = true;
+  h.state.ui.screenStack.push('station');
+  const repeated = press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code, { repeat: true });
+  assert.equal(h.events.filter((event) => event.name === 'dock:undocked').length, 0,
+    'the same held docking press must not become an undock after the station opens');
+  assert.equal(repeated.propagationStopped, true, 'the station must keep owning repeated keys');
+  assert.equal(repeated.defaultPrevented, true, 'repeat must not activate a focused station control');
+  press(h.listeners, BINDINGS.dock.key, BINDINGS.dock.code);
+  assert.equal(h.events.filter((event) => event.name === 'dock:undocked').length, 1,
+    'a fresh station interact press should still undock');
   h.input.dispose();
 });
 

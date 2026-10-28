@@ -4514,6 +4514,8 @@ export const npcJobsRuntime = {
     intent.fire = false;       // civilian job hulls NEVER open fire (hold_fire)
     intent.fireGroup = null;
     intent.aimAngle = aimAngle;
+    // A newly assigned job owns movement; an ambient berth target cannot override its axes.
+    intent.rendezvous = undefined;
   },
 
   _ceresRealTargetWaypoint(job) {

@@ -144,6 +144,7 @@ import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { customsWeirForSector, pointInsideCustomsWeir } from '../world/customsWeir.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { hullEnvelopeWu, proxyOuterRadiusWu, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
 import { admitRichSeamGlint, endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 import { trafficConvoyOps } from './trafficConvoyOps.js';
 import { trafficJobOps } from './trafficJobOps.js';
@@ -4488,17 +4489,20 @@ export const traffic = {
       // waiting at station?
       if (rec.waitT > 0) {
         rec.waitT -= dt;
-        setIntent(e, 0, 0, false, false, null, e.rot);
+        // targetId already names the next leg (including old saves). Derive the nearby
+        // berth from current geometry each time, so a save/load needs no hidden hold state.
+        // A displaced/restored wait away from any berth simply counter-thrusts to rest.
+        const hold = nearestAmbientBerth(e, stations)
+          || { pos: e.pos, vel: { x: 0, z: 0 } };
+        guideAmbientStation(e, hold, state, role);
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
 
-      // fly toward target
-      const dx = target.pos.x - e.pos.x;
-      const dz = target.pos.z - e.pos.z;
-      const dist = Math.hypot(dx, dz);
-      const aimAngle = Math.atan2(dz, dx);
-      if (dist < DOCK_RANGE) {
+      // Settle outside the actual station skin and match its frame before settling freight.
+      // Merely crossing a centre-distance threshold at cruise is not an arrival.
+      const guidance = guideAmbientStation(e, target, state, role);
+      if (guidance.arrived) {
         // arrived: emit owner-safe freight arrival (manifest → stock pressure), wait, re-route
         rec.nextTradeT -= dt;
         if (rec.nextTradeT <= 0 && role.trades) {
@@ -4519,13 +4523,9 @@ export const traffic = {
           this._stampExpressRoute(e, rec, target, nextTarget,
             (state.world && state.world.currentSectorId) || 'unknown', rec.dockSeq | 0);
         }
-        setIntent(e, 0, 0, false, false, null, aimAngle);
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
-      // drive: face the target, thrust forward. moveZ=1 means forward along the nose.
-      const expressBoost = !!(role.express && massline2Flag('hitchhiking'));
-      setIntent(e, 0, 1, expressBoost, false, null, aimAngle);
       this._syncTrafficRecordToData(e, rec);
       // V3 reads this intent and applies real thrust. Traffic never writes velocity, so a latched
       // player receives only the Rapier constraint pull and whatever momentum the liner earns.
@@ -4686,6 +4686,75 @@ export function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   intent.fire = fire;
   intent.fireGroup = fireGroup;
   intent.aimAngle = aimAngle;
+  // A later flee/job/role owner must not inherit the previous berth servo or brake.
+  intent.rendezvous = undefined;
+  intent.brake = false;
+}
+
+const AMBIENT_BERTH_TOLERANCE = 8;
+const AMBIENT_BERTH_MAX_DRIFT = 3;
+
+function ambientBerthRadius(entity, station) {
+  if (station.type !== 'station') return 0;
+  const manifest = resolveCollisionProxyManifest(station);
+  const skin = manifest ? proxyOuterRadiusWu(manifest, station) : hullEnvelopeWu(station);
+  // Ambient freight uses the clear service perimeter. Authored berth/corridor jobs retain
+  // their own owner; this route must never aim a large freighter through a station's skin.
+  return Math.max(DOCK_RANGE - AMBIENT_BERTH_TOLERANCE,
+    skin + hullEnvelopeWu(entity) + 20, Number(station.data?.dockRadius) || 0);
+}
+
+function nearestAmbientBerth(entity, stations) {
+  let nearest = null, best = Infinity;
+  for (const station of stations) {
+    const distance = Math.hypot(station.pos.x - entity.pos.x, station.pos.z - entity.pos.z);
+    const error = Math.abs(distance - ambientBerthRadius(entity, station));
+    if (error <= DOCK_RANGE && error < best) { nearest = station; best = error; }
+  }
+  return nearest;
+}
+
+/** Physical target-frame guidance shared by the live generic approach and its station wait. */
+export function ambientStationGuidance(entity, station, profile, role = TRAFFIC_ROLES.hauler) {
+  const dx = station.pos.x - entity.pos.x, dz = station.pos.z - entity.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const gap = distance - ambientBerthRadius(entity, station);
+  const error = Math.abs(gap);
+  const ux = distance > 0.001 ? dx / distance : Math.cos(entity.rot || 0);
+  const uz = distance > 0.001 ? dz / distance : Math.sin(entity.rot || 0);
+  const tx = Number(station.vel?.x) || 0, tz = Number(station.vel?.z) || 0;
+  const rvx = (Number(entity.vel?.x) || 0) - tx, rvz = (Number(entity.vel?.z) || 0) - tz;
+  const relativeSpeed = Math.hypot(rvx, rvz);
+  // Use the weakest translational axis, since the hull may still be turning or loaded.
+  const pulse = profile.family === DRIVE_FAMILIES.PULSE_PLATE;
+  const grav = profile.family === DRIVE_FAMILIES.GRAVIMETRIC;
+  const sail = profile.family === DRIVE_FAMILIES.SAIL;
+  const reverse = pulse ? profile.rcsReverseAccel : grav ? profile.maxBrakeAccel : sail ? profile.trimAccel : profile.reverseAccel;
+  const lateral = pulse ? profile.rcsStrafeAccel : grav ? profile.maxAccel : sail ? profile.trimAccel : profile.strafeAccel;
+  const decel = Math.max(1, Math.min(Number(reverse) || 20, Number(lateral) || 20) * 0.6);
+  const ceiling = Math.max(1, Number(profile.combatSpeed || profile.maxSpeed) || SPEED);
+  const speed = Math.min(ceiling, Math.max(1, Number(role.speed) || SPEED));
+  const closing = Math.min(speed, error * 0.65,
+    Math.sqrt(2 * decel * Math.max(0, error - 3))) * Math.sign(gap);
+  const velocity = { x: tx + ux * closing, z: tz + uz * closing };
+  const heading = error > AMBIENT_BERTH_TOLERANCE
+    ? Math.atan2(uz * Math.sign(gap), ux * Math.sign(gap)) : entity.rot || 0;
+  const toward = Math.max(0, rvx * ux + rvz * uz);
+  const stopDistance = toward * toward / (2 * decel) + toward;
+  // An express liner still makes its long boosted run. It hands over to the same bounded
+  // servo early enough to spend its real momentum before reaching the service perimeter.
+  const cruiseBoost = !!(role.express && massline2Flag('hitchhiking')
+    && gap > Math.max(300, stopDistance + 160)
+    && Math.cos(heading - (entity.rot || 0)) > 0.9);
+  return { velocity, heading, cruiseBoost,
+    arrived: error <= AMBIENT_BERTH_TOLERANCE && relativeSpeed <= AMBIENT_BERTH_MAX_DRIFT };
+}
+
+function guideAmbientStation(entity, station, state, role) {
+  const guidance = ambientStationGuidance(entity, station, resolvePropulsionProfile(entity, state), role);
+  setIntent(entity, 0, guidance.cruiseBoost ? 1 : 0, guidance.cruiseBoost, false, null, guidance.heading);
+  if (!guidance.cruiseBoost) entity.data.intent.rendezvous = guidance;
+  return guidance;
 }
 
 const INDUSTRY_HAUL_TARGET_REF = /^[a-z][a-z0-9-]*(?::[a-z_][a-z0-9_.-]*)+$/;

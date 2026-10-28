@@ -1,0 +1,114 @@
+{
+  "baseCommit": "4b468fdf71a38f83f7017a061808317d9aede1ca",
+  "scope": "Frozen runtime after the active kinematic-anchor compatibility fix; focused headless evidence, not public-route or hardware-performance acceptance.",
+  "sourceSha256": {
+    "index.html": "10b2d099a130cac4ec711995adb4938c835d5f0b2488ca8a66c1be5ef45d1114",
+    "package.json": "b29383caa006dd1c80bf55b58161c31d10001c0a04dec6865175e3aa1cecb1bd",
+    "scripts/check-dock-key-exclusivity.mjs": "c4b40f5255f36e4eb2a623c713e3bc6c7e7c90b33957ed4730520863676efcae",
+    "scripts/check-sg06-production-ports.mjs": "314877ea807adbc66080efe03ac223123a836b7603fbba5cffc3f36fec455204",
+    "src/ai/contracts.js": "f46d0904898e7c22161e37fb41d91c8d0cdd83b326c98cb4824ff1d86add9553",
+    "src/ai/maneuver.js": "7fd810d5ead05ba8cf906efe99410ac4f4a5a4e3823f38e59e13ab7da84f2f2d",
+    "src/ai/squadFrame.js": "40f0cee51e6cc3227d98c17085f4a573d54439b1c02e3398ee5dd3102f553441",
+    "src/ai/stack.js": "f2b3268470f78da5b08c5a60f7bc2fdb65b96d34b244fd7591608c9b2013e8f7",
+    "src/combat/impulseKernel.js": "4232d0bd925655bf00435c6121be6855f4501c599b56e88fa69bbcf5a189ea73",
+    "src/core/flight/precisionAssist.js": "4bb05ce0300502bc54d44aa3abe3ca641b37a0c78071a47729cf4aa7a9f2cc30",
+    "src/core/flight/propulsionKernel.js": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+    "src/core/physics.js": "64e9d24b260938917303c320ec9fd0acee4ce96172c53c35f39456150133923e",
+    "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+    "src/data/flightTuning.js": "b0f2bcda765703a4da5dda7dc81230c972172ca8e3a9276c99d422919b07e3bb",
+    "src/systems/aiPorts.js": "a097bbf2833beeb7ffcf3ca36261bc9afbdbf60ff566fd6a699e11dd8a81f55a",
+    "src/systems/collisionConsequences.js": "281caca22353daec169a850e7750ce2a5abe8e408b33a18a3398c5f65800c9c1",
+    "src/systems/flightV3.js": "8ac7ecbe42acc2b43b69f4026beb33a2ae9d74f431ff3917bc7a6d51a11002ee",
+    "src/systems/npcJobsRuntime.js": "106ecaa1fa11ba1de0f8671cae3b8e197d391f5c2102b97040fc1784576cea93",
+    "src/systems/tacticalAI.js": "82b54f0edfc67f73127440185bbeb701f471a5e1d4d74206433e59075927aa4a",
+    "src/systems/traffic.js": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+    "src/ui/input.js": "f285464d6df77d06b92c3123d614cf3a8fd996cad28920ad8266f73f76721c87"
+  },
+  "checks": [
+    {
+      "command": "npm run check:motion",
+      "exitCode": 0,
+      "testCases": 60,
+      "dockKeyGroups": 7,
+      "testFiles": {
+        "precision-flight-assist": 10,
+        "ai-motor-feedback": 10,
+        "ai-pilot-character": 17,
+        "contact-motion-coherence": 13,
+        "traffic-station-arrival": 6,
+        "flight-dormant-skip": 4
+      }
+    },
+    {
+      "command": "node scripts/check-baseline.mjs --only=flight-v3,sim-v3-compare,sim-v3,save-schema,smooth-flight --jobs=2",
+      "exitCode": 0,
+      "passed": [
+        "flight-v3",
+        "sim-v3-compare",
+        "sim-v3",
+        "save-schema",
+        "smooth-flight"
+      ],
+      "existingGoldensUpdated": false
+    },
+    {
+      "command": "npm run check:contracts",
+      "exitCode": 0,
+      "checks": [
+        "source syntax",
+        "scenario/input/telemetry schemas",
+        "source reachability",
+        "modulepreload manifest"
+      ],
+      "timing": "Before final active kinematic-anchor exception; final modified owner is also parsed and executed by check:motion."
+    },
+    {
+      "command": "node --test test/racing-opponents.test.mjs test/racing-refinement.test.mjs test/swarm-native-draft-admission.test.mjs test/crucible-arcade-tools.test.mjs",
+      "exitCode": 0,
+      "passingFiles": 4,
+      "scope": "Native rivals/course traversal, grid hold, production worker draft admission and physical arcade tools."
+    },
+    {
+      "command": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --reload-at 600 --physics-backend rapier-dynamic --flight-system v3 --tactical-ai",
+      "exitCode": 0,
+      "result": {
+        "ok": true,
+        "deterministic": true,
+        "scenario": "47a",
+        "seed": 47,
+        "ticks": 720,
+        "physicsBackend": "rapier-dynamic",
+        "tacticalAI": true,
+        "flightSystem": "v3",
+        "comparison": {
+          "schema": "spaceface.sfSimComparison.v1",
+          "ok": true,
+          "mode": "uninterrupted-vs-reload",
+          "reloadAt": 600,
+          "hashEqual": true,
+          "firstDivergentTick": null,
+          "diffs": []
+        }
+      }
+    }
+  ],
+  "precisionNative60Hz": [
+    {
+      "initialSpeedWuS": 20,
+      "durationS": 3,
+      "finalSpeedWuS": 0.08553596585988998,
+      "distanceWu": 10.93993854522705
+    },
+    {
+      "initialSpeedWuS": 320,
+      "durationS": 3,
+      "finalSpeedWuS": 320,
+      "distanceWu": 960.0206298828125
+    }
+  ],
+  "limits": [
+    "Native flight fixture is a single 24-mass reaction-drive hull, not a completed docking journey.",
+    "Replay comparison covers the named 720-tick scenario and reload point.",
+    "The separate public-mode verdicts determine rendered integration coverage; software GL does not establish hardware frame pacing."
+  ]
+}

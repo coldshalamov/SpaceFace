@@ -117,6 +117,11 @@ export const aiPorts = {
     };
     Object.defineProperty(this._liveSensorFrameScratch, NORMALIZED_SENSOR_FRAME_FLAG, { value: true });
     this._liveSensorFramesScratch = new Map();
+    // Body feedback is cheap and must not inherit the contact/decision batch cadence. This
+    // scratch sample is consumed synchronously by the motor planner; it never enters memory.
+    this._motionFrameScratch = { id: null, tick: -1, occupantGeneration: null,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+      tumbling: false, recovering: false };
     this._liveSensorBatchRequests = [];
     this._liveSensorBatchEntries = [];
     this._liveSensorBatchEntryCount = 0;
@@ -145,6 +150,7 @@ export const aiPorts = {
 
     this.helpers.aiSensors = Object.freeze({
       frameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick),
+      motionFor: (entityId, tick) => this._motionFrameFor(entityId, tick),
       liveFrameFor: (entityId, tick) => this._sensorFrameFor(entityId, tick, { freezeResults: false }),
       liveFramesFor: (entityIds, tick, options) => this._sensorFramesFor(entityIds, tick, options),
       disabledNonlethalTargetFor: (entityId) => {
@@ -394,6 +400,24 @@ export const aiPorts = {
     this._diag.acceptedEncounterCommands++;
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('ai:encounterCommand', record);
     return true;
+  },
+
+  _motionFrameFor(entityId, tick) {
+    const entity = getEntity(this.state, entityId);
+    if (!isLiveCraft(entity)) return null;
+    const frame = this._motionFrameScratch;
+    frame.id = entity.id;
+    frame.tick = tick;
+    frame.occupantGeneration = entity.occupantGeneration;
+    frame.pos.x = finite(entity.pos && entity.pos.x);
+    frame.pos.z = finite(entity.pos && entity.pos.z);
+    frame.vel.x = finite(entity.vel && entity.vel.x);
+    frame.vel.z = finite(entity.vel && entity.vel.z);
+    frame.rot = wrapAngle(finite(entity.rot));
+    frame.angVel = Number.isFinite(entity.angVel) ? entity.angVel : undefined;
+    frame.tumbling = isTumbling(this.state, entity);
+    frame.recovering = isRecovering(this.state, entity);
+    return frame;
   },
 
   _sensorFrameFor(entityId, tick, options = {}) {
@@ -1110,6 +1134,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     pos: vec2(entity.pos, freeze),
     vel: vec2(entity.vel, freeze),
     rot: wrapAngle(finite(entity.rot)),
+    angVel: Number.isFinite(entity.angVel) ? entity.angVel : undefined,
     radius: positive(entity.radius, 1),
     planarRadius: steeringPlanarRadius(entity),
     hullFraction: fraction(entity.hull, entity.hullMax, 1),

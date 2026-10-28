@@ -335,6 +335,9 @@ function normalizeSelf(value, entityId) {
   // This frozen owner-issued sample carries runtime-only provenance. Copying it would lose
   // that attestation; arbitrary frame/entity metadata remains untrusted at doctrine validation.
   if (value.mothlightGunCadence) self.mothlightGunCadence = value.mothlightGunCadence;
+  // Optional for compatibility sensors. A real body sample supplies its measured yaw rate;
+  // missing data must stay missing so the planner can use its finite-difference fallback.
+  if (Number.isFinite(value.angVel)) self.angVel = value.angVel;
   const generation = value.occupantGeneration;
   if (generation != null && generation !== '') self.occupantGeneration = generation;
   if (Object.prototype.hasOwnProperty.call(value, 'alive')) self.alive = value.alive;

@@ -412,6 +412,19 @@ export function resolveCollisionConsequence(input = {}) {
 
   const mass = positive(target.physicsBody && target.physicsBody.mass, positive(target.mass, 1));
   let deltaV = exchangedMomentum / mass;
+  // Solver support/depenetration can report large impulses with no approaching motion.
+  // Native receipts include the motion available in the connected contact island, so an
+  // A -> B -> C chain can deliver a real impulse despite BC starting with zero closure.
+  // Other measured contacts use a full elastic reversal of surface closing speed (including
+  // rotating arms). Missing measurements keep compatibility; measured zero cannot damage,
+  // tumble, or shed plating merely because the solver corrected an intersection.
+  const measuredContactSpeed = Number.isFinite(input.preSolveContactSpeed)
+    ? input.preSolveContactSpeed : input.preSolveClosingSpeed;
+  if (Number.isFinite(input.availableContactDeltaV)) {
+    deltaV = Math.min(deltaV, Math.max(0, input.availableContactDeltaV));
+  } else if (Number.isFinite(measuredContactSpeed)) {
+    deltaV = Math.min(deltaV, 2 * Math.max(0, measuredContactSpeed));
+  }
   // A loose striker's knock (see PROJECTILE_HULL_LAW). Only ever RAISES the knock the solver reported.
   const strike = input.projectileStrike;
   let projectileKnock = false;

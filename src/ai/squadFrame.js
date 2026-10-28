@@ -354,6 +354,7 @@ function copyLive(rec, entity) {
   rec.live.vel.x = rec.vel.x;
   rec.live.vel.z = rec.vel.z;
   rec.live.rot = rec.rot;
+  rec.live.angVel = Number.isFinite(entity.angVel) ? entity.angVel : undefined;
   rec.live.radius = rec.radius;
   rec.live.hullFraction = rec.hullFraction;
   if (!rec.slotReady) {

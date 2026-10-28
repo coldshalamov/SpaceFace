@@ -300,14 +300,22 @@ export class ManeuverPlanner {
       ? { contactIndexBuilds: 0, indexedContactVisits: 0, legacyContactVisits: 0 }
       : null;
     this.resolveHull = typeof config.resolveHull === 'function' ? config.resolveHull : null;
+    this.resolveMotion = typeof config.resolveMotion === 'function' ? config.resolveMotion : null;
     this.squadFrames = config.squadFrames === false
       ? null
       : (config.squadFrames || createSquadFrameDirector({ seed: this.seed }));
   }
 
   plan({ tick, entityId, perception, behavior, directive }) {
-    const self = perception && perception.self;
-    if (!self) throw new Error(`maneuver planner lacks self sensor frame for ${entityId}`);
+    const sensedSelf = perception && perception.self;
+    if (!sensedSelf) throw new Error(`maneuver planner lacks self sensor frame for ${entityId}`);
+    const motion = this.resolveMotion && this.resolveMotion(entityId, tick);
+    // Pilots know their own body continuously even when their next contact scan is batched.
+    // Do not refresh contacts or tactical memory here, and never borrow a recycled id's pose.
+    const self = motion && motion.id === sensedSelf.id
+      && (sensedSelf.occupantGeneration == null || motion.occupantGeneration === sensedSelf.occupantGeneration)
+      ? overlaySelf(sensedSelf, motion)
+      : sensedSelf;
     let runtime = this.byEntity.get(entityId);
     if (!runtime) {
       runtime = {
@@ -340,6 +348,11 @@ export class ManeuverPlanner {
       runtime.lastVelZ = self.vel ? self.vel.z : 0;
       runtime.lastVelTick = tick;
       runtime.stationaryTicks = 0;
+      runtime.smoothedForward = 0;
+      runtime.smoothedRight = 0;
+      runtime.smoothedTorqueYaw = 0;
+      runtime.lastTick = tick;
+      runtime.lastHeading = null;
       runtime.lastRot = self.rot;
       runtime.lastRotTick = tick;
       const held = makeThrusterRequest(entityId, tick, {
@@ -393,11 +406,11 @@ export class ManeuverPlanner {
       );
       if (queued) intent = { ...intent, formationSlot: { x: queued.x, z: queued.z } };
     }
-    // The sensor frame carries no angular-velocity channel, so differentiate the wrapped
-    // heading between plan calls; the yaw request below closes on this measured rate
-    // (see yawRateTorqueFor).
+    // Close the yaw loop on the body's measured rate. Differentiating a cached sensor heading
+    // on every motor tick reports zero, then a spike when the next contact batch arrives.
+    // Older/injected ports without body-rate sensing retain the wrapped difference fallback.
     const rotGapTicks = Number.isInteger(runtime.lastRotTick) ? Math.max(1, tick - runtime.lastRotTick) : 1;
-    const measuredWy = Number.isFinite(runtime.lastRot)
+    const measuredWy = Number.isFinite(selfPose.angVel) ? selfPose.angVel : Number.isFinite(runtime.lastRot)
       ? wrapAngle(selfPose.rot - runtime.lastRot) / (rotGapTicks / 60)
       : 0;
     runtime.lastRot = selfPose.rot;
@@ -677,7 +690,7 @@ export class ManeuverPlanner {
     if (Math.abs(angleError) > turnGate) throttle *= 0.35;
     if (velocityAlongDesired > envelope.maxSpeed) throttle *= 0.25;
 
-    const allowReverse = kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
+    const allowReverse = !!choreo || kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION || speedLimited;
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
@@ -968,7 +981,8 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
   if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
     const speed = intent.enemyMindOwned && intent.kind === ManeuverKind.RETREAT
       ? config.retreatSpeed : config.interceptSpeed;
-    return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1));
+    return commitPoint(self, intent.flightPoint, speed * (hullScale && hullScale.speed || 1),
+      ZERO_VEL, intent.crossingLane === true);
   }
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
@@ -1233,30 +1247,31 @@ function trackPoint(self, point, velocity, throttle) {
   };
 }
 
-function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL) {
+function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL, flyThrough = false) {
   const target = point || self.pos;
   const dx = target.x - self.pos.x, dz = target.z - self.pos.z;
   const distance = Math.hypot(dx, dz);
   const inv = distance > 1e-9 ? 1 / distance : 0;
   const speed = Math.max(8, commitSpeed || 0);
-  // Arrival damping: a formation slot is a place, not a direction. The raised pursuit caps
-  // made full-speed slot chases overshoot and oscillate around the slot — formation mates
-  // crossed centers and ground hull-to-hull during settle and reform (M6 left↔right at
-  // spawn, lead↔left in the reform turn). Cap the SELF-driven approach by the braking
-  // distance to the slot, on top of the slot's own recede rate along the bearing — a
-  // receding slot is pursued at full cap, a settled slot glides in.
+  // Arrive in the slot's moving frame. A nonzero minimum chase speed continually pumps
+  // motion through a stationary slot, while fractional feedforward makes a wing lag its
+  // own frame. Close the relative error to zero and carry the full frame velocity.
+  // A committed attack corridor explicitly flies through its endpoint instead of docking.
   const feed = feedVel || ZERO_VEL;
-  const recede = distance > 1e-9 ? ((feed.x || 0) * dx + (feed.z || 0) * dz) * inv : 0;
-  const arriveSpeed = recede + Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
-  const chase = Math.min(speed, Math.max(speed * 0.35, arriveSpeed));
+  const arriveSpeed = Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
+  const chase = flyThrough ? speed : Math.min(speed, arriveSpeed, distance * 1.6);
+  const vx = (feed.x || 0) + dx * inv * chase;
+  const vz = (feed.z || 0) + dz * inv * chase;
+  const limit = Math.max(speed, Math.hypot(feed.x || 0, feed.z || 0));
+  const scale = Math.min(1, limit / Math.max(1e-9, Math.hypot(vx, vz)));
   return {
     x: dx,
     z: dz,
     arrivalDistance: distance,
     desiredPos: target,
     desiredVel: {
-      x: (feed.x || 0) * 0.35 + dx * inv * chase,
-      z: (feed.z || 0) * 0.35 + dz * inv * chase,
+      x: vx * scale,
+      z: vz * scale,
     },
     control: 'track',
   };
@@ -1296,6 +1311,7 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
   const rightX = -dir.z;
   const rightZ = dir.x;
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
+  let nearestPassDistance = Infinity;
   // A broken-off contact seek cannot honor a blocker's halo when the destination itself sits
   // inside it (the freight pod spilled 33 WU off the dead carrier, inside its ~72 WU keep-out —
   // the raider slalomed the shoulder for 40 s and never touched the cargo). The seek wins;
@@ -1336,10 +1352,24 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     }
     if (!pass) continue;
     const passDirection = unit2(pass.pointX - self.pos.x, pass.pointZ - self.pos.z, dir.x, dir.z);
+    nearestPassDistance = Math.min(nearestPassDistance,
+      Math.hypot(pass.pointX - self.pos.x, pass.pointZ - self.pos.z));
     const proximity = saturate(1 - distance / (config.shipCollisionLookahead * 1.5));
     const blend = clamp(0.65 + proximity * config.shipCollisionWeight, 0, 1);
     x = x * (1 - blend) + passDirection.x * blend;
     z = z * (1 - blend) + passDirection.z * blend;
+  }
+  if (desired.control === 'track' && Number.isFinite(nearestPassDistance)) {
+    // A tracking controller follows desiredPos/desiredVel. Bending only the heading while
+    // preserving those setpoints leaves its force aimed straight at the avoided hull.
+    const route = unit2(x, z, dir.x, dir.z);
+    const speed = Math.min(config.interceptSpeed, Math.max(12,
+      Math.hypot(desired.desiredVel && desired.desiredVel.x || 0,
+        desired.desiredVel && desired.desiredVel.z || 0)));
+    return { ...desired, x: route.x, z: route.z,
+      desiredPos: { x: self.pos.x + route.x * nearestPassDistance,
+        z: self.pos.z + route.z * nearestPassDistance },
+      desiredVel: { x: route.x * speed, z: route.z * speed } };
   }
   return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }
@@ -1530,7 +1560,8 @@ function yawRateTorqueFor(angleError, measuredWy, headingRate, kind, config, hul
   // bearing may spend the full rate budget, but it cannot re-pump a whirlpool — the commanded
   // rate still collapses to the proportional term the moment the heading stops moving.
   const track = clamp(Number.isFinite(headingRate) ? headingRate : 0, -rateTarget, rateTarget);
-  const desiredWy = track + clamp(angleError / config.yawSoftAngle, -1, 1) * rateTarget;
+  const desiredWy = clamp(track + clamp(angleError / config.yawSoftAngle, -1, 1) * rateTarget,
+    -rateTarget, rateTarget);
   return clamp((desiredWy - measuredWy) * config.yawRateGain, -limit, limit);
 }
 
@@ -1702,13 +1733,27 @@ function applyReflexToDesired(desired, self, reflex) {
 function overlaySelf(self, live) {
   const pos = live.pos || self.pos;
   const vel = live.vel || self.vel;
+  const x = Number.isFinite(pos.x) ? pos.x : 0;
+  const z = Number.isFinite(pos.z) ? pos.z : 0;
+  const vx = Number.isFinite(vel.x) ? vel.x : 0;
+  const vz = Number.isFinite(vel.z) ? vel.z : 0;
+  const rot = Number.isFinite(live.rot) ? live.rot : self.rot;
+  const angVel = Number.isFinite(live.angVel) ? live.angVel : self.angVel;
+  const tumbling = typeof live.tumbling === 'boolean' ? live.tumbling : self.tumbling;
+  const recovering = typeof live.recovering === 'boolean' ? live.recovering : self.recovering;
+  const radius = Number.isFinite(live.radius) ? live.radius : self.radius;
+  const hullFraction = Number.isFinite(live.hullFraction) ? live.hullFraction : self.hullFraction;
+  // The fresh sensor or preceding body overlay usually already matches the squad's live
+  // pose. Keep that immutable view instead of cloning its static fields and both vectors
+  // again for every formation pilot on every motor tick.
+  if (x === self.pos.x && z === self.pos.z && vx === self.vel.x && vz === self.vel.z
+    && rot === self.rot && angVel === self.angVel && tumbling === self.tumbling
+    && recovering === self.recovering && radius === self.radius && hullFraction === self.hullFraction) return self;
   return {
     ...self,
-    pos: { x: Number.isFinite(pos.x) ? pos.x : 0, z: Number.isFinite(pos.z) ? pos.z : 0 },
-    vel: { x: Number.isFinite(vel.x) ? vel.x : 0, z: Number.isFinite(vel.z) ? vel.z : 0 },
-    rot: Number.isFinite(live.rot) ? live.rot : self.rot,
-    radius: Number.isFinite(live.radius) ? live.radius : self.radius,
-    hullFraction: Number.isFinite(live.hullFraction) ? live.hullFraction : self.hullFraction,
+    pos: { x, z },
+    vel: { x: vx, z: vz },
+    rot, angVel, tumbling, recovering, radius, hullFraction,
   };
 }
 
