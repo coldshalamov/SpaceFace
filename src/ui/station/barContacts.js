@@ -50,7 +50,7 @@ import {
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
-import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
+import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
 import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
 import { deedLine } from '../../data/deedPhrases.js';
@@ -1357,6 +1357,14 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
     if (reply) return reply;
+  }
+  if (choiceId === 'proteus_sounding_map') {
+    const offer = proteusFindingMapOffer(state, stationId, contact);
+    if (!offer) return { text: 'I cannot put that one on a chart from here.' };
+    const opened = openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, ...offer });
+    return { text: opened
+      ? 'Your sounding is marked on the system map. The course is yours to set.'
+      : 'The system map will not open right now. Your survey record is safe.' };
   }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
