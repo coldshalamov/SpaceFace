@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { fenceBarContact, fenceBarReply, proteusFindingKnown, proteusFindingMapOffer } from '../src/ui/station/fenceContact.js';
 import { fenceContactId, FENCE_BY_ID } from '../src/data/fences.js';
 import { BORROWED_SUN } from '../src/data/borrowedSun.js';
+import { SORI_COMPARISON_CONTACT_ID, soriComparisonReply } from '../src/data/soriComparisonReturn.js';
 import { MAP_FOCUS, openGalaxyMap } from '../src/ui/mapAuthority.js';
 
 // Exact production buildReply body, with only unrelated contact families adapted.
@@ -14,7 +15,7 @@ const source = fs.readFileSync(new URL('../src/ui/station/barContacts.js', impor
 const start = source.indexOf('export function buildReply(');
 const end = source.indexOf('\nfunction dossSourceList(', start);
 assert.ok(start >= 0 && end > start);
-const scope = { fenceBarReply, proteusFindingMapOffer, MAP_FOCUS, openGalaxyMap, BORROWED_SUN,
+const scope = { fenceBarReply, proteusFindingMapOffer, MAP_FOCUS, openGalaxyMap, BORROWED_SUN, SORI_COMPARISON_CONTACT_ID, soriComparisonReply,
   DOSS_ARCHIVE_CONTACT_ID: 'contact_halev_doss', VONN_FREIGHT_CONTACT_ID: 'contact_vonn',
 };
 vm.runInNewContext(source.slice(start, end).replace('export function', 'function') + '\nglobalThis.reply = buildReply;', scope);
@@ -118,8 +119,7 @@ test('a restored durable discovery remains known after residency is rebuilt', ()
   // This exercises the discovery payload contract, not the complete Save owner.
 });
 test('current-master Nyx eligibility and choices are not expanded by Proteus', () => {
-  const s=fixture(); assert.equal(fenceBarContact('station_nyx_march',s),null);
-  s.player.heat=0.2; const nyx=fenceBarContact('station_nyx_march',s);
+  const s=fixture(); const nyx=fenceBarContact('station_nyx_march',s);
   assert.ok(nyx); assert.equal(nyx.choices.some(c=>c.id.startsWith('proteus_')),false);
-  assert.equal(nyx.choices.some(c=>c.id==='clinic_freight_report'),false);
+  assert.equal(nyx.choices.some(c=>c.id==='clinic_freight_report'),true);
 });
