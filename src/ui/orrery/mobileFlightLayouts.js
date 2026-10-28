@@ -29,9 +29,15 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     top:calc(186px + var(--sf-safe-top,0px))!important;
     max-width:min(250px,calc((100vw - 192px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)) * 1.333333))!important;
   }
+  /* The compact tape is reparented into .sf-rightdock (racingHud syncParent), so position:fixed
+     resolves against the dock's transformed containing block, not the viewport — top:70px landed
+     mid-dial at dock+70. Position it absolutely in the clear rail directly under Powers/Pause
+     (dock top 196 - 132 = viewport 64), its right edge on the dock edge under Pause. */
   ${FLIGHT} #race-tape[data-compact="true"] {
-    top:calc(70px + var(--sf-safe-top,0px));
-    right:calc(12px + var(--sf-safe-right,0px));
+    position:absolute!important;
+    top:-132px;
+    bottom:auto!important; left:auto!important;
+    right:0;
     width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
   }
 }
@@ -42,13 +48,28 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     width:min(236px,32vw)!important;
   }
   /* The 44px touch keys use the top-centre lane, between the status strip and Pause.
-     They finish before the radar begins instead of sitting across its compass and contacts. */
+     They finish before the radar begins instead of sitting across its compass and contacts.
+     Same fixed-vs-dock defect as portrait: absolute against the dock puts the tape at
+     viewport ~10 (dock top 80 - 70), its right edge ending before the radar's left edge
+     (dock right - 161 -> 593 on 844, radar starts 601). */
   ${FLIGHT} #race-tape[data-compact="true"] {
-    top:calc(10px + var(--sf-safe-top,0px));
-    left:auto; right:calc(84px + var(--sf-safe-right,0px));
-    width:180px; transform:none;
+    position:absolute!important;
+    top:-70px;
+    bottom:auto!important; left:auto!important;
+    right:calc(161px + var(--sf-safe-right,0px));
+    /* On the shortest phones (568x320) 180px can't clear both the 202px status lane and
+       the radar; the tape compacts its keys 2x2 and yields before it collides. */
+    width:min(180px,calc(100vw - 453px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    min-width:100px;
+    transform:none;
   }
-  ${FLIGHT} #hud > .sf-leftcontext { max-width:min(250px,64vw)!important; }
+  /* The resting stick ghost anchors at left:23% bottom:104 (a ~132px ring starting y~220).
+     The objective's old 186 top landed inside it; 110 keeps it under the tutorial card
+     (bottom ~102) and clear of the ring. */
+  ${FLIGHT} #hud > .sf-leftcontext {
+    top:calc(110px + var(--sf-safe-top,0px))!important;
+    max-width:min(250px,64vw)!important;
+  }
 }
 /* Portrait receipts share the objective's left lane, not the radar caption's right lane.
    Keep the existing bottom/cluster reservation and information semantics; critical receipts
@@ -76,6 +97,11 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     width:min(176px,calc(100vw - 114px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     min-width:0;
   }
+  /* Stack the transient lines: alerts band ~146-170, then the tutorial card, then the
+     objective. The card's injected top:18% (~152) sat inside the alerts band and over the
+     leftcontext block's top corner. */
+  ${FLIGHT} .sf-tutorial-flight-card { top:calc(178px + var(--sf-safe-top,0px))!important; }
+  ${FLIGHT} #hud > .sf-leftcontext { top:calc(236px + var(--sf-safe-top,0px))!important; }
   ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
   ${FLIGHT} #toasts,
   ${FLIGHT}[data-sf-mobile-lefty="1"] #toasts {
