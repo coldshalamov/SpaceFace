@@ -179,3 +179,39 @@ section 4.2) helps every frame, so it moved up the list.
 Next measurements, in order: (1) the draft/loading freezes (what runs for 5-9 s); (2) GPU time per pass (try `EXT_disjoint_timer_query_webgl2` inside the probe; if the browser hides it, a Spector capture on the real
 laptop, `scripts/capture-spector-frame.mjs`); (3) `unreadyDrawGuard` and
 physics contact-impact emission, which are small enough to fix and large enough to matter.
+
+### 7.1 GPU time per pass, and a correction to the section above (2026-10-28, same day)
+
+Tool: `node scripts/probe-crucible-load-and-gpu.mjs [--duration=60] [--min-freeze=1000]`. It wraps WebGL2 and opens a **GPU timer query**
+(`EXT_disjoint_timer_query_webgl2` - it IS available on this laptop's ANGLE/D3D11) per render pass (a pass ends when the framebuffer binding
+changes or the frame ends), so every pass gets GPU milliseconds, a target size and a draw count. 60 s of an active round, 677 frames, headed.
+
+| | p50 | p95 |
+|---|---|---|
+| Frame interval | 86 ms | 125 ms |
+| **GPU time per frame** | **23.7 ms** | **65 ms** (mean 30 ms) |
+| Draw calls per frame | 154 | 176 |
+
+**So the Crucible round is NOT GPU-bound at the median: the GPU is busy about 28% of each frame and the main thread is the limit.** (The section-7
+sentence "GPU/driver-limited" was a guess from the 32% native share and is withdrawn: that native time is the browser's own DOM/paint/composite and
+GL command submission on the main thread, not GPU work.) Where the GPU time goes: the scene pass (1280x720 target, 135 draws) 18.8 ms per frame; **one
+full-screen composite draw to the canvas 7.1 ms per frame** (a single draw: the per-pixel post shader - bloom composite, grade, sharpen - is the
+most expensive single thing the GPU does, and the cheapest to attack: simplify or skip work per pixel, no visual change); the whole bloom chain
+(640x360, 320x180, 160x90, 80x45) about 1.5 ms. Four WebGL contexts exist; the main one carries nearly everything.
+
+### 7.2 What freezes the loading phases (CPU profile mapped onto each long task of 1 s or more; 9 in one run, longest 5.0 s)
+
+| Freeze | Phase | What was running | Status |
+|---|---|---|---|
+| 5.0 s | loading/draft | `partsLibrary.js scheduleRefusalTriggerRearm`: one timer and one distinct `document` visibilitychange listener per refused boundary upgrade (a Crucible arena refuses hundreds at once); `addEventListener` alone 2.0 s self time (each add scans for duplicates: O(N^2)) | **fixed** - one shared wake-up (test/parts-library-refusal-rearm.test.mjs) |
+| 2.5 s | loading | `runNewGameSimBoot` -> `sandboxSetup.apply` -> the `presentation:caption` listener in `ui/hud.js` 0.9 s self + `toDataURL` 0.17 s | open |
+| 2.2 s | loading/draft | `runSession` emit -> `crucibleDraft.js _syncRailScale/_clipRailToWholeRows` layout reads ~0.6 s + a program-link wait 0.55 s | open |
+| 2.1 s, 1.9 s | main menu | first-sight program links on the title (`getProgramParameter` 0.6 s and 1.6 s) + the credits screen render 0.5 s | open |
+| 1.6 s | loading/draft | 1.2 s native (graphics driver) inside `pipSpannerPreview.js resize` -> `WebGLRenderer.setSize` | open |
+| 1.0-1.4 s x4 | loading | native shader-pipeline compile, opening GPU admission, render-package load | open |
+
+So the freezes are a mix: one JS defect (fixed), two UI-layout/caption paths, program links at the title, and driver time for allocating a canvas.
+
+Note for test authors: `test/authored-critical-admission-order.test.mjs` is wall-clock sensitive (frame-paced composition under a slice budget). It passed on a quiet
+machine and failed on the **unmodified** `partsLibrary.js` when the box was loaded (alternating HEAD and changed copies three times each); do not read its
+failure under load as a regression.
