@@ -37,11 +37,13 @@ test('actual Choir archetype factory, late acceptance and native escort', {timeo
      runtime.choose(d,l,h.state,'a');assert.equal(grants.length,0);
     }
     const last=entities()[2],p=h.player;
-    // Test pilot flies the actual scene bearing using the same input packet as controls.
+    // Test pilot trails the escorted hull on its own live heading — master's column motion
+    // curves, so a fixed scene-axis offset can never match speed. Same input packet as controls.
     // Positions, velocities, native bodies and NPC intent are never written by this pilot.
-    const vx=last.vel.x+(last.pos.x-110*ux-p.pos.x)*.5;
-    const vz=last.vel.z+(last.pos.z-110*uz-p.pos.z)*.5;
-    const ax=(vx-p.vel.x)*.12,az=(vz-p.vel.z)*.12;
+    const lh=last.rot||0,lux=Math.cos(lh),luz=Math.sin(lh);
+    const vx=last.vel.x+(last.pos.x-140*lux-p.pos.x)*.7;
+    const vz=last.vel.z+(last.pos.z-140*luz-p.pos.z)*.7;
+    const ax=(vx-p.vel.x)*.2,az=(vz-p.vel.z)*.2;
     const cx=Math.cos(p.rot),sz=Math.sin(p.rot);
     writeRealPathInput(h.state,{moveZ:ax*cx+az*sz,moveX:-ax*sz+az*cx,turnIntent:0});
     // Production encounterDirector samples scripts once per accumulated second.
