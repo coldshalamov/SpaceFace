@@ -36,10 +36,11 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   (`fix-verge-return` packet).
 - batch-c: **26f29b7 VERIFIED** (Vesta ledger conserved, 30/30); **d0891f7 VERIFIED** (winch
   exception scoped, 17/17+30/30); **cc96d0c VERIFIED** (rookBooth writers all in-band, 24/24);
-  all three rows deleted. **3a9d5dc DEFECT — major**: `moralMemorySystem` is never registered in
-  production, the whole reactive debt economy (tick hardening, offer expiry, witness souring,
-  `moralMemory:*` handlers) is inert outside tests; fix implementer running
-  (`fix-moralmemory-register` packet — registry + authoritativeSystemManifest entries).
+  all three rows deleted. **3a9d5dc FIXED 0376013b331** — `moralMemorySystem` registered in
+  both production order tables + calendar clock (self-gates 30 s); production-runtime tick
+  proof escalates a vengeful debt with `moralMemory:escalated` on the bus. Row deleted.
+  **710f1e1 FIXED 6b470a4eb45** — bounded `v.returns` ledger in `state.verge` rides the
+  vergeCourt slot; repro test proves a sector-unloaded warden re-claims and walks home. Row deleted.
 - New OPEN row found at top of ledger: **R-c1225fa** (presentation craft: palette skin, market
   SOLD OUT, bar rail bands, HC focus signal) — not in the original seven; needs a ui-bench
   breakpoint pass, queue in the next review batch.
@@ -48,11 +49,14 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   :534), `vestaWinnowRecovery.js` (:98-104,159,342,552-553), `starterWorkday.js` (:9-22),
   `rookBooth.js` (:401-429), `moralMemory.js` (:423-436,913-997,1185-1195).
 - System deep-reviews (`.devshots/finish/lane3/review-*/REVIEW.md`): save-b READ path scored
-  8/10 — one HIGH fixed-in-scope (superseded async restore publishes the loser's `save:error`;
-  `fix-save-stale-error` packet running) + two mediums flagged (gzip slot preview invents ship
-  facts; index-cache trusts `_blobHash` without envelope-derived facts). lawsec-a: the reported
-  missing-method defect already absent (methods defined :4706/:4751); chain review continuing.
-  save-a (write path) + lawsec-b (impound/heat) runs died at the context wall — relaunch pending.
+  8/10 — its HIGH defect landed as **fd7b2bd6a60** (importFile's FileReader.onerror now
+  re-checks the restore sequence before emitting `save:error`; the rest of the async lanes
+  were already guarded by in-flight work; 4/4 race test + save-fuzz 5000 clean). Two mediums
+  flagged: gzip slot preview inventing ship facts (needs the saveLoad.js call site to honor
+  `meta.gz` — src/ui, ours, packet it in Wave G), index-cache trusting `_blobHash` (tractable
+  in-file — add integrity sniff in a later save pass). lawsec-a: missing-method defect absent
+  (already fixed); chain review continuing. save-a (write path) + lawsec-b (impound/heat)
+  relaunched after the context wall.
 
 ## The ordered packets
 
