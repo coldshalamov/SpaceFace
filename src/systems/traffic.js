@@ -3118,6 +3118,7 @@ export const traffic = {
         if (wasFresh) spawned += 1;
         if (!ownsWinnowRecoveryHull(this.state, entity) && !ownsCharonSupplyHull(this.state, entity)) {
           this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
+          this._initializeTethysShipment(entity, entry, wasFresh, record);
           this._assignActivityJob(entity, entry);
         }
 
