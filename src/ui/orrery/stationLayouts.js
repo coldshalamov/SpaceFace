@@ -297,7 +297,7 @@ ${S} .sxb-launch[data-state='check'] .sxb-launch__state { color:rgb(250 247 238)
 ${S} .sxb-launch[data-state='risk'] { background-image:linear-gradient(90deg, var(--dp-danger, #ff5038), rgb(255 80 56 / 0)) !important; }
 ${S} .sxb-launch[data-state='risk'] .sxb-launch__state { color:var(--dp-danger, #ff5038) !important; }
 html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:none; }
-@media (max-height:800px) {
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${S} .sxb-tape .sxb-berth__ledger { display:none !important; }
   ${S} .sxb-purse__value { font-size:30px !important; }
   ${S} .sxb-vitals { margin-top:2px !important; gap:4px 12px !important; }
@@ -310,7 +310,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
 }
 /* a short screen: the trade receipt stands over the comms words, never across UNDOCK */
-@media (max-height:800px) {
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${S} .sx-comms .sx-receipt, ${S} .sxb-ops .sx-receipt { position:absolute !important; left:0 !important; right:auto !important; top:auto !important; bottom:calc(100% + 6px) !important; max-width:min(420px, 46vw) !important; }
 }
 /* station.css reserves a 292px (228px under 900) right gutter for the legacy corner crown; the ORRERY
@@ -674,7 +674,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
    with both ad boards below them, 607px of a 844px frame, so the tab body got 0px and the Missions dossier's ACCEPT
    could not be reached; the foot's destination words sat in a 182px side-scroller with their glosses printed under them.
    Here the dials share one row, the ad boards and the shift note step aside, and the destinations wrap above COMMS / UNDOCK. */
-@media (max-width:650px) and (min-height:801px) {
+@media (max-width:650px) and (min-height:601px) {
   ${D} { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
     grid-template-areas:"trigger" "title" "crown" "handoff" "tape" "signs" !important; row-gap:6px !important; padding-bottom:6px !important; }
@@ -738,9 +738,12 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 }
 /* …and under 481 wide the five dials' verbs wrap to two lines each, so the head scrolls its services past 40% of the frame
    and the next step keeps its title, not its sentence, leaving the tab a real body */
-@media (max-width:480px) and (min-height:801px) {
+@media (max-width:480px) and (min-height:601px) {
   ${D} .sxb-berth.dp-frame__head { max-height:40vh !important; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; }
   ${D} .sxb-crown::before { content:none !important; }
+  /* five dials share ~68px each: MUNITIONS and CREDIT LINE OPEN keep inside their dial instead of running off the frame */
+  ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; }
+  ${D} .sxb-vital .orr-vnum.is-word { letter-spacing:.04em !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
