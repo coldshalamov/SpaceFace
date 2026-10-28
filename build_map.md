@@ -6814,3 +6814,30 @@ row 501 head), its conduct entry (`factionConduct.js`, where missing), and its p
 | 548 | **The fifty-point audit** | "I'd show this to a friend." | The 08 §12 checklist is run as a pass. Each false item is fixed or filed as one demo-ledger row. The pass is repeated after each phase of 08 §13 | 08 §12 |
 | 549 | **Receipts within a budget** | "The world remembers, and the save is fine." | Every persisted receipt in §34 has a cap and a reader. Trivial receipts decay oldest-first, and meaningful ones never do. Save migrations cover each new record, and the save-growth soak stays flat | 08 §11 |
 | 550 | **The arsenal, one job each** | "I know what every tool in my bay is for." | Each physics tool in `data/weapons.js` is kept, merged into one of the five powers, or moved to a Line head per the owner's pick of `design/expansion/05_ASSET_ROSTER.md` §7.3. Applied for story mode 2026-10-22: a merged tool carries `retiredInto` and leaves the shop and research; owned copies keep working, so no save migration was needed. Remaining: the Crucible draft (swarm seam) and the Line-head moves once those heads exist. No tool's outcome is lost without the owner's call | 05 §7.3 |
+
+## 35. THE OPEN REACH — inhabited districts and a connected world (owner request, 2026-10-27)
+
+The owner asked for real areas with visible civilian work, standing armies, optional military raids
+and stealable machines, wreckyard towns, huge manufactured surfaces, hollow asteroids, infestation
+and a coherent story. **[The living-world implementation pack](design/program/living-world/README.md)**
+turns that direction into eight district designs over existing sector IDs, 24 routine specifications,
+24 opportunities, a campaign/ending treatment, 15 proposed model IDs and 19 bounded packets.
+
+**Delivery boundary:** the creative/specification pack and its read-only authoring CLI are implemented;
+the new districts, models and runtime experiences are planned. This is a source-grounded seed for
+local implementation, not evidence of a finished world. `node scripts/living-world.mjs --validate`
+checks its source references/dependencies; `--task=LW-01` prints the first complete neighborhood
+commission; `--next` lists dependency-ready briefs without claiming paths or changing this board.
+
+Use existing THE WORLD/LONG GAME/PICTURE/HAND/EAR/MACHINE lanes and current source owners. This
+extends §23 CV-DAY/CV-MOTION/CV-QUIET, §31 world convergence and §34 THE WEIGHT; it does not create
+a second runtime registry or global queue. Source/data/art workers can parallelize by exact paths.
+[Program order](design/program/living-world/05-IMPLEMENTATION-PROGRAM.md) begins with Lantern Ward
+and the four art families, then connects cities, military law, interiors, ecology and campaign.
+
+**Narrative amendment for this commission:** latest owner direction permits changing the story.
+The [story bible](design/program/living-world/02-WORLD-AND-STORY.md) retains established facts and
+existing ending IDs but supersedes the outcome constraint in §34 rows 522/536 that successful
+interventions must leave every future material condition unchanged. Historical Pit harm can remain
+irreversible; actual rescue, relief and repair must survive into visible local and ending aftermath.
+Implement source readers and save compatibility together; prose alone changes no runtime behavior.
