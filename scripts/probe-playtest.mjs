@@ -6,7 +6,7 @@
 //   node scripts/probe-playtest.mjs --list
 //
 // Requires the shared harness (scripts/lib/playtest.mjs). Same isolation contract as
-// probe-demo-path: own port, empty player store, headless chromium.
+// probe-playtest: own port, empty player store, headless chromium.
 
 import path from 'node:path';
 import { bootPlaytest, beat, clickWord, observe, finish, sleep, shotNow, ROOT } from './lib/playtest.mjs';
@@ -20,7 +20,7 @@ const ONLY = new Set(argVal('only', '').split(',').map((s) => s.trim()).filter(B
 const ROUTE = argVal('route', 'screens');
 const OUT_DIR = path.join(ROOT, '.devshots', `playtest-${ROUTE}`);
 // Beats are sequential and later ones depend on earlier state, so --only is a STOP-AFTER
-// list (same contract as probe-demo-path's SF_DEMO_STOP_AFTER): run until every named beat
+// list: run until every named beat
 // has executed, then stop.
 const beatsDone = new Set();
 const allDone = () => ONLY.size > 0 && [...ONLY].every((id) => beatsDone.has(id));
