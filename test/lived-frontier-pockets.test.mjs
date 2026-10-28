@@ -42,7 +42,6 @@ import { factions } from '../src/systems/factions.js';
 import { heat } from '../src/systems/heat.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
-import { ownsCharonSupplyHull } from '../src/world/charonSalvageSupply.js';
 
 const SEED = 4242;
 
