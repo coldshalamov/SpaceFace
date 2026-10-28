@@ -55,8 +55,14 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   flagged: gzip slot preview inventing ship facts (needs the saveLoad.js call site to honor
   `meta.gz` — src/ui, ours, packet it in Wave G), index-cache trusting `_blobHash` (tractable
   in-file — add integrity sniff in a later save pass). lawsec-a: missing-method defect absent
-  (already fixed); chain review continuing. save-a (write path) + lawsec-b (impound/heat)
-  relaunched after the context wall.
+  (already fixed); chain review continuing. lawsec-b + save-a moved to Claude reviewers after
+  repeated codex context-wall deaths. **save-a REVIEWED 7.5/10** — write path heavily defended,
+  check:save-schema green; mediums → G4 split packet: hot autosave lane bypasses the delta
+  mirror (O(all-save-bytes) per autosave), no-worker commit fallback drops the gzip retry,
+  worker-encode byte-order drift vs sync lane, dirty journal is write-only (kind>>>0 coerces
+  string kinds to 0). No data-loss serialize pairs; real asymmetries: capitalBoss
+  serialize↔restore, provenanceLedger/chronicler name-mapping, unvalidated encounterDirector
+  restore.
 
 ## The ordered packets
 
@@ -123,7 +129,12 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   (modal-intent? flag), shipworks sale-list 4th row clips at 720p edge, Ctrl+K modal keeps
   centre hits unreachable (intended?), waypoint label carries fixture distance (cosmetic).
   Foreign `hud-contact-roster-visibility` still 2-red (projection-count contract — Lane 2's).
-- **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.
+- **Row 479 RC-SCREENS-TRUE — DONE** (31bb0dbb20a). All seven §32.7 items bench-verified:
+  real 47-A terms in mission log, tab-rail padding, populated game-over bench + CAUSE
+  UNRECORDED fallback, TRACKING goal on the map strip, race-board key help as a verb chip,
+  Voice live-mix ring in source, factions scroll+fade, ledger fold fade. Flags: settings
+  bench shot hangs >280s (harness issue, Lane 1/G); 2 stale test assertions at HEAD
+  (racingMap 2-polyline design, station-orbital ensureStylesheet) — Lane 2 Inbox.
 - **Row 459 RC-VIGNETTES** — lived vignettes worth meeting.
 - **Row 553 ATT-E01** — onboarding rail texture, tier-0 life, ambient traffic.
 - **Row 546 W-TEACH** — teach by situation; First Light keeps its offer with Play primary.
