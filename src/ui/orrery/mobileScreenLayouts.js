@@ -354,6 +354,15 @@ export const MOBILE_SCREEN_CSS = `
         mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
     }
   }
+  /* Bar on a short upright phone (561-700 tall, e.g. 375x667): the berth head left the contact list a ~128px
+     window, so two of five contacts showed above the tab row. Here the berth scrolls as one page under a pinned
+     destination foot, as it does on a phone on its side, and the contacts run on below the head. */
+  @media (min-height:561px) and (max-height:700px) {
+    ${B}:has(#sx-panel > .sx-bar) { overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain;
+      padding-bottom:0 !important; scroll-padding-bottom:132px !important; }
+    ${B}:has(#sx-panel > .sx-bar) :is(.dp-frame__body--station, .dp-frame__body--station > .sx-screen__body) { flex:none !important; overflow:visible !important; }
+    ${B}:has(#sx-panel > .sx-bar) footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10) !important; }
+  }
   /* Market on a phone: the commodity, then the trade (dial, total, Buy/Sell), then the adventure decision, then
      the trace and its words, then the register. One column in normal flow: nothing is drawn over anything. */
   ${M} { display:flex !important; flex-direction:column !important; gap:18px !important; height:auto !important; min-height:0 !important;
