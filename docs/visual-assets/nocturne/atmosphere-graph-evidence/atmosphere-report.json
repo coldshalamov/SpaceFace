@@ -1,0 +1,494 @@
+{
+  "schema": "spaceface.nocturne.atmosphere-evidence.v1",
+  "createdAt": "2026-10-23T16:49:20.300Z",
+  "verdict": "PASS — focused shader/transport/compositor validation",
+  "route": "isolated diagnostic geometry, production atmosphere + renderGraph, vendored Three",
+  "hardwareAcceptance": false,
+  "softwareRenderer": true,
+  "hardwareCaveat": "Software timing is a reproducibility diagnostic, not an integrated-GPU or whole-game budget result.",
+  "source": {
+    "parentCommit": "d5f5c74533efcfdeaa5872cd66676b21ad8e2bcf",
+    "workingTreeContentPinnedBySha256": true,
+    "unchangedDuringCapture": true,
+    "hashes": {
+      "src/render/nocturne/atmosphere.js": "e1d909c6751eefbc6abb8aef5d851c378b420f4988edaa741100dbebf7b00bd2",
+      "src/render/bloom.js": "c1fc6760e7bedb36eea39022c43dba57129d00587dd3d303387111865eaf5b2f",
+      "src/render/post/spaceRenderGraph.js": "c83718f8a4a617b6cac0d7feca2efcb44dfe569c5b240c8efdf2bcfd8ce0a1e2",
+      "src/render/look.js": "28f86ea887a67300ec0828ffad16e9e15fe5b2d2dde2cb1baafc4ee3690cd868",
+      "src/data/lookMoods.js": "f05a7b41957f4afc7350f8359b8a7a64d3558c0afd148cf47d775c0a9a1f98d8",
+      "vendor/three.module.js": "e8d706266e418b6c00266d214c64c4d6eb79c06d2bd989a98f763c2d68e257a5",
+      "vendor/three.core.js": "368dc78835287709a48939e8eb9a7a61d0732098bdf916e56840d458aae9ccf3",
+      "scripts/nocturne-atmosphere-check.mjs": "e2cc09bef3d864df68dfe14811b250215525d0a04e86370af2f9aaef0360c0b0"
+    }
+  },
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "node": "v24.19.0"
+  },
+  "browser": {
+    "version": "134.0.6998.35",
+    "softwareRequested": true,
+    "headless": true
+  },
+  "identity": {
+    "threeRevision": "184",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/134.0.6998.35 Safari/537.36",
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "vendor": "Google Inc. (Google)",
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "shadingLanguage": "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)",
+    "webgl2": true,
+    "floatColor": true,
+    "timerQuery": true,
+    "maxDrawBuffers": 6,
+    "maxTextureImageUnits": 32,
+    "camera": {
+      "type": "perspective",
+      "fov": 48,
+      "position": [
+        0,
+        125,
+        160
+      ],
+      "quaternion": [
+        -0.32555769555904884,
+        0,
+        0,
+        0.9455221768220361
+      ],
+      "near": 1,
+      "far": 1000
+    },
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "route": "renderGraph",
+    "ao": true,
+    "bloom": false,
+    "exposure": 1.5,
+    "shadowResolution": 512,
+    "geometry": "One floor, one 14x30x55 blocker and five 14x8x20 blocks; no game assets."
+  },
+  "cells": {
+    "on": {
+      "enabled": true,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": true,
+      "quality": "balanced",
+      "width": 640,
+      "height": 360,
+      "steps": 18,
+      "media": 1,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 1,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 7372800,
+      "historyValid": true,
+      "historyRejects": 3,
+      "historyReason": "sources-changed",
+      "generation": 3,
+      "renderedFrames": 40,
+      "vacuumFrames": 0,
+      "shadowedLightId": 18,
+      "shadowMode": "one-selected-spot-pcf",
+      "shadowEncoding": "native-depth-comparison",
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 9,
+      "calls": 19,
+      "triangles": 178,
+      "geometries": 9,
+      "rendererTextures": 16
+    },
+    "off": {
+      "enabled": false,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": false,
+      "quality": "balanced",
+      "width": 640,
+      "height": 360,
+      "steps": 18,
+      "media": 1,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 0,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 7372800,
+      "historyValid": false,
+      "historyRejects": 4,
+      "historyReason": "enabled-change",
+      "generation": 4,
+      "renderedFrames": 40,
+      "vacuumFrames": 0,
+      "shadowedLightId": 18,
+      "shadowMode": "one-selected-spot-pcf",
+      "shadowEncoding": "native-depth-comparison",
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 9,
+      "calls": 18,
+      "triangles": 176,
+      "geometries": 9,
+      "rendererTextures": 16
+    },
+    "vacuum": {
+      "enabled": true,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": false,
+      "quality": "balanced",
+      "width": 640,
+      "height": 360,
+      "steps": 18,
+      "media": 0,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 0,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 7372800,
+      "historyValid": false,
+      "historyRejects": 5,
+      "historyReason": "vacuum",
+      "generation": 5,
+      "renderedFrames": 40,
+      "vacuumFrames": 2,
+      "shadowedLightId": 18,
+      "shadowMode": "one-selected-spot-pcf",
+      "shadowEncoding": "native-depth-comparison",
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 9,
+      "calls": 18,
+      "triangles": 176,
+      "geometries": 9,
+      "rendererTextures": 16
+    },
+    "unshadowed": {
+      "enabled": true,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": true,
+      "quality": "balanced",
+      "width": 640,
+      "height": 360,
+      "steps": 18,
+      "media": 1,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 1,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 7372800,
+      "historyValid": true,
+      "historyRejects": 7,
+      "historyReason": "sources-changed",
+      "generation": 7,
+      "renderedFrames": 56,
+      "vacuumFrames": 2,
+      "shadowedLightId": null,
+      "shadowMode": "unshadowed",
+      "shadowEncoding": null,
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 10,
+      "calls": 19,
+      "triangles": 178,
+      "geometries": 9,
+      "rendererTextures": 16
+    },
+    "integrated": {
+      "enabled": true,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": true,
+      "quality": "integrated",
+      "width": 320,
+      "height": 180,
+      "steps": 12,
+      "media": 1,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 1,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 1843200,
+      "historyValid": true,
+      "historyRejects": 9,
+      "historyReason": "quality-change",
+      "generation": 9,
+      "renderedFrames": 88,
+      "vacuumFrames": 2,
+      "shadowedLightId": 18,
+      "shadowMode": "one-selected-spot-pcf",
+      "shadowEncoding": "native-depth-comparison",
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 10,
+      "calls": 19,
+      "triangles": 178,
+      "geometries": 9,
+      "rendererTextures": 16
+    },
+    "contextRestore": {
+      "skipped": false,
+      "enabled": true,
+      "supported": true,
+      "unsupportedReason": null,
+      "active": true,
+      "quality": "balanced",
+      "width": 640,
+      "height": 360,
+      "steps": 18,
+      "media": 1,
+      "lights": 2,
+      "mediaCap": 4,
+      "lightCap": 6,
+      "passes": 1,
+      "targets": 2,
+      "textures": 4,
+      "estimatedTargetBytes": 7372800,
+      "historyValid": true,
+      "historyRejects": 30,
+      "historyReason": "context-restored",
+      "generation": 30,
+      "renderedFrames": 152,
+      "vacuumFrames": 2,
+      "shadowedLightId": 18,
+      "shadowMode": "one-selected-spot-pcf",
+      "shadowEncoding": "native-depth-comparison",
+      "model": "single-scattering-beer-lambert-local-ellipsoids",
+      "gpuAcceptance": "unmeasured",
+      "programs": 8,
+      "calls": 19,
+      "triangles": 178,
+      "geometries": 9,
+      "rendererTextures": 16
+    }
+  },
+  "pixel": {
+    "onVsOff": {
+      "meanRgbByteDelta": 9.440329861111111,
+      "maxByteDelta": 232,
+      "changedPixels": 344577,
+      "comparedComponents": 2534400,
+      "headerExcluded": true
+    },
+    "vacuumVsOff": {
+      "meanRgbByteDelta": 0,
+      "maxByteDelta": 0,
+      "changedPixels": 0,
+      "comparedComponents": 2534400,
+      "headerExcluded": true
+    },
+    "shadowedVsUnshadowed": {
+      "meanRgbByteDelta": 1.2695304608585858,
+      "maxByteDelta": 63,
+      "changedPixels": 169123,
+      "comparedComponents": 2534400,
+      "headerExcluded": true
+    }
+  },
+  "timing": {
+    "off": {
+      "samples": 16,
+      "submitMedianMs": 0.5,
+      "submitP95Ms": 1.6000000014901161,
+      "gpuSamples": 16,
+      "gpuMedianMs": 185.795614,
+      "gpuP95Ms": 199.383783,
+      "drawCalls": 18
+    },
+    "on": {
+      "samples": 16,
+      "submitMedianMs": 0.7000000029802322,
+      "submitP95Ms": 5.699999995529652,
+      "gpuSamples": 16,
+      "gpuMedianMs": 388.979407,
+      "gpuP95Ms": 431.299456,
+      "drawCalls": 19
+    },
+    "raw": {
+      "off": [
+        {
+          "submitMs": 0.5,
+          "gpuMs": 199.383783,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 184.65738,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.20000000298023224,
+          "gpuMs": 189.033073,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.6000000014901161,
+          "gpuMs": 189.874595,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.8000000044703484,
+          "gpuMs": 181.250634,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 187.393254,
+          "calls": 18
+        },
+        {
+          "submitMs": 1.0999999940395355,
+          "gpuMs": 184.14978,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 181.099519,
+          "calls": 18
+        },
+        {
+          "submitMs": 1.6000000014901161,
+          "gpuMs": 185.795614,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 182.154719,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.29999999701976776,
+          "gpuMs": 190.627074,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.3999999985098839,
+          "gpuMs": 182.614565,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.3999999985098839,
+          "gpuMs": 188.32497,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.6000000014901161,
+          "gpuMs": 185.825829,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5999999940395355,
+          "gpuMs": 181.334317,
+          "calls": 18
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 184.179167,
+          "calls": 18
+        }
+      ],
+      "on": [
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 402.455906,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 391.092445,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.5,
+          "gpuMs": 388.979407,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.6000000014901161,
+          "gpuMs": 382.903304,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.9000000059604645,
+          "gpuMs": 384.960869,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.5999999940395355,
+          "gpuMs": 431.299456,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 384.640135,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.6000000014901161,
+          "gpuMs": 386.274576,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 386.112419,
+          "calls": 19
+        },
+        {
+          "submitMs": 4,
+          "gpuMs": 377.130887,
+          "calls": 19
+        },
+        {
+          "submitMs": 5.699999995529652,
+          "gpuMs": 389.629114,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 362.764118,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.6000000014901161,
+          "gpuMs": 390.420709,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 400.243639,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.7000000029802322,
+          "gpuMs": 390.252675,
+          "calls": 19
+        },
+        {
+          "submitMs": 0.6999999955296516,
+          "gpuMs": 384.446919,
+          "calls": 19
+        }
+      ]
+    },
+    "incrementalSubmitMedianMs": 0.20000000298023224,
+    "incrementalGpuMedianMs": 203.18379299999998
+  },
+  "errors": []
+}

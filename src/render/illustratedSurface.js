@@ -9,11 +9,34 @@ import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
+import { installNocturneProbeShader } from './nocturne/probes.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v17';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v19-nocturne';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
+
+// Capture local RGB after Three has evaluated point/spot attenuation, material response and
+// real shadow visibility. Reuse the existing directional loop for the smooth geometric term;
+// rebuilding it from raw light colors would put unoccluded sunlight back into a shadow.
+function nocturnePhysicalLightChunk() {
+  const chunk = ShaderChunk.lights_fragment_begin;
+  const directional = '#if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )';
+  const end = '#if ( NUM_RECT_AREA_LIGHTS > 0 ) && defined( RE_Direct_RectArea )';
+  const call = 'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );';
+  const startIndex = chunk.indexOf(directional), endIndex = chunk.indexOf(end);
+  if (startIndex < 0 || endIndex < startIndex || !chunk.slice(startIndex, endIndex).includes(call)) {
+    throw new Error('[render] NOCTURNE physical light shader contract changed');
+  }
+  const sun = chunk.slice(startIndex, endIndex).replace(call, `${call}
+    sfDirectionalGeometricDiffuse += directLight.color
+      * saturate(dot(nonPerturbedNormal, directLight.direction)) * BRDF_Lambert(material.diffuseColor);`);
+  return chunk.slice(0, startIndex) + `
+    vec3 sfLocalPhysicalDiffuse = reflectedLight.directDiffuse;
+    vec3 sfDirectionalGeometricDiffuse = vec3(0.0);
+  ` + sun + chunk.slice(endIndex);
+}
+const NOCTURNE_PHYSICAL_LIGHT_CHUNK = nocturnePhysicalLightChunk();
 
 export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // Recover illumination independently of painted colour. This leaves markings, texture
@@ -21,21 +44,12 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   float sfPaintPigmentY = dot(max(diffuseColor.rgb * (1.0 - metalnessFactor), vec3(0.0)),
     vec3(0.2126, 0.7152, 0.0722));
   float sfPaintLuma = max(sfPaintPigmentY, 0.025);
-  vec3 sfLightRgb = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+  vec3 sfLightRgb = max(reflectedLight.directDiffuse - sfLocalPhysicalDiffuse, vec3(0.0))
+    + reflectedLight.indirectDiffuse;
   float sfLight = dot(sfLightRgb, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
-  // Frequency separation. sfLow is what the SMOOTH hull form receives: the indirect
-  // irradiance plus the direct sun term rebuilt with the geometric normal through the same
-  // Lambert factor the physical shader used (v9; was: bands keyed on the full perturbed
-  // response). The difference sfResidual is everything the surface detail contributes —
-  // normal-map scratches, roughness structure, event-light pools — and it passes through
-  // unshaped. ALU only: one compile-time-unrolled pass over the directional rig, no
-  // texture fetches, no new uniforms, no new program-key tokens.
-  vec3 sfLowRgb = reflectedLight.indirectDiffuse;
-  #if NUM_DIR_LIGHTS > 0
-  for (int sfI = 0; sfI < NUM_DIR_LIGHTS; sfI++) {
-    sfLowRgb += directionalLights[sfI].color * saturate(dot(nonPerturbedNormal, directionalLights[sfI].direction)) * BRDF_Lambert(material.diffuseColor);
-  }
-  #endif
+  // Only the broad sun/ambient response receives the graphic Look. Both smooth and detailed
+  // sunlight retain the real shadow factor. Local light keeps its physical RGB independently.
+  vec3 sfLowRgb = reflectedLight.indirectDiffuse + sfDirectionalGeometricDiffuse;
   float sfLow = dot(sfLowRgb, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
   float sfResidual = sfLight - sfLow;
   // Compress irradiance before shaping it: the sunlit roof receives >1.0 in the live
@@ -61,7 +75,8 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   vec3 sfInkTint = mix(sfLookShadowTint, sfLookLightTint, sfBodyLight);
   sfInkTint = mix(vec3(dot(sfInkTint, vec3(0.2126, 0.7152, 0.0722))), sfInkTint, sfStyle);
   vec3 sfLightScale = sfInkTint * (sfShaped / max(sfLight, 0.025));
-  reflectedLight.directDiffuse *= sfLightScale;
+  reflectedLight.directDiffuse = max(reflectedLight.directDiffuse - sfLocalPhysicalDiffuse, vec3(0.0))
+    * sfLightScale + sfLocalPhysicalDiffuse;
   reflectedLight.indirectDiffuse *= sfLightScale;
   // Geometric normals, not normal-map scratches: contours belong to the hull form.
   float sfFacing = abs(dot(nonPerturbedNormal, geometryViewDir));
@@ -365,6 +380,7 @@ export function installIllustratedSurface(material) {
         metalnessFactor = mix(metalnessFactor, metalnessFactor * 0.80, 1.0 - metalnessFactor);
         roughnessFactor = clamp(roughnessFactor + sfSurfaceRoughnessDelta, 0.04, 0.98);
         #include <lights_physical_fragment>`)
+      .replace('#include <lights_fragment_begin>', NOCTURNE_PHYSICAL_LIGHT_CHUNK)
       .replace(LIGHT_NEEDLE, LIGHT_NEEDLE + '\n' + ILLUSTRATED_SURFACE_GLSL)
       // The contour belongs to paint. The coat and the rim sit outside it, so a polished edge
       // catches a bright accent over the dark contour instead of becoming dead black.
@@ -389,17 +405,22 @@ export function installIllustratedSurface(material) {
         vec3 sfRockFill = sfRockFloorPigment * sfLookShadowTint
           * (sfLookRockFill * sfRockShadowWeight);
         vec3 sfPaint = (totalDiffuse + sfRockFill) * sfContour;
-        float sfPaintY = dot(sfPaint, vec3(0.2126, 0.7152, 0.0722));
-        // Gloss needs headroom: on pigment already near the ceiling (sunlit ivory) the coat and
-        // rim fade, or a pale wall would stack them into a glowing white slab.
+        // Preserve real local RGB, geometric shading and occlusion above display white.
+        // A scalar share of total paint would contaminate a red lamp with blue ambient fill.
+        vec3 sfLocalIllumination = sfLocalPhysicalDiffuse * sfContour;
+        vec3 sfBoundedPigment = max(sfPaint - sfLocalIllumination, vec3(0.0));
+        float sfPaintY = dot(sfBoundedPigment, vec3(0.2126, 0.7152, 0.0722));
+        // Keep sunlit ivory under bloom without suppressing actual searchlights or impacts.
         float sfHeadroom = 1.0 - 0.72 * smoothstep(sfLookPaintCeiling * 0.45, sfLookPaintCeiling, sfPaintY);
         float sfKnee = sfLookPaintCeiling * 0.6;
         if (sfPaintY > sfKnee) {
           float sfOver = sfPaintY - sfKnee;
           float sfRoom = sfLookPaintCeiling - sfKnee;
-          sfPaint *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
+          sfBoundedPigment *= (sfKnee + sfOver * sfRoom / (sfOver + sfRoom)) / sfPaintY;
         }
-        vec3 outgoingLight = sfPaint + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+        vec3 outgoingLight = sfBoundedPigment + sfLocalIllumination
+          + sfRimLight * sfHeadroom + sfCoatLight + totalSpecular + totalEmissiveRadiance;`);
+    installNocturneProbeShader(shader);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);

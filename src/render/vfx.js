@@ -107,6 +107,8 @@ import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN, presetFor, scalePreset } from './vfxColorLightDirector.js';
+import { AMBIENT_FIXTURE_KEYS, makeAmbientFixtureReads, selectAmbientFixtures } from './ambientFixtures.js';
+import { nocturneForScene, eventPriorityClass } from './nocturne/bridge.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
@@ -1289,6 +1291,8 @@ export const vfx = {
     this.helpers = ctx.helpers;
     this._t = 0;
     this._scene = null;
+    this._ambientFixtureReads = null;
+    this._ambientFixtureClock = 0;
     this._subs = [];
     this._trailCandidates = [];
     this._ribbonCandidates = [];
@@ -1903,7 +1907,10 @@ export const vfx = {
     for (const bucket of spriteBucketValues(this._spriteBatches)) {
       disposeVfxRoot(bucket && bucket.mesh, disposeState);
     }
-    for (const slot of this._lights || []) disposeVfxRoot(slot && slot.obj, disposeState);
+    for (const slot of this._lights || []) {
+      if (slot?.obj?._nocturneSource) slot.obj.dispose();
+      else disposeVfxRoot(slot && slot.obj, disposeState);
+    }
     disposeVfxRoot(this._miningBeam && this._miningBeam.mesh, disposeState);
     disposeVfxRoot(this._miningBeam && this._miningBeam.glow, disposeState);
     this._lineHardware?.dispose();
@@ -2045,6 +2052,8 @@ export const vfx = {
     this._dockingCradle = null;
     this._selectionSigil = null;
     this._lights = [];
+    this._ambientFixtureReads = null;
+    this._ambientFixtureClock = 0;
     this._freeLights = null;
     this._energy = null;
     this._explosions = null;
@@ -2685,7 +2694,7 @@ export const vfx = {
     // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
     // primitive; this subscription is the cradle hologram's half of the same departure.
     add('dock:undocked', () => this._releaseDockingCradle());
-    for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
+    for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'game:exitToMenu', 'save:restoring', 'save:loaded']) {
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => this._resetDamagedPortVfx());
@@ -13081,6 +13090,52 @@ export const vfx = {
       slot.admissionPriority = preset.priority;
     }
   },
+  // These are true PointLights at known light-emitting structures, not billboards or fake
+  // halos. They borrow the existing event pool (never an added scene light or shader variant).
+  // Stable allocations survive steady frames; movement and origin rebasing are followed every
+  // update. A conservative quarter-second census keeps dense asteroid belts cheap.
+  _syncAmbientFixtures(dt) {
+    // NOCTURNE authors actual model sockets and allocates all sources together. The original
+    // two-fixture bridge remains only for independent VFX fixtures without the runtime owner.
+    if (nocturneForScene(this._scene)) return;
+    if (!this._lights || !this.state) return;
+    if (!this._ambientFixtureReads) this._ambientFixtureReads = makeAmbientFixtureReads();
+    this._ambientFixtureClock -= Math.max(0, dt || 0);
+    if (this._ambientFixtureClock <= 0) {
+      const center = this._playerPos();
+      selectAmbientFixtures(this.state, center, this._ambientFixtureReads);
+      this._ambientFixtureClock = 0.25;
+    }
+    const reads = this._ambientFixtureReads;
+    for (let i = 0; i < reads.length; i++) {
+      const read = reads[i];
+      const key = AMBIENT_FIXTURE_KEYS[i];
+      let slot = this._findSustainedEventLight(key);
+      const entity = read.entity;
+      // An entity retired since the last census must lose its light on this same frame.
+      if (!entity || entity.alive === false || !entity.pos
+          || (this.state.entities && this.state.entities.get
+            && this.state.entities.get(entity.id) !== entity)) {
+        if (slot) this._retireEventLightSlot(slot);
+        continue;
+      }
+      // Actual combat, field and propulsion lights have first claim on the six slots.
+      // Decorative fixture lighting is never allowed to evict any of those residents.
+      slot = slot || this._claimEventLightSlot(read.profile.priority, key);
+      if (!slot) continue;
+      const local = this._toLocalXZ(entity.pos.x, entity.pos.z, this._spawnLocalXZ);
+      const y = Math.min(42, Math.max(16, (Number.isFinite(entity.radius) ? entity.radius : 20) * 0.45));
+      slot.obj.position.set(local.x, y, local.z);
+      slot.obj.color.setHex(read.profile.colorHex);
+      slot.obj.distance = read.profile.range;
+      slot.obj.intensity = read.profile.peak * EVENT_LIGHT_GAIN;
+      slot.intensity = slot.peak = read.profile.peak;
+      slot.decay = slot.t = 0;
+      slot.sustained = true;
+      slot.admissionPriority = read.profile.priority;
+    }
+  },
+
   _syncMaterialContactLight() {
     // One shared request, not one light per particle/system. Priority stays below actual weapon
     // hits and the player drive. Saturation simply denies this decorative contact request.
@@ -13089,14 +13144,14 @@ export const vfx = {
     const source = readMaterialContact(this._scene, read);
     let slot = this._findSustainedEventLight('living-material-contact');
     if (!source.active) { this._retireEventLightSlot(slot); return; }
-    slot = slot || this._claimEventLightSlot(24, 'living-material-contact');
+    slot = slot || this._claimEventLightSlot(0.24, 'living-material-contact');
     if (!slot) return;
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.setRGB(source.r, source.g, source.b);
     slot.obj.distance = source.range;
     slot.obj.intensity = source.intensity * EVENT_LIGHT_GAIN;
     slot.intensity = slot.peak = source.intensity;
-    slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 24;
+    slot.decay = slot.t = 0; slot.sustained = true; slot.admissionPriority = 0.24;
   },
 
   _updateGyrePayloadLight() {
@@ -13105,7 +13160,7 @@ export const vfx = {
     if (!source?.active) { this._retireEventLightSlot(slot); return; }
     // One of the existing six event lights reveals actual gathered surfaces. No new light
     // or shader variant is created; the presenter owns position, intensity and accessibility.
-    slot = slot || this._claimEventLightSlot(90, 'gyre-payload');
+    slot = slot || this._claimEventLightSlot(0.9, 'gyre-payload');
     if (!slot) return;
     slot.obj.position.set(source.x, source.y, source.z);
     slot.obj.color.set(source.color);
@@ -13114,7 +13169,7 @@ export const vfx = {
     slot.intensity = slot.peak = source.intensity;
     slot.decay = slot.t = 0;
     slot.sustained = true;
-    slot.admissionPriority = 90;
+    slot.admissionPriority = 0.9;
   },
 
   _fieldFlowRelevant() {
@@ -13474,6 +13529,7 @@ export const vfx = {
       sub.momentumSink = 0;
     }
     this._syncMaterialContactLight();
+    this._syncAmbientFixtures(dt);
     sub.eventLights = this._decayEventLights(dt) ? 1 : 0;
     this._publishVfxSubsystemDiag();
   },
@@ -16131,13 +16187,17 @@ export const vfx = {
     // motion/flash reduction remains live without changing the visible PointLight count.
     this._activeLightCount = 0;
     this._lights = [];
-    for (let i = 0; i < this._LIGHT_NPOOL; i++) {
-      const l = new THREE.PointLight(0xffffff, 0, 400, EVENT_LIGHT_DECAY); // color, intensity, distance, decay
+    const nocturne = nocturneForScene(this._scene);
+    const logicalCapacity = nocturne ? 32 : this._LIGHT_NPOOL;
+    for (let i = 0; i < logicalCapacity; i++) {
+      const l = nocturne
+        ? nocturne.createLight(`vfx:${i}`, 'point', { decay: EVENT_LIGHT_DECAY })
+        : new THREE.PointLight(0xffffff, 0, 400, EVENT_LIGHT_DECAY); // color, intensity, distance, decay
       // Pool lights stay VISIBLE forever and flash via intensity only. three bakes the visible
       // light COUNT into every shader program, so toggling .visible forces a synchronous
       // whole-scene shader recompile (measured multi-second stalls on Intel/ANGLE). The count
       // must never change at runtime — precompile.js warms shaders against this same count.
-      this._scene.add(l);
+      if (!nocturne) this._scene.add(l);
       this._lights.push({
         slot: i,
         obj: l,
@@ -16152,9 +16212,9 @@ export const vfx = {
         sustained: false,
       });
     }
-    this._freeLights = new Int32Array(this._LIGHT_NPOOL);
-    for (let i = 0; i < this._LIGHT_NPOOL; i++) this._freeLights[i] = this._LIGHT_NPOOL - 1 - i;
-    this._freeLightCount = this._LIGHT_NPOOL;
+    this._freeLights = new Int32Array(logicalCapacity);
+    for (let i = 0; i < logicalCapacity; i++) this._freeLights[i] = logicalCapacity - 1 - i;
+    this._freeLightCount = logicalCapacity;
     // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
     // The pool mounts are a real light-census mutation (the deferred _initPools
@@ -16224,6 +16284,10 @@ export const vfx = {
     slot.sustained = sustainedKey != null;
     slot.admissionPriority = priority;
     slot.admissionSerial = this._admissionSerial++;
+    if (slot.obj._nocturneSource) {
+      slot.obj._nocturneSource.priority = eventPriorityClass(priority);
+      slot.obj._nocturneSource.importance = 1 + Math.max(0, priority || 0);
+    }
     return slot;
   },
 

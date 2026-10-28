@@ -9917,6 +9917,17 @@ function sanitizeRestoredSettings(settings) {
   if (s.gameplay.ironmanChoiceLocked !== true) delete s.gameplay.ironmanChoiceLocked;
   if (!s.audio || typeof s.audio !== 'object' || Array.isArray(s.audio)) s.audio = {};
   s.audio.muteOnFocusLoss = s.audio.muteOnFocusLoss === true;
+  if (!s.video || typeof s.video !== 'object' || Array.isArray(s.video)) s.video = {};
+  // Render-only NOCTURNE preferences follow the profile. Older saves inherit the shipped
+  // picture, and malformed values cannot silently turn off a feature or name an unknown tier.
+  // Local shadows stay opt-in like the sun pass — a missing or malformed value reads false.
+  for (const key of ['nocturne', 'nocturneAtmosphere']) {
+    s.video[key] = s.video[key] !== false;
+  }
+  s.video.nocturneShadows = s.video.nocturneShadows === true;
+  if (!['auto', 'integrated', 'balanced', 'high'].includes(s.video.nocturneQuality)) {
+    s.video.nocturneQuality = 'auto';
+  }
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.

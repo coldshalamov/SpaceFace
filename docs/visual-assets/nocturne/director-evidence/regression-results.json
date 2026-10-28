@@ -1,0 +1,57 @@
+{
+  "evidence": "focused-node-regression",
+  "certifyingGameplay": false,
+  "generatedAt": "2026-10-23T16:59:27.076Z",
+  "commandForm": "node <file> (direct standalone test runner)",
+  "tests": 77,
+  "passed": 77,
+  "failed": 0,
+  "results": [
+    {
+      "file": "test/nocturne-director.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 normal teardown releases each owned map and light once (0.883051ms)\n\u2139 tests 14\n\u2139 suites 0\n\u2139 pass 14\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 128.964979\n"
+    },
+    {
+      "file": "test/nocturne-director-admission.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 local spotlight depth admission preserves the exact light census and independent shadow resources (10.756209ms)\n\u2139 tests 2\n\u2139 suites 0\n\u2139 pass 2\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 43.442024\n"
+    },
+    {
+      "file": "test/nocturne-bridge.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 retained runtime handles release old world references and dispose only once (6.896554ms)\n\u2139 tests 9\n\u2139 suites 0\n\u2139 pass 9\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 50.794953\n"
+    },
+    {
+      "file": "test/nocturne-settings.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 old and malformed profiles inherit the same lighting defaults without changing simulation data (1.191835ms)\n\u2139 tests 3\n\u2139 suites 0\n\u2139 pass 3\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 17.165223\n"
+    },
+    {
+      "file": "test/shadow-depth-admission.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 an exhausted collect wallet returns the OVER_COVER sentinel, not an array (0.466808ms)\n\u2139 tests 21\n\u2139 suites 0\n\u2139 pass 21\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 91.181081\n"
+    },
+    {
+      "file": "test/headlights.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 a running power reads as light: the player field first, following its envelope (210.266779ms)\n\u2139 tests 5\n\u2139 suites 0\n\u2139 pass 5\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 252.484232\n"
+    },
+    {
+      "file": "test/w2a-profile-settings-roundtrip.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 a profile that never carried the new keys leaves the shipped defaults alone (0.614144ms)\n\u2139 tests 6\n\u2139 suites 0\n\u2139 pass 6\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 95.577744\n"
+    },
+    {
+      "file": "test/integrated-quality-preset.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 settings screen lists Integrated GPU and 45 fps (1.120431ms)\n\u2139 tests 7\n\u2139 suites 0\n\u2139 pass 7\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 36.429748\n"
+    },
+    {
+      "file": "test/settings-reset-page.test.mjs",
+      "exitCode": 0,
+      "output": "\u2714 an unknown page is not a reset (0.369614ms)\n\u2139 tests 10\n\u2139 suites 0\n\u2139 pass 10\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 23.590173\n"
+    }
+  ],
+  "followup": "Only the affected bridge file was rerun for the final VFX menu boundary and retained-runtime teardown fixes. The CPU-envelope resurrection regression failed before the boundary fix and passed afterward; normal and lost-context teardown now also verify released ownership and single GPU disposal. Other per-file outputs are retained from the preceding focused run."
+}

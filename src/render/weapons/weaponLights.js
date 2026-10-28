@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { noteShadowCensusLightMutation } from '../shadowDepthAdmission.js';
 import { EVENT_LIGHT_DECAY, EVENT_LIGHT_GAIN } from '../vfxColorLightDirector.js';
+import { nocturneForScene } from '../nocturne/bridge.js';
 
 // P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
 // so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
@@ -14,17 +15,20 @@ export function visiblePointLightBudget(eventLightCount) {
 
 export class WeaponLightPool {
   constructor(scene, options = {}) {
-    this.capacity = Math.max(1, options.capacity || WEAPON_LIGHT_POOL_SIZE);
+    this.nocturne = nocturneForScene(scene);
+    this.capacity = Math.max(1, options.capacity || (this.nocturne ? 12 : WEAPON_LIGHT_POOL_SIZE));
     this.slots = [];
     this._scratch = new THREE.Color();
     this.group = new THREE.Group();
     this.group.name = 'SF_WeaponLightPool';
     for (let i = 0; i < this.capacity; i++) {
-      const light = new THREE.PointLight(0x39d0ff, 0, 16, EVENT_LIGHT_DECAY);
+      const light = this.nocturne
+        ? this.nocturne.createLight(`weapon:${i}`, 'point', { color: 0x39d0ff, range: 16, priority: 3 })
+        : new THREE.PointLight(0x39d0ff, 0, 16, EVENT_LIGHT_DECAY);
       light.name = `SF_WeaponLight_${i}`;
       light.visible = true;
       light.castShadow = false;
-      this.group.add(light);
+      if (!this.nocturne) this.group.add(light);
       this.slots.push({
         light,
         age: 0,
@@ -39,7 +43,7 @@ export class WeaponLightPool {
       scene.add(this.group);
       // Light-set mutation — a mounted pool group changes the rendered light
       // census; the shadow memo must not serve the pre-mount signature.
-      noteShadowCensusLightMutation();
+      if (!this.nocturne) noteShadowCensusLightMutation();
     }
   }
 
@@ -65,6 +69,7 @@ export class WeaponLightPool {
     slot.life = Math.max(0.05, life || 0.12);
     slot.peak = Math.max(0, intensity || 2);
     slot.priority = want;
+    if (slot.light._nocturneSource) slot.light._nocturneSource.importance = 1 + Math.max(0, want);
     slot.light.position.set(x || 0, y || 0.4, z || 0);
     slot.light.distance = Math.max(4, distance || 14);
     slot.light.decay = EVENT_LIGHT_DECAY;
@@ -120,7 +125,7 @@ export class WeaponLightPool {
   dispose() {
     // Light-set mutation — the shadow census memo must not serve the live-set
     // signature after pooled lights leave the scene.
-    noteShadowCensusLightMutation();
+    if (!this.nocturne) noteShadowCensusLightMutation();
     for (const slot of this.slots) {
       if (slot.light.parent) slot.light.parent.remove(slot.light);
       slot.light.dispose?.();
