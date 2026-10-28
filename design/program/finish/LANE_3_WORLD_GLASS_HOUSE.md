@@ -20,7 +20,6 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 |---|---|---|---|
 | D261 | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 |
 | D267 | Flight HUD tests red on clean master (`test/hud-contact-roster-visibility.test.mjs` 2 of 7) | HUD contact roster | packet G1 |
-| D266 | Miner research pacing red in the 90-minute prospector cohort | `test/m3-career-cohorts.test.mjs`, `src/data/researchGrants.js` | packet W0 — in flight (beat-0 skim trace) |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
 
 ## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)
@@ -30,6 +29,34 @@ encounters / Vesta carrier-loss recovery), R-710f1e1 (faction_verge), R-d0891f7 
 chute accounting), R-cc96d0c (rookBooth salvage market), R-3a9d5dc (moralMemory). When Lane 2's
 R-36df771 is also gone, archive `LANDED_REVIEW.md` (ruling 3) and remove the review step from the
 docs that describe it.
+
+Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
+- batch-b: **d1a68ec VERIFIED** (row deleted); **710f1e1 DEFECT** — warden return-to-post dies on
+  sector unload (return target lives only on the live entity); fix implementer running
+  (`fix-verge-return` packet).
+- batch-c: **26f29b7 VERIFIED** (Vesta ledger conserved, 30/30); **d0891f7 VERIFIED** (winch
+  exception scoped, 17/17+30/30); **cc96d0c VERIFIED** (rookBooth writers all in-band, 24/24);
+  all three rows deleted. **3a9d5dc FIXED 0376013b331** — `moralMemorySystem` registered in
+  both production order tables + calendar clock (self-gates 30 s); production-runtime tick
+  proof escalates a vengeful debt with `moralMemory:escalated` on the bus. Row deleted.
+  **710f1e1 FIXED 6b470a4eb45** — bounded `v.returns` ledger in `state.verge` rides the
+  vergeCourt slot; repro test proves a sector-unloaded warden re-claims and walks home. Row deleted.
+- New OPEN row found at top of ledger: **R-c1225fa** (presentation craft: palette skin, market
+  SOLD OUT, bar rail bands, HC focus signal) — not in the original seven; needs a ui-bench
+  breakpoint pass, queue in the next review batch.
+- Localization debt (nearby flags, W3 material): hard-coded player strings in
+  `faction_understory.js` (:1069,:1134,:1154,:1735-1906), `faction_verge.js` (:137-161 via _log
+  :534), `vestaWinnowRecovery.js` (:98-104,159,342,552-553), `starterWorkday.js` (:9-22),
+  `rookBooth.js` (:401-429), `moralMemory.js` (:423-436,913-997,1185-1195).
+- System deep-reviews (`.devshots/finish/lane3/review-*/REVIEW.md`): save-b READ path scored
+  8/10 — its HIGH defect landed as **fd7b2bd6a60** (importFile's FileReader.onerror now
+  re-checks the restore sequence before emitting `save:error`; the rest of the async lanes
+  were already guarded by in-flight work; 4/4 race test + save-fuzz 5000 clean). Two mediums
+  flagged: gzip slot preview inventing ship facts (needs the saveLoad.js call site to honor
+  `meta.gz` — src/ui, ours, packet it in Wave G), index-cache trusting `_blobHash` (tractable
+  in-file — add integrity sniff in a later save pass). lawsec-a: missing-method defect absent
+  (already fixed); chain review continuing. save-a (write path) + lawsec-b (impound/heat)
+  relaunched after the context wall.
 
 ## The ordered packets
 
@@ -53,15 +80,33 @@ needed to reach the count; all recoverable under `design/archive/program/`.
 D265 and D266 (above). Done when both tests are green on seed 4242.
 - **D265 DONE 1406c221a39** — the salvor already flew a real job; the red was a committed
   duplicate import making `test/lived-frontier-pockets.test.mjs` a SyntaxError. 28/28 green.
-- **D266 in flight** — implementer tracing why `story:skimResolved` never fires on the plain
-  mine→dock route (beat 0 `cold_start` = mine→skim→dock; 4 RP + 400 cr stays dark).
-- Pipeline live: audit split wrote 303 packets (669k lines); wave 1 = 12 packets on 4
-  launchers (2 Grok + 2 Gemini, window-free direct-node invocation — no .cmd shims, real-user
-  env). Codex day-one batch of 7 LANDED_REVIEW rows running in background.
+- **D266 in review** — root cause was the harness, not the game: `bootSim` wiped the
+  auto-installed `campaign47a:` cold-start contract and the prospector never docked at the sell
+  station, so beat 0's mine→skim→dock could never settle. Fix preserves campaign-tagged
+  missions (no `nextId` reset) and emits dock:docked/undocked on the sell leg like a live pilot.
+  Miner now banks 14 RP @90m; test todo→real 6 RP assertion. 13/13 cohort tests green.
+- Found while at it, FIXED: `test/story-spine-memory.test.mjs` + `test/pq-178-03-ledger.test.mjs`
+  red on master — legacy whole-beat fills stamped receipts with the current book list's last
+  stepId (which never ran) and the ledger trusted stepId over the receipt's own signal. Fix in
+  `campaignTransitions.js` (LEGACY_FILL_STEP_ID knock/pull/tow) + `storyLedger.js` (authored
+  clause final only when signal ∈ step.accept). 22/22 + regression suites green.
+  Follow-up row (foreign/adjacent, not this fix): `w534-books-3-4` (11), `fb-spine-back-half` (2),
+  `story-spine-route` (2) fail at `campaign47a:b1:infested` materialization — investigate whether
+  master-red or another lane's in-flight dirty `src/ai`, `weapons`, `salvageTender` work.
+- Pipeline live: audit split wrote 303 packets (669k lines); wave 1 = 8 packets done,
+  wave 2 = 209-packet queue on 8 window-free launchers (4 Grok + 4 Gemini, direct-node, real-user
+  env). Codex reviews running under `codex-auto-review` (the only model this client accepts on
+  ChatGPT auth — the `gpt-*` slugs demand a newer CLI): day-one batch (7 rows), saveSystem,
+  lawSecurity/heat.
 
 ### Wave W1 — the first hour is gold (M1)
 Rows are the spec (`build_map.md` §31–§32; read each row's prose before briefing):
-- **Row 457 RC-FIRST-MINUTES** — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook.
+- **Row 457 RC-FIRST-MINUTES — DONE** (cc56ac32122 + 9beb18845a8). Verified per item: F8/NumLock
+  rail labels + both in Help sheet + lessons (clean); threat markers yield to instruments via
+  reservedRects + 8-pass slide (clean); in-world names fixed (Fleeing Raider masks trainer reg,
+  Bright Seam, Range Drone); visual:false lines captioned (trackerCaptionId path, clean); wu/wu/s
+  in range + tender copy fixed. 14/14 + 21/21 pinned suites green; 3 onboarding-suite fails traced
+  to foreign dirty `src/core/*`/`weapons.js` — watch, not ours.
 - **Row 473 RC-FRONT-DOOR** — interactive title ≤ 10 s, mm:ss clock, destination slate, first-light preset, settings density (load-time half is Lane 1's M9; coordinate in its Inbox).
 - **Row 429 AL-HUD-1** — no internal ids on screen (`ZONE_CERES_DERELICT`), no Overhead/Circuits buttons over the target card, no overlapping shipworks list text.
 - **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.

@@ -214,7 +214,7 @@ export function getSalvageTenderMapMarkers(state, sectorId = state?.world?.curre
     status: model.status.toUpperCase(),
     statusLine: `${model.stageName} · ${model.statusText}`,
     playerVerb: model.sameSector
-      ? 'Return within 100 m and match speed to open the tender.'
+      ? 'Return within 100 wu and match speed to open the tender.'
       : `Plot a route to ${model.name}'s sector, then follow its home beacon.`,
     consequence: model.capabilities.join(' · '),
     riskLine: model.status === 'missing'

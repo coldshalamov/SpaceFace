@@ -61,6 +61,17 @@ try {
   await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
   await waitForBootOverlayGone(page);
 
+  // A first-ever profile is asked once (deliberately, on ui:loadingHidden) whether it wants the
+  // calmer first-light bundle. A player answers before they can reach New Game — 'Play' keeps
+  // the default cut and dismisses the shared confirm.
+  const firstLight = await page.$('#sf-confirm-root:not([hidden])');
+  if (firstLight) {
+    const played = await clickButton(page, 'Play');
+    assert.equal(played, true, 'first-light offer should expose Play');
+    await page.waitForFunction(() => !document.getElementById('sf-confirm-root')
+      || document.getElementById('sf-confirm-root').hidden === true, null, { timeout: 5000 });
+  }
+
   await waitForMenuAction(page, 'newGame');
   const opened = await clickButton(page, 'New Game');
   assert.equal(opened, true, 'main menu should expose New Game');

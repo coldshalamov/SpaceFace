@@ -207,13 +207,14 @@ test('research faucet: fighters and miners earn RP once they own their path entr
   assert.ok(hunter90.researchPoints >= rpOf('tech_warship_license'),
     `hunter RP at 90m ${hunter90.researchPoints} < ${rpOf('tech_warship_license')}`);
   // The miner's faucet is one settled tier-0 mining quota = 2 RP (research:mining, rp 2 +
-  // perRiskTier 1 x tier 0). The old bar of 6 RP was that 2 plus the 4 RP story:cold_start reward,
-  // which stopped settling on this plain mine-and-dock route in b212aefc40c (Books 0-2 play the 06
-  // script; the cohort miner no longer finishes beat 0). The fixed-seed miner also sees only ONE
-  // playable ore quota in 90 minutes, so the faucet pays 2 RP against Focused Extraction's 6.
-  // The honest floor is asserted here; the gap is ledger row D266 and the todo below.
-  assert.ok(prospector90.researchPoints >= 2,
-    `prospector RP at 90m ${prospector90.researchPoints} < 2 (one settled mining quota)`);
+  // perRiskTier 1 x tier 0) PLUS the 4 RP story:cold_start reward — a real new-game player
+  // carries the 47-A cold-start contract from launch, so mining and docking the Pit plays
+  // the Skim and settles beat 0's ordered mine→skim→dock steps (ledger D266: the cohort
+  // harness had wiped that contract and never docked at the sell station; it now keeps
+  // the contract and docks like a live pilot). 2 + 4 reaches Focused Extraction's bar.
+  assert.ok(prospector90.researchPoints >= rpOf('tech_focused_extraction'),
+    `prospector RP at 90m ${prospector90.researchPoints} < ${rpOf('tech_focused_extraction')} ` +
+    `(one settled mining quota + story:cold_start beat-0 grant)`);
 
   // The stranding guard: neither faucet is open without the entry node. Any horizon that banked
   // RP from these careers owns its path's first node.
@@ -275,7 +276,14 @@ test('hunter income: bounty head money lifts the career inside its declared band
   }
 });
 
-test.todo('research faucet: a 90-minute miner reaches Focused Extraction (6 RP) - needs ore-quota supply or pacing (ledger D266)');
+test('research faucet: a 90-minute miner reaches Focused Extraction (6 RP) - beat 0 settles on the plain mine-and-dock route (ledger D266)', () => {
+  const report = runGateOnce().json;
+  const prospector90 = report.cells.prospector[90];
+  const focusedCost = (TECH_NODES.find((n) => n.id === 'tech_focused_extraction').cost || {}).rp || 0;
+  assert.equal(focusedCost, 6, 'Focused Extraction RP bar');
+  assert.ok(prospector90.researchPoints >= focusedCost,
+    `prospector RP at 90m ${prospector90.researchPoints} < ${focusedCost}`);
+});
 
 test('research faucet: the prospector buys the entry node first, then a settled quota pays RP', () => {
   blockNondeterminism();

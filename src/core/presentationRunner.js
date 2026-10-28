@@ -1076,13 +1076,27 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function acknowledgePresentedJournal() {
     if (!hasPendingJournal || !presentationJournal
       || presentationJournal.needsRebuild?.() === true) return;
-    const recordCount = Math.max(0, pendingJournalEnd - pendingJournalStart);
-    presentationJournal.discardThrough?.(pendingJournalEnd);
-    acknowledgedJournalSequence = pendingJournalEnd;
+    // The publisher's stepped apply may legitimately stop short of the merged
+    // range end. Acks must track what was actually applied — discarding the
+    // merged end evicts records the pending visit still owes, and the next
+    // resume hits a not-retained range that forces a journal rebuild storm.
+    const appliedSeq = Number.isSafeInteger(presentationFrame.journalAppliedSequence)
+      ? presentationFrame.journalAppliedSequence
+      : pendingJournalEnd;
+    const ackEnd = Math.max(pendingJournalStart, Math.min(pendingJournalEnd, appliedSeq));
+    const recordCount = Math.max(0, ackEnd - pendingJournalStart);
+    presentationJournal.discardThrough?.(ackEnd);
+    acknowledgedJournalSequence = ackEnd;
     diagnostics.acknowledgedJournalSequence = acknowledgedJournalSequence;
     diagnostics.journalAcknowledgementCount++;
     diagnostics.journalRecordsAcknowledged += recordCount;
-    resetPendingJournal();
+    if (ackEnd >= pendingJournalEnd) {
+      resetPendingJournal();
+    } else {
+      // Keep the un-applied tail pending: the next present's merge extends the
+      // same window, and the suspended visit continues from its own watermark.
+      pendingJournalStart = ackEnd;
+    }
   }
 
   function presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt) {
@@ -1094,6 +1108,12 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const rebuiltJournal = rebuildJournalIfNeeded();
     if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
       && completedTickCount > 0) {
+      // A lane full rebuild supersedes everything still pending: its pack
+      // replaced the retained record set on the wire, so a partially applied
+      // window can never finish. Reset before the merge — otherwise the
+      // rebuild's start gap-checks against the stale pending end and every
+      // rebuild reply requests another rebuild forever.
+      if (latestCompletedTick.fullRebuild === true) resetPendingJournal();
       if (mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd)
         && latestCompletedTick.fullRebuild === true) {
         // Lane-supplied rebuild: the consumed range already IS the worker's

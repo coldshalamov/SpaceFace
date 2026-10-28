@@ -91,6 +91,8 @@ export const VERGE_BORDER = Object.freeze({
   pursuitSpeedMult: 2.0,        // pursuit machines run at this multiple of their body speed
   pursuitMaxSpeed: 90,          // and never faster than this
   pursuitFineCr: 900,           // submission/interception fine base (severity scales it)
+  returnCap: 16,                // bounded owed-return ledger (wardens displaced cross-sector)
+  returnClaimR: 64,             // a post's nameless rematerialized warden answers this near its post
   incidentCap: 32,              // bounded border-incident ledger
   incidentFreshS: 300,          // an incident weighs full for this long
   incidentStaleS: 2400,         // then half until this age; the record remains either way
@@ -367,6 +369,26 @@ export function ensureVergeState(state) {
       if (!Number.isFinite(p.crossedAt)) p.crossedAt = 0;
       if (!Number.isFinite(p.submitS)) p.submitS = 0;
       if (!Number.isFinite(p.fine) || p.fine < 0) p.fine = VERGE_BORDER.pursuitFineCr;
+    }
+  }
+  // Owed cross-sector returns: a bounded ledger of posts a displaced warden
+  // still owes, keyed to the occupant and the site that outlives it. A row
+  // that cannot name a post is dead weight — normalize repairs shape only.
+  if (!Array.isArray(v.returns)) v.returns = [];
+  else {
+    v.returns = v.returns.filter((r) => r && typeof r === 'object' && !Array.isArray(r)
+      && Number.isSafeInteger(r.machineId)
+      && Number.isFinite(r.x) && Number.isFinite(r.z));
+    for (const r of v.returns) {
+      if (!Number.isFinite(r.gen) || r.gen < 0) r.gen = 0;
+      if (typeof r.sectorId !== 'string') r.sectorId = '';
+      if (typeof r.key !== 'string') r.key = '';
+      if (typeof r.siteId !== 'string') r.siteId = '';
+      if (typeof r.kind !== 'string') r.kind = '';
+      if (!Number.isFinite(r.at)) r.at = 0;
+    }
+    if (v.returns.length > VERGE_BORDER.returnCap) {
+      v.returns.splice(0, v.returns.length - VERGE_BORDER.returnCap);
     }
   }
   if (!v.watch || typeof v.watch !== 'object' || Array.isArray(v.watch)) {
@@ -969,8 +991,12 @@ export const vergeCourt = {
       d.returnPostZ = m.pos.z;
     }
     // A walking escort drives this body — the precursor kinematics loop yields
-    // it while the flag stands (dropped on every close path below).
-    if (v.escort.mode === 'walk') vergeDrive(m);
+    // it while the flag stands (dropped on every close path below). The debt is
+    // lodged in the ledger now: a warden that unloads mid-walk still owes it.
+    if (v.escort.mode === 'walk') {
+      vergeDrive(m);
+      this._upsertReturnOwed(state, m);
+    }
     this.bus.emit('verge:escortDemanded', {
       escortId: v.escort.id, machineId: m.id, mode: v.escort.mode,
       holdR: v.escort.holdR, tick: state.tick,
@@ -987,7 +1013,7 @@ export const vergeCourt = {
     const machine = vergeEntityCurrent(state, esc.machineId, esc.gen);
     if (!machine || !machine.pos || !player || player.alive === false || !player.pos) {
       vergeReleaseDrive(machine);                               // a surviving body owes no claim
-      if (machine) this._markReturnToPost(machine);             // a walked warden still owes its post
+      if (machine) this._markReturnToPost(state, machine);             // a walked warden still owes its post
       v.escort = null;                                          // orphaned — the record closes honest
       return;
     }
@@ -1031,7 +1057,7 @@ export const vergeCourt = {
     vergeReleaseDrive(machine);
     machine.data = machine.data || {};
     machine.data.escortUntil = state.simTime + VERGE_BORDER.escortCooldownS;
-    this._markReturnToPost(machine);
+    this._markReturnToPost(state, machine);
     if (v.violations.length) v.violations.shift();
     this._fileIncident(state, 'escorted', machine, 'supervised passage complete');
     this.bus.emit('verge:escortReleased', {
@@ -1050,7 +1076,7 @@ export const vergeCourt = {
     vergeReleaseDrive(machine);
     machine.data = machine.data || {};
     machine.data.escortUntil = state.simTime + VERGE_BORDER.escortCooldownS;
-    this._markReturnToPost(machine);
+    this._markReturnToPost(state, machine);
     this._fileIncident(state, 'escort_broken', machine, 'left the warden\'s radius');
     this.bus.emit('verge:escortBroken', {
       escortId: esc.id, machineId: machine.id, tick: state.tick,
@@ -1081,6 +1107,9 @@ export const vergeCourt = {
       md.returnPostX = mx;
       md.returnPostZ = mz;
     }
+    // The debt outlives the body: a warden that unloads mid-chase still owes
+    // its post — the ledger holds what the entity cannot.
+    this._upsertReturnOwed(state, machine);
     const severity = this._incidentWeight(state);
     v.pursuit = {
       id: (v.seq += 1), machineId: machine.id, gen: machine.occupantGeneration || 0,
@@ -1111,21 +1140,140 @@ export const vergeCourt = {
     // Clear only our own mark — a recycled or re-claimed body keeps its claim.
     if (m && m.data && m.data.pursuitId === p.id) delete m.data.pursuitId;
     vergeReleaseDrive(m);
-    this._markReturnToPost(m);
+    this._markReturnToPost(state, m);
   },
 
-  /** A warden that chased or walked owes its post a return — set the drift home.
+  /** The post a warden owes, lodged in the persisted ledger — a warden that
+   *  unloads with its sector keeps the debt on the record, not the body, so a
+   *  rematerialized cast can still answer it. One row per post: an occupant
+   *  re-borrowing its own post refreshes the row instead of stacking it. */
+  _upsertReturnOwed(state, m) {
+    if (!vergeMachineIsMobile(m) || !m.pos) return null;
+    const v = ensureVergeState(state);
+    const d = m.data || {};
+    const anchor = d.machine && d.machine.anchor;
+    const x = Number.isFinite(d.returnPostX) ? d.returnPostX
+      : (anchor && Number.isFinite(anchor.x) ? anchor.x : m.pos.x);
+    const z = Number.isFinite(d.returnPostZ) ? d.returnPostZ
+      : (anchor && Number.isFinite(anchor.z) ? anchor.z : m.pos.z);
+    const gen = Number.isFinite(m.occupantGeneration) ? m.occupantGeneration : 0;
+    const cp = vergeCheckpointFor(m);
+    const key = cp ? cp.key : '';
+    const siteId = (d.machine && typeof d.machine.siteId === 'string' && d.machine.siteId)
+      || (typeof d.checkpointId === 'string' && d.checkpointId) || '';
+    const kind = vergeMachineKind(m) || '';
+    const sectorId = (typeof m.homeSectorId === 'string' && m.homeSectorId)
+      || (typeof d.homeSectorId === 'string' && d.homeSectorId)
+      || (typeof d.sectorId === 'string' && d.sectorId)
+      || (state.world && state.world.currentSectorId) || '';
+    let rec = null;
+    for (const r of v.returns) {
+      if (r.machineId === m.id && r.gen === gen) { rec = r; break; }
+      // Same post under an earlier identity — one debt per post.
+      if (key && r.key === key) { rec = r; break; }
+      if (siteId && r.siteId === siteId && r.kind === kind
+          && (r.x - x) * (r.x - x) + (r.z - z) * (r.z - z)
+              <= VERGE_BORDER.returnClaimR * VERGE_BORDER.returnClaimR) { rec = r; break; }
+    }
+    if (!rec) {
+      rec = { machineId: m.id, gen, sectorId, key, siteId, kind, x, z, at: state.simTime };
+      v.returns.push(rec);
+      while (v.returns.length > VERGE_BORDER.returnCap) v.returns.shift();
+    } else {
+      rec.machineId = m.id; rec.gen = gen;
+      if (key) rec.key = key;
+      if (siteId) rec.siteId = siteId;
+      if (kind) rec.kind = kind;
+      if (sectorId) rec.sectorId = sectorId;
+      rec.x = x; rec.z = z; rec.at = state.simTime;
+    }
+    return rec;
+  },
+
+  /** A served or voided return leaves the ledger — matched to the occupant that
+   *  answered it, so a stale row never frees a different post's debt. */
+  _dropReturnOwed(state, m) {
+    const v = ensureVergeState(state);
+    if (!m || !v.returns.length) return;
+    const gen = Number.isFinite(m.occupantGeneration) ? m.occupantGeneration : 0;
+    for (let i = v.returns.length - 1; i >= 0; i--) {
+      if (v.returns[i].machineId === m.id && v.returns[i].gen === gen) v.returns.splice(i, 1);
+    }
+  },
+
+  /** The post's current occupant answers a persisted return — never a bare id
+   *  recycle: the claim needs the authored site key, the site + kind, or the
+   *  post itself. A busy or already-homeward warden cannot be claimed. */
+  _findReturnClaimant(state, v, r) {
+    let best = null, bestScore = Infinity;
+    for (const m of state.entityList) {
+      if (!m || m.alive === false || !m.pos || !m.data) continue;
+      if (!vergeMachineIsMobile(m)) continue;
+      const d = m.data;
+      if (d.returnToPost === true || d.vergeDriven === true || d.pursuitId != null) continue;
+      if ((v.escort && v.escort.machineId === m.id)
+          || (v.pursuit && v.pursuit.machineId === m.id && v.pursuit.status === 'hot')) continue;
+      const kind = vergeMachineKind(m);
+      let rank;
+      const cp = vergeCheckpointFor(m);
+      if (r.key && cp && cp.key === r.key) {
+        rank = 0;                                            // the authored site key
+      } else {
+        const siteId = (d.machine && d.machine.siteId) || d.checkpointId || '';
+        if (r.siteId && siteId === r.siteId && (!r.kind || kind === r.kind)) {
+          rank = 1;                                          // same site, same kind
+        } else {
+          if (!r.kind || kind !== r.kind) continue;
+          if (dist2(m.pos, r) > VERGE_BORDER.returnClaimR * VERGE_BORDER.returnClaimR) continue;
+          rank = 2;                                          // a nameless warden at the post
+        }
+      }
+      // Nearest post wins among equal claims — anchor is the authored post.
+      const anchor = d.machine && d.machine.anchor;
+      const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : m.pos.x;
+      const az = anchor && Number.isFinite(anchor.z) ? anchor.z : m.pos.z;
+      const score = rank * 1e12 + (ax - r.x) * (ax - r.x) + (az - r.z) * (az - r.z);
+      if (score < bestScore) { bestScore = score; best = m; }
+    }
+    return best;
+  },
+
+  /** A warden that chased or walked owes its post a return — set the drift home
+   *  and lodge the debt in the ledger so a sector unload cannot void it.
    *  No-op for machines the precursor layer owns or a missing/cold reference. */
-  _markReturnToPost(machine) {
+  _markReturnToPost(state, machine) {
     if (!vergeMachineIsMobile(machine)) return;
     const d = machine.data;
     if (Number.isFinite(d.returnPostX) && Number.isFinite(d.returnPostZ)) d.returnToPost = true;
+    this._upsertReturnOwed(state, machine);
   },
 
   // Mobile wardens drift back to the post they left — never while a live escort
-  // or pursuit still owns them.
+  // or pursuit still owns them. The ledger reconciles first: a warden displaced
+  // across a sector unload re-answers its post when the cast rematerializes —
+  // the same occupant by (id, gen), a rematerialized one by the post's site
+  // identity; a bare id recycle never satisfies the debt.
   _tickReturnToPost(state, dt) {
     const v = ensureVergeState(state);
+    if (v.returns.length) {
+      const curSector = state.world && state.world.currentSectorId;
+      for (const r of v.returns) {
+        let m = vergeEntityCurrent(state, r.machineId, r.gen);
+        if (m && (!m.pos || !vergeMachineIsMobile(m))) m = null; // a body that cannot drift serves nothing
+        if (!m && (!r.sectorId || r.sectorId === curSector)) {
+          m = this._findReturnClaimant(state, v, r);
+        }
+        if (!m || !m.pos) continue;
+        // The debt moves to the warden that answered it — completion drops it.
+        r.machineId = m.id;
+        r.gen = Number.isFinite(m.occupantGeneration) ? m.occupantGeneration : 0;
+        const d = m.data;
+        if (!Number.isFinite(d.returnPostX) || !Number.isFinite(d.returnPostZ)) {
+          d.returnPostX = r.x; d.returnPostZ = r.z;
+        }
+        d.returnToPost = true;
+      }
+    }
     for (const m of state.entityList) {
       if (!m || m.alive === false || !m.pos) continue;
       const d = m.data;
@@ -1134,6 +1282,7 @@ export const vergeCourt = {
           || !vergeMachineIsMobile(m)) {
         delete d.returnPostX; delete d.returnPostZ; delete d.returnToPost;
         vergeReleaseDrive(m);                                  // no drive, no claim
+        this._dropReturnOwed(state, m);                        // the debt is void, not owed
         continue;
       }
       // Only a record that still drives the body holds it here — a 'crossed'
@@ -1147,6 +1296,7 @@ export const vergeCourt = {
         m.pos.x = d.returnPostX; m.pos.z = d.returnPostZ;
         delete d.returnPostX; delete d.returnPostZ; delete d.returnToPost;
         vergeReleaseDrive(m);
+        this._dropReturnOwed(state, m);                        // the post is answered
         continue;
       }
       vergeDrive(m); // the drift home is this file's drive — the other loop yields
@@ -1176,7 +1326,7 @@ export const vergeCourt = {
         const prev = vergeEntityCurrent(state, p.machineId, p.gen);
         if (prev && prev.data && prev.data.pursuitId === p.id) delete prev.data.pursuitId;
         vergeReleaseDrive(prev);
-        if (prev) this._markReturnToPost(prev);                 // the superseded warden goes home
+        if (prev) this._markReturnToPost(state, prev);                 // the superseded warden goes home
         p.status = 'hot';
         p.machineId = m.id;
         p.gen = m.occupantGeneration || 0;
@@ -1344,7 +1494,7 @@ export const vergeCourt = {
       v.escort = null;
       const machine = vergeEntityCurrent(state, esc.machineId, esc.gen);
       vergeReleaseDrive(machine);
-      if (machine) this._markReturnToPost(machine);
+      if (machine) this._markReturnToPost(state, machine);
       this._fileIncident(state, 'escort_broken', machine, 'jumped with the warden posted');
       this.bus.emit('verge:escortBroken', {
         escortId: esc.id, machineId: esc.machineId, tick: state.tick,
@@ -1370,7 +1520,7 @@ export const vergeCourt = {
       if (warden) {
         if (warden.data && warden.data.pursuitId === pu.id) delete warden.data.pursuitId;
         vergeReleaseDrive(warden);
-        this._markReturnToPost(warden);
+        this._markReturnToPost(state, warden);
       }
       this._fileIncident(state, 'boundary_flight', null, `flight to ${p.to || 'the far side'}`);
       if (p.fromPos && Number.isFinite(p.fromPos.x) && Number.isFinite(p.fromPos.z)) {
@@ -1408,12 +1558,12 @@ export const vergeCourt = {
         v.escort = null;
         const oldWarden = vergeEntityCurrent(state, esc.machineId, esc.gen);
         vergeReleaseDrive(oldWarden);
-        if (oldWarden) this._markReturnToPost(oldWarden);
+        if (oldWarden) this._markReturnToPost(state, oldWarden);
       } else {
         v.escort = null;
         const machine = vergeEntityCurrent(state, esc.machineId, esc.gen);
         vergeReleaseDrive(machine);
-        if (machine) this._markReturnToPost(machine);
+        if (machine) this._markReturnToPost(state, machine);
         this._fileIncident(state, 'escort_broken', machine,
           'crossed the boundary with the warden posted');
         this.bus.emit('verge:escortBroken', {
@@ -1465,7 +1615,7 @@ export const vergeCourt = {
       if (warden) {
         if (warden.data && warden.data.pursuitId === pu.id) delete warden.data.pursuitId;
         vergeReleaseDrive(warden);
-        this._markReturnToPost(warden);
+        this._markReturnToPost(state, warden);
       }
       this._fileIncident(state, 'boundary_flight', null, `flight to ${p.sectorId}`);
       if (player && player.pos) {

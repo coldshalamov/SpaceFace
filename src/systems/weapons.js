@@ -484,6 +484,13 @@ export const weapons = {
     // by the same wall for anything behind it.
     on('shieldPylon:intercepted', (payload) => detonateInterceptedSplash(this, payload));
     on('physics:impact', (payload) => {
+      // Exact early-out (crowd-cost F1): when the receipt measured a relative closing under the
+      // live floor, applyInertialShuntFromImpact returns null at its own relativeClosing check —
+      // everything it skips before that line is pure reads plus expired-cooldown housekeeping
+      // that re-runs identically on the pair's next qualifying contact. A missing channel still
+      // takes the full velocity-fallback path, so the reject set is unchanged.
+      if (Number.isFinite(payload && payload.preSolveClosingSpeed)
+        && Math.max(0, payload.preSolveClosingSpeed) < INERTIAL_SHUNT_LIVE_TUNING.minClosingSpeed) return;
       const applied = applyInertialShuntFromImpact(
         this.state,
         payload,
@@ -1524,6 +1531,17 @@ export const weapons = {
       });
       mountGate.targetId = fireGate.targetId;
       mountGate.tolRad = fireGate.tolRad;
+      // The round leaves this mount's real socket, not the hull centre: re-solve the same model
+      // from the muzzle so off-axis mounts land on the constrained solution — the same correction
+      // the forceTarget/arcade branches apply to their hull-centre lead below. The withhold check
+      // and the released round both use this angle so they can never disagree about the launch line.
+      const muzzle = this._muzzle(e, w, 0);
+      mountGate.muzzleAngle = solveTetherLeadSolution(
+        { pos: { x: muzzle.x, z: muzzle.z }, vel: e.vel },
+        fireGate.target,
+        mountProjSpeed,
+        { taut: !!fireGate.constrained },
+      ).angle;
     }
 
     // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
@@ -1556,7 +1574,7 @@ export const weapons = {
       // Tether-lock (massline2.fireControl): the constrained solution replaces the linear lead
       // when the turret is engaging the tethered hostile — one solver everywhere it matters.
       const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
-        ? mountGate.angle
+        ? mountGate.muzzleAngle
         : this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
@@ -1572,13 +1590,13 @@ export const weapons = {
       if (mountGate && !arcadeAim && !pilotAim) {
         const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
         const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
-        const bareDir = this._hardpointDir(e, w, mountGate.angle, 0);
-        if (Math.abs(wrapAngle(bareDir - mountGate.angle)) > gateTol) return capLeft;
+        const bareDir = this._hardpointDir(e, w, mountGate.muzzleAngle, 0);
+        if (Math.abs(wrapAngle(bareDir - mountGate.muzzleAngle)) > gateTol) return capLeft;
       }
       // FIXED mount: base direction = nose + hardpoint facing offset, then gimbal-assist toward the
       // aim direction within the mount's gimbal arc. Spread is layered on last. This is the
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
-      let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
+      let fixedAim = mountGate ? mountGate.muzzleAngle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
         // A locked player shot leaves the real muzzle, not the hull centre: solve from there with
         // the same muzzle + launch-model solve G mode uses. Hull-centre lead put off-axis mounts

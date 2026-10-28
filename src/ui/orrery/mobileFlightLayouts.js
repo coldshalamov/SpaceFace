@@ -29,9 +29,15 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     top:calc(186px + var(--sf-safe-top,0px))!important;
     max-width:min(250px,calc((100vw - 192px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)) * 1.333333))!important;
   }
+  /* The compact tape is reparented into .sf-rightdock (racingHud syncParent), so position:fixed
+     resolves against the dock's transformed containing block, not the viewport — top:70px landed
+     mid-dial at dock+70. Position it absolutely in the clear rail directly under Powers/Pause
+     (dock top 196 - 132 = viewport 64), its right edge on the dock edge under Pause. */
   ${FLIGHT} #race-tape[data-compact="true"] {
-    top:calc(70px + var(--sf-safe-top,0px));
-    right:calc(12px + var(--sf-safe-right,0px));
+    position:absolute!important;
+    top:-132px;
+    bottom:auto!important; left:auto!important;
+    right:0;
     width:min(128px,calc(100vw - 202px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
   }
 }
@@ -41,14 +47,37 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     right:calc(90px + var(--sf-safe-right,0px))!important;
     width:min(236px,32vw)!important;
   }
-  /* The 44px touch keys use the top-centre lane, between the status strip and Pause.
-     They finish before the radar begins instead of sitting across its compass and contacts. */
+  /* The 44px touch keys take the lane below the alert line and the tutorial card and left
+     of the radar — the only clear horizontal strip on a short phone (the alert band y22-45
+     and card y70-102 own the top, the ghost ring owns the left bottom). absolute against the
+     dock: dock top 80 + 28 = viewport 108, right edge 595 ends before the radar's 601. */
   ${FLIGHT} #race-tape[data-compact="true"] {
-    top:calc(10px + var(--sf-safe-top,0px));
-    left:auto; right:calc(84px + var(--sf-safe-right,0px));
-    width:180px; transform:none;
+    position:absolute!important;
+    top:28px;
+    bottom:auto!important; left:auto!important;
+    right:calc(159px + var(--sf-safe-right,0px));
+    /* On the shortest phones (568x320) 180px can't clear both the status lane and
+       the radar; the tape compacts its keys 2x2 and yields before it collides. */
+    width:min(180px,calc(100vw - 453px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
+    min-width:100px;
+    transform:none;
   }
-  ${FLIGHT} #hud > .sf-leftcontext { max-width:min(250px,64vw)!important; }
+  /* The resting stick ghost anchors at left:23% bottom:104 (a ~132px ring starting y~220).
+     The objective's old 186 top landed inside it; 110 keeps it under the tutorial card
+     (bottom ~102) and clear of the ring. */
+  ${FLIGHT} #hud > .sf-leftcontext {
+    top:calc(110px + var(--sf-safe-top,0px))!important;
+    max-width:min(250px,64vw)!important;
+  }
+  /* The receipt/ticker line sat at top:118 (styles.js) straight over the objective text.
+     Give it its own row under the objective, right of the stick ghost (ends x~260) and left
+     of the radar (starts x~601). */
+  ${FLIGHT} #toasts {
+    top:calc(216px + var(--sf-safe-top,0px))!important;
+    left:calc(268px + var(--sf-safe-left,0px))!important;
+    right:auto!important; bottom:auto!important;
+    width:min(320px,calc(100vw - 600px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important;
+  }
 }
 /* Portrait receipts share the objective's left lane, not the radar caption's right lane.
    Keep the existing bottom/cluster reservation and information semantics; critical receipts
@@ -76,6 +105,11 @@ export const MOBILE_FLIGHT_LAYOUT_CSS = `
     width:min(176px,calc(100vw - 114px - max(44px,52px * var(--mf-scale)) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)));
     min-width:0;
   }
+  /* Stack the transient lines: alerts band ~146-170, then the tutorial card, then the
+     objective. The card's injected top:18% (~152) sat inside the alerts band and over the
+     leftcontext block's top corner. */
+  ${FLIGHT} .sf-tutorial-flight-card { top:calc(178px + var(--sf-safe-top,0px))!important; }
+  ${FLIGHT} #hud > .sf-leftcontext { top:calc(236px + var(--sf-safe-top,0px))!important; }
   ${FLIGHT} #sf-touch-overlay .mf-speed { flex-wrap:wrap; row-gap:2px; }
   ${FLIGHT} #toasts,
   ${FLIGHT}[data-sf-mobile-lefty="1"] #toasts {

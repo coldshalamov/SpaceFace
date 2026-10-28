@@ -28,7 +28,7 @@ import { createTimeEffects } from './core/timeEffects.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { installGameStartRecovery } from './core/gameStartRecovery.js';
 import { installStartupJournal } from './core/startupJournal.js';
-import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
+import { laneCommandSink, laneInputWrite, laneRemoveEntity, laneRpc, laneSetMode } from './core/simLaneCommands.js';
 import {
   resolveNewGamePlusOverlay,
   resetCombatInputMode,
@@ -161,18 +161,47 @@ async function boot() {
       simLane: simLaneFlags.lane,
     };
 
-    const registry = createRegistry(ctx);
+    let registry = createRegistry(ctx);
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
     // transport journal presentation consumes.
-    const simLaneRuntime = createSimLaneRuntime({
+    const mainLaneEntities = state.entities;
+    const mainLaneProjectiles = state.weaponVfxProjectiles;
+    let simLaneRuntime = createSimLaneRuntime({
       state,
       registry,
       bus,
       flags: simLaneFlags,
       helpers,
     });
+    if (simLaneRuntime) {
+      // The worker lane is the production default — a worker that dies before
+      // its init reply (module-eval failure, CSP block, silent spawn) must not
+      // dead-end boot. Gate on the lane's readiness with a bounded window; on
+      // failure restore the in-process bindings and continue on the main lane.
+      // The registry is rebuilt so the sim-owned systems it skipped under the
+      // worker lane init normally here.
+      try {
+        await Promise.race([
+          simLaneRuntime.readyPromise,
+          new Promise((_, reject) => setTimeout(
+            () => reject(new Error('sim worker init timed out')), 45_000)),
+        ]);
+      } catch (error) {
+        try { simLaneRuntime.close?.(); } catch (_) { /* dead lane */ }
+        state.entities = mainLaneEntities;
+        state.weaponVfxProjectiles = mainLaneProjectiles;
+        // The lane refills entityList from its mirror on every reply — clear
+        // any rows it landed so the in-process sim repopulates cleanly.
+        state.entityList.length = 0;
+        ctx.simLane = 'main';
+        simLaneRuntime = null;
+        registry = createRegistry(ctx);
+        ctx.registry = registry;
+        console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
+      }
+    }
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
     // one (which the worker's journal replaces wholesale).
@@ -775,6 +804,25 @@ async function waitForRequiredOpeningPicture(state, isActive) {
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
   if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  if (laneCommandSink()) {
+    // Worker lane: the roster's authority lives in the worker. Clearing the
+    // mirrored containers here (entities/entityList/freeIds/playerId/
+    // world.currentSectorId) would be silently overwritten by the next reply
+    // and never reach the sim — the same class of transition game:new already
+    // routes through the lane (newGameBoot rpc). Ship one REMOVE command per
+    // mirrored entity instead: the worker runs the identical immediate
+    // _removeEntityAtIndex teardown (runtime clear + entity:destroyed fan-out,
+    // which the bridge replays back to main-side listeners exactly once — so
+    // no local emit here) and the next journal pack converges the mirror to
+    // empty. The scalar/id counters stay worker-owned on purpose: the next
+    // newGameBoot or save restore resets them on its own lane exactly like a
+    // main-lane discard's successors would.
+    for (const entity of [...state.entityList]) {
+      laneRemoveEntity(entity.id, { immediate: true, reason: 'run_reset' });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+    }
+    return true;
+  }
   for (const entity of [...state.entityList]) {
     clearEntityRuntime(entity);
     bus.emit('entity:destroyed', {

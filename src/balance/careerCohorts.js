@@ -272,12 +272,16 @@ function bootSim(seed) {
 
   if (fieldDep && typeof fieldDep.newGame === 'function') fieldDep.newGame();
   if (missions && typeof missions.newGame === 'function') missions.newGame();
-  // Cohort strategies own their contracts; clear campaign cold-start so board slots are free.
+  // Cohort strategies own their board contracts — but the 47-A cold start stays, because a
+  // real new-game player already carries it: its mine→skim→dock script is the live route's
+  // first research faucet (beat 0 pays 4 RP + 400 cr, reason story:cold_start). Clearing it
+  // stranded the plain miner (ledger D266): the Skim only fires while that contract is live.
+  // nextId is left where newGame put it so no accepted contract reuses the cold-start id.
   if (state.missions) {
-    state.missions.active = [];
+    state.missions.active = (state.missions.active || []).filter((m) => m
+      && String(m.storyTag || '').startsWith('campaign47a:'));
     state.missions.completedLog = [];
     state.missions.receipts = [];
-    state.missions.nextId = 1;
   }
 
   const ownedWeapons = new Set(
@@ -2324,6 +2328,11 @@ function runProspector(horizonS, options = {}) {
     t = ctx.state.simTime;
     currentSectorId = sellSec.id;
 
+    // A real pilot docks to sell: dock:docked runs contract turn-ins first (the 47-A
+    // sample settles at the Pit — beat 0's ordered dock step lands here) before the
+    // market sweep, and the undock releases departure hooks on the way back out.
+    ctx.bus.emit('dock:docked', { stationId: sellStationId });
+
     let loopSold = 0;
     for (const cid of Object.keys(ctx.state.player.cargo.items || {})) {
       if (cid === 'cmdty_munitions') continue;
@@ -2397,6 +2406,9 @@ function runProspector(horizonS, options = {}) {
         }
       }
     }
+
+    // Station visit ends: the undock fires the same departure hooks the live route uses.
+    ctx.bus.emit('dock:undocked', { stationId: sellStationId });
 
     const legField = travelTimeS(currentSectorId, fieldSectorId) + MINING_TRANSIT_S * 0.5;
     if (t + legField > horizonS) break;

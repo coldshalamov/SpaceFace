@@ -39,6 +39,8 @@ import {
   assertSpineUnchanged,
   liveBranchIntroPayload,
   makeCampaignState,
+  plantFirstPlayerGrowth,
+  plantNestOutcome,
   snapshotCanonicalSpine,
 } from './story-campaign47a-fixtures.mjs';
 
@@ -82,8 +84,10 @@ function driveBook2(state, t) {
   recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b2:cinder', physicalVerb: 'clear',
   }, t);
-  recordBeatStep(state, 'understory:gardenFed', { byPlayer: true }, t + 0.1);
-  recordBeatStep(state, 'encounter:resolved', { shape: 'the_nest', outcome: 'cleared' }, t + 0.2);
+  // The recorder verifies the owner's persisted evidence: the garden's retained
+  // first-growth row and the encounter director's terminal Nest receipt.
+  recordBeatStep(state, 'understory:playerGrowth', plantFirstPlayerGrowth(state), t + 0.1);
+  recordBeatStep(state, 'encounter:resolved', plantNestOutcome(state), t + 0.2);
   return recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b2:elroy', physicalVerb: 'hunt', completionMethod: 'custody_reel',
   }, t + 0.3);
@@ -148,7 +152,17 @@ test('B0 through B7 record the physical step and leave the beat cursor alone', (
   assert.equal(readSpine(state).solved['2'].verb, 'hunt');
 
   state.story.beatIndex = 3;
-  const tow = recordBeatStep(state, 'mission:completed', { physicalVerb: 'tow' }, 8);
+  // W-BOOKS-3-4: Bigger Boat is the ordered yard list — the berth delivery, the maw,
+  // then the Foreman's feud — not one bare tow contract.
+  recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b3:berth', physicalVerb: 'tow',
+  }, 8);
+  recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b3:maw', physicalVerb: 'tow',
+  }, 8.1);
+  const tow = recordBeatStep(state, 'mission:completed', {
+    storyTag: 'campaign47a:b3:foreman', physicalVerb: 'tow',
+  }, 8.2);
   assert.equal(tow.stepsComplete, true);
   assert.equal(readSpine(state).solved['3'].verb, 'tow');
   assert.equal(readSpine(state).solved['3'].method, null);
@@ -622,7 +636,10 @@ test('a headline verb is not spoken as one of the two solutions', () => {
   assert.doesNotMatch(spineGreeting('contact_halev_doss', knock), /throw|cut/);
 
   const core = fresh(3);
-  recordBeatStep(core, 'mission:completed', { physicalVerb: 'tow' }, 2);
+  // The berth delivery is B3's first book step; it carries the headline tow verb.
+  recordBeatStep(core, 'mission:completed', {
+    storyTag: 'campaign47a:b3:berth', physicalVerb: 'tow',
+  }, 2);
   assert.equal(spineGreeting('contact_coldburn_rey', core), 'You brought the core in. I saw the hull.');
   assert.doesNotMatch(spineGreeting('contact_coldburn_rey', core), /line/);
 });

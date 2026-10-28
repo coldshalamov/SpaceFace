@@ -1335,6 +1335,104 @@ test('a paid permit and its receipt ledger survive a save boundary — once, not
   }
 });
 
+test('a warden displaced across a sector unload returns to post on re-materialization', () => {
+  const { sim, state, bus, player } = boot();
+  try {
+    // An authored site identity survives rematerialization — entity ids do not.
+    const warden = machine(sim, 'executor', 0, 0, { checkpointId: 'warden_alpha' });
+    const v = ensureVergeState(state);
+    const crossed = listen(bus, 'verge:pursuitCrossed');
+    court(sim)._openPursuit(state, v, warden, 'repeat_crossings');
+    assert.equal(v.pursuit && v.pursuit.machineId, warden.id);
+    assert.equal(warden.data.returnPostX, 0, 'the post was banked at the chase\'s open');
+    // The chase already dragged the body off post before the hull crossed.
+    warden.pos.x = 800;
+    warden.data.vergeDriven = true;
+
+    // The sector unloads the warden: gone from the cast before the enter lands.
+    state.entities.delete(warden.id);
+    state.entityList.splice(state.entityList.indexOf(warden), 1);
+    state.world.currentSectorId = 'sector_ashfall_reach';
+    bus.emit('sector:enter', { sectorId: 'sector_ashfall_reach' });
+    assert.equal(v.pursuit.status, 'crossed', 'the file waits at the border');
+    assert.equal(crossed.length, 1, 'the flight was filed once');
+    const owed = v.returns.find((r) => r.machineId === warden.id);
+    assert.ok(owed, 'the owed return outlived the body it was banked on');
+    assert.equal(owed.x, 0); assert.equal(owed.z, 0);
+    assert.equal(owed.sectorId, 'sector_veil_nebula', 'the debt names its home sector');
+    assert.equal(owed.key, 'cp:warden_alpha', 'the debt names the site, not only the body');
+
+    // And it rides the same save slot the pursuit file does.
+    const bag = JSON.parse(JSON.stringify(court(sim).serialize()));
+    assert.equal(bag.returns.length, 1, 'the owed return rode the save envelope');
+
+    // Re-materialize the old sector: a fresh occupant at the same post, still
+    // displaced — same site key, different id and generation.
+    state.world.currentSectorId = 'sector_veil_nebula';
+    const remat = machine(sim, 'executor', 800, 0, { checkpointId: 'warden_alpha' });
+    assert.notEqual(remat.id, warden.id, 'rematerialization is a new occupant');
+    bus.emit('sector:enter', { sectorId: 'sector_veil_nebula' });
+    player.pos.x = 20000; player.pos.z = 0; // far from every ring — the file keeps waiting
+    sim.step();
+    assert.equal(remat.data.returnToPost, true, 'the sector-aware claim landed on the new occupant');
+    assert.equal(remat.data.returnPostX, 0, 'the persisted post drove the claim');
+
+    sim.runTicks(80 * 60);
+    assert.ok(Math.abs(remat.pos.x) < 2 && Math.abs(remat.pos.z) < 2,
+      `the rematerialized warden drifted home (x=${remat.pos.x.toFixed(1)})`);
+    assert.equal(remat.data.returnToPost, undefined);
+    assert.equal(remat.data.vergeDriven, undefined, 'the claim rests at the post');
+    assert.equal(v.returns.length, 0, 'the debt cleared when the post was answered');
+    assert.equal(v.pursuit.status, 'crossed', 'the file kept its mark — the body owed the post');
+  } finally {
+    sim.dispose();
+  }
+});
+
+test('a stale return record never hijacks a warden posted somewhere else', () => {
+  const { sim, state, bus, player } = boot();
+  try {
+    const warden = machine(sim, 'executor', 0, 0, { checkpointId: 'warden_alpha' });
+    const v = ensureVergeState(state);
+    court(sim)._openPursuit(state, v, warden, 'repeat_crossings');
+    warden.pos.x = 800;
+
+    // Unload the warden, cross out, then come back to a different cast.
+    state.entities.delete(warden.id);
+    state.entityList.splice(state.entityList.indexOf(warden), 1);
+    state.world.currentSectorId = 'sector_ashfall_reach';
+    bus.emit('sector:enter', { sectorId: 'sector_ashfall_reach' });
+    state.world.currentSectorId = 'sector_veil_nebula';
+    const other = machine(sim, 'surveyor_prism', 5000, 0, { checkpointId: 'warden_beta' });
+    bus.emit('sector:enter', { sectorId: 'sector_veil_nebula' });
+
+    // Forge the staleness the recycler hands out: the row names the other
+    // warden's id under a dead generation. Resolution must refuse the pair,
+    // and no fallback may drag a foreign-post warden across the map.
+    const rec = v.returns[0];
+    rec.machineId = other.id;
+    rec.gen = (other.occupantGeneration || 0) + 50;
+    player.pos.x = 20000; player.pos.z = 0;
+    sim.runTicks(30);
+    assert.equal(other.data.returnToPost, undefined, 'a foreign post answers nothing');
+    assert.equal(other.data.returnPostX, undefined);
+    assert.equal(other.pos.x, 5000, 'the innocent warden was never moved');
+    assert.equal(v.returns.length, 1, 'the debt waits for its own post, bounded');
+
+    // The true post rematerializes — the same row serves it and only it.
+    const remat = machine(sim, 'executor', 800, 0, { checkpointId: 'warden_alpha' });
+    sim.step();
+    assert.equal(remat.data.returnToPost, true, 'the site-keyed claim still lands');
+    assert.equal(other.data.returnToPost, undefined);
+    sim.runTicks(80 * 60);
+    assert.ok(Math.abs(remat.pos.x) < 2, 'the real warden came home');
+    assert.equal(other.pos.x, 5000, 'the foreign warden never left its post');
+    assert.equal(v.returns.length, 0);
+  } finally {
+    sim.dispose();
+  }
+});
+
 test('default export and named export are the same system — the surface stayed additive', () => {
   assert.equal(vergeCourt, namedCourt);
   assert.equal(typeof vergeCourt.init, 'function');

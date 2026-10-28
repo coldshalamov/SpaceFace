@@ -26,7 +26,7 @@ import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
 import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
-import { continueRecap } from '../ui/screens/missionLog.js';
+import { continueRecap } from '../ui/sim/missionRecap.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
@@ -2419,6 +2419,10 @@ export const onboarding = {
       // must not spend the trainer's Focus cooldown before the authored flyby begins.
       spec.data.trainingFocusEligible = false;
       spec.data.trainingMode = mode;
+      // The entity's raw `name` stays the pinned 'SCN Flight Trainer' registration, but player
+      // surfaces (hover readout, local/galaxy map, the lock panel) read data.name first — bill
+      // the fleeing-raider fiction the tracker already speaks (RC-11), never a "trainer".
+      if (spec.name === 'SCN Flight Trainer') spec.data.name = 'Fleeing Raider';
       spec.shieldRegenRate = 0;
       spec.hull = spec.hullMax = Math.max(100, spec.hullMax || 100);
       const trainer = this.helpers.spawnEntity(spec);
@@ -4538,7 +4542,7 @@ export const onboarding = {
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
-      if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Training Seam' };
+      if (rock && rock.alive !== false) target = { pos: rock.pos, label: 'Bright Seam' };
     }
     else if (beat && beat.key === 'dock') target = this._findHelios();
     if (!target || !target.pos) {

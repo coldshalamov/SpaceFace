@@ -31495,6 +31495,14 @@ export const render = {
     // because the GPU is temporarily unavailable.
     const publication = this._presentationPublisher.consume(presentationFrame,
       this.state && this.state.mode === 'flight' ? LIVE_POSE_PUBLICATION : undefined);
+    // The stepped apply can legitimately ack only what it reached this present —
+    // the runner discards the wire journal by this watermark, not by the merged
+    // range end, so a paced apply never evicts records it has not presented.
+    if (presentationFrame) {
+      presentationFrame.journalAppliedSequence = typeof this._presentationPublisher.getLastAppliedSequence === 'function'
+        ? this._presentationPublisher.getLastAppliedSequence()
+        : null;
+    }
     // A rebind drive that faulted parks on the service epoch like the residency
     // lanes — the heavy O(_meshes) re-mint suppresses until the next
     // enter/context-restore instead of rethrowing out of prepareFrame every

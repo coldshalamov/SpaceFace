@@ -1,5 +1,7 @@
 // Generalized durable mercy/debt seam. The record lives under state.story, which already
-// round-trips through saves; this module owns no required update loop and needs no registry slot.
+// round-trips through saves; writers can call these functions without the registry, and the
+// moralMemorySystem object below is the registered runtime that makes the consequence layer
+// (tick escalation, offer expiry, witness souring, moralMemory:* verbs) live in production.
 //
 // What lives here, beyond the debt ledger itself, is the consequence layer the ledger feeds:
 //   • settlement offers — a pending debt can open a deterministic negotiation (pay reparations,
@@ -1096,13 +1098,13 @@ export function moralLedgerSummary(state) {
   return out;
 }
 
-// ── the opt-in system object ────────────────────────────────────────────────────────────────
+// ── the registered system object ────────────────────────────────────────────────────────────
 //
 // The ledger itself needs no registry slot — writers call these functions directly or through
 // the encounterDirector's moralMemory:remember listener. This object is the consequence
-// layer's optional runtime: register it and the moralMemory:* action events become live
-// verbs any system can emit, and tickMoralMemory runs on the fixed step. Tests drive it
-// directly; nothing in production registers it yet.
+// layer's runtime, registered as 'moralMemory' on the calendar clock: the moralMemory:*
+// action events are live verbs any system can emit, and tickMoralMemory runs on the
+// fixed step under its own 30 s simTime bucket gate (R-3a9d5dc registration fix).
 export const moralMemorySystem = {
   name: 'moralMemory',
 
