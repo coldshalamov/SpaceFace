@@ -94,6 +94,8 @@ export function qtyFromDialPoint(svgEl, clientX, clientY, limit) {
 const M = 'html body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
 /* desktop only (phones carry data-sf-mobile and their own sheet) */
 const MD = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .sx-mkt.orr-market';
+/* phone only: the station berth holding the Market (outranks the phone sheet's #screens#screens#screens) */
+const MP = 'html:root[data-sf-mobile="1"] body #screens#screens#screens > .screen.orr-station:has(.sx-mkt.orr-market)';
 const BONE = '236 230 216';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase;';
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;';
@@ -473,7 +475,7 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    ≤1100 × ≤800. Desktop ≤650 wide × ≥801 tall (600×844, 390×844) has the same ~300–345px tab body,
    where the stacked 244px console stood past the right edge (BUY/SELL and the dial off the glass),
    so it runs there too, desktop-scoped (phones keep their own sheet). M is the scope selector. */
-const NARROW_TALL = '(max-width:650px) and (min-height:801px)';
+const NARROW_TALL = '(max-width:650px) and (min-height:801px), (max-width:600px) and (min-height:601px)';
 const compactBerth = (M, MQ) => `
 /* ---- 960×540 berth: body ~192px — every part of the trade stays on the board, just smaller ---- */
 @media ${MQ} {
@@ -894,7 +896,7 @@ const CSS_TAIL = `
 /* …and under 481 wide (390×844) the register beside that column is ~165px: its three numbers left
    the name ~0px. Each good reads on two lines there, its name across the whole register and its
    BUY / SELL / STOCK under it, and the families close up so they take four lines, not seven. */
-@media (max-width:480px) and (min-height:801px) {
+@media (max-width:480px) and (min-height:601px) {
   /* the find stood beside the legend at ~70px ("Find a com", legend on two lines): it takes its
      own full-width line under the legend instead */
   ${MD} .sx-mkt-browser { grid-template-rows:auto auto auto minmax(0, 1fr) !important; }
@@ -915,6 +917,45 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-table :is(th, td):nth-child(3) { grid-column:2; width:auto !important; padding-right:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3; width:auto !important; padding-right:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-row td:nth-child(n+2) { padding-top:0 !important; }
+}
+/* …and on short phones (≤600 × 601–800, e.g. 375×667; 601–650 desktop keeps master's berth) the berth's dials leave the Market ~160px:
+   the eight families stood one per line and filled it, so no good showed, and BUY 1 sat under the
+   tabs. The families ride one line that scrolls sideways (fading at its right edge), and the dial
+   sets at 84px so the verbs end in the column. */
+@media (max-width:600px) and (min-height:601px) and (max-height:800px) {
+  ${MD} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; column-gap:12px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; }
+  ${MD} .sx-mkt-browser__filters li { flex:none !important; }
+  ${MD} .sx-mkt-filter { white-space:nowrap !important; }
+  ${MD} .sx-trade { row-gap:2px !important; }
+  ${MD} .sx-qty .orr-qdial { left:31px; width:84px; height:84px; }
+  ${MD} .sx-qty .sx-qty__in { top:19px; height:26px !important; font-size:22px !important; line-height:26px !important; }
+  ${MD} .sx-qty .sx-qty__k { left:31px; width:84px; top:46px; letter-spacing:0 !important; }
+  ${MD} .sx-qty .sx-qty__words { top:72px; }
+  ${MD} .sx-trade > .sx-qty { height:88px; }
+  ${MD} .so-trade-total { line-height:16px !important; height:17px; align-content:center; }
+  ${MD} .so-trade-total > strong { line-height:16px !important; }
+  ${MD} .so-trade-breakdown > summary { line-height:15px !important; padding:0 !important; margin:0 !important; }
+  ${MD} .sx-trade__go.orr-lampkey { min-height:24px !important; }
+  ${MD} .sx-mkt__stage { padding-bottom:8px !important;
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent) !important;
+    mask-image:linear-gradient(180deg, #000 calc(100% - 8px), transparent) !important; }
+}
+/* under 390 wide the register is ~165px and the price's 30px indent pushed "33 ▼11%" into the SELL
+   number ("▼1129"); it indents 14px instead, still clear of the name's icon column */
+@media (max-width:389px) and (min-height:601px) {
+  ${MD} .sx-mkt-table :is(th, td):nth-child(2) { padding-left:14px !important; }
+}
+/* Real phones (data-sf-mobile) carry their own Market sheet, where the families already ride one
+   swiped line and the register stacks full width. On a short portrait phone (≤600 × 561–800, e.g.
+   375×667) the berth header left that sheet a ~128px slit that scrolled on its own under the header,
+   so BUY 1 and the goods sat behind it. The berth scrolls as one page there instead (as it already
+   does on a phone on its side): header, dials and Market read in order, and the tabs and Undock stay
+   pinned at the foot. */
+@media (max-width:600px) and (min-height:561px) and (max-height:800px) {
+  ${MP} { overflow-x:hidden !important; overflow-y:auto !important; padding-bottom:0 !important; scroll-padding-bottom:0 !important; }
+  ${MP} .dp-frame__body--station, ${MP} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
+  ${MP} footer.sxb-ops { position:sticky !important; bottom:0 !important; z-index:2; background:rgb(5 7 10) !important; }
 }
 `;
 
