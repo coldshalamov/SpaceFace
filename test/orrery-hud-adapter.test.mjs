@@ -110,10 +110,10 @@ test('every ordnance key explains itself: bank sentence, live keys and live stat
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
   const capacity = resolveImpulseChargeCapacity(state);
   // The tip names the EFFECTIVE verb (what the next press does), the live keys, and why it is or is not ready.
-  assert.match(ord['4'].tip, /^Bomb · Charge ×2 · throw — Next press: throw Impulse charge ×2\. /);
+  assert.match(ord['4'].tip, /^Bomb · throw Charge ×2 — Next press: throw Impulse charge ×2\. /);
   assert.match(ord['4'].tip, /\(4 · Y\)\nReady · up to \d+$/);
   assert.ok(ord['4'].tip.endsWith(`Ready · up to ${capacity}`));
-  assert.equal(ord['4'].label, 'Bomb · Charge ×2 · throw');
+  assert.equal(ord['4'].label, 'Bomb · throw Charge ×2');
   assert.match(ord['6'].tip, /\(Space · F\)\nReady$/);
   assert.match(ord['2'].tip, /\(2 · R\)\nReady$/, 'nothing armed: SHOVE is the repulsor, ready');
   // A collapsed node answers "what is this" without unfolding it: a one-power band explains the

@@ -275,7 +275,7 @@ export function createSpeedDial() {
   const foot = el('div', 'orr-cluster__speedfoot');
   const unit = el('span', 'orr-label');
   unit.appendChild(el('span', 'orr-speeddial__word', 'Speed · '));
-  unit.appendChild(el('span', null, 'wu/s')); // an element, not a bare string: the HUD test shims' append() takes nodes only
+  unit.appendChild(el('span', null, 'u/s')); // plain unit char; the internal "wu/s" is jargon (owner 2026-10-27)
   foot.appendChild(unit);
   read.append(numeral, foot);
   root.appendChild(read);
@@ -294,7 +294,7 @@ export function createSpeedDial() {
   const zeroLab = el('span', 'orr-label orr-speeddial__lab', '0');
   place(zeroLab, R_TICK + 20, FROM);
   root.appendChild(zeroLab);
-  const refLab = lab('', 'Ref');
+  const refLab = lab('', 'Top');
   place(refLab.node, R_TICK + 40, aRef);
   const maxLab = lab('is-max', '');
   place(maxLab.node, R_TICK + 32, TO);
@@ -429,7 +429,7 @@ export function createSpeedDial() {
     }
 
     const phase = speedPhase(sp, r);
-    const word = drive ? 'Drive' : boosting ? 'Boost' : phase === 'over' ? 'Above ref' : phase === 'rest' ? 'At rest' : '';
+    const word = drive ? 'Drive' : boosting ? 'Boost' : phase === 'over' ? 'Above top' : phase === 'rest' ? 'At rest' : '';
     if (changed('phase', `${phase}|${word}|${boosting ? 1 : 0}`)) {
       root.classList.toggle('is-rest', phase === 'rest');
       root.classList.toggle('is-boost', boosting || drive);
@@ -449,7 +449,7 @@ export function createSpeedDial() {
       lastAria = t;
       root.setAttribute('aria-valuemax', String(Math.max(1, reading, Math.round(hasMax ? Number(max) : r))));
       root.setAttribute('aria-valuenow', String(reading));
-      root.setAttribute('aria-valuetext', `${reading} world units per second; reference ${Math.round(r)}${phase === 'over' ? '; above reference' : ''}`);
+      root.setAttribute('aria-valuetext', `${reading} units per second; top ${Math.round(r)}${phase === 'over' ? '; above top' : ''}`);
     }
   }
 

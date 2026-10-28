@@ -51,14 +51,15 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
     background: {
       // The original stellar island and ringed planet remain the landmarks. The painted
       // estuary is distant atmosphere around them, held below the lit machinery — dimmed and
-      // desaturated ~a third so the sky sits behind the opening frame instead of inside it.
-      paintedSky: { plate: 'helios-amber-estuary', strength: 0.14, parallax: 0.003, saturation: 1.0 },
+      // desaturated (owner 2026-10-27: the amber clouds carried more weight than gameplay, so
+      // the accent drops further; the planet itself is receded in spaceBackground's planet style).
+      paintedSky: { plate: 'helios-amber-estuary', strength: 0.10, parallax: 0.003, saturation: 1.0 },
       // §22.5 C6 — the sector's baked sky backdrop (vm-drop/sector-skies). It substitutes the
       // procedural composite base under everything: the paintedSky accent plate, the star
       // associations and the bodies still draw over it. `sky` is the deep-field mood named by
       // background.structure.recipeId; resolveBackgroundSky clamps the fields.
       sky: { plate: 'sky-helios-orbital-void', strength: 1.0, parallax: 0.002 },
-      intensity: 0.55,
+      intensity: 0.44,
       nebulaOpacity: 0.0,
       structure: {
         ...DEFAULT_STRUCTURE,
@@ -100,7 +101,9 @@ const SECTOR_FAMILY_PROFILES = Object.freeze({
         },
       },
     },
-    post: { exposure: 1.02, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
+    // Exposure a touch under 1.0 (owner 2026-10-27): the backdrop-heavy frame sits slightly
+    // darker so lit hulls and emissives pop without any rig change.
+    post: { exposure: 0.99, bloomStrengthScale: 1.0, bloomThresholdBias: 0.0 },
   }),
   core: freezeProfile({
     id: 'core',

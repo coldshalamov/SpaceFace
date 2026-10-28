@@ -2,6 +2,7 @@
 // uiRoot invokes this same one-time style owner; no copied CSS or substitute runtime.
 // The flight HUD is the first surface built on the deckplate design system (src/ui/deckplate/*);
 // injectDeckplate runs before the HUD sheet so the register's var(--dp-*) references resolve.
+import { MOBILE_FLIGHT_LAYOUT_CSS } from '../orrery/mobileFlightLayouts.js';
 import { bracketCss, INK_SHADOW } from '../hudBrackets.js';
 import { injectDeckplate } from '../deckplate/index.js';
 const HUD_STYLE_ID = 'sf-hud-style';
@@ -804,7 +805,7 @@ export function injectHudCss() {
       display: none !important;
     }
 
-    /* Mobile flight geometry belongs to mobile/styles.js. In particular, never scale the
+    /* Mobile flight geometry belongs to mobileFlightLayouts.js. In particular, never scale the
        right dock and then its radar: the compact instrument has an explicit CSS size. */
     /* D202b: Ensure ring legends, compass engraving, and micro text maintain >= 9px effective rendered size */
     :root[data-sf-mobile="1"] #hud .orr-hud-cluster .orr-micro text {
@@ -820,7 +821,11 @@ export function injectHudCss() {
       font-size: 15px !important;
     }
 
-
+    /* D202b: Prevent clipping and overlap of contextual strip on phone heights */
+    :root[data-sf-mobile="1"] #hud > .sf-leftcontext {
+      max-height: calc(100dvh - 190px) !important;
+      overflow: visible !important;
+    }
   }
   @media (max-width: 1279px), (max-height: 719px) {
     #hud .orr-hud-cluster,
@@ -3172,38 +3177,7 @@ export function injectHudCss() {
     .sf-objarrow__chev, .sf-objarrow__mark { fill:CanvasText; stroke:CanvasText; }
     .sf-objarrow__mark-bloom { display:none; }
   }
-
-  /* AL-HUD-1: compact flight controls share the contact stack's normal flow. */
-  #hud .sf-rightdock {
-    max-height:calc(100vh - 96px); max-height:calc(100dvh - 96px);
-    min-height:0; overflow-y:auto; overflow-x:hidden;
-  }
-  #hud .sf-rightdock > * { flex:0 0 auto; min-width:0; }
-  #hud .sf-rightdock > #race-tape[data-compact="true"] {
-    position:relative; top:auto; right:auto; left:auto; bottom:auto; transform:none;
-    width:100%; min-width:0; box-sizing:border-box; grid-template-columns:minmax(0,1fr);
-  }
-  #hud .sf-rightdock > #race-tape[data-compact="true"] .race-tape-actions { flex-wrap:wrap; min-width:0; }
-  #hud .sf-rightdock .sf-target__name,
-  #hud .sf-rightdock .sf-target__identity,
-  #hud .sf-rightdock .sf-target__intent,
-  #hud .sf-rightdock .sf-target__object,
-  #hud .sf-rightdock .sf-overview-footer {
-    min-width:0; white-space:normal; overflow-wrap:anywhere;
-  }
-  #hud .sf-rightdock .sf-target__triangle {
-    display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:4px 8px;
-  }
-  #hud .sf-rightdock .sf-target__tri-label { grid-column:1; grid-row:1; }
-  #hud .sf-rightdock .sf-target__tri-layer { grid-column:2; grid-row:1; }
-  #hud .sf-rightdock .sf-tri {
-    display:grid; grid-column:1 / -1; grid-template-columns:minmax(0,1fr) 52px; min-width:0;
-  }
-  #hud .sf-rightdock .sf-tri--e { grid-row:2; }
-  #hud .sf-rightdock .sf-tri--k { grid-row:3; }
-  #hud .sf-rightdock .sf-tri--x { grid-row:4; }
-  #hud .sf-rightdock .sf-tri__k { width:auto; min-width:0; text-align:left; overflow-wrap:anywhere; }
-  #hud .sf-rightdock .sf-tri__bar { width:52px; }
+  ${MOBILE_FLIGHT_LAYOUT_CSS}
   `;
   document.head.appendChild(s);
 }

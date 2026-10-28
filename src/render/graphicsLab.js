@@ -108,7 +108,7 @@ const TECHNIQUE_CATALOG = [
 const LOOKS_PRESETS = {
   live: {
     label: '1 · Live game (slow on Intel)',
-    bloom: true, strength: 0.52, threshold: 1.0, shadows: true, env: true,
+    bloom: true, strength: 0.40, threshold: 1.0, shadows: true, env: true,
     minRoughness: 0, envScale: 1, metalScale: 1, outline: false,
     verdict: 'CURRENT. Shiny PBR + HDR bloom. This is the hitch pole (full scene into HDR).',
   },
@@ -132,7 +132,7 @@ const LOOKS_PRESETS = {
   },
   outline: {
     label: '5 · Comic outline ON TOP of live (slower — trap)',
-    bloom: true, strength: 0.52, threshold: 1.0, shadows: true, env: true,
+    bloom: true, strength: 0.40, threshold: 1.0, shadows: true, env: true,
     minRoughness: 0.55, envScale: 0.5, metalScale: 0.6, outline: true,
     verdict: 'SLOWER. Extra line draws. Hides cheap tubes AND Hitch. Do not ship this for performance.',
   },

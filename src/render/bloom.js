@@ -58,7 +58,12 @@ const BLOOM_WIDE_PYRAMID_LEVELS = 4;
 const BRICK_WARN_MS = 200;
 const BALANCED_BLOOM_MSAA_SAMPLES = 0;
 export const POST_GRAIN_FPS = 12;
-export const DEFAULT_BLOOM_STRENGTH = 0.52;
+// Owner 2026-10-27: bloom was blurring the edges of ordinary lit geometry ("blurry where it
+// shouldn't be"). The discipline moved into the pipeline itself: a lower strength, a much sharper
+// bright-pass knee, and quieter mid/wide halo weights, so only genuinely emissive HDR (>1.0)
+// sources — engine cores, lamps, shots — radiate while lit paint (ceiling 0.74) and sky bodies
+// stay crisp. Per-sector profiles keep their at-or-above-baseline contract.
+export const DEFAULT_BLOOM_STRENGTH = 0.40;
 export const DEFAULT_POST_PRESENTATION = Object.freeze({ grain: 0, vignette: 0, grade: 0, toe: 0 });
 // A linear-space toe of 0.020 encoded to an RGB floor around byte 35-42, not the documented
 // perceptual target around byte 12. This calibrated value lands at roughly 11/12/14 after sRGB and
@@ -555,7 +560,7 @@ function finiteNumber(value) {
   return Number.isFinite(number) ? number : undefined;
 }
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
-// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.52 ≈ default).
+// this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.40 ≈ default).
 const BLOOM_PYRAMID_NORM = 1.32;
 
 /**
@@ -1157,8 +1162,11 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 
 // Multi-scale composite weights: tight core glow (1/2 res, weight 1), body halo (1/8), wide
 // atmosphere (1/16). Each level is sampled directly with hardware bilinear — no upsample RT or pass.
-const BLOOM_MID_WEIGHT = 0.52;
-const BLOOM_WIDE_WEIGHT = 0.38;
+// Owner 2026-10-27: the wide halo is what turned a lit strip into neon and blurred silhouettes;
+// the mid/wide weights now sit well under the tight core so emissive sources keep an honest local
+// glow while the tens-of-pixels spill recedes. Weights are composite uniforms — zero pass cost.
+const BLOOM_MID_WEIGHT = 0.40;
+const BLOOM_WIDE_WEIGHT = 0.20;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
@@ -1770,7 +1778,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
   let sharpenAmount = 0;
   let threshold = 1.0;
-  const knee = 0.25;
+  // Owner 2026-10-27 bloom discipline: the knee is the emissive gate. A wide knee (the old 0.25)
+  // let ordinary lit surfaces — paint at its 0.74 ceiling, bright sky bodies — feed the pyramid
+  // from 0.75 up, which is what blurred hard edges that should stay crisp. At 0.10 the bright-pass
+  // edge is sharp: spill begins just under the threshold, so only HDR emissives (>1.0) cross it.
+  const knee = 0.10;
   let exposure = 1.0;
   let aces = 1.0; // 1 = ACES filmic by default
   const defaultPresentation = resolvePostPresentation();

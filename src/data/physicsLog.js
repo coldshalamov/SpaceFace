@@ -73,7 +73,9 @@ const DEBRIS_LINES = Object.freeze([
 ]);
 
 const IMPACT_LINES = Object.freeze([
-  (t) => `IMPACT LOGGED — ${t} wu/s²`,
+  // The unit was the internal "wu/s²" acceleration figure — jargon a new player cannot read
+  // (owner 2026-10-27). The bare number reads as the case file's measure, in register.
+  (t) => `IMPACT LOGGED — ${t}`,
   () => 'CONTACT RECORDED. NOBODY BOUGHT IT YET.',
   () => 'TWO BODIES, ONE COORDINATE. REPORT FILED.',
   () => 'IMPACT SURVIVED. PAPERWORK ANYWAY.',

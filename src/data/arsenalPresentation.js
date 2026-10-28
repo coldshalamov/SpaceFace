@@ -392,7 +392,7 @@ export function createArsenalPresentation() {
     const counts = armedOrdnanceCounts(state, nowS);
     const shove = entries.shove;
     shove.detonates = counts;
-    shove.label = counts.total > 0 ? `Shove · Repulse + ${counts.total} detonate` : 'Shove · Repulse';
+    shove.label = counts.total > 0 ? `Shove · Pushes away + ${counts.total} blast${counts.total === 1 ? '' : 's'}` : 'Shove · Pushes away';
     if (counts.total > 0) {
       shove.sentence += ` Armed now: ${detonationText(counts)} will go off.`;
       shove.ready = { state: 'armed', reason: `Armed — sets off ${detonationText(counts)}`, cooldownMs: shove.ready.cooldownMs };
@@ -403,19 +403,21 @@ export function createArsenalPresentation() {
     b.charges = bomb.stock == null ? null : { count: bomb.stock, capacity: bomb.capacity };
     const stockText = bomb.stock == null ? '' : ` ×${bomb.stock}`;
     b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
-    b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · Rack empty')
-      : `Bomb · ${bomb.short}${stockText} · ${b.next}`;
+    b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · none left')
+      : `Bomb · ${b.next} ${bomb.short}${stockText}`;
     if (bomb.action !== 'empty') b.sentence = `Next press: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;
     rig.on = rigOn;
-    rig.label = `Rig · ${rigTarget === 'skim' ? 'Scoop' : 'Cone'}${rigOn ? ' on' : ''}`;
+    rig.label = `Rig · ${rigTarget === 'skim'
+      ? (rigOn ? 'Harvesting ore' : 'Harvest ore')
+      : (rigOn ? 'Clearing a path' : 'Clear a path')}`;
     // — Gyre: gather / release.
     const g = gyreRead(state);
     const gyre = entries.gyre;
     gyre.phase = g.phase;
-    gyre.verb = g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gather';
-    gyre.label = `Gyre · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gather'}`;
+    gyre.verb = g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks';
+    gyre.label = `Gyre · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks'}`;
     if (g.holding) gyre.sentence = 'Holding a ball. Release to throw it ahead along the nose; a hard hit or a heavy ball does the damage.';
     else if (g.gathering) gyre.sentence = `Gathering: loose rocks and wrecks in the basin are being pulled in. Keep holding to build the ball; release to stop.${g.tooHeavy ? ` ${g.tooHeavy} too big to take whole.` : ''}`;
     // The owner's own latest refusal words (matter:refused), when the caller carries one — never composed here.
