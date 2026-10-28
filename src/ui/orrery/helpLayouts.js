@@ -17,6 +17,9 @@ const HD = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-hel
 const BONE = '236 230 216';
 const HOT = '248 244 234';
 const LABEL = 'font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important; text-transform:uppercase !important;';
+/** ui-polish-171: section-row edge fades that follow the row's scroll position. */
+const TAB_EDGE_MASK = 'linear-gradient(90deg, transparent, #000 var(--sf-help-tab-fl), #000 calc(100% - var(--sf-help-tab-fr)), transparent)';
+const TAB_EDGES = `-webkit-mask-image:${TAB_EDGE_MASK}; mask-image:${TAB_EDGE_MASK}; animation:sf-help-tab-edges linear both; animation-timeline:scroll(self inline);`;
 const PLAIN = 'background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; outline:none !important; border-radius:0 !important;';
 const HAND = 'clip-path:polygon(0 0, 100% 50%, 0 100%, 30% 50%) !important;';
 // WEIGHT: a spine is a 2px line over a 7px band of bone .27 (measured ~2:1 on the glass).
@@ -453,6 +456,22 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
    under the ring names the open power) */
 @media (max-width:560px) and (min-height:461px) {
   ${HD} .orr-help-factions__orbit .orr-crest:not(.is-chosen, :hover, :focus-visible) .orr-crest__name { visibility:hidden; }
+}
+
+/* ui-polish-171: the section row on a narrow window and on the phone. A fixed right fade sat over the
+   last word even once the row was scrolled to its end, and the left edge cut mid-word ("OOPS") with no
+   fade at all; the phone row cut hard on both sides. Where the row scrolls, each edge fades only while
+   there is more row past it, driven by the row's own scroll position. */
+@property --sf-help-tab-fl { syntax:"<length>"; inherits:false; initial-value:0px; }
+@property --sf-help-tab-fr { syntax:"<length>"; inherits:false; initial-value:0px; }
+@keyframes sf-help-tab-edges { 0% { --sf-help-tab-fl:0px; --sf-help-tab-fr:56px; } 12% { --sf-help-tab-fl:40px; }
+  88% { --sf-help-tab-fr:56px; } 100% { --sf-help-tab-fl:40px; --sf-help-tab-fr:0px; } }
+@supports (animation-timeline: scroll()) {
+  @media (max-width:760px) and (min-height:461px) {
+    ${HD} > .k-hang { -webkit-mask-image:none; mask-image:none; }
+    ${HD} .orr-help__tabs { padding-right:20px !important; ${TAB_EDGES} }
+  }
+  html:root[data-sf-mobile="1"] body #screens > .k-screen.of-help.orr-help .orr-help__tabs { ${TAB_EDGES} }
 }
 
 /* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
