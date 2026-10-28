@@ -283,6 +283,11 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
 @media (max-width:1500px) {
   ${H} .orr-help-ladder__pin-word { display:none; }
   ${H} .orr-hreg__secword { letter-spacing:.12em; }
+  /* ui-polish-168: at 19vw the register (236px at 960, 243px at 1280) was narrower than FLIGHT / INTERFACE /
+     PAD / TOUCH, so TOUCH ran past its rule, and "Steer right (yaw + bank)" broke over two rows. The rig has
+     room to spare here; the register takes a little of it and its four words span the rule end to end. */
+  ${H} .orr-help-controls { grid-template-columns:minmax(0, 1fr) clamp(268px, 23vw, 300px); }
+  ${H} .orr-hreg__secs { justify-content:space-between; gap:8px; }
   ${H} .orr-help__tabs .sf-tab { padding-left:56px !important; letter-spacing:.14em !important; font-size:12px !important; }
   ${H} .orr-help__tabs > li::before { left:32px; }
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { left:22px !important; }
@@ -410,6 +415,10 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${HD} .orr-help__tabs { flex-direction:row !important; gap:18px !important; padding:0 28px 14px 0 !important; overflow-x:auto !important; scrollbar-width:none;
     background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat !important; }
   ${HD} .orr-help__tabs::-webkit-scrollbar { display:none; }
+  /* ui-polish-168: the kit fade sat on .k-hang, but the row scrolls inside its own box, so COMMODITIES was
+     cut at the window edge mid-word. The scroller carries a longer fade, and a 56px end pad lets FACTIONS clear it. */
+  ${HD} .orr-help__tabs { max-width:100% !important; box-sizing:border-box !important; padding-right:56px !important;
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 72px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 72px), transparent); }
   ${HD} .orr-help__tabs > li { width:auto !important; flex:none; }
   ${HD} .orr-help__tabs > li::before { display:none; }
   ${HD} .orr-help__tabs .sf-tab { width:auto !important; min-height:36px !important; padding:6px 0 4px !important; font-size:12px !important; letter-spacing:.14em !important; }
