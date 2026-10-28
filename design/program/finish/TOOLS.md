@@ -3,7 +3,12 @@
 
 Every command below answered a one-word prompt on 2026-10-28 unless marked otherwise. Run them from
 the repo root (`C:\Users\93rob\Documents\GitHub\SpaceFace`) with the Bash tool and
-`run_in_background: true`, so the exit notifies you. Put a `timeout` on every run.
+`run_in_background: true`, so the exit notifies you.
+
+**Never launch a terminal agent with bash `timeout`/`start` or a raw `.cmd` on Windows — each one
+opens a visible console window on the owner's desktop. Always use `scripts/agent-run.mjs`**
+(`node scripts/agent-run.mjs --log <log> --timeout <seconds> [--stdin <file>] -- <command> <args>`),
+which resolves the shim to its real binary and runs it hidden.
 
 ## The packet layout (git-ignored)
 
@@ -24,7 +29,7 @@ reset, checkout, clean or rebase, no edits outside the listed paths, no edits un
 ## Codex — GPT 6.1 Sol, extra-high reasoning (final review + ambition pass)
 
 ```bash
-timeout 3600 /c/Users/93rob/AppData/Roaming/npm/codex.cmd exec -m gpt-6.1-sol -c model_reasoning_effort="xhigh" -s danger-full-access -C "$PWD" - < .devshots/finish/<lane>/<batch>/PACKET.md > .devshots/finish/<lane>/<batch>/run.log 2>&1
+node scripts/agent-run.mjs --log .devshots/finish/<lane>/<batch>/run.log --timeout 3600 --stdin .devshots/finish/<lane>/<batch>/PACKET.md -- /c/Users/93rob/AppData/Roaming/npm/codex.cmd exec -m gpt-6.1-sol -c model_reasoning_effort="xhigh" -s danger-full-access -C "$PWD" -
 ```
 
 - **Always** call `C:\Users\93rob\AppData\Roaming\npm\codex.cmd`. The `codex.exe` on PATH is an old
@@ -40,7 +45,7 @@ timeout 3600 /c/Users/93rob/AppData/Roaming/npm/codex.cmd exec -m gpt-6.1-sol -c
 ## Grok 4.7 extra-high via cursor-agent (grunt work, half of it)
 
 ```bash
-timeout 3600 cursor-agent.cmd -p --force --trust --output-format text --model grok-4.7-xhigh --workspace "$PWD" "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says." > .devshots/finish/<lane>/<id>/run.log 2>&1
+node scripts/agent-run.mjs --log .devshots/finish/<lane>/<id>/run.log --timeout 3600 -- cursor-agent.cmd -p --force --trust --output-format text --model grok-4.7-xhigh --workspace "$PWD" "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says."
 ```
 
 - Start two `cursor-agent` runs at least ~10 s apart: simultaneous starts fail with EPERM on
@@ -50,7 +55,7 @@ timeout 3600 cursor-agent.cmd -p --force --trust --output-format text --model gr
 ## Gemini 3.8 Flash High via agy (grunt work, the other half)
 
 ```bash
-timeout 3600 agy.exe --print "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says." --model gemini-3.8-flash-high --dangerously-skip-permissions --output-format text > .devshots/finish/<lane>/<id>/run.log 2>&1
+node scripts/agent-run.mjs --log .devshots/finish/<lane>/<id>/run.log --timeout 3600 -- agy.exe --print "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says." --model gemini-3.8-flash-high --dangerously-skip-permissions --output-format text
 ```
 
 ## DeepSeek V4.1 Flash Max via OpenCode (frontend and 3D work)
@@ -68,7 +73,7 @@ changed its flags: the variant goes after `#` in the model id, there is no `--di
 root), and `--auto` approves tool permissions. Verified 2026-10-28 (answered OK):
 
 ```bash
-timeout 3600 /c/Users/93rob/AppData/Roaming/npm/opencode.cmd run -m 'opencode-go/deepseek-v4.1-flash#max' --auto "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says." > .devshots/finish/<lane>/<id>/run.log 2>&1
+node scripts/agent-run.mjs --log .devshots/finish/<lane>/<id>/run.log --timeout 3600 -- /c/Users/93rob/AppData/Roaming/npm/opencode.cmd run -m 'opencode-go/deepseek-v4.1-flash#max' --auto "Read .devshots/finish/<lane>/<id>/PACKET.md and do exactly what it says."
 ```
 
 Check the list with `/c/Users/93rob/AppData/Roaming/npm/opencode.cmd models | grep opencode-go`.
@@ -79,7 +84,7 @@ subscribed), `command-code/deepseek/deepseek-v4.1-flash` (no credits).
 ## Claude Sonnet 5.5 extra-high in the terminal (frontend batch review)
 
 ```bash
-timeout 3600 claude -p --model claude-sonnet-5-5 --effort xhigh --dangerously-skip-permissions "Read .devshots/finish/lane3/<batch>/PACKET.md and do exactly what it says." > .devshots/finish/lane3/<batch>/run.log 2>&1
+node scripts/agent-run.mjs --log .devshots/finish/lane3/<batch>/run.log --timeout 3600 -- claude -p --model claude-sonnet-5-5 --effort xhigh --dangerously-skip-permissions "Read .devshots/finish/lane3/<batch>/PACKET.md and do exactly what it says."
 ```
 
 The packet tells it which screens changed, to shoot each with `node scripts/ui-bench.mjs --shot=<id>`,
