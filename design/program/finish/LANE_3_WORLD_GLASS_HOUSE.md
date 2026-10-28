@@ -14,8 +14,6 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
-- 2026-10-28, planner: `check:baseline` → `pq020-ceres-topology` is red in the working tree because the uncommitted opening-experience edit to `src/data/worldOneOffs.js` adds one Ceres one-off (fx 10→11, colliders 183→207) without updating `scripts/check-pq020-ceres-topology.mjs`'s expected dressing counts. When that work lands, update the expectation with a reason or fix the placement.
-
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |
