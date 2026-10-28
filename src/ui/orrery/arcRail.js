@@ -568,6 +568,7 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     const localeTag = (doc.documentElement && doc.documentElement.getAttribute('data-locale')) || '';
     if (localeTag !== headTextLocale) { headTextByGroup.clear(); headWidthByGroup.clear(); headTextLocale = localeTag; }
     if (grouped) for (const h of heads) {
+      if (h && h.cont) continue;   // a continuation row's legend is blank on purpose
       const t = h && h.node && typeof h.node.querySelector === 'function' ? h.node.querySelector('.orr-arcrail__legend') : null;
       if (t && h.group != null) headTextByGroup.set(h.group, t.textContent);
       // per-em, not px: a carried width measured at last pass's head size would under- or
@@ -909,13 +910,21 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
         // stacked: the head's baseline sits on its own line above the row's tick. one line: it shares
         // the row, so it is seated on the row's centre like a verb, and only its size separates them.
         const hy = stacked ? y - 7 : y + headSize * 0.35;
+        // a split row continues the row above: it carries no second copy of the name (960×540 read
+        // REFERENCE twice), only its rule, and its verbs hang at the same indent as the first line's
+        const prev = heads.length ? heads[heads.length - 1] : null;
+        const cont = !!(prev && prev.row === i - 1 && prev.group === row.group);
         const legend = svg('text', { x: (x + 8).toFixed(1), y: hy.toFixed(1), class: 'orr-arcrail__legend' });
-        legend.textContent = headTextByGroup.get(row.group) ?? String(row.group).toUpperCase();
+        legend.textContent = cont ? '' : (headTextByGroup.get(row.group) ?? String(row.group).toUpperCase());
+        if (cont) head.setAttribute('class', 'orr-arcrail__head orr-arcrail__head--cont');
         head.appendChild(legend);
         layer.appendChild(head);
-        try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
-        if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
-        record = { node: head, row: i, group: row.group, w: headW, size: headSize, tight: seatOpts === ROW_SEAT_TIGHT, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
+        if (cont) headW = prev.w;
+        else {
+          try { headW = legend.getComputedTextLength() || 0; } catch (_) { headW = 0; }
+          if (!(headW > 0)) headW = String(legend.textContent).length * headSize * 0.86;
+        }
+        record = { node: head, row: i, group: row.group, w: headW, size: headSize, tight: seatOpts === ROW_SEAT_TIGHT, cont, rest: `${ruleRest}-${i}`, lit: `${ruleLit}-${i}` };
         // stacked: the verbs are listed one step IN, on their own line under the head. one line: they
         // follow the head along the row, the rule's short bridge between.
         cursor = stacked ? x + 20 : x + seatOpts.bridge + headW;
