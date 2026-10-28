@@ -202,46 +202,34 @@
   to   { opacity: 1; }
 }
 
-/* Stage 3: Locked (snapped shut, the lamp driven red, heavy latch — the snap lands, then still) */
+/* Stage 3: Locked (snapped shut — the Hand amber, bloom by geometry: the track widens into a
+   translucent halo stroke under the crisp fill; the old drop-shadow filter is gone — filters
+   never run in flight). */
 .sf-lockring[data-stage="locked"] .sf-lockring__fill {
-  stroke: var(--dp-danger, #ff5038);
-  filter: drop-shadow(0 0 4px var(--dp-danger-bloom, rgba(255, 80, 56, 0.7)));
+  stroke: var(--dp-lamp, #f2b950);
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__track {
+  stroke: var(--dp-lamp, #f2b950);
+  stroke-opacity: 0.24;
+  stroke-width: 6;
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__scale {
+  stroke: var(--dp-lamp, #f2b950);
+  stroke-opacity: 0.45;
 }
 
 .sf-lockring[data-stage="locked"] .sf-lockring__label {
-  color: var(--dp-danger-hot, #ff8a70);
+  color: var(--dp-lamp-hot, #ffd98c);
   font-weight: 700;
   letter-spacing: 1px;
 }
 
 .sf-lockring[data-stage="locked"] .sf-lockring__bracket {
-  border-color: var(--dp-danger, #ff5038);
+  border-color: var(--dp-lamp, #f2b950);
   opacity: 1;
   border-width: 2.5px;
-  filter: drop-shadow(0 0 3px var(--dp-danger-bloom, rgba(255, 80, 56, 0.8)));
-}
-
-/* Target Diamond Stages */
-.sf-lockdiamond[data-stage="acquiring"] .sf-lockdiamond__inner {
-  border-color: var(--dp-lamp-dim, #8a6b3a);
-  border-style: dashed;
-}
-
-.sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
-  border-color: var(--dp-lamp, #f2b950);
-  animation: sf-diamondpulse-fast 0.3s ease-in-out infinite alternate;
-}
-
-@keyframes sf-diamondpulse-fast {
-  from { transform: rotate(45deg) scale(0.9); }
-  to   { transform: rotate(45deg) scale(1.1); }
-}
-
-.sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner {
-  border-color: var(--dp-danger, #ff5038);
-  border-width: 3px;
-  box-shadow: 0 0 8px var(--dp-danger-bloom, rgba(255, 80, 56, 0.7));
-  animation: none;
 }
 
 /* --- Reduced Motion Accessibility Overrides --- */

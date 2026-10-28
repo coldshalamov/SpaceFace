@@ -28,7 +28,7 @@ test('default picture stays Medium — integrated is opt-in only', () => {
   assert.equal(state.settings.video.qualityPreset, 'medium');
   assert.equal(state.settings.video.renderScale, 1);
   assert.equal(state.settings.video.bloom, true);
-  assert.equal(state.settings.video.bloomStrength, 0.52);
+  assert.equal(state.settings.video.bloomStrength, 0.40);
   assert.equal(state.settings.video.postFx, true);
   assert.equal(state.settings.video.sharpen, false);
   assert.equal(state.settings.video.frameCap, 0);
@@ -44,7 +44,7 @@ test('integrated preset bundles the plumbed #86–#94 knobs', () => {
   assert.equal(tier.id, 'integrated');
   assert.equal(tier.shadows, false, '#86 shadows off');
   assert.equal(tier.bloom, true);
-  assert.ok(tier.bloomStrength < 0.52, '#87 reduced bloom strength');
+  assert.ok(tier.bloomStrength < 0.40, '#87 reduced bloom strength');
   assert.equal(tier.bloomLevels, 1, '#87 fewer bloom levels');
   assert.equal(tier.renderScale, 0.85, '#88 render scale 0.85');
   assert.equal(tier.pixelRatioCap, 1, '#88 pixel ratio capped at 1x — the HiDPI shading hazard');
@@ -79,7 +79,7 @@ test('leaving integrated restores a stock preset picture', () => {
   assert.equal(v.qualityPreset, 'medium');
   assert.equal(v.renderScale, 1);
   assert.equal(v.pixelRatioCap, 2);
-  assert.equal(v.bloomStrength, 0.52);
+  assert.equal(v.bloomStrength, 0.40);
   assert.equal(v.bloomLevels, 2);
   assert.equal(v.sharpen, false);
   assert.equal(v.postFx, true);

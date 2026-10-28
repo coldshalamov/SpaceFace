@@ -840,8 +840,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     const run = new Promise((resolve) => { resolveRun = resolve; });
     const spec = { subjects, path, compileOptions, urgent, resolveRun };
     if (urgent) {
-      let pos = linkSpecs.length;
-      while (pos > 0 && linkSpecs[pos - 1].urgent === true) pos -= 1;
+      // Keep deadline arrivals FIFO ahead of every not-yet-started ambient link.
+      // The active link has already left linkSpecs and is never preempted.
+      let pos = 0;
+      while (pos < linkSpecs.length && linkSpecs[pos].urgent === true) pos += 1;
       linkSpecs.splice(pos, 0, spec);
     } else {
       linkSpecs.push(spec);

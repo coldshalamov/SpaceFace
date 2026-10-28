@@ -49,7 +49,7 @@ test('Help carries the fitted weapon with its compiled changes, and a combinatio
   assert.ok(weapon, 'the fitted weapon is named on the sheet');
   assert.equal(weapon[1], 'fire', 'and rides the Fire key');
   assert.match(weapon[0], /Bounces off up to 1 surface\./, 'the compiled bounce');
-  assert.match(weapon[0], /jumps to up to \d+ more hulls? within \d+ wu/, 'the compiled hop rule');
+  assert.match(weapon[0], /jumps to up to \d+ more hulls? within \d+ units/, 'the compiled hop rule');
   const combo = rows.find((row) => row[0].startsWith('Combination — '));
   assert.ok(combo, 'the sheet carries the worked example');
   assert.match(combo[0], /Pull \(1\) drops a well on a pile of loose rocks/);

@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRookBooth, rookBoothSpec } from '../src/systems/rookBooth.js';
 import { ROOK_BOOTH } from '../src/data/rook.js';
-import { rookBoothEligible, rookDeliveryCheck, rookPayoutCr } from '../src/characters/rookRules.js';
+import { rookBoothEligible, rookDeliveryCheck, rookPayoutCr, rookPadPosition } from '../src/characters/rookRules.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER, getDeclaredSystemClock } from '../src/runtime/authoritativeSystemManifest.js';
 
-const PAD = ROOK_BOOTH.pad;
+const PAD = rookPadPosition();
 
 function fixture({ sector = ROOK_BOOTH.sectorId, kind = 'adventure' } = {}) {
   const bus = createBus(), events = [];
@@ -109,26 +111,36 @@ test('authored and owned wrecks are not inventory — POI, unique, site-structur
   assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 1, 'only the fair hull pays');
 });
 
-test('the ordinary kill hulk IS fair goods: aftermath ownership sells and retires its marker', () => {
+test('the ordinary kill hulk IS fair goods: real target death creates the sold marker', () => {
   const f = fixture();
-  // The real live shape — mining spawns the marker spec, or bindImmediateWreck merges this
-  // same identity.data (persistenceOwner 'aftermathWrecks' + provenance.markerId) onto the
-  // hull. This is the wreck the pad exists for.
-  const w = f.addWreck({ data: {
-    persistenceOwner: 'aftermathWrecks', parentType: 'ship', wreckClass: 'battlefield',
-    salvagePool: { cmdty_scrap_metal: 2 }, provenance: { markerId: 'mk_test_1', source: 'battle-aftermath' },
-  } });
+  const owner = Object.create(aftermathWrecks);
+  const registry = { get: name => name === 'aftermathWrecks' ? owner : null };
+  owner.init({ state: f.state, bus: f.bus, helpers: f.helpers, registry });
+  f.system.registry = registry;
+  const victim = f.helpers.spawnEntity({
+    type: 'ship', pos: { ...PAD }, vel: { x: 0, z: 0 }, radius: 12,
+    mass: 1800, hull: 0, hullMax: 80, data: { defId: 'ship_wasp', name: 'Cinder Wasp' },
+  });
+  victim.alive = false;
+  f.bus.emit('entity:killed', { id: victim.id, killerId: f.state.playerId });
+  const marker = f.state.aftermathWrecks.bySector[ROOK_BOOTH.sectorId].find(m => m.victimId === victim.id);
+  assert.ok(marker, 'the actual death records durable provenance');
+  const w = owner._resolveBoundWreck(marker.markerId);
+  assert.ok(w, 'the actual aftermath owner materializes and binds the hull');
   f.system.update(0.5, f.state);
   assert.equal(w.alive, false, 'an aftermath-record wreck is the canonical goods');
-  const grants = f.events.filter(([t]) => t === 'economy:grantCredits');
-  assert.equal(grants.length, 1);
-  // The sale consumes through the canonical receipt so the durable marker retires —
-  // otherwise the marker rematerializes the hull on the next enter and it sells forever.
+  assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 1);
   const consumed = f.events.filter(([t]) => t === 'salvage:completed');
   assert.equal(consumed.length, 1, 'the book files the consumption receipt once');
   assert.equal(consumed[0][1].wreckId, w.id);
-  assert.equal(consumed[0][1].markerId, 'mk_test_1', 'the durable marker is named so it retires');
+  assert.equal(consumed[0][1].markerId, marker.markerId);
   assert.equal(consumed[0][1].source, 'rook:booth');
+  assert.equal(owner._markerById(marker.markerId), null, 'the owner actually retired the marker');
+  f.bus.emit('save:loaded', {});
+  f.bus.emit('sector:enter', { sectorId: ROOK_BOOTH.sectorId });
+  f.system.update(0.5, f.state);
+  assert.equal(f.events.filter(([t]) => t === 'economy:grantCredits').length, 1, 'Continue/re-entry never repays');
+  owner.destroy();
 });
 
 test('marked freight refuses: mission, claim, encounter, durable-record and authored dressing', () => {
@@ -230,11 +242,18 @@ test('destroy unmounts cleanly: listeners, cook provider, owned beacon', () => {
   assert.equal(f.events.filter(([t]) => t === 'comms:popup').length, 1, 'only the first-boot announce remains');
 });
 
-test('the beacon is a marked non-colliding post beside the Expanse dock', () => {
+test('the beacon is a marked non-colliding global ring beside the Expanse dock', () => {
   const spec = rookBoothSpec();
   assert.equal(spec.type, 'beacon');
   assert.equal(spec.collides, false, 'the marker never shoves a hull out of the ring');
   assert.equal(spec.data.scannerSignalKind, 'salvage');
-  const d = Math.hypot(spec.pos.x - 880, spec.pos.z + 640);
+  const station = sectorLocalToGlobalForSector({ x: 880, z: -640 }, ROOK_BOOTH.sectorId);
+  const d = Math.hypot(spec.pos.x - station.x, spec.pos.z - station.z);
+  assert.deepEqual(spec.pos, { x: 9232, z: 28132 });
+  assert.equal(spec.physicsBody, false);
+  assert.equal(spec.data.circuitMark, true);
+  assert.equal(spec.data.ringRadius, ROOK_BOOTH.padRadius);
+  assert.equal(spec.data.visualRadius, ROOK_BOOTH.padRadius);
+  assert.equal(rookDeliveryCheck({ pos: ROOK_BOOTH.pad, vel: { x: 0, z: 0 } }).arrived, false);
   assert.ok(d > 60 && d < 300, `pad sits off the station body (${d.toFixed(0)} WU)`);
 });

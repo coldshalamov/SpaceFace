@@ -16,7 +16,9 @@ import { swarmCallinById } from './swarmDraft.js';
 
 export const finite = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d);
 export const sec = (n) => `${Math.round(n * 10) / 10}s`;
-export const wu = (n) => `${Math.round(n)} wu`;
+// Distances read as bare numbers with a plain word ("520 units out"), never the internal "wu"
+// shorthand — a new player cannot read it (owner 2026-10-27).
+export const wu = (n) => `${Math.round(n)} units`;
 export const plural = (n, one, many = `${one}s`) => (n === 1 ? one : many);
 
 /** A payload's short label: the catalogue's `shortName`, except two retired payloads whose short name is a power's name. */
@@ -37,7 +39,7 @@ export function detonationText(counts) {
 export function pullWords() {
   const well = FIELD_DEFS.well;
   return {
-    name: 'Pull', verb: 'Well', role: 'Gather', glyph: 'field_well_standard',
+    name: 'Pull', verb: 'Draws in', role: 'Gather', glyph: 'field_well_standard',
     sentence: `Place a gravity well at your aim point, up to ${wu(well.deployRange)} out. Light bodies, loose rocks and shots gather inside the ring; a locked hostile or object in the ring grips ${GRAVITY_MARK_FIELD_COUPLING}x as hard.`,
     limits: [`Lasts ${sec(well.durationS)}, recharges in ${sec(well.cooldownS)}. Heavy hulls shrug it off. ${FIELD_ESCAPES.well.sentence}`],
     target: 'aim point',
@@ -52,7 +54,7 @@ export function pullWords() {
 export function shoveWords() {
   const rep = FIELD_DEFS.repulsor;
   return {
-    name: 'Shove', verb: 'Repulse + detonate', role: 'Clear', glyph: 'field_repulsor_standard',
+    name: 'Shove', verb: 'Pushes away', role: 'Clear', glyph: 'field_repulsor_standard',
     sentence: `Push everything outward from your ship (${wu(rep.radius)} ring) and set off every armed charge and bomb you have out.`,
     limits: [`The ring recharges in ${sec(rep.cooldownS)}, but your armed explosives still go off while it does.`],
     target: 'your ship',
@@ -67,7 +69,7 @@ export function shoveWords() {
 export function pinWords() {
   const travel = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS;
   return {
-    name: 'Pin', verb: 'Anchor', role: 'Anchor', glyph: 'field_seed_standard',
+    name: 'Pin', verb: 'Drop anchor', role: 'Anchor', glyph: 'field_seed_standard',
     sentence: `Fire an anchor that locks in place about ${wu(travel)} out and holds for ${sec(MASS_SEED_DEF.anchorTtlS)}. Latch your Line to it to swing or haul; it does not hold or root enemies.`,
     limits: [`One anchor at a time. It recharges ${sec(MASS_SEED_DEF.cooldownS)} after the last one ends, and it can be shot down (${MASS_SEED_DEF.hull} hull).`],
     target: 'ahead of your nose',
@@ -84,7 +86,7 @@ export function rigWords(target, on) {
   const skim = FIELD_DEFS.skim;
   if (target === 'skim') {
     return {
-      name: 'Rig', verb: on ? 'Scoop on' : 'Scoop', role: 'Harvest', glyph: 'field_skim_standard',
+      name: 'Rig', verb: on ? 'Harvesting ore' : 'Harvest ore', role: 'Harvest', glyph: 'field_skim_standard',
       sentence: on
         ? 'The skim scoop is open. Press to close it.'
         : `You are in a planet band, so Rig opens the skim scoop (${wu(skim.radius)} sheet) and harvests by grazing. Open space has nothing to collect.`,
@@ -99,7 +101,7 @@ export function rigWords(target, on) {
     };
   }
   return {
-    name: 'Rig', verb: on ? 'Cone on' : 'Cone', role: 'Clear', glyph: 'field_cone_standard',
+    name: 'Rig', verb: on ? 'Clearing a path' : 'Clear a path', role: 'Clear', glyph: 'field_cone_standard',
     sentence: on
       ? 'The clearing cone is open. Press to fold it.'
       : `Open a forward plow (${wu(cone.radius)}, ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge) that sweeps loose bodies into each other. Press again to fold it.`,
@@ -130,7 +132,7 @@ export function bombWords(act) {
   if (act.action === 'callin') {
     const row = swarmCallinById(act.kind);
     return {
-      name: 'Bomb', verb: act.kind === 'orbital_lance' ? 'Call in lance' : 'Call in smart bomb', role: 'Detonate',
+      name: 'Bomb', verb: act.kind === 'orbital_lance' ? 'Call in strike' : 'Call in smart bomb', role: 'Detonate',
       glyph: act.id, sentence: row ? row.blurb : 'A swarm call-in charge.',
       limits: ['A swarm call-in spends one charge from this run. With none left, Bomb falls back to your drift bomb.'],
       target: 'your aim', range: null, cost: { kind: 'stock', unit: 'call-in' }, cooldownS: 0,
@@ -149,7 +151,7 @@ export function bombWords(act) {
     };
   }
   return {
-    name: 'Bomb', verb: 'Rack empty', role: 'Detonate', glyph: act && act.kind === 'dry' ? act.id : '',
+    name: 'Bomb', verb: 'None left', role: 'Detonate', glyph: act && act.kind === 'dry' ? act.id : '',
     sentence: act && act.kind === 'dry'
       ? `Your ${act.name} socket is empty. Restock at a station shipworks; a charge in the hold is thrown instead.`
       : 'Your bomb rack is empty. Restock at a station shipworks; a charge in the hold is thrown instead.',
@@ -163,7 +165,7 @@ export const LINE_BANK = 'throw the tether line onto a body and haul it — tap 
 
 export function lineWords() {
   return {
-    name: 'Line', verb: 'Latch / cut', role: 'Haul', glyph: 'power_massline',
+    name: 'Line', verb: 'Haul', role: 'Haul', glyph: 'power_massline',
     sentence: `${LINE_BANK[0].toUpperCase()}${LINE_BANK.slice(1)}.`,
     limits: [arsenalSentence('power_massline')],
     target: 'body in reach', range: null, cost: null, cooldownS: 0,
@@ -174,7 +176,7 @@ export function lineWords() {
 
 export function travelWords() {
   return {
-    name: 'Burn', verb: 'Latch', role: 'Cruise', glyph: 'power_travel_burn',
+    name: 'Burn', verb: 'Cruise', role: 'Cruise', glyph: 'power_travel_burn',
     sentence: arsenalSentence('power_travel_burn'), limits: [], target: 'your ship', range: null, cost: null, cooldownS: 0,
     combos: [], sources: { sentence: 'data/arsenalIdentity.power_travel_burn' },
   };
@@ -183,8 +185,8 @@ export function travelWords() {
 export function gyreWords() {
   const g = GYRE_SNARE;
   return {
-    name: 'Gyre', verb: 'Gather', role: 'Gather', glyph: 'power_gyre',
-    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} wu/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
+    name: 'Gyre', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
+    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} u/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
     limits: [`Needs ${g.capActivateMin} charge to start and drains it while held. Cargo, quest wrecks and anchored scenery are towed or skipped, never swallowed; bodies wider than ${wu(g.maxClumpRadius)} do not fit.`],
     target: 'ahead of your nose',
     range: { shape: 'basin', radiusWu: g.basinRadius, reachWu: g.mawDist },
@@ -200,7 +202,7 @@ export function cloakWords(read) {
   const mod = read.module;
   const base = mod && mod.mods ? finite(mod.mods.cloakBaseRadius) : 0;
   return {
-    name: 'Cloak', verb: 'Toggle', role: 'Conceal', glyph: mod ? mod.id : '',
+    name: 'Cloak', verb: 'Hide', role: 'Conceal', glyph: mod ? mod.id : '',
     sentence: `Go dark: anything outside your signature ring${base ? ` (${wu(base)} at rest)` : ''} loses you. Thrust, boost and reeling widen the ring; coasting shrinks it.`,
     limits: ['Firing, a hull breach, a drive spool or dumping cargo drops it, and a scanner pulse burns it open. Concealment depends on distance and what you do, not on the cloak alone.'],
     target: 'your ship', range: base ? { shape: 'ring', radiusWu: base, reachWu: 0 } : null,

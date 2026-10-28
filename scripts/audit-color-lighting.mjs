@@ -86,11 +86,11 @@ function check(name, ok, detail = '') {
   const fam = read('src/render/industrialMaterialFamilies.js');
   check('material families intact', /painted_shell/.test(fam) && /worn_tool_metal/.test(fam));
 }
-// 5. Bloom defaults unchanged (threshold 1.0, strength 0.52).
+// 5. Bloom defaults unchanged (threshold 1.0, strength 0.40 — owner bloom discipline 2026-10-27).
 {
   const bloom = read('src/render/bloom.js');
   check('bloom threshold 1.0', /let threshold = 1\.0;/.test(bloom));
-  check('bloom strength 0.52', /DEFAULT_BLOOM_STRENGTH\s*=\s*0\.52/.test(bloom));
+  check('bloom strength 0.40', /DEFAULT_BLOOM_STRENGTH\s*=\s*0\.40/.test(bloom));
 }
 
 for (const n of notes) console.log(n);

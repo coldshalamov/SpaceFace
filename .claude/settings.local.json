@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git merge *)",
+      "Bash(git rev-list *)",
+      "Bash(npm run *)",
+      "Bash(node design/incubator/microevent_library/build-microevent-bible.mjs)",
+      "Bash(git add *)"
+    ]
+  },
+  "outputStyle": "Explanatory",
+  "prefersReducedMotion": false
+}

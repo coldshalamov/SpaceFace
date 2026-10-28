@@ -12,6 +12,16 @@ the named outcome of the job you were given, then stop. Full working agreement:
 [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md). Named-task index:
 [`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md).
 
+**ACTIVE PROGRAM (owner, 2026-10-28): the Finish Program — [`design/program/finish/README.md`](design/program/finish/README.md).**
+Three lanes share this checkout, each with its own board and copy-paste prompt (`PROMPT_LANE_1..3.md`):
+Lane 1 MACHINE & PICTURE (performance, renderer, loading, assets, VFX), Lane 2 FIGHT & SIM (combat,
+Crucible/Swarm, AI, physics, tests/scripts), Lane 3 WORLD, GLASS & HOUSE (Adventure, economy, story,
+every 2D screen, audio, docs). While it runs, a lane's board is its job (not `program-dispatch --next`),
+path ownership is README §3, and the owner rulings in README §2 outrank the older rules below where they
+conflict (default quality may follow the hardware budget; measure on this machine; Codex batch review
+replaces `LANDED_REVIEW.md` rows; the ORRERY frontend claim has lapsed). An agent outside the three
+lanes edits only paths no lane claims, or appends to the owning lane's board Inbox.
+
 ## 1. Start by task
 
 | Task | Start here |
@@ -222,7 +232,10 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
   object — distant background stars are the only exception, and only while tiny, bright, and at sky
   depth.
 - **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
-  pacing. Do not pass gates by removing authored visuals or lowering default quality.
+  pacing. Do not pass gates by removing authored visuals. **Owner, 2026-10-28:** the default quality
+  on a machine is the highest tier that holds the frame budget on that machine — auto-applied tiers,
+  banded dynamic resolution and small measured sacrifices are allowed with a within-session A/B and a
+  look check, recorded in `docs/visual-assets/LOOK.md` (`design/program/finish/README.md` §2).
 - **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
   contrast. Accessibility does not require a universal visual style.
 - **Dependencies/media:** the outside resources that would make this game better are named in

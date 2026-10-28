@@ -101,6 +101,17 @@ function gatherPhysicalCandidates(state, center, radius, options) {
         lists[2] = index.payloads;
         lists[3] = index.mines;
         lists.length = 4;
+        // Kinematic fauna never enter the collision hash. Only explicit callers
+        // (e.g. bomb scalar damage) may add them; this grants no physics body.
+        if (typeof options.alsoEligible === 'function') {
+          if (index.ready === false) {
+            // Only the explicitly admitted fauna lane falls back while its index builds.
+            // Existing loose/combat candidate behavior is not broadened by this repair.
+            for (const e of state.entityList || []) {
+              if (e?.type === 'fauna' && options.alsoEligible(e)) live.push(e);
+            }
+          } else lists[lists.length++] = index.fauna;
+        }
       } else {
         lists[0] = state.entityList;
         lists.length = 1;
@@ -108,13 +119,16 @@ function gatherPhysicalCandidates(state, center, radius, options) {
       // The loose lists are the non-hash coverage (jettisoned cargo spawns
       // collides:false and never enters the hash); without a ready index the
       // entityList fallback yields only those same loose types, since ships and
-      // table bodies already arrived via hash + combat table.
+      // table bodies already arrived via hash + combat table. Explicit alsoEligible
+      // callers additionally recover their noncolliding fauna, with the same
+      // species predicate in both indexed and not-yet-indexed worlds.
       for (let i = 0; i < lists.length; i++) {
         const list = lists[i];
         if (!list) continue;
         for (let j = 0; j < list.length; j++) {
           const e = list[j];
-          if (!e || !LOOSE_TYPES.has(e.type) && !(e.data && e.data.majorDebris)) continue;
+          if (!e || (!LOOSE_TYPES.has(e.type) && !(e.data && e.data.majorDebris)
+            && !(e.type === 'fauna' && typeof options.alsoEligible === 'function' && options.alsoEligible(e)))) continue;
           live.push(e);
         }
       }

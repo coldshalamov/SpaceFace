@@ -16,7 +16,7 @@ function run(scenario) {
   return JSON.parse(result.stdout);
 }
 
-test('a departed owner during plan decode is observed before the speculative prefetch settles', () => {
+test('a departed owner during current-plan decode is observed without composition', () => {
   const result = run('owner-departed');
   assert.deepEqual(result.unhandled, []);
   assert.equal(result.errors.length, 1);
@@ -26,11 +26,14 @@ test('a departed owner during plan decode is observed before the speculative pre
   assert.equal(result.activeDecodeCount, 0);
 });
 
-test('prefetch cancellation cannot abandon the already-started deadline rejection', () => {
-  const result = run('cancel-prefetch');
+test('current-plan cancellation cannot abandon its later decode rejection', () => {
+  const result = run('cancel-current-plan');
   assert.deepEqual(result.unhandled, []);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0].name, 'AbortError');
+  assert.equal(result.errors[0].message, 'fixture owner retired');
+  assert.equal(result.errorsBeforeLateDecode, 1, 'owning cancellation settles before the late decode rejects');
+  assert.equal(result.beforeDecodeCompositions, 0);
   assert.equal(result.compositions, 0);
   assert.equal(result.activeDecodeCount, 0);
 });
@@ -43,11 +46,11 @@ test('a real decode failure still reaches the owning admission unchanged', () =>
   assert.equal(result.activeDecodeCount, 0);
 });
 
-test('a live owner waits for both prefetch and deadline decode before composition', () => {
+test('a live owner waits for the exact current-plan decode before composition', () => {
   const result = run('live');
   assert.deepEqual(result.unhandled, []);
   assert.deepEqual(result.errors, []);
-  assert.equal(result.beforePrefetchCompositions, 0);
+  assert.equal(result.beforeDecodeCompositions, 0);
   assert.equal(result.compositions, 1);
   assert.equal(result.activeDecodeCount, 0);
   assert.equal(result.hasRequiredRecord, true);

@@ -63,6 +63,9 @@ import { PaintedPlanets } from './paintedPlanets.js';
 // The sky uses authored colour images rather than lit hull materials. Shape their value response
 // in the existing sprite pass so the painted sky and illustrated solids share cool shadows and
 // broad light planes. Keep chroma, fine cloud/rock detail, transparency and every source image.
+// Owner 2026-10-27: the ringed giant read bright and same-plane with gameplay, so the style now
+// recedes it — value pulled toward the sky plate, chroma eased toward luminance, and the old
+// mid-tone lift (which brightened whole hemispheres) kept only as a whisper.
 const PLANET_STYLE_GLSL = /* glsl */`
   float sfSkyValue = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
   float sfSkyBands = 0.035
@@ -70,9 +73,15 @@ const PLANET_STYLE_GLSL = /* glsl */`
     + 0.26 * smoothstep(0.27, 0.35, sfSkyValue)
     + 0.38 * smoothstep(0.55, 0.66, sfSkyValue);
   // No positive floor on black pixels: atmosphere gutters and the night side remain dark.
-  float sfSkyShaped = mix(sfSkyValue, sfSkyBands, 0.34 * smoothstep(0.015, 0.06, sfSkyValue));
-  vec3 sfSkyTint = mix(vec3(0.86, 0.94, 1.10), vec3(1.035, 1.01, 0.96), smoothstep(0.08, 0.48, sfSkyValue));
-  outgoingLight = diffuseColor.rgb * (sfSkyShaped / max(sfSkyValue, 0.0001)) * sfSkyTint;
+  float sfSkyShaped = mix(sfSkyValue, sfSkyBands, 0.10 * smoothstep(0.015, 0.06, sfSkyValue));
+  // Cooler, dimmer bookends than the old 0.86..1.035 tints: the body keeps its cool shadow bias
+  // but never reaches full white, so its disk reads as far backdrop rather than a co-star.
+  vec3 sfSkyTint = mix(vec3(0.74, 0.84, 1.04), vec3(0.90, 0.88, 0.86), smoothstep(0.08, 0.48, sfSkyValue));
+  vec3 sfSkyLit = diffuseColor.rgb * (sfSkyShaped / max(sfSkyValue, 0.0001)) * sfSkyTint;
+  // Chroma ease toward the pixel's own luminance — saturation a far body cannot carry — then a
+  // final value pull that lands the brightest limb well under gameplay emissives.
+  float sfSkyOut = dot(sfSkyLit, vec3(0.2126, 0.7152, 0.0722));
+  outgoingLight = mix(sfSkyLit, vec3(sfSkyOut), 0.20) * 0.82;
 `;
 
 function stylePlanetMaterial(material) {
@@ -81,7 +90,7 @@ function stylePlanetMaterial(material) {
     if (!shader.fragmentShader.includes(needle)) throw new Error('[background] planet style shader contract changed');
     shader.fragmentShader = shader.fragmentShader.replace(needle, PLANET_STYLE_GLSL);
   };
-  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v1';
+  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v2';
 }
 
 // Retired: the old per-frame plate shader that shaded a 12-vertex outline by normalizing against
@@ -197,8 +206,10 @@ const HERO_DEPTH = 12;
 // for the admission/retirement rules that hold the single slot.
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
 // A Crucible round recedes the sky landmarks (ringed giant, stellar formation) so nothing behind the
-// fight competes with hostiles for the eye; they stay drawn, just quieter.
-const ARENA_BACKDROP_FOCUS = 0.38;
+// fight competes with hostiles for the eye; they stay drawn, just quieter. Owner 2026-10-27: at 0.38
+// the giant still read same-plane with gameplay ("confusing what's the background"), so the round
+// recede is deepened — a dim ghost of the landmark, not a co-star.
+const ARENA_BACKDROP_FOCUS = 0.22;
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
 const backgroundDepthMaterials = new WeakSet();

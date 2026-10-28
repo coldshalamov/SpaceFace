@@ -433,6 +433,23 @@ test('T04 §1: scoring stays explainable while direct Massline attachment accept
   }
 });
 
+test('a tier-zero opening Massline can still latch a physical boulder-class anchor', () => {
+  for (const tetherMode of [null, 'nearest']) {
+    const rock = asteroid(19, { pos: { x: 120, z: 0 }, radius: 14, mass: 640 });
+    const h = buildHarness([rock], {
+      aimWorld: { x: rock.pos.x, z: rock.pos.z },
+      tetherMode,
+    });
+    h.state.rockCore = { tier: 0 };
+
+    fireLatch(h);
+
+    assert.equal(h.events.denied.length, 0, `tier-zero ${tetherMode || 'scored'} latch was denied`);
+    assert.equal(h.events.latched.length, 1, `tier-zero ${tetherMode || 'scored'} latch must attach`);
+    assert.equal(h.events.latched[0]?.targetId, rock.id);
+  }
+});
+
 test('transient projectiles and effects are not Massline targets unless explicitly opted in', () => {
   const base = {
     alive: true,

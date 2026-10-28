@@ -59,6 +59,15 @@ const OBJECTIVE_SELF_CLEARANCE_PX = 34;
 
 export const SWARM_DENSITY_THRESHOLD = 8;
 
+/**
+ * Distance text the DIAL prints ("RANGE 4.0K", "◆ BEACON · 457"). The shared formatter appends the
+ * internal " WU" unit; that shorthand is jargon a new player cannot read (owner 2026-10-27), so the
+ * display layer strips it here and the bare number rides the same scale as the RANGE label.
+ */
+function dialDistance(worldUnits) {
+  return String(formatRadarDistance(worldUnits)).replace(/\s+WU$/i, '');
+}
+
 /** Clock bearing of the nearest hostile glyph that this draw actually painted. */
 export function radarHostileCourseText(marks, center, offRangeMarker = null, drawnLimit = MAX_SEMANTIC_HOSTILES) {
   let nearest = null; let distanceSq = Infinity;
@@ -1187,7 +1196,7 @@ function rangePlateLayout(metrics, range, expanded) {
   ) {
     return _rangePlateCache;
   }
-  const text = `RANGE ${formatRadarDistance(range)}`;
+  const text = `RANGE ${dialDistance(range)}`;
   if (!_rangePlateCache._probe) {
     const c = typeof document !== 'undefined' && document.createElement
       ? document.createElement('canvas')
@@ -1971,7 +1980,7 @@ export function createRadar(ctx) {
   function updateObjectiveKey(waypoint, cue) {
     if (waypoint) {
       const label = waypointLabel(waypoint);
-      const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
+      const distance = cue && cue.resolved ? dialDistance(cue.distance) : 'ROUTE PENDING';
       // The diamond alone keys the objective (the amber Hand on the rim points the same bearing),
       // so the plate leads with the NAME — the thing a pilot scans for — then the distance. The
       // old "OBJECTIVE 457 WU · BEACON" buried the name and wrapped past the dial's width.
@@ -2535,11 +2544,11 @@ export function createRadar(ctx) {
     }
 
     drawThreatRing(g, metrics, hostileCount, now, reducedMotion);
-    if (frame) frame.setRange(formatRadarDistance(range));
+    if (frame) frame.setRange(dialDistance(range));
     else drawRangePlate(g, metrics, range, expanded);
 
     const ariaLabel = waypoint
-      ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${formatRadarDistance(cue && cue.distance)}.`
+      ? `Local tactical radar. You are the lit centre hull. Objective ${label}, ${dialDistance(cue && cue.distance)}.`
       : 'Local tactical radar. You are the lit centre hull. Hostiles are red class silhouettes, stations are cyan berth hexagons, gates are violet double rings, allied ships are green, and nearby traffic is blue-grey. Distant small traffic stays off the dial.';
     lastAriaLabel = ariaLabel;
     publishRadarHostileCourse(canvas, { baseLabel: ariaLabel, mode: state.mode, simTime: state.simTime,

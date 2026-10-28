@@ -130,13 +130,24 @@ export function collectStationHandoffSnapshot() {
   };
 }
 
-export async function captureStationHandoffScreenshot(page, context) {
+export async function captureStationHandoffScreenshot(page, context, {
+  prepareDirectory = mkdir,
+  beforeScreenshotDispatch = null,
+  screenshotTimeoutMs = 2000,
+} = {}) {
   if (typeof page.screenshot !== 'function') return null;
   const boundary = String(context?.boundary || 'handoff').replace(/[^a-z0-9]+/gi, '-').slice(0, 80);
   const file = resolve('scratch/check-ci-report/station-handoff', `${Date.now()}-${boundary}.png`);
-  await mkdir(resolve('scratch/check-ci-report/station-handoff'), { recursive: true });
+  await prepareDirectory(resolve('scratch/check-ci-report/station-handoff'), { recursive: true });
+  // Optional caller deadline guard runs AFTER filesystem preparation and immediately before
+  // dispatch. A timed-out mkdir must not start a late screenshot against the acceptance gate.
+  if (beforeScreenshotDispatch) beforeScreenshotDispatch();
+  // Resolve a caller budget only after directory preparation, so it can use the remaining
+  // observation deadline. Omitted/invalid budgets retain the existing two-second default.
+  const requestedTimeout = typeof screenshotTimeoutMs === 'function' ? screenshotTimeoutMs() : screenshotTimeoutMs;
+  const timeout = Number.isFinite(requestedTimeout) && requestedTimeout > 0 ? requestedTimeout : 2000;
   // Default screenshot semantics preserve animations. Do not freeze/unhide/alter the failed view.
-  await page.screenshot({ path: file, type: 'png', timeout: 2000 });
+  await page.screenshot({ path: file, type: 'png', timeout });
   return file;
 }
 

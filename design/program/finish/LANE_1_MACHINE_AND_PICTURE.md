@@ -1,0 +1,228 @@
+<!-- LIFETIME: STABLE -->
+# Lane 1 — THE MACHINE & THE PICTURE (high complexity, taste)
+
+**Written only by Lane 1.** Other lanes append one line to *Inbox* and nothing else.
+Program law: [`README.md`](./README.md). Commands: [`TOOLS.md`](./TOOLS.md). Prompt: [`PROMPT_LANE_1.md`](./PROMPT_LANE_1.md).
+
+**The outcome:** SpaceFace runs like a professional game on the owner's Intel-iGPU laptop — combat
+with 150+ bodies on screen at 60 fps, no hitch you can feel, a loading screen that never freezes, a
+long session that never dies — and every model, effect and sky on screen is beautiful *within* that
+budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reason>)`.
+
+## Baseline (packet M0 rewrites this table with today's numbers, then keeps a dated row per re-measure)
+
+| Date | Build | Crucible p50 / p99 / longest | GPU p50 | Adventure p50 / p99 / longest | Longest load task | Loading anim gap p99 | Launch→flight | Host busy |
+|---|---|---|---|---|---|---|---|---|
+| 2026-10-28 (from docs) | various | 86 / ~125 (p95) / multi-s | 23.7 ms | 23.2 / 109.4 / 324 | 5,000 ms | unmeasured | 11.6 s | contended |
+
+Targets and floors: README §4.
+
+## Claimed paths (beyond README §3)
+
+*(Lane 1 writes border files it has taken here.)*
+
+## Inbox (other lanes append one line: date, lane, path, what/why)
+
+## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
+
+| # | What a stranger sees | Where | Next step |
+|---|---|---|---|
+| D269 | Crucible combat 1–4 fps under the harness, ~12 fps unobserved | Crucible round; render + sim main thread | packets M0–M6 |
+| D268 | Adventure dies on "Graphics interrupted" after ~172 s (buffer resize on a geometry whose CPU arrays `packageCpuDetach.js` freed) | `src/core/presentationRunner.js`, `src/render/packageCpuDetach.js` ~690–725 | packet M8 |
+| D130 | Adventure flight p99 109 ms, longest 324 ms | ordinary flight | M1–M5, M10 |
+| D251 | Deployed route streams 146 MB (84.7 MB GLB) before first flight | opening required set, `FlightReadySet` | packet M9 |
+| D250 | Boot cannot fetch the game module under `ERR_INSUFFICIENT_RESOURCES` | asset fetch concurrency | packet M8 |
+| D252 | Deployed WebKit renderer stops answering before the menu | `probe-deployed-mobile.mjs --engine=webkit` | packet M9 |
+| D229 | Metallic rocks draw wrong during the rock-family decode rewarm on sector entry (watch) | asteroid-appear probe | packet A5 |
+| D199 | Asteroids lack contrast against the background | look / player-truth ownership | packet A5 |
+
+## The ordered packets
+
+Work top to bottom. Two may run at once when their paths are disjoint. Re-measure the baseline
+after every three landed perf packets and add a dated row above.
+
+### Wave M — the machine (do these first; they are the owner's top complaint)
+
+**M0 — Baseline and the stress bench.** Re-record every bar in README §4 on today's build, within one
+session, host busy printed. Use the existing tools: `scripts/probe-crucible-load-and-gpu.mjs`
+(GPU timer queries work on this laptop), `scripts/probe-crucible-programs.mjs`,
+`scripts/probe-frame-solid.mjs` (`--cpu-profile`, `--compare=`), `scripts/probe-main-thread-profile.mjs`
+(`--crucible --settle-ms --eval-file` for within-session A/B), `npm run probe:runtime-witness`. Add the
+two missing instruments: (a) an **unobserved** Crucible stress run (no readbacks, no screenshots) at
+round 1 and at a forced wave-15 crowd, reporting frame p50/p99/longest, GPU per pass, main-thread
+split; (b) a **loading-animation gap probe** that timestamps the loading animation's own frames
+(the worker canvas commits, `loadingTerminalArt.js` / `bootRingWorker.js`) from Launch to first
+flight. Write the numbers into the Baseline table. Done when every README §4 row has a measured
+baseline.
+
+**M1 — Turn the simulation worker on by default.** `src/core/simLaneMain.js`,
+`wholeSimBrowserWorker.js`, `simLaneCommands.js`, `simLaneJournal.js`, `src/main.js`. State:
+`design/perf/STRUCTURAL-HORIZON.md` stages 0–9 (golden digests bit-identical worker vs main, independent
+review SHIP). Ruling 8 removes the 0.5 ms wire bar. Work: within-session A/B (`?simLane=worker` vs main)
+on Crucible and Adventure; close the honest gap list (Electron provisioning path, `discardPreparedNewGameScene`
+mirror clobber, debug ring on `window`, the echo-suppression edge); serve COOP/COEP in Electron and
+the dev/release servers so the SAB journal path is live (`?simSab=1` → default when `crossOriginIsolated`);
+flip the default; keep `?simLane=main` as the escape hatch. Coordinate with Lane 2 via its Inbox: any
+sim-side code they add must stay worker-safe. Done when the default route runs the sim off the main
+thread, parity/digest tests are green, and the A/B shows the frame win.
+
+**M2 — Unwrap `unreadyDrawGuard` once readiness settles.** `src/render/bloom.js:~1337` wraps every draw
+(12.5 % inclusive in the Crucible round). After `unreadyProgramsPending` is false, swap in the raw
+`renderBufferDirect`; re-wrap only on a new mount. Done when the profile share is < 1 % in a settled
+round and no unready program ever draws (keep the existing guard test).
+
+**M3 — Fewer programs, fewer switches, fewer draws.** `setProgram` 7.9 % + `renderBufferDirect` 10.6 %;
+203 programs in a Crucible run, split by instancing (57), vertex colour (39), light count (37) and
+shadows (37). Steps, each measured: (a) bake Forge hull identity colour from `material.color` into a
+`COLOR_0` attribute at release time so one material serves a hull (`ASSET_PERFORMANCE_PROGRAM.md` §4.2;
+`materialShareSignature`); (b) enable `mergeGroups` in the render-package compiler for every package it
+is legal for (on for 1 of 414 today); (c) one fixed light-count variant (lights already pool; never
+toggle `light.visible`, it recompiles); (d) per-hull-family `InstancedMesh` or the retained-slot opaque
+`BatchedMesh` path (`renderer.js` `_opaqueBatchEnabled`, PQ-129.12) — whichever wins the A/B. Done
+when programs per Crucible run and draws per frame are both down ≥ 40 % and `setProgram` < 2 %.
+
+**M4 — The composite pass.** One full-screen composite draw costs 7.1 ms of GPU per frame
+(`bloom.js:240-460`: 5-tap edge detect, extra edge taps, three bloom samples, contrast LUT, grade,
+grain on a half-float target). Gate the expensive taps by tier, fold grain/vignette/grade into one
+baked LUT, run at the render-scale target, early-out where bloom is zero. Done when the composite is
+≤ 2.5 ms GPU on this laptop and a side-by-side look check passes.
+
+**M5 — Smooth by default on this hardware (ruling 1).** `src/render/adaptiveQuality.js:~112-130`,
+`slowFrameOffer.js`. Auto-apply the integrated-GPU tier when the GPU classifies integrated; dynamic
+resolution in hysteresis bands (step down after N slow frames, up after M fast, never oscillate); a
+sharpen pass so 0.75–0.85 render scale still reads crisp; the settings screen shows what was chosen and
+lets the player raise it. Record every sacrifice in `docs/visual-assets/LOOK.md`. Done when the
+Crucible bar meets its floor on this laptop with the picture judged still SpaceFace.
+
+**M6 — Kill the loading, draft and title freezes.** `ASSET_PERFORMANCE_PROGRAM.md` §7.2 lists them:
+the 2.5 s caption-layout storm (fixed, re-measure), `crucibleDraft.js _syncRailScale/_clipRailToWholeRows`
+layout reads (border file — Lane 3 owns `src/ui/`; make the minimal fix and note it in their Inbox),
+`pipSpannerPreview.js resize → setSize` 1.2 s native (size canvases once), first-sight program links on
+the title (0.6 s, 1.6 s), the credits render, native pipeline compile, opening GPU admission, render-package
+load. Map every long task ≥ 100 ms from Launch to first flight onto the CPU profile and fix it or slice it.
+Done when the longest main-thread task from Launch click to first flight frame meets the floor, then the target.
+
+**M7 — The loading screen is smooth and immersive.** The animation already draws in workers
+(`loadingTerminalArt.js:~1784`, `bootRingWorker.js:~150`) and boot pacing yields between slices
+(`bootShellPacing.js`), yet the owner sees it hitch. Measure with M0's gap probe *what* stalls it before
+changing anything. Strong hypothesis: GPU-process stalls (driver program links, big texture/buffer
+uploads, canvas allocation) block presentation of every canvas, worker canvases included — so the fix
+is pacing GPU work into small budgets during loading (links issued in parallel under
+`KHR_parallel_shader_compile`, uploads chunked, no canvas resizes), plus moving any main-thread-driven
+progress text/DOM updates to compositor-only CSS (transform/opacity) or the worker. Then make it
+beautiful: the loading screen is the first impression and should feel like the ship powering up.
+Done when the loading-animation gap p99 meets the target with no visible freeze, judged on the real screen.
+
+**M8 — Never die mid-session.** D268: every detached geometry (`packageCpuDetach.js`) must rehydrate on
+context restore, never be resized after detach, and a frame error on a detached geometry rehydrates
+instead of terminating (`presentationRunner.js`). D250: cap concurrent asset fetches and retry with
+backoff. Add a forced-context-loss test and a 30-minute Adventure soak to the M0 bench. Done when the
+soak + one forced context loss shows zero terminal panes.
+
+**M9 — Load less, load later.** 28 MB of minified JS in the eager closure (`scripts/build-bundle.mjs`,
+esbuild splitting): lazy-load per mode and per screen; make `modelTruthCensus.generated.js` and
+`en-US.generated.js` fetched JSON instead of chunk payload; move `ruckusMeshData/*.js` (3.4 MB of mesh
+as JS) to a binary asset; take `src/testing/**` out of the retail graph (static imports in
+`renderer.js`, `renderUpdatePhase.js`, `simulationRunner.js`, `sim/titleAttract.js`,
+`data/causalFoundry/presentation.js` → a hook registry or build alias). D251: ship a lean
+`FlightReadySet` and stream the rest after first flight. D252: fix the WebKit menu stall. Done when
+the load rows of README §4 meet their floor.
+
+**M10 — First sight never stalls.** Adventure first-sight program links (`pipelineReadiness.js`
+serializes every link behind one `linkActive` tail): issue links in parallel batches, use
+`programBinaryCache.js`, and rely on M3's smaller program count. **Do not** prewarm with dummy meshes
+(measured worse). Done when no first-sight link blocks > 16 ms in a fixed-seed Adventure route.
+
+**M11 — Electron and browser flags.** A/B `--disable-renderer-backgrounding`,
+`--force_high_performance_gpu`, `powerPreference: "high-performance"`, `--ignore-gpu-blocklist`,
+and ANGLE `d3d11` vs `vulkan` (confirm the active backend in `chrome://gpu`). Keep what wins.
+
+**M12 — The footage recorder costs 8–12 % fps while recording.** Do not re-run the pixel-read
+experiments (memory: reading pixels at all is the cost). Make capture event-windowed (record only
+around a moment the replay can use) and stop it whenever the frame is over budget; keep the replay
+feature reachable.
+
+**M13 — Split the monoliths (one dedicated packet each, no other edits to that file in flight).**
+`renderer.js` (36,741 lines) below 8k (row 412): the free functions into `render/runtime/*`, the `render`
+object into per-concern modules (entity sync, shadows/LOD, residency/prewarm, post stage, lifecycle).
+`vfx.js` (18,470) into `render/vfx/` per effect family. `partsLibrary.js`: collapse the 15 sync/"stepped
+twin" pairs into one generator with a sync driver. Grunt the moves through Grok/Gemini; prove with
+byte-identical golden digests, the boot census, and `check:baseline`. Do these **after** M1–M5 land.
+
+### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
+
+**A1 — Review every shipped asset.** 831 GLBs in `assets/ships/release` (`npm run perf:assets`,
+`scripts/asset-census.mjs`, `asset-material-census.mjs`). For each family: look at it at the gameplay
+camera with `node scripts/fleet-look.mjs` and open the PNG; fix what reads cheap; clamp place/works maps
+that sit a few hundred pixels tall to 1024 (`place_works_derrick` 21 MB, `works_rover` 20 MB,
+`works_inclusion_kit` 16 MB first), merge tint-only duplicate slots (68.7 % of 6,734 slots), make sure
+every hull has an LOD chain, dedupe the duplicate refinery GLB and ORM textures, write a triangle and
+texture budget per asset class into `check-asset-census.mjs`. Forge is the only way to build a body
+(`tools/blender/forge/FORGE.md`, skill `forge-graphics`).
+**A2 — Hero hulls and landmarks.** Row 428 (the five hulls a player meets in the first two hours, incl.
+row 18 / D72 Pelican), row 17 / D54 (dark-freighter place model, Anvil well-edge, Wreck Cathedral draw
+scale), row 557 art half (stencils, wear, kill tallies on traffic variants).
+**A3 — Living-world art kits LW-A1…LW-A4** (`design/program/living-world/`, `node scripts/living-world.mjs --task=LW-A1`):
+habitation/civic machinery, garrison/inhabited wreck, rock interiors/manufactured terrain, living
+growth/quiet ritual. Lane 3 consumes them for the districts — publish each kit, then note it in Lane 3's Inbox.
+**A4 — Every effect earns its frame.** Review each VFX family (`vfx.js`, `render/vfx/**`,
+`docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`): a per-effect cost budget at the 150-body crowd,
+readability of hits/kills/explosions in a crowd, GPU particles (`three.quarks` is already a
+dependency) for the hottest CPU-updated families, no per-frame allocation.
+**A5 — The look, budgeted.** `docs/visual-assets/LOOK.md`, `src/data/lookMoods.js`, `node scripts/look-bench.mjs`:
+every sector mood re-judged after M4/M5 so the cheaper composite still looks Neon Industrial; D199
+asteroid contrast; D229 metallic rewarm.
+
+**A6 — SC-13 Cinematic Causal Feedback** (`design/program/strategic-chaos/`, `node scripts/strategic-chaos.mjs brief SC-13`):
+the camera, slow-motion beats and effects that let a player *see* a chain reaction they caused. Extends
+the existing camera/presentation owners; prove it with Lane 2's SC-01 playground once it lands.
+
+### Wave R — release qualification (last)
+**R1** deployed route on desktop and phone (`probe-deployed-mobile.mjs`), **R2** the 30-minute soak at
+target, **R3** a final README §4 table on the final build.
+
+## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+
+**Critical systems — each gets a Codex deep review, then packets:** the render frame loop and entity
+sync (`renderer.js` `render` object), program admission and readiness (`pipelineReadiness.js`,
+`shaderLinkReporter.js`, `programBinaryCache.js`), presentation and recovery (`presentationRunner.js`,
+`packageCpuDetach.js`, context loss), the sim-worker lane (`simLane*.js`, `wholeSimBrowserWorker.js`),
+post-processing (`bloom.js` chain + composite), the VFX library (`vfx.js`, `render/vfx/**`, pools,
+`weaponLights.js`), asset loading and residency (`assetLoader.js`, `partsLibrary.js`, render packages,
+`glbPrepassWorker.js`), quality governance (`adaptiveQuality.js`, `slowFrameOffer.js`), the boot and
+loading pipeline (`bootEntry.js`, `bootShellPacing.js`, `loading*.js`, `bootRingWorker.js`), camera
+presentation, the Electron shell (`electron/main.cjs`).
+**Then everything else you own**, ranked by how much a player sees it. Keep the list here with a
+status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+
+## The audit — read every line you own
+
+Split `src/render/**`, the core frame/boot pipeline, the boot/loading UI and `electron/**` into
+modules of ≤ ~3k lines each and hand them in pairs, evenly, to Grok and Gemini (`TOOLS.md`): each run
+reads every line of its module and writes `.devshots/finish/lane1/audit/<module>.md` — bugs, per-frame
+allocation, dead code, duplicated paths, hidden per-frame DOM reads, debug/census code running in the
+game loop, and the three cheapest wins. Turn real findings into packets below this line.
+
+## INFERENCE (seed ≈ 20 lines in the brainstorm packet, README §6)
+
+Seed directions — make each a grounded line in player words with a done check:
+hits you can read in a crowd (impact flashes, hull sparks, debris that remembers who hit it); hull
+damage states and smoke that persist; engine glow that tells you what a ship is doing (thrust, brake,
+boost, idle, dying); wrecks that keep burning and venting; each sector's sky saying where you are;
+station lights that work at night-side; asteroids with readable mass and material; the loading screen
+telling a tiny story of the ship powering up; the kill you can see; muzzle flashes and tracers that
+carry weapon identity; shield and Massline feedback on contact; tiny life in the background (traffic
+lights, docking beacons, maintenance drones).
+
+## Traps — measured and rejected; do not repeat
+
+- Shader prewarm with dummy meshes (made the fly worse: 147 → 207–219 ms).
+- Bloom off / strength down (~0.5 ms, 1 %).
+- Re-enabling the old per-frame refit `BatchedMesh` (lost 250–616 ms); only the retained-slot path is a candidate.
+- Re-quantizing or simplifying authored hulls to "save triangles" (nothing here is triangle-bound).
+- Deleting hidden interior triangles at runtime.
+- Toggling `light.visible` at runtime (forces a recompile).
+- Footage recorder pixel-read variants (createImageBitmap, resize options, worker canvas, MediaStreamTrackProcessor) — reading pixels is the cost.
+- Whole-run A/B across separate launches on this host (fps swings 10–45 with other load) — A/B inside one session.
+- The runtime whole-ship LOD swap (turned off for blink defects; see memory `frame-sacred-lod-blink-mechanisms`).
+- Quoting the 3.5 GB "all textures resident" figure as a runtime cost (live residency is ~71.5 MB).

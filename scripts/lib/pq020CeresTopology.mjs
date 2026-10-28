@@ -225,11 +225,15 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
   // collidable, and carries its 24-primitive measured skin. The strut shrine, the pirate ram,
   // and the pod-field shells above the craft-scale floor join it as measured-skin solids under
   // the solid-dressing lane. Still excluded from the core structural census.
+  // 2026-10-27 (d29c8a41f8e, Ceres furnace opening): the quarantined ore hauler
+  // (oneoff_refinery_quarantine_hauler, place_dead_hulk beside the refinery worksite) joins as one
+  // more measured-skin solid — 11 → 12 entities, fx 10 → 11, collidable 9 → 10, colliders 183 → 207
+  // (its 24-primitive skin). No pocket, route or cathedral geometry moved.
   worldOneOff: Object.freeze({
-    entities: 11,
-    byType: Object.freeze({ fx: 10, wreck: 1 }),
-    collidable: 9,
-    colliders: 183,
+    entities: 12,
+    byType: Object.freeze({ fx: 11, wreck: 1 }),
+    collidable: 10,
+    colliders: 207,
   }),
 });
 

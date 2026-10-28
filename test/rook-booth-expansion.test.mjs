@@ -10,7 +10,8 @@ import {
   createRookBooth, rookBoothSpec, rookMarketPadSpec, rookStandTier, ROOK_MARKET_STANDS,
 } from '../src/systems/rookBooth.js';
 import { ROOK_BOOTH } from '../src/data/rook.js';
-import { rookPayoutCr } from '../src/characters/rookRules.js';
+import { rookPayoutCr, rookPadPosition } from '../src/characters/rookRules.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 // missions.js must enter the ops↔missions import cycle first (it spreads
 // missionObjectiveOps at module-eval time), so import it ahead of the ops module.
 import '../src/systems/missions.js';
@@ -19,7 +20,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
 
-const PAD = ROOK_BOOTH.pad;
+const PAD = rookPadPosition();
+const QUIET_PAD = sectorLocalToGlobalForSector(ROOK_MARKET_STANDS.find((s) => s.id === 'quietline').pad, ROOK_BOOTH.sectorId);
 const QUIET = ROOK_MARKET_STANDS.find((s) => s.id === 'quietline');
 
 function fixture({ sector = ROOK_BOOTH.sectorId, kind = 'adventure', seed = 0xC0FFEE, registry = null, heat = null } = {}) {
@@ -50,7 +52,7 @@ function fixture({ sector = ROOK_BOOTH.sectorId, kind = 'adventure', seed = 0xC0
     radius: 30, mass: 1800, hull: 1, hullMax: 1, data: {}, ...over,
   });
   const addQuietWreck = (over = {}) => helpers.spawnEntity({
-    type: 'wreck', pos: { x: QUIET.pad.x, z: QUIET.pad.z }, vel: { x: 0, z: 0 },
+    type: 'wreck', pos: { x: QUIET_PAD.x, z: QUIET_PAD.z }, vel: { x: 0, z: 0 },
     radius: 30, mass: 1800, hull: 1, hullMax: 1, data: {}, ...over,
   });
   const grants = () => events.filter(([t]) => t === 'economy:grantCredits');

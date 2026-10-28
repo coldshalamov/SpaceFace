@@ -139,3 +139,49 @@ test('parallel sliced admission issues all units before pooled readiness drains'
   assert.deepEqual(h.drains, []);
   assert.equal(scenePipelineReadinessBatchOpen(), false);
 });
+
+for (const explicitMiddle of [false, true]) {
+  test(`queued deadline links preserve FIFO ahead of flushed ambient links (${explicitMiddle ? 'explicit' : 'urgent'} middle)`, async () => {
+    let releaseActive;
+    const activeGate = new Promise(resolve => { releaseActive = resolve; });
+    const order = [];
+    let active = 0, maxActive = 0;
+    const tracker = createPipelineAdmissionTracker(async subjects => {
+      active++; maxActive = Math.max(maxActive, active);
+      const label = subjects[0].name;
+      order.push(label);
+      try { if (label === 'active') await activeGate; return { ok: true }; }
+      finally { active--; }
+    }, { deferAutoFlush: () => true });
+    const started = tracker.compile({ name: 'active' }, { urgent: true });
+    await Promise.resolve();
+    const ambient1 = tracker.compile({ name: 'ambient-first' });
+    tracker.flushOneAfterPresent();
+    const first = tracker.compile({ name: 'urgent-first' }, { urgent: true });
+    const ambient2 = tracker.compile({ name: 'ambient-second' });
+    tracker.flushOneAfterPresent();
+    const middle = explicitMiddle
+      ? tracker.compileExplicit({ name: 'deadline-middle' })
+      : tracker.compile({ name: 'deadline-middle' }, { urgent: true });
+    const last = tracker.compile({ name: 'urgent-last' }, { urgent: true });
+    assert.deepEqual(order, ['active'], 'queued work must not preempt the active renderer-target owner');
+    releaseActive();
+    await Promise.all([started, ambient1, ambient2, first, middle, last]);
+    assert.deepEqual(order, ['active', 'urgent-first', 'deadline-middle', 'urgent-last', 'ambient-first', 'ambient-second']);
+    assert.equal(maxActive, 1, 'priority changes ordering, never compile concurrency');
+  });
+}
+
+test('urgent priority does not release untouched ambient first-flight holds', async () => {
+  const order = [];
+  const tracker = createPipelineAdmissionTracker(async subjects => {
+    order.push(subjects[0].name); return { ok: true };
+  }, { deferAutoFlush: () => true });
+  const ambient = tracker.compile({ name: 'held-ambient' });
+  await tracker.compile({ name: 'readable-body' }, { urgent: true });
+  assert.deepEqual(order, ['readable-body']);
+  assert.equal(tracker.queuedCount, 1);
+  tracker.flushOneAfterPresent();
+  await ambient;
+  assert.deepEqual(order, ['readable-body', 'held-ambient']);
+});

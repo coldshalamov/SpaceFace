@@ -1,5 +1,11 @@
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningFocus } from '../missions/starterWorkday.js';
+import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
+import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
+import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
+import { UNDERSTORY_RECEIVER, receiverApproach, receiverStatus, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
+import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
+import { UNDERSTORY_COMPOST_RUN, UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES } from '../data/factions/understory.js';
 // Missions, contracts & story-spine system (ARCHITECTURE §2.3 step 15, §3.11 state, §4.4 event
 // table; design/specs/07-missions-contracts-story-spine.md).
 //
@@ -306,6 +312,7 @@ import {
   getEmpireSeedProgram,
   getDeepReachOperation,
   getEmbodiedLocation,
+  getBeatStepStatus,
   recordBeatStep,
   syncObservedBeat,
   recoveryCommsForBeat,
@@ -1579,6 +1586,8 @@ export const missions = {
     bus.on('game:started', () => this.newGame());
     bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
     bus.on('save:loaded', () => {
+      this._reconcileCompostGrowth();
+      this._reconcileNestOutcome();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
     });
@@ -1636,10 +1645,11 @@ export const missions = {
       this._resolveVarianceSeamWeld(stationId);
       this._storyTrigger('dock', { stationId });
     });
-    bus.on('dock:undocked', () => {
+    bus.on('dock:undocked', (p) => {
+      const departedStationId = p?.stationId || this._lastDockedStation;
       this._lastDockedStation = null;
       this._activateContract47aB1OnDeparture();
-      this._activateContract47aB2OnDeparture();
+      this._activateContract47aB2OnDeparture(departedStationId);
       this._activateContract47aB3OnDeparture();
       this._activateContract47aB4OnDeparture();
       this._onPassengerUndock();
@@ -1650,14 +1660,17 @@ export const missions = {
     // log and advances the live cursor when the current beat's list is satisfied.
     bus.on('story:skimResolved', (p) => this._recordCampaignBookSignal('story:skimResolved', p));
     bus.on('kesslerPod:weighed', (p) => this._recordCampaignBookSignal('kesslerPod:weighed', p));
-    bus.on('understory:gardenFed', (p) => this._recordCampaignBookSignal('understory:gardenFed', p));
-    bus.on('understory:gardenStage', (p) => this._recordCampaignBookSignal('understory:gardenStage', p));
-    bus.on('understory:compostRunComplete', (p) => this._recordCampaignBookSignal('understory:compostRunComplete', p));
+    // Book2 consumes the garden owner's persisted growth receipt, never a payload claim,
+    // ambient stage event, ordinary feed or payment event. The owner stores before emitting.
+    bus.on('understory:playerGrowth', (p) => this._reconcileCompostGrowth(p));
     bus.on('encounter:resolved', (p) => {
       // W-CANON (§34.7 row 537): a quiet interlude scene closing marks its story flag.
       this._observeCampaign47aInterludeResolved(p);
       this._recordCampaignBookSignal('encounter:resolved', p);
     });
+    bus.on('aftermathWreck:recorded', (p) => observeCinderMarker(this, p));
+    bus.on('aftermathWreck:completed', (p) => observeCinderRetirement(this, p, 'aftermathWreck:completed'));
+    bus.on('aftermathWreck:retired', (p) => observeCinderRetirement(this, p, 'aftermathWreck:retired'));
     bus.on('rookWreck:delivered', (p) => {
       this._onRookWreckDelivered(p);
       this._recordCampaignBookSignal('rookWreck:delivered', p);
@@ -1936,6 +1949,7 @@ export const missions = {
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (m.status !== 'active') continue;
+      if (authoredCinderRoute(m) && driveCinderRoute(this, m) && m.status !== 'active') continue;
       if (m.params?.workingBattlefield) { driveWorkingBattlefield(this, m, i); continue; }
       // Expiry by deadline.
       if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) { this._expireMission(m, i); continue; }
@@ -2008,6 +2022,10 @@ export const missions = {
     this._navRefreshT = (this._navRefreshT || 0) + (dt || 0);
     if (this._navRefreshT >= 0.75) {
       this._navRefreshT = 0;
+      // Real growth can precede Cinder's filing. Reconcile at the existing nav cadence,
+      // not by scanning all entities every tick; neither mass nor payment is replayed.
+      this._reconcileCompostGrowth();
+      this._reconcileNestOutcome();
       this._refreshNavigation();
     }
   },
@@ -2300,6 +2318,7 @@ export const missions = {
     }
 
     const inst = this._instanceFromOffer(offer);
+    initializeCinderRoute(this, inst);
     // A branch selection is atomic: withdraw both siblings from every board before any fee intent
     // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
     const withdrawnSetPiece = setPieceCauseOf(offer)
@@ -3205,6 +3224,10 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    const cinderFocus = cinderRouteFocus(m, this.state);
+    if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
+    const furnaceFocus = furnaceWorksiteFocus(m, this.state);
+    if (furnaceFocus) return { ...base, ...furnaceFocus, stationId: null };
 
     if(m.source==='blackFlag'){
       const v=this.state.player?.shipjack?.vesselsById[m.params?.vesselId];
@@ -3730,6 +3753,25 @@ export const missions = {
     return best;
   },
 
+  _reconcileNestOutcome() {
+    const state = this.state;
+    if (state?.story?.beatIndex !== 2) return false;
+    const done = getBeatStepStatus(state, 2)?.completed || [];
+    if (!done.includes('compost') || done.includes('nest')) return false;
+    const receipt = nestOutcomeReceipt(state);
+    return receipt ? this._recordCampaignBookSignal('encounter:resolved', receipt) : false;
+  },
+
+  _reconcileCompostGrowth(payload = null) {
+    const state = this.state;
+    if (state?.story?.beatIndex !== 2) return false;
+    const done = getBeatStepStatus(state, 2)?.completed || [];
+    if (!done.includes('cinder_board') || done.includes('compost')) return false;
+    const receipt = firstPlayerGardenGrowth(state, payload);
+    if (!receipt) return false;
+    return this._recordCampaignBookSignal('understory:playerGrowth', receipt);
+  },
+
   _storyWaypointForBeat(beat) {
     if (!beat) return null;
     const state = this.state;
@@ -3743,6 +3785,56 @@ export const missions = {
       sectorId: currentSectorId,
       sectorName: sector && sector.name || null,
     };
+    if (beat.beat === 1) {
+      const scale = kesslerScaleWaypoint(state);
+      if (scale) return { ...base, ...scale };
+    }
+    if (beat.beat === 2) {
+      const done = new Set(getBeatStepStatus(state, 2)?.completed || []);
+      if (!done.has('cinder_board') || (done.has('nest') && !done.has('elroy'))) {
+        const loc = getEmbodiedLocation(2), info = STATION_INFO.get(loc.stationId);
+        const station = currentSectorId === loc.sectorId ? this._liveStation(loc.stationId) : null;
+        return { ...base, label: done.has('cinder_board') ? 'Tethys board — Registry Writ' : 'Tethys board — Cinder marks',
+          reason: done.has('cinder_board') ? 'Dock at Tethys and read the next writ; scan before choosing force or custody.' : 'Dock at Tethys Junction and accept Cinder marks from the mission board before flying to Charon.',
+          stationId: loc.stationId, sectorId: loc.sectorId, sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
+          pos: station?.pos ? { ...station.pos } : null };
+      }
+      if (!done.has('compost')) {
+        const receiver = receiverStatus(state);
+        const garden = receiver.garden;
+        if (receiver.status === 'unavailable') {
+          return { ...base, label: 'Compost receiver — not receiving',
+            reason: 'The receiver is unavailable. No cargo or growth is credited; the Nest still waits for real player-fed growth.',
+            stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId, targetEntityId: null, pos: null };
+        }
+        const saved = garden?.data || state.understory?.authoredReceiver?.terminalGardenData || {};
+        const fed = Math.max(0, Number(saved.compostFedMass) || 0);
+        const biomass = receiver.status === 'destroyed' ? 0 : Number.isFinite(saved.gardenBiomass)
+          ? Math.max(0, saved.gardenBiomass) : UNDERSTORY_RECEIVER.initialBiomass;
+        const target = UNDERSTORY_COMPOST_RUN.targetMass;
+        const mass = n => Number(n.toFixed(1)).toString();
+        const nextStage = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
+        const growthFeed = nextStage ? Math.ceil((nextStage.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : null;
+        const growth = growthFeed == null ? 'First player growth still needs an owner receipt.'
+          : `Retained growth ${mass(biomass)} biomass; ${mass(growthFeed)}t feed reaches the next visible stage.`;
+        const run = saved.compostRunComplete === true
+          ? `Run paid once at ${mass(fed)}t; no repeat payment.`
+          : `Your run ${mass(fed)}/${target}t; ${mass(Math.max(0, target - fed))}t remain. No pay before ${target}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
+        const regrowth = receiver.status === 'destroyed'
+          ? 'The destroyed receiver can regrow only from new feed: 100t from zero to stage 2, no replacement 52 biomass. ' : '';
+        return { ...base, label: `Compost Run — ${UNDERSTORY_RECEIVER.name} west outside-mouth approach`,
+          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. If no Cinder hull remains, in Charon mine and collect ordinary iron, then jettison 17u near the receiver: 13.6t contents in a 20t tow body. No cargo is provided; only remaining contents count. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
+          stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
+          // The location is deliberately not bound to the hull's centre: selection and
+          // autopilot consumers must retain the safe outside-mouth staging point.
+          targetEntityId: null, pos: receiverApproach() };
+      }
+      if (!done.has('nest')) {
+        return { ...base, ...nestWaypoint(state),
+          sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null };
+      }
+    }
     if (beat.beat === 0) {
       const asteroid = this._nearestAsteroid();
       if (asteroid) return { ...base, label: 'Cold Start: Mine Asteroid', pos: { x: asteroid.pos.x, z: asteroid.pos.z } };
@@ -3868,6 +3960,10 @@ export const missions = {
     const existing = state.nav && state.nav.waypoint;
     const force = !!(options.forceStory || options.force);
     const allowReplaceTrade = force || !!options.preferStory;
+    // The optional physical weigh follows delivery; never hijack a pilot's own
+    // course (even the completion path's forceStory refresh) to perform it.
+    if (kesslerScalePending(state) && existing
+        && (existing.kind === 'local' || existing.kind === 'trade' || existing.onboarding)) return false;
     if (existing && existing.onboarding && !force) return false;
     if (existing && existing.kind === 'mission') return false;
     if (existing && existing.kind === 'trade' && !allowReplaceTrade) return false;
@@ -5714,6 +5810,8 @@ export const missions = {
     // below runs completely unchanged.
     const mutation = this._mutateInsteadOfFail(m, reason || 'failed');
     m.status = 'failed';
+    // Preserve the finite Cinder cast before a synchronous failure observer can accept retry.
+    retainCinderRetry(this, m);
     this._clearMissionNav(m.id);
 
     // Failure rep penalty to the offering faction. We emit faction:repDelta directly and keep the
@@ -6390,7 +6488,7 @@ export const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 export const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
   1: 'Honest Work: the book posts the alloy run first — the Scale 4 weigh and the furnace detail follow.',
-  2: 'First Blood: the cinder board posts first — the Compost Run, the Nest, and the register follow.',
+  2: 'First Blood: dock at Tethys Junction and accept Cinder marks from the mission board. Then fly to Charon; the Compost Run, the Nest, and the register follow in order.',
   3: 'Bigger Boat: take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth — the maw and the Foreman follow.',
   4: 'Pick a Side: accept an intro contract, then run the door\u2019s operation on the board.',
   5: 'Proving Ground: complete your faction\'s mission chain.',

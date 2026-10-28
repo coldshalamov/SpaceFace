@@ -138,7 +138,7 @@ test('defaults that alter the shipped picture/mix are unchanged by this parity p
   assert.equal(state.settings.audio.master, 0.55);
   assert.equal(state.settings.audio.sfx, 0.7);
   assert.equal(state.settings.audio.music, 0.32);
-  assert.equal(state.settings.video.bloomStrength, 0.52);
+  assert.equal(state.settings.video.bloomStrength, 0.40);
   assert.equal(state.settings.video.bloomThreshold, 1.0);
   assert.equal(state.settings.video.pixelRatioCap, 2);
   assert.equal(state.settings.video.bloomLevels, 2);
