@@ -14,6 +14,8 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 | Date | Build | Crucible p50 / p99 / longest | GPU p50 | Adventure p50 / p99 / longest | Longest load task | Loading anim gap p99 | Launch→flight | Host busy |
 |---|---|---|---|---|---|---|---|---|
 | 2026-10-28 (from docs) | various | 86 / ~125 (p95) / multi-s | 23.7 ms | 23.2 / 109.4 / 324 | 5,000 ms | unmeasured | 11.6 s | contended |
+| 2026-10-28 M0 round1 (main) | master+merge | 77.3 / 161.6 / 258.1 (ents~164, sim 22.9 render 20.7) | 25.9 (scene 18.1@194d, composite 7.6) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 M0 wave15 (main) | master+merge | 158.2 / 240.0 / 362.2 (ents~215, sim 68.5 render 41.8, 805 draws) | 76.1 (p3 33.3@393d + p1 21.0@340d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
 
 Targets and floors: README §4.
 
@@ -38,6 +40,12 @@ Targets and floors: README §4.
 | D252 | Deployed WebKit renderer stops answering before the menu | `probe-deployed-mobile.mjs --engine=webkit` | packet M9 |
 | D229 | Metallic rocks draw wrong during the rock-family decode rewarm on sector entry (watch) | asteroid-appear probe | packet A5 |
 | D199 | Asteroids lack contrast against the background | look / player-truth ownership | packet A5 |
+| D270 | `?simLane=worker` died at boot — static `systems→ui` chain pulled `@elemaudio/core` (bare specifier; import maps do not reach module workers) | `onboarding.js→missionLog.js→comms→…→audio` | FIXED in tree: `continueRecap`/`objectiveText` moved to `src/ui/sim/missionRecap.js`; worker graph 1843→1766 files, zero bare specifiers |
+| D271 | SAB envelope codec never ran on Chrome — `TextEncoder.encodeInto`/`TextDecoder.decode` reject shared views; boot reply (0.76 MB) overflowed 704 KB cell | `scripts/lib/simSabEnvelope.mjs` | FIXED in tree: private-scratch codec + copy-out on read; cells cmd 1 MiB / reply 4 MiB |
+| D272 | `first-present GPU admission failed` — `TypeError: morphAttributes of null` on an InstancedMesh during menu | three `getParameters` via `InstancedMesh.traverse` | investigate M1 review |
+| D273 | `GL_INVALID_OPERATION: glTexStorage2D: Texture is immutable` during boot | texture upload path | investigate M1 review |
+| D274 | `[GPU brick] bloomScene` shader compile stall 1.0–3.4 s on first present (Intel D3D11) | program admission / bloom chain | packets M3/M4/M6 |
+| D275 | Two blob workers fail module specifiers `densityVolumeData/rle.js`, `gasVolumeData/density.js` (relative imports inside `blob:`) | blob worker creation sites | investigate; likely silent-tolerated |
 
 ## The ordered packets
 
@@ -197,6 +205,8 @@ loading pipeline (`bootEntry.js`, `bootShellPacing.js`, `loading*.js`, `bootRing
 presentation, the Electron shell (`electron/main.cjs`).
 **Then everything else you own**, ranked by how much a player sees it. Keep the list here with a
 status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+
+Status (2026-10-28): sim-worker lane — REVIEWED (Gemini line-read, `.devshots/finish/lane1/review-simlane/INVENTORY.md`: 11 findings incl. type-scoped echo gap now FIXED, 250 Hz busy-poll, unbounded domainAppliedKeys; flip surface fully mapped; Codex deep review next). All other systems — UNREVIEWED.
 
 ## The audit — read every line you own
 
