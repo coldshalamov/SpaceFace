@@ -1,6 +1,10 @@
 // Fixtures for isolated Campaign 47-A sidecar tests (M5 task 1).
 // Does not claim full M5 acceptance or default wiring.
 
+import { UNDERSTORY_GARDENS } from '../src/data/factions/understory.js';
+import { NEST_VISIT } from '../src/data/nestVisit.js';
+import { UNDERSTORY_RECEIVER } from '../src/data/understoryReceiver.js';
+
 export function makeBus() {
   const handlers = new Map();
   const events = [];
@@ -158,4 +162,73 @@ export function hasIntent(intents, eventName) {
 
 export function intentsOf(intents, eventName) {
   return (intents || []).filter((i) => i.event === eventName);
+}
+
+/**
+ * W-BOOKS-0-2 evidence plants. The campaign recorder re-verifies world evidence
+ * instead of trusting a bare event payload, so fixtures that drive the ordered
+ * book lists must leave the same world marks the real owners leave:
+ *   - compost: the receiving garden's persisted gardenFirstPlayerGrowth row
+ *     (faction_understory stores it before emitting understory:playerGrowth);
+ *   - nest: the encounter director's terminal nestVisit receipt.
+ * Returns the payload to hand recordBeatStep so the verify step passes.
+ */
+export function plantFirstPlayerGrowth(state, { entityId = 901, eatenId = 77, fedMass = 16, tick = 4242 } = {}) {
+  const gained = fedMass * UNDERSTORY_GARDENS.digestionYield;
+  const row = {
+    version: 1,
+    gardenId: UNDERSTORY_RECEIVER.gardenId,
+    entityId,
+    eatenId,
+    fromStage: 1,
+    stage: 2,
+    fedMass,
+    gained,
+    biomass: UNDERSTORY_RECEIVER.initialBiomass + gained,
+    byPlayer: true,
+    tick,
+  };
+  const garden = {
+    id: entityId,
+    type: 'garden',
+    factionId: 'faction_understory',
+    alive: true,
+    hull: 1e9,
+    pos: { x: 0, z: 0 },
+    flags: { persistent: true },
+    data: {
+      understoryGarden: true,
+      placeId: 'place_dead_hulk',
+      gardenId: row.gardenId,
+      gardenBiomass: row.biomass,
+      gardenFedByPlayer: row.fedMass,
+      gardenFirstPlayerGrowth: { ...row },
+    },
+  };
+  state.entityList = [...(state.entityList || []), garden];
+  state.entities = state.entities || new Map();
+  state.entities.set(entityId, garden);
+  return { ...row };
+}
+
+/** Terminal Nest visit on the encounter director; returns the outcome receipt payload. */
+export function plantNestOutcome(state, outcome = 'carrier_down', t = 1) {
+  const receipt = {
+    encounterId: NEST_VISIT.encounterId,
+    shape: 'the_nest',
+    outcome,
+    sectorId: NEST_VISIT.sectorId,
+    t,
+  };
+  state.encounterDirector = {
+    nestVisit: {
+      version: 1,
+      status: 'terminal',
+      encounterId: NEST_VISIT.encounterId,
+      sectorId: NEST_VISIT.sectorId,
+      snapshot: null,
+      receipt: { ...receipt },
+    },
+  };
+  return { ...receipt };
 }

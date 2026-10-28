@@ -13,6 +13,7 @@ import { failEncounter, recordBeatStep, recoverEncounter } from '../src/story/ca
 import { leftoverLedgerCard, leftoverLedgerLine, retellLedger } from '../src/story/storyLedger.js';
 import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
 import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
+import { plantFirstPlayerGrowth, plantNestOutcome } from './story-campaign47a-fixtures.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const STATION = 'station_helios';
@@ -63,8 +64,12 @@ function playedCampaign() {
   assert.equal(recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b2:cinder',
   }, 100).ok, true);
-  assert.equal(recordBeatStep(state, 'understory:gardenFed', { byPlayer: true }, 105).ok, true);
-  assert.equal(recordBeatStep(state, 'encounter:resolved', { shape: 'the_nest' }, 110).ok, true);
+  // The recorder only takes the owner's persisted evidence: the garden's retained
+  // first-growth row and the encounter director's terminal Nest receipt.
+  assert.equal(recordBeatStep(state, 'understory:playerGrowth',
+    plantFirstPlayerGrowth(state), 105).ok, true);
+  assert.equal(recordBeatStep(state, 'encounter:resolved',
+    plantNestOutcome(state), 110).ok, true);
   assert.equal(recordBeatStep(state, 'mission:completed', {
     storyTag: 'campaign47a:b2:elroy',
   }, 120).ok, true);
