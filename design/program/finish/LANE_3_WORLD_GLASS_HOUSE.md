@@ -33,9 +33,26 @@ docs that describe it.
 Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
 - batch-b: **d1a68ec VERIFIED** (row deleted); **710f1e1 DEFECT** — warden return-to-post dies on
   sector unload (return target lives only on the live entity); fix implementer running
-  (`fix-verge-return` packet). Nearby flags: hard-coded player-facing strings in
-  `faction_understory.js` (:1069,:1134,:1154,:1735-1906) + `faction_verge.js` (:137-161 via _log
-  :534) need localization keys — W3 row material, add when Wave W3 is packeted.
+  (`fix-verge-return` packet).
+- batch-c: **26f29b7 VERIFIED** (Vesta ledger conserved, 30/30); **d0891f7 VERIFIED** (winch
+  exception scoped, 17/17+30/30); **cc96d0c VERIFIED** (rookBooth writers all in-band, 24/24);
+  all three rows deleted. **3a9d5dc DEFECT — major**: `moralMemorySystem` is never registered in
+  production, the whole reactive debt economy (tick hardening, offer expiry, witness souring,
+  `moralMemory:*` handlers) is inert outside tests; fix implementer running
+  (`fix-moralmemory-register` packet — registry + authoritativeSystemManifest entries).
+- New OPEN row found at top of ledger: **R-c1225fa** (presentation craft: palette skin, market
+  SOLD OUT, bar rail bands, HC focus signal) — not in the original seven; needs a ui-bench
+  breakpoint pass, queue in the next review batch.
+- Localization debt (nearby flags, W3 material): hard-coded player strings in
+  `faction_understory.js` (:1069,:1134,:1154,:1735-1906), `faction_verge.js` (:137-161 via _log
+  :534), `vestaWinnowRecovery.js` (:98-104,159,342,552-553), `starterWorkday.js` (:9-22),
+  `rookBooth.js` (:401-429), `moralMemory.js` (:423-436,913-997,1185-1195).
+- System deep-reviews (`.devshots/finish/lane3/review-*/REVIEW.md`): save-b READ path scored
+  8/10 — one HIGH fixed-in-scope (superseded async restore publishes the loser's `save:error`;
+  `fix-save-stale-error` packet running) + two mediums flagged (gzip slot preview invents ship
+  facts; index-cache trusts `_blobHash` without envelope-derived facts). lawsec-a: the reported
+  missing-method defect already absent (methods defined :4706/:4751); chain review continuing.
+  save-a (write path) + lawsec-b (impound/heat) runs died at the context wall — relaunch pending.
 
 ## The ordered packets
 
