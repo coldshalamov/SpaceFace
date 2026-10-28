@@ -522,7 +522,13 @@ function localAckReplyAction(reply, {
   if (!reply || !active || !(scale > 0)) return 'schedule';
   if (needsRebuild || durableCount >= LOCAL_DURABLE_LIMIT) return 'schedule-rebuild';
   if (Number.isSafeInteger(reply.journalStart) && reply.journalStart > ackJournalEnd) {
-    return 'schedule-rebuild';
+    // The retained window starts past the last applied-watermark ack: the
+    // previous publish is still mid-apply on main (a paced visit spreads a
+    // dense range over several presents). That is ordinary backpressure, not
+    // a dropped hole — genuine drops are already flagged by needsRebuild or
+    // the merge cap. Keep retaining; rebuilds issued here self-amplify (each
+    // full republish congests the wire further and re-arms this check).
+    return 'schedule';
   }
   return 'publish';
 }
@@ -808,14 +814,11 @@ async function handleLocalClockAck(msg) {
     && msg.clockSequence >= localClock.sentClockSequence) {
     localClock.sentAwaitingAck = false;
     const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
-    if (localClock.latestReply) {
-      // The latest pack can be sent incrementally when it starts exactly at
-      // the range the main side acknowledged. A gap means one or more worker
-      // ticks were coalesced while the main thread was blocked, so rebuild the
-      // authoritative journal before publishing that latest snapshot.
-      localClock.needsRebuildOnSend = Number.isSafeInteger(localClock.latestReply.journalStart)
-        && localClock.latestReply.journalStart > ackEnd;
-    }
+    // The retained window starting past ackEnd is applied-watermark
+    // backpressure (the paced visit spreads a dense range over presents), not
+    // a dropped hole — arming needsRebuildOnSend here re-minted a full
+    // republish on every ACK under load, which is the rebuild-storm loop.
+    // True drops reach this path through localReplyNeedsRebuild instead.
     localSetBackpressure(false);
     retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }
@@ -852,10 +855,8 @@ async function handleLocalClockCommand(msg) {
     && msg.ackClockSequence >= localClock.sentClockSequence) {
     localClock.sentAwaitingAck = false;
     const ackEnd = Number.isSafeInteger(msg.ackJournalEnd) ? msg.ackJournalEnd : localClock.sentJournalEnd;
-    if (localClock.latestReply) {
-      localClock.needsRebuildOnSend = Number.isSafeInteger(localClock.latestReply.journalStart)
-        && localClock.latestReply.journalStart > ackEnd;
-    }
+    // Same ack-watermark rule as handleLocalClockAck: journalStart > ackEnd is
+    // mid-apply backpressure, never by itself a rebuild trigger.
     localSetBackpressure(false);
     retainedReplyPublished = await publishRetainedReplyAfterAck(ackEnd);
   }

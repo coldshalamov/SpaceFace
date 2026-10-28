@@ -85,6 +85,9 @@ export function createSimLaneJournal() {
   const stats = { appliedPacks: 0, evictedPacks: 0, rebuildPacks: 0, releasedSabSlots: 0 };
 
   function releaseSegment(seg) {
+    // Mark before freeing: a stepped visit suspended mid-segment must not keep
+    // reading columns a reclaimed SAB slot is about to overwrite.
+    seg.released = true;
     // An SAB-backed pack posts its columns as shared memory; the arena slot is
     // freed by flipping its busy bit (the worker claims free slots only).
     if (seg.sab === true && sabHeader && Number.isSafeInteger(seg.sabSlot)) {
@@ -152,6 +155,53 @@ export function createSimLaneJournal() {
           scratch.entityType = seg.typeTable[seg.typeIndex[i]] || null;
           visit(scratch);
           applied++;
+        }
+      }
+      return applied;
+    },
+    // Stepped twin — same segment walk as visitRange, yielding every sliceEvery
+    // applied records. The publisher drives this at a per-frame ms budget; without
+    // it a coalesced backlog (crowd + slow presents) drains as one atomic apply.
+    *visitRangeSteps(start, end, scratch, visit, sliceEvery = 256) {
+      if (!visit) return 0;
+      const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+      let applied = 0;
+      for (const seg of segments) {
+        const lo = Math.max(start, seg.start);
+        const hi = Math.min(end, seg.end);
+        for (let seq = lo; seq < hi; seq++) {
+          // Released while suspended (ack eviction or a rebuild pack): the SAB
+          // slot may already hold new columns. Bail like the in-process
+          // journal's not-retained throw — the caller converts it to a rebuild.
+          if (seg.released) {
+            throw new Error(`SimLaneJournal record ${seq} is not retained`);
+          }
+          const i = seq - seg.start;
+          const o = i * JOURNAL_SCALAR_STRIDE;
+          const s = seg.scalars;
+          scratch.tick = s[o];
+          scratch.sequence = s[o + 1];
+          scratch.entityId = s[o + 2];
+          scratch.generation = s[o + 3];
+          scratch.revision = s[o + 4];
+          scratch.x = s[o + 5];
+          scratch.y = s[o + 6];
+          scratch.z = s[o + 7];
+          scratch.prevX = s[o + 8];
+          scratch.prevY = s[o + 9];
+          scratch.prevZ = s[o + 10];
+          scratch.rot = s[o + 11];
+          scratch.bank = s[o + 12];
+          scratch.pitch = s[o + 13];
+          scratch.prevRot = s[o + 14];
+          scratch.prevBank = s[o + 15];
+          scratch.prevPitch = s[o + 16];
+          scratch.visualRevision = s[o + 17];
+          scratch.kind = KIND_BY_CODE[seg.kinds[i]] || PRESENTATION_JOURNAL_KINDS.TRANSFORM;
+          scratch.entityType = seg.typeTable[seg.typeIndex[i]] || null;
+          visit(scratch);
+          applied++;
+          if ((applied % every) === 0) yield;
         }
       }
       return applied;
