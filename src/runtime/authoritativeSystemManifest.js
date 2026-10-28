@@ -84,6 +84,11 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'historyWear',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem',
+  // moralMemory (EXP-25 / R-3a9d5dc fix): the reactive debt ledger's registered runtime.
+  // init attaches the moralMemory:* action verbs to the bus; its update is the 30 s
+  // simTime-bucketed consequence pass (pressure escalation, offer expiry, witness
+  // souring). Calendar clock beside its moralTrapSystem neighbor — see below.
+  'moralMemory',
   // PULSE-MAIL (435) / PULSE-TIME (439): listener+tick delivery and the world calendar's
   // transition announcer — both slow observers on the calendar clock.
   // worldPressure (§34 rows 520–523): the tide/gate-audit/slow-gray owner — reads
@@ -180,6 +185,12 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // A mission without a pending reveal makes it a two-comparison no-op. Sits before
   // voiceArbiter so a reveal it speaks is collected on the same tick.
   'moralTrapSystem',
+  // moralMemory: the debt ledger's consequence tick — tickMoralMemory self-gates on a
+  // 30 s simTime bucket (MORAL_TICK_S), so the call is one floor+compare when no new
+  // bucket has arrived; escalation/offer/witness work is all 480–1200 s scale. Same
+  // posture as moralTrapSystem above: verbs are bus events, the clocked pass is the
+  // expiry lane. Before voiceArbiter so a same-tick escalated collect lands together.
+  'moralMemory',
   'voiceArbiter',
   // PULSE-MAIL / PULSE-TIME: mail delivery and calendar announcements run after the story
   // and deed systems so same-tick triggers resolve before letters and headlines go out.
@@ -387,6 +398,10 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   // W-BOOKS-0-2 row 533: the CR-FEED mouth census reads edible bodies inside the ring on
   // the 2 Hz pass. Appended last so every existing cohort index stays put.
   'furnaceIntake',
+  // R-3a9d5dc fix: the moral ledger already self-throttles tickMoralMemory to one pass
+  // per 30 s simTime bucket — the 2 Hz declaration only schedules that check. Appended
+  // last so every existing cohort index stays put.
+  'moralMemory',
 ]);
 
 /**
