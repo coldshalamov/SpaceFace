@@ -16,6 +16,11 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 | 2026-10-28 (from docs) | various | 86 / ~125 (p95) / multi-s | 23.7 ms | 23.2 / 109.4 / 324 | 5,000 ms | unmeasured | 11.6 s | contended |
 | 2026-10-28 M0 round1 (main) | master+merge | 77.3 / 161.6 / 258.1 (ents~164, sim 22.9 render 20.7) | 25.9 (scene 18.1@194d, composite 7.6) | pending | pending | pending | pending | contended (audit+probes) |
 | 2026-10-28 M0 wave15 (main) | master+merge | 158.2 / 240.0 / 362.2 (ents~215, sim 68.5 render 41.8, 805 draws) | 76.1 (p3 33.3@393d + p1 21.0@340d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B round1 (worker) | master+merge+M1 | 81.0 / 188.8 / 305.1 (ents~201, sim 0.02 render 30.4, 181 draws) | 31.9 (scene 24.6@224d, composite 7.0) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B wave15 (worker) | master+merge+M1 | 152.7 / 411.5 / **1349.6** (ents~236, sim 0.02 render 55.8, 842 draws) | 90.9 (p3 43.0@432d + p1 33.7@384d, composite 15.7) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B round1 (worker, post-storm-fix 530498d) | master+M1 | 68.2 / 143.0 / 191.0 (ents~177, sim 0.02 render 23.9, 175 draws) | 29.7 | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 A/B wave15 (worker, post-storm-fix 530498d) | master+M1 | **129.7 / 255.1 / 314.6** (ents~230, sim 0.02 render 49.4, 746 draws; journalRebuilds 4/session) | 73.6 (p3 32.3@387d + p1 24.5@341d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
+| 2026-10-28 M0 loading (main) | master+merge+M1 | — | — | — | 4,168 ms (next: 1,340) | 66.6 (3 gaps >1 s, longest 3.0 s) | 74.1 s | contended; 190 MB streamed (108 MB GLB) |
 
 Targets and floors: README §4.
 
@@ -46,6 +51,7 @@ Targets and floors: README §4.
 | D273 | `GL_INVALID_OPERATION: glTexStorage2D: Texture is immutable` during boot | texture upload path | investigate M1 review |
 | D274 | `[GPU brick] bloomScene` shader compile stall 1.0–3.4 s on first present (Intel D3D11) | program admission / bloom chain | packets M3/M4/M6 |
 | D275 | Two blob workers fail module specifiers `densityVolumeData/rle.js`, `gasVolumeData/density.js` (relative imports inside `blob:`) | blob worker creation sites | investigate; likely silent-tolerated |
+| D276 | ~~Worker-lane wave-15 tail~~ FIXED 530498d: journal rebuild storm — no `visitRangeSteps` on the wire journal (unbounded applies), ack claimed merged end not applied watermark, `journalStart>ack` armed rebuilds on ordinary backpressure, and lane rebuilds gap-checked against stale pending windows | `simLaneJournal`, `presentationRunner`, `wholeSimBrowserWorker` | measured: rebuilds ~76→4/session, wave15 148/508/1972 → 130/255/315 ms; no longer a flip blocker |
 
 ## The ordered packets
 
@@ -66,7 +72,12 @@ split; (b) a **loading-animation gap probe** that timestamps the loading animati
 flight. Write the numbers into the Baseline table. Done when every README §4 row has a measured
 baseline.
 
-**M1 — Turn the simulation worker on by default.** `src/core/simLaneMain.js`,
+**M1 — Turn the simulation worker on by default.** ✅ **LANDED** (storm fix `530498d` + flip commit):
+worker is the default lane, `?simLane=main`/`sf.simLane`/`SPACEFACE_SIM_LANE=main` are the escape
+hatch; a worker dead before its init reply falls back to the in-process sim with the registry rebuilt
+(bounded 45 s gate). Measured on this host: Crucible wave-15 p50 130 vs 158 ms main, longest 315 vs 362;
+Adventure route p50 80 vs 240 ms, p99 212 vs 1,254 ms; journal rebuilds 4/session; boot+escape verified
+real-browser. `src/core/simLaneMain.js`,
 `wholeSimBrowserWorker.js`, `simLaneCommands.js`, `simLaneJournal.js`, `src/main.js`. State:
 `design/perf/STRUCTURAL-HORIZON.md` stages 0–9 (golden digests bit-identical worker vs main, independent
 review SHIP). Ruling 8 removes the 0.5 ms wire bar. Work: within-session A/B (`?simLane=worker` vs main)

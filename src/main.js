@@ -161,18 +161,47 @@ async function boot() {
       simLane: simLaneFlags.lane,
     };
 
-    const registry = createRegistry(ctx);
+    let registry = createRegistry(ctx);
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
     // transport journal presentation consumes.
-    const simLaneRuntime = createSimLaneRuntime({
+    const mainLaneEntities = state.entities;
+    const mainLaneProjectiles = state.weaponVfxProjectiles;
+    let simLaneRuntime = createSimLaneRuntime({
       state,
       registry,
       bus,
       flags: simLaneFlags,
       helpers,
     });
+    if (simLaneRuntime) {
+      // The worker lane is the production default — a worker that dies before
+      // its init reply (module-eval failure, CSP block, silent spawn) must not
+      // dead-end boot. Gate on the lane's readiness with a bounded window; on
+      // failure restore the in-process bindings and continue on the main lane.
+      // The registry is rebuilt so the sim-owned systems it skipped under the
+      // worker lane init normally here.
+      try {
+        await Promise.race([
+          simLaneRuntime.readyPromise,
+          new Promise((_, reject) => setTimeout(
+            () => reject(new Error('sim worker init timed out')), 45_000)),
+        ]);
+      } catch (error) {
+        try { simLaneRuntime.close?.(); } catch (_) { /* dead lane */ }
+        state.entities = mainLaneEntities;
+        state.weaponVfxProjectiles = mainLaneProjectiles;
+        // The lane refills entityList from its mirror on every reply — clear
+        // any rows it landed so the in-process sim repopulates cleanly.
+        state.entityList.length = 0;
+        ctx.simLane = 'main';
+        simLaneRuntime = null;
+        registry = createRegistry(ctx);
+        ctx.registry = registry;
+        console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
+      }
+    }
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
     // one (which the worker's journal replaces wholesale).

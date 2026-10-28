@@ -145,19 +145,22 @@ function applyLaneSaveStorageOps(ops) {
 
 /**
  * Resolve the sim-lane runtime flags once at boot.
- *   (default)        — the in-process main-thread sim IS the runtime.
- *                      Reliability cut: the worker lane's message/journal
- *                      copy and clock handoff are off the production route —
- *                      Browser and Electron run the same main 60 Hz
- *                      authority. The worker lane stays as an explicit
- *                      diagnostic below.
- *   ?simLane=worker  — diagnostic opt-in: run the whole authoritative sim in
- *                      a Worker. localStorage 'sf.simLane'='worker' selects
- *                      the same lane where the canonical root forbids query
- *                      strings (release-soak; Electron preload maps
- *                      SPACEFACE_SIM_LANE onto it and clears the key on a
- *                      normal launch, so this source default decides there).
- *   ?simLane=main    — explicit main lane (same as the default).
+ *   (default)        — the worker lane IS the runtime: the whole authoritative
+ *                      60 Hz sim runs in a DedicatedWorker and presentation
+ *                      consumes its journal. Flipped on the measured A/B —
+ *                      the worker lane wins both instrumented routes on the
+ *                      owner hardware (Crucible wave-15 p50 130 vs 158 ms,
+ *                      Adventure p50 80 vs 240 ms contended).
+ *   ?simLane=worker  — explicit worker lane (same as the default).
+ *                      localStorage 'sf.simLane'='worker' selects it where the
+ *                      canonical root forbids query strings (release-soak;
+ *                      Electron preload maps SPACEFACE_SIM_LANE onto it and
+ *                      clears the key on a normal launch, so the default
+ *                      decides there).
+ *   ?simLane=main    — explicit main lane: the in-process escape hatch. The
+ *                      same selection works through localStorage
+ *                      'sf.simLane'='main' and Electron SPACEFACE_SIM_LANE=main
+ *                      where the canonical root forbids query strings.
  *   ?simSab=1        — opt into the SAB journal lane; ?simSab=0 opts out.
  *                      On the worker lane an absent flag auto-arms wherever
  *                      the realm can host it (crossOriginIsolated + SAB —
@@ -167,11 +170,6 @@ function applyLaneSaveStorageOps(ops) {
  *                      declines to the same fallback.
  *   localStorage sf.domainProfile or the diagnostic Electron environment
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
- * NOTE — intended post-flip semantics (NOT yet active): once the manager's
- * measured A/B lands, 'worker' becomes the default lane and 'main' the
- * explicit escape hatch — ?simLane=main, localStorage 'sf.simLane'='main',
- * and Electron SPACEFACE_SIM_LANE=main all keep selecting it. The returned
- * default here stays 'main' until that separate commit flips it.
  * Returns { lane, sab, domainProfile, warnings[] }.
  */
 export function resolveSimLaneFlags(search) {
@@ -182,23 +180,26 @@ export function resolveSimLaneFlags(search) {
       : (typeof location !== 'undefined' ? location.search : '');
     params = new URLSearchParams(raw || '');
   } catch (_) { params = null; }
-  // Reliability default: the in-process main lane is the runtime; the worker
-  // lane is a diagnostic opt-in via ?simLane=worker (or localStorage
-  // 'sf.simLane' where the canonical root forbids query strings — release-soak
-  // browser/electron). An unrecognized value warns and still takes the
-  // default. The query param wins when both are present.
+  // Measured default: the worker lane is the runtime — the A/B showed the
+  // sim-offloaded lane winning on both the Crucible stress route (wave-15
+  // p50 130 ms vs 158 ms main) and the Adventure route (p50 80 ms vs 240 ms
+  // on a contended host). The in-process main lane stays as the explicit
+  // escape hatch: ?simLane=main, localStorage 'sf.simLane'='main', or
+  // Electron SPACEFACE_SIM_LANE=main all select it. An unrecognized value
+  // warns and still takes the worker default. The query param wins when
+  // both are present.
   let requested = params && params.get('simLane');
   if (requested == null && typeof localStorage !== 'undefined') {
     try { requested = localStorage.getItem('sf.simLane'); } catch (_) { /* storage gated */ }
   }
   const warnings = [];
   let lane;
-  if (requested === SIM_LANE.WORKER) lane = SIM_LANE.WORKER;
+  if (requested === SIM_LANE.MAIN) lane = SIM_LANE.MAIN;
   else {
-    if (requested && requested !== SIM_LANE.MAIN) {
-      warnings.push(`unrecognized simLane='${requested}' — main lane serves by default`);
+    if (requested && requested !== SIM_LANE.WORKER) {
+      warnings.push(`unrecognized simLane='${requested}' — worker lane serves by default`);
     }
-    lane = SIM_LANE.MAIN;
+    lane = SIM_LANE.WORKER;
   }
   const sabParam = params && params.get('simSab');
   const sabExplicit = sabParam === '1' || sabParam === 'true';
@@ -1975,6 +1976,14 @@ export function createSimLaneRuntime({
     try { journal.close(); } catch (_) {}
 
     const closingForLaneFailure = laneError !== null;
+    // Directive entries (init, tick) carry optional resolvers — the boot
+    // readyPromise hangs forever when a module-eval failure kills the worker
+    // before its first reply, because onerror carries no seq. Reject them the
+    // same way pendingRpcs are so a dead lane settles every waiter.
+    for (const [, tracked] of pending) {
+      try { tracked.reject?.(new Error(laneError || 'sim lane closed')); } catch (_) {}
+    }
+    pending.clear();
     for (const [, tracked] of pendingRpcs) {
       // close() is also the normal presentation teardown path.  Fire-and-
       // forget RPCs can still be in flight there; observe only that expected
