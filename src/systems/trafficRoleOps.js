@@ -76,6 +76,10 @@ export const trafficRoleOps = {
     // witnessed violence: recording them would panic nearby civilians and spill the victim's
     // causal manifest, which breaks the incident's own handoff binding.
     if (p.origin && typeof p.origin.kind === 'string' && p.origin.kind.startsWith('traffic_')) return;
+    // The relief berth seeds pre-existing subsystem injuries through combat's damage owner.
+    // That patient has not just been attacked: scattering the neighbouring shift from this
+    // receipt makes its workers flee a friendly casualty as soon as the sector materializes.
+    if (p.origin?.kind === 'choir_relief' && p.attackerId == null && p.sourceId == null) return;
     const attackerId = p.attackerId != null ? p.attackerId
       : p.sourceId != null ? p.sourceId
         : null;

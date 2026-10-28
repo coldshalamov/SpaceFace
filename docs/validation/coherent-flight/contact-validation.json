@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "scope": "Native contact motion and consequence coherence; headless causal evidence, not visual acceptance.",
+  "recordedAtUtc": "2026-10-28T13:17:48.112031+00:00",
+  "source": {
+    "baseHead": "4b468fdf71a38f83f7017a061808317d9aede1ca",
+    "diffSha256": "fe689fdb5d91349c7094e587de685fdf32202b0d3eeca5813370e44d3b026fc2",
+    "diffCommand": "git diff --no-ext-diff --binary 4b468fdf71a38f83f7017a061808317d9aede1ca -- src/core/sg02DynamicBodyOwner.js src/core/physics.js src/combat/impulseKernel.js src/systems/collisionConsequences.js test/contact-motion-coherence.test.mjs test/pq-140-01-heavy-terrain.test.mjs",
+    "filesSha256": {
+      "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+      "src/core/physics.js": "64e9d24b260938917303c320ec9fd0acee4ce96172c53c35f39456150133923e",
+      "src/combat/impulseKernel.js": "4232d0bd925655bf00435c6121be6855f4501c599b56e88fa69bbcf5a189ea73",
+      "src/systems/collisionConsequences.js": "281caca22353daec169a850e7750ce2a5abe8e408b33a18a3398c5f65800c9c1",
+      "test/contact-motion-coherence.test.mjs": "efd048139330adc4e34d45aaa3b6f9097310b8aead3c77aa01bb7884d4c63b81",
+      "test/pq-140-01-heavy-terrain.test.mjs": "abb3014bd891bab988d8fea1d4f96ebda6fe71c9e478209d4454d5c813a8e0a5"
+    },
+    "note": "The diff hash covers only these six collision-owned source/test files; the evidence file is excluded to avoid a self-reference."
+  },
+  "environment": {
+    "backend": "rapier-dynamic",
+    "fixedDtSeconds": 0.016666666666666666,
+    "node": "v24.22.1"
+  },
+  "commands": [
+    {
+      "command": "node test/contact-motion-coherence.test.mjs",
+      "result": "PASS",
+      "cases": 13,
+      "source": "final source fingerprint above"
+    },
+    {
+      "command": "node --test test/sg02-contact-sanity-recovery.test.mjs test/sg02-coincident-spawn.test.mjs test/sg02-embedded-body-recovery.test.mjs test/sg02-craft-contact-heading.test.mjs test/sg02-player-contact-give.test.mjs test/player-collision-slide.test.mjs test/collision-tearoff.test.mjs test/tether-resting-contact-damage.test.mjs test/tumble-fling-free-spin.test.mjs test/tumble-fling-chain.test.mjs test/pq-154-wreck-terrain.test.mjs test/weapon-impulse-consequence.test.mjs test/fb-096-contact-scratch-pool.test.mjs test/pq-140-01-heavy-terrain.test.mjs",
+      "result": "PASS",
+      "files": 14,
+      "source": "aggregate energy guard version; before the final active-anchor-recoil exception. No other runtime changes followed that run."
+    },
+    {
+      "command": "node --test test/physics-sandbox-station-recoil.test.mjs test/physics-anchored-recoil-restore-steps.test.mjs",
+      "result": "PASS",
+      "files": 2,
+      "source": "final source fingerprint above"
+    },
+    {
+      "command": "git diff --check -- src/core/sg02DynamicBodyOwner.js src/core/physics.js src/combat/impulseKernel.js src/systems/collisionConsequences.js test/contact-motion-coherence.test.mjs test/pq-140-01-heavy-terrain.test.mjs",
+      "result": "PASS"
+    }
+  ],
+  "mechanism": [
+    "Build connected islands through dynamic contacts only, using retained union-find records and near-linear work in active contacts, bodies and joints.",
+    "Measure available translation and rotation energy in the incoming island centre-of-mass frame; common coasting velocity is preserved.",
+    "A fixed contact anchors the reference frame, but fixed bodies never merge unrelated dynamic islands.",
+    "Per-body motion bounds are followed by one aggregate energy check. If solver contact work would add energy, reduce only contact deltas toward the trusted expected motion.",
+    "Expected motion already includes authored commands, weapon impulses and spring work. Native joints and actively recoiling kinematic anchors are treated as unmeasured external work and keep the pre-existing policy.",
+    "The player retains its existing contact/helm policy; its actual energy loss can fund a struck body.",
+    "Surface closing speed includes angular point velocity. Endpoint-specific availableContactDeltaVA/B preserves same-step chain impacts through the physics adapter, pooled events and deferred consequences."
+  ],
+  "observations": {
+    "stationaryKestrelPair": {
+      "fixture": {
+        "massEach": 24,
+        "radiusEach": 6,
+        "gapsWu": [
+          0,
+          1,
+          4
+        ],
+        "originsXWu": [
+          0,
+          12000
+        ],
+        "ticks": 120
+      },
+      "preChangeDiagnostic": {
+        "approximatePeakSpeedWuPerSecond": 125,
+        "approximateFirstPureConsequenceDamage": 81,
+        "qualification": "Observed while diagnosing the pre-change working tree. This is not a retained immutable baseline replay; pure consequence damage does not include the live consumer cooldown."
+      },
+      "finalMaximumResidualSpeedWuPerSecond": 0.01871026710823579,
+      "finalDamage": 0,
+      "finalHelmLossReceipts": 0,
+      "finalSeparationRangeWu": [
+        9.1903487181757,
+        9.951041089942954
+      ]
+    },
+    "earnedMotion": {
+      "coMovingSpeedWuPerSecond": 100,
+      "queuedCommonImpulseDeltaVWuPerSecond": 120,
+      "maximumAllowedCoastErrorWuPerSecond": 0.1,
+      "result": "PASS"
+    },
+    "ordinaryImpacts": {
+      "gentleClosingSpeedWuPerSecond": 4,
+      "hardClosingSpeedWuPerSecond": 120,
+      "incomingMasses": [
+        2,
+        24,
+        400
+      ],
+      "result": "Gentle momentum transfer remains; high-energy contacts move and damage targets."
+    },
+    "playerRam": {
+      "closingSpeedWuPerSecond": 120,
+      "nativeVersusGuardedVelocityToleranceWuPerSecond": 0.001,
+      "result": "PASS for both player and struck hull"
+    },
+    "sameStepChains": [
+      {
+        "bodyCount": 3,
+        "incomingSpeedWuPerSecond": 120,
+        "nativeFinalVelocitiesX": [
+          30.751216888427734,
+          36.038055419921875,
+          40
+        ],
+        "guardedFinalVelocitiesX": [
+          30.751216888427734,
+          36.038055419921875,
+          40
+        ],
+        "lastPairInitialSurfaceClosure": 0,
+        "lastBodyDamage": 108.13440000000001
+      },
+      {
+        "bodyCount": 5,
+        "incomingSpeedWuPerSecond": 120,
+        "nativeFinalVelocitiesX": [
+          4.85261344909668,
+          20.266006469726562,
+          20.266008377075195,
+          30.664804458618164,
+          40
+        ],
+        "guardedFinalVelocitiesX": [
+          4.85261344909668,
+          20.266006469726562,
+          20.266008377075195,
+          30.664804458618164,
+          40
+        ],
+        "lastPairInitialSurfaceClosure": 0,
+        "lastBodyDamage": 108.13440000000001
+      }
+    ],
+    "chainComparisonMethod": "Fresh owners with identical native fixtures; disable only _prepareContactMotionBudgets in the comparator. The pre-existing structural-give policy remains in both arms.",
+    "longOverlap": {
+      "bodyCount": 5,
+      "ticks": 600,
+      "gapsWu": [
+        0,
+        4,
+        11.5
+      ],
+      "incomingSpeedsWuPerSecond": [
+        0,
+        0.02,
+        0.3
+      ],
+      "maximumAllowedEnergy": "initial kinetic energy + 0.1",
+      "maximumAllowedSpeed": "incoming speed + 0.1 WU/s",
+      "result": "PASS for every tick in all nine fixtures",
+      "qualification": "Small settling impulses below the native contact-event threshold remain; the guard prevents amplification, not all floating-point residuals."
+    },
+    "rotatingStrike": {
+      "yawRatesRadiansPerSecond": [
+        -4,
+        4
+      ],
+      "centreClosingSpeed": 0,
+      "surfaceClosingSpeed": 37.7686928800163,
+      "targetSignedZVelocities": [
+        -18.186643600463867,
+        18.186643600463867
+      ],
+      "result": "Both signs transfer motion and positive kinetic damage through the native owner, physics adapter and combat consequence owner."
+    },
+    "fixedStationIsolation": {
+      "incomingSpeed": 120,
+      "oppositeContactSpeed": 0.1,
+      "maximumOppositeContactBudget": 0.201,
+      "oppositeContactDamage": 0,
+      "result": "PASS; a static station does not bridge contact energy."
+    },
+    "kinematicAnchor": {
+      "initialRecoilSpeed": 8,
+      "nativeTargetSpeed": 6.511999130249023,
+      "guardedTargetSpeed": 6.511999130249023,
+      "result": "PASS; real driven anchor work remains."
+    },
+    "pooledAndDeferredChannels": {
+      "result": "PASS; missing channels clear, finite zero survives, and each endpoint retains its own available-motion budget."
+    }
+  },
+  "limits": [
+    "No frame-rate, render-quality or public-route player-truth claim is made by this headless evidence.",
+    "Pre-existing maximum per-contact delta-v, player slide/helm policy, terrain crumple rules and damage admission/cooldowns remain in place.",
+    "An arbitrary solver contact with missing measurements, native joint work or active kinematic recoil remains under the prior conservative compatibility policy."
+  ]
+}

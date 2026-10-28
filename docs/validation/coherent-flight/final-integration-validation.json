@@ -1,0 +1,268 @@
+{
+  "baseCommit": "530498dcc1e0dc1cfdf2e25be38489b6355418d9",
+  "localSourceCommit": "74b88892cba10328a393706aaf6bc271d0cce22d",
+  "scope": "Final combined source after integrating master530498dcc, including its presentation journal and runtime fixes; focused native/source checks, not rendered usability or hardware acceptance.",
+  "sourceSha256": {
+    "SAVE_SCHEMA.md": "96d6e89cd100f1edd7c0b8702bfeba5003cdc64f95d521aeccbddd27b9617e5e",
+    "index.html": "6237107d6352aedf7ca843a04d67b700fc4b7d29f32eb28dd636f02d35e176ec",
+    "package.json": "ae8301850b7b0e898f499a7e3c7ea90d35de06e54d09499e39dd70090f061673",
+    "scripts/check-dock-key-exclusivity.mjs": "c4b40f5255f36e4eb2a623c713e3bc6c7e7c90b33957ed4730520863676efcae",
+    "scripts/check-sg06-production-ports.mjs": "314877ea807adbc66080efe03ac223123a836b7603fbba5cffc3f36fec455204",
+    "src/ai/contracts.js": "f46d0904898e7c22161e37fb41d91c8d0cdd83b326c98cb4824ff1d86add9553",
+    "src/ai/maneuver.js": "7fd810d5ead05ba8cf906efe99410ac4f4a5a4e3823f38e59e13ab7da84f2f2d",
+    "src/ai/npcFieldDeploy.js": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9",
+    "src/ai/squadFrame.js": "40f0cee51e6cc3227d98c17085f4a573d54439b1c02e3398ee5dd3102f553441",
+    "src/ai/stack.js": "f2b3268470f78da5b08c5a60f7bc2fdb65b96d34b244fd7591608c9b2013e8f7",
+    "src/combat/impulseKernel.js": "4232d0bd925655bf00435c6121be6855f4501c599b56e88fa69bbcf5a189ea73",
+    "src/core/fields/fieldKernel.js": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7",
+    "src/core/flight/precisionAssist.js": "4bb05ce0300502bc54d44aa3abe3ca641b37a0c78071a47729cf4aa7a9f2cc30",
+    "src/core/flight/propulsionKernel.js": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+    "src/core/physics.js": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1",
+    "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+    "src/data/flightTuning.js": "b0f2bcda765703a4da5dda7dc81230c972172ca8e3a9276c99d422919b07e3bb",
+    "src/systems/aiPorts.js": "a097bbf2833beeb7ffcf3ca36261bc9afbdbf60ff566fd6a699e11dd8a81f55a",
+    "src/systems/collisionConsequences.js": "eb424964dd665f37cb58d1491f94ec8d27c3e0dc1a6e1b3b58d70474298cb802",
+    "src/systems/fields.js": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1",
+    "src/systems/flightV3.js": "8ac7ecbe42acc2b43b69f4026beb33a2ae9d74f431ff3917bc7a6d51a11002ee",
+    "src/systems/laneErrands.js": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e",
+    "src/systems/npcJobsRuntime.js": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c",
+    "src/systems/tacticalAI.js": "82b54f0edfc67f73127440185bbeb701f471a5e1d4d74206433e59075927aa4a",
+    "src/systems/traffic.js": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+    "src/systems/trafficRoleOps.js": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480",
+    "src/ui/input.js": "f285464d6df77d06b92c3123d614cf3a8fd996cad28920ad8266f73f76721c87",
+    "test/ai-motor-feedback.test.mjs": "d5d54555af6d8aba7bf36eee7ab9dfcb7e644cdc13f9e80fb464f5906b0e1ce6",
+    "test/ai-pilot-character.test.mjs": "b95d27ce2acab915c98f3f296b204f88e192faa70d16dfeddce2498098a33234",
+    "test/civilian-clearing-cone.test.mjs": "47ee4ff9df5c2658c34e3cf3daa2d9c7d8f747f9d4be063d137cf635952fbcb8",
+    "test/contact-motion-coherence.test.mjs": "efd048139330adc4e34d45aaa3b6f9097310b8aead3c77aa01bb7884d4c63b81",
+    "test/flight-dormant-skip.test.mjs": "b5834585240863862a02608c77462f333da7b91bf3ff0782072063a6e0feae6d",
+    "test/lane-errand-motion.test.mjs": "4ea62c0a86104f731186dec4c27655e938a41e15571137e703ec6d5f18309130",
+    "test/npc-jobs-runtime-wiring.test.mjs": "f2b98a1063739fb1f8141e2fab992a85b67148bef89c670cf7ffce89dad08d1e",
+    "test/npc-worker-escape.test.mjs": "b7bd982aee107755a1afa360241497106bf40e4bf6eba444f02769e88821c348",
+    "test/pallas-shift-ownership.test.mjs": "1d6c43db9337c8cbb3229f3be8038a5e91d9ba5d8115cc768084a78e4b8b2247",
+    "test/pq-140-01-heavy-terrain.test.mjs": "abb3014bd891bab988d8fea1d4f96ebda6fe71c9e478209d4454d5c813a8e0a5",
+    "test/precision-flight-assist.test.mjs": "b0689a43ef338d218b17d43adceb1cc20cdf4a4d3e68047e4364aad5903139c1",
+    "test/traffic-station-arrival.test.mjs": "01599a4f468854f10ab2cce85dc6195dfa4b592a7b19859f0b93817aae49b8fc",
+    "test/world-reacts-civilians.test.mjs": "4565fd688b1654cfde67faf6fc1dbd98f7a6da440ffb0e9688e87e1ac00dd2d0"
+  },
+  "preMergeValidation": {
+    "baseCommit": "4bbe8a4224c18d40ffe3c2bbdcdcc2d0f347ae1c",
+    "localParentCommit": "60d668ad2896ef281d6db0d260e00ab34df6e0cf",
+    "scope": "Final combined source after current-master merge and the native Adventure opening fixes. Focused native/source checks; does not certify rendered gameplay or hardware performance.",
+    "sourceSha256": {
+      "SAVE_SCHEMA.md": "96d6e89cd100f1edd7c0b8702bfeba5003cdc64f95d521aeccbddd27b9617e5e",
+      "index.html": "6237107d6352aedf7ca843a04d67b700fc4b7d29f32eb28dd636f02d35e176ec",
+      "package.json": "ae8301850b7b0e898f499a7e3c7ea90d35de06e54d09499e39dd70090f061673",
+      "scripts/check-dock-key-exclusivity.mjs": "c4b40f5255f36e4eb2a623c713e3bc6c7e7c90b33957ed4730520863676efcae",
+      "scripts/check-sg06-production-ports.mjs": "314877ea807adbc66080efe03ac223123a836b7603fbba5cffc3f36fec455204",
+      "src/ai/contracts.js": "f46d0904898e7c22161e37fb41d91c8d0cdd83b326c98cb4824ff1d86add9553",
+      "src/ai/maneuver.js": "7fd810d5ead05ba8cf906efe99410ac4f4a5a4e3823f38e59e13ab7da84f2f2d",
+      "src/ai/npcFieldDeploy.js": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9",
+      "src/ai/squadFrame.js": "40f0cee51e6cc3227d98c17085f4a573d54439b1c02e3398ee5dd3102f553441",
+      "src/ai/stack.js": "f2b3268470f78da5b08c5a60f7bc2fdb65b96d34b244fd7591608c9b2013e8f7",
+      "src/combat/impulseKernel.js": "4232d0bd925655bf00435c6121be6855f4501c599b56e88fa69bbcf5a189ea73",
+      "src/core/fields/fieldKernel.js": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7",
+      "src/core/flight/precisionAssist.js": "4bb05ce0300502bc54d44aa3abe3ca641b37a0c78071a47729cf4aa7a9f2cc30",
+      "src/core/flight/propulsionKernel.js": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+      "src/core/physics.js": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1",
+      "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+      "src/data/flightTuning.js": "b0f2bcda765703a4da5dda7dc81230c972172ca8e3a9276c99d422919b07e3bb",
+      "src/systems/aiPorts.js": "a097bbf2833beeb7ffcf3ca36261bc9afbdbf60ff566fd6a699e11dd8a81f55a",
+      "src/systems/collisionConsequences.js": "281caca22353daec169a850e7750ce2a5abe8e408b33a18a3398c5f65800c9c1",
+      "src/systems/fields.js": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1",
+      "src/systems/flightV3.js": "8ac7ecbe42acc2b43b69f4026beb33a2ae9d74f431ff3917bc7a6d51a11002ee",
+      "src/systems/laneErrands.js": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e",
+      "src/systems/npcJobsRuntime.js": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c",
+      "src/systems/tacticalAI.js": "82b54f0edfc67f73127440185bbeb701f471a5e1d4d74206433e59075927aa4a",
+      "src/systems/traffic.js": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+      "src/systems/trafficRoleOps.js": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480",
+      "src/ui/input.js": "f285464d6df77d06b92c3123d614cf3a8fd996cad28920ad8266f73f76721c87",
+      "test/ai-motor-feedback.test.mjs": "d5d54555af6d8aba7bf36eee7ab9dfcb7e644cdc13f9e80fb464f5906b0e1ce6",
+      "test/ai-pilot-character.test.mjs": "b95d27ce2acab915c98f3f296b204f88e192faa70d16dfeddce2498098a33234",
+      "test/civilian-clearing-cone.test.mjs": "47ee4ff9df5c2658c34e3cf3daa2d9c7d8f747f9d4be063d137cf635952fbcb8",
+      "test/contact-motion-coherence.test.mjs": "efd048139330adc4e34d45aaa3b6f9097310b8aead3c77aa01bb7884d4c63b81",
+      "test/flight-dormant-skip.test.mjs": "b5834585240863862a02608c77462f333da7b91bf3ff0782072063a6e0feae6d",
+      "test/lane-errand-motion.test.mjs": "4ea62c0a86104f731186dec4c27655e938a41e15571137e703ec6d5f18309130",
+      "test/npc-jobs-runtime-wiring.test.mjs": "f2b98a1063739fb1f8141e2fab992a85b67148bef89c670cf7ffce89dad08d1e",
+      "test/npc-worker-escape.test.mjs": "b7bd982aee107755a1afa360241497106bf40e4bf6eba444f02769e88821c348",
+      "test/pallas-shift-ownership.test.mjs": "1d6c43db9337c8cbb3229f3be8038a5e91d9ba5d8115cc768084a78e4b8b2247",
+      "test/pq-140-01-heavy-terrain.test.mjs": "abb3014bd891bab988d8fea1d4f96ebda6fe71c9e478209d4454d5c813a8e0a5",
+      "test/precision-flight-assist.test.mjs": "b0689a43ef338d218b17d43adceb1cc20cdf4a4d3e68047e4364aad5903139c1",
+      "test/traffic-station-arrival.test.mjs": "01599a4f468854f10ab2cce85dc6195dfa4b592a7b19859f0b93817aae49b8fc",
+      "test/world-reacts-civilians.test.mjs": "4565fd688b1654cfde67faf6fc1dbd98f7a6da440ffb0e9688e87e1ac00dd2d0"
+    },
+    "checks": [
+      {
+        "command": "npm run check:motion",
+        "exitCode": 0,
+        "wallSeconds": 13.581,
+        "logSha256": "de1f2e4b8e03f645626d5f2d6cfc4fe19968086e3a55efdd481d02395d180ba3",
+        "testCases": 89,
+        "dockKeyGroups": 7,
+        "testFiles": {
+          "precision-flight-assist": 10,
+          "ai-motor-feedback": 10,
+          "ai-pilot-character": 17,
+          "contact-motion-coherence": 13,
+          "traffic-station-arrival": 6,
+          "npc-worker-escape": 3,
+          "civilian-clearing-cone": 7,
+          "lane-errand-motion": 4,
+          "world-reacts-civilians": 15,
+          "flight-dormant-skip": 4
+        }
+      },
+      {
+        "command": "node scripts/check-baseline.mjs --only=flight-v3,sim-v3-compare,sim-v3,save-schema,smooth-flight --jobs=2",
+        "exitCode": 0,
+        "wallSeconds": 8.174,
+        "logSha256": "68b6f380d7a1e1bf7cd6ebcec4ad983308f628f3c8317ee1df38dfc2c70bb7ed",
+        "passed": [
+          "flight-v3",
+          "sim-v3-compare",
+          "sim-v3",
+          "save-schema",
+          "smooth-flight"
+        ],
+        "existingGoldensUpdated": false
+      },
+      {
+        "command": "npm run check:contracts",
+        "exitCode": 0,
+        "wallSeconds": 3.433,
+        "logSha256": "8e0f3204591637f617f7a48de9c7041f54673c56d9875f718c7d40f9b8bfd53b",
+        "checks": [
+          "source syntax",
+          "scenario/input/telemetry schemas",
+          "source reachability",
+          "modulepreload manifest"
+        ]
+      },
+      {
+        "command": "node --test test/racing-opponents.test.mjs test/racing-refinement.test.mjs test/swarm-native-draft-admission.test.mjs test/crucible-arcade-tools.test.mjs",
+        "exitCode": 0,
+        "wallSeconds": 12.751,
+        "logSha256": "397742efa9e7dc8709b289ed505a90b36d11561d2f0fa7d6b824d114bb91f30f",
+        "passingFiles": 4,
+        "scope": "Native racing rivals and grid hold, production Swarm admission, and arcade physical tools."
+      },
+      {
+        "command": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --reload-at 600 --physics-backend rapier-dynamic --flight-system v3 --tactical-ai",
+        "exitCode": 0,
+        "wallSeconds": 5.868,
+        "logSha256": "b2e4507f484112ac2c240e1d191a0cc80dcf25a42fde52daa5320ce0faceb28d",
+        "result": {
+          "ok": true,
+          "deterministic": true,
+          "scenario": "47a",
+          "seed": 47,
+          "ticks": 720,
+          "physicsBackend": "rapier-dynamic",
+          "tacticalAI": true,
+          "flightSystem": "v3",
+          "comparison": {
+            "schema": "spaceface.sfSimComparison.v1",
+            "ok": true,
+            "mode": "uninterrupted-vs-reload",
+            "reloadAt": 600,
+            "hashEqual": true,
+            "firstDivergentTick": null,
+            "diffs": []
+          }
+        }
+      }
+    ],
+    "sourceUnchangedDuringChecks": true,
+    "limits": [
+      "Focused native checks and a20-second native Adventure opening do not certify rendered usability, subjective flight feel, full combat progression or hardware performance.",
+      "Original six public gate receipts remain bound to local49a9e420; the separate latest Adventure receipt is bound to local74b88892. Neither native record replaces rendered acceptance.",
+      "Each causal fixture supports only its named scenario; real physical collisions and civilian danger responses remain possible."
+    ]
+  },
+  "checks": [
+    {
+      "command": "npm run check:motion",
+      "exitCode": 0,
+      "wallSeconds": 15.451,
+      "logSha256": "a52121de55cd4576f343f1924e714add3505845dac985cd7ed1655abafccddc1",
+      "testCases": 89,
+      "dockKeyGroups": 7,
+      "testFiles": {
+        "precision-flight-assist": 10,
+        "ai-motor-feedback": 10,
+        "ai-pilot-character": 17,
+        "contact-motion-coherence": 13,
+        "traffic-station-arrival": 6,
+        "npc-worker-escape": 3,
+        "civilian-clearing-cone": 7,
+        "lane-errand-motion": 4,
+        "world-reacts-civilians": 15,
+        "flight-dormant-skip": 4
+      }
+    },
+    {
+      "command": "node scripts/check-baseline.mjs --only=flight-v3,sim-v3-compare,sim-v3,save-schema,smooth-flight --jobs=2",
+      "exitCode": 0,
+      "wallSeconds": 9.919,
+      "logSha256": "52ca27a38d13971540504e4ae8c88f173179627936730b2a7ebd56755aef8d99",
+      "passed": [
+        "flight-v3",
+        "sim-v3-compare",
+        "sim-v3",
+        "save-schema",
+        "smooth-flight"
+      ],
+      "existingGoldensUpdated": false
+    },
+    {
+      "command": "npm run check:contracts",
+      "exitCode": 0,
+      "wallSeconds": 6.138,
+      "logSha256": "8e0f3204591637f617f7a48de9c7041f54673c56d9875f718c7d40f9b8bfd53b",
+      "checks": [
+        "source syntax",
+        "scenario/input/telemetry schemas",
+        "source reachability",
+        "modulepreload manifest"
+      ]
+    },
+    {
+      "command": "node --test test/racing-opponents.test.mjs test/racing-refinement.test.mjs test/swarm-native-draft-admission.test.mjs test/crucible-arcade-tools.test.mjs",
+      "exitCode": 0,
+      "wallSeconds": 13.62,
+      "logSha256": "66f3fd68981ebce4110924aac9890cbf45dc1d9f65d457649f66bfe748eac3a2",
+      "passingFiles": 4,
+      "scope": "Native racing rivals and grid hold, production Swarm admission, and arcade physical tools."
+    },
+    {
+      "command": "node scripts/sf-sim.mjs compare 47a --seed 47 --ticks 720 --inputs test/47a.inputs.json --reload-at 600 --physics-backend rapier-dynamic --flight-system v3 --tactical-ai",
+      "exitCode": 0,
+      "wallSeconds": 7.641,
+      "logSha256": "b2e4507f484112ac2c240e1d191a0cc80dcf25a42fde52daa5320ce0faceb28d",
+      "result": {
+        "ok": true,
+        "deterministic": true,
+        "scenario": "47a",
+        "seed": 47,
+        "ticks": 720,
+        "physicsBackend": "rapier-dynamic",
+        "tacticalAI": true,
+        "flightSystem": "v3",
+        "comparison": {
+          "schema": "spaceface.sfSimComparison.v1",
+          "ok": true,
+          "mode": "uninterrupted-vs-reload",
+          "reloadAt": 600,
+          "hashEqual": true,
+          "firstDivergentTick": null,
+          "diffs": []
+        }
+      }
+    }
+  ],
+  "sourceUnchangedDuringChecks": true,
+  "limits": [
+    "Focused native checks and a20-second native Adventure opening do not certify rendered usability, subjective flight feel, full combat progression or hardware performance.",
+    "Original six public gate receipts remain bound to local49a9e420; the separate latest Adventure receipt is bound to local74b88892. Neither native record replaces rendered acceptance.",
+    "Each causal fixture supports only its named scenario; real physical collisions and civilian danger responses remain possible."
+  ]
+}

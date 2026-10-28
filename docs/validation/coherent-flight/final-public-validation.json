@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-28T14:00:11.732785+00:00",
+  "frozenSourceCommit": "49a9e420b0b8eb2164f0666c11cabfd0fa789e58",
+  "baseCommit": "4b468fdf71a38f83f7017a061808317d9aede1ca",
+  "overall": "FAIL",
+  "evidenceClass": "public route, bounded software renderer; acceptance not green",
+  "runtimeHashesMatchIntegrationRecord": {
+    "index.html": true,
+    "package.json": true,
+    "scripts/check-dock-key-exclusivity.mjs": true,
+    "scripts/check-sg06-production-ports.mjs": true,
+    "src/ai/contracts.js": true,
+    "src/ai/maneuver.js": true,
+    "src/ai/squadFrame.js": true,
+    "src/ai/stack.js": true,
+    "src/combat/impulseKernel.js": true,
+    "src/core/flight/precisionAssist.js": true,
+    "src/core/flight/propulsionKernel.js": true,
+    "src/core/physics.js": true,
+    "src/core/sg02DynamicBodyOwner.js": true,
+    "src/data/flightTuning.js": true,
+    "src/systems/aiPorts.js": true,
+    "src/systems/collisionConsequences.js": true,
+    "src/systems/flightV3.js": true,
+    "src/systems/npcJobsRuntime.js": true,
+    "src/systems/tacticalAI.js": true,
+    "src/systems/traffic.js": true,
+    "src/ui/input.js": true
+  },
+  "environment": {
+    "browser": "Chromium 141.0.7390.37",
+    "renderer": "SwiftShader software WebGL",
+    "viewport": "960x540",
+    "quietHost": false
+  },
+  "commandPolicy": {
+    "gate": true,
+    "wallMinutesPerPass": 4,
+    "durationOverrides": false,
+    "roundRequirementOverrides": false,
+    "retries": 0,
+    "sequence": "Racing, Swarm idle/active, Gauntlet idle/active, Adventure"
+  },
+  "cells": [
+    {
+      "mode": "racing",
+      "pass": "active",
+      "overall": "INCOMPLETE",
+      "simSeconds": 8.2,
+      "wallSeconds": 377,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [],
+      "unknownChecks": [
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 17 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "frame_time",
+          "detail": "software-renderer evidence only; no --baseline to grade regression \u00b7 harness reader excluded: 10 long tasks (total 9958 ms, max 4028 ms), 3 trimmed \u00b7 243 reader windows (total 13271 ms, max 3928 ms) \u00b7 243 frame dts reduced"
+        },
+        {
+          "id": "offscreen_marker",
+          "detail": "edge markers were not read"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-racing-active/verdict.md",
+        "contactSheet": "final-racing-active/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "73ae1e60fc224e7591c831b153c99f3ea3836d98fb824ed873869caaf01e3f89",
+        "contact-sheet.jpg": "c09e321c948d8b635d4ba3e2704858de7250068ed574c11943969420ea33550d"
+      }
+    },
+    {
+      "mode": "swarm",
+      "pass": "idle",
+      "overall": "FAIL",
+      "simSeconds": 0,
+      "wallSeconds": 369,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [
+        {
+          "id": "tumble",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "player_ship",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        }
+      ],
+      "unknownChecks": [
+        {
+          "id": "round_resolution",
+          "detail": "no round was won inside the run"
+        },
+        {
+          "id": "reward_before_input",
+          "detail": "no run score sampled before the first input"
+        },
+        {
+          "id": "player_control",
+          "detail": "no control probe ran"
+        },
+        {
+          "id": "lod_churn",
+          "detail": "too few play frames sampled"
+        },
+        {
+          "id": "popping",
+          "detail": "too few play frames"
+        },
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 0 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "vfx_coverage",
+          "detail": "too few VFX scans \u00b7 skipped 4"
+        },
+        {
+          "id": "backdrop_coverage",
+          "detail": "no per-pixel splits sampled \u00b7 skipped 4"
+        },
+        {
+          "id": "frame_time",
+          "detail": "too few frames"
+        },
+        {
+          "id": "round_transitions",
+          "detail": "no round after round 1 was reached"
+        },
+        {
+          "id": "crucible_realm",
+          "detail": "sectors seen: n/a"
+        },
+        {
+          "id": "offscreen_marker",
+          "detail": "edge markers were not read"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-swarm-idle/verdict.md",
+        "contactSheet": "final-swarm-idle/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "46827018dd5c31d2b6789446e67ba73444688f62e4268810ce55d31d98f306c0",
+        "contact-sheet.jpg": "21047995ff7f81b7a4c350cf88b31f0e757ce6b0210fde85caeaaae24dfc0862"
+      }
+    },
+    {
+      "mode": "swarm",
+      "pass": "active",
+      "overall": "FAIL",
+      "simSeconds": 0.1,
+      "wallSeconds": 326,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [
+        {
+          "id": "round_resolution",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no round was won inside the run)"
+        },
+        {
+          "id": "player_control",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no control probe ran)"
+        },
+        {
+          "id": "tumble",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "player_ship",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "round_transitions",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no round after round 1 was reached)"
+        },
+        {
+          "id": "rounds_reached",
+          "detail": "stopped: wall-clock cap"
+        },
+        {
+          "id": "crucible_realm",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (sectors seen: n/a)"
+        }
+      ],
+      "unknownChecks": [
+        {
+          "id": "lod_churn",
+          "detail": "too few play frames sampled"
+        },
+        {
+          "id": "popping",
+          "detail": "too few play frames"
+        },
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 0 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "vfx_coverage",
+          "detail": "too few VFX scans \u00b7 skipped 4"
+        },
+        {
+          "id": "backdrop_coverage",
+          "detail": "no per-pixel splits sampled \u00b7 skipped 4"
+        },
+        {
+          "id": "frame_time",
+          "detail": "too few frames"
+        },
+        {
+          "id": "offscreen_marker",
+          "detail": "edge markers were not read"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-swarm-active/verdict.md",
+        "contactSheet": "final-swarm-active/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "bf31d056ecc74fcd3d841a4694982afe2152e3fe3990248591350921c83a3bc9",
+        "contact-sheet.jpg": "970859429084c8a9d953827ce925fddf5decec81a9bb73dc91b9133a4e64f40e"
+      }
+    },
+    {
+      "mode": "gauntlet",
+      "pass": "idle",
+      "overall": "FAIL",
+      "simSeconds": 0,
+      "wallSeconds": 382,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [
+        {
+          "id": "tumble",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "player_ship",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        }
+      ],
+      "unknownChecks": [
+        {
+          "id": "round_resolution",
+          "detail": "no round was won inside the run"
+        },
+        {
+          "id": "player_control",
+          "detail": "no control probe ran"
+        },
+        {
+          "id": "lod_churn",
+          "detail": "too few play frames sampled"
+        },
+        {
+          "id": "popping",
+          "detail": "too few play frames"
+        },
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 0 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "vfx_coverage",
+          "detail": "too few VFX scans \u00b7 skipped 0"
+        },
+        {
+          "id": "backdrop_coverage",
+          "detail": "no per-pixel splits sampled \u00b7 skipped 0"
+        },
+        {
+          "id": "frame_time",
+          "detail": "too few frames"
+        },
+        {
+          "id": "round_transitions",
+          "detail": "no round after round 1 was reached"
+        },
+        {
+          "id": "crucible_realm",
+          "detail": "sectors seen: n/a"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-gauntlet-idle/verdict.md",
+        "contactSheet": "final-gauntlet-idle/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "8e96b58b481ff09c29bb464528fd0851d5a4d92a619e73fc1985256917b1d8a8",
+        "contact-sheet.jpg": "26080410d11bf5d39735874057b37f200d4c742e3a3d1fbbaf56b826345f1815"
+      }
+    },
+    {
+      "mode": "gauntlet",
+      "pass": "active",
+      "overall": "FAIL",
+      "simSeconds": 0,
+      "wallSeconds": 384,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [
+        {
+          "id": "round_resolution",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no round was won inside the run)"
+        },
+        {
+          "id": "player_control",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no control probe ran)"
+        },
+        {
+          "id": "tumble",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "player_ship",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (too few play frames)"
+        },
+        {
+          "id": "round_transitions",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (no round after round 1 was reached)"
+        },
+        {
+          "id": "rounds_reached",
+          "detail": "stopped: wall-clock cap"
+        },
+        {
+          "id": "crucible_realm",
+          "detail": "not measured \u2014 gate counts UNKNOWN as FAIL (sectors seen: n/a)"
+        }
+      ],
+      "unknownChecks": [
+        {
+          "id": "lod_churn",
+          "detail": "too few play frames sampled"
+        },
+        {
+          "id": "popping",
+          "detail": "too few play frames"
+        },
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 0 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "vfx_coverage",
+          "detail": "too few VFX scans \u00b7 skipped 0"
+        },
+        {
+          "id": "backdrop_coverage",
+          "detail": "no per-pixel splits sampled \u00b7 skipped 0"
+        },
+        {
+          "id": "frame_time",
+          "detail": "too few frames"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-gauntlet-active/verdict.md",
+        "contactSheet": "final-gauntlet-active/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "5722588e203c9431efc4a6e688cb31944d242ad72a9394a390e08756482741e6",
+        "contact-sheet.jpg": "b3895b4a7fa7ce5b40162a147b4ea1b3d8f09ff1be5eb846aa60760ec424bc93"
+      }
+    },
+    {
+      "mode": "adventure",
+      "pass": "active",
+      "overall": "INCOMPLETE",
+      "simSeconds": 8.2,
+      "wallSeconds": 359,
+      "stopReason": "wall-clock cap",
+      "startCommit": "49a9e420b",
+      "endCommit": "49a9e420b",
+      "startDirtySourcePaths": [],
+      "endDirtySourcePaths": [],
+      "pageErrors": [],
+      "consoleErrors": [],
+      "routePassed": true,
+      "failedChecks": [],
+      "unknownChecks": [
+        {
+          "id": "readability",
+          "detail": "not enough on-screen samples per class (enemy 0, asteroid 0, projectile 0, pickup 0; need 5); capture coherence: 16 body samples rejected for capture-motion, identity/visibility changes, or HUD occlusion; 0 screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic"
+        },
+        {
+          "id": "frame_time",
+          "detail": "software-renderer evidence only; no --baseline to grade regression \u00b7 harness reader excluded: 10 long tasks (total 13739 ms, max 5265 ms), 3 trimmed \u00b7 247 reader windows (total 16910 ms, max 5155 ms) \u00b7 247 frame dts reduced"
+        },
+        {
+          "id": "offscreen_marker",
+          "detail": "edge markers were not read"
+        }
+      ],
+      "artifacts": {
+        "verdict": "final-adventure-active/verdict.md",
+        "contactSheet": "final-adventure-active/contact-sheet.jpg"
+      },
+      "artifactSha256": {
+        "verdict.md": "97b95943d8d6a226785b4f61801b81acca63c53c6b20bda713f4a9e8d9f9a563",
+        "contact-sheet.jpg": "7eea86d6000b5525c2a52613b3849003fca8bf3d503b104f5b1c732a52dba404"
+      },
+      "worldObservations": {
+        "firstPlayerInputSimSeconds": 6.1,
+        "causalityResolved": false,
+        "events": [
+          {
+            "ev": "asteroid-destroyed",
+            "t": 314517.375,
+            "sim": 1.8333333333333317,
+            "observedSim": 1.833,
+            "id": 62,
+            "rawId": 62,
+            "occupantGeneration": 156,
+            "type": "asteroid",
+            "reason": null,
+            "pos": {
+              "x": 849.9491577148438,
+              "z": -73.00384521484375
+            },
+            "owner": null,
+            "roomSolidId": null,
+            "wave": null
+          },
+          {
+            "ev": "killed",
+            "t": 336717.2249999996,
+            "sim": 5.85,
+            "observedSim": 5.85,
+            "id": 552,
+            "rawId": 552,
+            "occupantGeneration": null,
+            "type": "ship",
+            "killerId": 552,
+            "killerType": "ship",
+            "byPlayer": false,
+            "hostile": false,
+            "phase": "inactive",
+            "wave": 0
+          },
+          {
+            "ev": "asteroid-destroyed",
+            "t": 356180.0650000004,
+            "sim": 8.083333333333314,
+            "observedSim": 8.083,
+            "id": 68,
+            "rawId": 68,
+            "occupantGeneration": 115,
+            "type": "asteroid",
+            "reason": null,
+            "pos": {
+              "x": 509.6689453125,
+              "z": -11.642645835876465
+            },
+            "owner": null,
+            "roomSolidId": null,
+            "wave": null
+          },
+          {
+            "ev": "killed",
+            "t": 356231.2400000002,
+            "sim": 8.083,
+            "observedSim": 8.083,
+            "id": 541,
+            "rawId": 541,
+            "occupantGeneration": null,
+            "type": "ship",
+            "killerId": 541,
+            "killerType": "ship",
+            "byPlayer": false,
+            "hostile": false,
+            "phase": "inactive",
+            "wave": 0
+          },
+          {
+            "ev": "killed",
+            "t": 357151.4749999996,
+            "sim": 8.167,
+            "observedSim": 8.167,
+            "id": 587,
+            "rawId": 587,
+            "occupantGeneration": null,
+            "type": "wreck",
+            "killerId": 587,
+            "killerType": "wreck",
+            "byPlayer": false,
+            "hostile": false,
+            "phase": "inactive",
+            "wave": 0
+          }
+        ],
+        "qualification": "Observed events are not classified as unintended destruction; this short capture does not prove that all ambient destruction has been eliminated."
+      }
+    }
+  ],
+  "limits": [
+    "Swarm/Gauntlet preparation consumed the requested wall cap before meaningful active play. Strict unmeasured-check failures and round-three failures are retained.",
+    "Racing and Adventure each reached live input probes but lack the samples and performance baseline needed for complete acceptance.",
+    "Software rendering on an unmarked host does not establish hardware frame pacing.",
+    "No gate check, threshold or score was changed to accept these captures. Longer GPU-backed public gates are still required before landing.",
+    "Final Adventure retained non-player destruction before first input; event causality remains unresolved and is preserved in that cell."
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "schema": "spaceface.coherent_flight.ai_validation.v1",
+  "recordedAtUtc": "2026-10-28T13:19:10.882Z",
+  "baseCommit": "4b468fdf71a38f83f7017a061808317d9aede1ca",
+  "nodeVersion": "v24.22.1",
+  "scope": "Deterministic planner, production tactical/traffic adapters, V3 forces and native Rapier contact-free arrival/flyby fixtures. This is not a full-game visual or performance verdict.",
+  "results": [
+    {
+      "command": "node test/ai-motor-feedback.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 10
+    },
+    {
+      "command": "node test/ai-pilot-character.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 17
+    },
+    {
+      "command": "node test/traffic-station-arrival.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 6,
+      "nativeArrival": {
+        "arrivalTick": 909,
+        "arrivalDrift": 2.8734753131866455,
+        "minSeparation": 60.924896240234375,
+        "contacts": 0
+      }
+    },
+    {
+      "command": "node scripts/check-sg06-maneuver-stability.mjs",
+      "exitCode": 0,
+      "metrics": {
+        "schema": "spaceface.sg06.maneuver_stability.v1",
+        "orbit": {
+          "maxTorqueDelta": 0.05737,
+          "maxForceDelta": 0.058231,
+          "highFrequencyYawFlips": 0,
+          "boostRequests": 0,
+          "nonEmergencyBoosts": 0,
+          "brakeRequests": 0,
+          "maxObservedSpeed": 33.966165
+        },
+        "intercept": {
+          "maxTorqueDelta": 0.05737,
+          "maxForceDelta": 0.053761,
+          "highFrequencyYawFlips": 0,
+          "boostRequests": 0,
+          "nonEmergencyBoosts": 0,
+          "brakeRequests": 0,
+          "maxObservedSpeed": 86.670719
+        },
+        "escapeTether": {
+          "maxTorqueDelta": 0.123566,
+          "maxForceDelta": 0.143963,
+          "highFrequencyYawFlips": 0,
+          "boostRequests": 48,
+          "nonEmergencyBoosts": 0,
+          "brakeRequests": 0,
+          "maxObservedSpeed": 135.463017
+        }
+      }
+    },
+    {
+      "command": "node scripts/check-sg06-rapier-formation-convergence.mjs",
+      "exitCode": 0,
+      "metrics": {
+        "flyby": {
+          "phases": [
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress"
+          ],
+          "minTargetSeparation": 41.337,
+          "bestReformHeadingError": 0.068,
+          "acceptedManeuvers": 1500,
+          "flushedManeuvers": 1500,
+          "ramAuthorized": false,
+          "sanctuaryRamAuthorized": false
+        },
+        "capitalApproach": {
+          "phases": [
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "strike",
+            "extend"
+          ],
+          "minTargetSeparation": 83.611,
+          "bestReformHeadingError": 0.504,
+          "acceptedManeuvers": 1500,
+          "flushedManeuvers": 1500,
+          "ramAuthorized": false,
+          "sanctuaryRamAuthorized": false
+        },
+        "explicitRamApproach": {
+          "phases": [
+            "ingress",
+            "engine_flare",
+            "commit",
+            "breakaway",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "commit",
+            "breakaway",
+            "reform",
+            "ingress",
+            "engine_flare",
+            "commit",
+            "breakaway",
+            "reform",
+            "ingress"
+          ],
+          "minTargetSeparation": 111.492,
+          "bestReformHeadingError": 1.484,
+          "acceptedManeuvers": 1500,
+          "flushedManeuvers": 1500,
+          "ramAuthorized": true,
+          "sanctuaryRamAuthorized": false
+        }
+      }
+    }
+  ],
+  "sourceSha256": {
+    "src/ai/contracts.js": "f46d0904898e7c22161e37fb41d91c8d0cdd83b326c98cb4824ff1d86add9553",
+    "src/ai/maneuver.js": "7fd810d5ead05ba8cf906efe99410ac4f4a5a4e3823f38e59e13ab7da84f2f2d",
+    "src/ai/squadFrame.js": "40f0cee51e6cc3227d98c17085f4a573d54439b1c02e3398ee5dd3102f553441",
+    "src/ai/stack.js": "f2b3268470f78da5b08c5a60f7bc2fdb65b96d34b244fd7591608c9b2013e8f7",
+    "src/systems/aiPorts.js": "a097bbf2833beeb7ffcf3ca36261bc9afbdbf60ff566fd6a699e11dd8a81f55a",
+    "src/systems/tacticalAI.js": "82b54f0edfc67f73127440185bbeb701f471a5e1d4d74206433e59075927aa4a",
+    "src/systems/traffic.js": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+    "src/systems/npcJobsRuntime.js": "106ecaa1fa11ba1de0f8671cae3b8e197d391f5c2102b97040fc1784576cea93",
+    "src/systems/flightV3.js": "8ac7ecbe42acc2b43b69f4026beb33a2ae9d74f431ff3917bc7a6d51a11002ee",
+    "src/core/flight/propulsionKernel.js": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+    "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+    "test/ai-motor-feedback.test.mjs": "d5d54555af6d8aba7bf36eee7ab9dfcb7e644cdc13f9e80fb464f5906b0e1ce6",
+    "test/ai-pilot-character.test.mjs": "b95d27ce2acab915c98f3f296b204f88e192faa70d16dfeddce2498098a33234",
+    "test/traffic-station-arrival.test.mjs": "01599a4f468854f10ab2cce85dc6195dfa4b592a7b19859f0b93817aae49b8fc"
+  }
+}

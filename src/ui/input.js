@@ -472,6 +472,8 @@ export function createUiInput(ctx, screenManager) {
       // station buttons and rail tabs keep normal keyboard activation.
       if (def && def.id === 'station' && matchesBinding(ev, BINDINGS.dock)) {
         ev.preventDefault();
+        // Docking can open this screen while E is still held. Only a new press is an egress intent.
+        if (ev.repeat) return;
         undock();
         bus.emit('audio:cue', { id: 'ui_back' });
         return;
@@ -638,6 +640,9 @@ export function createUiInput(ctx, screenManager) {
       case BINDINGS.dock.key:
       case BINDINGS.dock.label:
       case 'Enter':
+        // E is also strafe: entering range while holding it must not manufacture a dock intent.
+        // Leave repeats available to flight; a fresh press below owns the contextual action.
+        if (ev.repeat) return;
         if (dockInRange) {
           ev.preventDefault();
           // preventDefault() is NOT suppression in this codebase: the window-level flight adapter

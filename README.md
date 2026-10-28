@@ -25,16 +25,22 @@ Browser (`http://localhost:8123/`), Electron dev (`npm run electron`), and packa
 Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play uses the release-authored runtime assets under `assets/ships/release/parts/` in both browser and desktop.
 
 ### Controls
+
+The default **Pilot** scheme separates steering from aiming: the keyboard flies the ship and the mouse aims its weapons.
+
 | Action | Key |
 |---|---|
-| Move / strafe | **W A S D** |
-| Aim | **Mouse** |
+| Forward thrust | **W / Up** |
+| Brake to a stop | **S / Down**, or **0** for the dedicated brake |
+| Turn the ship | **A / D**, or **Left / Right** |
+| Strafe | **Q / E**; a fresh **E** press docks instead when the dock prompt is available |
+| Aim weapons independently of the ship | **Mouse** |
 | Fire weapons | **Left‑mouse** (the mouse is the gun; Space is not fire) |
-| Massline — latch / cut (tap), line control (hold) | **Space** (alias **F**); **0** is the zero-thrust brake |
-| Mining beam | **Right‑mouse** (hold, near an asteroid) / **LT** on gamepad |
+| Massline — latch / cut (tap), line control (hold) | **Space** (alias **F**) |
+| Select an object / use its tool | **Right‑mouse**; hold to mine an eligible asteroid / **LT** on gamepad |
 | Afterburner | **Shift** / **RB** on gamepad |
 | Countermeasure | **X** / **R3** on gamepad |
-| Dock | **E** when the dock prompt shows; **Enter** is a secondary key |
+| Dock | Press **E** when the dock prompt shows; **Enter** is a secondary key |
 | Local map | **M** |
 | Star map | **N** |
 | Tech tree | **T** |
@@ -43,6 +49,10 @@ Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play 
 | Pause / back | **Esc** |
 | Quick save / load | **F5 / F9** |
 | Zoom | **Mouse wheel** |
+
+In **Settings → Controls**, **Helm Assist** makes the nose follow the mouse and moves strafe to **A / D**. Flight models are a separate choice under **Settings → Gameplay**: **Assisted** is the default, **Drift** reduces automatic correction, and **Newtonian** leaves neutral translation unassisted. The deliberate brake remains available in all three. Holding **S** is a stop command; it does not start a reverse burn once the ship has stopped.
+
+For an exterior berth, follow its approach corridor and slow until the dock prompt appears. The berth checks the ship's position and speed; being near the station's center alone does not guarantee docking. Docking and keyboard undocking require a fresh key press, so holding a strafe key into range cannot dock automatically. See [Flight and motion tuning](docs/FLIGHT_AND_MOTION_TUNING.md) for the live controls, configuration owners, and validation approach.
 
 Asteroids live out in the **belt sectors** (e.g. Ceres Belt) — the starting hub is a populated station system, so jump out to a belt to mine.
 

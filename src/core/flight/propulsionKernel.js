@@ -30,6 +30,7 @@
 //      the latch, its timers and its bindings live with the input owner.
 
 import { drawFlightAcceleration, validDrawFlight } from './drawFlightControl.js';
+import { precisionAssistWeight, precisionCounterAcceleration } from './precisionAssist.js';
 import { channelAuthorityIsFull } from './driveAuthority.js';
 import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
 import { travelFlag } from '../../data/featureFlags.js';
@@ -474,7 +475,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const manualLocal = manualThrustLocal(input, limits, localVelocity, profile);
   const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt);
 
-  const assist = reactionAssistAcceleration(body, axes, input, profile, false);
+  const assist = reactionAssistAcceleration(body, axes, input, profile, false, dt);
   const combined = clampLocalAcceleration({
     forward: manualLocal.forward + assist.local.forward,
     lateral: manualLocal.lateral + assist.local.lateral,
@@ -783,7 +784,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     },
   };
   const limits = reactionLimits(rcsProfile, 1);
-  const assist = reactionAssistAcceleration(body, axes, manualInput, rcsProfile, false);
+  const assist = reactionAssistAcceleration(body, axes, manualInput, rcsProfile, false, dt);
   const local = clampLocalAcceleration({
     forward: (manualInput.throttle >= 0
       ? manualInput.throttle * limits.forward
@@ -897,7 +898,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const limits = reactionLimits(effective, effective.boostAccelMult);
   const controlLimits = input.brake ? reactionBrakeLimits(effective) : limits;
   const localVelocity = worldToLocal(body.vel, axes);
-  const assist = reactionAssistAcceleration(body, axes, input, effective, false);
+  const assist = reactionAssistAcceleration(body, axes, input, effective, false, dt);
   const manualLocal = manualThrustLocal(input, limits, localVelocity, effective);
   const governor = applySpeedGovernor(manualLocal, input, limits, localVelocity, effective, dt);
   const local = clampLocalAcceleration({
@@ -997,7 +998,7 @@ function stepFieldSail(body, input, profile, runtime, environment, dt) {
   });
 }
 
-function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
+function reactionAssistAcceleration(body, axes, input, profile, forceBrake, dt = 1 / 60) {
   const mode = normalizeAssistMode(input.assistMode);
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
@@ -1064,6 +1065,23 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const deadSpeed = positive(settings.deadSpeed, 0.18);
   if (Math.abs(localVelocity.forward) < deadSpeed && Math.abs(input.throttle) <= deadInput) forward = 0;
   if (Math.abs(localVelocity.lateral) < deadSpeed && Math.abs(input.strafe) <= deadInput) lateral = 0;
+
+  // Only released translation axes receive precision counter-thrust. A yaw command does not
+  // turn a short docking correction into a long drift; a held strafe/main command retains its
+  // authored authority. Smooth speed weighting makes the handover a curve, never a mode switch.
+  const precision = forceBrake ? 0 : precisionAssistWeight(length2(body.vel), input, profile);
+  if (precision > 0) {
+    const coastScale = clamp(finite(input.coastAssistScale, 1), 0, 1);
+    if (Math.abs(input.throttle) <= deadInput) {
+      const target = precisionCounterAcceleration(localVelocity.forward, dt, profile) * coastScale;
+      forward += (target - forward) * precision;
+    }
+    if (Math.abs(input.strafe) <= deadInput) {
+      const target = precisionCounterAcceleration(localVelocity.lateral, dt, profile) * coastScale;
+      lateral += (target - lateral) * precision;
+    }
+    reason = 'precision-assist';
+  }
 
   const local = clampLocalAcceleration({ forward, lateral }, limits);
   return { accel: localToWorld(local, axes), local, reason };
@@ -1638,6 +1656,7 @@ function normalizeInput(input = {}, out = null, subs = null) {
   // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
   o.velocityVectoring = normalizeVelocityVectoring(input.velocityVectoring, subs && subs.velocityVectoring);
   o.unvectoredCruiseSteering = input.unvectoredCruiseSteering === true;
+  o.precisionAssist = input.precisionAssist === true;
   return o;
 }
 

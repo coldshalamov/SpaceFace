@@ -60,10 +60,10 @@ and was the #1 cause of "hard to fly." Three schemes ship, selectable in Setting
 
 - **The keyboard flies the ship and the mouse is a weapon, not a rudder.** The nose does *not*
   follow the cursor in this scheme.
-- **W / ↑** = forward thrust, **S / ↓** = reverse (and reverse brakes).
-- **A / D** and **← / →** are contextual: they *yaw* while coasting, and *strafe with a 0.35 carve*
-  while forward thrust is held (`projectPilotFlightControls`, `src/systems/input.js:332`).
-- **Q / E** = explicit strafe in every state — the pursuit orbit-adjust.
+- **W / ↑** = forward thrust, **S / ↓** = brake to rest. Holding S at rest does not begin a reverse burn.
+- **A / D** and **← / →** always yaw the nose, including while forward thrust is held
+  (`projectPilotFlightControls`, `src/systems/input.js`).
+- **Q / E** = explicit strafe; a fresh E press becomes the dock action when a dock prompt is available.
 - **Shift** = boost (hold) / dash (tap).
 - **0 (Digit0)** = dedicated zero-thrust brake. Space is **not** brake; Space is the Massline (§4.3).
 - **LMB** fires. Weapons gimbal toward the cursor independently of the nose; the player gets a 360°

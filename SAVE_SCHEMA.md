@@ -558,6 +558,10 @@ Current save version: `22`
 | `$.settings.video.hudOpacity` | number | 1 |
 | `$.settings.video.hudScale` | number | 1 |
 | `$.settings.video.motionReduce` | boolean | false |
+| `$.settings.video.nocturne` | boolean | true |
+| `$.settings.video.nocturneAtmosphere` | boolean | true |
+| `$.settings.video.nocturneQuality` | string | auto |
+| `$.settings.video.nocturneShadows` | boolean | false |
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
 | `$.settings.video.postFx` | boolean | true |

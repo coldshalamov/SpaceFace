@@ -78,14 +78,20 @@ function directContactReceipt(target, other, exchangedMomentum, preSolveClosingS
   });
 }
 
-test('Hitch stays the light ship_kestrel and every mass-150+ hull is authored heavy', () => {
+test('Hitch stays light and mass-150+ hulls carry heavy motion except the inertialess saucer', () => {
   assert.equal(ship('ship_kestrel').name, 'Hitch');
   assert.equal(ship('ship_kestrel').mass, 18);
 
   const heavy = SHIPS.filter((entry) => entry.mass >= 150);
   assert.ok(heavy.length > 0, 'the roster contains mass-150+ hulls');
-  assert.ok(heavy.every((entry) => entry.heavyMotion),
-    'each heavy hull carries a turn-carry profile');
+  for (const entry of heavy) {
+    if (entry.id === 'ship_saucer') {
+      assert.equal(entry.driveId, 'drive_inertialess_s', 'the explicit exception uses its field drive');
+      assert.equal(entry.heavyMotion, undefined, 'the inertialess saucer never wallows under turn carry');
+    } else {
+      assert.ok(entry.heavyMotion, `${entry.id} carries a turn-carry profile`);
+    }
+  }
 });
 
 test('a Pulse hit is small on every heavy compared with a Wasp', () => {

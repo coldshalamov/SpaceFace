@@ -329,7 +329,9 @@ export const collisionConsequences = {
         || physics._sg02.world !== pending.nativeWorld || !physics.readOrchardPodReady?.(target)) return;
       const receipt = resolveCollisionConsequence({ target, other, exchangedMomentum, tick,
         provenance: causalProvenance, pos: payload.pos, normal: payload.normal,
-        preSolveClosingSpeed: payload.preSolveClosingSpeed, payloadDamageOnly: true });
+        preSolveClosingSpeed: payload.preSolveClosingSpeed,
+        preSolveContactSpeed: payload.preSolveContactSpeed,
+        availableContactDeltaV: availableContactDeltaV(payload, target.id), payloadDamageOnly: true });
       if (receipt?.impactDamage > 0) this._routeImpactDamage(target, other, receipt);
       return;
     }
@@ -343,7 +345,9 @@ export const collisionConsequences = {
       const receipt = resolveCollisionConsequence({
         target, other, exchangedMomentum, tick, provenance: causalProvenance,
         pos: payload.pos, normal: payload.normal,
-        preSolveClosingSpeed: payload.preSolveClosingSpeed, wreckDamageOnly: true,
+        preSolveClosingSpeed: payload.preSolveClosingSpeed,
+        preSolveContactSpeed: payload.preSolveContactSpeed,
+        availableContactDeltaV: availableContactDeltaV(payload, target.id), wreckDamageOnly: true,
       });
       const damage = receipt ? scaledImpactForHotDebris(receipt, other, state) : 0;
       if (damage > 0) this._routeImpactDamage(target, other, receipt, damage);
@@ -406,6 +410,8 @@ export const collisionConsequences = {
     _consequenceArgs.pos = payload.pos;
     _consequenceArgs.normal = payload.normal;
     _consequenceArgs.preSolveClosingSpeed = payload.preSolveClosingSpeed;
+    _consequenceArgs.preSolveContactSpeed = payload.preSolveContactSpeed;
+    _consequenceArgs.availableContactDeltaV = availableContactDeltaV(payload, target.id);
     if (strikerLoose) {
       _strikeArgs.strikerMass = positiveMass(other);
       _strikeArgs.closingSpeed = payload.preSolveClosingSpeed;
@@ -693,7 +699,8 @@ const _provenanceScratch = { actorId: null, weaponId: null, tag: null, tick: 0, 
 const _consequenceArgs = {
   target: null, other: null, exchangedMomentum: 0, tick: 0, provenance: null,
   craftDamageMultiplier: undefined, suppressCraftDamage: false, pos: null, normal: null,
-  preSolveClosingSpeed: undefined, projectileStrike: null,
+  preSolveClosingSpeed: undefined, preSolveContactSpeed: undefined, availableContactDeltaV: undefined,
+  projectileStrike: null,
 };
 const _strikeArgs = { strikerMass: 0, closingSpeed: undefined };
 const _impulseArg = {
@@ -836,7 +843,20 @@ function snapshotContactPayload(payload, tick) {
   if (Number.isFinite(payload && payload.preSolveClosingSpeed)) {
     snap.preSolveClosingSpeed = payload.preSolveClosingSpeed;
   }
+  if (Number.isFinite(payload && payload.preSolveContactSpeed)) {
+    snap.preSolveContactSpeed = payload.preSolveContactSpeed;
+  }
+  if (Number.isFinite(payload && payload.availableContactDeltaVA)) {
+    snap.availableContactDeltaVA = payload.availableContactDeltaVA;
+  }
+  if (Number.isFinite(payload && payload.availableContactDeltaVB)) {
+    snap.availableContactDeltaVB = payload.availableContactDeltaVB;
+  }
   return Object.freeze(snap);
+}
+
+function availableContactDeltaV(payload, targetId) {
+  return payload.aId === targetId ? payload.availableContactDeltaVA : payload.availableContactDeltaVB;
 }
 
 // Tags/weapon ids whose impulse records ride a body the rope or the plate itself is already

@@ -424,8 +424,10 @@ function assertFrameWhitelist(frame) {
   // additions: aiPorts stamps the live mount-loss count and phase edges from
   // combat/turretSubsystems.js, contracts.js normalizes both, and combatDoctrine's mount-loss
   // phase planner reads exactly these to shift doctrine phases as turrets die.
+  // `angVel` is the body's measured yaw rate. It closes the helm's feedback loop without
+  // differentiating discontinuous, batched contact snapshots; it reveals no target state.
   assertExactKeys(frame.self, [
-    'activity', 'aimProjectileSpeed', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
+    'activity', 'aimProjectileSpeed', 'angVel', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
     'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'occupantGeneration', 'operationalMassBand', 'pos', 'radius',
     'ramAuthorized', 'recovering', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'tumbling', 'turretPhaseEdges', 'turretsLost', 'vel',
     'woundedFallbackSpent',

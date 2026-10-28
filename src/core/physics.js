@@ -171,6 +171,9 @@ export const physics = {
       normal: { x: 0, z: 0 },
       causalActorId: null,
       preSolveClosingSpeed: 0,
+      preSolveContactSpeed: undefined,
+      availableContactDeltaVA: undefined,
+      availableContactDeltaVB: undefined,
       appliedPlayerDeltaV: undefined,
       solverPlayerHeadingRad: undefined,
       solverPlayerYawRateKick: undefined,
@@ -967,6 +970,9 @@ export const physics = {
       options.normal = receipt.normal;
       options.causalActorId = receipt.causalActorId;
       options.preSolveClosingSpeed = receipt.preSolveClosingSpeed;
+      options.preSolveContactSpeed = receipt.preSolveContactSpeed;
+      options.availableContactDeltaVA = receipt.availableContactDeltaVA;
+      options.availableContactDeltaVB = receipt.availableContactDeltaVB;
       options.appliedPlayerDeltaV = receipt.appliedPlayerDeltaV;
       // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
       // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
@@ -2442,6 +2448,9 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   setOptionalImpactChannel(payload, 'aGeneration', options.aGeneration);
   setOptionalImpactChannel(payload, 'bGeneration', options.bGeneration);
   setOptionalImpactChannel(payload, 'preSolveClosingSpeed', options.preSolveClosingSpeed);
+  setOptionalImpactChannel(payload, 'preSolveContactSpeed', options.preSolveContactSpeed);
+  setOptionalImpactChannel(payload, 'availableContactDeltaVA', options.availableContactDeltaVA);
+  setOptionalImpactChannel(payload, 'availableContactDeltaVB', options.availableContactDeltaVB);
   setOptionalImpactChannel(payload, 'appliedPlayerDeltaV', options.appliedPlayerDeltaV);
   // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
   // stays a hole rather than becoming a confident zero.
