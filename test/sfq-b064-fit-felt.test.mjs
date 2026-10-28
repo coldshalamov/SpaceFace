@@ -220,21 +220,6 @@ test('a module that fits no slot on any owned hull is a dead end: labelled, not 
   assert.equal(withBigHull.state === 'inventory', muleHasBerth, 'another owned hull with a berth keeps the inventory path');
 });
 
-test('the demo end card behavior is unchanged: it still arms on a docked fit and waits for IS_DEMO', async () => {
-  const t = boot();
-  try {
-    t.dock();
-    t.fit('mod_veil_step');
-    const sys = t.sim.registry.get('onboarding');
-    assert.equal(sys._demoFittedThisDock === null || sys._demoFittedThisDock === undefined, true,
-      'outside the demo build the end card never arms');
-    const pushed = [];
-    t.bus.on('ui:pushScreen', (p) => pushed.push(p));
-    t.undock();
-    assert.equal(pushed.filter((p) => p.id === 'demoEnd').length, 0);
-  } finally { t.restore(); }
-});
-
 test('a line the tutorial rail deferred drains when the rail releases the voice, not at a later undock', () => {
   const t = boot();
   try {

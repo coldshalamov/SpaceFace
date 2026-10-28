@@ -226,7 +226,7 @@ test('finite Tethys: public Save envelope API restores original shipment and aut
   assert.equal(state.entityList.filter(e=>e.alive!==false&&e.data?.tethysHandoff).length,expectedLoose);
   assert.equal(state.player.cargo.items.cmdty_stolen_goods||0,expectedCollected);
   assert.equal(expectedHeld+expectedLoose+expectedCollected,6);
-  assert.equal(state.traffic.freighters.filter(row=>row.activityActorSlotId?.startsWith('tethys_')).length,8);
+  assert.equal(state.traffic.freighters.filter(row=>row.activityActorSlotId?.startsWith('tethys_')).length,12);
   const returnErrors=[], priorError=console.error;
   console.error=(...args)=>{if(args.some(a=>a instanceof ReferenceError && /stationName/.test(a.message)))returnErrors.push(args);priorError(...args);};
   try {

@@ -56,9 +56,9 @@ if (args.list) {
 async function shoot(page, id, outDir, base) {
   const started = Date.now();
   const bg = args.bg ? `&bg=${encodeURIComponent(bgUrl(args.bg))}` : '';
-  const demo = args.demo ? '&demo=1' : '', phone = args.phone ? '&phone=1' : '';
+  const phone = args.phone ? '&phone=1' : '';
   const extra = args.query ? `&${args.query}` : '';
-  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${phone}${extra}${bg}`;
+  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${phone}${extra}${bg}`;
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: args.timeoutMs });
   await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: args.timeoutMs });
   await settleAnimations(page);
