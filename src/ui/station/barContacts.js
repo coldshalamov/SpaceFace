@@ -12,6 +12,7 @@ import { BORROWED_SUN } from '../../data/borrowedSun.js';
 import { lastShiftLocalReport } from '../../data/lastShift.js';
 import { ILEX_ARK } from '../../data/ilexArk.js';
 import { ilexGreenhouseFor, ilexGreenhouseReply } from '../../data/ilexGreenhouse.js';
+import { SORI_COMPARISON_CONTACT_ID, soriComparisonContact, soriComparisonReply } from '../../data/soriComparisonReturn.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -802,8 +803,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
     : [];
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
+  const sori = soriComparisonContact(state, stationId);
   const listed = [
-    ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...endingCourier, ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -1359,6 +1361,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
+  if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
