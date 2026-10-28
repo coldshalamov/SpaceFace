@@ -23275,6 +23275,19 @@ export const render = {
     // argued for fewer lanes was a transport bug, not decode load.
     for (let i = 0, n = Math.min(8, uniqueFiles.length); i < n; i++) workers.push(worker());
     const settled = Promise.allSettled(workers);
+    // Warm mounts never draw; once every decode lane returns, the whole subtree leaves the
+    // presented scene so the per-frame matrix/readiness walks stop paying for ~30 hidden
+    // holders, their count-0 instanced twins and the pool-witness stubs. The root stays
+    // reachable through _rosterPartCatalogRoot — cohort sweeps and run-end release iterate
+    // the object itself, and the release path already tolerates an unparented catalog. Late
+    // witness mounts land on the detached root harmlessly; in-flight decodes are done by
+    // definition, so the residency-owner predicate is no longer consulted for this root.
+    settled.then(() => {
+      if (this._rosterPartCatalogRoot === root && root.parent === scene) {
+        scene.remove(root);
+        this._noteShadowMeshRemoved?.(root);
+      }
+    });
     if (this._rosterPrewarmPending) {
       this._rosterPrewarmPending.add(settled);
       observePipelineAdmission(settled.finally(() => {
@@ -27326,9 +27339,9 @@ export const render = {
           // A fat owner's whole-subtree teardown paces per-128-node inside this
           // stepped walk — the generator twin holds the identical teardown
           // grammar as disposeObject, hooks included.
-          if (!disposePreparedAuthoredBoundary(owner)) yield* disposeObjectSteps(owner, null, owner.state);
+          if (!disposePreparedAuthoredBoundary(owner)) yield* disposeObjectSteps(owner, null, this.state);
         } catch (_) {
-          try { yield* disposeObjectSteps(owner, null, owner.state); } catch (_) { /* best effort */ }
+          try { yield* disposeObjectSteps(owner, null, this.state); } catch (_) { /* best effort */ }
         }
       }
     } finally {

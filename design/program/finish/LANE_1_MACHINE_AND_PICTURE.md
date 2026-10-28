@@ -105,6 +105,20 @@ suites 25/25. Real-browser proof (`probe-crucible-stress` worker arm, contended)
 `drawGuardDisarmed` true in 178/897 diag samples — engaged whenever the frame is actually settled;
 combat mounts legitimately re-arm it mid-round.
 
+Audit follow-up landed same day (m008/m009): the hidden `SF_RosterPrewarm_PartCatalog` root (~30
+part holders + count-0 instanced twins + pool-witness stubs) is not a bounded warm root, so while
+parented it paid into every per-frame scene/matrix/readiness walk for the whole run. It now
+unparents once all decode lanes settle; `_rosterPartCatalogRoot` keeps it reachable for cohort
+sweeps and run-end release (pool-witness mounts and in-flight-decodes' residency predicate are
+settle-complete by then; late mounts land on the detached root harmlessly). Also fixed a teardown
+telemetry hole the audit flagged: `_releaseDetachedBoundaryOwnersSteps` passed `owner.state`
+(undefined on an Object3D) into `disposeObjectSteps`, starving `noteLaneFault` of teardown-fault
+records — now `this.state`. Focused proof: twin-promotion suite 7/7 (incl. a new test pinning
+unparent-after-settle + ownership) — that suite also got a race fix: wave-102's paced drain
+(`yieldToBrowser` per 8 ms slice) made its synchronous post-call asserts catch mid-drain state on
+a loaded box; asserts now drain the pending set first / count pending-set admissions through the
+drain. Detached-owner + liveness suites green (80/80).
+
 **M3 — Fewer programs, fewer switches, fewer draws.** `setProgram` 7.9 % + `renderBufferDirect` 10.6 %;
 203 programs in a Crucible run, split by instancing (57), vertex colour (39), light count (37) and
 shadows (37). Steps, each measured: (a) bake Forge hull identity colour from `material.color` into a
