@@ -562,13 +562,17 @@ export const swarmElites = {
   },
 
   _onImpact(payload) {
-    const run = liveSwarmRun(this.state);
-    if (!run || !runHasPerk(run, 'ram_plate')) return;
+    // Cheap gates first: the crowd's impact fanout is almost entirely NPC↔NPC contacts,
+    // and liveSwarmRun pays a full validateRunState + runPerkIds array build per emit.
+    // Every gate below is a pure read, so testing player involvement before the run
+    // admits nothing the old order rejected (and rejects nothing it admitted).
     if (!payload || payload.playerInvolved !== true) return;
     const playerId = this.state.playerId;
     if (playerId == null) return;
     const otherId = payload.aId === playerId ? payload.bId : (payload.bId === playerId ? payload.aId : null);
     if (otherId == null) return;
+    const run = liveSwarmRun(this.state);
+    if (!run || !runHasPerk(run, 'ram_plate')) return;
     const other = this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(otherId)
       : null;
