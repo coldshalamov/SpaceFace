@@ -107,7 +107,13 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   Bright Seam, Range Drone); visual:false lines captioned (trackerCaptionId path, clean); wu/wu/s
   in range + tender copy fixed. 14/14 + 21/21 pinned suites green; 3 onboarding-suite fails traced
   to foreign dirty `src/core/*`/`weapons.js` — watch, not ours.
-- **Row 473 RC-FRONT-DOOR** — interactive title ≤ 10 s, mm:ss clock, destination slate, first-light preset, settings density (load-time half is Lane 1's M9; coordinate in its Inbox).
+- **Row 473 RC-FRONT-DOOR — DONE** (UI scope). Verified end-to-end on the real route: mm:ss clock,
+  destination slate names the resumed sector ("Continue · Helios Reach"), first-light preset +
+  once-only regression test (rc-473 5/5), settings density readouts, empty slot says empty once.
+  Title-interactive timing is **16.5–17.4 s clean / ~26–42 s loaded on SwiftShader vs 10 s —
+  entirely inside Lane 1's boot/render pipeline** (media hold → main.js eval/boot → serial shader
+  admission); filed to Lane 1 Inbox with the file:line tape. Also repaired stale
+  check-player-facing-labels (pins the shared commodityDisplayName helper).
 - **Row 429 AL-HUD-1** — no internal ids on screen (`ZONE_CERES_DERELICT`), no Overhead/Circuits buttons over the target card, no overlapping shipworks list text.
 - **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.
 - **Row 459 RC-VIGNETTES** — lived vignettes worth meeting.
