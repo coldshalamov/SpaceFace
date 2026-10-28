@@ -8,13 +8,31 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { mulberry32 } from '../src/core/rng.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
 import { freshMorrowMemory } from '../src/data/morrow.js';
 import { STORY_BRANCH_INTRO_TAG } from '../src/data/missions.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
 import { story as storyProto } from '../src/systems/story.js';
 import { heat as heatProto } from '../src/systems/heat.js';
 import { addCargo } from '../src/systems/cargo.js';
+// Books 1–2 are physical work, not emitted claims: the refinery mites are borrowed
+// ecology fauna, the disposal pods cross the real CR-FEED intake, a Cinder hull reaches
+// Rook's pad as an aftermath-bound wreck, the Compost Run reads the garden owner's
+// persisted growth, and the Nest receipt comes from the encounter owner itself.
+import { aftermathWrecks as aftermathProto } from '../src/systems/aftermathWrecks.js';
+import { createRookBooth } from '../src/systems/rookBooth.js';
+import { rookPadPosition } from '../src/characters/rookRules.js';
+import { understoryGardens as understoryProto } from '../src/systems/faction_understory.js';
+import { UNDERSTORY_RECEIVER } from '../src/data/understoryReceiver.js';
+import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
+import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
+import { materializeAlienEcology, handleAlienEcologyEvent } from '../src/systems/alienEcology.js';
+import { ALIEN_SITES } from '../src/data/alienEcology.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { encounterDirector as encounterDirectorProto } from '../src/systems/encounterDirector.js';
+import { runtime as nestRuntime } from '../src/data/encounters/705-the-nest.js';
+import { tickNestVisit } from '../src/systems/nestVisit.js';
+import { NEST_VISIT, nestApproach } from '../src/data/nestVisit.js';
 import {
   BRANCH_CHAIN,
   CAMPAIGN_BEATS,
@@ -46,11 +64,13 @@ function makeHarness() {
     state.factions[id] = state.factions[id] || { rep: 0, aggro: false };
     state.factions[id].rep = 0;
   }
+  state.run = { ...(state.run || {}), kind: 'adventure' };
   state.entities = state.entities || new Map();
   state.entities.set(1, {
     id: 1, team: 'player', pos: { x: 0, y: 0, z: 0 },
     flags: {}, hull: 100, maxHull: 100,
   });
+  state.entityList = [state.entities.get(1)];
   state.onboarding = { active: false, finished: true };
   if (state.settings && state.settings.gameplay) state.settings.gameplay.tutorialHints = false;
 
@@ -64,7 +84,7 @@ function makeHarness() {
     faction.rep = (faction.rep || 0) + (p.delta || 0);
   });
   const helpers = {
-    mulberry32,
+    hash32, mulberry32,
     voice: { say: () => true },
     spawnEntity: (spec) => {
       const id = state.entities.size ? Math.max(...state.entities.keys()) + 1 : 1;
@@ -74,20 +94,43 @@ function makeHarness() {
       state.entityList.push(entity);
       return entity;
     },
+    removeEntity: (id) => {
+      const e = state.entities.get(id);
+      if (e) e.alive = false;
+      state.entityList = (state.entityList || []).filter((row) => row !== e);
+      state.entities.delete(id);
+    },
   };
   const missions = cloneSystem(missionsProto);
   const story = cloneSystem(storyProto);
   const heat = cloneSystem(heatProto);
-  const registry = {
-    get: (name) => (name === 'missions' ? missions : name === 'story' ? story : name === 'heat' ? heat : null),
+  const aftermath = cloneSystem(aftermathProto);
+  const understory = cloneSystem(understoryProto);
+  const rook = createRookBooth();
+  const furnace = createFurnaceIntake();
+  const systems = {
+    missions, story, heat,
+    aftermathWrecks: aftermath, rookBooth: rook, furnaceIntake: furnace,
+    understoryGardens: understory,
   };
+  const registry = { get: (name) => systems[name] || null };
   const ctx = { state, bus, helpers, registry };
   missions.init(ctx);
   story.init(ctx);
   heat.init(ctx);
+  aftermath.init(ctx);
+  rook.init(ctx);
+  furnace.init(ctx);
+  understory.init(ctx);
   missions.newGame();
   story._ensureState(true);
-  return { state, bus, missions, story, heat, helpers };
+  // Same ecology functions the world calls: real cast creation and the durable
+  // death ledger the furnace worksite borrows its clearance count from.
+  const ecologyWorld = { state, bus, helpers, registry, active: { dressing: [], pois: [] },
+    _toGlobal: sectorLocalToGlobalForSector };
+  bus.on('entity:killed', (p) => handleAlienEcologyEvent(ecologyWorld, 'entity:killed', p));
+  return { state, bus, missions, story, heat, helpers,
+    aftermath, rook, furnace, understory, ecologyWorld, systems, registry };
 }
 
 function barLine(state, id) {
@@ -153,6 +196,118 @@ function completeSpineSetPiece(h, mission) {
   }
 }
 
+/** A real death: the body dies first, then the kill event reports it — the same
+ *  observable contract combat's kill producer publishes on the live route. */
+function killEntity(h, entity) {
+  assert.ok(entity && entity.alive !== false, 'a live body to kill');
+  entity.alive = false;
+  h.bus.emit('entity:killed', {
+    id: entity.id, killerId: h.state.playerId, type: entity.type,
+    pos: { x: entity.pos.x, z: entity.pos.z },
+  });
+}
+
+/** Move one owned disposal pod across the CR-FEED lip and let the real intake emit
+ *  its canonical receipt. Unbound furnace:fed payloads are not evidence. */
+function feedFurnaceLot(h, m, slot) {
+  const lot = m.params.furnaceLots.find((row) => row.slot === slot);
+  const pod = h.state.entities.get(lot.entityId);
+  assert.ok(pod && pod.alive && pod.data.furnaceMissionId === m.id, 'real owned disposal pod');
+  pod.pos = { ...furnaceMouthGlobal() };
+  pod.vel = { x: 0, z: 0 };
+  h.furnace.update();
+  assert.equal(lot.received, true, 'intake emitted the canonical owned receipt');
+  assert.equal(pod.alive, false);
+}
+
+/** The furnace worksite's targets are borrowed ecology fauna: the site cast must exist
+ *  before the mission borrows it, exactly as the world's sector materialization does. */
+function materializeWorksiteDest(h, m) {
+  h.state.world.currentSectorId = m.destSectorId;
+  materializeAlienEcology(h.ecologyWorld, { id: m.destSectorId }, h.ecologyWorld.active,
+    [ALIEN_SITES.closed_refinery]);
+  h.bus.emit('sector:enter', { sectorId: m.destSectorId });
+  h.missions.spawnTargetsForSector(m.destSectorId);
+  h.missions._ensureMissionTargets(m);
+}
+
+/** Book 1's furnace detail: clear the four marked mite sites, then settle all three
+ *  owned disposal lots through the CR-FEED intake. Kills alone never settle it. */
+function completeFurnaceDetail(h, m) {
+  materializeWorksiteDest(h, m);
+  assert.equal(m.targetEntityIds.length, 4, 'four real refinery mites');
+  for (const id of [...m.targetEntityIds]) killEntity(h, h.state.entities.get(id));
+  // Ecology's durable death ledger is written on entity:killed; reconcile it into progress.
+  h.missions._ensureMissionTargets(m);
+  assert.equal(m.objectiveProgress, 4, 'mite clearance is the cleared-site ledger');
+  for (let slot = 0; slot < 3; slot++) feedFurnaceLot(h, m, slot);
+  assert.equal(m.status, 'completed', 'clearance plus three settled lots completes the detail');
+}
+
+/** Book 2's Cinder board: three real marked Wasps down, one of their actual hulls parked
+ *  inside Rook's 100-WU ring at rest — the booth owner emits the canonical receipt. */
+function deliverCinderHull(h, m) {
+  assert.equal(m.objectiveProgress, 3);
+  assert.equal(m.params.cinderMarkedWrecks.length, 3, 'real deaths produced canonical markers');
+  const ref = m.params.cinderMarkedWrecks[0];
+  const wreck = h.aftermath._resolveBoundWreck(ref.markerId);
+  assert.ok(wreck && wreck.alive, 'recover the real aftermath hull');
+  wreck.pos = { ...rookPadPosition() };
+  wreck.vel = { x: 0, z: 0 };
+  h.rook.update();
+  assert.equal(m.params.cinderDeliveredMarkerId, ref.markerId);
+  assert.equal(m.status, 'completed', 'the marked hull delivered settles the Cinder board');
+}
+
+/** Book 2's Compost Run: a surviving marked hull is fed to the real authored receiver
+ *  while player-tethered, so the garden owner's persisted first-growth receipt exists. */
+function feedReceivingGarden(h, m) {
+  h.understory.update(1 / 60, h.state);
+  const garden = h.state.entityList.find((e) => e.alive !== false
+    && e.data?.gardenId === UNDERSTORY_RECEIVER.gardenId);
+  assert.ok(garden, 'the real authored receiving garden is present');
+  const wreck = m.params.cinderMarkedWrecks
+    .map((ref) => h.aftermath._resolveBoundWreck(ref.markerId))
+    .find((e) => e && e.alive !== false);
+  assert.ok(wreck, 'feed one surviving actual Cinder hull, not a synthetic garden event');
+  wreck.pos = { ...garden.pos };
+  wreck.vel = { x: 0, z: 0 };
+  h.state.player.tether = { active: true, targetId: wreck.id };
+  h.understory.update(1 / 60, h.state);
+  h.state.player.tether = null;
+  assert.equal(wreck.alive, false, 'the garden actually consumed the bound hull');
+  assert.ok(garden.data.gardenFirstPlayerGrowth, 'the owner persisted the player growth receipt');
+}
+
+/** Book 2's Nest: the authored arrival admits through the encounter owner; withdrawing
+ *  alive is a real outcome the owner's terminal receipt records — not a claimed event. */
+function visitNest(h) {
+  const { state, bus, helpers, registry } = h;
+  const director = Object.assign({}, encounterDirectorProto);
+  h.systems.encounterDirector = director;
+  director.init({ state, bus, helpers, registry });
+  state.world.currentSectorId = NEST_VISIT.sectorId;
+  state.entities.get(state.playerId).pos = { ...nestApproach() };
+  // This harness attaches the director late. Accrue the preceding flight through its
+  // real owner rather than granting pressure or forcing past the pacing gate.
+  state.simTime += 600;
+  director._accrue(state.encounterDirector, state, 600);
+  const admission = tickNestVisit(director);
+  assert.equal(admission.ok, true, `Nest admission: ${admission.reason}`);
+  const live = Object.values(state.encounterDirector.live || {})
+    .find((row) => row.shapeId === 'the_nest');
+  assert.ok(live, 'the ordinary authored approach admits the real encounter');
+  const carrier = state.entities.get(live.data.nest.carrierId);
+  assert.ok(carrier && carrier.alive !== false, 'a real carrier was admitted');
+  state.simTime = live.data.nest.nextLaunchS + 0.1;
+  nestRuntime.tick(director, live, state, state.simTime);
+  const wasp = state.entities.get(live.data.nest.waspIds[0]);
+  assert.ok(wasp && wasp.alive !== false, 'one genuine Wasp launched');
+  state.entities.get(state.playerId).pos = { x: carrier.pos.x + 3100, z: carrier.pos.z };
+  nestRuntime.tick(director, live, state, state.simTime);
+  assert.equal(live.outcome, 'carrier_escapes');
+}
+
 function completePhysicalMission(h, mission) {
   assert.equal(mission.status, 'active');
   if (mission.type === 'bulk_trade') {
@@ -189,8 +344,12 @@ function completePhysicalMission(h, mission) {
     h.bus.emit('dock:docked', { stationId: mission.destStationId });
     return;
   }
+  // Deaths are real: the body dies and the canonical kill event follows. A kill
+  // that settles the mission despawns the rest of its cast — only living bodies
+  // can die.
   for (const targetId of [...mission.targetEntityIds]) {
-    h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
+    const entity = h.state.entities.get(targetId);
+    if (entity && entity.alive !== false) killEntity(h, entity);
   }
 }
 
@@ -207,23 +366,24 @@ function completeBookContract(h, mission) {
     return;
   }
   if (mission.type === 'patrol_clear' || mission.type === 'bounty_hunt') {
+    if (mission.params?.furnaceWorksiteVersion === 1) {
+      completeFurnaceDetail(h, mission);
+      return;
+    }
     h.state.world.currentSectorId = mission.destSectorId;
     h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
     h.missions.spawnTargetsForSector(mission.destSectorId);
     h.missions._ensureMissionTargets(mission);
     if (mission.type === 'bounty_hunt') {
       const targetId = mission.targetEntityIds[0];
+      // The scan reads proximity: close on the contact before resolving it.
+      h.state.entities.get(h.state.playerId).pos = { x: 0, z: 0 };
       h.state.entities.get(targetId).pos = { x: 5, z: 0 };
       h.bus.emit('scan:completed', { targetId });
     }
     for (const id of [...mission.targetEntityIds]) {
-      h.bus.emit('entity:killed', { id, killerId: h.state.playerId });
-    }
-    for (let i = 0; i < (mission.params.furnaceFeedsNeeded || 0); i++) {
-      h.bus.emit('furnace:fed', { entityId: 9000 + i });
-    }
-    for (let i = 0; i < (mission.params.rookDeliveryNeeded || 0); i++) {
-      h.bus.emit('rookWreck:delivered', { entityId: 9100 + i });
+      const entity = h.state.entities.get(id);
+      if (entity && entity.alive !== false) killEntity(h, entity);
     }
     return;
   }
@@ -237,9 +397,14 @@ function playBookBeat1(h) {
 }
 
 function playBookBeat2(h) {
-  completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:cinder'));
-  h.bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_spine', fedMass: 10 });
-  h.bus.emit('encounter:resolved', { shape: 'the_nest', sectorId: 'sector_charon_expanse' });
+  // B2's book list is physical: three real marked Wasps down, a bound hull on
+  // Rook's pad, a surviving hull fed to the authored garden, the owner's Nest
+  // receipt — then the Elroy writ.
+  const cinder = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:cinder');
+  completeBookContract(h, cinder);
+  deliverCinderHull(h, cinder);
+  feedReceivingGarden(h, cinder);
+  visitNest(h);
   completeBookContract(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
 }
 
