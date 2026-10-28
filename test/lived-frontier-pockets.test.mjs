@@ -1,3 +1,4 @@
+import { charonSupplyFacts, ownsCharonSupplyHull, ownsFiniteCharonSupplyManifest } from '../src/world/charonSalvageSupply.js';
 // CR-HOLLOW-4 — the lived-in frontier. Eighteen sectors that used to open on anonymous ambient
 // scatter (or, in the hollow rims, on nothing at all) now open with the shift already under way:
 // Veil Nebula, Ashfall Reach, Io Reach, Charon Expanse, Dione Lane, Nereid Shoal, Hyperion Cut,

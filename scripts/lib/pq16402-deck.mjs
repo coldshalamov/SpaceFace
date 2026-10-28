@@ -38,7 +38,7 @@ function fillDeckSettings(state) {
     ...(s.audio || {}),
   };
   s.video = {
-    renderScale: 1, bloom: true, bloomStrength: 0.52, vsync: true, fov: 50,
+    renderScale: 1, bloom: true, bloomStrength: 0.40, vsync: true, fov: 50,
     particleQuality: 'medium', engineTrails: true, motionReduce: false, shadows: true,
     energyMaterials: true, renderGraph: false, dynamicResolution: false, qualityPreset: 'medium',
     frameCap: 0, ...(s.video || {}),

@@ -1,3 +1,4 @@
+import { admitReceipt } from './hudAttention.js';
 import { getPromptDeck } from './promptDeck.js';
 
 const recoveryDetail = {
@@ -58,6 +59,8 @@ export const lastShiftPrompt = {
         if (id === 'advice') this.offer(row, 'advice');
         if (id === 'back' && view === 'recovery') this.bus.emit('lastShift:readRecovery', { view: 'sources', requestId: this._epoch });
         if (id === 'archive') this.bus.emit('lastShift:archive', { revision: row.revision });
+        if (id === 'recover') this.bus.emit('lastShift:recover');
+        if (id === 'cancelRecovery') this.bus.emit('lastShift:cancelRecovery');
         if (id === 'return') this.bus.emit('lastShift:returnRecorder', { revision: row.revision });
         return true;
       } }) || false;

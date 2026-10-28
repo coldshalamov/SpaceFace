@@ -29,12 +29,13 @@ function deferred() {
   return { promise, resolve, reject };
 }
 const scenario = process.argv[2];
-const prefetch = deferred(), decode = deferred(), started = deferred();
+const decode = deferred(), started = deferred();
 const library = new Map();
 const plan = { hull: ['wholeships/mule_production_v1.glb'] };
 const original = new Error('fixture decode failed');
 const errors = [], unhandled = [];
 let ownerActive = true, compositions = 0, activeDecodeCount = 0;
+let errorsBeforeLateDecode = null;
 process.on('unhandledRejection', (error) => unhandled.push({ name: error.name, message: error.message }));
 process.on('rejectionHandled', () => {});
 const noop = () => {};
@@ -57,7 +58,7 @@ const env = {
   // production run on its live path exactly as pre-W116.
   staleAuthoredRunVerdict: () => null,
   // Commit-tail pacing yields resolve on a microtask here: the fixture only
-  // asserts prefetch/decode interleave order, so a real present-boundary wait
+  // asserts current-plan decode/cancellation order, so a real present-boundary wait
   // would only delay the same assertions.
   composeYield: async () => {},
   registerPreparedAuthoredAdmission: noop,
@@ -75,21 +76,26 @@ const admission = createAsyncAdmission();
 const options = { asyncAdmission: admission, isResidencyOwnerActive: () => ownerActive };
 const boundary = { userData: {}, parent: {} };
 const entity = { id: 'fixture-mule', type: 'ship', alive: true, data: { defId: 'ship_mule' } };
-const running = upgrade(boundary, { userData: {} }, entity, {}, {}, options, noop, prefetch.promise);
+// Speculative promises belong to the real queue, not upgradeBoundary. The public
+// queue's late success/rejection lifetime is covered by authored-entity-plan-budget.
+const running = upgrade(boundary, { userData: {} }, entity, {}, {}, options, noop);
 await started.promise;
-if (scenario === 'owner-departed' || scenario === 'cancel-prefetch') ownerActive = false;
-if (scenario === 'decode-failed') decode.reject(original);
-else decode.resolve({ url: 'release/wholeships/mule_production_v1.glb' });
-// Allow a real event-loop turn: microtask-only flushes cannot detect unhandled rejection.
-await nextTurn();
-await nextTurn();
-const beforePrefetchCompositions = compositions;
-if (scenario === 'cancel-prefetch') {
+const beforeDecodeCompositions = compositions;
+if (scenario === 'owner-departed' || scenario === 'cancel-current-plan') ownerActive = false;
+if (scenario === 'cancel-current-plan') {
+  // Retire while the exact current decode is pending. Its later rejection must
+  // remain observed even after the admission's cancellation has already settled.
   admission.abort('fixture owner retired');
-  prefetch.reject(admission.signal.reason);
-} else prefetch.resolve(library);
+  await nextTurn();
+  await nextTurn();
+  errorsBeforeLateDecode = errors.length;
+  decode.reject(admission.signal.reason);
+} else if (scenario === 'decode-failed') decode.reject(original);
+else decode.resolve({ url: 'release/wholeships/mule_production_v1.glb' });
+// Real event-loop turns detect abandoned rejections that microtask flushes miss.
 await running;
 await nextTurn();
+await nextTurn();
 admission.finish();
-console.log(JSON.stringify({ errors, unhandled, compositions, beforePrefetchCompositions,
-  activeDecodeCount, hasRequiredRecord: library.get('hull')?.length === 1 }));
+console.log(JSON.stringify({ errors, unhandled, compositions, beforeDecodeCompositions,
+  activeDecodeCount, errorsBeforeLateDecode, hasRequiredRecord: library.get('hull')?.length === 1 }));

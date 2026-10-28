@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { readCommandDeadline, closeOwnedProbeResources } from './lib/probeCommandBudget.mjs';
+import { runOptionalCharonCameraDiagnostic } from './lib/charonCameraDiagnostics.mjs';
 import { captureStartupFailureDiagnostics, observeStartupFailureEvents } from './lib/startup-failure-diagnostics.mjs';
 
 import { spawn } from 'node:child_process';
@@ -7,7 +9,7 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
-import { captureStationHandoffScreenshot as captureDiagnosticScreenshot } from './lib/stationHandoffDiagnostics.mjs';
+import { captureFlightPicturePair, observeGraphicsMessages } from './lib/flightPictureDiagnostics.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -15,17 +17,20 @@ const SCENARIO_ID = 'scenario.47a.mass-discrepancy';
 const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
 const REMOTE_ROLES = new Set(['remote_contact']);
 const AUTHORED_START_TIMEOUT_MS = 90000;
+const commandDeadline = readCommandDeadline();
 const { chromium } = await loadPlaywright();
 
 let server = null;
 let browser = null;
 let page = null;
+let graphicsObserver = null;
 
 try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page, { playerStoreMounted: false });
+  graphicsObserver = observeGraphicsMessages(page);
 
   await page.goto(withDebugFlight(server.baseUrl), { waitUntil: 'domcontentloaded' });
   // Boot liveness on a contended runner: cooperative startup yields, so the SF surface can take
@@ -253,15 +258,19 @@ try {
   // Preserve the actual game camera/HUD after actor and safety checks, even if
   // the final console gate fails. Diagnostic only: no DOM, animation or game edits.
   try {
-    const screenshot = await captureDiagnosticScreenshot(page, { boundary: '47a-actors-bound' });
-    if (screenshot) console.log(`47-A game-camera diagnostic: ${screenshot}`);
+    const diagnostic = await captureFlightPicturePair(page, { graphicsMessages: () => graphicsObserver.snapshot() });
+    console.log(`47-A game-camera diagnostic: ${diagnostic.path} (${diagnostic.report.status})`);
   } catch (error) {
     console.warn(`47-A camera diagnostic unavailable: ${error?.message || error}`);
   }
   assert.deepEqual(issues.errorIssues(), [], 'browser cold-open check should not record page errors');
 
   console.log(`47-A live cold open OK (${report.actors.length} actors bound, ${report.traceCount} trace records)`);
+  // Optional, separately labeled staging only AFTER every original acceptance gate passed.
+  await runOptionalCharonCameraDiagnostic(page, { commandDeadline });
 } finally {
+  try { graphicsObserver?.dispose(); }
+  catch (error) { process.exitCode = 1; console.warn(`Graphics observer cleanup incomplete: ${error?.message || error}`); }
   // A wedged page cannot delay owned-browser cleanup indefinitely.
   let cleanupTimer;
   if (page) {
@@ -276,8 +285,7 @@ try {
     } catch (_) { /* Closing the owned page below also releases its listeners. */ }
     finally { clearTimeout(cleanupTimer); }
   }
-  if (browser) await browser.close();
-  if (server && server.kill) server.kill();
+  if (!await closeOwnedProbeResources({ browser, server })) process.exitCode = 1;
 }
 
 async function startFreshServer() {

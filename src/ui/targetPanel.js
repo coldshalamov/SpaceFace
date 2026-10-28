@@ -1147,4 +1147,3 @@ export function createTargetPanel(ctx) {
 
   return { el, update, forceRefresh };
 }
-import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';

@@ -4,6 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { commandDeadlineEnv } from './lib/probeCommandBudget.mjs';
+
 import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
 
 const DEFAULT_TIMEOUT_MS = 180000;
@@ -784,6 +786,7 @@ function run(def, { artifactPath }) {
   const started = Date.now();
   return new Promise((resolve) => {
     const child = spawn(def.command, {
+      env: commandDeadlineEnv(process.env, started, def.timeoutMs),
       shell: true,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],

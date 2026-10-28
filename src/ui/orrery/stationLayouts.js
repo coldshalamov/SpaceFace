@@ -267,7 +267,7 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):is(:hover, :focus-visible, [aria
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):focus-visible { color:var(--dp-hand, #f2b950) !important; }
 ${S} .sxb-ops .sx-comms__count { background:none !important; border:0 !important; color:rgb(248 244 234) !important; font-weight:700; }
 /* the receipt is a line of light over the foot, not a card: the arrow, what cleared, the sum */
-${S} .sxb-ops .sx-receipt { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+${S} .sxb-ops .sx-receipt { position:absolute !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
   top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; right:auto !important; width:max-content !important; max-width:min(560px, 36vw) !important; padding:6px 0 !important;
   flex-wrap:nowrap !important; gap:12px !important; white-space:nowrap !important; isolation:isolate; }
 ${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-26px; bottom:-26px; pointer-events:none;
