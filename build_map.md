@@ -16,6 +16,8 @@ expands the existing first-hour, physics/Swarm, living-world, economy and discov
 bounded workflows and ten cloud-sized slices. This is supporting detail, not a second queue;
 existing row identities, current claims and acceptance remain authoritative.
 
+The owner-directed longform world-experience treatment is [WORLD_EXPERIENCE_TREATMENT.md](design/program/world-experience-2026-10-23/WORLD_EXPERIENCE_TREATMENT.md), with its companion [WORLD_BUILD_REQUESTS.md](design/program/world-experience-2026-10-23/WORLD_BUILD_REQUESTS.md) translating the direction into bounded set-piece asks. These are supporting direction and handoff documents for the existing original SF20 scope; they add no competing queue or change board ownership or status.
+
 This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
 
 The owner-commissioned [BLACK FLAG integration](docs/BLACK_FLAG.md) maps ship custody,

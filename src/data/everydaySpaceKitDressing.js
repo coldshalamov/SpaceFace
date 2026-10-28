@@ -7,6 +7,9 @@
 // fields. Ceres/Tethys still-panel skips stay in force.
 
 import { OCCUPATIONAL_PLACE_RADIUS } from './occupationalYardDressing.js';
+import { tethysWatchOverlookForSector } from './tethysWatchOverlook.js';
+import { veilResearchEdgeForSector } from './veilResearchEdge.js';
+import { tritonFieldLabDressingForSector } from './tritonFieldLabDressing.js';
 
 export const EVERYDAY_SPACE_KIT_SALT = 'everydaySpaceKit';
 export const EVERYDAY_SPACE_KIT_MAX_PER_SECTOR = 6;
@@ -319,6 +322,23 @@ export function everydaySpaceKitDressingForSector(sectorId, paletteClass, rng, a
   const models = allowedModels(sectorId, klass);
   const denMargin = proteusDenWorkingMargin(sectorId, anchors, models);
   if (denMargin) return denMargin;
+  // Compose the real Archive POI, never the separate Free Frontier station.
+  const fieldLab = tritonFieldLabDressingForSector(sectorId, anchors);
+  if (fieldLab) return fieldLab;
+  // Veil composes existing occupational/kit stock through this same placement
+  // owner. Its authored-only locker is not a forty-seventh random-kit model.
+  const researchEdge = veilResearchEdgeForSector(sectorId, anchors);
+  if (researchEdge) return researchEdge;
+  // A place, not four more props: Tethys spends its existing core-kit allocation
+  // on two readable pull-offs beside the log yard. The world owner still handles
+  // placement, measured skins and residency. Other sectors retain their picker.
+  const overlook = tethysWatchOverlookForSector(sectorId, anchors);
+  if (overlook) {
+    return Object.freeze(overlook.slice(0, cap).map((prop) => {
+      const model = models.find((entry) => entry.id === prop.placeId);
+      return asRow({ ...model, label: prop.name }, prop.pos, prop.rot, 'station', prop.anchorPos);
+    }));
+  }
   const stations = (anchors.stations || []).map((row) => finitePos(row && (row.pos || row))).filter(Boolean);
   const gates = (anchors.gates || []).map((row) => finitePos(row && (row.pos || row))).filter(Boolean);
   const fields = (anchors.fields || []).map((row) => finitePos(row && (row.center || row.pos || row))).filter(Boolean);

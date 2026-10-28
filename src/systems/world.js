@@ -3973,6 +3973,7 @@ export const world = {
       this.helpers.hash32(this.state.meta.seed, sector.id, epoch, EVERYDAY_SPACE_KIT_SALT),
     );
     const rows = everydaySpaceKitDressingForSector(sector.id, paletteClass, kitRng, {
+      pois: active.pois || [],
       stations: active.stations || [],
       gates: active.gates || [],
       fields: active.fields || [],
