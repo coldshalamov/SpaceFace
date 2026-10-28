@@ -551,7 +551,10 @@ export const techTreeScreen = {
       };
       // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
       if (this._rungsObserver) this._rungsObserver.disconnect();
-      this._rungsObserver = new ResizeObserver(fitRungs);
+      // fit on the next frame: hiding a rung resizes the observed row, which inside the callback
+      // itself raised "ResizeObserver loop completed with undelivered notifications"
+      let fitFrame = 0;
+      this._rungsObserver = new ResizeObserver(() => { cancelAnimationFrame(fitFrame); fitFrame = requestAnimationFrame(fitRungs); });
       this._rungsObserver.observe(rungs);
     }
     btn.addEventListener('pointerenter', open);
