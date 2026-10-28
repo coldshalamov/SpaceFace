@@ -25,7 +25,9 @@ function harness(sectorId = sector, pos = center) {
   return { runtime, entry, hull, post, events, intents };
 }
 function oldPick(seed, recordId, window, kind, partner) {
-  const rows = LANE_ERRANDS.filter(r => r.kinds.includes(kind) && (!r.partner || partner));
+  // The pre-tally deterministic stream: the same rows production picks over when this
+  // window has no gossip subject (its row set is what the tally gate must not disturb).
+  const rows = LANE_ERRANDS.filter(r => r.kinds.includes(kind) && (!r.partner || partner) && !r.gossip);
   return rows[hash32(seed, recordId, window, kind, 'lane-errand') % rows.length] || null;
 }
 function admittedWindow(id) {

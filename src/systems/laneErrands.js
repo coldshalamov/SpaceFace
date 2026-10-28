@@ -261,7 +261,7 @@ function partnerReply(runtime, entity, errand) {
 }
 
 /** Pure pick. Same seed, record, and window → same errand id. */
-export function pickLaneErrand(seed, recordId, window, kind, hasPartner, canGossip = false) {
+export function pickLaneErrand(seed, recordId, window, kind, hasPartner, atTally = false, canGossip = false) {
   const rows = errandsForKind(kind).filter((row) => {
     if (row.partner && !hasPartner) return false;
     if (row.gossip && !canGossip) return false;
@@ -302,7 +302,8 @@ export function armLaneErrands(runtime, simT) {
     }
     const partner = partnerOf(runtime, entry, entity);
     const subject = gossipSubject(runtime, entity, seed, recordId, window);
-    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner, !!subject);
+    const picked = pickLaneErrand(seed, recordId, window, entry.job.kind, !!partner,
+      atLiveTally(runtime.state, entity), !!subject);
     entry.errandWindow = window;
     if (!picked) continue;
     entry.errand = {

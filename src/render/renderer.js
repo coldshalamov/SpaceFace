@@ -670,8 +670,8 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
         step = iterator.next();
       } catch (driveError) {
         closeCookStepsIter(iterator);
-        noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive');
-        laneWarn(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+        noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
+        laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
         const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
           () => compileShadowDepthPipelines(depthOpts),
           { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
@@ -12231,6 +12231,7 @@ export const render = {
               // Prime the shadow map and the casters' depth programs first: the color program key
               // carries numDirLightShadows, which stays 0 until the light owns a map again.
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
                 light: this._shadowDepthLight(),
                 camera: cam.obj,
@@ -12500,6 +12501,7 @@ export const render = {
               .filter((root) => root);
             if (depthSubjects.length > 0) {
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
                 light: this._shadowDepthLight(),
                 camera: this.cam && this.cam.obj,
@@ -14959,6 +14961,7 @@ export const render = {
       this.prepareOpeningFirstPicture(timeoutMs, options)
     );
     const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
+      state: this.state,
       renderer,
       light: this._shadowDepthLight(),
       camera: cam.obj,
@@ -16942,6 +16945,7 @@ export const render = {
               });
               if (cookStale()) return cookSuperseded;
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
                 light: this._shadowDepthLight(),
                 camera: this.cam && this.cam.obj,
@@ -17344,6 +17348,7 @@ export const render = {
             const sweepResult = sweepSubjects.length === 0
               ? { skipped: true, reason: 'settle-window-closed', subjects: 0 }
               : await driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
               light: this._shadowDepthLight(),
               camera: this.cam && this.cam.obj,
@@ -19046,6 +19051,7 @@ export const render = {
             // registration happens in the stamp loop above). Prime depth on the same subjects
             // or the fight's first shadow refresh links it inside a measured frame.
             const depthResult = await driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
               light: this._shadowDepthLight(),
               camera: cam.obj,
@@ -30588,6 +30594,7 @@ export const render = {
       if (!stillLive()) return;
       try {
         await driveCompileShadowDepthPipelines({
+          state: this.state,
           renderer: this.renderer,
           light: this._shadowDepthLight(),
           camera: this.cam && this.cam.obj,
@@ -30672,6 +30679,7 @@ export const render = {
       // link it here or the first live batch's shadow draw pays it mid-flight.
       try {
         await driveCompileShadowDepthPipelines({
+          state: this.state,
           renderer: this.renderer,
           light: this._shadowDepthLight(),
           camera: this.cam && this.cam.obj,
@@ -34599,6 +34607,7 @@ export const render = {
             }
             let legResult = null;
             driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
               light: this._shadowDepthLight(),
               camera,
