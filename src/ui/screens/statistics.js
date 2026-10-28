@@ -151,8 +151,18 @@ function recordsLadder(records) {
 function promiseScale() {
   const ul = el('ul', 'orr-statistics__promise-scale');
   ul.setAttribute('aria-label', 'What the record counts');
-  for (const word of ['Flight', 'Line', 'Fight', 'Trade', 'Law']) {
-    ul.appendChild(el('li', 'orr-statistics__promise-word', word));
+  const scale = [
+    ['Flight', 'Distance flown, jumps, docks, time in each sector'],
+    ['Line', 'Biggest throw, latches, razor releases'],
+    ['Fight', 'Kills by weapon, ships lost'],
+    ['Trade', 'Trades, profit, ore hauled, contracts'],
+    ['Law', 'Wanted status, heat, outstanding fines'],
+  ];
+  for (const [word, counts] of scale) {
+    const li = el('li', 'orr-statistics__promise-word');
+    li.appendChild(el('span', 'orr-statistics__promise-name', word));
+    li.appendChild(el('span', 'orr-statistics__promise-counts', counts));
+    ul.appendChild(li);
   }
   return ul;
 }
