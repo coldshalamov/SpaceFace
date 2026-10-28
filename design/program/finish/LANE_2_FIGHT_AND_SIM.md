@@ -14,6 +14,8 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
 
+- 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `test/ui-frame-references/README.md` (mechanical ref rewrite to `design/archive/…` after the doc moves — doc text only). Foreign-dirty work seen in the tree, not mine: `test/ceres-five-minute-acceptance.test.mjs` and `scripts/lib/ui-layout-measure.mjs` left unstaged and preserved.
+
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
 | # | What a stranger sees | Where | Next step |

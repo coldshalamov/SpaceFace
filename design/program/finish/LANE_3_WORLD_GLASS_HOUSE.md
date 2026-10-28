@@ -35,12 +35,20 @@ docs that describe it.
 ## The ordered packets
 
 ### H0 — The first razor cut (do first, so every lane navigates a smaller repo)
-`git mv` the obviously dated material into `design/archive/` and `docs/archive/` (README §7 lists it).
-Fix the links and any doc-check script that breaks. Do not move anything this folder's files cite, and
-never touch `design/program/vm-drop/`. Add the pointer banner to `DEMO_READINESS_2026-09-20.md` §6
-("during the Finish Program the defect ledger lives in the three lane boards") and to the top of
-`build_map.md` ("dispatch moved to `design/program/finish/`; rows here are detail references").
-Done when the design/docs markdown count is under 1,500 and the doc checks are green.
+**LANDED a054f36530a (2026-10-28).** 2,820 files moved via `git mv` into `design/archive/` +
+`docs/archive/` (dated run folders, finish-expansion pack, roadmap receipts/evidence/retired/sprint
+docs minus the live keepers `README`/`00_EXECUTION_PROTOCOL`/`program-queue.json`/`active/`/
+`receipts/playtests/`, ~59 PERF_* folded into `design/perf/README.md`, superseded frontend direction,
+docs/ui-polish+perf-evidence+handoffs). 1,470+ kept-file refs rewritten to archive paths incl.
+`program-queue.json`; banners on `design/program/README.md`, `build_map.md` (pre-existing) and
+DEMO_READINESS §6. **design+docs markdown outside archive/vm-drop: 3,662 → 951.** Checks green:
+check-program-docs PASS, check-plan-integrity PASS, check-inference-control PASS.
+Deferred to H1: `design/inference-workflows/` (pinned by check-inference-control until the new
+INFERENCE law exists), `docs/worldbuilding` (live data readers), program root `*.md` control
+surface, `design/program/{jules,atlas,special-500,starter-integration,lab,receipts}` (live-script
+readers/provenance, tiny). Judgment calls recorded: `attention/` (179 md), `player-truth/` (108),
+`experience/` (54), `demo-prep-2026-10-27` (9) archived as obviously dated beyond the §7 list —
+needed to reach the count; all recoverable under `design/archive/program/`.
 
 ### W0 — Green the world floor
 D265 and D266 (above). Done when both tests are green on seed 4242.
