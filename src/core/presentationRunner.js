@@ -1206,8 +1206,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     veilWarm.sawHold = veilHeld;
     bindFlightVeilHook();
     syncFlightVeilClock();
-    const warmStep = !restoring && !workerPumpOwnsClock && veilHeld && shouldTakeVeilWarmStep();
-    if (warmStep) {
+    const warmEligible = !restoring && veilHeld && shouldTakeVeilWarmStep();
+    const warmStep = warmEligible && !workerPumpOwnsClock;
+    // Worker lane: the veil pauses the worker clock (syncFlightVeilClock), so the same bounded warm
+    // is queued as one explicit worker step per presented frame; rAF still only flushes/presents.
+    const workerWarmStep = warmEligible && workerPumpOwnsClock
+      && typeof simulationRunner.stepOnce === 'function' && simulationRunner.stepOnce() !== false;
+    if (warmStep || workerWarmStep) {
       // Veil warm steps: one fixed step per presented frame behind the opaque veil (up to
       // VEIL_WARM_MAX_STEPS, ending with the hold) once the first playable frame is on screen, so
       // the cold first step and the first interval ticks of slower systems land behind the veil

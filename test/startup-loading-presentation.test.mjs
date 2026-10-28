@@ -330,6 +330,9 @@ test('the flight veil holds the sim: presentationRunner advances nothing while f
   assert.match(src, /const stepResult = warmStep\s*\? simulationRunner\.advance\(warmDt, 1, 1\)\s*: restoring \|\| workerPumpOwnsClock \|\| veilHeld\s*\? simulationRunner\.prepareWithoutAdvance\(\)/);
   assert.match(src, /if \(veilWarm\.count >= VEIL_WARM_MAX_STEPS\) return false;/);
   assert.match(src, /const VEIL_WARM_MAX_STEPS = 8;/);
+  // Worker lane: the veil pauses the worker clock, so the bounded warm is queued as explicit
+  // single worker steps instead of a main-thread advance.
+  assert.match(src, /const workerWarmStep = warmEligible && workerPumpOwnsClock\s*&& typeof simulationRunner\.stepOnce === 'function' && simulationRunner\.stepOnce\(\) !== false;/);
 });
 
 test('Continue yields its destructive restore until the loading shell can paint', () => {
