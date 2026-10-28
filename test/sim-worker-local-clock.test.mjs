@@ -511,8 +511,9 @@ test('active ACK publishes only a contiguous retained reply and fails closed on 
     );
     assert.equal(
       worker.localAckReplyAction(retained, { ackJournalEnd: 41, active: true, scale: 1 }),
-      'schedule-rebuild',
-      'a retained range that starts after the ACK watermark must wait for a rebuild tick',
+      'schedule',
+      'a retained range that starts after the applied-watermark ACK is mid-apply backpressure, '
+        + 'not a dropped hole — keep retaining instead of scheduling another rebuild',
     );
     assert.equal(
       worker.localAckReplyAction(retained, {

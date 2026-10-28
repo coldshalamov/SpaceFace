@@ -52,7 +52,7 @@ import {
   resetOrbitWorld,
   syncOrbitRuntime,
 } from './orbitNodeRuntime.js';
-import { planNpcFieldDeploy, npcFieldRole } from '../ai/npcFieldDeploy.js';
+import { planNpcFieldDeploy, npcFieldRole, CIVILIAN_CLEARING_TYPES } from '../ai/npcFieldDeploy.js';
 import { applyThermalFields, normalizeThermalRecipe, thermalPointCooled } from '../core/fields/thermalFields.js';
 import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
@@ -547,6 +547,7 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
+  profile.occupantGeneration = entity && entity.occupantGeneration;
   profile.coated = gooStatus(state, entity) != null;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
@@ -787,6 +788,12 @@ export const fields = {
       const sourceId=mapped(f.sourceId),ownerId=mapped(f.ownerId);
       if(sourceId!=null&&!this.state.entities.get(sourceId))continue;
       if(f.expireAt!=null&&f.expireAt<=nowOf(this.state))continue;
+      if(f.filters?.includeId!=null){
+        f.filters.includeId=mapped(f.filters.includeId);
+        f.filters.excludeId=mapped(f.filters.excludeId);
+        const target=this.state.entities.get(f.filters.includeId);
+        if(Number.isSafeInteger(target?.occupantGeneration))f.filters.includeGeneration=target.occupantGeneration;
+      }
       const thermalOwner=this.state.entities.get(ownerId);
       if(f.thermal&&thermalOwner?.data?.kilnbackKey===f.thermal.sourceKey)
         f.thermal.ownerLife=thermalOwner.occupantGeneration;
@@ -802,7 +809,15 @@ export const fields = {
     yield 'fields-hitches';
     // NPC cone recs are id-keyed mirror state for kernel fields already restored
     // above — without them the field lives on as an orphan nobody retires.
-    for(const [sid,rec] of Object.entries(raw.npcFields??{})){if(rec&&this._kernel.has(rec.fieldId))rt.npcFields[mapped(sid)]={...rec,sourceId:mapped(rec.sourceId??sid)};}
+    for(const [sid,rec] of Object.entries(raw.npcFields??{})){
+      if(!rec||!this._kernel.has(rec.fieldId))continue;
+      const restored={...rec,sourceId:mapped(rec.sourceId??sid)};
+      if(rec.industrial===true){
+        restored.targetId=mapped(rec.targetId);
+        restored.targetGeneration=this.state.entities.get(restored.targetId)?.occupantGeneration;
+      }
+      rt.npcFields[mapped(sid)]=restored;
+    }
     rt.cooldowns=raw.cooldowns??rt.cooldowns;
     this.state.fields=rt;this._restoredOnLoad=true;
   },
@@ -1575,30 +1590,44 @@ export const fields = {
     if (!entity || entity.alive === false || entity.type !== 'ship') return null;
     if (state && entity.id === state.playerId) return null;
     const rt = ensureRuntime(state || this.state);
-    const plan = planNpcFieldDeploy(entity, state || this.state, { radius: FIELD_DEFS.cone.radius });
     const live = rt.npcFields[entity.id];
+    const plan = planNpcFieldDeploy(entity, state || this.state, { radius: FIELD_DEFS.cone.radius,
+      targetId: live?.targetId, targetGeneration: live?.targetGeneration });
     const tick = (state && state.tick) | 0;
     let wantOn = !!(plan && plan.action === 'on' && plan.kind === 'cone');
-    if (!wantOn && live && live.kind === 'cone' && tick < live.holdUntilTick) wantOn = true;
+    if (!wantOn && live && live.industrial !== true && plan?.industrial !== true
+      && live.kind === 'cone' && tick < live.holdUntilTick) wantOn = true;
     if (wantOn && entity.flags && entity.flags.docked) wantOn = false;
     if (wantOn) {
       if (live && live.kind === 'cone' && this._kernel && this._kernel.has(live.fieldId)) {
-        if (plan && plan.action === 'on') live.holdUntilTick = tick + NPC_CONE_HOLD_TICKS;
-        return live.fieldId;
+        if ((live.industrial === true) === (plan?.industrial === true)) {
+          if (plan && plan.action === 'on') live.holdUntilTick = tick + NPC_CONE_HOLD_TICKS;
+          if (plan?.industrial === true) {
+            const field = this._kernel.update(live.fieldId, { strength: plan.strength });
+            field.filters.includeId = live.targetId = plan.massId;
+            field.filters.includeGeneration = live.targetGeneration = plan.massGeneration;
+          }
+          return live.fieldId;
+        }
+        // A legacy saved worker cone (or a changed role) must adopt its current work policy
+        // before this tick's forces. Combat cones retain their existing lifetime and hold.
+        this._setNpcCone(state || this.state, rt, entity, false);
       }
-      return this._setNpcCone(state || this.state, rt, entity, true);
+      return this._setNpcCone(state || this.state, rt, entity, true, plan);
     }
     if (live) this._setNpcCone(state || this.state, rt, entity, false);
     return null;
   },
 
-  _setNpcCone(state, rt, entity, active) {
+  _setNpcCone(state, rt, entity, active, plan = null) {
     if (!entity || !this._kernel) return null;
     const live = rt.npcFields[entity.id];
     if (active) {
       if (live && live.kind === 'cone' && this._kernel.has(live.fieldId)) return live.fieldId;
       if (npcOwnedFieldCount(this._kernel) >= FIELD_NPC_MAX_ACTIVE) return null;
       const def = FIELD_DEFS.cone;
+      const industrial = plan?.industrial === true;
+      const radius = industrial ? plan.radius : def.radius;
       const now = nowOf(state);
       const rot = finite(entity.rot);
       const dir = { x: Math.cos(rot), z: Math.sin(rot) };
@@ -1609,8 +1638,8 @@ export const fields = {
         kind: def.kind,
         center,
         dir,
-        radius: def.radius,
-        strength: def.strength,
+        radius,
+        strength: industrial ? plan.strength : def.strength,
         falloff: def.falloff,
         halfAngleRad: def.halfAngleRad,
         edgeSoftRad: def.edgeSoftRad,
@@ -1621,7 +1650,9 @@ export const fields = {
         team: entity.team,
         createdAt: now,
         tag: 'npc',
-        filters: { excludeId: entity.id },
+        filters: industrial ? { excludeId: entity.id, types: CIVILIAN_CLEARING_TYPES,
+          includeId: plan.massId, includeGeneration: plan.massGeneration } : { excludeId: entity.id },
+        ...(industrial ? { maxAffected: 1 } : {}),
       });
       const deployRole = npcConeRoleLabel(entity);
       rt.npcFields[entity.id] = {
@@ -1629,6 +1660,7 @@ export const fields = {
         kind: 'cone',
         sourceId: entity.id,
         role: deployRole,
+        ...(industrial ? { industrial: true, targetId: plan.massId, targetGeneration: plan.massGeneration } : {}),
         holdUntilTick: (state.tick | 0) + NPC_CONE_HOLD_TICKS,
       };
       this.bus.emit('fields:deployed', {
@@ -1638,10 +1670,10 @@ export const fields = {
         npc: true,
         role: deployRole,
         center,
-        radius: def.radius,
+        radius,
       });
       this.bus.emit('fields:coneToggled', { active: true, fieldId, sourceId: entity.id, npc: true });
-      this._emitDeployCue('cone', center.x, center.z, def.radius);
+      this._emitDeployCue('cone', center.x, center.z, radius);
       return fieldId;
     }
     if (!live) return null;
@@ -3160,6 +3192,7 @@ function writeSample(row, fields, x, z, now) {
   profile.type = 'ship';
   profile.team = null;
   profile.id = null;
+  profile.occupantGeneration = null;
   profile.fieldResponseMult = 1;
   profile.physicsMassScale = 1;
   profile.boosting = false;

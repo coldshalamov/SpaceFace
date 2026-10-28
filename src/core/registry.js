@@ -254,6 +254,7 @@ import { securityReadoutSystem } from '../ui/securityReadout.js';      // SECURI
 import { priceForecastSystem } from '../ui/priceForecast.js';          // PRICE_FORECAST_CONE: rising/falling map arrow over trend.pricePressure
 import { contractClausesSystem } from '../systems/contractClauses.js'; // COLLATERAL_AND_CLAUSES: clause breach → contract:clauseBroken (one penalty path)
 import { moralTrapSystem } from '../systems/moralTrap.js';             // MORAL_TRAP_CONTRACTS: mid-run reveal + binary choice → distinct shipped consequences
+import { moralMemorySystem } from '../systems/moralMemory.js';         // EXP-25/R-3a9d5dc: reactive debt ledger runtime — moralMemory:* bus verbs + 30s-bucketed consequence tick
 import { lossLedger } from '../systems/lossLedger.js';                 // BP-01.1 WRECK_PROVENANCE: event-sourced loss recorder (assetLost/outpostRaided → ring buffer + wreck tag)
 import { provenanceLedger } from '../systems/provenanceLedger.js';     // J10 Footprint: event-sourced act→incident→standing consequence chains
 import { createChronicler } from '../systems/chronicler.js';           // Genie 01: world memory — causal stories, news, legends (design/genie-returns/01-chronicler)
@@ -788,6 +789,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['priceForecastSystem', priceForecastSystem],
     ['contractClausesSystem', contractClausesSystem],
     ['moralTrapSystem', moralTrapSystem],
+    ['moralMemory', moralMemorySystem],
     ['mail', mail],               // PULSE-MAIL: triggered letter delivery under state.mail
     ['worldClock', worldClock],   // PULSE-TIME: world calendar transition announcer
     ['worldPressure', worldPressure], // §34 rows 520–523: tide/audits/gray + colossus remains

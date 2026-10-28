@@ -1,0 +1,1241 @@
+{
+  "schemaVersion": 1,
+  "kind": "production-native-adventure-opening",
+  "createdAt": "2026-10-28",
+  "status": "PASS for the stated native opening observations; public rendered acceptance remains pending",
+  "method": {
+    "seed": 4242,
+    "profile": "production",
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "sg06-tactical",
+    "dtS": 0.016666666666666666,
+    "steps": 1200,
+    "seconds": 20,
+    "viewport": {
+      "w": 960,
+      "h": 540
+    },
+    "input": "none",
+    "route": [
+      "createSimHost.init(profile=production, seed=4242)",
+      "mode loading",
+      "RPC newGameBoot(default Hitch, normal difficulty, seed=4242)",
+      "mode flight",
+      "1200 ordinary authoritative worker-host steps"
+    ],
+    "observation": "Read-only entity/job/intent sampling and synchronous physics:impact, combat:damage, entity:killed, asteroid:destroyed, fields:deployed events; actual delivered field-impulse observer.",
+    "noAlternateController": true,
+    "noEntityPositionOrVelocityWrites": true,
+    "noSyntheticCombatOrSpawn": true,
+    "observerFile": ".devshots/coherent-flight-opening-probe.mjs",
+    "observerFinalSha256": "1dec337fed43c282da0a5837d1ad88f82477974bbdd42f2be7f1581efba0cc49",
+    "observerRevisionNote": "Final collector also records per-tick phase/boost counts and errand IDs. Earlier captures contain the same ordinary simulation route and 10 Hz job/intent observations; these added fields only read state.",
+    "baselineSource": "Immutable git archive of 60d668ad2896ef281d6db0d260e00ab34df6e0cf for src/scripts/package.json; unchanged vendor/assets/dependencies shared read-only.",
+    "baselineTree": "951d2edc596705047c9f9946eb9f7a26dc1974a3",
+    "finalSource": "Working-tree candidate on 60d668ad; each runtime source below matched before/after capture and artifact generation. Later publishing metadata may change the commit SHA.",
+    "observerReviewCopy": "docs/validation/coherent-flight/opening-probe.mjs",
+    "reproduceFromRepositoryRoot": "node docs/validation/coherent-flight/opening-probe.mjs .devshots/coherent-flight-opening-current.json 20",
+    "publishedBaselineCommit": "48c6f0fd92c21e190fbc778ce75c75d8564398b7",
+    "publishedBaselineTree": "951d2edc596705047c9f9946eb9f7a26dc1974a3",
+    "publishedBaselineTreeMatchesLocalBaseline": true
+  },
+  "sourceFiles": [
+    {
+      "path": "scripts/lib/simWorkerHost.mjs",
+      "baselineSha256": "6f4da7e3c014274cf459e9708fa0d55e3bbfed750a47d623e8032cf9aed348a2",
+      "finalStartSha256": "6f4da7e3c014274cf459e9708fa0d55e3bbfed750a47d623e8032cf9aed348a2",
+      "finalEndSha256": "6f4da7e3c014274cf459e9708fa0d55e3bbfed750a47d623e8032cf9aed348a2",
+      "currentSha256": "6f4da7e3c014274cf459e9708fa0d55e3bbfed750a47d623e8032cf9aed348a2"
+    },
+    {
+      "path": "src/core/newGameBoot.js",
+      "baselineSha256": "8983d2edcdb445f47648297d3454c30309e8cbb8797d10dc13335ce2ef380c31",
+      "finalStartSha256": "8983d2edcdb445f47648297d3454c30309e8cbb8797d10dc13335ce2ef380c31",
+      "finalEndSha256": "8983d2edcdb445f47648297d3454c30309e8cbb8797d10dc13335ce2ef380c31",
+      "currentSha256": "8983d2edcdb445f47648297d3454c30309e8cbb8797d10dc13335ce2ef380c31"
+    },
+    {
+      "path": "src/systems/npcJobsRuntime.js",
+      "baselineSha256": "106ecaa1fa11ba1de0f8671cae3b8e197d391f5c2102b97040fc1784576cea93",
+      "finalStartSha256": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c",
+      "finalEndSha256": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c",
+      "currentSha256": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c"
+    },
+    {
+      "path": "src/systems/trafficRoleOps.js",
+      "baselineSha256": "e18e73d10f42e68feff6f9872e3f22d660333176e26853e657d411d04f777ba1",
+      "finalStartSha256": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480",
+      "finalEndSha256": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480",
+      "currentSha256": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480"
+    },
+    {
+      "path": "src/systems/laneErrands.js",
+      "baselineSha256": "7889f4c6e737b667383319ffdfc22d47dd84c3a1fd99335849fb881584ea3a0c",
+      "finalStartSha256": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e",
+      "finalEndSha256": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e",
+      "currentSha256": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e"
+    },
+    {
+      "path": "src/ai/npcFieldDeploy.js",
+      "baselineSha256": "c45d783f1984377f103622e05d5ff904115fe482b31d8825f5c4aa3e957afe32",
+      "finalStartSha256": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9",
+      "finalEndSha256": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9",
+      "currentSha256": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9"
+    },
+    {
+      "path": "src/core/fields/fieldKernel.js",
+      "baselineSha256": "1d68b47ce039e5edb9498cd6a217607dab00e5689460e398abd2a2f324789ce9",
+      "finalStartSha256": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7",
+      "finalEndSha256": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7",
+      "currentSha256": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7"
+    },
+    {
+      "path": "src/systems/fields.js",
+      "baselineSha256": "5f36005a76652c8f339c1f07df2e64df2389391150cdf754cfd0f0d93b701366",
+      "finalStartSha256": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1",
+      "finalEndSha256": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1",
+      "currentSha256": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1"
+    },
+    {
+      "path": "src/systems/traffic.js",
+      "baselineSha256": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+      "finalStartSha256": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+      "finalEndSha256": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878",
+      "currentSha256": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878"
+    },
+    {
+      "path": "src/core/physics.js",
+      "baselineSha256": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1",
+      "finalStartSha256": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1",
+      "finalEndSha256": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1",
+      "currentSha256": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "baselineSha256": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+      "finalStartSha256": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+      "finalEndSha256": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+      "currentSha256": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77"
+    },
+    {
+      "path": "src/core/flight/propulsionKernel.js",
+      "baselineSha256": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+      "finalStartSha256": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+      "finalEndSha256": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+      "currentSha256": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215"
+    }
+  ],
+  "actorIdentityMap": [
+    {
+      "name": "Helios seam miner",
+      "worldRecordId": "wr_convoy_4541b265",
+      "browser49a9RawId": 541,
+      "nativeRawId": 527
+    },
+    {
+      "name": "Helios seam salvor/fence",
+      "worldRecordId": "wr_convoy_81bd39bf",
+      "browser49a9RawId": 542,
+      "nativeRawId": 528
+    },
+    {
+      "name": "Inspection Cutter",
+      "worldRecordId": "wr_convoy_734f663c",
+      "browser49a9RawId": 552,
+      "nativeRawId": 538
+    }
+  ],
+  "baseline": {
+    "simulatedSeconds": 20,
+    "steps": 1200,
+    "actors": [
+      {
+        "worldRecordId": "wr_convoy_4541b265",
+        "role": "miner",
+        "rawId": 527,
+        "generation": 72,
+        "initialPosition": {
+          "x": 750,
+          "z": -280
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 258.15623267525797,
+        "maxSpeedAtSimS": 1.8999999999999981,
+        "aliveAtEnd": true,
+        "finalHull": 180,
+        "finalShield": 60,
+        "deathTimesSimS": [],
+        "damageReceipts": [],
+        "firstSampledFleeSimS": 0.09999999999999999,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      },
+      {
+        "worldRecordId": "wr_convoy_81bd39bf",
+        "role": "salvor",
+        "rawId": 528,
+        "generation": 73,
+        "initialPosition": {
+          "x": 682,
+          "z": -234
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 155.62373780043905,
+        "maxSpeedAtSimS": 10.550000000000104,
+        "aliveAtEnd": true,
+        "finalHull": 180,
+        "finalShield": 60,
+        "deathTimesSimS": [],
+        "damageReceipts": [],
+        "firstSampledFleeSimS": 0.09999999999999999,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      },
+      {
+        "worldRecordId": "wr_convoy_734f663c",
+        "role": "customs",
+        "rawId": 538,
+        "generation": 83,
+        "initialPosition": {
+          "x": 1280.4495516995314,
+          "z": -295.0008083895362
+        },
+        "initialHull": 150,
+        "initialShield": 110,
+        "maxSpeedWuPerS": 78.70660559182969,
+        "maxSpeedAtSimS": 4.683333333333322,
+        "aliveAtEnd": false,
+        "finalHull": null,
+        "finalShield": null,
+        "deathTimesSimS": [
+          4.699999999999989
+        ],
+        "damageReceipts": [
+          {
+            "simS": 4.699999999999989,
+            "attackerId": 39,
+            "origin": {
+              "kind": "collision",
+              "id": "terrain",
+              "weaponId": null
+            },
+            "applied": 298,
+            "hullDamage": 150,
+            "shieldDamage": 110
+          }
+        ],
+        "firstSampledFleeSimS": null,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      }
+    ],
+    "killedByType": {
+      "wreck": 1,
+      "ship": 1
+    },
+    "asteroidFractures": 2,
+    "originalSalvorDeliveredRecipientLivesByType": {
+      "payload": 5,
+      "asteroid": 22,
+      "ship": 4,
+      "wreck": 2
+    },
+    "originalSalvorDeliveredStreams": [
+      {
+        "rawId": 559,
+        "generation": 104,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 103,
+        "samples": 100,
+        "actualDeltaV": {
+          "x": 73.76527404785156,
+          "z": 4.587716102600098
+        }
+      },
+      {
+        "rawId": 27,
+        "generation": 119,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 213,
+        "samples": 159,
+        "actualDeltaV": {
+          "x": 180.12384796142578,
+          "z": 11.492939949035645
+        }
+      },
+      {
+        "rawId": 22,
+        "generation": 120,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 119,
+        "samples": 116,
+        "actualDeltaV": {
+          "x": 195.98084259033203,
+          "z": 12.213099956512451
+        }
+      },
+      {
+        "rawId": 10,
+        "generation": 121,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 276,
+        "samples": 147,
+        "actualDeltaV": {
+          "x": 184.11220049858093,
+          "z": 11.716770946979523
+        }
+      },
+      {
+        "rawId": 47,
+        "generation": 122,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 112,
+        "samples": 109,
+        "actualDeltaV": {
+          "x": 97.11222457885742,
+          "z": 6.052944183349609
+        }
+      },
+      {
+        "rawId": 52,
+        "generation": 123,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 109,
+        "samples": 106,
+        "actualDeltaV": {
+          "x": 112.44646453857422,
+          "z": 7.2156839072704315
+        }
+      },
+      {
+        "rawId": 21,
+        "generation": 124,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 110,
+        "samples": 107,
+        "actualDeltaV": {
+          "x": 105.60040283203125,
+          "z": 6.572263240814209
+        }
+      },
+      {
+        "rawId": 49,
+        "generation": 125,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 128,
+        "samples": 125,
+        "actualDeltaV": {
+          "x": 92.08991050720215,
+          "z": 5.735010862350464
+        }
+      },
+      {
+        "rawId": 18,
+        "generation": 126,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 110,
+        "samples": 107,
+        "actualDeltaV": {
+          "x": 88.1985855102539,
+          "z": 5.648695468902588
+        }
+      },
+      {
+        "rawId": 56,
+        "generation": 127,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 121,
+        "samples": 118,
+        "actualDeltaV": {
+          "x": 61.07900619506836,
+          "z": 3.8118083477020264
+        }
+      },
+      {
+        "rawId": 39,
+        "generation": 128,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 93,
+        "samples": 90,
+        "actualDeltaV": {
+          "x": 64.93500518798828,
+          "z": 4.038161565316841
+        }
+      },
+      {
+        "rawId": 15,
+        "generation": 129,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 104,
+        "samples": 101,
+        "actualDeltaV": {
+          "x": 66.20943450927734,
+          "z": 4.1224541664123535
+        }
+      },
+      {
+        "rawId": 41,
+        "generation": 130,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 4,
+        "lastTick": 94,
+        "samples": 91,
+        "actualDeltaV": {
+          "x": 47.001861572265625,
+          "z": 2.9235706329345703
+        }
+      },
+      {
+        "rawId": 527,
+        "generation": 72,
+        "type": "ship",
+        "fieldOwnerId": 528,
+        "firstTick": 5,
+        "lastTick": 103,
+        "samples": 82,
+        "actualDeltaV": {
+          "x": 15.737484097480774,
+          "z": 0.9937403570511378
+        }
+      },
+      {
+        "rawId": 42,
+        "generation": 131,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 5,
+        "lastTick": 571,
+        "samples": 149,
+        "actualDeltaV": {
+          "x": 130.03456115722656,
+          "z": -69.8935317993164
+        }
+      },
+      {
+        "rawId": 54,
+        "generation": 132,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 5,
+        "lastTick": 619,
+        "samples": 262,
+        "actualDeltaV": {
+          "x": 55.512264251708984,
+          "z": -9.481466293334961
+        }
+      },
+      {
+        "rawId": 33,
+        "generation": 133,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 5,
+        "lastTick": 89,
+        "samples": 85,
+        "actualDeltaV": {
+          "x": 26.289535522460938,
+          "z": 1.62443807721138
+        }
+      },
+      {
+        "rawId": 29,
+        "generation": 134,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 5,
+        "lastTick": 741,
+        "samples": 372,
+        "actualDeltaV": {
+          "x": 149.85699081420898,
+          "z": -95.89470455050468
+        }
+      },
+      {
+        "rawId": 62,
+        "generation": 135,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 8,
+        "lastTick": 8,
+        "samples": 1,
+        "actualDeltaV": {
+          "x": 0.0003709431039169431,
+          "z": 3.5132758057443425e-05
+        }
+      },
+      {
+        "rawId": 580,
+        "generation": 142,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 111,
+        "lastTick": 193,
+        "samples": 83,
+        "actualDeltaV": {
+          "x": 15.122303009033203,
+          "z": 0.959808349609375
+        }
+      },
+      {
+        "rawId": 554,
+        "generation": 99,
+        "type": "wreck",
+        "fieldOwnerId": 528,
+        "firstTick": 433,
+        "lastTick": 673,
+        "samples": 241,
+        "actualDeltaV": {
+          "x": 139.7186508178711,
+          "z": -87.87169647216797
+        }
+      },
+      {
+        "rawId": 558,
+        "generation": 103,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 433,
+        "lastTick": 716,
+        "samples": 284,
+        "actualDeltaV": {
+          "x": 438.9998486638069,
+          "z": -289.0101361274719
+        }
+      },
+      {
+        "rawId": 59,
+        "generation": 149,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 473,
+        "lastTick": 513,
+        "samples": 41,
+        "actualDeltaV": {
+          "x": 0.49078255891799927,
+          "z": -0.33555108308792114
+        }
+      },
+      {
+        "rawId": 555,
+        "generation": 100,
+        "type": "ship",
+        "fieldOwnerId": 528,
+        "firstTick": 492,
+        "lastTick": 560,
+        "samples": 69,
+        "actualDeltaV": {
+          "x": 2.3530116081237793,
+          "z": -1.6331748962402344
+        }
+      },
+      {
+        "rawId": 64,
+        "generation": 151,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 502,
+        "lastTick": 584,
+        "samples": 83,
+        "actualDeltaV": {
+          "x": 14.949738502502441,
+          "z": -10.387434005737305
+        }
+      },
+      {
+        "rawId": 557,
+        "generation": 102,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 505,
+        "lastTick": 676,
+        "samples": 172,
+        "actualDeltaV": {
+          "x": 39.91828203201294,
+          "z": -27.741240978240967
+        }
+      },
+      {
+        "rawId": 556,
+        "generation": 101,
+        "type": "ship",
+        "fieldOwnerId": 528,
+        "firstTick": 553,
+        "lastTick": 576,
+        "samples": 24,
+        "actualDeltaV": {
+          "x": 0.35155582427978516,
+          "z": -0.2443695068359375
+        }
+      },
+      {
+        "rawId": 585,
+        "generation": 152,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 578,
+        "lastTick": 746,
+        "samples": 169,
+        "actualDeltaV": {
+          "x": 32.01900100708008,
+          "z": -22.258909225463867
+        }
+      },
+      {
+        "rawId": 586,
+        "generation": 153,
+        "type": "asteroid",
+        "fieldOwnerId": 528,
+        "firstTick": 578,
+        "lastTick": 663,
+        "samples": 86,
+        "actualDeltaV": {
+          "x": 9.174453735351562,
+          "z": -6.3779144287109375
+        }
+      },
+      {
+        "rawId": 537,
+        "generation": 82,
+        "type": "ship",
+        "fieldOwnerId": 528,
+        "firstTick": 592,
+        "lastTick": 830,
+        "samples": 239,
+        "actualDeltaV": {
+          "x": 51.256340980529785,
+          "z": -35.63232493400574
+        }
+      },
+      {
+        "rawId": 42,
+        "generation": 156,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 649,
+        "lastTick": 650,
+        "samples": 2,
+        "actualDeltaV": {
+          "x": 0.0019087791442871094,
+          "z": -0.0013270378112792969
+        }
+      },
+      {
+        "rawId": 590,
+        "generation": 158,
+        "type": "wreck",
+        "fieldOwnerId": 528,
+        "firstTick": 652,
+        "lastTick": 791,
+        "samples": 140,
+        "actualDeltaV": {
+          "x": 76.95727336406708,
+          "z": -53.4991512298584
+        }
+      },
+      {
+        "rawId": 573,
+        "generation": 118,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 658,
+        "lastTick": 722,
+        "samples": 65,
+        "actualDeltaV": {
+          "x": 5.005258481949568,
+          "z": -3.479553368873894
+        }
+      }
+    ]
+  },
+  "intermediate": {
+    "description": "Selective fields, turn-before-boost and scripted-injury classification corrected; unbounded ambient lane errands still present.",
+    "simulatedSeconds": 20,
+    "steps": 1200,
+    "actors": [
+      {
+        "worldRecordId": "wr_convoy_4541b265",
+        "role": "miner",
+        "rawId": 527,
+        "generation": 72,
+        "initialPosition": {
+          "x": 750,
+          "z": -280
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 127.23740192166669,
+        "maxSpeedAtSimS": 7.883333333333311,
+        "aliveAtEnd": true,
+        "finalHull": 134.55953139382427,
+        "finalShield": 60,
+        "deathTimesSimS": [],
+        "damageReceipts": [
+          {
+            "simS": 5.066666666666654,
+            "attackerId": 527,
+            "origin": {
+              "kind": "collision",
+              "id": "terrain",
+              "weaponId": null
+            },
+            "applied": 128.9084132402703,
+            "hullDamage": 45.44046860617571,
+            "shieldDamage": 60
+          }
+        ],
+        "firstSampledFleeSimS": null,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      },
+      {
+        "worldRecordId": "wr_convoy_81bd39bf",
+        "role": "salvor",
+        "rawId": 528,
+        "generation": 73,
+        "initialPosition": {
+          "x": 682,
+          "z": -234
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 14.62213225577566,
+        "maxSpeedAtSimS": 5.083333333333321,
+        "aliveAtEnd": true,
+        "finalHull": 180,
+        "finalShield": 60,
+        "deathTimesSimS": [],
+        "damageReceipts": [],
+        "firstSampledFleeSimS": 5.099999999999987,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      },
+      {
+        "worldRecordId": "wr_convoy_734f663c",
+        "role": "customs",
+        "rawId": 538,
+        "generation": 83,
+        "initialPosition": {
+          "x": 1280.4495516995314,
+          "z": -295.0008083895362
+        },
+        "initialHull": 150,
+        "initialShield": 110,
+        "maxSpeedWuPerS": 79.0791609587157,
+        "maxSpeedAtSimS": 4.799999999999988,
+        "aliveAtEnd": true,
+        "finalHull": 150,
+        "finalShield": 110,
+        "deathTimesSimS": [],
+        "damageReceipts": [],
+        "firstSampledFleeSimS": null,
+        "phaseTicks": null,
+        "errandIds": null,
+        "firstTwoSecondsPeakSpeed": null
+      }
+    ],
+    "killedByType": {
+      "wreck": 1
+    },
+    "asteroidFractures": 0,
+    "originalSalvorDeliveredRecipientLivesByType": {
+      "payload": 1
+    },
+    "originalSalvorDeliveredStreams": [
+      {
+        "rawId": 558,
+        "generation": 103,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 140,
+        "lastTick": 1200,
+        "samples": 1061,
+        "actualDeltaV": {
+          "x": 77.03880226612091,
+          "z": -52.58483484387398
+        }
+      }
+    ]
+  },
+  "final": {
+    "simulatedSeconds": 20,
+    "steps": 1200,
+    "actors": [
+      {
+        "worldRecordId": "wr_convoy_4541b265",
+        "role": "miner",
+        "rawId": 527,
+        "generation": 72,
+        "initialPosition": {
+          "x": 750,
+          "z": -280
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 11.12024366976993,
+        "maxSpeedAtSimS": 20.000000000000146,
+        "aliveAtEnd": true,
+        "finalHull": 180,
+        "finalShield": 58.20470413291521,
+        "deathTimesSimS": [],
+        "damageReceipts": [
+          {
+            "simS": 19.100000000000197,
+            "attackerId": null,
+            "origin": {
+              "kind": "collision",
+              "id": "craft",
+              "weaponId": null
+            },
+            "applied": 0.7716988678152038,
+            "hullDamage": 0,
+            "shieldDamage": 0.7716988678152038
+          },
+          {
+            "simS": 19.500000000000174,
+            "attackerId": null,
+            "origin": {
+              "kind": "collision",
+              "id": "craft",
+              "weaponId": null
+            },
+            "applied": 1.023596999269585,
+            "hullDamage": 0,
+            "shieldDamage": 1.023596999269585
+          }
+        ],
+        "firstSampledFleeSimS": 19.100000000000197,
+        "phaseTicks": {
+          "commission": 120,
+          "transit": 1026,
+          "flee": 55
+        },
+        "errandIds": [
+          "dust_cheek"
+        ],
+        "firstTwoSecondsPeakSpeed": 3.902734348215691
+      },
+      {
+        "worldRecordId": "wr_convoy_81bd39bf",
+        "role": "salvor",
+        "rawId": 528,
+        "generation": 73,
+        "initialPosition": {
+          "x": 682,
+          "z": -234
+        },
+        "initialHull": 180,
+        "initialShield": 60,
+        "maxSpeedWuPerS": 21.41504018200604,
+        "maxSpeedAtSimS": 6.799999999999981,
+        "aliveAtEnd": true,
+        "finalHull": 180,
+        "finalShield": 59.99482856150388,
+        "deathTimesSimS": [],
+        "damageReceipts": [
+          {
+            "simS": 19.100000000000197,
+            "attackerId": null,
+            "origin": {
+              "kind": "collision",
+              "id": "craft",
+              "weaponId": null
+            },
+            "applied": 0.00033122387365987633,
+            "hullDamage": 0,
+            "shieldDamage": 0.00033122387365987633
+          },
+          {
+            "simS": 19.500000000000174,
+            "attackerId": null,
+            "origin": {
+              "kind": "collision",
+              "id": "craft",
+              "weaponId": null
+            },
+            "applied": 0.004840214622464798,
+            "hullDamage": 0,
+            "shieldDamage": 0.004840214622464798
+          }
+        ],
+        "firstSampledFleeSimS": 19.100000000000197,
+        "phaseTicks": {
+          "commission": 120,
+          "transit": 1026,
+          "flee": 55
+        },
+        "errandIds": [],
+        "firstTwoSecondsPeakSpeed": 0.3418630755383846
+      },
+      {
+        "worldRecordId": "wr_convoy_734f663c",
+        "role": "customs",
+        "rawId": 538,
+        "generation": 83,
+        "initialPosition": {
+          "x": 1280.4495516995314,
+          "z": -295.0008083895362
+        },
+        "initialHull": 150,
+        "initialShield": 110,
+        "maxSpeedWuPerS": 79.0791609587157,
+        "maxSpeedAtSimS": 4.799999999999988,
+        "aliveAtEnd": true,
+        "finalHull": 150,
+        "finalShield": 110,
+        "deathTimesSimS": [],
+        "damageReceipts": [],
+        "firstSampledFleeSimS": null,
+        "phaseTicks": {
+          "commission": 120,
+          "transit": 213,
+          "approach": 240,
+          "hold": 628
+        },
+        "errandIds": [],
+        "firstTwoSecondsPeakSpeed": 0
+      }
+    ],
+    "killedByType": {},
+    "asteroidFractures": 0,
+    "originalSalvorDeliveredRecipientLivesByType": {
+      "payload": 1
+    },
+    "originalSalvorDeliveredStreams": [
+      {
+        "rawId": 558,
+        "generation": 103,
+        "type": "payload",
+        "fieldOwnerId": 528,
+        "firstTick": 136,
+        "lastTick": 1200,
+        "samples": 1046,
+        "actualDeltaV": {
+          "x": 138.59930258989334,
+          "z": -95.45796113461256
+        }
+      }
+    ]
+  },
+  "causalBaseline": {
+    "description": "The same asteroid life received the salvor field impulse and subsequently killed the cutter through the actual contact/damage owners. This establishes a contributing authored force; the cutter also had its own motion.",
+    "fieldStream": {
+      "entity": {
+        "id": 39,
+        "generation": 128,
+        "type": "asteroid",
+        "alive": true,
+        "pos": {
+          "x": 875.295793,
+          "z": -181.513334
+        },
+        "vel": {
+          "x": 0,
+          "z": 0
+        },
+        "rot": -0.010067563847793887,
+        "angVel": -0.1510134577169083,
+        "hull": 456,
+        "shield": 0,
+        "factionId": null,
+        "team": 0
+      },
+      "fieldId": "field_cone_npc_528",
+      "fieldOwnerId": 528,
+      "count": 90,
+      "firstTick": 4,
+      "lastTick": 93,
+      "deltaV": {
+        "x": 64.93500518798828,
+        "z": 4.038161565316841
+      },
+      "maxDeltaV": 1.124225259056646
+    },
+    "contact": {
+      "simS": 4.699999999999989,
+      "consequenceKernelVersion": 1,
+      "backend": "rapier-dynamic",
+      "tick": 282,
+      "aId": 39,
+      "bId": 538,
+      "pairKey": "39\u0000538",
+      "dp": 35.074381510416664,
+      "trauma": 0.3360129568581957,
+      "impulse": 35.074381510416664,
+      "playerInvolved": false,
+      "playerDeltaV": 0,
+      "causalActorId": 39,
+      "pos": {
+        "x": 1251.984130859375,
+        "z": -184.36981201171875
+      },
+      "normal": {
+        "x": 0.9919976338829174,
+        "z": -0.12625646268882112
+      },
+      "aGeneration": 128,
+      "bGeneration": 83,
+      "preSolveClosingSpeed": 138.2506618488829,
+      "preSolveContactSpeed": 138.498240506607,
+      "availableContactDeltaVA": 7.865059632419403,
+      "availableContactDeltaVB": 288.05780903736047
+    },
+    "damage": {
+      "simS": 4.699999999999989,
+      "targetId": 538,
+      "attackerId": 39,
+      "amount": 400,
+      "applied": 298,
+      "hullDamage": 150,
+      "after": {
+        "shield": 0,
+        "shieldMax": 110,
+        "armor": 0,
+        "armorMax": 0,
+        "hull": 0,
+        "hullMax": 150,
+        "heat": 0
+      },
+      "origin": {
+        "kind": "collision",
+        "id": "terrain",
+        "weaponId": null
+      }
+    },
+    "death": {
+      "simS": 4.699999999999989,
+      "id": 538,
+      "killerId": 39,
+      "type": "ship",
+      "pos": {
+        "x": 1261.8897705078125,
+        "z": -190.84695434570312
+      },
+      "factionId": "faction_scn",
+      "factionLawful": false,
+      "bountyCr": 0,
+      "lootTableId": null,
+      "victimClass": "ship",
+      "targetHostileToPlayer": false,
+      "baseKind": null,
+      "impactorId": 39,
+      "presentation": {
+        "version": 1,
+        "cause": "terrain_collision",
+        "position": {
+          "x": 1251.984130859375,
+          "z": -184.36981201171875
+        },
+        "direction": {
+          "x": 0.8794850613454265,
+          "z": -0.4759264931375762
+        },
+        "normal": {
+          "x": 0.9919976338829174,
+          "z": -0.12625646268882112
+        },
+        "surface": "terrain",
+        "targetVelocity": {
+          "x": -35.5107536315918,
+          "z": 68.89409637451172
+        },
+        "playerCaused": false,
+        "impact": {
+          "deltaV": 2.1921488444010415,
+          "exchangedMomentum": 35.074381510416664,
+          "impactDamage": 400
+        },
+        "impactLink": {
+          "actorId": 39,
+          "tag": "direct_contact",
+          "appliedTick": 282,
+          "holdUntilTick": null
+        }
+      }
+    }
+  },
+  "findings": [
+    "An idle civilian salvor cone accelerated 22 asteroid and 4 ship lives in the 20-second baseline. The final salvor field acts on one payload and no asteroid or ship.",
+    "Unattributed origin=choir_relief preset subsystem injuries at sim0 raised an unwarranted civilian violence alarm. Final classification retains the damage/medical state but suppresses that false alarm.",
+    "A genuine escape now turns toward its escape direction before full thrust/boost and brakes inward motion while turning; dedicated worker tests cover that situation.",
+    "After those first corrections, a 140-WU ambient orbit with 0.7 rad/s angular motion still superseded the miner job. The intermediate capture revealed 127.237 WU/s and hull damage. Final errand ownership preserves authored work and uses bounded physical guidance for generic idle loops.",
+    "Final opening has no ship/wreck kill events and no asteroid fractures. All three focus hulls survive intact. Minor late worker contact consumes shields and raises a brief real-contact alarm; collision-free traffic is not claimed."
+  ],
+  "focusedWorkEvidence": {
+    "test": "test/civilian-clearing-cone.test.mjs",
+    "cases": 7,
+    "stationary4s": {
+      "relativeDistanceWu": 55.8087158,
+      "maxRelativeSpeedWuPerS": 17.3886166
+    },
+    "commonCoast100WuPerS4s": {
+      "relativeDistanceWu": 55.8168945,
+      "maxRelativeSpeedWuPerS": 17.3884354
+    },
+    "policy": {
+      "civilianRadiusWu": 120,
+      "maxStrengthWuPerS2": 32,
+      "relativeClearingSpeedWuPerS": 18,
+      "maxAffected": 1,
+      "eligibleTypes": [
+        "pickup",
+        "wreck",
+        "payload"
+      ],
+      "playerAndCombatRadiusWu": 260,
+      "playerAndCombatStrengthWuPerS2": 260
+    },
+    "compatibility": [
+      "Already-fast 60-WU/s material keeps velocity",
+      "Nearby rocks, ships and a second payload receive no industrial acceleration",
+      "Player/combat cones retain their broad force",
+      "Save ID/generation remapping and legacy civilian-field adoption"
+    ]
+  },
+  "rawCaptures": [
+    {
+      "path": ".devshots/coherent-flight-opening-before.json",
+      "sha256": "88a843b3305238c2b2571f465396e73c4b734a6286de627cc9d57e90af853d60"
+    },
+    {
+      "path": ".devshots/coherent-flight-opening-after.json",
+      "sha256": "307cb34c4c1a58a58200a573d4663cca510750ef3b16bae59d519c5e511e153a"
+    },
+    {
+      "path": ".devshots/coherent-flight-opening-final.json",
+      "sha256": "3baae914b8d907a3adbeacf3de68529e213869247079bc8ea4d7dd0a658556d9"
+    }
+  ],
+  "limitations": [
+    "This uses the production authoritative worker host without the renderer. It does not certify camera, audio, readability, frame performance or subjective handling.",
+    "Authored identities/positions are matched across captures. Raw IDs differ from the earlier 49a9 browser capture, and native collision timing/pairs are not an exact replay of that browser timeline.",
+    "One 20-second idle opening does not establish every seed, sector, long-term economy, encounter or player interaction.",
+    "The preserved 49a9 rendered gate matrix remains historical and contains FAIL/INCOMPLETE results. Final NPC fixes still require GPU-backed public acceptance; keep PR draft."
+  ],
+  "mergedSourceConfirmation": {
+    "localSourceCommit": "74b88892cba10328a393706aaf6bc271d0cce22d",
+    "upstreamCommit": "530498dcc1e0dc1cfdf2e25be38489b6355418d9",
+    "description": "Repeat the identical production1200-step idle observation after merging current presentation/runtime fixes. Source remained unchanged and all three focus-actor stats match the prior final capture exactly.",
+    "exitCode": 0,
+    "sourceUnchanged": true,
+    "actorStatsIdentical": true,
+    "sourceFiles": [
+      {
+        "path": "scripts/lib/simWorkerHost.mjs",
+        "sha256": "6f4da7e3c014274cf459e9708fa0d55e3bbfed750a47d623e8032cf9aed348a2"
+      },
+      {
+        "path": "src/core/newGameBoot.js",
+        "sha256": "8983d2edcdb445f47648297d3454c30309e8cbb8797d10dc13335ce2ef380c31"
+      },
+      {
+        "path": "src/systems/npcJobsRuntime.js",
+        "sha256": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c"
+      },
+      {
+        "path": "src/systems/trafficRoleOps.js",
+        "sha256": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480"
+      },
+      {
+        "path": "src/systems/laneErrands.js",
+        "sha256": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e"
+      },
+      {
+        "path": "src/ai/npcFieldDeploy.js",
+        "sha256": "6808554f64fb78ce46674f5f120588e06141745db0d9fc55d908a656098715a9"
+      },
+      {
+        "path": "src/core/fields/fieldKernel.js",
+        "sha256": "04d3eb5632d2cff20370576eaf85dcd22b517438dd3696d209ea9a3933ffc7c7"
+      },
+      {
+        "path": "src/systems/fields.js",
+        "sha256": "c23f7b5c8914a4e117b01ce6743aec44b3bffa570b92451dbc95a63cf781e3f1"
+      },
+      {
+        "path": "src/systems/traffic.js",
+        "sha256": "0f074ed3b5d7db99ae0172ea9877e07e1ac2873e543b07c28c74e18fc50fc878"
+      },
+      {
+        "path": "src/core/physics.js",
+        "sha256": "7751df5c7feaff54978f6c691cd36874b5db1ccc302ebfe57344c28f95ca87d1"
+      },
+      {
+        "path": "src/core/sg02DynamicBodyOwner.js",
+        "sha256": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77"
+      },
+      {
+        "path": "src/core/flight/propulsionKernel.js",
+        "sha256": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215"
+      }
+    ],
+    "eventCounts": {
+      "combat:damage": 6,
+      "physics:impact": 1075,
+      "npcjobs:errand": 4,
+      "fields:deployed": 4
+    },
+    "originalSalvorDeliveredRecipientLivesByType": {
+      "payload": 1
+    },
+    "actors": [
+      {
+        "worldRecordId": "wr_convoy_4541b265",
+        "maxSpeedWuPerS": 11.12024366976993,
+        "aliveAtEnd": true,
+        "minHull": 180,
+        "finalHull": 180,
+        "finalShield": 58.20470413291521
+      },
+      {
+        "worldRecordId": "wr_convoy_81bd39bf",
+        "maxSpeedWuPerS": 21.41504018200604,
+        "aliveAtEnd": true,
+        "minHull": 180,
+        "finalHull": 180,
+        "finalShield": 59.99482856150388
+      },
+      {
+        "worldRecordId": "wr_convoy_734f663c",
+        "maxSpeedWuPerS": 79.0791609587157,
+        "aliveAtEnd": true,
+        "minHull": 150,
+        "finalHull": 150,
+        "finalShield": 110
+      }
+    ],
+    "rawCaptureSha256": "f54a1466144e3001985b6ba6a7c57b86ec015aff553906f57e445a399a83daa4"
+  }
+}

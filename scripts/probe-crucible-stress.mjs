@@ -110,13 +110,22 @@ const INIT = `(() => {
   try {
     new PerformanceObserver((list) => { for (const e of list.getEntries()) longTasks.push({ t: e.startTime, d: e.duration }); }).observe({ type: 'longtask', buffered: true });
   } catch (_) { /* unsupported */ }
+  // Lane-diag sampler: simLaneDiag() every 250 ms — journal rebuilds, pending-tick
+  // backlog and entity-mirror size deltas next to the frame ring name what stalls.
+  const laneDiag = window.__laneDiag = [];
+  setInterval(() => {
+    try {
+      const d = window.SF && typeof window.SF.simLaneDiag === 'function' ? window.SF.simLaneDiag() : null;
+      if (d) laneDiag.push({ t: performance.now(), d });
+    } catch (_) { /* diag sampling is advisory */ }
+  }, 250);
   let last = now();
   const sample = {};
   const tick = () => {
     const t = now(); const dt = t - last; last = t;
     for (const s of all) { end(s); s.pass = 0; }
     gpu.frameNo++;
-    const row = { f: gpu.frameNo, dt };
+    const row = { f: gpu.frameNo, dt, t };
     const perf = window.__SPACEFACE_PERF__;
     if (perf && typeof perf.readFrameSample === 'function') {
       perf.readFrameSample(sample);
@@ -178,7 +187,33 @@ async function waitForButton(page, label, timeout) {
 const pct = (arr, p) => { if (!arr.length) return null; const a = [...arr].sort((x, y) => x - y); return Math.round(a[Math.min(a.length - 1, Math.floor(a.length * p))] * 100) / 100; };
 const maxOf = (arr) => (arr.length ? Math.round(Math.max(...arr) * 100) / 100 : null);
 
-function windowReport(gpu, frames, longTasks, windowStart) {
+function laneDiagSummary(diag, rows) {
+  if (!diag.length) return null;
+  const pick = (d) => d && d.d ? {
+    journalRebuilds: d.d.journal && d.d.journal.rebuildPacks,
+    appliedPacks: d.d.journal && d.d.journal.appliedPacks,
+    retainedSegments: d.d.journal && d.d.journal.retainedSegments,
+    writeSequence: d.d.journal && d.d.journal.writeSequence,
+    completedTicksPending: d.d.completedTicksPending,
+    fullRebuildsCoalesced: d.d.completedFullRebuildsCoalesced,
+    coalesced: d.d.completedTickCoalescedCount,
+    readModelEntities: d.d.readModelEntities,
+    replyCount: d.d.replyCount,
+    workerPumpTicks: d.d.workerPumpTicks,
+    skippedPresentationTicks: d.d.skippedPresentationTicks,
+  } : null;
+  const maxPending = Math.max(...diag.map((s) => (s.d && s.d.completedTicksPending) || 0));
+  const maxCoalesce = Math.max(...diag.map((s) => (s.d && s.d.completedTickCoalescingEvents) || 0));
+  // For the worst frames, attach the diag sample nearest in time so a stall can be
+  // tied to a rebuild or a pending-tick surge.
+  const worst = rows.filter((r) => r.dt > 150).sort((a, b) => b.dt - a.dt).slice(0, 6).map((r) => {
+    const near = diag.reduce((best, s) => (best == null || Math.abs(s.t - r.t) < Math.abs(best.t - r.t)) ? s : best, null);
+    return { f: r.f, dt: Math.round(r.dt), t: Math.round(r.t), nearDiag: pick(near) };
+  });
+  return { samples: diag.length, first: pick(diag[0]), last: pick(diag[diag.length - 1]), maxPendingTicks: maxPending, maxCoalescingEvents: maxCoalesce, worstFrames: worst };
+}
+
+function windowReport(gpu, frames, longTasks, windowStart, laneDiag) {
   const since = gpu.since;
   const fns = Object.keys(gpu.frameNs).map(Number).filter((f) => f > since);
   const gpuMs = fns.map((f) => gpu.frameNs[f] / 1e6);
@@ -203,6 +238,7 @@ function windowReport(gpu, frames, longTasks, windowStart) {
     topPasses: tags,
     longTasks: longTasks.filter((l) => l.t >= windowStart).map((l) => ({ t: Math.round(l.t), ms: Math.round(l.d) })),
     disjointEvents: gpu.disjoint,
+    laneDiag: laneDiagSummary(laneDiag || [], rows),
   };
 }
 
@@ -255,8 +291,8 @@ async function main() {
     console.log(`[stress] round 1 active; measuring ${DURATION_S} s unobserved`);
     const w1Start = Date.now();
     await page.waitForTimeout(DURATION_S * 1000);
-    const g1 = await page.evaluate(() => ({ gpu: window.__gpu, frames: window.__frames.slice(), longTasks: window.__longTasks.slice() }));
-    report.windows.round1 = windowReport(g1.gpu, g1.frames, g1.longTasks, w1Start - 60000);
+    const g1 = await page.evaluate(() => ({ gpu: window.__gpu, frames: window.__frames.slice(), longTasks: window.__longTasks.slice(), laneDiag: window.__laneDiag.slice() }));
+    report.windows.round1 = windowReport(g1.gpu, g1.frames, g1.longTasks, w1Start - 60000, g1.laneDiag);
     const ents1 = await page.evaluate(() => window.SF.state.entityList.length);
     report.windows.round1.entityCount = ents1;
     console.log(`[stress] round1: p50 ${report.windows.round1.frameDtMs.p50} ms  p99 ${report.windows.round1.frameDtMs.p99} ms  ents ${ents1}`);
@@ -303,8 +339,8 @@ async function main() {
     console.log(`[stress] wave ${WAVE} active; measuring ${DURATION_S} s unobserved`);
     const w2Start = Date.now();
     await page.waitForTimeout(DURATION_S * 1000);
-    const g2 = await page.evaluate(() => ({ gpu: window.__gpu, frames: window.__frames.slice(), longTasks: window.__longTasks.slice() }));
-    report.windows[`wave${WAVE}`] = windowReport(g2.gpu, g2.frames, g2.longTasks, w2Start - 60000);
+    const g2 = await page.evaluate(() => ({ gpu: window.__gpu, frames: window.__frames.slice(), longTasks: window.__longTasks.slice(), laneDiag: window.__laneDiag.slice() }));
+    report.windows[`wave${WAVE}`] = windowReport(g2.gpu, g2.frames, g2.longTasks, w2Start - 60000, g2.laneDiag);
     const ents2 = await page.evaluate(() => window.SF.state.entityList.length);
     report.windows[`wave${WAVE}`].entityCount = ents2;
     console.log(`[stress] wave${WAVE}: p50 ${report.windows[`wave${WAVE}`].frameDtMs.p50} ms  p99 ${report.windows[`wave${WAVE}`].frameDtMs.p99} ms  ents ${ents2}`);

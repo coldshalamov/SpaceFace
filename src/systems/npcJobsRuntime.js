@@ -5077,8 +5077,23 @@ export const npcJobsRuntime = {
         az = threat.pos.z;
       }
       if (Number.isFinite(ax) && Number.isFinite(az)) {
-        const aim = Math.atan2(entity.pos.z - az, entity.pos.x - ax);
-        this._writeIntent(entity, 0, 1, !isCarrying && entry.violenceSlow !== true, aim, false);
+        const dx = entity.pos.x - ax, dz = entity.pos.z - az;
+        const aim = Math.atan2(dz, dx);
+        const alignment = Math.cos(aim - (entity.rot || 0));
+        // A flee interrupt can arrive with the nose pointing straight at the threat. Burning
+        // at full boost through that turn launched workers into the danger they had noticed.
+        // Turn first, then build the escape burn; brake only momentum still carrying us inward.
+        const turnBlend = clamp((alignment - 0.5) / 0.47, 0, 1);
+        const throttle = turnBlend * turnBlend * (3 - 2 * turnBlend);
+        const inward = ((entity.vel?.x || 0) * dx + (entity.vel?.z || 0) * dz)
+          / Math.max(1, Math.hypot(dx, dz)) < -3;
+        const brake = alignment < 0.5 && inward;
+        // The already-persisted motor state supplies boost hysteresis: a settled escape keeps
+        // its burn through small course corrections, without adding a second job-state latch.
+        const wasBoosting = entity.data?.propulsionRuntime?.previousBoost === true;
+        const boost = !isCarrying && entry.violenceSlow !== true
+          && alignment > (wasBoosting ? 0.9 : 0.97);
+        this._writeIntent(entity, 0, brake ? 0 : throttle, boost, aim, brake);
       } else {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0);
       }

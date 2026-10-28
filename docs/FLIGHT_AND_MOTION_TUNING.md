@@ -39,6 +39,8 @@ changing them alone does not tune the default game.
 | Hull handling identity | [flightFeelEnvelopes.js](../src/data/flightFeelEnvelopes.js) | Player multipliers differentiate thrust, strafe, yaw, lateral correction, and braking between hulls. Enemy maneuver scales are derived from the same rows rather than independently invented. |
 | Input and player options | [input.js](../src/systems/input.js), [gameState.js](../src/core/gameState.js), [settings.js](../src/ui/screens/settings.js) | Physical controls become raw axes and semantic actions. Control scheme, flight model, gamepad curve, targeting, and velocity-vectoring options are distinct settings. |
 | Tactical decisions and movement requests | [tacticalAI.js](../src/systems/tacticalAI.js), [ai/](../src/ai/), [aiPorts.js](../src/systems/aiPorts.js) | Target selection, maneuver/formation intent, steering, and command ownership. A previous command must not become a new independent upstream order. |
+| Civilian work, traffic, and idle behavior | [npcJobsRuntime.js](../src/systems/npcJobsRuntime.js), [traffic.js](../src/systems/traffic.js), [trafficRoleOps.js](../src/systems/trafficRoleOps.js), [laneErrands.js](../src/systems/laneErrands.js) | Job routes and real arrival/hold controllers own movement. `LANE_IDLE_MOTION` bounds generic idle motion to an 18-WU/s maximum, 24-WU curve radius, and 0.65 position-error gain. Authored workers retain their job motor. |
+| Civilian clearing tools | [npcFieldDeploy.js](../src/ai/npcFieldDeploy.js), [fields.js](../src/systems/fields.js), [fieldKernel.js](../src/core/fields/fieldKernel.js) | `CIVILIAN_CLEARING_TUNING` sets a 120-WU reach, at most 32 WU/s² strength, 18-WU/s relative clearing speed, and 0.6-second response. Eligible workpiece identity and generation constrain the existing field kernel. |
 | Native bodies and contacts | [physicsAuthority.js](../src/core/physicsAuthority.js), [sg02DynamicBodyOwner.js](../src/core/sg02DynamicBodyOwner.js), [physics.js](../src/core/physics.js) | Mass/inertia, collision shapes, solver commands, contact events, and pose authority. Separate real approach velocity from numerical overlap correction. |
 | Exterior docking | [collisionProxyManifests.js](../src/data/collisionProxyManifests.js), [dockingCorridor.js](../src/systems/dockingCorridor.js), [dockRange.js](../src/core/dockRange.js) | Real approach/capture/berth geometry, hull fit, entry speed, and bounded capture assistance. |
 | Camera and speed readability | [tabletopPolicy.js](../src/render/tabletopPolicy.js), [camera.js](../src/render/camera.js), [velocityLanguage.js](../src/render/velocityLanguage.js) | Speed-dependent framing, velocity lead, threat composition, and exceptional-speed cues. These present motion; they do not change it. |
@@ -98,6 +100,43 @@ stationkeeping through existing finite thrusters. The focused feedback regressio
 [ai-motor-feedback.test.mjs](../test/ai-motor-feedback.test.mjs); `npm run check:sg06:formation`
 exercises the live AI ports, V3 flight, and native bodies for formation convergence and hostile
 flyby clearance.
+
+### Civilian work and idle motion
+
+Normal work, ambient character, and emergency flight must agree on who owns the motor. An ambient
+errand previously replaced an authored miner's 6.22-WU/s job with large open-loop engine axes
+chasing a 140-WU circle at 0.7 radians per second. That moving goal alone demanded 98 WU/s.
+The errand could take over during commissioning or transit, producing a plausible line of dialogue
+while the physical ship flew through its work area.
+
+The authored activity catalog now identifies workers whose job controller retains movement.
+Their errands can still speak. Generic idle circles and weaves use a small continuous trajectory
+and bounded desired velocity through the existing V3 rendezvous servo. Moving or working phases,
+an arrival brake, and an existing moving-frame hold retain their controller. The curve begins at
+the held position; its clock and current pose determine its guidance. There is no second pose writer.
+
+An authored Choir relief patient's preset subsystem injury also used the normal damage owner,
+which made civilian traffic interpret that initialization as a nearby attack. The traffic reaction
+filter excludes exactly that unattributed `choir_relief` preset injury. The injury and medical job
+remain real, and actual weapon hits and collision danger still raise alarms. When a worker really
+has to flee, its escape motor turns before applying strong thrust/boost and brakes inward motion
+while turning. Carrying and hold constraints retain their existing precedence.
+
+Civilian salvors and sweepers now clear one eligible loose workpiece in front of the hull. The
+selection is restricted to dynamic pickups, wrecks, or payloads, with a current identity/generation
+binding. Strength tapers as relative clearing speed approaches 18 WU/s; material already moving
+quickly keeps its momentum. The field owner also adopts this selective policy for restored legacy
+civilian cones before their next force pass. Player and combat-scavenger cones retain their existing
+260-WU reach and 260 strength.
+
+The [opening-world validation record](validation/coherent-flight/opening-world-validation.json)
+contains the production seed-4242 native comparison, including the earlier salvor-field → asteroid
+→ cutter-death chain and the subsequent control-ownership correction. The
+[worker validation record](validation/coherent-flight/worker-validation.json) covers deliberate
+escape behavior; [civilian-clearing-cone.test.mjs](../test/civilian-clearing-cone.test.mjs) covers
+physical work, common cruising velocity, target life, restoration, and combat-tool compatibility.
+These fixtures establish physical and control causality; the final rendered game still needs its
+public acceptance pass.
 
 ### Contact causality
 
@@ -225,13 +264,18 @@ establish stability or momentum conservation.
 | Drift/Newtonian, autopilot, and tether ownership | Precision assist does not silently replace the selected model or movement owner |
 | NPC acquire → approach → attack → reposition | Requests change when the situation changes; yaw and throttle remain bounded and purposeful |
 | Sustained formation | Slot error, yaw reversals, clearance, and re-exits over a settled window; best-ever slot error is insufficient |
+| Idle opening and ordinary work | Authored injuries do not create false alarms; errands respect job ownership; industrial fields act only on their selected workpiece |
 | Resting or shallow body overlap | No solver-created launch or fabricated impact damage |
 | Real high-energy collision | Physical response and intended damage remain; the stability fix must not grant immunity |
 | Berth approach and interaction | Physical clearance, speed-gated prompt, capture, and dock command agree; held keys cannot cross into a new contextual action |
 | Pause, resume, save/load, worker route | No stale command, ownership, or lifetime state crosses the transition |
 
 The change-specific fast entry is `npm run check:motion`: precision, motor feedback, contact and
-traffic coherence, formation character, dormant-flight ownership, and the docking key boundary.
+traffic coherence, worker escape, civilian clearing, idle errand ownership, formation character,
+dormant-flight ownership, and the docking key boundary. The
+[final integration record](validation/coherent-flight/final-integration-validation.json) binds the
+latest focused checks to their source. The [evidence index](validation/coherent-flight/README.md)
+keeps the earlier rendered verdicts separate from the later native opening comparison.
 The broader existing V3 entry is `npm run check:flight:v3`. `scripts/flight-lab-sim.mjs` exercises the compatibility
 `flightDynamics.js` implementation and must not be presented as evidence for default V3 behavior.
 `test/flight-formation-metrics.test.mjs` proves the measurement instrument; an actual formation
@@ -297,11 +341,13 @@ owner instead of creating another parallel system.
    wrecks into short optional exercises: clean dock, tight passage, matched-velocity rescue, sling
    release, and formation interception. Reward control and understanding, and keep the same
    physics and controls as ordinary play.
-10. **A repeatable handling review surface.** Compose the existing lab and player-truth evidence
-    into a comparison of a small set of seeded routes with the same hull/load, input tape, and
-    camera. Keep stopping distance, formation stability, uncaused destruction, input latency,
-    and frame pacing visible together. Quantities can reject
-    regressions; they should not be mislabeled as a scalar score for fun.
+10. **Consistent frame pacing and input response.** A precise approach needs predictable time
+    between an input and the visible correction; readable combat needs motion to remain continuous
+    as ships, effects, and scenery enter view. Use the existing lab and player-truth evidence to
+    compare a small set of seeded routes with the same hull/load, input tape, and camera. Keep
+    input latency and frame pacing alongside stopping distance, formation stability, and uncaused
+    destruction. Those quantities can reject regressions; they should not be mislabeled as a
+    scalar score for fun.
 
 ### Recommended combined follow-up
 

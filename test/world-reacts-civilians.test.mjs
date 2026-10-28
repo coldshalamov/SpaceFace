@@ -265,6 +265,49 @@ test('zero-applied damage is ignored — "The civilian hauler panics."', () => {
   assert.equal(world.rec.targetId, beforeTarget, `${VISION} zero-applied damage must not reroute traffic`);
 });
 
+test('authored Choir injuries do not scatter workers, while a real hit on the same patient still does', () => {
+  const world = makeWorld({ role: 'miner', worldRecordId: 'rec-choir-neighbour' });
+  const { bus, sys, jobs, helpers } = boot(world, true);
+  const jobId = helpers.npcJobs.assign(world.hull, minerJobSpec());
+  const { shooter: patient } = spawnHostiles(world, { x: 60, z: 20 });
+  patient.data = { worldRecordId: 'choir-relief:4242:patient', factionId: 'faction_choir' };
+  const entry = helpers.npcJobs.get(jobId);
+  const priorPhase = entry.job.phase;
+  const spillVictims = [], originalSpill = sys._spillHaulerCargoFromViolence;
+  sys._spillHaulerCargoFromViolence = function (victim, attacker, cause) {
+    spillVictims.push(victim?.id);
+    return originalSpill.call(this, victim, attacker, cause);
+  };
+  // ChoirReliefBerth.wound uses the real combat damage channel to establish the patient's
+  // injured subsystems. Its explicit origin and absent attacker distinguish setup from a hit.
+  bus.emit('combat:damage', { ...productionDamage({ shooterId: null, targetId: patient.id }, patient.pos),
+    origin: { kind: 'choir_relief', id: 'wreck_choir_tender' } });
+  stepBoth(sys, jobs, world.state, 3);
+  assert.equal(entry.job.phase, priorPhase, 'pre-existing injuries cannot turn a peaceful work shift into flee');
+  assert.equal(world.rec.violenceAlarmed || false, false);
+  assert.deepEqual(spillVictims, [], 'setting an existing injury must not enter the violence cargo-spill path');
+
+  bus.emit('combat:damage', { ...productionDamage({ shooterId: world.player.id, targetId: patient.id }, patient.pos),
+    origin: { kind: 'weapon', id: 'gun_fixture' } });
+  stepBoth(sys, jobs, world.state, 3);
+  assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE, 'a real attack on the patient still interrupts the worker');
+  assert.equal(entry.threatId, world.player.id, 'the aggressor remains the remembered threat');
+  assert.ok(spillVictims.includes(patient.id), 'real damage still reaches the ordinary consequence path');
+});
+
+test('an unattributed terrain impact remains witnessed physical danger', () => {
+  const world = makeWorld({ role: 'miner', worldRecordId: 'rec-terrain-neighbour' });
+  const { bus, sys, jobs, helpers } = boot(world, true);
+  const jobId = helpers.npcJobs.assign(world.hull, minerJobSpec());
+  const { shooter: victim } = spawnHostiles(world, { x: 60, z: 20 });
+  bus.emit('combat:damage', { ...productionDamage({ shooterId: null, targetId: victim.id }, victim.pos),
+    origin: { kind: 'collision', id: 'asteroid_fixture' } });
+  stepBoth(sys, jobs, world.state, 3);
+  assert.equal(helpers.npcJobs.get(jobId).job.phase, NPC_JOB_PHASE.FLEE,
+    'the scripted-injury exception must not hide a genuine impact with no attacker');
+  assert.equal(world.rec.violenceAlarmed, true);
+});
+
 test('combat:fire alone does not panic traffic — "The civilian hauler panics."', () => {
   const world = makeWorld({ role: 'hauler', aim: 0 });
   const { bus, sys } = boot(world);
@@ -400,6 +443,9 @@ test('a live job is interrupted and later resumed — "The civilian hauler panic
   const entry = helpers.npcJobs.get(jobId);
   assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE, `${VISION} the job owner suspends into flee`);
   stepBoth(sys, jobs, world.state, 2);
+  assert.equal(world.hull.data.intent.boost, false, `${VISION} the nose-in hauler first turns to safety`);
+  world.hull.rot = world.hull.data.intent.aimAngle;
+  stepBoth(sys, jobs, world.state, 1);
   const intent = world.hull.data.intent;
   assert.equal(intent.moveZ, 1, `${VISION} the job hull runs after the job owner writes flee`);
   assert.equal(intent.boost, true, `${VISION} an empty job hauler boosts away`);
@@ -418,8 +464,11 @@ test('a job miner bolts through the job owner — "The civilian hauler panics."'
   stepBoth(sys, jobs, world.state, 3);
   const entry = helpers.npcJobs.get(jobId);
   assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
-  // Civilian behavioral variety (7ef8a38ff): the job owner writes the flee — an empty
-  // miner with a live threat entity bolts, exactly like the plain-rec miner above.
+  assert.equal(world.hull.data.intent.moveZ, 0, `${VISION} the miner turns before its escape burn`);
+  assert.equal(world.hull.data.intent.boost, false, `${VISION} the miner does not boost toward gunfire`);
+  world.hull.rot = world.hull.data.intent.aimAngle;
+  stepBoth(sys, jobs, world.state, 1);
+  // The job owner retains the escape, then releases the burn once the hull faces out.
   const intent = world.hull.data.intent;
   assert.equal(intent.moveZ, 1, `${VISION} the job miner bolts from the gunfire`);
   assert.equal(intent.boost, true, `${VISION} an empty job miner boosts clear`);
@@ -435,6 +484,8 @@ test('a towing job hull keeps its tow and leaves slowly — "The civilian hauler
   firefight(bus, { x: 70, z: 10 });
   stepBoth(sys, jobs, world.state, 3);
   assert.equal(world.rec.carrying, true, `${VISION} interrupt must not drop the tow`);
+  world.hull.rot = world.hull.data.intent.aimAngle;
+  stepBoth(sys, jobs, world.state, 1);
   assert.equal(world.hull.data.intent.moveZ, 1);
   assert.equal(world.hull.data.intent.boost, false, `${VISION} a loaded job hull leaves slowly`);
 });

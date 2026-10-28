@@ -579,7 +579,7 @@
     "check:base-build-guidance": "node scripts/check-base-build-guidance.mjs",
     "check:claims-guidance": "node scripts/check-claims-guidance.mjs",
     "check:flight:v3": "node test/flightV3.spec.mjs && node scripts/check-brake-convergence.mjs",
-    "check:motion": "node test/precision-flight-assist.test.mjs && node test/ai-motor-feedback.test.mjs && node test/ai-pilot-character.test.mjs && node test/contact-motion-coherence.test.mjs && node test/traffic-station-arrival.test.mjs && node test/flight-dormant-skip.test.mjs && node scripts/check-dock-key-exclusivity.mjs",
+    "check:motion": "node test/precision-flight-assist.test.mjs && node test/ai-motor-feedback.test.mjs && node test/ai-pilot-character.test.mjs && node test/contact-motion-coherence.test.mjs && node test/traffic-station-arrival.test.mjs && node test/npc-worker-escape.test.mjs && node test/civilian-clearing-cone.test.mjs && node test/lane-errand-motion.test.mjs && node test/world-reacts-civilians.test.mjs && node test/flight-dormant-skip.test.mjs && node scripts/check-dock-key-exclusivity.mjs",
     "check:actuator-telemetry": "node --test test/flight-actuator-telemetry.test.mjs",
     "check:rcs-jets": "node --test test/rcs-jet-mapping.test.mjs && node scripts/check-rcs-jet-wiring.mjs",
     "check:rcs-sign-truth": "node scripts/check-rcs-sign-ground-truth.mjs",

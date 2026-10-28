@@ -178,8 +178,13 @@ test('production init + update order lengths match the live browser baseline', (
   // 204 -> 205 update (init unchanged 261): the tallyho hunt board's expanded
   // quarry/rival census joins the 2 Hz calendar cohort between mop and tare —
   // it was init-only when the system had no update(); the hunt layer ticks now.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 261);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 205);
+  // 261 -> 262 init / 205 -> 206 update: R-3a9d5dc registers moralMemory — the
+  // reactive debt ledger's consequence runtime was shipped but never registered,
+  // so its moralMemory:* bus verbs and 30 s-bucketed escalation/expiry/souring
+  // tick never ran in production. It joins beside moralTrapSystem on the
+  // calendar clock (its own simTime bucket gate is the cadence limiter).
+  assert.equal(PRODUCTION_INIT_ORDER.length, 262);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 206);
   assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {

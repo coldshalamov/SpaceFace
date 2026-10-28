@@ -56,6 +56,7 @@ const { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } = await import('../src/
 const { validateCombatLabSetup } = await import('../src/contracts/combatLabSetupSchema.js');
 const { SURVIVAL_COHORT_TAG } = await import('../src/systems/waveMaterialization.js');
 const { TECH_NODES } = await import('../src/data/tech.js');
+const { INERTIAL_SHUNT_TUNING } = await import('../src/data/combatDefs.js');
 const { FIELD_FLAGS } = await import('../src/data/fields.js');
 const {
   snapshotFeatureMaps, applyFeatureConfigToMaps, restoreFeatureMaps,
@@ -222,6 +223,54 @@ function instrumentImpactFanout(bus, ctl, meters) {
   };
 }
 
+/** R3 — sub-attribute collisionConsequences._onImpact (the top fanout row) into its phases:
+ *  admit/cooldown, causal-provenance read, whip pre-check, deferred queue, resolve. Wraps the
+ *  system's own `this.` methods (including the two pure delegation seams _contactProvenance /
+ *  _potentialWhipContact added for exactly this) with the same armed-gated timer as the
+ *  listener fanout. Nested rows double-count into their parents — _resolveTarget runs inside
+ *  _resolveContact — noted on the labels. */
+function instrumentConsequencePhases(runtime, ctl, meters) {
+  const sys = runtime.getSystem && runtime.getSystem('collisionConsequences');
+  if (!sys) return 0;
+  const labels = {
+    _onImpact: 'ccPhase:onImpact.total',
+    _admitPair: 'ccPhase:admitPair',
+    _contactProvenance: 'ccPhase:contactProvenance',
+    _potentialWhipContact: 'ccPhase:whipCheck',
+    _deferCraftContact: 'ccPhase:deferContact',
+    _resolveContact: 'ccPhase:resolveContact',
+    _resolveTarget: 'ccPhase:resolveTarget(nested in resolveContact)',
+    _routeImpactDamage: 'ccPhase:routeDamage(nested)',
+    _maybeTearOffPlating: 'ccPhase:tearOff(nested)',
+    _resolvePendingCraftContact: 'ccPhase:resolvePending(queued-event)',
+    _resolveOrchardContactsAtTick: 'ccPhase:resolveOrchard(queued-event)',
+    _resolveStrandedCraftContactsBefore: 'ccPhase:resolveStranded(update)',
+    _onWhipImpact: 'ccPhase:onWhipImpact(tether-event)',
+  };
+  let wrapped = 0;
+  for (const [method, label] of Object.entries(labels)) {
+    if (typeof sys[method] !== 'function' || sys[method].__crowdWrapped) continue;
+    const orig = sys[method];
+    const wrappedFn = function (...args) {
+      if (!ctl.armed) return orig.apply(this, args);
+      const m = meters.get(label) || meters.set(label, { calls: 0, ms: 0, max: 0, admits: 0 }).get(label);
+      const t0 = performance.now();
+      try {
+        const ret = orig.apply(this, args);
+        if (method === '_admitPair' && ret === true) m.admits += 1;
+        return ret;
+      } finally {
+        const d = performance.now() - t0;
+        m.calls += 1; m.ms += d; if (d > m.max) m.max = d;
+      }
+    };
+    wrappedFn.__crowdWrapped = true;
+    sys[method] = wrappedFn;
+    wrapped += 1;
+  }
+  return wrapped;
+}
+
 /** Sub-attribute the physics system's inside cost: the rapier-dynamic update is one row in the
  *  per-system table, but the lever decision needs step vs sync vs impact-emit vs sweep splits.
  *  These wrap instance methods the same way as instrumentSystems. */
@@ -306,11 +355,20 @@ async function runCell({ seed }) {
   const physicsSys = runtime.getSystem('physics');
   const inputSys = runtime.getSystem('input');
   const { meters, control: meterCtl, wrappedCount, wrap } = instrumentSystems(runtime);
-  const impactStats = { emits: 0, pairs: new Set(), ticksWithImpacts: 0, maxPerTick: 0, _perTick: 0, _lastTick: -1 };
+  const ccPhaseWrapped = instrumentConsequencePhases(runtime, fanoutCtl, fanoutMeters);
+  const impactStats = {
+    emits: 0, pairs: new Set(), ticksWithImpacts: 0, maxPerTick: 0, _perTick: 0, _lastTick: -1,
+    // R3 — weapons shunt gate estimate: how many emits the minClosingSpeed pre-gate would skip.
+    closing: { missing: 0, belowShuntMin: 0, atOrAboveShuntMin: 0 },
+  };
   bus.on('physics:impact', (p) => {
     if (!meterCtl.armed) return;
     impactStats.emits += 1;
     if (p && p.pairKey) impactStats.pairs.add(p.pairKey);
+    const cs = p && p.preSolveClosingSpeed;
+    if (!Number.isFinite(cs)) impactStats.closing.missing += 1;
+    else if (Math.max(0, cs) < INERTIAL_SHUNT_TUNING.minClosingSpeed) impactStats.closing.belowShuntMin += 1;
+    else impactStats.closing.atOrAboveShuntMin += 1;
     const t = p && Number.isFinite(p.tick) ? p.tick : -1;
     if (t !== impactStats._lastTick) {
       impactStats._lastTick = t;
@@ -453,6 +511,7 @@ async function runCell({ seed }) {
       totalMs: round3(m.ms),
       meanUs: Math.round((m.ms / (m.calls || 1)) * 1e6 * 10) / 10,
       maxMs: round3(m.max),
+      ...(m.admits ? { admits: m.admits } : {}),
     }))
     .sort((a, b) => b.totalMs - a.totalMs);
   return {
@@ -463,6 +522,7 @@ async function runCell({ seed }) {
     ticks: TICKS,
     warmup: WARMUP,
     systemsInstrumented: wrappedCount,
+    ccPhasesInstrumented: ccPhaseWrapped,
     simStepMs: {
       mean: round3(sum / deltas.length),
       p50: round3(percentile(deltas, 0.5)),
@@ -484,6 +544,8 @@ async function runCell({ seed }) {
       // the last stepped tick is complete (steps are atomic) so fold its count in here.
       maxPerTick: Math.max(impactStats.maxPerTick, impactStats._perTick),
       perTickMean: round3(impactStats.emits / TICKS),
+      // Emits the weapons inertial-shunt listener's minClosingSpeed gate would skip (R3).
+      preSolveClosingSpeed: { ...impactStats.closing },
     },
     impactFanout,
     systems,
@@ -507,6 +569,10 @@ for (const cell of cells) {
   console.log(`host-busy: cpu="${hostBusy.cpu}" loadavg=${JSON.stringify(hostBusy.loadavg)} memFree=${hostBusy.memFreeMB}MB cpuCalibration=${hostBusy.cpuCalibrationMs}ms node=${hostBusy.node}`);
   console.log(`entities: mean=${cell.entities.mean} max=${cell.entities.max} hostiles mean=${cell.entities.hostilesMean} max=${cell.entities.hostilesMax} systemsInstrumented=${cell.systemsInstrumented}`);
   console.log(`physics:impact emits=${cell.impacts.emits} uniquePairs=${cell.impacts.uniquePairs} ticksWithImpacts=${cell.impacts.ticksWithImpacts}/${cell.ticks} maxPerTick=${cell.impacts.maxPerTick} meanPerTick=${cell.impacts.perTickMean}`);
+  if (cell.impacts.preSolveClosingSpeed) {
+    const c = cell.impacts.preSolveClosingSpeed;
+    console.log(`preSolveClosingSpeed: belowShuntMin(40)=${c.belowShuntMin} atOrAbove=${c.atOrAboveShuntMin} missing=${c.missing} ccPhases=${cell.ccPhasesInstrumented}`);
+  }
   console.log(`sim-step ms: mean=${cell.simStepMs.mean} p50=${cell.simStepMs.p50} p95=${cell.simStepMs.p95} p99=${cell.simStepMs.p99} max=${cell.simStepMs.max}`);
   console.log('per-system (top ' + TOP + ' by total ms):');
   console.log('  ' + 'system'.padEnd(34) + 'calls'.padStart(7) + 'totalMs'.padStart(10) + 'meanMs'.padStart(9) + 'maxMs'.padStart(9) + 'share%'.padStart(8));
@@ -515,9 +581,9 @@ for (const cell of cells) {
   }
   if (cell.impactFanout && cell.impactFanout.length) {
     console.log('physics:impact fanout (listener registration site, armed window only):');
-    console.log('  ' + 'listener'.padEnd(44) + 'calls'.padStart(7) + 'totalMs'.padStart(10) + 'meanUs'.padStart(9) + 'maxMs'.padStart(9));
+    console.log('  ' + 'listener'.padEnd(44) + 'calls'.padStart(7) + 'totalMs'.padStart(10) + 'meanUs'.padStart(9) + 'maxMs'.padStart(9) + 'admits'.padStart(8));
     for (const row of cell.impactFanout.slice(0, Math.min(TOP, cell.impactFanout.length))) {
-      console.log('  ' + row.listener.padEnd(44) + String(row.calls).padStart(7) + String(row.totalMs).padStart(10) + String(row.meanUs).padStart(9) + String(row.maxMs).padStart(9));
+      console.log('  ' + row.listener.padEnd(44) + String(row.calls).padStart(7) + String(row.totalMs).padStart(10) + String(row.meanUs).padStart(9) + String(row.maxMs).padStart(9) + String(row.admits || '').padStart(8));
     }
   }
 }

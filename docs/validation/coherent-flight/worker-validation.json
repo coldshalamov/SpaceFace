@@ -1,0 +1,135 @@
+{
+  "schema": "spaceface.coherent_flight.worker_validation.v1",
+  "recordedAtUtc": "2026-10-28T14:18:38.877059+00:00",
+  "baseCommit": "60d668ad2896ef281d6db0d260e00ab34df6e0cf",
+  "filesSha256": {
+    "src/systems/npcJobsRuntime.js": "622afab053b9bd004172f254de696fbae13f98155ea2a8d579ebee022a71290c",
+    "src/systems/trafficRoleOps.js": "dfd9b4fa01654f83775523c707940ab428aab0824de5e765d0fab7649a136480",
+    "src/systems/flightV3.js": "8ac7ecbe42acc2b43b69f4026beb33a2ae9d74f431ff3917bc7a6d51a11002ee",
+    "src/core/sg02DynamicBodyOwner.js": "93ea4d050d236e80683e5d4cf020128c7910374b0c1bb97ff829f1bdaa340f77",
+    "src/core/flight/propulsionCatalog.js": "fd0e765ae7e3b2c1dee3118eaf243b1667fd06886b65429c31057cf2320b74ae",
+    "src/core/flight/propulsionKernel.js": "035b91392757cd7f9c1d6358d02330a3e1285d675cf6e869f5694e3085e5d215",
+    "test/npc-worker-escape.test.mjs": "b7bd982aee107755a1afa360241497106bf40e4bf6eba444f02769e88821c348",
+    "test/npc-jobs-runtime-wiring.test.mjs": "f2b98a1063739fb1f8141e2fab992a85b67148bef89c670cf7ffce89dad08d1e",
+    "test/world-reacts-civilians.test.mjs": "4565fd688b1654cfde67faf6fc1dbd98f7a6da440ffb0e9688e87e1ac00dd2d0"
+  },
+  "nodeVersion": "v24.22.1",
+  "scope": "Focused real Pelican job interruption, V3 and native Rapier escape; civilian damage-admission regressions. This does not establish full-game visual or performance acceptance.",
+  "results": [
+    {
+      "command": "node test/npc-worker-escape.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 3
+    },
+    {
+      "command": "node test/npc-jobs-runtime-wiring.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 26
+    },
+    {
+      "command": "node test/world-reacts-civilians.test.mjs",
+      "exitCode": 0,
+      "testsPassed": 15
+    }
+  ],
+  "nativeEscape": {
+    "fixedDtSeconds": 0.016666666666666666,
+    "durationSeconds": 6,
+    "hull": "ship_pelican",
+    "initialPosition": {
+      "x": 750,
+      "z": -280
+    },
+    "stationaryThreatPosition": {
+      "x": 1062.7,
+      "z": -454.2
+    },
+    "note": "This controlled motor fixture uses a stationary adversary and no surrounding belt. Actual opening-world causality is covered by the separate Adventure before/after observation.",
+    "observations": [
+      {
+        "incomingSpeed": 0,
+        "initialSeparation": 357.94822251269807,
+        "minSeparation": 357.94822251269807,
+        "firstBoostTick": 65,
+        "boostTransitions": 1,
+        "speedAt108": 164.3405110870168,
+        "separationAt108": 424.6493044168073,
+        "finalSeparation": 1638.5367637390168
+      },
+      {
+        "incomingSpeed": 40,
+        "initialSeparation": 357.94822251269807,
+        "minSeparation": 335.9162725384385,
+        "firstBoostTick": 65,
+        "boostTransitions": 1,
+        "speedAt108": 149.28336685730432,
+        "separationAt108": 389.7505696806484,
+        "finalSeparation": 1592.924393876023
+      }
+    ]
+  },
+  "preservedContracts": [
+    "FLEE retains suspended work phase, progress and sequence; resume advances the same leg.",
+    "Cargo-carrying workers retain unboosted escape.",
+    "Hysteresis reads existing serialized propulsionRuntime.previousBoost; no new save field.",
+    "Only exact ownerless choir_relief fixture damage is excluded from witnessed violence. Actual hits on the same patient and unattributed physical collisions remain admitted.",
+    "Commands go through the existing NPC intent writer, V3 and native body authority; no pose or velocity overwrite."
+  ],
+  "laneErrandFollowup": {
+    "recordedAtUtc": "2026-10-28T14:26:52.946187+00:00",
+    "filesSha256": {
+      "src/systems/laneErrands.js": "e05344496c9ed1e14806fbef5faa2f48682f719539c5dd1a2d0dde3c446b132e",
+      "test/lane-errand-motion.test.mjs": "4ea62c0a86104f731186dec4c27655e938a41e15571137e703ec6d5f18309130",
+      "test/pallas-shift-ownership.test.mjs": "1d6c43db9337c8cbb3229f3be8038a5e91d9ba5d8115cc768084a78e4b8b2247"
+    },
+    "scope": "Authored activity work keeps movement ownership; only generic idle commission/hold can use bounded local character motion. Dialogue, deterministic picks, gossip and paired replies remain active. This follow-up was tested after the earlier worker escape/damage-admission results; final integrated check:motion is reported separately.",
+    "results": [
+      {
+        "command": "node test/lane-errand-motion.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 4
+      },
+      {
+        "command": "node test/lane-errand-tally-context.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 9
+      },
+      {
+        "command": "node test/lived-world.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 16
+      },
+      {
+        "command": "node test/inf50-seed-pc-03.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 2
+      },
+      {
+        "command": "node test/inf50-seed-pc-07.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 3
+      },
+      {
+        "command": "node test/pallas-shift-ownership.test.mjs",
+        "exitCode": 0,
+        "testsPassed": 3
+      }
+    ],
+    "nativeIdleOrbit": {
+      "hull": "ship_pelican",
+      "durationSeconds": 10,
+      "fixedDtSeconds": 0.016666666666666666,
+      "workSpeed": 6.220128616033595,
+      "maxSpeed": 6.16002009193534,
+      "maxOffset": 44.95699325291109,
+      "distance": 58.302404571646846
+    },
+    "contracts": [
+      "Actual catalogued Helios miner and fence preserve original intent in commission, transit and return.",
+      "Generic moving and working phases, explicit arrival brakes and existing moving-frame holds are not overwritten.",
+      "Idle circle/weave requests use bounded velocity feedback through the existing rendezvous servo, not normalized engine axes.",
+      "A zero-time weave produces the exact same native position/velocity/rotation samples as one started at 42 seconds.",
+      "Pallas physical brake survives both a direct errand call and ordinary runtime dispatch."
+    ]
+  }
+}

@@ -8536,6 +8536,10 @@ export const save = {
       return;
     }
     if (typeof FileReader === 'undefined') { if (cb) cb(false); return; }
+    // Same currency stamp the async load lanes take: the file read resolves on a later task,
+    // and a restore that commits in between owns the error channel — a superseded import's
+    // read failure must not reach the player over the newer run.
+    const acceptSeq = this._restoreSequence;
     const reader = new FileReader();
     reader.onload = () => {
       const out = this.importString(String(reader.result || ''), slot);
@@ -8544,7 +8548,12 @@ export const save = {
       if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
       else if (cb) cb(!!out);
     };
-    reader.onerror = () => { this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' }); if (cb) cb(false); };
+    reader.onerror = () => {
+      if (acceptSeq === this._restoreSequence) {
+        this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' });
+      }
+      if (cb) cb(false);
+    };
     reader.readAsText(file);
   },
 };
