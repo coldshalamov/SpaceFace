@@ -255,6 +255,32 @@ export function oreTableForAsteroidType(typeId) {
   return (def && def.oreTable) || null;
 }
 
+/** Aggregate ore weights across a sector's authored fields. Normal fields contribute by
+ * countWeight; authored boulders contribute a smaller fixed share so they add their actual
+ * ore without dominating the field mix. Returns a Map(commodityId -> weight); empty when
+ * the sector has no authored field data (callers fall back to the generic pool). */
+export function sectorFieldOreWeights(sector) {
+  const weights = new Map();
+  const fields = sector && Array.isArray(sector.fields) ? sector.fields : [];
+  const addTable = (typeId, share) => {
+    const table = oreTableForAsteroidType(typeId);
+    if (!table || !(share > 0)) return;
+    for (const [oreId, w] of Object.entries(table)) {
+      const weight = Number(w) || 0;
+      if (weight > 0) weights.set(oreId, (weights.get(oreId) || 0) + weight * share);
+    }
+  };
+  for (const field of fields) {
+    if (!field) continue;
+    const countWeight = Number(field.countWeight);
+    addTable(field.type, countWeight > 0 ? countWeight : 1);
+    for (const boulder of field.boulders || []) {
+      if (boulder) addTable(boulder.type, 0.3);
+    }
+  }
+  return weights;
+}
+
 // Per-sector-tier field generation parameters.
 export const FIELDS = {
   0: { astCount: 60,  weights: { ast_common_rock: 60, ast_metallic: 25, ast_icy: 15 },                                              tierCap: 1, respawnSec: 90,  clusterRadius: 350 },
