@@ -322,6 +322,9 @@ export const MOBILE_SCREEN_CSS = `
     ${B} .sxb-ops .sx-dock__group--nav, ${B} .sxb-ops .sx-dock > .sx-dock__group { gap:0 6px !important; }
     ${B} .sxb-ops .sx-tile__label { letter-spacing:.02em !important; }
     ${B} .sxb-vital__label { letter-spacing:.02em !important; }
+    /* The tape's title tracks tighter so the hull reading ends on its second line instead of "close…". */
+    ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { letter-spacing:.06em !important; }
+    ${B} .sxb-tape .sxb-event > * { margin-right:4px !important; }
   }
   /* A phone on its side has ~390px: the berth scrolls as one page there, with the destination foot pinned. */
   @media (max-height:560px) {
