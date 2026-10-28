@@ -35,7 +35,10 @@ ${T} .con-curve__sep { white-space:pre; }
    pulled the dial in (the sky keeps the dial clear of the head's box); one more line under the
    key costs the dial nothing, since the title's corner is what bounds it. */
 @media (min-width:761px) and (min-height:601px) {
-  ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; }
+  /* the second line hangs below the head's box (negative margin): the head keeps its one-line
+     height, so the sky's avoid rect and its top fade (--con-mask-top) stay where master has them */
+  ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; margin-bottom:-1.35em; }
+  ${T} .con-curve { overflow:visible !important; } /* the hung line must not be clipped by the head's own box */
   ${T} .con-curve__sep { display:none; }
 }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
