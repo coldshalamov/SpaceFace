@@ -28,7 +28,7 @@ import { createTimeEffects } from './core/timeEffects.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
 import { installGameStartRecovery } from './core/gameStartRecovery.js';
 import { installStartupJournal } from './core/startupJournal.js';
-import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
+import { laneCommandSink, laneInputWrite, laneRemoveEntity, laneRpc, laneSetMode } from './core/simLaneCommands.js';
 import {
   resolveNewGamePlusOverlay,
   resetCombatInputMode,
@@ -775,6 +775,25 @@ async function waitForRequiredOpeningPicture(state, isActive) {
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
   if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+  if (laneCommandSink()) {
+    // Worker lane: the roster's authority lives in the worker. Clearing the
+    // mirrored containers here (entities/entityList/freeIds/playerId/
+    // world.currentSectorId) would be silently overwritten by the next reply
+    // and never reach the sim — the same class of transition game:new already
+    // routes through the lane (newGameBoot rpc). Ship one REMOVE command per
+    // mirrored entity instead: the worker runs the identical immediate
+    // _removeEntityAtIndex teardown (runtime clear + entity:destroyed fan-out,
+    // which the bridge replays back to main-side listeners exactly once — so
+    // no local emit here) and the next journal pack converges the mirror to
+    // empty. The scalar/id counters stay worker-owned on purpose: the next
+    // newGameBoot or save restore resets them on its own lane exactly like a
+    // main-lane discard's successors would.
+    for (const entity of [...state.entityList]) {
+      laneRemoveEntity(entity.id, { immediate: true, reason: 'run_reset' });
+      if (!runTransitionGuard.isCurrent(transitionToken)) return false;
+    }
+    return true;
+  }
   for (const entity of [...state.entityList]) {
     clearEntityRuntime(entity);
     bus.emit('entity:destroyed', {

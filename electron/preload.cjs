@@ -4,15 +4,35 @@
 // send/invoke surface.
 const { contextBridge, ipcRenderer } = require('electron');
 
-// S1 stage D: SPACEFACE_SIM_LANE opts the authoritative sim onto its worker lane for a
-// launched shell. The canonical game URL forbids query params (launch policy), so the
-// lane ships through localStorage 'sf.simLane' — the same channel the browser soak
-// harnesses use — set here before any page module evaluates. Per-launch semantics: an
-// unset env clears the key so a stale value from an env'd boot cannot pin the lane.
+// S1 stage D: SPACEFACE_SIM_LANE selects the authoritative sim lane for a launched
+// shell. The canonical game URL forbids query params (launch policy), so the lane
+// ships through localStorage 'sf.simLane' — the same channel the browser soak
+// harnesses use — set here before any page module evaluates.
+// Per-launch semantics: the env var overrides whatever is stored for that launch,
+// including 'main' — the explicit main-lane escape hatch must keep working. A value
+// stored with no env var (devtools, a soak harness, or the user's deliberate choice)
+// persists across ordinary launches; only a value that was itself env-pinned is
+// dropped on the next env-free launch, marked by 'sf.simLane.fromEnv', so a stale
+// diagnostic boot cannot pin the lane forever.
 try {
   const simLane = String(process.env.SPACEFACE_SIM_LANE || '').trim();
-  if (simLane) localStorage.setItem('sf.simLane', simLane);
-  else localStorage.removeItem('sf.simLane');
+  if (simLane) {
+    localStorage.setItem('sf.simLane', simLane);
+    // The marker records WHICH value env pinned — not just that it did — so a
+    // later env-free launch drops the key only while it still holds that
+    // pinned value. A devtools/harness overwrite since then is the user's
+    // deliberate choice and must survive.
+    localStorage.setItem('sf.simLane.fromEnv', simLane);
+  } else {
+    const envPinned = localStorage.getItem('sf.simLane.fromEnv');
+    if (envPinned != null) {
+      // '1' covers profiles written before the marker carried the value.
+      if (envPinned === '1' || localStorage.getItem('sf.simLane') === envPinned) {
+        localStorage.removeItem('sf.simLane');
+      }
+      localStorage.removeItem('sf.simLane.fromEnv');
+    }
+  }
 } catch (_) { /* storage gated — the lane selector falls back to its default */ }
 
 // Diagnostic-only domain mirror selection. It is accepted only for the explicit

@@ -38,6 +38,7 @@ import {
   createSimCommandRing,
   pushLaneCommand,
 } from '../../scripts/lib/simCommandChannel.mjs';
+import { IS_DEV } from './devMode.js';
 import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 import { readLocalTimeEffectsSnapshot, applyRemoteTimeEffectsSnapshot, setTimeEffectsGeneration } from './timeEffects.js';
 import { createSimLaneJournal, createLaneSabJournalArena } from './simLaneJournal.js';
@@ -157,11 +158,20 @@ function applyLaneSaveStorageOps(ops) {
  *                      SPACEFACE_SIM_LANE onto it and clears the key on a
  *                      normal launch, so this source default decides there).
  *   ?simLane=main    — explicit main lane (same as the default).
- *   ?simSab=1        — opt into the SAB journal lane; requires
- *                      crossOriginIsolated (COOP/COEP). Without headers this
- *                      warns and the fallback transfer channel serves.
+ *   ?simSab=1        — opt into the SAB journal lane; ?simSab=0 opts out.
+ *                      On the worker lane an absent flag auto-arms wherever
+ *                      the realm can host it (crossOriginIsolated + SAB —
+ *                      the dev server already sends COOP/COEP). An explicit
+ *                      request that cannot be honored keeps the warn-and-
+ *                      fallback transfer channel; the quiet default just
+ *                      declines to the same fallback.
  *   localStorage sf.domainProfile or the diagnostic Electron environment
  *   SPACEFACE_DOMAIN_PROFILE may select the history-bearing commodity profile.
+ * NOTE — intended post-flip semantics (NOT yet active): once the manager's
+ * measured A/B lands, 'worker' becomes the default lane and 'main' the
+ * explicit escape hatch — ?simLane=main, localStorage 'sf.simLane'='main',
+ * and Electron SPACEFACE_SIM_LANE=main all keep selecting it. The returned
+ * default here stays 'main' until that separate commit flips it.
  * Returns { lane, sab, domainProfile, warnings[] }.
  */
 export function resolveSimLaneFlags(search) {
@@ -190,13 +200,18 @@ export function resolveSimLaneFlags(search) {
     }
     lane = SIM_LANE.MAIN;
   }
-  let sab = !!(params && (params.get('simSab') === '1' || params.get('simSab') === 'true'));
-  if (sab) {
-    const isolated = typeof globalThis !== 'undefined' && globalThis.crossOriginIsolated === true;
-    if (!isolated || typeof SharedArrayBuffer !== 'function') {
-      warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
-      sab = false;
-    }
+  const sabParam = params && params.get('simSab');
+  const sabExplicit = sabParam === '1' || sabParam === 'true';
+  const sabOptedOut = sabParam === '0' || sabParam === 'false';
+  const sabCapable = typeof globalThis !== 'undefined' && globalThis.crossOriginIsolated === true
+    && typeof SharedArrayBuffer === 'function';
+  // The worker lane auto-arms the SAB journal wherever the realm can host it;
+  // ?simSab=0 keeps the transfer channel, unrecognized values decline to it.
+  let sab = !sabOptedOut && sabCapable
+    && (sabExplicit || (sabParam == null && lane === SIM_LANE.WORKER));
+  if (sabExplicit && !sabCapable) {
+    warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
+    sab = false;
   }
   let requestedDomainProfile = params && params.get('domainProfile');
   if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
@@ -906,62 +921,69 @@ export function createSimLaneRuntime({
     // Worker-emitted sim-bus events replay onto the main bus with forwarding
     // suppressed — otherwise a forwarded type would echo right back.
     if (Array.isArray(msg.events) && msg.events.length && bus && typeof bus.emit === 'function') {
-      if (typeof window !== 'undefined') {
+      // Lane-applied ring: debug telemetry only (read by the lane probes and
+      // stationHandoffDiagnostics). The per-reply array churn stays off the
+      // production hot path unless a dev realm or the explicit
+      // window.__SF_DEBUG_LANE__ latch asks for it.
+      if (typeof window !== 'undefined' && (IS_DEV || window.__SF_DEBUG_LANE__ === true)) {
         const log = window.__SF_LANE_APPLIED || (window.__SF_LANE_APPLIED = []);
         for (const ev of msg.events) { if (ev && typeof ev.t === 'string') log.push(ev.t); }
         if (log.length > 96) log.splice(0, log.length - 96);
       }
-      suppressForward++;
-      try {
-        for (const ev of msg.events) {
-          if (ev && typeof ev.t === 'string') {
+      for (const ev of msg.events) {
+        if (ev && typeof ev.t === 'string') {
+          try {
+            const p = remapEventPayload(ev.p);
+            if (ev.t === 'save:store-synced') {
+              // Main-owned achievement mirrors must honor the worker's definitive boot probe
+              // before synchronous store-synced listeners can schedule another mirror.
+              applySharedPlayerStoreCapability(p?.storeCapability);
+            }
+            if (ev.t === 'sector:enter' && p && typeof p === 'object') {
+              // The bridge ships a lite {id,name,seed} shell; renderer sector
+              // visuals need the full sector — resolve it from the world
+              // mirror (world.sectors is a mirrored leaf).
+              const sid = String(p.sectorId || (p.sector && p.sector.id) || '');
+              const full = sid && state.world && state.world.sectors
+                ? state.world.sectors[sid] : null;
+              if (full && typeof full === 'object') p.sector = full;
+            } else if (ev.t === 'settings:restored' && p && typeof p === 'object') {
+              // Save restore replaced state.settings inside the worker
+              // wholesale; the mirror is main-owned so the restore must be
+              // grafted back here for the facade to answer correctly.
+              if (p.settings && typeof p.settings === 'object') {
+                state.settings = canonicalClone(p.settings);
+              }
+            }
+            // The worker stamps each envelope with the sim's mode/enterSerial
+            // at capture (emit) time. Replay sees the reply's END state
+            // otherwise: a batch applying domain updates first would hand a
+            // mid-batch emit the wrong mode — e.g. a boot sector:enter
+            // minted under 'loading' replaying under 'flight', which mints
+            // the heavy post-jump cook instead of the opening skip. Shim the
+            // emit-time values for the synchronous dispatch window.
+            const emitMode = typeof ev.m === 'string' ? ev.m : null;
+            const emitSerial = Number.isSafeInteger(ev.es) ? ev.es : null;
+            const prevMode = state.mode;
+            const world = state.world;
+            const prevSerial = world ? world.enterSerial : undefined;
+            if (emitMode != null) state.mode = emitMode;
+            if (emitSerial != null && world) world.enterSerial = emitSerial;
+            // Type-scoped echo suppression (the worker-side suppressedEmitTypes
+            // twin): while THIS type replays, its re-emit is the echo and must
+            // not cross back — a different forwarded type raised inside the
+            // same listener (dock:committed → ui:buy cascades) still ships.
+            suppressedForwardTypes.set(ev.t, (suppressedForwardTypes.get(ev.t) | 0) + 1);
             try {
-              const p = remapEventPayload(ev.p);
-              if (ev.t === 'save:store-synced') {
-                // Main-owned achievement mirrors must honor the worker's definitive boot probe
-                // before synchronous store-synced listeners can schedule another mirror.
-                applySharedPlayerStoreCapability(p?.storeCapability);
-              }
-              if (ev.t === 'sector:enter' && p && typeof p === 'object') {
-                // The bridge ships a lite {id,name,seed} shell; renderer sector
-                // visuals need the full sector — resolve it from the world
-                // mirror (world.sectors is a mirrored leaf).
-                const sid = String(p.sectorId || (p.sector && p.sector.id) || '');
-                const full = sid && state.world && state.world.sectors
-                  ? state.world.sectors[sid] : null;
-                if (full && typeof full === 'object') p.sector = full;
-              } else if (ev.t === 'settings:restored' && p && typeof p === 'object') {
-                // Save restore replaced state.settings inside the worker
-                // wholesale; the mirror is main-owned so the restore must be
-                // grafted back here for the facade to answer correctly.
-                if (p.settings && typeof p.settings === 'object') {
-                  state.settings = canonicalClone(p.settings);
-                }
-              }
-              // The worker stamps each envelope with the sim's mode/enterSerial
-              // at capture (emit) time. Replay sees the reply's END state
-              // otherwise: a batch applying domain updates first would hand a
-              // mid-batch emit the wrong mode — e.g. a boot sector:enter
-              // minted under 'loading' replaying under 'flight', which mints
-              // the heavy post-jump cook instead of the opening skip. Shim the
-              // emit-time values for the synchronous dispatch window.
-              const emitMode = typeof ev.m === 'string' ? ev.m : null;
-              const emitSerial = Number.isSafeInteger(ev.es) ? ev.es : null;
-              const prevMode = state.mode;
-              const world = state.world;
-              const prevSerial = world ? world.enterSerial : undefined;
-              if (emitMode != null) state.mode = emitMode;
-              if (emitSerial != null && world) world.enterSerial = emitSerial;
-              try {
-                bus.emit(ev.t, p);
-              } finally {
-                if (emitMode != null) state.mode = prevMode;
-                if (emitSerial != null && world) world.enterSerial = prevSerial;
-              }
-            } catch (_) { boundaryErrorCount++; }
-          }
+              bus.emit(ev.t, p);
+            } finally {
+              suppressedForwardTypes.set(ev.t, (suppressedForwardTypes.get(ev.t) | 0) - 1);
+              if (emitMode != null) state.mode = prevMode;
+              if (emitSerial != null && world) world.enterSerial = prevSerial;
+            }
+          } catch (_) { boundaryErrorCount++; }
         }
-      } finally { suppressForward--; }
+      }
     }
 
     if (Array.isArray(msg.rpcAcks) && msg.rpcAcks.length) {
@@ -1565,7 +1587,12 @@ export function createSimLaneRuntime({
   }
 
   // ---- main→worker bus forward -------------------------------------------------------------------
-  let suppressForward = 0;
+  // Echo suppression is type-scoped — the same shape the worker applies to
+  // replayed main→worker emits (simWorkerHost suppressedEmitTypes). While a
+  // replayed worker emit of type T dispatches to main listeners, only a
+  // re-emit of T inside that window is the echo; a different forwarded type
+  // raised by a replay listener is a genuine cascaded intent and still ships.
+  const suppressedForwardTypes = new Map();
   // Census coverage check: emits whose type is in NEITHER the forward set nor
   // the generated KNOWN_UNFORWARDED set die at the boundary unrecorded —
   // counted per type so a missed census entry surfaces in getDiagnostics()
@@ -1587,7 +1614,8 @@ export function createSimLaneRuntime({
     // its next directive drain while the local deferred slot still delivers to
     // main subscribers on this realm's flush cadence.
     const maybeForward = (type, payload) => {
-      if (suppressForward > 0 || typeof type !== 'string') return;
+      if (typeof type !== 'string') return;
+      if ((suppressedForwardTypes.get(type) | 0) > 0) { suppressedEchoes++; return; }
       if (MAIN_TO_SIM_BUS_EVENTS.has(type)) {
         try {
           let wirePayload = payload;
