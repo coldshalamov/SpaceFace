@@ -928,7 +928,6 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-browser__filters li { flex:none !important; }
   ${MD} .sx-mkt-filter { white-space:nowrap !important; }
   ${MD} .sx-trade { row-gap:2px !important; }
-  ${MD} .sx-trade > .sx-qty { height:94px; }
   ${MD} .sx-qty .orr-qdial { left:31px; width:84px; height:84px; }
   ${MD} .sx-qty .sx-qty__in { top:19px; height:26px !important; font-size:22px !important; line-height:26px !important; }
   ${MD} .sx-qty .sx-qty__k { left:31px; width:84px; top:46px; letter-spacing:0 !important; }
