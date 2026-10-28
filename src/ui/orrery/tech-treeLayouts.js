@@ -30,6 +30,14 @@ ${T} .con-curve__rungs { display:flex; flex-wrap:wrap; margin-top:2px; line-heig
   overflow:hidden; color:rgb(${BONE} / .86); }
 ${T} .con-curve__rung { white-space:nowrap; }
 ${T} .con-curve__sep { white-space:pre; }
+/* ui-polish-170: a desktop head with height to spare stacks the first two rungs as a short ladder
+   instead of one line. The 28ch line held only "1 Propelled charge" even at 1920, and widening it
+   pulled the dial in (the sky keeps the dial clear of the head's box); one more line under the
+   key costs the dial nothing, since the title's corner is what bounds it. */
+@media (min-width:761px) and (min-height:601px) {
+  ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; }
+  ${T} .con-curve__sep { display:none; }
+}
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key::after { color:rgb(${WARM} / .9); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__rungs { color:rgb(${WARM}); }
