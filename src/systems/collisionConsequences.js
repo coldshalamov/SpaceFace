@@ -162,7 +162,7 @@ export const collisionConsequences = {
     // A player-propelled hull carries the cause of the whole contact. Share the freshest causal
     // impulse across both consequence directions so the struck hull does not become an
     // environment-attributed kill merely because the impulse was recorded on the incoming hull.
-    const causalProvenance = contactImpulseProvenance(a, b, tick)
+    const causalProvenance = this._contactProvenance(a, b, tick)
       || explicitContactProvenance(payload, tick);
     if ((a.type === 'payload' && a.data?.orchardKind === 'pod')
       || (b.type === 'payload' && b.data?.orchardKind === 'pod')) {
@@ -176,12 +176,23 @@ export const collisionConsequences = {
           backend: payload.backend, aGeneration: payload.aGeneration, bGeneration: payload.bGeneration }) });
       this.bus?.queue?.(RESOLVE_PENDING_CRAFT_CONTACT_EVENT, { key });
     }
-    if (isPotentialMasslineWhipContact(state, a, b)) {
+    if (this._potentialWhipContact(state, a, b)) {
       this._deferCraftContact(a, b, payload, exchangedMomentum, tick, causalProvenance);
       return;
     }
 
     this._resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, false);
+  },
+
+  // Perf-instrumentation seams (F1 crowd-cost): the stress fixture sub-attributes _onImpact's
+  // phases by wrapping these `this.` methods exactly the way it wraps physics internals. Pure
+  // delegation — the module functions remain the single implementation.
+  _contactProvenance(a, b, tick) {
+    return contactImpulseProvenance(a, b, tick);
+  },
+
+  _potentialWhipContact(state, a, b) {
+    return isPotentialMasslineWhipContact(state, a, b);
   },
 
   _deferCraftContact(a, b, payload, exchangedMomentum, tick, causalProvenance) {

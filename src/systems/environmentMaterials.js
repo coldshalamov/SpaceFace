@@ -61,9 +61,17 @@ export function addEnvironmentHeat(state, entity, amount, origin = {}) {
 }
 
 export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {}) {
+  // Gate order (crowd-cost F1): every check below the type test is a pure read, so the cheap
+  // discriminators run first and the expensive material classify (tag join + regex scans for
+  // unstamped bodies) runs only for pairs that can still react. The admit set is identical —
+  // same predicates, same truth table — only evaluation order moved.
   if (!['asteroid', 'wreck', 'prop', 'payload', 'cargo_pod', 'pickup'].includes(entity?.type)) return false;
-  if (isAnchoredPhysicalBody(entity)) return false;
-  if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
+  if (entity.alive === false) return false;
+  // A stamped substance's breakSpeed IS the impact threshold; absent it, the lowest family
+  // default is 60 (volatile) so closingSpeed below this floor can never qualify.
+  const breakSpeed = entity.data && entity.data.breakSpeed;
+  const impactFloor = Number.isFinite(breakSpeed) ? breakSpeed : 60;
+  if (!(closingSpeed >= impactFloor)) return false;
   // The Gyre field binds its aggregate through physical strikes: otherwise the first
   // bowled hull bursts the rock and ends the weapon before it can reach the next one.
   // This is impact cohesion, not material immunity; heat still cooks/fractures it.
@@ -76,10 +84,12 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   // A collector's knot is bound the same way while its emitter holds it (impact cohesion, not immunity).
   const knotHeld = !!entity?.data?.collectorCore;
   if (held || flight || knotHeld) return false;
+  if (isAnchoredPhysicalBody(entity)) return false;
+  if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   const material = environmentMaterialOf(entity);
   // Row 509/510: a stamped substance names its own break speed; the family default stands.
-  const impactThreshold = Number.isFinite(entity?.data?.breakSpeed)
-    ? entity.data.breakSpeed
+  const impactThreshold = Number.isFinite(breakSpeed)
+    ? breakSpeed
     : (material === 'rock' ? 110 : 60);
   // Debris (wrecks) detonates through heat cook-off only, never from a kinetic impact. A fresh
   // kill's companion shard shares the victim's momentum and grazes the new wreck above the
@@ -87,7 +97,7 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   // kill (PQ-138.03: the wreck keeps the victim's momentum; wrecks are terrain and ammunition
   // to ricochet off, not ordnance that pops on the first bump). Heat weapons and blasts still
   // cook residual fuel off.
-  if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile', 'calcite'].includes(material)) return false;
+  if (!(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile', 'calcite'].includes(material)) return false;
   stampEnvironmentMaterial(entity, material);
   if (material !== 'rock' && threshold(entity, material) === Infinity) return false;
   queueReaction(state, entity, material, origin);
@@ -100,14 +110,25 @@ export const environmentMaterials = {
     this.destroy();
     Object.assign(this, { state: ctx.state, helpers: ctx.helpers || {}, registry: ctx.registry, bus: ctx.bus });
     this._off = this.bus?.on('physics:impact', p => {
-      for (const [id, otherId] of [[p.aId, p.bId], [p.bId, p.aId]]) {
-        const body = this.state.entities.get(id);
-        const cause = readRecentImpulseProvenance(this.state.entities.get(otherId), this.state.tick)
-          || readRecentImpulseProvenance(body, this.state.tick);
-        queueEnvironmentImpact(this.state, body, num(p.preSolveClosingSpeed), {
-          actorId: p.actorId ?? cause?.actorId, weaponId: cause?.weaponId, tag: 'material_impact',
-        });
-      }
+      // Each body's latest provenance is read once for the pair: direction a→b preferred the
+      // counterpart's record and direction b→a preferred the other way around — the identical
+      // two reads the old [a,b]/[b,a] loop made unconditionally, minus its duplicate fallback
+      // reads (same-tick repeat reads return the same record) and its per-emit pair arrays.
+      const entities = this.state.entities;
+      const a = entities.get(p.aId);
+      const b = entities.get(p.bId);
+      const tick = this.state.tick;
+      const provA = readRecentImpulseProvenance(a, tick);
+      const provB = readRecentImpulseProvenance(b, tick);
+      const closingSpeed = num(p.preSolveClosingSpeed);
+      const causeForA = provB || provA;
+      queueEnvironmentImpact(this.state, a, closingSpeed, {
+        actorId: p.actorId ?? causeForA?.actorId, weaponId: causeForA?.weaponId, tag: 'material_impact',
+      });
+      const causeForB = provA || provB;
+      queueEnvironmentImpact(this.state, b, closingSpeed, {
+        actorId: p.actorId ?? causeForB?.actorId, weaponId: causeForB?.weaponId, tag: 'material_impact',
+      });
     });
   },
   destroy() { if (typeof this._off === 'function') this._off(); this._off = null; },
