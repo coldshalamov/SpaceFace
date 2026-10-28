@@ -302,6 +302,9 @@ export function createPackageDetachManifest(loaded, options = {}) {
       geometry.addEventListener('dispose', () => {
         entry.recordsDied = true;
         entry.uploadedOn = new WeakMap();
+        // Died records put every presented draw of this geometry back on the upload path —
+        // the settle latch that unwraps the draw-time guard re-arms on this serial.
+        bumpPackageDetachSerial();
       });
       return entry;
     }),
@@ -669,6 +672,8 @@ export function dropGeometryGpuResidencyLedger(renderer) {
       if (entry.uploadedOn.delete(renderer)) dropped += 1;
     }
   }
+  // Dropped stamps flip their entries back to upload-pending — a settle-latch event.
+  if (dropped > 0) bumpPackageDetachSerial();
   return dropped;
 }
 
@@ -774,6 +779,9 @@ export function dropPackageDetachManifest(contentHash, owner = null) {
   }
   if (!manifest) return false;
   manifest.evicted = true;
+  // Eviction retires every pending release this manifest carried — the settle latch must
+  // re-verify promptly rather than hold a stale armed verdict for its sweep window.
+  bumpPackageDetachSerial();
   manifests.delete(manifest.manifestId);
   const hashManifests = manifestsByContentHash.get(manifest.contentHash);
   if (hashManifests) {
@@ -857,6 +865,37 @@ export function detachedPresentedDrawBlocked(renderer, geometry, material) {
 }
 
 /**
+ * Set-level twin of detachedPresentedDrawBlocked: whether ANY detached package resource could
+ * block a presented draw on `renderer` right now — a refill in flight, an aspect hold, or a
+ * released payload whose live GPU copy this context can no longer trust. The unready-draw
+ * guard's settle latch consults this scan once per settle transition (and on a bounded cadence
+ * while it reports armed) so the raw renderBufferDirect swap can never strand a stale payload
+ * without the guard that queues its refill.
+ */
+export function presentedDetachDrawsArmed(renderer) {
+  if (presentedDetachRehydrate) return true;
+  if (renderer && orientationHolds.has(renderer)) return true;
+  const properties = renderer && renderer.properties;
+  for (const manifest of manifests.values()) {
+    if (!manifest || manifest.evicted) continue;
+    const totals = manifest.totals || {};
+    if (totals.detachedGeometries > 0) {
+      for (const entry of manifest.geometryEntries) {
+        if (entry && entry.detached === true
+            && detachedGeometryEntryUploadPending(entry, renderer)) return true;
+      }
+    }
+    if (totals.detachedTextures > 0) {
+      for (const entry of manifest.entries) {
+        if (entry && entry.detached === true
+            && detachedTextureUploadPending(entry.texture, properties)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * One in-flight refill for every detached package. The draw guard and the orientation hold
  * share it so a rotation cannot decode the fleet twice. The hold drops only after the refill
  * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
@@ -888,6 +927,7 @@ export function presentedDetachRehydrateInFlight() {
 export function noteOrientationDetachedHold(renderer) {
   if (!renderer) return false;
   orientationHolds.add(renderer);
+  bumpPackageDetachSerial();
   queuePresentedDetachRehydrate(renderer);
   return true;
 }

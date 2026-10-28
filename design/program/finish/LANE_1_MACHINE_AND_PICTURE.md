@@ -94,7 +94,16 @@ thread, parity/digest tests are green, and the A/B shows the frame win.
 **M2 — Unwrap `unreadyDrawGuard` once readiness settles.** `src/render/bloom.js:~1337` wraps every draw
 (12.5 % inclusive in the Crucible round). After `unreadyProgramsPending` is false, swap in the raw
 `renderBufferDirect`; re-wrap only on a new mount. Done when the profile share is < 1 % in a settled
-round and no unready program ever draws (keep the existing guard test).
+round and no unready program ever draws (keep the existing guard test). **LANDED 2026-10-28** —
+`createUnreadyDrawableGuard(renderer, { disarmOnSettle: true })` at both production call sites;
+settled hide() swaps the raw `renderBufferDirect` in, mounts/program churn/detach events re-wrap.
+Detach side got its own latch: `packageDetachSerialNow()` bumps on release, dead attribute records,
+dropped residency stamps, manifest eviction and orientation holds, and a bounded-cadence
+`presentedDetachDrawsArmed` scan re-verifies pending payloads so a never-drawn release cannot tax
+every frame. Guard test kept green (17/17 incl. new disarm/rearm + opt-out contract tests); detach
+suites 25/25. Real-browser proof (`probe-crucible-stress` worker arm, contended):
+`drawGuardDisarmed` true in 178/897 diag samples — engaged whenever the frame is actually settled;
+combat mounts legitimately re-arm it mid-round.
 
 **M3 — Fewer programs, fewer switches, fewer draws.** `setProgram` 7.9 % + `renderBufferDirect` 10.6 %;
 203 programs in a Crucible run, split by instancing (57), vertex colour (39), light count (37) and
@@ -229,6 +238,12 @@ modules of ≤ ~3k lines each and hand them in pairs, evenly, to Grok and Gemini
 reads every line of its module and writes `.devshots/finish/lane1/audit/<module>.md` — bugs, per-frame
 allocation, dead code, duplicated paths, hidden per-frame DOM reads, debug/census code running in the
 game loop, and the three cheapest wins. Turn real findings into packets below this line.
+
+Audit status (2026-10-28 ~15:00): 135 chunks queued in `.devshots/finish/lane1/audit-manifest.json`;
+~21 attempted, grok landing steadily (~10 reports in `audit/`). **agy side is quota-dead** —
+`AGY_ERROR RESOURCE_EXHAUSTED (429), resets ~3h`; its odd chunks stay `done:false` in
+`audit-status.json` — rerun `node .devshots/finish/lane1/audit-runner.mjs --only=gemini` after the
+reset (the runner's "gemini" provider is the `agy` binary).
 
 ## INFERENCE (seed ≈ 20 lines in the brainstorm packet, README §6)
 

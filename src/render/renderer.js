@@ -35687,7 +35687,7 @@ export const render = {
     // The bloom route brackets its own passes; the graph and native routes get the same
     // hide→render→restore guard here so a mid-link program cannot stall either presented path.
     const guard = this._unreadyDrawableGuard
-      || (this._unreadyDrawableGuard = createUnreadyDrawableGuard(this.renderer));
+      || (this._unreadyDrawableGuard = createUnreadyDrawableGuard(this.renderer, { disarmOnSettle: true }));
     if (route === POST_PROCESS_ROUTE.GRAPH && this._renderGraph) {
       const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
       frame.time = Number.isFinite(time) ? time : 0;
