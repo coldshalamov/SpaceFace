@@ -1,6 +1,6 @@
 // Archive Record Tail — lived vignette. External-only: ambient world scene.
 import { deepFreeze, defineEncounter } from './catalog.js';
-import { compileVignette } from '../../systems/vignetteInterpreter.js';
+import { compileVignette, applyMotion } from '../../systems/vignetteInterpreter.js';
 
 export const spec = {
   "id": "scene_archive_record_tail",
@@ -28,13 +28,13 @@ export const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Recover the record",
-      "playerLine": "I will help the archive bring the record back."
+      "label": "Scan the runner’s bearing",
+      "playerLine": "I will pulse the runner for a bearing, not take the file."
     },
     {
       "id": "b",
-      "label": "Cover the runner",
-      "playerLine": "I will keep the quiet hull ahead of the archive."
+      "label": "Decline the scan and withdraw",
+      "playerLine": "I will leave this file unread and withdraw from both hulls."
     },
     {
       "id": "c",
@@ -85,7 +85,7 @@ export const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "The archive has a bearing. The record is still incomplete.",
+      "line": "Your scanner obtained the runner’s bearing. The file remains aboard, still incomplete.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -112,7 +112,7 @@ export const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "The ghost kept the file and its last missing second.",
+      "line": "You withdrew without scanning the runner. The file and pursuit remain unresolved.",
       "channel": "info",
       "next": "rep_b_runner"
     },
@@ -184,7 +184,109 @@ export const trigger = deepFreeze({
     "externalOnly": true
   }
 });
-export const runtime = compileVignette(spec);
+
+// Only this scene observes evidence. Shared choreography and consequence writers stay unchanged.
+const archiveBase = compileVignette(spec);
+const archiveSessions = new WeakMap();
+const archiveFinitePos = e => e && e.alive === true && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z);
+const archiveDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+function archiveValid(d, live, state, session) {
+  return session && state.world?.currentSectorId === session.sector
+    && d.player() === session.player
+    && [session.player, session.runner, session.warden].every(e =>
+      archiveFinitePos(e) && state.entities.get(e.id) === e);
+}
+function archiveAbort(d, live, reason, line) {
+  archiveSessions.delete(live);
+  if (line) d.say(live, 'info', line, null, { literal: true });
+  d.abort(live, reason);
+}
+function archiveSettle(d, live, state, session) {
+  session.settling = true;
+  try { archiveBase.choose(d, live, state, session.choice); }
+  finally { archiveSessions.delete(live); }
+}
+export const runtime = Object.freeze({
+  fire(d, live, state) {
+    archiveBase.fire(d, live, state);
+    if (live.phase === 'done') return;
+    const role = name => state.entities.get(live.ids.find(id => live.roles[id] === name));
+    const scanner = d.registry?.get?.('scanner');
+    archiveSessions.set(live, {
+      player: d.player(), runner: role('runner'), warden: role('ship_1'),
+      sector: state.world?.currentSectorId,
+      lastSeq: Number.isSafeInteger(scanner?._pulseSeq) ? scanner._pulseSeq : 0,
+      choice: null,
+    });
+  },
+  choose(d, live, state, choice) {
+    const session = archiveSessions.get(live);
+    if (!session || session.choice || live.phase !== 'offer' || d.now() >= live.deadlineAt) return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    if (choice === 'c') {
+      session.choice = choice;
+      return archiveSettle(d, live, state, session);
+    }
+    if (choice !== 'a' && choice !== 'b') return;
+    if (choice === 'b' && session.readBeforeChoice) return archiveAbort(d, live, 'record_already_read',
+      'Your earlier pulse already read this runner. An unread withdrawal is no longer yours to offer.');
+    session.choice = choice;
+    session.chosenAt = d.now();
+    session.start = { x: session.player.pos.x, z: session.player.pos.z };
+    session.anchor = { x: live.anchor.x, z: live.anchor.z };
+    live.deadlineAt = d.now() + 90;
+    live.phase = choice === 'a' ? 'await_bearing' : 'await_discretion';
+    d.say(live, 'info', choice === 'a'
+      ? 'ARCHIVIST: Use your scanner pulse on RECORD RUNNER. A bearing is enough; the file stays aboard.'
+      : 'Keep your scanner off RECORD RUNNER. Withdraw 600 from this scene, 400 clear of both hulls, and at least 400 from where you answered. Their pursuit is not yours to settle.',
+    null, { literal: true });
+  },
+  tick(d, live, state, now) {
+    if (live.phase === 'done') return;
+    const session = archiveSessions.get(live);
+    if (session?.settling) return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    if (!session.choice) return archiveBase.tick(d, live, state, now);
+    if (!Number.isFinite(now) || now < session.chosenAt || now >= live.deadlineAt) {
+      return archiveAbort(d, live, 'record_evidence_timeout', 'No fresh bearing or witnessed withdrawal. The file remains unresolved.');
+    }
+    applyMotion(d, live, 'chase', now);
+    if (session.choice === 'b'
+      && archiveDistance(session.player.pos, session.start) >= 400
+      && archiveDistance(session.player.pos, session.anchor) >= 600
+      && archiveDistance(session.player.pos, session.runner.pos) >= 400
+      && archiveDistance(session.player.pos, session.warden.pos) >= 400) {
+      archiveSettle(d, live, state, session);
+    }
+  },
+  event(d, live, state, name, payload) {
+    const session = archiveSessions.get(live);
+    if (!session || session.settling || live.phase === 'done' || name !== 'scanPulse') return;
+    if (!archiveValid(d, live, state, session)) return archiveAbort(d, live, 'record_subject_gone');
+    const scanner = d.registry?.get?.('scanner');
+    const now = d.now();
+    // The scanner owner stamps this synchronous event. Reject foreign owners, stale/replayed
+    // sequences, wrong origins and invalid ranges rather than inventing a fallback pulse.
+    if (!payload || payload.source !== 'player-scanner' || payload.scannerId !== session.player.id
+      || !scanner || scanner.state !== state || scanner._pulseSeq !== payload.seq
+      || !Number.isSafeInteger(payload.seq) || payload.seq <= session.lastSeq
+      || !Number.isFinite(payload.simTime) || payload.simTime !== now
+      || !Number.isFinite(payload.pos?.x) || !Number.isFinite(payload.pos?.z)
+      || archiveDistance(payload.pos, session.player.pos) > 1e-6
+      || !Number.isFinite(payload.radius) || payload.radius <= 0) return;
+    session.lastSeq = payload.seq;
+    if (!session.choice) {
+      if (archiveDistance(payload.pos, session.runner.pos) <= payload.radius) session.readBeforeChoice = true;
+      return;
+    }
+    if (now < session.chosenAt) return;
+    if (now >= live.deadlineAt) return archiveAbort(d, live, 'record_evidence_timeout');
+    if (archiveDistance(payload.pos, session.runner.pos) > payload.radius) return;
+    if (session.choice === 'b') return archiveAbort(d, live, 'record_discretion_broken',
+      'Your pulse read the runner. No discretion was witnessed; the file remains aboard.');
+    archiveSettle(d, live, state, session);
+  },
+});
 export default defineEncounter(trigger, {
   "shape": {
     "situation": "archive",
@@ -193,6 +295,7 @@ export default defineEncounter(trigger, {
     "actor": "faction_archive"
   },
   "livedVignette": true,
+  "livedRotation": true,
   "ambientScene": true,
   "sectorIds": [
     "sector_orcus_shadow"
@@ -206,13 +309,13 @@ export default defineEncounter(trigger, {
   "choices": [
     {
       "id": "a",
-      "label": "Recover the record",
-      "playerLine": "I will help the archive bring the record back."
+      "label": "Scan the runner’s bearing",
+      "playerLine": "I will pulse the runner for a bearing, not take the file."
     },
     {
       "id": "b",
-      "label": "Cover the runner",
-      "playerLine": "I will keep the quiet hull ahead of the archive."
+      "label": "Decline the scan and withdraw",
+      "playerLine": "I will leave this file unread and withdraw from both hulls."
     },
     {
       "id": "c",
@@ -222,8 +325,8 @@ export default defineEncounter(trigger, {
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "The archive has a bearing. The record is still incomplete.",
-    "b": "The ghost kept the file and its last missing second.",
+    "a": "Your scanner obtained the runner’s bearing. The file remains aboard, still incomplete.",
+    "b": "You withdrew without scanning the runner. The file and pursuit remain unresolved.",
     "c": "You left the record running into the dark."
   }
 });

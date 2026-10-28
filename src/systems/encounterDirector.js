@@ -439,7 +439,8 @@ export const encounterDirector = {
     // The 1 Hz accumulator must not starve the rhythm's FIRST publish: the baseline phase is
     // what the tactical director reads, and holding it back for a full second of sim makes an
     // update at the same simTime as ensure (fresh boot, the pinned test) emit nothing.
-    if (dir._accum < 1 && dir.sessionRhythm != null) return;  // director runs at 1 Hz after baseline
+    // Fixed-step sums can land just below one second; do not lose a calendar beat to roundoff.
+    if (dir._accum + 1e-9 < 1 && dir.sessionRhythm != null) return;  // director runs at 1 Hz after baseline
 
     const step = dir._accum;
     dir._accum = 0;
