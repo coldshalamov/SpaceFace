@@ -33,6 +33,7 @@ import {
   boundaryLiveEntity,
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
+  buildFallbackPlaceProp,
   buildAuthoredStationArchetype,
   carryAdmittedOnceStamp,
   enqueueBoundaryUpgrade,
@@ -76,9 +77,20 @@ function requiresProductionWholeShip(entity) {
   return requiresProductionWholeShipForEntity(entity);
 }
 
+function isUnderstoryGardenPlace(entity) {
+  const data = entity?.data;
+  return entity?.type === 'garden' && entity.factionId === 'faction_understory'
+    && data?.understoryGarden === true && data.placeId === 'place_dead_hulk'
+    // Other explicit identities keep their existing visual owner. Never dress a different
+    // authored body as a garden merely because a stale placeId was also carried in data.
+    && !data.archetypeGlb && !data.landmarkGlb && !data.assetId && !data.assetRef
+    && !data.packagedPropFile && !data.claimSpecId && !data.claimOwned && !data.storyPropKind;
+}
+
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
   if (isOrchardFrame(entity) || isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
+  if (isUnderstoryGardenPlace(entity)) return true;
   if (entity.type === 'prop' && entity.data.closedRefineryProp === true) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
@@ -1412,6 +1424,117 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
 }
 
 /**
+ * The garden's living footprint is existing infestation geometry, not an invisible collision
+ * disk. Keep its released dead-hulk core at the authored draw size while the root-mat spreads
+ * to the simulation radius. Nineteen fixed props, no new geometry family or per-frame rebuild.
+ * The props are boundary siblings: an async authored hull swap cannot throw away the growth.
+ */
+function attachUnderstoryGardenDressing(boundary, entity) {
+  const growth = new THREE.Group();
+  growth.name = 'Understory_Garden_Living_Mat';
+  const patches = [];
+  const add = (placeId, kind, index) => {
+    const prop = buildFallbackPlaceProp({ type: 'fx', radius: 1, data: { placeId, scale: 0.1 } });
+    let patch = prop;
+    if (kind === 'root') {
+      // Existing open nerve strands, normalized once for segment placement. No new geometry
+      // or solid membrane ribbon: growth follows broken, asymmetric runs away from deck seams.
+      const box = new THREE.Box3().setFromObject(prop, true);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      prop.scale.set(1 / size.x, 1 / size.y, 1 / size.z);
+      prop.position.set(-center.x / size.x, -center.y / size.y, -center.z / size.z);
+      patch = new THREE.Group();
+      patch.add(prop);
+    }
+    patch.name = `Understory_${kind}_${index}`;
+    growth.add(patch);
+    patches.push({ patch, kind, index });
+  };
+  for (let i = 0; i < 8; i += 1) add('alien_growth_nerve_lace', 'root', i);
+  for (let i = 0; i < 5; i += 1) add('alien_growth_filament_sheet', 'seam', i);
+  for (let i = 0; i < 3; i += 1) add('alien_growth_cyst_cluster', 'cyst', i);
+  for (let i = 0; i < 3; i += 1) add('alien_growth_nerve_lace', 'nerve', i);
+  boundary.add(growth);
+  boundary.userData.interactionKind = 'garden';
+  boundary.userData.understoryGardenDressing = growth;
+  const previousUpdate = boundary.userData.updateRuntimeState;
+  // The released hulk faces+X. Small colonies sit on separated deck seams, not one filled oval.
+  // Branch starts stay on that hull; asymmetric bends spread open roots to the intake's edges.
+  const seams = [[-49, 4, 13, 5], [-25, -8, 8, 4], [4, 6, 10, 5], [36, -5, 7, 3], [55, 2, 6, 4]];
+  const anchors = [[-44, 4], [45, -6], [-18, -9], [22, 9]];
+  const bends = [[-0.57, -0.18], [0.53, 0.18], [-0.24, -0.48], [0.31, 0.52]];
+  const tips = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  const rootWidths = [3.2, 2.3, 2.7, 3.7];
+  let lastRadius = -1;
+  let lastStage = -1;
+  let hullBounds = boundary.userData.visualBounds;
+  let gardenExtent = 0;
+  const bounds = { center: [0, 0, 0], size: [0, 60, 0] };
+  const syncBounds = () => {
+    for (let axis = 0; axis < 3; axis += 1) {
+      const half = axis === 1 ? 30 : gardenExtent;
+      const center = Number(hullBounds?.center?.[axis]) || 0;
+      const hullHalf = Math.max(0, Number(hullBounds?.size?.[axis]) || 0) / 2;
+      const lo = Math.min(-half, center - hullHalf);
+      const hi = Math.max(half, center + hullHalf);
+      bounds.center[axis] = (lo + hi) / 2;
+      bounds.size[axis] = hi - lo;
+    }
+  };
+  // The place commit writes a hull-only envelope after asynchronous admission. Union that
+  // normal stamp immediately, even when distant LOD suppresses runtime-state closures.
+  Object.defineProperty(boundary.userData, 'visualBounds', {
+    configurable: true, enumerable: true,
+    get: () => bounds,
+    set: (value) => { if (value !== bounds) { hullBounds = value; syncBounds(); } },
+  });
+  const update = (liveEntity, now) => {
+    if (typeof previousUpdate === 'function') previousUpdate(liveEntity, now);
+    const radius = Math.max(1, Number(liveEntity?.data?.gardenRadius) || Number(liveEntity?.radius) || 90);
+    const stage = Math.max(1, Math.min(5, Number(liveEntity?.data?.gardenStage) || 1));
+    if (radius !== lastRadius || stage !== lastStage) {
+      for (const { patch, kind, index } of patches) {
+        if (kind === 'root') {
+          const branch = Math.floor(index / 2);
+          const ax = index % 2 ? bends[branch][0] * radius : anchors[branch][0];
+          const az = index % 2 ? bends[branch][1] * radius : anchors[branch][1];
+          const bx = index % 2 ? tips[branch][0] * (radius - 0.5) : bends[branch][0] * radius;
+          const bz = index % 2 ? tips[branch][1] * (radius - 0.5) : bends[branch][1] * radius;
+          const dx = bx - ax, dz = bz - az;
+          patch.position.set((ax + bx) / 2, 3, (az + bz) / 2);
+          patch.scale.set(Math.hypot(dx, dz), 2, rootWidths[branch]);
+          patch.rotation.y = -Math.atan2(dz, dx);
+        } else {
+          const seam = seams[kind === 'seam' ? index : [0, 2, 3][index]];
+          patch.position.set(seam[0], kind === 'seam' ? 8 : 10, seam[1]);
+          // buildAlienGrowthProp clamps its unit radius to2; compensate for its authored units.
+          if (kind === 'seam') patch.scale.set(seam[2] / 2, 1.4, seam[3] / 2);
+          else patch.scale.setScalar(Math.min(kind === 'cyst' ? 10 : 6, radius * 0.07) / 2);
+          patch.rotation.y = index * 1.17 + (kind === 'seam' ? 0.2 : 0.7);
+        }
+        patch.visible = (kind !== 'cyst' && kind !== 'nerve') || index < Math.min(3, stage + 1);
+        patch.updateMatrix();
+        patch.matrixWorldNeedsUpdate = true;
+      }
+      // Include the stable144-WU hull as well as the living mat. This stamp is restored
+      // after library admission replaces its temporary hull-only bounds at commit.
+      gardenExtent = Math.max(radius, Number(liveEntity?.data?.placeTargetRadius) || 72);
+      syncBounds();
+      lastRadius = radius;
+      lastStage = stage;
+      growth.userData.gardenStage = stage;
+      growth.userData.gardenRadius = radius;
+      growth.updateMatrix();
+      growth.matrixWorldNeedsUpdate = true;
+    }
+  };
+  boundary.userData.updateRuntimeState = update;
+  update(entity, 0);
+  return boundary;
+}
+
+/**
  * Install the hero-asset registry and authored-part boundary on a live visual factory.
  * Mutating the existing factory object is intentional: renderer event closures, rebuild paths,
  * and the dev ship-preview harness all retain a reference to that same object.
@@ -1478,7 +1601,16 @@ export function installVisualOverrides(factory, options = {}) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)
         : null;
-      try { visual = authoredPlaceBuilder(entity, { releaseMode, fallbackRoot: geologyFallback }); }
+      try {
+        // The place library admits fx presentation views, not simulation garden bodies. Keep
+        // the real entity/type untouched; the renderer binds the boundary to that same live id.
+        const placeView = isUnderstoryGardenPlace(entity) ? Object.create(entity) : entity;
+        // Inherit alive/pose/data from the real lifetime rather than copying them: an
+        // in-flight authored request must see a killed owner, not a stale alive snapshot.
+        if (placeView !== entity) placeView.type = 'fx';
+        visual = authoredPlaceBuilder(placeView, { releaseMode, fallbackRoot: geologyFallback });
+        if (isUnderstoryGardenPlace(entity) && visual) attachUnderstoryGardenDressing(visual, entity);
+      }
       catch (error) {
         if (geologyFallback) {
           visual = settleSameSemanticGeologyBuildFallback(geologyFallback, entity, error);
@@ -1547,7 +1679,7 @@ export function installVisualOverrides(factory, options = {}) {
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship' || isTallyThreeAssessor(entity)) return visual;
     configureTransparentSinglePassSurfaces(visual);
-    if (!authoredShips) return visual;
+    if (!authoredShips) return attachNestBayIndicators(visual, entity);
 
     // Inspection surfaces must not replace a readable catalog ship with the generic modular kit.
     // That assembly is useful as a flight fallback, but it is not a validated complete body and its
@@ -1555,13 +1687,13 @@ export function installVisualOverrides(factory, options = {}) {
     // production whole-ship records may replace the object a player is directly manipulating.
     if (authoredWholeShipsOnly && !requiredWholeShip) {
       visual.userData.authoredAssetState = 'procedural-settled';
-      return visual;
+      return attachNestBayIndicators(visual, entity);
     }
 
     // The wrapper is synchronous and fail-closed. Live direct mounts carry no renderables; preview
     // modes may still provide a hidden bespoke/procedural substrate for isolated inspection tools.
     try {
-      return wrapShipWithAuthoredParts(entity, visual, {
+      return attachNestBayIndicators(wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
         libraryScope: options.authoredLibraryScope,
         bootstrapPlan: options.authoredBootstrapPlan,
@@ -1574,11 +1706,11 @@ export function installVisualOverrides(factory, options = {}) {
           settleIndustrialSurfacing(payload, options);
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
         },
-      });
+      }), entity);
     }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);
-      return visual;
+      return attachNestBayIndicators(visual, entity);
     }
   };
 

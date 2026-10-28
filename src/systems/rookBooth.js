@@ -36,20 +36,22 @@
 // filing roll; the only clock is state.simTime / state.tick.
 
 import { ROOK_BOOTH } from '../data/rook.js';
-import { rookBoothEligible, rookDeliveryCheck } from '../characters/rookRules.js';
+import { rookBoothEligible, rookDeliveryCheck, rookPadPosition } from '../characters/rookRules.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
 import { LAWFUL_STATION_FACTIONS } from '../data/factions/index.js';
 export function rookBoothSpec() {
   return {
     type: 'beacon',
-    pos: { ...ROOK_BOOTH.pad }, vel: { x: 0, z: 0 },
+    pos: rookPadPosition(), vel: { x: 0, z: 0 },
     radius: 12, mass: 1e6, hull: 1, hullMax: 1,
-    collides: false,
+    collides: false, physicsBody: false,
     homeSectorId: ROOK_BOOTH.sectorId,
     data: {
       rookBooth: true, parentType: 'story_prop',
+      circuitMark: true, ringRadius: ROOK_BOOTH.padRadius, visualRadius: ROOK_BOOTH.padRadius,
       scanLabel: "Rook's pad · hulls bought by mass",
       scannerSignalKind: 'salvage',
       homeSectorId: ROOK_BOOTH.sectorId,
@@ -150,7 +152,7 @@ export function rookMarketPadSpec(standId) {
   if (standId === QUIET_STAND.id) {
     return {
       type: 'beacon',
-      pos: { ...QUIET_STAND.pad }, vel: { x: 0, z: 0 },
+      pos: sectorLocalToGlobalForSector({ ...QUIET_STAND.pad }, ROOK_BOOTH.sectorId), vel: { x: 0, z: 0 },
       radius: 10, mass: 1e6, hull: 1, hullMax: 1,
       collides: false,
       homeSectorId: ROOK_BOOTH.sectorId,
@@ -454,7 +456,8 @@ export function createRookBooth() {
      *  the live arrival check so the caller sweeps geometry once. */
     _ringSpot(e) {
       for (const stand of ROOK_MARKET_STANDS) {
-        const check = rookDeliveryCheck(e, stand.pad, stand.padRadius, stand.restSpeed);
+        const pad = sectorLocalToGlobalForSector(stand.pad, ROOK_BOOTH.sectorId);
+        const check = rookDeliveryCheck(e, pad, stand.padRadius, stand.restSpeed);
         if (check.inZone) return { stand, check };
       }
       return null;
@@ -566,8 +569,11 @@ export function createRookBooth() {
       if (appraisal.disputed && stand.id === ROOK_STAND.id) {
         this._fileDisputedHull(s, e, appraisal, book);
       }
+      const deliveredMarkerId = d.markerId || (d.provenance && d.provenance.markerId) || null;
       this.bus?.emit('rookWreck:delivered', {
-        entityId: e.id, mass, payoutCr, count,
+        entityId: e.id, mass, payoutCr, count, markerId: deliveredMarkerId,
+        source: stand.id === ROOK_STAND.id ? 'rook:booth' : `rook:booth:${stand.id}`,
+        sectorId: ROOK_BOOTH.sectorId,
         pos: { x: e.pos.x, z: e.pos.z },
         standId: stand.id, gradeId: appraisal.gradeId, quality: Math.round(appraisal.quality * 100) / 100,
         intact: appraisal.intact, warm: appraisal.warm, disputed: appraisal.disputed,

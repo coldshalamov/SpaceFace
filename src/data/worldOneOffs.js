@@ -21,6 +21,21 @@
 
 export const WORLD_ONE_OFFS = Object.freeze([
   Object.freeze({
+    id: 'oneoff_refinery_quarantine_hauler',
+    name: 'Closed Refinery — quarantined ore hauler',
+    placeId: 'place_dead_hulk',
+    sectorId: 'sector_ceres_belt',
+    anchor: { type: 'station', id: 'station_ceres' },
+    // Station (-1100,620) + offset = refinery worksite local (1880,1810).
+    // Normal world one-off dressing owns this fixed measured-skin hulk after the job.
+    offsetLocal: Object.freeze({ x: 2980, z: 1190 }),
+    rot: 0,
+    spin: 0,
+    radius: 42,
+    why: 'Three quarantined ore lots were unloaded beside her for CR-FEED disposal.',
+  }),
+
+  Object.freeze({
     id: 'oneoff_abandoned_tug',
     name: 'The Long Berth — an abandoned yard tug',
     placeId: 'place_dead_hulk',

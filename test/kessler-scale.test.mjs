@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import assert from 'node:assert/strict';
 import { createKesslerScale, kesslerScaleSpec } from '../src/systems/kesslerScale.js';
 import { KESSLER_SCALE } from '../src/data/kessler.js';
@@ -12,7 +13,7 @@ import { resolveRuntimeManifest } from '../src/runtime/resolveRuntimeManifest.js
 import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 
-const PAD = KESSLER_SCALE.pad;
+const PAD = sectorLocalToGlobalForSector(KESSLER_SCALE.pad, KESSLER_SCALE.sectorId);
 
 function fixture({ sector = KESSLER_SCALE.sectorId, kind = 'adventure' } = {}) {
   const bus = createBus(), events = [];
@@ -122,7 +123,7 @@ test('a fast flyby and out-of-ring freight are not weighed', () => {
   assert.equal(f.events.filter(([t]) => t === 'kesslerPod:weighed').length, 0);
   assert.equal(fast.data.kesslerRead, undefined);
   assert.equal(far.data.kesslerRead, undefined);
-  assert.ok(kesslerReadCheck({ pos: PAD, vel: { x: 5, z: 0 } }).arrived, 'a settled pod arrives');
+  assert.ok(kesslerReadCheck({ pos: PAD, vel: { x: 5, z: 0 } }, PAD).arrived, 'a settled pod arrives');
 });
 
 test('wrecks, ships, and already-read pods are not freight for the plate', () => {
@@ -191,3 +192,4 @@ test('leaving and re-entering re-reads a fresh pod but never re-announces', () =
   const announces = f.events.filter(([t, p]) => t === 'comms:popup' && p.id === 'kessler_scale_announce');
   assert.equal(announces.length, 1);
 });
+

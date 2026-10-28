@@ -137,7 +137,7 @@ export const CAMPAIGN_BEATS = Object.freeze([
         accept: Object.freeze(['mission:completed']),
         match: Object.freeze({ storyTag: 'campaign47a:b1:alloy_run' }),
         contractId: 'campaign47a:b1:alloy_run',
-        label: 'Deliver sealed alloys to Tycho — manifest lies',
+        label: 'Deliver sealed alloys — compare the manifest',
       }),
       Object.freeze({
         // §34.7 Book 1: SCALE 4 — the delivered crate weighs 0.94 on the Tethys scale and the
@@ -188,14 +188,13 @@ export const CAMPAIGN_BEATS = Object.freeze([
         label: 'Clear three wasps; tow the mark to Rook',
       }),
       Object.freeze({
-        // §34.7 Book 2: THE COMPOST RUN — feed a hungry garden; the Understory keeps the
-        // biomass and pays out when the run completes.
+        // §34.7 Book 2: one real player-fed visible growth. The ongoing 240t run
+        // and its payout are separate; ambient growth and an uneventful feed are not this step.
         id: 'compost',
         order: 1,
-        accept: Object.freeze(['understory:gardenFed', 'understory:gardenStage', 'understory:compostRunComplete']),
+        accept: Object.freeze(['understory:playerGrowth']),
         match: Object.freeze({ byPlayer: true }),
-        matchSignals: Object.freeze(['understory:gardenFed']),
-        label: 'Feed the garden — the Compost Run',
+        label: 'Feed the receiving garden until it visibly grows',
       }),
       Object.freeze({
         // §34.7 Book 2: THE NEST — encounter 705 bound to the book: a wasp nest in the

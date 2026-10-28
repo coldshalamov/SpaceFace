@@ -1,3 +1,59 @@
+## Reviewed Nest successor — 27 October 2026, 10:06 UTC
+
+Latest remotely verified PR637 head is `03d6bd572176b506fb332cca3e89fdebfa2a2de2`, an owned-draft-only synchronization of `af101e97c500a2dce0976f8f1b22f3a9d52c9d51` and public master `b52da87af61a3ab1399c2091c642efb98ac6db63`. All newer public work in that pinned master was retained; no master merge/deployment. Later disjoint master work remains separate. The reviewed Nest successor preserves that save owner and adds the real Compost → Charon Nest → Registry Writ handoff; see [NEST_VISIT](../opening-experience-2026-10-27/NEST_VISIT.md) and [sector coverage](../opening-experience-2026-10-27/SECTOR_EXPERIENCES.md).
+
+Independent review resolved serializer side effects, pending-death rollback, generic stale/mercy retirement and false timer/abort outcomes. A subsequent ordinary-input proof rejected the mass-only Class I assumption: fresh exact authored visits now use genuinely scaled radius9/16t compact Wasps, with strict variant persistence; standard random/legacy bodies and global Line rules are unchanged. Actual nearest/preview acquisition and attachment-to-native-contact proof pass, with native rope/full flight acceptance still open. Native moving-contact evidence and actual exported-model previews exist, with ordinary flight/browser/visual acceptance still open. The next operation is verified publication and exact-head CI, then actual Registry Writ/Elroy route assembly. Do not restart the old model-production queue. All larger goals remain open.
+
+Sync-head CI exposed sparse-harness integration gaps in older opening tests; those are repaired alongside the connected increment with actual current helper bindings, not by removing assertions or treating focused checks as a green whole matrix. Remote CI remains a distinct gate.
+
+## Current connected increment — 27 October 2026, 08:45 UTC
+
+Compost is published in draft PR637 at `af101e97c500a2dce0976f8f1b22f3a9d52c9d51`, tree `f053d359aed370184efe2c3a5022b398f56852de`, sole parent `fee687a5252a1360aa9a4326964da766bc7d7a1a`. Remote bytes and exact 25-path delta are verified. No merge or deployment. Hosted CI40474556609 is still running at this checkpoint; targeted evidence is not whole-suite acceptance.
+
+The next active implementation is the real Nest visit after Compost, then the existing Registry Writ. Read-only source reproduction found a null-position Nest waypoint, weighted/random admission rather than a reachable authored visit, aborts incorrectly counting as success, and no captured active door/Wasp progress. The implementation owner is repairing this connected experience with existing assets, preserving clear/escape and Elroy scan/force/custody choices. These repairs are not yet claimed complete or published. Local agents continue to own model production. All larger goals and native/player acceptance remain open.
+
+## Compost receiving experience — 27 October 2026, 08:22 UTC
+
+Latest verified predecessor: draft PR637 at `fee687a5252a1360aa9a4326964da766bc7d7a1a`, open/unmerged. That Cinder/Rook increment and its newly registered Books0–2 test are GitHub-backed. Hosted run40460525035 finished with failure overall; Books0–2 executed and passed on static index61 (one-based62), shard2. No overall green baseline, native flight or live visual acceptance is claimed.
+
+The reviewed successor creates a real Rookside Receiving Garden at Charon-local(2900,-750), with a clear outside-mouth staging point. Existing released hull and alien-growth pieces replace the previously missing garden presentation. One genuine16t hull takes authored initial52 biomass to61.6/stage2, opening the player-growth story step without an early payout. The independent240t run retains actual fed mass and pays only on genuine completion. Unreserved17u iron is an ordinary alternative:13.6t contents,20t handling body. The shell floor is not free biomass.
+
+Exact material-owner consumption prevents eaten canonical hulls from returning. A bounded optional save section retains real receiver loss; a dead receiver stays dead until new material seeds zero-subsidy regrowth. Live run/growth facts, completed stamps and genuine earlier player growth survive their documented restore boundaries. Ordinary gardens retain their prior ambient growth and collider semantics; new visual identity cannot silently change their ball bodies into skins. The authored144WU hull alone uses the verified fixed24-capsule recipe; intake/growth extent is separate.
+
+Source review:31 receiver/save/clearance groups,90 material cases,94 cargo cases,22 aftermath groups,9 story groups,23 Cinder neighbors, actual route composition/economy and geometry checks passed in their distinct declared scopes. The full local Books0–2 import remains blocked by an unrelated missing Shipjack dependency; its updated default-production test is retained for hosted CI, not called locally passed. Offline actual-model views were inspected and improved once from a symmetric filled platform to open seam-attached growth. No native solver/PBR/browser/steering result is inferred.
+
+See [Compost receiver](../opening-experience-2026-10-27/COMPOST_RECEIVER.md). The next executable connected unit is ordinary reachability and the player experience at the existing Nest, followed by the established Elroy choices. Do not declare Nest complete because a synthetic resolution event advances a fixture. Preserve current mission, encounter, art and performance owners.
+
+This current section supersedes earlier dispatch priorities, not historical evidence or acceptance fields. All twelve goals and original twenty-concept scope remain open. Local agents own models; this lane assembles the experience. No master merge, deployment or credential/security change is part of this increment.
+
+---
+
+# Expansion execution: current experience assembly
+
+## Current experience assembly — 27 October 2026, 06:06 UTC
+
+This section supersedes the historical dispatch priorities below, not their evidence or acceptance gaps. Start at Adventure and Swarm's first moments and CREATE playable scenes outward along the missions' actual destinations. Local agents own model production; this lane authors, integrates and judges the experience using existing pieces. Old Orchard/model jobs remain bounded handoff work, not the automatic next queue.
+
+Verified draft [PR637](https://github.com/coldshalamov/SpaceFace/pull/637) is open and unmerged at `d29c8a41f8e07929f014401be4179c8e2456db59`. Its Ceres successor has sole parent `ab9ad5c68ccd3abb7064b038028f6b3910e8871f`; public master remains `d5f607c81591280ab65533e8b3878c8810ce1feb` at this observation. The earlier draft-only synchronization preserved newer upstream content. No master merge or deployment was performed.
+
+Published connected source:
+- Swarm: authored baseline Foundry first-three-round throwing banks, with existing lessons, pockets and budgets preserved.
+- Helios: optional starter workday physical buoys/mining routes and a finite physical claim face with an actual presentation-to-renderer cue.
+- Tethys: correctly transformed Scale 4, open measured worksite, true cargo reading and ordinary alloy-delivery → weighing navigation.
+- Ceres: four genuine repair-fauna clearances and three physical disposal lots, normal blast/tether interaction, exact furnace receipts, persistent surviving/lost material, proportional payment and an explicit clearance-only outcome rather than a story softlock.
+
+See the source-linked [opening dossier](../opening-experience-2026-10-27/SWARM_OPENING.md), [starter workday](../opening-experience-2026-10-27/STARTER_WORKDAY.md), [Helios claim](../opening-experience-2026-10-27/HELIOS_CLAIM.md), [Tethys scale](../opening-experience-2026-10-27/TETHYS_SCALE.md), and [Ceres furnace](../opening-experience-2026-10-27/CERES_FURNACE.md).
+
+Verification: focused Swarm7, starter13, Helios20, Tethys10 and Ceres32 cases have distinct scopes and are not an additive whole-game score. Ceres also passed actual offer/navigation and completion/clauses/receipt/story projections for0/160/320/480-credit outcomes plus the blast matrix and independent Continue/cross-sector controls. Explicit dependency adapters remain disclosed. Ceres CI run40453203096 finished with failure; browser shard3 was externally cancelled after5/333 browser commands; all three Ceres leaves executed and passed by complete failure-table inference on completed static shards (85/84/84 commands). prior Tethys run40451346785 was externally cancelled after supersession, after its target static leaf passed by complete-matrix inference. Other broad checks failed; no overall green baseline is claimed. Read exact current CI rather than freezing this observation.
+
+New offline Tethys assembly views were inspected using four verified current release GLBs and the actual ring geometry at normal draw scales. Nearest furniture geometry clears the ring by21.6 WU. Source-material CPU views are not live PBR, texture, animation, performance, native or player-walkthrough acceptance.
+
+Reviewed successor: Cinder approach → Rook physical tow, preserving Ceres. Focused route23, Rook9, aftermath22 groups and18 independent cases pass with disclosed adapters. The next executable scene after this source increment is the existing Book2 Compost worksite. Reproduction found four generic kills despite a three-Wasp-plus-tow brief, a raw-local Rook pad, and a nonspecific delivery receipt. Repair the ordinary Ceres completion → next offer → arrival → action → settlement route, not merely an already-active fixture. Preserve the existing aftermath owner, Compost/Nest/Elroy order and custody/force choices. Serialize shared mission-family edits; do not overwrite active world/renderer/UI owners.
+
+All twelve goals in OPEN_GOALS remain open, including the original twenty concepts and larger implementation scope. Source commits and backups do not establish game acceptance. There is no pending user approval for the current authorized source increments; older model-specific holds remain separate and must not be silently retried.
+
+---
+
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
