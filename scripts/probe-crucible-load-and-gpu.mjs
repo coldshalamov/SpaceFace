@@ -243,7 +243,7 @@ async function main() {
   page.on('console', (m) => { if (m.type() === 'error' && shown++ < 6) console.log('[console error]', m.text().slice(0, 300)); });
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   try {
-    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+    await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 240000 });
     const cdp = await context.newCDPSession(page);
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.setSamplingInterval', { interval: 1000 });
