@@ -212,6 +212,16 @@ or asset — and building the missing thing is the work. When the board's list d
 its audit findings, then its INFERENCE lines, then re-measures the bars, then audits again. A lane
 is finished only when §4's line is met for its rows.
 
+### 5.6a There is no such thing as "pre-existing"
+"Pre-existing", "unrelated", "out of scope", "not my change", "flaky" and "known issue" are not reasons
+to leave anything broken; they describe work nobody has done yet. Every broken thing an agent sees — red
+test, console error, clipped screen, wrong number, dead control, silent sound, stand-in model, hitch, bad
+player text — is fixed in that sitting when it is in the agent's paths (bugs before features), or becomes
+one line in the owning lane's Inbox, which that lane clears before new rows. Every sitting also *hunts*:
+play the area's default route with the console open, run the owned suites, read nearby code with a
+reviewer's eye. Reviewers and Codex report broken things near the diff, not only ones the diff caused.
+No status report lists a broken thing that was noticed and left.
+
 ### 5.7 Beyond the plan: the professional review of every system
 **The plans do not contain the whole finish.** Agents built this game one packet at a time; few
 systems got the most professional implementation on the first pass, and the repo has changed under

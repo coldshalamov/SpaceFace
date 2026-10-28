@@ -16,6 +16,20 @@ The owner does not read code and cannot finish anything you leave behind. Unfini
 - When the ordered list drains, you are not done: finish the systems review (section 6A — every system you own, reviewed and brought to the studio bar), run your audit findings, then your INFERENCE lines, then re-measure every bar, then audit again, until the finish line is met.
 
 =====================================================================
+0A. THERE IS NO SUCH THING AS "PRE-EXISTING" — YOU FIX WHAT IS BROKEN, AND YOU GO LOOKING FOR IT
+=====================================================================
+The owner has watched agent after agent write "this test fails but it's pre-existing", "unrelated failure, leaving it", "that screen is broken but out of scope", "was already red before my change". That is the single habit that keeps this game unfinished. It ends with you.
+- "Pre-existing", "unrelated", "out of scope", "not caused by my change", "flaky", "environmental" and "known issue" are not reasons to leave anything broken. They are descriptions of work nobody has done yet. You are the somebody.
+- Anything broken you see — a red test, a console error or warning, a thrown exception, a screen that clips or overlaps, a number that is wrong, a control that does nothing, a sound that never plays, a stand-in model, a hitch, a typo in player text, a dead link in a doc — is yours the moment you see it:
+  · in your owned paths: fix it now, in this sitting, before your next feature packet (small) or as the very next packet (bigger). Bugs come before features.
+  · in another lane's paths: one line in that lane's board Inbox with what you saw and how to reproduce it, then keep going. The owning lane fixes Inbox bugs before it starts new rows.
+  · "flaky" or "environmental": find out why and make it deterministic or give it an honest budget. A test that fails under load is a test with a bug.
+- Go looking. You know exactly what a finished, professional game and repository look like, and you can recognise a shoddy, half-wired one at a glance. Use that. Every sitting spends real effort hunting: play the default route of your area and watch the console, run the suites in your owned paths, read the code you are near with a reviewer's eye, open the screens, listen. Every broken or cheap thing you find goes on your board and gets fixed.
+- Your reviewers (R1–R3) and Codex are told the same: they report anything broken or unfinished they see in or near the diff, not only defects the diff introduced — and you fix what they report.
+- Your status reports never contain a broken thing you noticed and left. They say what you fixed. If something truly could not be fixed this sitting, it is a named line on a board with its next step — never a shrug.
+- A sitting that ends with fewer broken things in the game than it started with is the minimum. The goal is zero.
+
+=====================================================================
 1. READ FIRST, IN THIS ORDER (then stop reading and start working)
 =====================================================================
 1. design/program/finish/README.md            — the diagnosis, the owner rulings, who owns which paths, the shared protocol, the finish line. Read all of it.
@@ -79,14 +93,14 @@ Taste: you judge pictures by looking at them. Use node scripts/fleet-look.mjs, s
   a) Brief: write .devshots/finish/lane1/<packet-id>/PACKET.md — the problem in player words, the exact paths that may be touched, the done-when as a number or test, the traps, and the forbidden-actions block from TOOLS.md.
   b) Build: one Claude implementer subagent for work that needs care, or a terminal agent for grunt work. At most TWO Claude implementer subagents run at once (more die on the shared usage limit). Every subagent prompt carries a ~40 tool-call cap, the owned paths, and "do not commit".
   c) Review three times, in sequence, each a fresh Claude subagent reading the diff and the live code:
-     R1 correctness — bugs, regressions, determinism, single-writer law, save compatibility, frame cost.
+     R1 correctness — bugs (including any broken thing near the diff it did not introduce — "pre-existing" is not an exemption), regressions, determinism, single-writer law, save compatibility, frame cost.
      R2 experience — EVERY way this could be better for the player: more readable, more alive, more on-brand ("Holy shit, I did that"), more connected to systems that already exist. It lists every suggestion, including the expansive and creative ones.
      R3 ambition and finish — what a studio would ship instead; what is still stand-in, silent, unwired or cheap; whether the frame budget holds.
      After each review the implementer applies everything worth applying before the next review begins.
   d) Prove: the done-when number (within-session A/B for perf) or focused test; npm run check:baseline when the change could plausibly break something; player-truth once per batch on the modes the batch touched (npm run player-truth -- --mode=<mode> --gate, --headed on this GPU).
   e) Land: git add -- <your paths>; git commit -m "<what the player gets>" -- <your paths>; git show --stat HEAD (a file you never touched in that list is a revert — restore it now); git fetch --prune origin; merge if the remote moved (never rebase, reset, stash the tree, or force); git push origin master. Update your board (status LANDED <sha>, new baseline row when you measured) in the same push. End commit messages with the attribution line your harness gives you.
 
-5.3 Every ~5 packets — Codex is the final authority. Write .devshots/finish/lane1/batch-<n>/PACKET.md with the commit range (git log --oneline <first>^..<last>), the owned paths, the done-when numbers, and this instruction: "You are the final reviewer and the ambition pass for this batch. Read every changed line and the code around it. Find what is wrong and fix it. Where the implementer took the lazy, timid or less impressive version, build the impressive one: make the work maximally ambitious, not merely technically correct — faster, more beautiful, more alive, more finished. Edit only the listed paths. Do not commit or run git add, stash, reset, checkout or clean. Write RECEIPT.md: every defect found, every change made, what you would still do." Run it with the Codex command in TOOLS.md (gpt-6.1-sol, model_reasoning_effort xhigh, via C:\Users\93rob\AppData\Roaming\npm\codex.cmd). Read its diff, run the proofs, land it. Codex wins disagreements unless it breaks an ARCHITECTURE.md contract or a measured bar.
+5.3 Every ~5 packets — Codex is the final authority. Write .devshots/finish/lane1/batch-<n>/PACKET.md with the commit range (git log --oneline <first>^..<last>), the owned paths, the done-when numbers, and this instruction: "You are the final reviewer and the ambition pass for this batch. Read every changed line and the code around it. Find what is wrong and fix it — including anything broken near the batch that it did not introduce. Where the implementer took the lazy, timid or less impressive version, build the impressive one: make the work maximally ambitious, not merely technically correct — faster, more beautiful, more alive, more finished. Edit only the listed paths. Do not commit or run git add, stash, reset, checkout or clean. Write RECEIPT.md: every defect found, every change made, what you would still do." Run it with the Codex command in TOOLS.md (gpt-6.1-sol, model_reasoning_effort xhigh, via C:\Users\93rob\AppData\Roaming\npm\codex.cmd). Read its diff, run the proofs, land it. Codex wins disagreements unless it breaks an ARCHITECTURE.md contract or a measured bar.
 
 5.4 Every ~5 frontend packets — for your boot/loading/settings screens — run Claude Sonnet 5.5 extra-high in the terminal (TOOLS.md) over the batch: shoot each changed screen with node scripts/ui-bench.mjs --shot=<id>, open the PNGs, judge against design/frontend/ORRERY.md and ORRERY_RUBRIC.md, --walk every control, fix what it sees, no commits.
 
@@ -131,6 +145,7 @@ Dummy-mesh shader prewarm (worse); bloom off (1 %); the per-frame refit BatchedM
 =====================================================================
 - Every system in your board's Systems review list is AT BAR, each critical one after a Codex deep review.
 - Every packet on your board is LANDED (or SKIPPED with a reason you then went back and resolved).
+- Nothing you have seen broken is still broken: no red test, console error or broken screen in your owned paths, and your Inbox is empty.
 - Your Defects section is empty.
 - Every bar in README section 4 is at or past its TARGET on this laptop, recorded in your Baseline table on the final build (the floor is the minimum; keep going until the target).
 - Every INFERENCE line on your board is shipped and the last brainstorm found nothing a stranger would notice.
