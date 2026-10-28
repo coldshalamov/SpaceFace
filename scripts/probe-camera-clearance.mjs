@@ -89,7 +89,7 @@ try {
     requestAnimationFrame(tick);
   });
 
-  await page.goto(`http://127.0.0.1:${port}/?demo=1`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
   await page.waitForSelector('[data-action="newGame"]', { timeout: 60_000 });
   await page.click('[data-action="newGame"]');

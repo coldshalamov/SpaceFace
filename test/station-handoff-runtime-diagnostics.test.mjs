@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
-import { collectStationHandoffSnapshot, reportStationHandoffFailure } from '../scripts/lib/stationHandoffDiagnostics.mjs';
+import { collectStationHandoffSnapshot, reportStationHandoffFailure, summarizeTraceIntegrity, summarizeMarketBuyCpuProfile, startMarketBuyCpuProfile } from '../scripts/lib/stationHandoffDiagnostics.mjs';
 
 function collector(overrides = {}) {
   return runInNewContext(`(${collectStationHandoffSnapshot.toString()})()`, {
@@ -330,4 +330,358 @@ test('post-actor trace flush can settle after two seconds without changing page 
   const path = logs.find(([message]) => message === '[station-handoff] browser trace:')?.[1];
   assert.ok(path, 'five-second browser finalization produces the trace');
   await unlink(path);
+});
+
+test('named BUY trace retains distinct artifacts even when timestamps collide', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { readFile, unlink } = await import('node:fs/promises');
+  const { basename } = await import('node:path');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  t.mock.method(Date, 'now', () => 123);
+  for (const label of [undefined, '../market buy', 'market-buy']) {
+    const { session } = traceSession();
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, label);
+    await trace.stop();
+  }
+  const files = logs.filter(([message]) => message === '[station-handoff] browser trace:').map(row => row[1]);
+  try {
+    assert.equal(files.length, 3); assert.equal(new Set(files).size, 3);
+    assert.match(basename(files[0]), /^123-[a-f0-9-]{36}-market-dock\.trace\.json\.gz$/);
+    for (const file of files.slice(1)) assert.match(basename(file), /^123-[a-f0-9-]{36}-market-buy\.trace\.json\.gz$/);
+    for (const file of files) assert.equal(await readFile(file, 'utf8'), 'fixture trace bytes');
+  } finally { for (const file of files) await unlink(file); }
+});
+
+test('trace output is exclusive and a filename collision preserves the earlier bytes', async () => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { resolve } = await import('node:path');
+  const files = new Map(), logs = [];
+  const start = runInNewContext(`(${startStationHandoffTrace.toString()})`, {
+    resolve, randomUUID: () => 'fixed', Date: { now: () => 1 }, Buffer, setTimeout, clearTimeout,
+    mkdir: async () => {}, console: { error: (...args) => logs.push(args) },
+    writeFile: async (path, bytes, options) => {
+      assert.equal(options.flag, 'wx');
+      if (files.has(path)) throw Object.assign(new Error('already exists'), { code: 'EEXIST' });
+      files.set(path, Buffer.from(bytes));
+    },
+  });
+  for (let i = 0; i < 2; i++) {
+    const { session, calls } = traceSession();
+    const trace = await start({ newBrowserCDPSession: async () => session }, 'market-buy');
+    await trace.stop();
+    assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+  }
+  assert.equal(files.size, 1);
+  assert.equal([...files.values()][0].toString(), 'fixture trace bytes');
+  assert.equal(logs.filter(([message]) => message === '[station-handoff] browser trace unavailable:').length, 1);
+});
+
+test('BUY trace covers only its own actor boundary and retains unchanged waits', () => {
+  const market = readFileSync(new URL('../scripts/check-market-first-loop-runtime.mjs', import.meta.url), 'utf8');
+  const start = market.indexOf("buyTrace = await startStationHandoffTrace(browser, 'market-buy', { compact: true })");
+  const observation = market.indexOf('const buyObservation = await startMarketBuyObservation(page)');
+  const actor = market.indexOf("await domClick(page, '[data-screen=\"station\"] .sx-trade__go[data-go]')");
+  const wait = market.indexOf('page.waitForFunction((prev) => window.SF.state.player.credits !== prev');
+  const finish = market.indexOf('await endMarketBuyObservation(buyObservation, buyTiming)');
+  const stop = market.indexOf('await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()])');
+  assert.ok(start > 0 && start < observation && observation < actor && actor < wait && wait < finish && finish < stop);
+  assert.equal(market.split('await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()])').length - 1, 2, 'inner and outer finally retain cleanup');
+  assert.match(market, /const DOCK_TIMEOUT_MS = 15000/);
+  assert.ok(market.includes('window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS }'));
+});
+
+function profileTrace({ start = true, missing = false, loss = false } = {}) {
+  return { traceEvents: [
+    ...(start ? [{ name: 'Profile', pid: 1, tid: 1, id: 'a', args: { data: { startTime: 100 } } }] : []),
+    { name: 'ProfileChunk', pid: 1, tid: 99, id: 'a', args: { data: {
+      cpuProfile: { samples: [1, missing ? 2 : 1], nodes: [{ id: 1, callFrame: { functionName: '(root)' } }] },
+      timeDeltas: [100, 100],
+    } } },
+  ], metadata: { trace_processor_stats: {
+    traced_buf: [{ buffer_size: 8388608, bytes_written: 11939840,
+      bytes_overwritten: loss ? 3551232 : 0, chunks_overwritten: loss ? 867 : 0, write_wrap_count: loss ? 1 : 0 }],
+    legacy_v8_cpu_profile_invalid_callsite: 0, legacy_v8_cpu_profile_invalid_sample: 0,
+  } } };
+}
+
+test('trace integrity joins cross-thread profile chunks by process/profile identity', () => {
+  const result = summarizeTraceIntegrity(profileTrace());
+  assert.equal(result.profileStatus, 'complete');
+  assert.equal(result.traceLossStatus, 'not-reported');
+  assert.equal(result.profiles.length, 1);
+  assert.equal(result.profiles[0].samples, 2);
+  assert.equal(result.profiles[0].missingNodeRefs, 0);
+});
+
+test('valid JSON with lost profile start and node definitions is explicitly incomplete', () => {
+  const result = summarizeTraceIntegrity(profileTrace({ start: false, missing: true, loss: true }));
+  assert.equal(result.profileStatus, 'incomplete');
+  assert.equal(result.traceLossStatus, 'reported');
+  assert.equal(result.profiles[0].hasStart, false);
+  assert.equal(result.profiles[0].missingNodeRefs, 1);
+  assert.equal(result.buffers[0].bytesOverwritten, 3551232);
+});
+
+test('missing loss metadata and missing samples do not produce an integrity pass', () => {
+  const trace = profileTrace(); delete trace.metadata;
+  assert.equal(summarizeTraceIntegrity(trace).traceLossStatus, 'unknown');
+  trace.traceEvents[1].args.data.cpuProfile.samples = [];
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'unavailable');
+  assert.equal(summarizeTraceIntegrity({ traceEvents: [] }).profileStatus, 'unavailable');
+});
+
+test('trace integrity accounts for definitions emitted after samples and parser invalidity', () => {
+  const trace = profileTrace();
+  trace.traceEvents[1].args.data.cpuProfile.nodes = [];
+  trace.traceEvents.push({ name: 'ProfileChunk', pid: 1, id: 'a', args: { data: {
+    cpuProfile: { nodes: [{ id: 1, callFrame: { functionName: '(root)' } }] },
+  } } });
+  assert.equal(summarizeTraceIntegrity(trace).profiles[0].missingNodeRefs, 0);
+  trace.metadata.trace_processor_stats.legacy_v8_cpu_profile_invalid_sample = 2;
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'incomplete');
+});
+
+test('malformed profile, node and sample identities cannot claim completeness', () => {
+  const changes = [
+    trace => { delete trace.traceEvents[0].pid; delete trace.traceEvents[0].id; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes = [{}]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.samples = [undefined]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes = [{ id: 1 }]; },
+    trace => { trace.traceEvents[1].args.data.cpuProfile.nodes[0].parent = 'bad'; },
+  ];
+  for (const change of changes) {
+    const trace = profileTrace(); change(trace);
+    assert.throws(() => summarizeTraceIntegrity(trace), /invalid trace/);
+  }
+});
+
+test('present leaf IDs with missing parent frames or timing remain incomplete', () => {
+  const trace = profileTrace();
+  trace.traceEvents[1].args.data.cpuProfile.nodes = [{ id: 1, parent: 2, callFrame: { functionName: 'leaf' } }];
+  let result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].missingParentRefs, 1);
+  trace.traceEvents[1].args.data.cpuProfile.nodes[0].parent = 0;
+  delete trace.traceEvents[1].args.data.timeDeltas;
+  result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].timingLengthMismatches, 1);
+  trace.traceEvents[1].args.data.timeDeltas = [NaN, -1];
+  result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete'); assert.equal(result.profiles[0].invalidTimeDeltas, 2);
+});
+
+test('long parent chains and cycles are traversed iteratively within the node cap', { timeout: 5000 }, () => {
+  const trace = profileTrace();
+  const cpu = trace.traceEvents[1].args.data.cpuProfile;
+  cpu.nodes = Array.from({ length: 100000 }, (_, i) => ({
+    id: i + 1, parent: i === 99999 ? 0 : i + 2, callFrame: { functionName: i === 99999 ? '(root)' : 'frame' },
+  }));
+  assert.equal(summarizeTraceIntegrity(trace).profileStatus, 'complete');
+  cpu.nodes[99999].parent = 1;
+  const result = summarizeTraceIntegrity(trace);
+  assert.equal(result.profileStatus, 'incomplete');
+  assert.equal(result.profiles[0].parentCycles, 1);
+});
+
+test('integrity processing has explicit event, profile, node and sample limits', () => {
+  assert.throws(() => summarizeTraceIntegrity({ traceEvents: new Array(200001) }), /event limit/);
+  assert.throws(() => summarizeTraceIntegrity({ traceEvents: Array.from({ length: 17 }, (_, id) =>
+    ({ name: 'Profile', pid: 1, id })) }), /profile limit/);
+  for (const [field, count, pattern] of [['nodes', 100001, /node limit/], ['samples', 1000001, /sample limit/]]) {
+    const trace = profileTrace();
+    trace.traceEvents[1].args.data.cpuProfile[field] = Array.from({ length: count }, () => field === 'nodes'
+      ? { id: 1, callFrame: { functionName: '(root)' } } : 1);
+    assert.throws(() => summarizeTraceIntegrity(trace), pattern);
+  }
+});
+
+test('BUY compact categories retain causal timelines and sampling without changing dock defaults', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  t.mock.method(console, 'error', () => {});
+  const configs = [];
+  for (const compact of [false, true]) {
+    const { session, calls } = traceSession({ readFailure: new Error('fixture no artifact') });
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, 'market-buy', { compact });
+    await trace.stop();
+    configs.push(calls.find(([method]) => method === 'Tracing.start')[1].traceConfig);
+  }
+  assert.ok(configs[0].includedCategories.includes('toplevel'));
+  assert.deepEqual(configs[1].includedCategories, configs[0].includedCategories.filter(category => !['toplevel', 'disabled-by-default-v8.cpu_profiler'].includes(category)));
+  for (const category of ['devtools.timeline', 'disabled-by-default-devtools.timeline',
+    'disabled-by-default-devtools.timeline.stack']) {
+    assert.ok(configs[1].includedCategories.includes(category));
+  }
+  assert.equal(configs[1].traceBufferSizeInKb, 8192);
+  assert.equal(configs[1].enableSampling, false);
+  assert.equal(configs[0].enableSampling, true);
+});
+
+test('compact trace reports integrity after storing exclusive bytes, preserving actor result on bad gzip', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { gzipSync } = await import('node:zlib');
+  const { unlink } = await import('node:fs/promises');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  for (const content of ['bad gzip',
+    gzipSync(JSON.stringify(profileTrace({ start: false, missing: true, loss: true }))).toString('base64'),
+    gzipSync('x'.repeat(16 * 1024 * 1024 + 1)).toString('base64')]) {
+    const { session } = traceSession();
+    const send = session.send;
+    session.send = async (method, args) => method === 'IO.read'
+      ? { data: content, base64Encoded: content !== 'bad gzip', eof: true } : send(method, args);
+    const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session }, 'market-buy', { compact: true });
+    const original = new Error('original actor failure');
+    await assert.rejects((async () => { try { throw original; } finally { await trace.stop(); } })(), error => error === original);
+  }
+  try {
+    const summaries = logs.filter(row => row[0] === '[station-handoff] trace integrity:').map(row => JSON.parse(row[1]));
+    assert.equal(summaries[0].profileStatus, 'unavailable');
+    assert.equal(summaries[1].profileStatus, 'incomplete');
+    assert.equal(summaries[1].profiles[0].missingNodeRefs, 1);
+    assert.equal(summaries[2].profileStatus, 'unavailable', 'oversized inflation is bounded, never a claimed pass');
+  } finally {
+    for (const row of logs.filter(row => row[0] === '[station-handoff] browser trace:')) await unlink(row[1]);
+  }
+});
+
+function cpuFixture() {
+  return { startTime: 100, endTime: 8100, nodes: [
+    { id: 1, callFrame: { functionName: '(root)' }, children: [2] },
+    { id: 2, callFrame: { functionName: 'buy', url: 'http://fixture/market.js' } },
+  ], samples: [2, 2], timeDeltas: [4000, 4000] };
+}
+function cpuHarness(overrides = {}) {
+  const calls = [], logs = [], files = new Map();
+  const session = { send: async (method, args) => { calls.push([method, args]); return { profile: cpuFixture() }; },
+    detach: async () => { calls.push(['detach']); } };
+  const start = runInNewContext(`(${startMarketBuyCpuProfile.toString()})`, {
+    setTimeout, clearTimeout, Buffer, AbortController, summarizeMarketBuyCpuProfile,
+    console: { error: (...args) => logs.push(args) }, resolve: (...args) => args.join('/'),
+    Date: { now: () => 123 }, randomUUID: () => 'uuid', mkdir: async () => {},
+    writeFile: async (path, data, options) => {
+      assert.equal(options.flag, 'wx'); if (files.has(path)) throw new Error('exclusive collision'); files.set(path, data);
+    }, ...overrides,
+  });
+  return { start, session, calls, logs, files, page: { context: () => ({ newCDPSession: async () => session }) } };
+}
+async function flushCpu() { for (let i = 0; i < 25; i++) await Promise.resolve(); }
+
+test('page CPU snapshot has bounded structural coverage, not a GPU attribution verdict', () => {
+  assert.equal(summarizeMarketBuyCpuProfile(cpuFixture()).profileStatus, 'complete');
+  for (const change of [p => p.nodes[0].children.push(3), p => p.nodes[1].children = [1],
+    p => p.samples[1] = 3, p => p.timeDeltas.pop(), p => p.timeDeltas[0] = -1]) {
+    const p = cpuFixture(); change(p); assert.equal(summarizeMarketBuyCpuProfile(p).profileStatus, 'incomplete');
+  }
+  for (const change of [p => p.nodes.push(p.nodes[0]), p => p.samples = new Array(100001),
+    p => p.endTime = 80000000, p => p.nodes[0].callFrame.url = 'x'.repeat(8193),
+    p => p.nodes[0].children = new Array(100001).fill(2)]) {
+    const p = cpuFixture(); change(p); assert.throws(() => summarizeMarketBuyCpuProfile(p));
+  }
+});
+
+test('page CPU capture uses4000us, stops once, and preserves exclusive artifacts', async () => {
+  const h = cpuHarness();
+  const a = await h.start(h.page); await Promise.all([a.stop(), a.stop()]);
+  assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 1);
+  assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+  assert.equal(h.calls.find(([m]) => m === 'Profiler.setSamplingInterval')[1].interval, 4000);
+  assert.equal(h.files.size, 1);
+  const bytes = [...h.files.values()][0]; const b = await h.start(h.page); await b.stop();
+  assert.equal([...h.files.values()][0], bytes);
+  assert.ok(h.logs.some(([m]) => m === '[market-buy] CPU profile unavailable:'));
+});
+
+test('late page attach or enable cannot resurrect a retired profiler', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const phase of ['attach', 'Profiler.enable', 'Profiler.start']) {
+    const h = cpuHarness(); let release;
+    const delayed = new Promise(resolve => { release = resolve; });
+    if (phase === 'attach') h.page.context = () => ({ newCDPSession: () => delayed });
+    else { const send = h.session.send; h.session.send = (method, args) => method === phase ? delayed : send(method, args); }
+    const pending = h.start(h.page); await flushCpu(); t.mock.timers.tick(2000); await flushCpu();
+    const handle = await pending; release(phase === 'attach' ? h.session : {}); await flushCpu(); await handle.stop();
+    assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+    assert.equal(h.files.size, 0);
+    assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 0);
+  }
+});
+
+test('CPU stop timeout preserves actor error and ignores late profile completion', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = cpuHarness(); let release; const send = h.session.send;
+  h.session.send = (method, args) => method === 'Profiler.stop' ? new Promise(r => { release = r; }) : send(method, args);
+  const handle = await h.start(h.page); const original = new Error('original BUY timeout');
+  const pending = assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+  await flushCpu(); t.mock.timers.tick(15000); await flushCpu(); await pending;
+  release({ profile: cpuFixture() }); await flushCpu(); await handle.stop();
+  assert.equal(h.files.size, 0); assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+});
+
+test('CPU duration ceiling captures only, marks partial coverage, and waits for actor to write', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); const h = cpuHarness();
+  const handle = await h.start(h.page); t.mock.timers.tick(60000); await flushCpu();
+  assert.equal(h.files.size, 0); await handle.stop();
+  const report = JSON.parse(h.logs.find(([m]) => m === '[market-buy] CPU profile:')[1]);
+  assert.equal(report.temporalCoverage, 'capped-partial'); assert.equal(report.profileStatus, 'complete');
+  assert.equal(h.calls.filter(([m]) => m === 'Profiler.stop').length, 1);
+});
+
+
+test('CPU artifact timeout does not write after late mkdir or replace actor failure', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); let release;
+  const h = cpuHarness({ mkdir: () => new Promise(resolve => { release = resolve; }) });
+  const handle = await h.start(h.page); const original = new Error('original actor failure');
+  const pending = assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+  await flushCpu(); t.mock.timers.tick(2000); await flushCpu(); await pending;
+  release(); await flushCpu(); assert.equal(h.files.size, 0);
+});
+
+test('closed CPU session and malformed snapshot preserve original actor error', async () => {
+  for (const mode of ['closed', 'malformed']) {
+    const h = cpuHarness(); const send = h.session.send;
+    h.session.send = async (method, args) => {
+      if (method !== 'Profiler.stop') return send(method, args);
+      if (mode === 'closed') throw new Error('page closed');
+      return { profile: { nodes: [{}] } };
+    };
+    const handle = await h.start(h.page); const original = new Error('BUY original');
+    await assert.rejects((async () => { try { throw original; } finally { await handle.stop(); } })(), e => e === original);
+    assert.equal(h.files.size, 0); assert.equal(h.calls.filter(([m]) => m === 'detach').length, 1);
+  }
+});
+
+
+test('CPU numeric fields cannot bypass serialization estimate and timing stays in range', () => {
+  for (const [target, key] of [['node', 'hitCount'], ['frame', 'lineNumber'], ['frame', 'columnNumber']]) {
+    for (const value of ['x'.repeat(20000), {}, Infinity, 1.5, -2]) {
+      const p = cpuFixture(); (target === 'node' ? p.nodes[0] : p.nodes[0].callFrame)[key] = value;
+      assert.throws(() => summarizeMarketBuyCpuProfile(p), /invalid/);
+    }
+  }
+  const p = cpuFixture(); p.timeDeltas[1] = 4001;
+  assert.equal(summarizeMarketBuyCpuProfile(p).timingOutsideRange, true);
+  assert.equal(summarizeMarketBuyCpuProfile(p).profileStatus, 'incomplete');
+});
+
+test('late attached session detach is bounded even if target never responds', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); const h = cpuHarness(); let release;
+  h.page.context = () => ({ newCDPSession: () => new Promise(resolve => { release = resolve; }) });
+  h.session.detach = () => new Promise(() => {});
+  const pending = h.start(h.page); await flushCpu(); t.mock.timers.tick(2000); await flushCpu();
+  const handle = await pending; release(h.session); await flushCpu();
+  t.mock.timers.tick(2000); await flushCpu(); await handle.stop();
+  assert.ok(h.logs.some(([m]) => m === '[market-buy] CPU cleanup unavailable:'));
+  assert.equal(h.files.size, 0);
+});
+
+
+test('CPU artifact write timeout aborts and reports possibly partial bytes as unavailable', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] }); let signal;
+  const h = cpuHarness({ writeFile: (path, data, options) => { signal = options.signal; return new Promise(() => {}); } });
+  const handle = await h.start(h.page); const pending = handle.stop(); await flushCpu();
+  t.mock.timers.tick(2000); await flushCpu(); await pending;
+  assert.equal(signal.aborted, true);
+  const report = JSON.parse(h.logs.find(([m]) => m === '[market-buy] CPU profile unavailable:')[1]);
+  assert.equal(report.artifactMayBePartial, true); assert.ok(report.artifactFile);
+  assert.equal(h.logs.some(([m]) => m === '[market-buy] CPU profile:'), false);
 });

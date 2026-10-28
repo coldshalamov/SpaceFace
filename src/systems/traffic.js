@@ -1,6 +1,8 @@
 import { ownsWinnowRecoveryHull, reconcileWinnowRecovery, stepWinnowRecovery, winnowPickupReceipt, winnowSpillReceipt, winnowKilledReceipt, winnowDestroyedReceipt } from '../world/vestaWinnowRecovery.js';
 import { cancelAnvilSpillRendezvous } from '../world/anvilSpillRecovery.js';
 import { bindRestoredCharonSupply, materializeCharonSupply, ownsCharonSupplyHull, charonSupplyRoundBoundary, reconcileCharonSupply, stepCharonSupply, releaseCharonSupply, normalizeCharonSupply, charonSupplyPickupReceipt, charonSupplySpillReceipt, charonSupplyDestroyed } from '../world/charonSalvageSupply.js';
+import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
+import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor} from '../world/tallyThreeIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
 import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
@@ -2467,7 +2469,19 @@ export const traffic = {
 
     // Continuous or after adopt: only top-up toward the target count.
     const already = (this.state.traffic.freighters || []).length;
-    const need = Math.max(0, count - already);
+    // Authored pocket shifts are protected owners, not reusable ambient courier slots.
+    // Admit at most one missing priority service alongside a full authored cast; never
+    // replace a resident, and count shelved services before permitting this exception.
+    const roster = this.state.traffic.freighters || [];
+    const priorityMissing = priorityCourierServiceForSector(sectorId)
+      && roster.some(row => row.authoredActivityCast)
+      && !roster.some(row => this._isPriorityCourierServiceCandidate(row, liveEntity(this.state, row.id)))
+      && !roster.some(row => isPriorityCourierItinerary(liveEntity(this.state, row.id)?.data?.itinerary))
+      && ![...(this.state.world?.farActors?.byId?.values?.() || [])]
+        .some(row => isPriorityCourierItinerary(row.data?.itinerary || row.route))
+      && !Object.values(this.state.world?.records?.byId || {})
+        .some(row => isPriorityCourierItinerary(row.itinerary));
+    const need = Math.max(priorityMissing ? 1 : 0, count - already);
       if (need <= 0) {
         this._ensurePriorityCourierService(sectorId, stations);
         this._ensurePassengerLinerService(sectorId, stations);
@@ -2479,7 +2493,7 @@ export const traffic = {
 
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
-    for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
+    for (let i = 0; i < need; i++) roles.push(i === 0 && priorityMissing ? 'courier' : pickRole(roleWeights, () => this._rng()));
     // Courier reservation runs on the drawn roles before service guarantees: an appended service
     // hull is not a civilian slot the courier may rewrite, and service placement leaves the
     // reserved courier alone.
@@ -3118,6 +3132,7 @@ export const traffic = {
         if (wasFresh) spawned += 1;
         if (!ownsWinnowRecoveryHull(this.state, entity) && !ownsCharonSupplyHull(this.state, entity)) {
           this._stampAuthoredActivityEntity(entity, canonicalSpec.data, entry, sectorId, recordId);
+          this._initializeTethysShipment(entity, entry, wasFresh, record);
           this._assignActivityJob(entity, entry);
         }
 

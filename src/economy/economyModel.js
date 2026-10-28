@@ -184,7 +184,7 @@ export const STATION_WORK = deepFreeze({
   mining:{ cargo_delivery:3,bulk_trade:2,bounty_hunt:1,mining_quota:4,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:4,demolition:2,rescue_under_fire:1,race:1 },
   refinery:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:1,mining_quota:2,salvage_retrieval:4,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:1,tow_recovery:3,demolition:1,rescue_under_fire:1,race:1 },
   fab:{ cargo_delivery:3,bulk_trade:3,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:4,rescue_under_fire:1,race:1 },
-  trade_hub:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:2,mining_quota:1,salvage_retrieval:2,escort:3,patrol_clear:1,smuggling_run:1,passenger_transport:3,recon_scan:2,tow_recovery:2,demolition:1,rescue_under_fire:1,race:2 },
+  trade_hub:{ cargo_delivery:4,bulk_trade:4,bounty_hunt:2,mining_quota:3,salvage_retrieval:2,escort:3,patrol_clear:1,smuggling_run:1,passenger_transport:3,recon_scan:2,tow_recovery:2,demolition:1,rescue_under_fire:1,race:2 },
   military:{ cargo_delivery:1,bulk_trade:1,bounty_hunt:4,salvage_retrieval:2,escort:3,patrol_clear:4,passenger_transport:1,recon_scan:3,tow_recovery:1,demolition:2,rescue_under_fire:3,race:0 },
   research:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:1,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:1,passenger_transport:1,recon_scan:4,tow_recovery:1,demolition:1,rescue_under_fire:2,race:1 },
   blackmarket:{ cargo_delivery:2,bulk_trade:1,bounty_hunt:3,mining_quota:1,salvage_retrieval:3,escort:1,patrol_clear:2,smuggling_run:4,passenger_transport:1,recon_scan:2,tow_recovery:2,demolition:2,rescue_under_fire:2,race:1 },

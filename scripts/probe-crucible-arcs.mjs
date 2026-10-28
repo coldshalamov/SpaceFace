@@ -69,7 +69,7 @@ try {
     } catch (_) { /* storage unavailable */ }
   });
 
-  await page.goto(`http://127.0.0.1:${port}/?demo=1`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
   await page.waitForSelector('[data-action="crucible"]', { timeout: 60_000 });
   await page.click('[data-action="crucible"]');

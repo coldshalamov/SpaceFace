@@ -1,5 +1,7 @@
 import { ensureAlienEcologyState } from '../data/alienEcologyState.js';
 import { recordContaminationKnowledge } from '../data/alienEcology.js';
+import { fittedModuleDefs } from '../core/fittedModules.js';
+import { nurseryShelterQualified } from './veilRayHabitat.js';
 
 export const VEIL_NURSERY_ID = 'veil_ray_nursery';
 const WATCH_SECONDS = 12;
@@ -28,8 +30,41 @@ export function veilNurseryMemory(state) {
   n.recoverRemaining = Math.min(RECOVER_SECONDS, n.recoverRemaining);
   n.watchSeconds = Math.min(WATCH_SECONDS, n.watchSeconds);
   n.surveyed = n.surveyed === true;
+  // Emitted attempts only: the HUD may suppress an ordinary receipt during combat.
+  n.disturbanceNoted = n.disturbanceNoted === true;
+  n.recoveryNoted = n.recoveryNoted === true;
   return n;
 }
+
+// Text uses the existing receipt lane, independent of sound and membrane animation.
+// Keep the biology gate identical to effectiveRevelation without importing the
+// ecology owner back into its helper. A fitted Bio-Spectral Pass counts here too.
+function nurseryFeedback(world, site, n, latch, text) {
+  const state = world.state, player = state.entities?.get(state.playerId);
+  const bonus = fittedModuleDefs(state).reduce(
+    (m, d) => Math.max(m, Number(d?.mods?.bioScanTier) || 0), 0);
+  if (!player?.alive || state.world.currentSectorId !== site.sectorId
+      || Math.min(ensureAlienEcologyState(state).revelation + bonus, 3) < site.requiresRevelation
+      || !world.bus?.emit) return false;
+  const center = world._toGlobal(nurserySiteCenter(state, site), site.sectorId);
+  if (!(range(center, player.pos) <= 600)
+      || !state.entityList.some(e => e.alive !== false && e.hull > 0
+        && e.data?.ecology?.siteId === site.siteId && !e.data.ecology.aggregate
+        && range(e.pos, player.pos) <= 600)) return false;
+  // Bus subscribers may synchronously pulse again or Save/Continue. Publish the
+  // episode latch first, and never write through this record after emitting.
+  n[latch] = true;
+  world.bus.emit('toast', { text: `Veil-Ray Nursery: ${text}`, kind: 'info', ttl: 5 });
+  return true;
+}
+
+const DISTURBANCE_TEXT = Object.freeze({
+  scan: 'Scan pulse disturbed the rays. Give the flock room.',
+  weapons: 'Weapon fire disturbed the rays. Give the flock room.',
+  // "Thrust" is a control-wall token in receipt admission; name the observed flare.
+  thrust: 'Drive flare disturbed the rays. Drift quietly to let them settle.',
+  loss: 'An adult was lost; the remaining rays are disturbed.',
+});
 
 export function nurseryDisturbance(world, site, kind, origin) {
   const state = world?.state;
@@ -39,9 +74,17 @@ export function nurseryDisturbance(world, site, kind, origin) {
   if (range(center, origin) > (kind === 'scan' ? 600 : 450)) return false;
   const n = veilNurseryMemory(state);
   if (!n) return false;
+  // Recovery is still the same episode: repeated pulses, burns and Continue must
+  // not replay its receipts. Only a fully quiet nursery starts a new episode.
+  if (n.mode === 'QUIET') { n.disturbanceNoted = false; n.recoveryNoted = false; }
   n.mode = 'DISTURBED'; n.disturbedRemaining = DISTURBED_SECONDS;
   n.recoverRemaining = RECOVER_SECONDS; n.watchSeconds = 0;
   n.from = { x: origin.x, z: origin.z }; n.lastCause = kind;
+  // Relocation already has an ecology-owned receipt. Loss is deliberately neutral:
+  // entity:killed does not establish that the player caused the death.
+  if (!n.disturbanceNoted && DISTURBANCE_TEXT[kind]) {
+    nurseryFeedback(world, site, n, 'disturbanceNoted', DISTURBANCE_TEXT[kind]);
+  }
   return true;
 }
 
@@ -80,25 +123,37 @@ export function tickVeilNursery(world, site, rec, fauna, player, dt) {
   const burning = near && force > Math.max(1, (player.mass || 1) * 4);
   n.thrustSeconds = burning ? n.thrustSeconds + dt : Math.max(0, n.thrustSeconds - dt * 2);
   if (n.thrustSeconds >= 1.5) {
-    nurseryDisturbance(world, site, 'thrust', player.pos);
     n.thrustSeconds = 0;
+    nurseryDisturbance(world, site, 'thrust', player.pos);
+    if (state.world?.alienEcology?.sites?.[site.siteId]?.nursery !== n) return;
   }
   if (n.mode === 'DISTURBED') {
     n.disturbedRemaining = Math.max(0, n.disturbedRemaining - dt);
-    if (n.disturbedRemaining < 1e-6) { n.disturbedRemaining = 0; n.mode = 'RECOVERING'; }
+    if (n.disturbedRemaining < 1e-6) {
+      n.disturbedRemaining = 0; n.mode = 'RECOVERING';
+    }
   } else if (n.mode === 'RECOVERING') {
     n.recoverRemaining = Math.max(0, n.recoverRemaining - dt);
     if (n.recoverRemaining < 1e-6) { n.recoverRemaining = 0; n.mode = 'QUIET'; n.from = null; }
   }
-  const adults = fauna.filter(e => e.alive !== false && e.data?.ecology?.siteId === site.siteId
+  // A nearby witness can read the current recovery, not an offscreen transition.
+  // This mode says nothing about formation positions or relocation success.
+  if (n.mode === 'RECOVERING' && n.disturbanceNoted && !n.recoveryNoted) {
+    const cause = { scan: 'the scan pulse', weapons: 'weapon fire',
+      thrust: 'the drive flare', loss: 'the adult loss' }[n.lastCause];
+    nurseryFeedback(world, site, n, 'recoveryNoted',
+      `Disturbance${cause ? ` from ${cause}` : ''} is fading. Give the rays room to settle.`);
+    if (state.world?.alienEcology?.sites?.[site.siteId]?.nursery !== n) return;
+  }
+  const adults = fauna.filter(e => e.alive !== false && e.hull > 0 && e.data?.ecology?.siteId === site.siteId
     && !e.data.ecology.aggregate);
   const speed = player?.vel ? Math.hypot(player.vel.x, player.vel.z) : Infinity;
   const watching = near && range(center, player.pos) >= 95 && speed <= 12 && !burning
-    && n.mode === 'QUIET' && adults.some(e => range(center, e.pos) < 450);
+    && n.mode === 'QUIET' && nurseryShelterQualified(adults, center, n);
   n.watchSeconds = watching ? Math.min(WATCH_SECONDS, n.watchSeconds + dt) : 0;
   if (n.watchSeconds >= WATCH_SECONDS && !n.surveyed) {
     n.surveyed = true;
-    recordContaminationKnowledge(state, site.sectorId, 'Veil-Ray Nursery: passive survey recorded; juveniles shelter behind adults inside the open mineral crescent.');
+    recordContaminationKnowledge(state, site.sectorId, 'Veil-Ray Nursery: passive survey recorded; juveniles shelter with adults inside the open mineral crescent.');
     world.bus?.emit('toast', { text: 'Veil-Ray nursery surveyed · the small membranes follow their elders. Observation logged; no specimens taken.', kind: 'info', ttl: 6 });
     world.bus?.emit('ecology:evidence', { sectorId: site.sectorId, siteId: site.siteId,
       evidenceId: 'veil_ray_nursery_passive_survey', text: 'Passive nursery observation: adults shelter one juvenile flock inside the mineral crescent.' });

@@ -13,8 +13,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { installMarketBuyObservation } from './lib/marketBuyDiagnostics.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
+import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace, startMarketBuyCpuProfile } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
@@ -32,6 +33,8 @@ let server = null;
 let browser = null;
 let issues = null;
 let dockTrace = null;
+let buyTrace = null;
+let buyCpuProfile = null;
 
 try {
   server = await startFreshServer();
@@ -149,13 +152,31 @@ try {
   const c0 = await page.evaluate(() => window.SF.state.player.credits);
   await domClick(page, '[data-screen="station"] .sx-mkt-row');
   await page.waitForTimeout(200);
+  // A separate bounded span retains BUY CPU stacks rather than evicting them with dock/setup work.
+  buyTrace = await startStationHandoffTrace(browser, 'market-buy', { compact: true });
+  buyCpuProfile = await startMarketBuyCpuProfile(page);
   const buyObservation = await startMarketBuyObservation(page);
+  const buyHostStart = performance.now();
+  const buyTiming = { baselineCredits: c0, timeoutMs: DOCK_TIMEOUT_MS, outcome: 'pending' };
   try {
+    buyTiming.clickStartedMs = performance.now() - buyHostStart;
     await domClick(page, '[data-screen="station"] .sx-trade__go[data-go]');
+    buyTiming.clickReturnedMs = performance.now() - buyHostStart;
+    buyTiming.waitStartedMs = performance.now() - buyHostStart;
     await page.waitForFunction((prev) => window.SF.state.player.credits !== prev, c0, { timeout: DOCK_TIMEOUT_MS })
-      .catch(() => { throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)'); });
+      .catch((error) => {
+        buyTiming.failure = {
+          name: String(error?.name || 'Error').slice(0, 80),
+          message: String(error?.message || error).slice(0, 512),
+        };
+        throw new Error('a Market BUY should move the player\'s credits (trade must actually execute)');
+      });
+    buyTiming.outcome = 'fulfilled';
   } finally {
-    await endMarketBuyObservation(buyObservation);
+    buyTiming.waitEndedMs = performance.now() - buyHostStart;
+    if (buyTiming.outcome === 'pending') buyTiming.outcome = 'rejected';
+    try { await endMarketBuyObservation(buyObservation, buyTiming); }
+    finally { await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()]); }
   }
   const c1 = await page.evaluate(() => window.SF.state.player.credits);
   assert.ok(c1 < c0, 'buying should spend credits: ' + c0 + ' -> ' + c1);
@@ -233,6 +254,7 @@ try {
   if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
   throw err;
 } finally {
+  await Promise.all([buyTrace?.stop(), buyCpuProfile?.stop()]);
   if (dockTrace) await dockTrace.stop();
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
@@ -317,72 +339,17 @@ async function reachable(url) {
 // Read-only evidence for the existing BUY assertion. No quote/execute calls, retries or timers.
 async function startMarketBuyObservation(page) {
   try {
-    return await page.evaluateHandle(() => {
-      const text = el => String(el?.textContent || '').replace(/\s+/g, ' ').trim();
-      const read = () => {
-        const state = window.SF?.state;
-        const market = document.querySelector('[data-screen="station"] .sx-mkt');
-        const selected = market?.querySelector('.sx-mkt-row.is-active[data-cmdty]')?.getAttribute('data-cmdty') || null;
-        const mode = market?.querySelector('.sx-seg__btn.is-on')?.getAttribute('data-mode') || null;
-        const rawQuantity = market?.querySelector('.sx-qty__in')?.value ?? null;
-        const go = market?.querySelector('.sx-trade__go[data-go]');
-        const stationId = state?.ui?.dockedStationId || null;
-        const cargo = state?.player?.cargo;
-        return { tick: state?.tick ?? null, simTime: state?.simTime ?? null,
-          stationId, selectedCommodity: selected, mode, rawQuantity,
-          quantity: rawQuantity != null && String(rawQuantity).trim() !== '' && Number.isFinite(Number(rawQuantity)) ? Number(rawQuantity) : null,
-          buttonPresent: !!go, buttonDisabled: go ? !!go.disabled : null, buttonText: text(go),
-          note: text(market?.querySelector('.sx-trade__note')),
-          credits: state?.player?.credits ?? null,
-          cargoCapacity: cargo?.capVolume ?? null, cargoUsed: cargo?.usedVolume ?? null,
-          selectedCargo: selected ? cargo?.items?.[selected] ?? null : null,
-          stock: selected ? state?.economy?.markets?.[stationId]?.[selected]?.stock ?? null : null,
-          toasts: [...document.querySelectorAll('#toasts .sf-toast__text')].map(text) };
-      };
-      const before = read(), events = [], unsubs = [], seenToasts = new Set();
-      let dropped = 0, observer = null;
-      const remember = (event, payload) => {
-        // Diagnostics must never throw into the game's bus or retain mutable event payloads.
-        try {
-          if (events.length >= 32) { dropped++; return; }
-          let copy;
-          try { copy = payload == null ? payload : JSON.parse(JSON.stringify(payload)); }
-          catch (_) { copy = { serializationError: true }; }
-          events.push({ event, tick: window.SF?.state?.tick ?? null, payload: copy });
-        } catch (_) {}
-      };
-      for (const name of ['ui:buy', 'economy:tradeFailed', 'economy:tradeCompleted', 'toast']) {
-        const off = window.SF?.bus?.on?.(name, payload => remember(name, payload));
-        if (typeof off === 'function') unsubs.push(off);
-      }
-      const toastRoot = document.getElementById('toasts');
-      if (toastRoot && typeof MutationObserver === 'function') {
-        observer = new MutationObserver(() => {
-          for (const el of toastRoot.querySelectorAll('.sf-toast__text')) {
-            const value = text(el);
-            if (value && !seenToasts.has(value)) { seenToasts.add(value); remember('toast:dom', value); }
-          }
-        });
-        observer.observe(toastRoot, { childList: true, subtree: true, characterData: true });
-      }
-      return { finish() {
-        try { return { before, after: read(), events, dropped }; }
-        finally {
-          for (const off of unsubs) { try { off(); } catch (_) {} }
-          observer?.disconnect();
-        }
-      } };
-    });
+    return await page.evaluateHandle(installMarketBuyObservation);
   } catch (error) {
     console.error('Market BUY observation unavailable:', error?.message || String(error));
     return null;
   }
 }
 
-async function endMarketBuyObservation(handle) {
+async function endMarketBuyObservation(handle, timing) {
   if (!handle) return;
   try {
-    const evidence = await handle.evaluate(observer => observer.finish());
+    const evidence = await handle.evaluate((observer, hostTiming) => observer.finish(hostTiming), timing);
     console.error('Market BUY observation:', JSON.stringify(evidence));
   } catch (error) {
     console.error('Market BUY observation unavailable:', error?.message || String(error));

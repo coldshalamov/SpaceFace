@@ -2537,7 +2537,7 @@ export const OFFER_MIX = {
   mining: withPhysicalMix([3,2,1,4,3,1,1,0,1,2], 4, 2, 1, 1),
   refinery: withPhysicalMix([4,4,1,2,4,1,1,0,1,1], 3, 1, 1, 1),
   fab: withPhysicalMix([3,3,1,1,3,1,1,0,1,2], 2, 4, 1, 1),
-  trade_hub: withPhysicalMix([4,4,2,1,2,3,1,1,3,2], 2, 1, 1, 2),
+  trade_hub: withPhysicalMix([4,4,2,3,2,3,1,1,3,2], 2, 1, 1, 2),
   military: withPhysicalMix([1,1,4,0,2,3,4,0,1,3], 1, 2, 3, 0),
   research: withPhysicalMix([2,1,1,1,3,1,1,0,1,4], 1, 1, 2, 1),
   blackmarket: withPhysicalMix([2,1,3,1,3,1,2,4,1,2], 2, 2, 2, 1),

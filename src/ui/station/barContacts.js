@@ -12,6 +12,7 @@ import { BORROWED_SUN } from '../../data/borrowedSun.js';
 import { lastShiftLocalReport } from '../../data/lastShift.js';
 import { ILEX_ARK } from '../../data/ilexArk.js';
 import { ilexGreenhouseFor, ilexGreenhouseReply } from '../../data/ilexGreenhouse.js';
+import { SORI_COMPARISON_CONTACT_ID, soriComparisonContact, soriComparisonReply } from '../../data/soriComparisonReturn.js';
 import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
@@ -19,6 +20,7 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
+import { spineGreeting } from '../../story/campaign47a/storySpine.js';
 import { contactDeedMemory } from '../../data/contactDeedMemory.js';
 import {
   stationContactMemoryFor,
@@ -50,7 +52,7 @@ import {
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
-import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
+import { fenceBarContact, fenceBarReply, proteusFindingMapOffer } from './fenceContact.js'; // U-B: fences with faces
 import { hash32 } from '../../core/rng.js';
 import { barPressureAt, festivalAt } from '../../data/worldCalendar.js';
 import { deedLine } from '../../data/deedPhrases.js';
@@ -616,7 +618,12 @@ export function authoredBarContactsForStation(stationId, state = {}) {
       memoryGlyph: contactDeedMemory(card.id, state.player?.stationContactCounters)?.glyph,
       depthProgram: card.programId,
       voiceLines: voice ? voice.lines : [],
-      choices: voice && voice.firstContact ? voice.firstContact.choices : [],
+      choices: voice && voice.firstContact
+        ? (card.id === 'contact_coldburn_rey'
+          ? voice.firstContact.choices.map((choice) => choice.id === 'settle'
+            ? { ...choice, label: 'Any work left for me?' } : choice)
+          : voice.firstContact.choices)
+        : [],
       dialogueComplete: !!(voice && voice.dialogueComplete),
       oneChoicePerVisit: card.id === 'contact_question',
     };
@@ -796,8 +803,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
     : [];
   // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
   const fence = fenceBarContact(stationId, state);
+  const sori = soriComparisonContact(state, stationId);
   const listed = [
-    ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+    ...endingCourier, ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
@@ -1353,13 +1361,37 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
+  if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
     if (reply) return reply;
   }
+  if (choiceId === 'proteus_sounding_map') {
+    const offer = proteusFindingMapOffer(state, stationId, contact);
+    if (!offer) return { text: 'I cannot put that one on a chart from here.' };
+    const opened = openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, ...offer });
+    return { text: opened
+      ? 'Your sounding is marked on the system map. The course is yours to set.'
+      : 'The system map will not open right now. Your survey record is safe.' };
+  }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
-  if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
+  if (contact && contact.depthProgram) {
+    // Reach's rival remembers the actual lane, not the number of times we clicked Talk.
+    // The board remains the sole offer owner; this conversation never settles a contract.
+    if (stationId === 'station_reach' && contact.id === 'contact_coldburn_rey'
+      && (contact.choices || []).some((choice) => choice.id === choiceId)) {
+      const remembered = spineGreeting(contact.id, state);
+      if (choiceId === 'lane') {
+        return { text: remembered || 'No shared lane on the record yet. I still hauled mine first.' };
+      }
+      if (choiceId === 'settle') {
+        const work = buildReply('pilot', 'work', ctx, stationId);
+        return { ...work, text: `${remembered ? `${remembered} ` : ''}Looking for work is not a concession. ${work.text}` };
+      }
+    }
+    return buildDepthContactReply(contact, choiceId, ctx);
+  }
   if (role === 'barkeep' && choiceId === 'ilex_greenhouse' && stationId === ILEX_ARK.stationId) {
     return { text: ilexGreenhouseReply(state) || 'No Ilex planting is recorded here.' };
   }
@@ -1875,3 +1907,4 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
 }
 
 /* ── main panel export ──────────────────────────────────────────────── */
+

@@ -640,7 +640,7 @@ for (const seed of SEEDS) {
 test('the fence is at the bar when WANTED or trusted, with a line by state, a face, and a working scrub', () => {
   for (const fence of FENCES) {
     const calm = makeHarness({ seed: 4242, heat: 0 });
-    assert.equal(generateContacts(fence.stationId, calm.state).some((c) => c.fenceId), false, 'clean + unknown: not there');
+    assert.equal(generateContacts(fence.stationId, calm.state).some((c) => c.fenceId), fence.id === 'fence_hesper_quill', 'clean + unknown: only the clinic welcomes carriers');
 
     const hot = makeHarness({ seed: 4242, heat: 0.3 });
     const contact = generateContacts(fence.stationId, hot.state).find((c) => c.fenceId === fence.id);

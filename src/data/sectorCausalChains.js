@@ -181,7 +181,8 @@ function heliosCycleNewsText(seeds) {
 //   civilian   ev_observation_stop        the surveyor drifts to the hulk face and looks         (log surveyor)
 //
 // The catalog names the hole the shift change opens — "time crimes to the pass-the-pin moment" —
-// so the handoff waits on watch_passed, and the pursuit waits on the cargo the meet set loose.
+// so the handoff waits on watch_passed, and pursuit follows the attempted exchange window.
+// cargo_moved is an anti-softlock choreography seed, not proof of a physical cargo transfer.
 // The observation stop is the day's coda: the log yard is where the law's work ends up, so it
 // follows the bolt.
 //
@@ -359,11 +360,11 @@ export const TETHYS_CAUSAL_CHAIN = Object.freeze([
 ]);
 
 function tethysCycleNewsText(seeds) {
-  // A runner that bolted and dumped is the only divergent read: the law saw the chase, the
-  // cache keeps its hours either way.
+  // These seeds advance the watch/chase window even on interruption or spawn refusal.
+  // Report the watch, never assert that finite cargo was successfully released.
   return seeds && seeds.runner_bolted !== true
     ? 'Tethys customs changes the watch on a full queue; the Quiet Cache keeps its own hours.'
-    : 'A runner bolted the Tethys lane and dumped its load; the Quiet Cache keeps its own hours.';
+    : 'Tethys customs logs another tense watch; the Quiet Cache keeps its own hours.';
 }
 
 // ── Vesta Forge: "the feedstock day" ────────────────────────────────────────────────────────────

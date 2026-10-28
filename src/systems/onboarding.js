@@ -21,7 +21,6 @@
 // without opening a menu.
 
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { IS_DEMO } from '../core/demoMode.js';
 import { isFullHoldRefusal, successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
@@ -569,7 +568,6 @@ export const onboarding = {
       this._pendingFlownBefore = false;
       this._teardown();
       this._dockControlInRange = false;
-      this._demoFittedThisDock = null;
       this._fitFeltOwed = false;
       this._autoFireWasOn = null;
       this._combatStickHintOwed = false;
@@ -585,7 +583,6 @@ export const onboarding = {
     // Objective completion hooks (real events verified against the systems).
     bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
-      this._demoFittedThisDock = null;
       this._onBeatEvent('dock:docked', p);
       // A berth arrival after the rail still earns the rack pointer — during the rail the B5
       // line owns this same floor, so the sale/payout triggers below carry it there instead.
@@ -637,12 +634,6 @@ export const onboarding = {
     bus.on('player:death', () => this._onRescuePlayerDeath());
     bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
 
-    // ── Demo end card (ZERO_TO_HERO Phase 5.5) ──────────────────────────────────────────
-    // Once per save: the player undocks carrying a module they fitted during that dock →
-    // the card. The flag rides state.player.hints like every other one-time flag, so it
-    // persists with the save and adds no top-level field.
-    bus.on('module:equipped', (p) => this._onDemoModuleEquipped(p || {}));
-
     // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
     // player's own bound key. The head does nothing until it is asked to lay the line, so the
     // lesson belongs at the fit, not before it and not at the first catch.
@@ -665,11 +656,10 @@ export const onboarding = {
         p);
     });
     // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
-    // profile, through the same first-use voice. The demo end card is unchanged.
+    // profile, through the same first-use voice.
     bus.on('dock:undocked', () => {
       this._onUndockedFromChoice();
       this._maybeSpeakFitFelt();
-      this._maybeShowDemoEndCard();
     });
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
@@ -1221,18 +1211,6 @@ export const onboarding = {
     return !!(ob && ob.active && !ob.finished);
   },
 
-  // ── Demo end card (ZERO_TO_HERO Phase 5.5) ─────────────────────────────────────────────
-  // A fitting made while docked at a station (ships.fitModule emits module:equipped with the
-  // ACTIVE ship's entity id) is remembered until the dock ends. A crucible refit also emits
-  // module:equipped but is never docked, so it cannot arm the card.
-  _onDemoModuleEquipped(p) {
-    if (!IS_DEMO || !p) return;
-    const st = this.state;
-    if (!st || !st.ui || !st.ui.docked) return;
-    if (p.shipId !== st.playerId) return;
-    this._demoFittedThisDock = p.defId || null;
-  },
-
   // SFQ-B064: re-derived at every undock from what is actually fitted and what has not yet been
   // felt, so a save/load mid-dock loses nothing. The most verb-changing unspent fit speaks; the
   // rest wait for later undocks. A line the tutorial rail deferred is owed and drains the moment
@@ -1351,21 +1329,6 @@ export const onboarding = {
     return line;
   },
 
-  _maybeShowDemoEndCard() {
-    const fitted = this._demoFittedThisDock;
-    this._demoFittedThisDock = null;
-    if (!IS_DEMO || !fitted) return;
-    const st = this.state;
-    if (!st || !st.player) return;
-    if (isRacingCorridorSession(st)) return;
-    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
-    if (!st.player.hints) st.player.hints = {};
-    if (st.player.hints.demoEndShown) return;
-    st.player.hints.demoEndShown = true;
-    if (st.ui) st.ui.demoEnd = { moduleDefId: fitted };
-    this.bus.emit('ui:pushScreen', { id: 'demoEnd' });
-  },
-
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
   _begin(payload) {
@@ -1381,7 +1344,6 @@ export const onboarding = {
       return;
     }
     this._dockControlInRange = false;
-    this._demoFittedThisDock = null;
     this._fitFeltOwed = false;
     this._gateControlInRange = false;
     this._lastControlMode = null;

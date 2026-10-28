@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { bindShipMeshIdentityObserver } from './lib/shipMeshIdentityDiagnostics.mjs';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
@@ -126,7 +127,7 @@ try {
 }
 
 async function sampleVisualStability(page, options) {
-  return page.evaluate(async ({
+  return page.evaluate(bindShipMeshIdentityObserver(async ({
     frames,
     warmupFrames,
     minInspectedFrames,
@@ -142,6 +143,7 @@ async function sampleVisualStability(page, options) {
   }) => {
     const failures = [];
     const tracks = new Map();
+    const observeMeshIdentity = createShipMeshIdentityObserver();
     const plannedInspectedFrames = Math.max(0, frames - warmupFrames);
     let inspectedFrameCount = 0;
     let maxShipCount = 0;
@@ -442,7 +444,7 @@ async function sampleVisualStability(page, options) {
           fail(frame, ship, 'authored-slots-changed-after-warmup', { was: track.slotsKey, now: ship.slotsKey });
         }
         if (ship.meshCount !== track.meshCount) {
-          fail(frame, ship, 'child-mesh-count-changed-after-warmup', { was: track.meshCount, now: ship.meshCount });
+          fail(frame, ship, 'child-mesh-count-changed-after-warmup', { was: track.meshCount, now: ship.meshCount, identityChange: ship.meshIdentityChange });
         }
         if (ship.authoredSurfaceCount !== track.authoredSurfaceCount) {
           fail(frame, ship, 'authored-surface-count-changed-after-warmup', { was: track.authoredSurfaceCount, now: ship.authoredSurfaceCount });
@@ -915,6 +917,11 @@ async function sampleVisualStability(page, options) {
         inView,
         screenRadiusPx,
         meshCount,
+        meshIdentityChange: observeMeshIdentity(root, meshCount, {
+          frame, entityId: entity.id, generation: entity.occupantGeneration ?? null,
+          compositionId: data.authoredCompositionId, authoredState, slotsKey: stableSlotKey(data.authoredSlots),
+          lodLevel: data.wholeShipLodActiveLevel || (data.lod && data.lod.level) || null,
+        }),
         visibleRenderableCount,
         firstHiddenAncestor,
         pipelinesPending: data.pipelinesPending === true,
@@ -1046,6 +1053,7 @@ async function sampleVisualStability(page, options) {
         lodLevel: ship.lodLevel,
         inView: ship.inView,
         meshCount: ship.meshCount,
+        meshIdentityChange: ship.meshIdentityChange || null,
         visibleRenderableCount: ship.visibleRenderableCount,
         firstHiddenAncestor: ship.firstHiddenAncestor || null,
         pipelinesPending: ship.pipelinesPending === true,
@@ -1105,7 +1113,7 @@ async function sampleVisualStability(page, options) {
     function roundFinite(value) {
       return Number.isFinite(value) ? Number(value.toFixed(3)) : value;
     }
-  }, options);
+  }), options);
 }
 
 async function collectStartupSnapshot(page, { includeLoaderDiagnostics = false } = {}) {

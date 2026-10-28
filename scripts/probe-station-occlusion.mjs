@@ -165,7 +165,7 @@ try {
     };
   });
 
-  await page.goto(`http://127.0.0.1:${port}/?demo=1`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
 
   // Title -> New Game -> Launch (the adventure route; same verbs a player clicks).
