@@ -30,6 +30,13 @@ chute accounting), R-cc96d0c (rookBooth salvage market), R-3a9d5dc (moralMemory)
 R-36df771 is also gone, archive `LANDED_REVIEW.md` (ruling 3) and remove the review step from the
 docs that describe it.
 
+Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
+- batch-b: **d1a68ec VERIFIED** (row deleted); **710f1e1 DEFECT** — warden return-to-post dies on
+  sector unload (return target lives only on the live entity); fix implementer running
+  (`fix-verge-return` packet). Nearby flags: hard-coded player-facing strings in
+  `faction_understory.js` (:1069,:1134,:1154,:1735-1906) + `faction_verge.js` (:137-161 via _log
+  :534) need localization keys — W3 row material, add when Wave W3 is packeted.
+
 ## The ordered packets
 
 ### H0 — The first razor cut (do first, so every lane navigates a smaller repo)
@@ -73,7 +80,12 @@ D265 and D266 (above). Done when both tests are green on seed 4242.
 
 ### Wave W1 — the first hour is gold (M1)
 Rows are the spec (`build_map.md` §31–§32; read each row's prose before briefing):
-- **Row 457 RC-FIRST-MINUTES** — drive key vs Help, ticker gate, markers off instruments, Hitch naming, in-world names, captioned hook.
+- **Row 457 RC-FIRST-MINUTES — DONE** (cc56ac32122 + 9beb18845a8). Verified per item: F8/NumLock
+  rail labels + both in Help sheet + lessons (clean); threat markers yield to instruments via
+  reservedRects + 8-pass slide (clean); in-world names fixed (Fleeing Raider masks trainer reg,
+  Bright Seam, Range Drone); visual:false lines captioned (trackerCaptionId path, clean); wu/wu/s
+  in range + tender copy fixed. 14/14 + 21/21 pinned suites green; 3 onboarding-suite fails traced
+  to foreign dirty `src/core/*`/`weapons.js` — watch, not ours.
 - **Row 473 RC-FRONT-DOOR** — interactive title ≤ 10 s, mm:ss clock, destination slate, first-light preset, settings density (load-time half is Lane 1's M9; coordinate in its Inbox).
 - **Row 429 AL-HUD-1** — no internal ids on screen (`ZONE_CERES_DERELICT`), no Overhead/Circuits buttons over the target card, no overlapping shipworks list text.
 - **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.
