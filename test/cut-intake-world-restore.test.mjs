@@ -1,0 +1,138 @@
+// Production-world Save/Continue regression. Initial poses and stock are staged.
+// Both station generations use the real world owner; no station is injected after load.
+// No physics, browser camera, or complete sector flight is claimed.
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createSimulation } from "../src/core/sim.js";
+import { world } from "../src/systems/world.js";
+import { missions } from "../src/systems/missions.js";
+import { economy } from "../src/systems/economy.js";
+import { economyContracts } from "../src/systems/economyContracts.js";
+import { npcJobsRuntime } from "../src/systems/npcJobsRuntime.js";
+import { factions } from "../src/systems/factions.js";
+import { save } from "../src/save/saveSystem.js";
+import { FENCES } from "../src/data/fences.js";
+import { releasableContractUnits } from "../src/systems/cargo.js";
+import { makeShipEntitySpec } from "../src/systems/ships.js";
+import { resolveCollisionProxyManifest, resolveCorridorAxisWorld, proxyOuterRadiusWu } from "../src/data/collisionProxyManifests.js";
+test("production Cut Save/Continue recreates the refinery and resumes only the original courtesy window", async () => {
+  const previousStorage = globalThis.localStorage;
+  const CUT = "station_hyperion_cut", SECTOR = "sector_hyperion_cut", NYX = "station_nyx_march", WR = "wr_cut_courtesy_world_restore_proof", stored = /* @__PURE__ */ new Map();
+  globalThis.localStorage = { get length() {
+    return stored.size;
+  }, key: (i) => [...stored.keys()][i] ?? null, getItem: (k) => stored.get(k) ?? null, setItem: (k, v) => stored.set(k, String(v)), removeItem: (k) => stored.delete(k) };
+  let sim;
+  try {
+    const started = performance.now();
+    sim = createSimulation({ seed: 4242, systems: [world, missions, economy, economyContracts, factions, npcJobsRuntime, save] });
+    const { state, bus } = sim, worldOwner = sim.registry.get("world"), jobs = sim.registry.get("npcJobsRuntime"), saver = sim.registry.get("save");
+    let phase = "setup";
+    const lines = [];
+    bus.on("toast", (p) => {
+      if (p.text?.startsWith("Cut intake:")) lines.push(p.text);
+    });
+    try {
+      state.mode = "flight";
+      state.simTime = 100;
+      state.player.heat = 0;
+      state.player.credits = 1e4;
+      state.onboarding = { active: false, finished: true };
+      Object.assign(state.player.cargo, { capVolume: 100, capMass: 100 });
+      const player = sim.spawn(makeShipEntitySpec("ship_kestrel", { team: 0, isPlayer: true, player: state.player, pos: { x: 0, z: 0 } }));
+      state.playerId = player.id;
+      state.world.currentSectorId = "sector_nyx_march";
+      Object.assign(state.ui, { docked: true, dockedStationId: NYX });
+      bus.emit("dock:docked", { stationId: NYX });
+      const fence = FENCES.find((f) => f.id === "fence_hesper_quill"), offer = sim.registry.get("economyContracts").planRouteLegOffer(fence, 1, { id: NYX, name: "Nyx Fence", sectorId: "sector_nyx_march", factionId: "faction_quiet", type: "blackmarket", tier: 2 }, 0);
+      assert.ok(offer);
+      state.missions.boards[NYX].slots.push(offer);
+      assert.equal(sim.registry.get("missions").acceptMission(offer.id), true);
+      const mission = state.missions.active.find((m) => m.sourceOfferId === offer.id);
+      assert.ok(releasableContractUnits(state, mission) > 0);
+      state.world.currentSectorId = SECTOR;
+      Object.assign(state.ui, { docked: false, dockedStationId: null });
+      phase = "initial production station";
+      worldOwner._setSectorTier(SECTOR, "REDUCED", { reason: "cut-courtesy-save-proof" });
+      const station = state.entityIndex.byStationId.get(CUT);
+      assert.ok(station);
+      assert.equal(station.data.archetypeGlb, "place_station_refinery");
+      const proxy = resolveCollisionProxyManifest(station), axis = resolveCorridorAxisWorld(station, proxy);
+      assert.equal(proxy.id, "skin:place_station_refinery");
+      const relative = (along, side) => ({ x: station.pos.x + axis.x * along - axis.z * side, z: station.pos.z + axis.z * along + axis.x * side });
+      Object.assign(player.pos, relative(450, 0));
+      player.rot = Math.atan2(axis.z, axis.x) + Math.PI;
+      sim.registry.get("economy").ensureMarket(CUT);
+      state.economy.markets[CUT].cmdty_medical.stock = 1;
+      const spec = makeShipEntitySpec("ship_mule", { team: 2, pos: relative(300, 200), rot: Math.PI, ai: { passive: true } });
+      const worker = sim.spawn({ ...spec, data: { ...spec.data, trafficRole: "hauler", worldRecordId: WR, sectorId: SECTOR, homeSectorId: SECTOR, durable: true, ai: { passive: true }, cargoManifest: { id: "cut-ore", lines: [{ commodityId: "cmdty_ore_iron", qty: 3 }], totalQty: 3 } } });
+      worker.homeSectorId = SECTOR;
+      const id = sim.helpers.npcJobs.assign(worker, { kind: "hauler", sectorId: SECTOR, route: [{ id: "origin:station_hyperion_claim", pos: relative(1200, 0) }, { id: "dest:" + CUT, pos: { ...station.pos } }], speed: 30, payload: { manifest: worker.data.cargoManifest } }), entry = state.npcJobs.byId[id];
+      Object.assign(entry.job, { phase: "transit", routeIndex: 0, progress: 0.6 });
+      phase = "initial admission";
+      jobs._updateBerthHold(entry, worker, state.simTime);
+      assert.equal(entry.berthHold, true, "production Cut admits eligible worker");
+      const token = structuredClone(worker.data.ai.cutIntakeCourtesy), manifest = structuredClone(worker.data.cargoManifest), cargo = structuredClone(state.player.cargo), credits = state.player.credits, stationPos = { ...station.pos };
+      const before = { bodyCount: state.entities.size, shipCount: state.entityIndex.shipLike.length, stationId: station.id, workerId: worker.id, jobId: id, token, stationPos, axis, proxy: proxy.id, outer: proxyOuterRadiusWu(proxy, station) };
+      console.log("CUT_WORLD_RESTORE_BEFORE " + JSON.stringify(before));
+      phase = "five seconds of held owner ticks";
+      for (let i = 0; i < 300; i++) sim.step(1 / 60);
+      assert.ok(Math.abs(state.simTime - 105) < 1e-8);
+      assert.equal(entry.lastAdvanceSimT, state.simTime);
+      assert.equal(entry.job.progress, 0.6);
+      assert.equal(entry.berthHold, true);
+      const savedSimT = state.simTime, preSave = { bodyCount: state.entities.size, shipCount: state.entityIndex.shipLike.length, lastAdvanceSimT: entry.lastAdvanceSimT, progress: entry.job.progress };
+      phase = "save";
+      assert.equal(saver.save("quick"), true);
+      phase = "load";
+      const loadStarted = performance.now();
+      assert.equal(await saver.load("latest"), true);
+      const loadMs = performance.now() - loadStarted;
+      phase = "station restored";
+      const stations = state.entityList.filter((e) => e.alive !== false && e.data?.stationId === CUT);
+      assert.equal(stations.length, 1, "world regenerates one Cut refinery");
+      const restoredStation = stations[0];
+      assert.notEqual(restoredStation, station);
+      assert.equal(state.entityIndex.byStationId.get(CUT), restoredStation);
+      assert.equal(restoredStation.data.archetypeGlb, "place_station_refinery");
+      assert.equal(resolveCollisionProxyManifest(restoredStation).id, "skin:place_station_refinery");
+      assert.deepEqual({ ...restoredStation.pos }, stationPos);
+      phase = "worker restored";
+      const workers = state.entityList.filter((e) => e.alive !== false && e.data?.worldRecordId === WR);
+      assert.equal(workers.length, 1);
+      const restored = workers[0];
+      assert.notEqual(restored, worker);
+      assert.deepEqual(restored.data.ai.cutIntakeCourtesy, token);
+      assert.deepEqual(restored.data.cargoManifest, manifest);
+      const linked = state.npcJobs.byId["job:" + WR];
+      assert.ok(linked);
+      jobs._tryRelink(linked, state.simTime);
+      assert.equal(linked.entityId, restored.id);
+      phase = "player and mission restored";
+      assert.equal(state.mode, "flight");
+      assert.equal(state.world.currentSectorId, SECTOR);
+      assert.equal(state.simTime, savedSimT);
+      assert.deepEqual(state.player.cargo, cargo);
+      assert.equal(state.player.credits, credits);
+      assert.equal(state.missions.active.find((m) => m.id === mission.id)?.acceptedAt_s, mission.acceptedAt_s);
+      phase = "remaining hold resumption";
+      jobs._updateBerthHold(linked, restored, state.simTime);
+      assert.equal(linked.berthHold, true, "restored original worker resumes remaining token with production station");
+      assert.equal(linked.job.progress, 0.6);
+      assert.deepEqual(restored.data.ai.cutIntakeCourtesy, token);
+      assert.equal(lines.length, 1, "no clearance replay after Continue");
+      phase = "expiry";
+      state.simTime = token.until_s;
+      jobs._updateBerthHold(linked, restored, state.simTime);
+      assert.notEqual(linked.berthHoldPoint?.reason, "medical_intake");
+      assert.deepEqual(restored.data.ai.cutIntakeCourtesy, token);
+      console.log("CUT_WORLD_RESTORE_PASS " + JSON.stringify({ before, preSave, after: { bodyCount: state.entities.size, shipCount: state.entityIndex.shipLike.length, stationId: restoredStation.id, workerId: restored.id, worldRecordId: restored.data.worldRecordId, jobId: linked.job.id, simTimeAtResume: savedSimT, remainingSeconds: token.until_s - savedSimT, clearanceToasts: lines.length, stationArchetype: restoredStation.data.archetypeGlb, loadMs, totalMs: performance.now() - started, storageBytes: [...stored.values()].reduce((n, s) => n + Buffer.byteLength(s), 0) } }));
+    } catch (error) {
+      console.error("CUT_WORLD_RESTORE_FAILURE " + JSON.stringify({ phase, message: error.message, simTime: state.simTime, mode: state.mode, sector: state.world.currentSectorId, bodyCount: state.entities.size, shipCount: state.entityIndex.shipLike?.length, playerPos: state.entities.get(state.playerId)?.pos, station: state.entityIndex.byStationId.get(CUT)?.pos, workers: state.entityList.filter((e) => e.data?.worldRecordId === WR).map((e) => ({ id: e.id, pos: e.pos, token: e.data.ai?.cutIntakeCourtesy, jobId: e.data.jobId })) }));
+      throw error;
+    }
+  } finally {
+    sim?.dispose();
+    if (previousStorage === void 0) delete globalThis.localStorage;
+    else globalThis.localStorage = previousStorage;
+  }
+});

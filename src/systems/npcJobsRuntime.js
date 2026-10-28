@@ -3,6 +3,7 @@ import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPalla
 import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
 import { orchardTowIntercept } from './orchardTowIntercept.js';
 import { effectiveTetherPolicy } from '../combat/attachments.js';
+import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { isTowlineCleanupTarget } from '../data/towlineTable.js';
@@ -5219,6 +5220,7 @@ export const npcJobsRuntime = {
   _updateBerthHold(entry, entity, now) {
     entry.berthHold = false;
     entry.berthHoldPoint = null;
+    if (applyCutIntakeCourtesy(this, entry, entity, now)) return;
     const job = entry.job;
     if (!job || job.corrupt || !entity || !entity.pos) return;
     const phase = job.phase;

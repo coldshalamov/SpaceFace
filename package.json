@@ -9,6 +9,8 @@
   },
   "scripts": {
     "check:proteus-finding-return": "node --test test/proteus-finding-return.test.mjs",
+    "check:cut-intake-courtesy": "node --test test/cut-intake-courtesy.test.mjs",
+    "check:cut-intake-world-restore": "node --test test/cut-intake-world-restore.test.mjs",
     "postinstall": "node scripts/patch-playwright-electron.mjs",
     "stranger-lab": "node tools/agentic/stranger-lab/cli.mjs",
     "causal-foundry": "node tools/causal-foundry/cli.mjs",
