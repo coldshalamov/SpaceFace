@@ -1113,7 +1113,7 @@ export function createTractorThrowRung(options = {}) {
   };
   const drone = options.drone || {
     id: 'training_drone',
-    name: 'Training Drone',
+    name: 'Range Drone',
     shortName: 'DRONE',
     shipClass: 'gunship',
     behavior: 'Holds the far corner.',
@@ -1340,7 +1340,7 @@ export function createElasticWhipRung(options = {}) {
   };
   const drone = options.drone || {
     id: 'training_drone',
-    name: 'Training Drone',
+    name: 'Range Drone',
     shortName: 'DRONE',
     shipClass: 'gunship',
     behavior: 'Holds the far corner.',
@@ -1447,7 +1447,7 @@ export function tickElasticWhipDrill(sim, stepS, { input = {}, toggleTether = fa
 function parkedRungDrone(x = -360, z = 260) {
   return {
     id: 'training_drone',
-    name: 'Training Drone',
+    name: 'Range Drone',
     shortName: 'DRONE',
     shipClass: 'gunship',
     behavior: 'Holds the far corner.',
@@ -3478,7 +3478,7 @@ export const rangeScreen = {
 
     const droneBase = DEFAULT_DRONE || {
       id: 'training_drone',
-      name: 'Training Drone',
+      name: 'Range Drone',
       shipClass: 'gunship',
       mass: 18,
       maxSpeed: 90,
