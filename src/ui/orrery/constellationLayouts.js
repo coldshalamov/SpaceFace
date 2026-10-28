@@ -267,7 +267,8 @@ ${T} .con-cost dt { align-self:end; }
 /* ...except on a narrow short or mid-height frame (1024×480, 960×540), where the dial's top-left star
    names stand at the curve's second line: there it keeps master's one clipped line */
 @media (min-width:761px) and (max-width:1100px) and (max-height:600px) {
-  ${T} > .k-title .con-curve { display:block; max-width:min(28ch, 20vw); white-space:nowrap; }
+  /* 20vw (192px at 960) cut the key's chevron; the head has clear sky to ~30vw above the rim names */
+  ${T} > .k-title .con-curve { display:block; max-width:min(300px, 30vw); white-space:nowrap; }
 }
 /* ui-polish-67: a short desktop frame (≤500 tall) gave the reading ~200px, so the costs stacked one
    over the other and Unlock sat under the column's fade. The two costs stand side by side as words
