@@ -1,0 +1,39 @@
+{
+  "kind": "Offline procedural runtime geometry export, not live visual acceptance",
+  "textures": [
+    {
+      "name": "tissue_basecolor.jpg",
+      "repositoryPath": "assets/ships/release/surfaces/creature-skins/tissue_basecolor.jpg",
+      "sha256": "07b5d14bf8da7244212bd6820fe06e6a0685549abcc94a5aed6c2a56df98f29a"
+    },
+    {
+      "name": "tissue_normal.png",
+      "repositoryPath": "assets/ships/release/surfaces/creature-skins/tissue_normal.png",
+      "sha256": "e6b27191c2c1d553756b9ceba4928c49c46b86af7497b16ccec3397d91a34732"
+    }
+  ],
+  "specimens": [
+    {
+      "label": "baseline",
+      "sha256": "3d75783b5fd84772499e718040c19cba7ed48daedb25ec16ea9281d059cebf5c",
+      "triangles": 4,
+      "draws": 2,
+      "bounds": [
+        14.399999856948853,
+        21.59999990463257,
+        5.6000001430511475
+      ]
+    },
+    {
+      "label": "candidate",
+      "sha256": "0b84c935ea502edaef51e69eec00b0af4ea85f85cf0f830212f8caa90d0521a1",
+      "triangles": 480,
+      "draws": 2,
+      "bounds": [
+        14.059958219528198,
+        9.987935304641724,
+        18.17994976043701
+      ]
+    }
+  ]
+}

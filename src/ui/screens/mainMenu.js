@@ -11,7 +11,6 @@ import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
-import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
@@ -415,15 +414,12 @@ export function paintLeftoverVersion(target, stillCurrent) {
 
 let refs = null;
 
-/** The one lit verb's action. Demo: the Crucible door always (ZERO_TO_HERO Phase 5.1). Otherwise
- *  Continue when a save exists, New Game when none does — the pre-demo decision, unchanged. */
-export function titlePrimaryAction(demo, hasSave) {
-  if (demo) return 'crucible';
+/** The one lit verb's action: Continue when a save exists, New Game when none does. */
+export function titlePrimaryAction(hasSave) {
   return hasSave ? 'continue' : 'newGame';
 }
 
-/** The verbs' reading order. DEMO_READINESS §5: in the demo the Crucible is the FIRST button,
- *  not just the lit one — Adventure (New Game renamed) second, Continue third. */
+/** The verbs' reading order. */
 /**
  * SEED-ST-01 — the mode verbs say what they open. A sighted stranger never sees an aria-label,
  * so each non-primary verb carries the same gloss as a visible sub line. The wording is the
@@ -438,8 +434,7 @@ export const MENU_MODE_GLOSSES = Object.freeze({
   physics: 'Orbital physics challenges',
 });
 
-export function titleVerbOrder(demo) {
-  if (demo) return ['crucible', 'newGame', 'continue', 'settings', 'quit'];
+export function titleVerbOrder() {
   return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
 }
 
@@ -501,14 +496,10 @@ export const mainMenuScreen = {
     // resume, the other mode, the settings, and the way out.
     //
     // `primary` is resolved after the save scan (_applySave): Continue when there is something to
-    // continue, New Game when there is not — except in the demo, where the Crucible is always the
-    // one lit verb (ZERO_TO_HERO Phase 5.1). Marking it here would light a dead verb on first paint.
-    // DEMO_READINESS §5: in the demo the Crucible is the FIRST button, not just the lit one —
-    // titleVerbOrder owns the reading order both modes share.
+    // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
+    // titleVerbOrder owns the reading order.
     const labels = {
-      // The demo renames the verb to the mode it starts; the accessible name stays coreText so
-      // every route that finds "New Game" still does.
-      newGame: IS_DEMO ? 'Adventure' : coreText('newGame'),
+      newGame: coreText('newGame'),
       continue: coreText('continue'),
       load: 'Load',
       // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
@@ -517,7 +508,7 @@ export const mainMenuScreen = {
       settings: coreText('settings'),
       quit: 'Quit',
     };
-    const items = titleVerbOrder(IS_DEMO).map((action) => ({
+    const items = titleVerbOrder().map((action) => ({
       action,
       label: labels[action],
       ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
@@ -624,7 +615,6 @@ export const mainMenuScreen = {
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
-    if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
     if (bHelp) bHelp.setAttribute('aria-label', 'Help and flight controls');
@@ -894,13 +884,9 @@ export const mainMenuScreen = {
     }
     // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
     // there is a save to continue; with none it is a dead word at the top of the list, so New Game
-    // takes the lamp. The demo lights the Crucible regardless (ZERO_TO_HERO Phase 5.1). Deciding
-    // this at build time would light a verb that cannot be used.
-    const primaryAction = titlePrimaryAction(IS_DEMO, !!latest);
-    this._setPrimary(
-      primaryAction === 'crucible' ? refs.bCrucible
-        : primaryAction === 'continue' ? refs.bContinue
-          : refs.bNew);
+    // takes the lamp. Deciding this at build time would light a verb that cannot be used.
+    const primaryAction = titlePrimaryAction(!!latest);
+    this._setPrimary(primaryAction === 'continue' ? refs.bContinue : refs.bNew);
     this._syncCurrent();
     reapplyTitleContinueLoadFailure(refs);
     // With the failure state settled, the eyebrow returns to its rest line — the re-render that
@@ -921,15 +907,14 @@ export const mainMenuScreen = {
     if (target) target.classList.add('dp-lit__item--primary');
   },
 
-  // The default word (Continue when it can load, else New Game — always Crucible in the demo)
+  // The default word (Continue when it can load, else New Game)
   // carries aria-current and the list's single Tab stop; the kit's roving focus takes over once
   // focus is inside the list.
-  /** The one awake word: the demo's Crucible always; otherwise the word the lamp lit — the
-   *  primary verb — so the Hand cannot wake beside a different word than the lit one. A lit verb
-   *  that is still aria-disabled refuses with a deny ("is initializing"), so pointing at it is
-   *  honest; with no lamp stamped yet the first usable verb is the fallback. */
+  /** The one awake word: the word the lamp lit — the primary verb — so the Hand cannot wake
+   *  beside a different word than the lit one. A lit verb that is still aria-disabled refuses
+   *  with a deny ("is initializing"), so pointing at it is honest; with no lamp stamped yet
+   *  the first usable verb is the fallback. */
   _currentTarget() {
-    if (IS_DEMO) return refs.bCrucible || null;
     const lit = refs.root && refs.root.querySelector('.dp-lit__item--primary');
     if (lit) return lit;
     return refs.buttons.find((b) => !isDisabled(b)) || null;
