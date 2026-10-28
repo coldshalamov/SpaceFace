@@ -22656,17 +22656,13 @@ export const render = {
     // The ruleset also spawns wrecks: every kill lands one, and the packaged body is picked by
     // hashId(id) across the whole variant table. The renderer owns that family (there is no
     // enemyId), so the wreck exemplars are minted here through the same production build.
-    // New Game's onboarding scope still needs the packaged wreck family: the opening's aftermath
-    // wreck (wreck_PackagedBody) is the first owner of the shared forge-v1 double-sided program and
-    // otherwise links it after lift (~220-490 ms). Its exemplars build here behind the veil, the
-    // same way the survival scope does; the generic combat/asteroid catalog stays out.
     const exemplarSpecs = includeGenericWarm ? specs.concat(
       wreckVisualExemplarSpecs(),
       combatSpawnableExemplarSpecs(),
       // Asteroid field records promote into entities on approach; one real build per canonical
       // type warms the leaf + detail material family the promotion can ever draw.
       asteroidVisualExemplarSpecs(),
-    ) : specs.concat(wreckVisualExemplarSpecs('onboarding-roster-prewarm:wreck:'));
+    ) : [...specs];
     // A re-emit with nothing new must queue zero census-hold work — the same
     // dedupe the per-spec ledger gives inside the drain, applied at mint time:
     // every exemplar/weapon already ledgered and the leaf + catalog legs already
@@ -22712,8 +22708,6 @@ export const render = {
       // null cannot be a spec id. Retain the full-scope tail independently: a caller
       // can need its catalog even when every hull is covered, or its spec list is empty.
       if (includeGenericWarm) specQueue.set(null, { compilePipelines, exemplarSpecs, includeGenericWarm: true });
-      // Onboarding's wreck tail must survive a fold even when every payload hull is covered.
-      else specQueue.set('onboarding-roster-prewarm:wreck-tail', { compilePipelines, exemplarSpecs, includeGenericWarm: false });
       for (const spec of specs) {
         if (!spec || spec.id == null || spec.type === 'fx' || spec.type === 'projectile') continue;
         if (specQueue.has(spec.id)) continue;
