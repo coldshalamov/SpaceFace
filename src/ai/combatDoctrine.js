@@ -208,6 +208,15 @@ const DETONATOR_FUSE_RANGE_WU = 240;
 const DETONATOR_FUSE_TICKS = DOCTRINE_TELEGRAPH_TICKS;
 const DETONATOR_COMMIT_MIN_TICKS = 20;
 const DETONATOR_COMMIT_MAX_TICKS = 150;
+// A run only counts as a completed pass once the dart has actually carried its line through the
+// blast envelope AND is receding again. runHasPassed's velocity-vector clause reads a terrain
+// dodge's tangential heading as a fly-past — the Ceres dart's commit ended at closest 119 while
+// it was still rounding the rock on its run line and still closing (measured: 162→119 in 50
+// ticks). A genuine fly-past transits the authored fuse/blast ring first and then separates, so
+// for this doctrine the miss is the distance derivative, not the heading; a run turned away
+// before the envelope never counts as a pass and keeps driving until the commit cap.
+const DETONATOR_PASS_ENVELOPE_WU = 120;
+const DETONATOR_PASS_SEPARATION_WU = 32;
 const DETONATOR_BREAKAWAY_TICKS = 50;
 const DETONATOR_REFORM_TICKS = 50;
 // The fuse announce covers the whole armed window — the cue beat plus the longest commit —
@@ -533,6 +542,10 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       faceTarget: doctrine.faceTarget === true,
       faceAngle: Number.isFinite(doctrine.faceAngle) ? doctrine.faceAngle : null,
       ramAuthorized: doctrine.ramAuthorized === true,
+      // The detonator's body is the weapon: its named target is a hull it must reach, so the
+      // anti-contact layers (crossing lane, pass-around, closing-speed caps, mass clearance)
+      // treat it like an authorized ram approach for that target only.
+      contactRun: doctrine.doctrineId === CombatDoctrineId.DETONATOR_RUN,
       flightPoint: corridor || doctrine.flightPoint,
       squadCorridor: corridor ? true : selected.maneuver && selected.maneuver.squadCorridor === true,
       formationLocked: corridor ? false : doctrine.formationLocked,
@@ -625,7 +638,8 @@ function updateDetonator(record, tick, self, target, distance) {
     enter(record, 'commit', tick, null);
   } else if (record.phase === 'commit') {
     record.closestDistance = Math.min(record.closestDistance, distance);
-    const passed = runHasPassed(record, self, target, distance);
+    const passed = record.closestDistance <= DETONATOR_PASS_ENVELOPE_WU
+      && distance > record.closestDistance + DETONATOR_PASS_SEPARATION_WU;
     if ((age >= DETONATOR_COMMIT_MIN_TICKS && passed) || age >= DETONATOR_COMMIT_MAX_TICKS) {
       beginEgress(record, 'breakaway', tick, self, target, 'detonator_missed');
     }
@@ -870,6 +884,13 @@ function pressureBreakDue(record, self, tick) {
   // ranged disengager (its fire_window lasts RANGED_FIRE_TICKS=18 < PRESSURE_MIN_PHASE_TICKS, and
   // it already self-breaks on the closing_interrupt retreat).
   if (!record.fireWindow) return false;
+  // A lit kamikaze run never pressure-breaks: the fuse cue is already the last warning, and the
+  // authored counterplay is killing the dart outright ("put it down before it arrives"), not
+  // waving it off its line. Measured: the Ceres hauler's rear gun bled the dart under 45% hull
+  // mid-commit and the generic break cancelled a run that was still closing 60 WU short of the
+  // fuse ring. Ingress/reform still break — a dart hurt before the run lights waves off like
+  // any other attacker.
+  if (record.doctrineId === CombatDoctrineId.DETONATOR_RUN && committedAttackPhase(phase)) return false;
   const hull = self.hullFraction;
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
   if (hull < CORNERED_HULL_FRACTION) return false;
@@ -1579,8 +1600,12 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     // The run is a body problem, not a gun problem: the nose stays on the target through the lit
     // fuse and the committed phase just closes distance. allowedActionId never gets set —
     // detonation is a physics fact owned by impulseCharges, not a fire intent.
+    // lateralSign stays 0 in every phase: a nonzero sign steers the intercept into the
+    // flyby crossing lane (min 55 WU abeam), a corridor whose whole purpose is NOT touching —
+    // a kamikaze can never enter its own 56 WU fuse ring from inside it. The egress lateral
+    // flavor still comes from record.side where the egress point is minted.
     formationLocked = phase === 'ingress' || phase === 'reform';
-    lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    lateralSign = 0;
     faceTarget = phase === 'fuse_cue' || phase === 'commit';
     if (phase === 'breakaway') {
       maneuverKind = ManeuverKind.INTERCEPT;

@@ -5,6 +5,7 @@ import test from 'node:test';
 import { physics } from '../src/core/physics.js';
 import { createSimulation } from '../src/core/sim.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 
 import {
   CERES_BROWSER_BACKGROUND_EXECUTION_SWITCHES,
@@ -74,6 +75,7 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { projectPilotFlightControls } from '../src/systems/input.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
+import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
@@ -4368,7 +4370,7 @@ test('seed-47 authored ambush pack traverses the toolkit camera corridor with pr
   assert.ok(result.repulsor?.tick < result.transitStartTick,
     'the public Repulsor release edge must complete before Cathedralward transit starts');
   assert.ok(result.postCameraPlayerImpactEvents.every(authoredCorridorCastImpact),
-    `the post-camera Repulsor and whole transit window may contact only the authored corridor cast: ${JSON.stringify(result.postCameraPlayerImpactEvents)}`);
+    `the post-camera Repulsor and whole transit window may contact only the authored corridor cast: ${JSON.stringify({ impacts: result.postCameraPlayerImpactEvents, detonations: result.detonationEvents, dartMinDistance: result.dartMinDistance, transitStartTick: result.transitStartTick, pointingWaitTicks: result.pointingWaitTicks, selectedPointable: result.selectedPointable, pointingTrail: result.pointingTrail, memberTrail: result.memberTrail, playerTrail: result.playerTrail, hashProbe: result.hashProbe })}`);
 
   // The authored pack begins off-camera: every member's materialized pose projects outside the
   // pre-reposition fixed frustum, so public translation is what puts a member on scope.
@@ -4406,9 +4408,38 @@ test('seed-47 authored ambush pack traverses the toolkit camera corridor with pr
     [...authoredHostileRecordIds.filter((id) => id !== result.selectedPointable.worldRecordId)].sort(),
     'the survivor set is the exact authored cohort minus the pointable victim');
   assert.equal(result.survivorAlive, false,
-    'the authored detonator dart is consumed by its own detonation before the route ends');
+    `the authored detonator dart is consumed by its own detonation before the route ends: ${JSON.stringify({
+      dartMinDistance: result.dartMinDistance,
+      haulerId: result.authoredAmbushPrey?.entityId,
+      victim: result.selectedPointable && {
+        entityId: result.selectedPointable.entityId,
+        worldRecordId: result.selectedPointable.worldRecordId,
+      },
+      survivors: result.survivorWorldRecordIds,
+      survivorIds: result.survivorEntityIds,
+      dartTrace: result.dartTrace && result.dartTrace.filter((_, i) => i % 5 === 0),
+    })}`);
   assert.deepEqual(result.liveSurvivorWorldRecordIds, ['wr_npc_b41fdf37'],
-    'the escape release must bind the surviving authored member');
+    `the escape release must bind the surviving authored member: ${JSON.stringify({
+      victim: result.selectedPointable && {
+        entityId: result.selectedPointable.entityId,
+        worldRecordId: result.selectedPointable.worldRecordId,
+      },
+      dartMinDistance: result.dartMinDistance,
+      boundHostiles: result.boundHostilesBeforeReposition && result.boundHostilesBeforeReposition.map((h) => ({
+        id: h.worldRecordId, alive: h.alive, d: Math.round(h.distanceWU || 0),
+      })),
+      pointingWaitTicks: result.pointingWaitTicks,
+      pointingTrail: result.pointingTrail,
+      conflictSnapshotHostiles: result.conflictSnapshotHostiles && result.conflictSnapshotHostiles.map((h) => ({
+        id: h.entityId, rec: h.worldRecordId, alive: h.alive, d: Math.round(h.distanceWU),
+        proj: { x: +(h.projection.x ?? 0).toFixed(2), y: +(h.projection.y ?? 0).toFixed(2) },
+      })),
+      pointingStartSample: result.pointingStartSample,
+      memberTrail: result.memberTrail && result.memberTrail.filter((r) => r.tick >= 4950 && r.tick <= 5560),
+      swoopTrace: result.swoopTrace && result.swoopTrace.filter((r) => r.tick >= 4400 && r.tick <= 5800 && r.tick % 30 === 0),
+      dartTrace: result.dartTrace && result.dartTrace.filter((_, i) => i % 10 === 0),
+    })}`);
   assert.equal(result.liveSurvivorCount, 1);
   assert.ok(result.survivorDistanceWU > 2_600,
     `the released pack survivor must land beyond the 2,600-WU escape radius: ${result.survivorDistanceWU}`);
@@ -4489,7 +4520,11 @@ test('seed-47 production Massline relatch retains and leads the Reaver through o
   assert.ok(firstCut.seq < result.attachedEvents[1].seq,
     'the first physical line must be publicly cut before the fresh relatch');
   assert.ok(result.tombstone,
-    `full-health Reaver survived the ${SEED47_REAVER_KILL_TICK_CEILING}-tick fixed-pointer ceiling`);
+    `full-health Reaver survived the ${SEED47_REAVER_KILL_TICK_CEILING}-tick fixed-pointer ceiling `
+    + `(fires=${result.playerFireCount} hits=${result.targetHitCount} firstHitTicks=${result.firstHitCombatTicks} `
+    + `hull=${result.targetHullAfterLoop} shield=${result.targetShieldAfterLoop} maxDist=${result.maxDistanceWU} `
+    + `lineHeld=${result.secondLineStayedActiveBeforeKill} playerAlive=${result.playerAliveAfterLoop} `
+    + `secondLineBreaks=${JSON.stringify(result.brokenEvents.filter((e) => e.attachmentId === result.attachedEvents[1].attachmentId).map((e) => ({ reason: e.reason, tick: e.tick })))})`);
   assert.equal(result.brokenEvents.some((event) => (
     event.attachmentId === result.attachedEvents[1].attachmentId
       && event.seq < result.tombstone.seq
@@ -4507,7 +4542,13 @@ test('seed-47 production Massline relatch retains and leads the Reaver through o
   assert.ok(Number.isInteger(result.offFrustumFire.projectileId),
     'the off-frustum fire receipt must bind the fresh projectile it spawned');
   assert.ok(Math.abs(result.offFrustumFire.leadRad) > 0.04,
-    'the Massline firing solution must lead the crossing target by more than weapon spread');
+    `the Massline firing solution must lead the crossing target by more than weapon spread: ${JSON.stringify({
+      leadRad: result.offFrustumFire.leadRad, weaponId: result.offFrustumFire.weaponId,
+      dist: result.offFrustumFire.distanceWU, gunTargetId: result.offFrustumFire.gunTargetId,
+      tick: result.offFrustumFire.tick, dir: result.offFrustumFire.dir, bearing: result.offFrustumFire.bearing,
+      slot: result.offFrustumFire.hardpointIdx, targetVel: result.offFrustumFire.targetVel,
+      controlScheme: result.offFrustumFire.controlScheme, tetherPhase: result.offFrustumFire.tetherPhase,
+    })}`);
 
   assert.ok(result.exactHit.seq > result.offFrustumFire.seq);
   assert.ok(result.exactHit.tick > result.offFrustumFire.tick);
@@ -7083,6 +7124,8 @@ async function runSeed47ToolkitCameraReposition() {
   FIELD_FLAGS.enabled = true;
   let runtime = null;
   let physicsSystem = null;
+  const reconcileProbe = [];
+  const origReconcile = npcJobsRuntime._reconcileThreatResult;
   try {
     runtime = createAuthoritativeRuntime({
       profileId: 'production',
@@ -7212,7 +7255,17 @@ async function runSeed47ToolkitCameraReposition() {
   const playerImpactEvents = [];
   const encounterResolutions = [];
   const deployedFields = [];
+  const detonationEvents = [];
   let playerImpactSeq = 1;
+  bus.on('detonator:detonated', (event) => {
+    detonationEvents.push({
+      ...event,
+      tick: state.tick,
+      playerPos: { x: player.pos.x, z: player.pos.z },
+      playerVel: { x: player.vel.x, z: player.vel.z },
+      playerDistance: Math.hypot(player.pos.x - event.pos.x, player.pos.z - event.pos.z),
+    });
+  });
   bus.on('physics:impact', (event) => {
     if (event.aId !== player.id && event.bId !== player.id) return;
     const projectParticipant = (entityId) => {
@@ -7227,11 +7280,14 @@ async function runSeed47ToolkitCameraReposition() {
     };
     const a = projectParticipant(event.aId);
     const b = projectParticipant(event.bId);
+    const otherEntity = state.entities.get(event.aId === player.id ? event.bId : event.aId);
     playerImpactEvents.push({
       seq: playerImpactSeq++,
       tick: state.tick,
       aId: event.aId,
       bId: event.bId,
+      playerPos: { x: Math.round(player.pos.x), z: Math.round(player.pos.z) },
+      otherPos: otherEntity ? { x: Math.round(otherEntity.pos.x), z: Math.round(otherEntity.pos.z) } : null,
       aType: a.type,
       aWorldRecordId: a.worldRecordId,
       aAnchorSlotId: a.anchorSlotId,
@@ -7273,6 +7329,32 @@ async function runSeed47ToolkitCameraReposition() {
     if (controls.boost === true) inputSystem._keys.ShiftLeft = true;
     if (controls.deployRepulsor === true) inputSystem._keys.Digit2 = true;
   };
+  const dartTrace = [];
+  const playerTrail = [];
+  const memberTrail = [];
+  const swoopTrace = [];
+  const hashProbe = [];
+  npcJobsRuntime._reconcileThreatResult = function (entry, resultId) {
+    if (authoredAmbushPrey && entry && entry.entityId === authoredAmbushPrey.id) {
+      const nearest = resultId != null ? state.entities.get(resultId) : null;
+      const now = Number(state.simTime) || 0;
+      const before = entry.job?.phase ?? null;
+      const ret = origReconcile.call(this, entry, resultId);
+      reconcileProbe.push({
+        tick,
+        resultId,
+        near: nearest ? { id: nearest.id, ty: nearest.type, tm: nearest.team, pas: nearest.data?.ai?.passive === true, roe: nearest.data?.ai?.roe ?? null } : null,
+        vu: entry.violenceUntilSimT != null ? +entry.violenceUntilSimT.toFixed(1) : null,
+        now: +now.toFixed(1),
+        before,
+        after: entry.job?.phase ?? null,
+        th: entry.threatId ?? null,
+      });
+      return ret;
+    }
+    return origReconcile.call(this, entry, resultId);
+  };
+  let dartMinDistance = Infinity;
   const step = (count, input = {}) => {
     for (let index = 0; index < count; index += 1) {
       applyPublicControls(input);
@@ -7280,6 +7362,208 @@ async function runSeed47ToolkitCameraReposition() {
       state.simTime = tick * dt;
       tick += 1;
       runtime.step(dt);
+      if (tick % 30 === 0 && memberTrail.length < 400 && cohort) {
+        let haulerJob = null;
+        if (authoredAmbushPrey && state.npcJobs?.byId) {
+          for (const entry of Object.values(state.npcJobs.byId)) {
+            if (entry?.entityId === authoredAmbushPrey.id) {
+              haulerJob = {
+                ph: entry.job?.phase ?? null,
+                th: entry.threatId ?? null,
+                vu: entry.violenceUntilSimT != null ? +entry.violenceUntilSimT.toFixed(1) : null,
+                rh: entry.routeHold ? { x: Math.round(entry.routeHold.x), z: Math.round(entry.routeHold.z) } : null,
+                ri: entry.job?.routeIndex ?? null,
+                htype: authoredAmbushPrey.type ?? null,
+                hteam: authoredAmbushPrey.team ?? null,
+                nearThreat: (() => {
+                  let best = null;
+                  let bestD2 = Infinity;
+                  for (const cand of state.entityList || []) {
+                    if (!cand || cand.alive === false || cand.type !== 'ship' || cand.team !== 1) continue;
+                    const ai = cand.data && cand.data.ai;
+                    if (ai && ai.passive === true) continue;
+                    if (ai && (ai.roe === 'hold_fire' || ai.roe === 'lawful_wanted_only')) continue;
+                    const dx = cand.pos.x - authoredAmbushPrey.pos.x;
+                    const dz = cand.pos.z - authoredAmbushPrey.pos.z;
+                    const d2 = dx * dx + dz * dz;
+                    if (d2 < bestD2) { bestD2 = d2; best = cand.id; }
+                  }
+                  return best != null ? { id: best, d: +Math.sqrt(bestD2).toFixed(0) } : null;
+                })(),
+              };
+              break;
+            }
+          }
+        }
+        const ambushLive = state.encounterDirector?.live?.ceres_activity_ambush ?? null;
+        memberTrail.push({
+          tick,
+          px: Math.round(player.pos.x),
+          pz: Math.round(player.pos.z),
+          hauler: authoredAmbushPrey ? {
+            x: Math.round(authoredAmbushPrey.pos.x - player.pos.x),
+            z: Math.round(authoredAmbushPrey.pos.z - player.pos.z),
+            v: +Math.hypot(authoredAmbushPrey.vel?.x ?? 0, authoredAmbushPrey.vel?.z ?? 0).toFixed(1),
+            boost: authoredAmbushPrey.data?.intent?.boost ?? null,
+            cargo: authoredAmbushPrey.data?.cargoManifest?.totalQty ?? null,
+            maxS: authoredAmbushPrey.stats?.maxSpeed ?? authoredAmbushPrey.data?.stats?.maxSpeed ?? null,
+          } : null,
+          haulerJob,
+          enc: {
+            lp: ambushLive?.phase ?? null,
+            out: ambushLive?.outcome ?? null,
+            dp: state.encounterDirector?.stats?.ceresActivityAmbush?.phase ?? null,
+            dout: state.encounterDirector?.stats?.ceresActivityAmbush?.outcome ?? null,
+          },
+          members: cohort.map((entity) => ({
+            id: entity.id,
+            a: entity.alive !== false,
+            x: Math.round(entity.pos.x - player.pos.x),
+            z: Math.round(entity.pos.z - player.pos.z),
+            v: +Math.hypot(entity.vel?.x ?? 0, entity.vel?.z ?? 0).toFixed(1),
+            pas: entity.data?.ai?.passive === true,
+            ty: entity.type ?? null,
+            tm: entity.team ?? null,
+            pp: entity._physicsPartition ?? null,
+            co: entity.collides ?? null,
+            roe: entity.data?.ai?.roe ?? null,
+            tgt: entity.data?.combat?.targetId ?? null,
+            atgt: entity.data?.ai?.activity?.targetId ?? null,
+            akind: entity.data?.ai?.activity?.kind ?? null,
+            sock: entity.data?.ai?.squadSocket ?? null,
+          })),
+        });
+      }
+      if (tick % 10 === 0 && playerTrail.length < 400) {
+        playerTrail.push({
+          tick,
+          x: Math.round(player.pos.x),
+          z: Math.round(player.pos.z),
+          v: +Math.hypot(player.vel.x, player.vel.z).toFixed(1),
+        });
+      }
+      if (authoredAmbushPrey && tick >= 4780 && tick <= 4860 && tick % 2 === 0) {
+        const out = [];
+        if (state.spatialHash && typeof state.spatialHash.queryRadius === 'function') {
+          state.spatialHash.queryRadius(authoredAmbushPrey.pos.x, authoredAmbushPrey.pos.z, 760, out);
+        }
+        const act = ensureActivityClassified(state);
+        hashProbe.push({
+          tick,
+          buckets: state.spatialHash?.diagnostics?.activeBuckets ?? null,
+          dynHas848: act?.physicsDynamics?.some((e) => e.id === 848) ?? null,
+          dynHas849: act?.physicsDynamics?.some((e) => e.id === 849) ?? null,
+          dynLen: act?.physicsDynamics?.length ?? null,
+          idxDynHas848: state.entityIndex?.spatialDynamics?.some((e) => e.id === 848) ?? null,
+          stamp: cohort?.find((e) => e.id === 848)?.activity?.simTier ?? null,
+          hits: out.map((c) => {
+            const e = c && c.id != null ? state.entities.get(c.id) : null;
+            return e ? `${e.id}:${e.type}:${e.team}:${e.data?.ai?.passive === true ? 'P' : 'F'}@${Math.hypot(e.pos.x - authoredAmbushPrey.pos.x, e.pos.z - authoredAmbushPrey.pos.z).toFixed(0)}` : `${c && c.id}:?`;
+          }),
+        });
+      }
+      const swoopNow = (tick % 10 === 0 && tick >= 4400 && tick <= 5800)
+        ? cohort?.find((entity) => entity.data?.silhouette === 'pirate_swoop') : null;
+      if (swoopNow && authoredAmbushPrey && swoopTrace.length < 400) {
+        let sp = null, smk = null, srsn = null, stgt = null, sout = null;
+        try {
+          const rep = runtime.getHelpers?.().inspectAI?.({ entityId: swoopNow.id });
+          sp = rep?.result?.combatDoctrine?.phase ?? null;
+          sout = rep?.result?.combatDoctrine?.outcome ?? null;
+          stgt = rep?.result?.combatDoctrine?.targetId ?? null;
+          smk = rep?.result?.maneuver?.lastKind ?? null;
+          const fr = rep?.result?.maneuver?.lastRequest?.reason;
+          srsn = typeof fr === 'string' ? fr : null;
+        } catch (_) { /* diagnostic only */ }
+        swoopTrace.push({
+          tick,
+          x: Math.round(swoopNow.pos.x - player.pos.x),
+          z: Math.round(swoopNow.pos.z - player.pos.z),
+          v: +Math.hypot(swoopNow.vel?.x || 0, swoopNow.vel?.z || 0).toFixed(1),
+          dh: Math.round(Math.hypot(swoopNow.pos.x - authoredAmbushPrey.pos.x,
+            swoopNow.pos.z - authoredAmbushPrey.pos.z)),
+          ph: sp, mk: smk, rsn: srsn, tgt: stgt, out: sout,
+        });
+      }
+      const dartNow = (tick % 10 === 0)
+        ? cohort?.find((entity) => entity.data?.silhouette === 'detonator_dart') : null;
+      if (dartNow && authoredAmbushPrey?.alive !== false) {
+        const dart = dartNow;
+        const d = Math.hypot(
+          dart.pos.x - authoredAmbushPrey.pos.x,
+          dart.pos.z - authoredAmbushPrey.pos.z,
+        );
+        if (d < 420 || tick % 30 === 0) {
+          dartMinDistance = Math.min(dartMinDistance, d);
+          let doctrinePhase = null;
+          let doctrineTargetId = null;
+          let doctrineOutcome = null;
+          let maneuverKind = null;
+          let maneuverFlightPoint = null;
+          let maneuverDesired = null;
+          try {
+            const report = runtime.getHelpers?.().inspectAI?.({ entityId: dart.id });
+            const record = report?.result?.combatDoctrine;
+            doctrinePhase = record?.phase ?? null;
+            doctrineTargetId = record?.targetId ?? null;
+            doctrineOutcome = record?.outcome ?? null;
+            const mv = report?.result?.maneuver;
+            maneuverKind = mv?.lastKind ?? null;
+            const fp = mv?.lastRequest?.reason;
+            maneuverFlightPoint = typeof fp === 'string' ? fp : null;
+            maneuverDesired = (mv?.lastDesiredUnitX != null)
+              ? { x: +mv.lastDesiredUnitX.toFixed(2), z: +mv.lastDesiredUnitZ.toFixed(2) } : null;
+          } catch (_) { /* inspection is diagnostic-only */ }
+          const toHauler = {
+            x: (authoredAmbushPrey.pos.x - dart.pos.x) / (d || 1),
+            z: (authoredAmbushPrey.pos.z - dart.pos.z) / (d || 1),
+          };
+          let rockD = null;
+          let rockAcross = null;
+          let rockAhead = null;
+          if (Array.isArray(state.entityList)) {
+            for (const ob of state.entityList) {
+              if (!ob || ob.alive === false) continue;
+              if (ob.type !== 'asteroid' && ob.type !== 'hazard' && ob.type !== 'wreck' && ob.type !== 'station') continue;
+              const cdx = ob.pos.x - dart.pos.x, cdz = ob.pos.z - dart.pos.z;
+              const rd = Math.hypot(cdx, cdz) - (ob.radius || 0);
+              if (rockD == null || rd < rockD) {
+                rockD = rd;
+                rockAhead = cdx * toHauler.x + cdz * toHauler.z;
+                rockAcross = -cdx * toHauler.z + cdz * toHauler.x;
+              }
+            }
+          }
+          if (dartTrace.length < 200) dartTrace.push({
+            tick, d: Math.round(d),
+            rock: rockD == null ? null : Math.round(rockD),
+            rAh: rockAhead == null ? null : Math.round(rockAhead),
+            rAc: rockAcross == null ? null : Math.round(rockAcross),
+            v: +Math.hypot(dart.vel?.x || 0, dart.vel?.z || 0).toFixed(1),
+            alive: dart.alive !== false,
+            haulerAlive: authoredAmbushPrey.alive !== false,
+            haulerP: {
+              x: Math.round(authoredAmbushPrey.pos.x - player.pos.x),
+              z: Math.round(authoredAmbushPrey.pos.z - player.pos.z),
+            },
+            cohort: cohort?.map((entity) => ({
+              id: entity.id,
+              a: entity.alive !== false,
+              pd: Math.round(Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z)),
+            })),
+            act: dart.data?.ai?.activity?.kind ?? null,
+            tgt: dart.data?.ai?.activity?.targetId ?? null,
+            phase: doctrinePhase,
+            out: doctrineOutcome,
+            h: dart.hull == null ? null : Math.round(dart.hull),
+            dTgt: doctrineTargetId,
+            mk: maneuverKind,
+            rsn: maneuverFlightPoint,
+            des: maneuverDesired,
+            th: { x: +toHauler.x.toFixed(2), z: +toHauler.z.toFixed(2) },
+          });
+        }
+      }
       if (stageClearanceTracking) {
         for (const { key, entity } of stageClearanceTargets) {
           const gap = Math.hypot(
@@ -7444,9 +7728,18 @@ async function runSeed47ToolkitCameraReposition() {
       if (!receipt.pass) break;
       step(2);
     }
+    // The authored beat is the swarm's own dive: both survivors chase the fleeing hauler
+    // down the same pursuit line, and the swarm's faster, tighter legs carry it through the
+    // corridor first with the swoop trailing ~60 WU behind on the same track. The camera
+    // parks for a short observe beat so the poll lands inside the swarm's crossing — while
+    // it is the nearer in-frame member — not after it exits and leaves the trailing swoop
+    // alone in the settled frame. A longer hold overshoots the swarm's pass and binds the
+    // swoop; the ~150-tick beat restores the alignment Flight V3 traversal compressed out.
+    step(150);
     let pointingWaitTicks = 0;
     let bestPointingSample = null;
     let pointingStartSample = null;
+    const pointingTrail = [];
     const hasPointableCohortMember = () => cohort.some((entity) => {
       if (entity.alive === false) return false;
       const distanceWU = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
@@ -7468,6 +7761,20 @@ async function runSeed47ToolkitCameraReposition() {
     // Advance the same neutral fixed-tick window here so production AI motion participates without
     // moving either actor through observer-only state mutation.
     for (; pointingWaitTicks < 360 && !hasPointableCohortMember(); pointingWaitTicks += 9) {
+      pointingTrail.push({
+        tick,
+        members: cohort.map((entity) => ({
+          id: entity.id,
+          a: entity.alive !== false,
+          d: Math.round(Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z)),
+          px: entity.pos.x,
+          pz: entity.pos.z,
+          proj: (() => {
+            const p = projectThroughSettledChaseCamera(player.pos, entity.pos);
+            return { x: +(p.x ?? 0).toFixed(2), y: +(p.y ?? 0).toFixed(2) };
+          })(),
+        })),
+      });
       step(9);
     }
     stageClearanceTracking = false;
@@ -7509,6 +7816,16 @@ async function runSeed47ToolkitCameraReposition() {
       `production stage must expose a live exact pointable cohort member: ${JSON.stringify({
         boundHostiles: conflictSnapshot.boundHostiles,
         bestPointingSample,
+        memberTrail,
+        hashProbe,
+        reconcileProbe,
+        dartTail: (() => {
+          const commitIdx = dartTrace.findIndex((row) => row.phase === 'commit');
+          const deathIdx = dartTrace.findIndex((row) => row.alive === false);
+          const from = commitIdx > 4 ? commitIdx - 4 : 0;
+          const to = deathIdx >= 0 ? deathIdx + 4 : from + 40;
+          return dartTrace.slice(from, to).filter((_, i) => i % 2 === 0);
+        })(),
       })}`);
     const combatVictim = cohort
       .find((entity) => entity.id === selectedPointable.entityId);
@@ -7531,6 +7848,11 @@ async function runSeed47ToolkitCameraReposition() {
       )), 'the sole production kill must reach owner-issued cleared resolution within 60 ticks');
     }
     step(1, { deployRepulsor: true });
+    // Powers fire on release (row 493 shipped default): the press step only grips SHOVE, the
+    // release edge lands the deploy on a later fixed tick — wait for it like the public harness.
+    for (let waited = 0; waited < 6 && !deployedFields.some((event) => (
+      event.kind === 'repulsor' && event.ownerId === player.id
+    )); waited += 1) step(1);
     step(1);
     const repulsor = deployedFields.find((event) => (
       event.kind === 'repulsor' && event.ownerId === player.id
@@ -7609,7 +7931,9 @@ async function runSeed47ToolkitCameraReposition() {
         .map((entity) => entity.data?.worldRecordId || null).sort(),
       playerSetup,
       postCameraPlayerImpactEvents,
+      detonationEvents,
       selectedPointable,
+      conflictSnapshotHostiles: conflictSnapshot.boundHostiles,
       selectedTargetAliveAfter: combatVictim.alive !== false,
       repulsor,
       playerEntityId: player.id,
@@ -7630,6 +7954,7 @@ async function runSeed47ToolkitCameraReposition() {
       elapsedTicks: cameraElapsedTicks,
       pointingWaitTicks,
       pointingStartSample,
+      pointingTrail,
       transitPlan,
       transitReceipt,
       transitStartTick,
@@ -7658,8 +7983,16 @@ async function runSeed47ToolkitCameraReposition() {
       remainingCathedralDistanceWU,
       cathedralArrived: state.nav.autopilot.status === 'arrived',
       cathedralTicks,
+      dartMinDistance: Number.isFinite(dartMinDistance) ? dartMinDistance : null,
+      dartTrace,
+      playerTrail,
+      memberTrail,
+      swoopTrace,
+      hashProbe,
+      reconcileProbe,
     };
   } finally {
+    npcJobsRuntime._reconcileThreatResult = origReconcile;
     try {
       if (typeof physicsSystem?._disableSg02DynamicAuthority === 'function') {
         physicsSystem._disableSg02DynamicAuthority();
@@ -7739,11 +8072,27 @@ async function runSeed47OffFrustumMasslineCombat() {
     if (offFrustumFire) return;
     const projection = projectThroughSettledChaseCamera(player.pos, target.pos);
     if (Math.abs(projection.x) <= 0.98 && Math.abs(projection.y) <= 0.98) return;
+    // Only a crossing beat can prove the firing solution leads: a shot accepted while the
+    // target runs nearly radial honestly carries ~0 lead. Bind the receipt to the first
+    // off-frustum fire whose tangential target speed demands real lead (>= ~0.09 rad at
+    // projSpeed 340), not merely the chronologically first off-frustum trigger pull.
+    const dx = target.pos.x - player.pos.x, dz = target.pos.z - player.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    const rvx = (target.vel?.x || 0) - (player.vel?.x || 0);
+    const rvz = (target.vel?.z || 0) - (player.vel?.z || 0);
+    if (Math.abs((dx * rvz - dz * rvx) / dist) < 30) return;
     const projectile = state.entityList.at(-1);
     if (!projectile || projectile.type !== 'projectile'
       || projectile.ownerId !== player.id
       || projectile.data?.weaponId !== payload.weaponId) return;
-    const bearing = Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
+    // The launch line leaves the mount's muzzle, not the hull centre — payload.origin is the
+    // real socket. Measuring lead off the hull bearing conflates honest lead with mount
+    // parallax (a ~12 WU off-axis socket shifts the sightline ~0.10 rad at this range,
+    // more than the lead itself). The solver aims the muzzle->predicted-target line, so
+    // lead must be measured from the same origin.
+    const launchOrigin = (payload.origin && Number.isFinite(payload.origin.x) && Number.isFinite(payload.origin.z))
+      ? payload.origin : player.pos;
+    const bearing = Math.atan2(target.pos.z - launchOrigin.z, target.pos.x - launchOrigin.x);
     const leadRad = Math.atan2(
       Math.sin(payload.dir - bearing),
       Math.cos(payload.dir - bearing),
@@ -7753,6 +8102,7 @@ async function runSeed47OffFrustumMasslineCombat() {
       tick: state.tick,
       ownerId: payload.ownerId,
       weaponId: payload.weaponId,
+      hardpointIdx: payload.hardpointIdx,
       dir: payload.dir,
       projectileId: projectile.id,
       targetId: target.id,
@@ -7760,6 +8110,9 @@ async function runSeed47OffFrustumMasslineCombat() {
       bearing,
       leadRad,
       distanceWU: Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z),
+      targetVel: { x: target.vel?.x, z: target.vel?.z },
+      controlScheme: state.settings?.gameplay?.controlScheme ?? null,
+      tetherPhase: state.player?.tether?.phase ?? null,
       ...tetherSnapshot(),
       ...lineSnapshot(),
     };
@@ -7861,6 +8214,13 @@ async function runSeed47OffFrustumMasslineCombat() {
     if (rockCoreSystem) rockCoreSystem.update = () => {};
     if (state.rockCore) state.rockCore.tier = 1;
 
+    // Same rule as the rating gate above. The Line-class strain ceiling (rows 498-499, landed
+    // after this fixture) overheats a stock class-I winch ~8 s into a 60 T hold and snaps the
+    // line — after which the guns lose their tether solution and the kill cannot land. An earned
+    // class-II ledger (2,000 T hauled) controls a gunship for the whole fight, so this
+    // relatch/lead proof seeds that earned progression rather than the stock class.
+    state.lineProgression = { ...(state.lineProgression || {}), tonnageLoggedT: 2_000 };
+
     const physicsSystem = runtime.getSystem('physics');
     const ready = await physicsSystem.prepareBackend(state, { reset: true });
     assert.equal(ready, true, 'off-frustum Massline fixture requires production Rapier authority');
@@ -7932,6 +8292,9 @@ async function runSeed47OffFrustumMasslineCombat() {
       tombstone,
       targetAliveAtHit,
       targetAliveAfterLoop: target.alive !== false,
+      targetHullAfterLoop: target.hull,
+      targetShieldAfterLoop: target.shield,
+      playerAliveAfterLoop: player.alive !== false,
       secondLineStayedActiveBeforeKill,
       firstHitCombatTicks,
       playerFireCount,
