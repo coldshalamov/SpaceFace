@@ -60,12 +60,12 @@ ${S} .orr-statistics__empty { margin:clamp(4px, 1vh, 10px) 0 0; max-width:52ch; 
 ${S} .orr-statistics__promise-scale { list-style:none; margin:clamp(18px, 3vh, 34px) 0 0; padding:0;
   max-width:min(680px, 100%); display:flex; flex-direction:column; }
 /* each reading the ledger will keep, ruled like the rows it becomes: the name, what it counts */
-${S} .orr-statistics__promise-word { display:grid; grid-template-columns:clamp(72px, 7vw, 104px) minmax(0, 1fr); align-items:baseline;
+${S} .orr-statistics__promise-word { display:grid; grid-template-columns:clamp(96px, 8vw, 120px) minmax(0, 1fr); align-items:baseline;
   column-gap:clamp(14px, 2vw, 32px); padding:clamp(10px, 1.5vh, 16px) 0; border-top:1px solid rgb(${BONE} / .22); }
 ${S} .orr-statistics__promise-word:last-child { border-bottom:1px solid rgb(${BONE} / .16); }
 ${S} .orr-statistics__promise-name { ${LABEL} font-size:12.5px; letter-spacing:.22em; color:rgb(${BONE} / .9);
   display:inline-flex; align-items:center; gap:10px; }
-${S} .orr-statistics__promise-name::before { content:""; width:1.5px; height:10px; background:rgb(${BONE} / .5); }
+${S} .orr-statistics__promise-name::before { content:""; width:1.5px; height:10px; flex:none; background:rgb(${BONE} / .5); }
 ${S} .orr-statistics__promise-counts { ${READ} font-size:clamp(13.5px, min(.9vw, 1.7vh), 16px); line-height:1.4; font-weight:500; color:rgb(${BONE} / .7); }
 @media (max-height:460px) {
   ${S} .orr-statistics__promise-scale { margin-top:8px; }
