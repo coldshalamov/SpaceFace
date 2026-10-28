@@ -47,9 +47,15 @@ ${NG} .orr-stopscale .k-word-sub,
 ${NG} .orr-stoparc .k-word-sub {
   color:rgb(${BONE} / .68) !important; }
 ${NG} .orr-ng-key--small,
-${NG} .orr-ng-key--legend {
+${NG} .orr-ng-key--legend:not([aria-pressed="true"]) {
   color:rgb(${BONE} / .82) !important; }
 ${NG} .orr-ng-key--small::before { color:rgb(${BONE} / .78) !important; }
+/* a choice pair's chosen word is the Hand's word: lamp-hot ink (the crucible door's checked word),
+   the other dimmer; without this the rest colour above flattened pressed and hover to the same ink */
+${NG} .orr-ng-key--legend[aria-pressed="true"] {
+  color:var(--dp-lamp-hot, #ffd98c) !important; text-shadow:0 0 18px rgb(255 217 140 / .35); }
+${NG} .orr-ng-key--legend:not([aria-pressed="true"]):is(:hover, :focus-visible) {
+  color:rgb(${BONE} / .95) !important; }
 
 /* hull caption: sentence + route */
 ${NG} .orr-ng-caption > .k-sentence { color:rgb(${BONE} / .88) !important; }

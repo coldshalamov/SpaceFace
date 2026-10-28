@@ -233,6 +233,12 @@ ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; 
 ${S} .sxb-ops .sx-tile { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   color:rgb(${BONE} / .58) !important; padding:6px 2px !important; }
 ${S} .sxb-ops .sx-tile::before, ${S} .sxb-ops .sx-tile::after { display:none !important; }
+/* the lamp bar survives the strip above for the two states that must read at a glance: the keyboard's
+   focus and CURRENT; the ink stays bone — the rail's cursor is bone, the tab row owns the one amber Hand */
+${S} .sxb-ops .sx-tile:focus-visible::after { display:block !important; content:""; position:absolute; left:50%; bottom:0; translate:-50% 0;
+  width:100%; height:2px; background:rgb(${BONE} / .85); box-shadow:none; }
+${S} .sxb-ops .sx-tile.is-active::after { display:block !important; content:""; position:absolute; left:50%; bottom:0; translate:-50% 0;
+  width:100%; height:2px; background:rgb(248 244 234); box-shadow:0 0 8px rgb(248 244 234 / .4); }
 /* the kit's legend keys widen their face on hover; a destination's hitbox never moves, so the face is pinned */
 ${S} .sxb-ops .sx-tile, ${S} .sxb-ops .sx-tile:is(:hover, :focus, :focus-visible, .is-active) { font-variation-settings:"wdth" 100, "wght" 560 !important; }
 ${S} .sxb-ops .sx-tile .sx-tile__label, ${S} .sxb-ops .sx-tile:is(:hover, :focus, :focus-visible, .is-active) .sx-tile__label {
