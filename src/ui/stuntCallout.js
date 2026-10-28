@@ -686,21 +686,39 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     return true;
   }
 
+  // getBoundingClientRect forces a synchronous layout of the whole HUD. addLine reaches this on every
+  // callout line, and a kill storm or a collision burst adds many per second, so an unthrottled
+  // re-seat measured ~9% of all main-thread CPU in a Crucible run. The three obstacles only move when
+  // the HUD re-lays out, so: look the nodes up every time (querySelector forces no layout), and
+  // re-measure only when one of them appeared or disappeared (a decision card rising under the column
+  // must lift it on the very next line) or SEAT_MIN_INTERVAL_MS has passed (a window resize, a dial
+  // that moved).
+  const SEAT_MIN_INTERVAL_MS = 250;
+  let lastSeatAt = -Infinity;
+  let lastSeatNodes = null;
+
   function seatClearOfSpeedDial() {
     const view = doc.defaultView;
     if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
-    const ownRect = root.getBoundingClientRect();
-    let top = Infinity;
-    for (const [selector, gap] of [
+    const obstacles = [
       [SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX],
       [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX],
       [PROMPT_DECK_SELECTOR, PROMPT_DECK_CLEARANCE_PX],
-    ]) {
-      const node = doc.querySelector(selector);
+    ];
+    const nodes = obstacles.map(([selector]) => doc.querySelector(selector) || null);
+    const seatNow = calloutNow();
+    const unchanged = lastSeatNodes !== null && nodes.every((node, i) => node === lastSeatNodes[i]);
+    if (unchanged && seatNow - lastSeatAt < SEAT_MIN_INTERVAL_MS) return;
+    lastSeatNodes = nodes;
+    lastSeatAt = seatNow;
+    const ownRect = root.getBoundingClientRect();
+    let top = Infinity;
+    for (let i = 0; i < obstacles.length; i++) {
+      const node = nodes[i];
       if (!node || typeof node.getBoundingClientRect !== 'function') continue;
       const rect = node.getBoundingClientRect();
       if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
-      top = Math.min(top, rect.top - gap);
+      top = Math.min(top, rect.top - obstacles[i][1]);
     }
     root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
   }

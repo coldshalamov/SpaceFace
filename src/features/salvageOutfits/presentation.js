@@ -156,6 +156,10 @@ export function createSalvageOutfitsOverlay({ canvas, state, worldToScreen, colo
       const live = typeof state === 'function' ? state() : state;
       if (live?.mode !== 'flight' || live?.ui?.docked) return model;
       writeSalvageOutfitsReadModel(live, model);
+      // Nothing to annotate (the usual case: no salvage meeting in this sector) -> leave the canvas
+      // alone. Assigning ctx.font every frame re-resolves the web font and measured ~13% of all
+      // main-thread CPU in a Crucible run; the loops below would draw nothing anyway.
+      if (model.meetingCount + model.crewCount + model.cargoCount === 0) return model;
       ctx.save(); const r = ratio(); ctx.setTransform?.(r, 0, 0, r, 0, 0);
       ctx.font = '12px "IBM Plex Mono", monospace'; ctx.lineWidth = 2;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
