@@ -1990,10 +1990,16 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   /* Factions: a ring of fourteen crests would be ~27px a crest here, so the powers stand on the
      ladder like every other tab's index, and the reading keeps the standing scale */
   ${D} .sx-fac { grid-template-columns:260px minmax(0, 1fr) !important; column-gap:28px !important; }
-  ${D} .sx-fac__rail { display:block !important; }
+  /* the rail keeps the authored column flex (station.css): as block the rows' list could not
+     shrink, the rail's own scroll took over, and the extent cursor and fold fade bound to the
+     list never showed — fourteen powers read as four with the rest clipped under the fold. */
+  ${D} .sx-fac__rail { display:flex !important; flex-direction:column !important; }
   ${D} .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; }
   ${D} .orr-fac-orbit { display:none !important; }
   ${D} .sx-fac__rows .sx-fac-row { padding-top:3px !important; padding-bottom:3px !important; }
+  /* a power's name is read whole, like a contract rung: at 260px the lane wraps the name onto a
+     second line rather than cutting "Meridian Trade Syndicate" mid-word */
+  ${D} .sx-fac__rows .sx-fac-row__name { white-space:normal !important; }
   /* the reading's head is one band: who holds the station on the left, your standing and their crest
      on the right; the standing scale runs the full width under it */
   ${D} .sx-fac-overview { display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:16px; align-items:end; padding-right:0 !important; }
@@ -2047,7 +2053,12 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
      cannot. The panel becomes the one scroll surface (the dp-frame__scroll contract its sibling
      tabs already carry), the left column takes its content height inside it, and the right column
      unpins its bottom edge so tape / purse / reading ride the same scroll instead of clipping. */
-  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
+  ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important;
+    /* the one scroll surface wears the same dissolved fold every tab's list does — without it the
+       case board's first line sliced mid-glyph at the viewport edge; the bottom pad lands the
+       fade on empty space once the scroll reaches its end */
+    -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important;
+    padding-bottom:24px !important; }
   ${D} .sx-ledger > .st-ledger { height:auto !important; min-height:100% !important; }
   ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; }
   /* the purse needs ~220px so its ring (radius = half its box less 60, as at 1280) clears NET · CR */
