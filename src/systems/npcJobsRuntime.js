@@ -4433,13 +4433,15 @@ export const npcJobsRuntime = {
       const pallasTarget = !claimedBeforeAdvance && this.helpers.traffic?.pallasWorkTarget?.(entry, entity);
       const physicalPose = physicalTarget?.workPose || entity;
       const holdingForArrival = tallyTarget ? (tallyTarget.blocked || tallyTarget.holdClock || (!tallyTarget.moving && !tallyTarget.reached))
-        : (pallasTarget || physicalTarget?.blocked || physicalTarget?.ready === false || physicalTarget)
-        && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
-        && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
-          && entry.worldRecordId === this._heliosStarterMinerRecordId)
-        && (physicalTarget.settled === false || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
-          || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
-            (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
+        : (pallasTarget || physicalTarget?.blocked || physicalTarget?.ready === false
+          || (physicalTarget
+            && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
+            && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
+              && entry.worldRecordId === this._heliosStarterMinerRecordId)
+            && (physicalTarget.settled === false
+              || Math.hypot(physicalPose.pos.x - physicalTarget.pos.x, physicalPose.pos.z - physicalTarget.pos.z) > physicalTarget.reach
+              || Math.hypot((physicalPose.vel?.x || 0) - (physicalTarget.vel?.x || 0),
+                (physicalPose.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8)));
       // SF-080: a queued berth wait is the same class of bounded physical hold — the hull waits
       // out the line at a real position, so the kernel clock waits with it (no work at distance).
       // Leased hulls keep their clock: their owner drives, we never gate a controller's route.

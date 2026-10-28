@@ -8,6 +8,8 @@ import { NPC_JOB_PHASE } from './npcJobs.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { makeShipEntitySpec } from './ships.js';
 import { STATION_CREW_ROLES } from '../economy/stationConditions.js';
+import { releaseTallyPause, tallyPassageTarget, isTallyPassageJob } from './tethysTallyPassage.js';
+import { TETHYS_TALLY, tallyMarks, tallyRouteDuration } from '../data/tethysTallyPassage.js';
 import { CERES_REFINERY_HAULER_SLOT_ID, CERES_SEAM_MINER_SLOT_ID, DOCK_RANGE, FREIGHTER_SHIP, MINER_FIELD_SPREAD_CAP, PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES, PASSENGER_LINER_INCIDENT_MAX_AGE_S, PASSENGER_LINER_INVALIDATED_CAP, PASSENGER_LINER_RECEIPT_CAP, TRADE_INTERVAL_S, TRAFFIC_ROLES, compactStableIds, factionHullFor, isWorldSiteTrafficFallbackRole, lawPresenceRole, liveEntity, occupationalJobKind, passengerLinerLegIds, passengerLinerServiceForSector, priorityCourierServiceForSector, setIntent, stableTrafficKey, stationIdentity, stationName } from './traffic.js';
 
 export const trafficJobOps = {
@@ -45,6 +47,8 @@ export const trafficJobOps = {
       const origin = this._stationForPriorityCourier(stations, priorityItinerary.originStationId);
       const destination = this._stationForPriorityCourier(stations, priorityItinerary.destinationStationId);
       if (!origin || !origin.pos || !destination || !destination.pos) return null;
+      const useTallyRoute = priorityItinerary.countRouteId === TETHYS_TALLY.id
+        && priorityItinerary.destinationStationId === TETHYS_TALLY.customsId;
       const manifest = ent && ent.data && ent.data.cargoManifest;
       if (!manifest || !Array.isArray(manifest.lines)) return null;
       return {
@@ -53,6 +57,7 @@ export const trafficJobOps = {
         speed: PRIORITY_COURIER_SERVICE.sprintSpeedWU,
         route: [
           { id: 'origin:' + stationIdentity(origin), pos: { x: origin.pos.x, z: origin.pos.z }, label: `${stationName(origin, 'Origin')} Berth` },
+          ...(useTallyRoute ? tallyMarks() : []),
           { id: 'dest:' + stationIdentity(destination), pos: { x: destination.pos.x, z: destination.pos.z }, label: `${stationName(destination, 'Destination')} Gate` },
         ],
         payload: {
@@ -61,6 +66,7 @@ export const trafficJobOps = {
             schema: PRIORITY_COURIER_JOB_SCHEMA,
             serviceId: PRIORITY_COURIER_SERVICE.id,
             legSeq: priorityItinerary.legSeq,
+            ...(useTallyRoute ? { tallyPassage: TETHYS_TALLY.id } : {}),
           },
         },
       };
@@ -230,8 +236,10 @@ export const trafficJobOps = {
     // its physical transit. Keep that observable work in the saved deadline rather than pretending
     // a boost removes dock work.
     const jobOverheadS = 2 + 8 + 3 + 4 + 6;
-    return departureAt + distance / PRIORITY_COURIER_SERVICE.sprintSpeedWU
-      + jobOverheadS + PRIORITY_COURIER_SERVICE.dueSlackS;
+    const travelS = destinationStationId === TETHYS_TALLY.customsId
+      ? tallyRouteDuration(origin.pos, destination.pos, PRIORITY_COURIER_SERVICE.sprintSpeedWU)
+      : distance / PRIORITY_COURIER_SERVICE.sprintSpeedWU;
+    return departureAt + travelS + jobOverheadS + PRIORITY_COURIER_SERVICE.dueSlackS;
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
@@ -242,6 +250,7 @@ export const trafficJobOps = {
     return {
       kind: PRIORITY_COURIER_ITINERARY_KIND,
       schema: PRIORITY_COURIER_SERVICE_SCHEMA,
+      ...(destinationStationId === TETHYS_TALLY.customsId ? { countRouteId: TETHYS_TALLY.id } : {}),
       serviceId: PRIORITY_COURIER_SERVICE.id,
       contactId: PRIORITY_COURIER_SERVICE.contactId,
       sectorId: PRIORITY_COURIER_SERVICE.sectorId,
@@ -268,6 +277,9 @@ export const trafficJobOps = {
   _priorityCourierStatus(entity, itinerary, jobEntry = null) {
     const job = jobEntry && jobEntry.job;
     if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
+    const passage = itinerary?.tallyPassage;
+    if (passage?.id === TETHYS_TALLY.id && passage.legSeq === itinerary.legSeq
+      && ['obstructed', 'unobserved'].includes(passage.reason)) return 'COUNT_HOLD';
     const escort = itinerary && itinerary.escort || {};
     const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
     const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
@@ -281,13 +293,14 @@ export const trafficJobOps = {
     const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
     const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
     const route = `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
-    const stateLabel = status === 'BERTH' ? 'BERTHED'
+    const countRoute = itinerary.countRouteId === TETHYS_TALLY.id;
+    const stateLabel = status === 'COUNT_HOLD' ? 'COUNT LANE HOLD' : status === 'BERTH' ? 'BERTHED'
       : status === 'INTERRUPTED' ? 'INTERRUPTED'
-      : status === 'LATE' ? 'LATE SPRINT'
-      : 'PRIORITY SPRINT';
+      : status === 'LATE' ? (countRoute ? 'LATE CUSTOMS RUN' : 'LATE SPRINT')
+      : countRoute ? 'CUSTOMS RUN' : 'PRIORITY SPRINT';
     entity.data.priorityCourierState = status;
     entity.data.trafficLabel = `SPAN-HOLD · ${stateLabel} · ${route}`;
-    entity.data.scanLabel = `${entity.data.trafficLabel} · OVERTAKE BURN`;
+    entity.data.scanLabel = `${entity.data.trafficLabel} · ${status === 'COUNT_HOLD' ? 'DISPUTED KEG · TITLE UNCHANGED' : countRoute ? 'SCAN AND COUNT ROUTE' : 'OVERTAKE BURN'}`;
     rec.itinerary = itinerary;
     return status;
   },
@@ -468,11 +481,17 @@ export const trafficJobOps = {
   },
 
   _advancePriorityCourierLeg(entity, rec, stations, itinerary) {
+    releaseTallyPause(this, entity);
     const nextOrigin = itinerary.destinationStationId;
     const nextDestination = itinerary.originStationId;
     const nextLegSeq = itinerary.legSeq + 1;
     const next = this._newPriorityCourierItinerary(stations, nextOrigin, nextDestination, nextLegSeq);
     if (!next) return false;
+    const passage2 = itinerary.tallyPassage;
+    if (passage2?.id === TETHYS_TALLY.id) next.previousTallyPassage = {
+      legSeq: itinerary.legSeq, reason: passage2.reason,
+      delayS: Number.isFinite(passage2.heldS) ? Math.max(0, passage2.heldS) : 0,
+    };
     entity.data.itinerary = next;
     const origin = this._stationForPriorityCourier(stations, nextOrigin);
     rec.targetId = origin ? origin.id : rec.targetId;

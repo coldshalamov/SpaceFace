@@ -1,3 +1,5 @@
+import { NPC_JOB_PHASE } from './npcJobs.js';
+import { isTallyPassageJob, tallyPassageTarget } from './tethysTallyPassage.js';
 import { normalizeWinnowRecovery } from '../world/vestaWinnowRecovery.js';
 import { normalizeCharonSupply, releaseCharonSupply } from '../world/charonSalvageSupply.js';
 // Row 413 extraction — methods moved verbatim out of traffic.js;
@@ -2510,6 +2512,12 @@ export const trafficCausalChainOps = {
         || marker.serviceId !== PRIORITY_COURIER_SERVICE.id
         || marker.legSeq !== priorityItinerary.legSeq
         || stationId !== priorityItinerary.destinationStationId) return false;
+      const entry = this._priorityCourierJobEntry(context.entity);
+      if (isTallyPassageJob(entry?.job)) {
+        const target = tallyPassageTarget(this, entry, context.entity);
+        if (entry.job.phase !== NPC_JOB_PHASE.UNLOAD || entry.job.routeIndex !== 4
+          || !target?.reached || target.blocked || !Number.isFinite(priorityItinerary.tallyPassage?.passedAt)) return false;
+      }
     }
 
     const manifest = intent.kind === 'hauler' && intent.payload && intent.payload.manifest;
