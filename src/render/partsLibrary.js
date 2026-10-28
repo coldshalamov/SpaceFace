@@ -16337,6 +16337,44 @@ function visibleProxyChainReachesOwner(proxy, owner) {
   return false;
 }
 
+/**
+ * A pool chunk only ever links the USE_INSTANCING variant of its (geometry, material) pair, and a
+ * promoted proxy stops drawing directly — so once two owners share a key behind the veil (the
+ * onboarding wreck exemplar plus the opening aftermath wreck), nothing links the PLAIN variant
+ * before lift. That plain forge-v1 program is shared with single-owner surfaces (Forge_bastion_
+ * gunmetal, Forge_ore_barge_paint, ...) and linked in flight for 1.9-3.0 s (perf lane oc1v26/27).
+ * Each chunk carries one direct-mesh child over a zero-length draw range view of the same
+ * attributes: every compile/census/draw walk that reaches the chunk also binds the plain program
+ * (and its shadow-depth twin), and the witness itself rasterizes nothing.
+ */
+function attachPoolChunkDirectVariantWitness(chunkMesh, pool) {
+  try {
+    const source = pool && pool.geometry;
+    const material = pool && pool.material;
+    if (!source || !material || !source.attributes) return null;
+    const view = new THREE.BufferGeometry();
+    for (const name of Object.keys(source.attributes)) view.setAttribute(name, source.attributes[name]);
+    if (source.index) view.setIndex(source.index);
+    for (const name of Object.keys(source.morphAttributes || {})) view.morphAttributes[name] = source.morphAttributes[name];
+    view.morphTargetsRelative = source.morphTargetsRelative === true;
+    view.setDrawRange(0, 0);
+    const witness = new THREE.Mesh(view, material);
+    witness.name = 'SF_PoolChunk_DirectVariantWitness';
+    witness.frustumCulled = false;
+    witness.castShadow = chunkMesh.castShadow;
+    witness.receiveShadow = chunkMesh.receiveShadow;
+    witness.layers.mask = chunkMesh.layers.mask;
+    witness.raycast = () => {};
+    witness.matrixAutoUpdate = false;
+    // Shares the pool's GPU buffers: never dispose this view (that would drop the shared attributes).
+    witness.userData = { spacefacePoolDirectVariantWitness: true };
+    chunkMesh.add(witness);
+    return witness;
+  } catch {
+    return null;
+  }
+}
+
 function createInstanceChunk(scene, pool, ordinal, options = {}) {
   const mesh = new THREE.InstancedMesh(pool.geometry, pool.material, INSTANCE_CHUNK_SIZE);
   mesh.name = `GLTFKit_InstancePool_${pool.label}_${ordinal}`;
@@ -16349,6 +16387,7 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
   mesh.userData.spacefaceInstancePoolChunk = ordinal;
+  attachPoolChunkDirectVariantWitness(mesh, pool);
   stampOpeningSubmissionPackage(mesh, {
     schema: 'spaceface.authoredInstancePoolProducer.v1',
     producer: 'parts-library-authored-instance-pool',
