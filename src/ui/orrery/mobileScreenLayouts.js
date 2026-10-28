@@ -151,6 +151,10 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sxb-tape :is(.sxb-event__badge, .sxb-event__title) { font-size:12px !important; letter-spacing:.14em !important; white-space:nowrap !important; }
   ${B} .sxb-tape .sxb-event__body { font-size:12px !important; line-height:15px !important; opacity:.74; white-space:normal !important;
     overflow:visible !important; text-overflow:clip !important; max-width:none !important; }
+  /* The hull reading is the mechanic's whole sentence (a scar, a carried-over hull, a ledger recap can run
+     three or four lines at 360-390 wide): it reads whole at 12px instead of clipping at the two-line clamp.
+     The station event and ledger cards beside it keep their two-line swipe strip. */
+  ${B} .sxb-tape > .sxb-berth__mechanic:not([hidden]) { -webkit-line-clamp:none; max-height:none; }
   /* Bay screen and station wire: one swipeable two-line strip under the next step, like the tape, instead of two
      full-width cards (~170px at 390x844). The second sign peeks in from the right. */
   ${B} .sxb-signs { grid-area:signs; display:flex !important; flex-wrap:nowrap !important; gap:12px !important; min-width:0 !important;
