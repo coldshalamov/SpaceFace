@@ -1,3 +1,4 @@
+import { isTallyCourier, tallyPauseId } from '../data/tethysTallyPassage.js';
 import {claimsTallyAssessor,canPromoteTallyAssessor,decorateTallyAssessorSpec} from './tallyThreeIdentity.js';
 // LAST_ARGUMENT_INTEGRATION_V1
 
@@ -476,6 +477,14 @@ function leanIdentityData(entity) {
       if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
     }
   }
+  // Kess retains the same finite service, manifest and count-lane memory on promotion.
+  if (isTallyCourier(entity)) {
+    for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'namedLaneContactId',
+      'name', 'callsign', 'named', 'durable', 'trafficLabel', 'scanLabel', 'priorityCourierState',
+      'abstractIntent', 'jobKind', 'jobPhase', 'jobProgress']) {
+      if (Object.hasOwn(d, key)) out[key] = cloneTree(d[key]);
+    }
+  }
   if (isAnvilWorker(entity)) {
     for (const key of ['itinerary', 'cargoManifest', 'freightDockSeq', 'anvilSlingWitness',
       'name', 'named', 'durable', 'propulsionRuntime']) {
@@ -583,6 +592,16 @@ export function catchUpFarRecord(rec, simTime, table = null) {
 export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   const table = ensureFarActorTable(state);
   const rec = snapshotActor(entity, simTime);
+  // Physics has exported the current pose before residency shelves this hull. Anchor the
+  // owned pause to that snapshot, not last tick's producer position or the station chord.
+  const pauseId = tallyPauseId(entity);
+  if (pauseId && entity.data.abstractIntent?.routeId === pauseId
+    && Number.isFinite(entity.pos?.x) && Number.isFinite(entity.pos?.z)) {
+    rec.intent = { kind: 'travel', routeId: pauseId, startT: simTime, endT: simTime + 1,
+      parameters: { from: { ...rec.pos }, to: { ...rec.pos } } };
+    rec.data.abstractIntent = cloneTree(rec.intent);
+  }
+
   if (isAnvilWorker(entity)) {
     rec.physicsBody = cloneTree(entity.physicsBody);
     for (const key of ['armorHp', 'armorMax', 'armorFlat', 'cap', 'capMax', 'lastDamageT']) {
