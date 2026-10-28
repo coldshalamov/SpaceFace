@@ -1,6 +1,7 @@
 import { pallasShiftOwnsMovement } from '../data/pallasWorkShift.js';
 import { pallasSeamTarget, pallasSeamMeasurement, stepPallasSeamCut, forgetPallasSeamLife } from './pallasSeamWork.js';
 import { pallasSeamRole, pallasSeamRecordRole } from '../data/pallasSeamWork.js';
+import { heliosClaimAwaitingWitness } from './heliosClaimOpening.js';
 import { orchardTowIntercept } from './orchardTowIntercept.js';
 import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';

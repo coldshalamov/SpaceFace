@@ -63,6 +63,7 @@ import {
 } from '../core/presentationAdmission.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
 import { notePacedFrameSpend } from './decodeTaskBudget.js';
+import { attachNestBayIndicators } from './nestBayVisuals.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 

@@ -781,6 +781,26 @@ export const understoryGardens = {
     return Number(prey.mass);
   },
 
+  /** Legacy persistent gardens receive only missing visual identity on real spawn, before queued mesh build. */
+  _adoptGardenVisual(e) {
+    if (!e || e.alive === false || e.type !== 'garden' || e.factionId !== FACTION_ID
+      || this.state.entities.get(e.id) !== e || e.flags?.persistent !== true
+      || e.data?.understoryGarden !== true || e.data.authoredUnderstoryReceiver === true) return false;
+    const d = e.data, body = e.physicsBody;
+    // Adding presentation must not adopt a new skin on a later fixed-radius Continue.
+    // Respect explicit custom geometry/skin choices and the nonphysical false sentinel.
+    if (d.compoundSkin === true || d.collisionProxy != null
+      || (body && (typeof body !== 'object' || body.useMeasuredSkin === true
+        || body.collisionProxyManifest || (body.shape && body.shape !== 'ball')))) return false;
+    if (['placeId', 'landmarkGlb', 'archetypeGlb', 'defId', 'assetRef', 'packagedPropFile',
+      'modelId', 'modelUrl', 'visualId', 'visualType', 'assetId', 'claimSpecId', 'claimOwned', 'storyPropKind'].some(key => d[key] != null)) return false;
+    if (body !== false) e.physicsBody = { ...(body || {}), useMeasuredSkin: false };
+    d.placeId = 'place_dead_hulk'; d.poi = true; d.placeTargetRadius = UNDERSTORY_RECEIVER.hullDrawRadius;
+    // Presentation follows the unchanged legacy collision radius; never reset growth or run facts.
+    d.gardenRadius = Math.max(0, Number(e.radius) || stageForBiomass(d.gardenBiomass).radius);
+    return true;
+  },
+
   /** Existing body/model owners bound occupancy; core/native spawn is not a placement veto. */
   _receiverSiteClear(pos, intendedPrey = null) {
     // Released hull's measured skin reaches 73.13 WU; 76 is a conservative fixed-core envelope.
