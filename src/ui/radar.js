@@ -65,7 +65,9 @@ export const SWARM_DENSITY_THRESHOLD = 8;
  * display layer strips it here and the bare number rides the same scale as the RANGE label.
  */
 function dialDistance(worldUnits) {
-  return String(formatRadarDistance(worldUnits)).replace(/\s+WU$/i, '');
+  // The shared formatter now emits `u` (owner 2026-10-27); strip either unit spelling so the
+  // dial prints a bare number on the RANGE scale, never "457 U".
+  return String(formatRadarDistance(worldUnits)).replace(/\s+(?:wu|u)$/i, '');
 }
 
 /** Clock bearing of the nearest hostile glyph that this draw actually painted. */
@@ -1105,7 +1107,9 @@ function drawThreatRing(g, metrics, hostileCount, now, reducedMotion) {
 
 function waypointLabel(waypoint) {
   const raw = waypoint && (waypoint.sectorName || waypoint.label || waypoint.mapLabel || 'OBJECTIVE');
-  const cleaned = String(raw || '').replace(/\s+\d+\s*(?:wu|WU)?\b/g, '').trim();
+  // Producers append a distance with a unit ("Beacon 419 u"). Require the unit in the strip —
+  // the old optional group also swallowed a bare " 419" and glued the neighbours ("Beaconu").
+  const cleaned = String(raw || '').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
   return sanitizeMapLabel(cleaned || 'OBJECTIVE', 20);
 }
 

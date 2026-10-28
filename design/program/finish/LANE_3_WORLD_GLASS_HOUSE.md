@@ -114,7 +114,15 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   entirely inside Lane 1's boot/render pipeline** (media hold → main.js eval/boot → serial shader
   admission); filed to Lane 1 Inbox with the file:line tape. Also repaired stale
   check-player-facing-labels (pins the shared commodityDisplayName helper).
-- **Row 429 AL-HUD-1** — no internal ids on screen (`ZONE_CERES_DERELICT`), no Overhead/Circuits buttons over the target card, no overlapping shipworks list text.
+- **Row 429 AL-HUD-1 — DONE.** Bench-verified at 1280×720 + 1920×1080 with `--walk`: no internal
+  ids reach the screen (sector-law attacker id + radar label glue + wreck weak-point fixed;
+  targetDisplayName path everywhere else); Overhead/Circuits tape no longer overlaps the target
+  card (compact tape was fixed-positioned inside contain:layout dock — now static flow);
+  shipworks clean both sizes; one news line during tutorial already gated. 9/9 tests incl. new
+  race-tape regression. Leftover ORRERY list: expanded radar occludes target card at 1080p
+  (modal-intent? flag), shipworks sale-list 4th row clips at 720p edge, Ctrl+K modal keeps
+  centre hits unreachable (intended?), waypoint label carries fixture distance (cosmetic).
+  Foreign `hud-contact-roster-visibility` still 2-red (projection-count contract — Lane 2's).
 - **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.
 - **Row 459 RC-VIGNETTES** — lived vignettes worth meeting.
 - **Row 553 ATT-E01** — onboarding rail texture, tier-0 life, ambient traffic.
