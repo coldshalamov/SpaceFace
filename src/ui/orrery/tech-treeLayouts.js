@@ -40,6 +40,9 @@ ${T} .con-curve__sep { white-space:pre; }
   ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; margin-bottom:-1.35em; }
   ${T} .con-curve { overflow:visible !important; } /* the hung line must not be clipped by the head's own box */
   ${T} .con-curve__sep { display:none; }
+  /* while the ladder is open it lists every rung, so the head folds back to one line: the fly anchors
+     at the curve box's bottom and would otherwise land on the hung rung and half-fade it */
+  ${T} .con-curve.is-open .con-curve__rungs { height:1.35em; margin-bottom:0; }
 }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key::after { color:rgb(${WARM} / .9); }
