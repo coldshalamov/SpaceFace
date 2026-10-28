@@ -20,8 +20,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 |---|---|---|---|
 | D261 | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 |
 | D267 | Flight HUD tests red on clean master (`test/hud-contact-roster-visibility.test.mjs` 2 of 7) | HUD contact roster | packet G1 |
-| D265 | Charon authored salvor hull absent on sector enter (seed 4242) | `charon_colony_salvor` slot; `src/systems/traffic.js`, `src/world/charonSalvageSupply.js` | packet W0 |
-| D266 | Miner research pacing red in the 90-minute prospector cohort | `test/m3-career-cohorts.test.mjs`, `src/data/researchGrants.js` | packet W0 |
+| D266 | Miner research pacing red in the 90-minute prospector cohort | `test/m3-career-cohorts.test.mjs`, `src/data/researchGrants.js` | packet W0 — in flight (beat-0 skim trace) |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
 
 ## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)
@@ -52,6 +51,13 @@ needed to reach the count; all recoverable under `design/archive/program/`.
 
 ### W0 — Green the world floor
 D265 and D266 (above). Done when both tests are green on seed 4242.
+- **D265 DONE 1406c221a39** — the salvor already flew a real job; the red was a committed
+  duplicate import making `test/lived-frontier-pockets.test.mjs` a SyntaxError. 28/28 green.
+- **D266 in flight** — implementer tracing why `story:skimResolved` never fires on the plain
+  mine→dock route (beat 0 `cold_start` = mine→skim→dock; 4 RP + 400 cr stays dark).
+- Pipeline live: audit split wrote 303 packets (669k lines); wave 1 = 12 packets on 4
+  launchers (2 Grok + 2 Gemini, window-free direct-node invocation — no .cmd shims, real-user
+  env). Codex day-one batch of 7 LANDED_REVIEW rows running in background.
 
 ### Wave W1 — the first hour is gold (M1)
 Rows are the spec (`build_map.md` §31–§32; read each row's prose before briefing):
