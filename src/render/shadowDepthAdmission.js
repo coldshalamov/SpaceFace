@@ -45,7 +45,7 @@ function copyTransformFields(dst, src) {
   }
 }
 
-const ADMISSION_SHADOW_CAMERA_KEYS = ['left', 'right', 'top', 'bottom', 'near', 'far', 'zoom'];
+const ADMISSION_SHADOW_CAMERA_KEYS = ['left', 'right', 'top', 'bottom', 'near', 'far', 'zoom', 'fov', 'aspect'];
 
 function syncAdmissionTransform(staged, source) {
   if (typeof source.getWorldPosition === 'function'
@@ -64,12 +64,14 @@ function syncAdmissionShadow(cloneShadow, sourceShadow) {
   if (!cloneShadow || !sourceShadow) return;
   if (typeof cloneShadow.copy === 'function') {
     cloneShadow.copy(sourceShadow);
+    // SpotLightShadow.copy in the vendored r184 copies focus but not aspect.
+    if (typeof sourceShadow.aspect === 'number') cloneShadow.aspect = sourceShadow.aspect;
     if (cloneShadow.camera && typeof cloneShadow.camera.updateProjectionMatrix === 'function') {
       cloneShadow.camera.updateProjectionMatrix();
     }
     return;
   }
-  for (const key of ['bias', 'normalBias', 'radius', 'blurSamples', 'intensity']) {
+  for (const key of ['bias', 'normalBias', 'radius', 'blurSamples', 'intensity', 'focus', 'aspect']) {
     if (typeof sourceShadow[key] === 'number') cloneShadow[key] = sourceShadow[key];
   }
   if (sourceShadow.mapSize && cloneShadow.mapSize) {
@@ -87,7 +89,10 @@ function syncAdmissionShadow(cloneShadow, sourceShadow) {
 }
 
 function admissionKeyLight(renderer, source, THREE) {
-  if (!renderer || !source || typeof THREE.DirectionalLight !== 'function') return null;
+  if (!renderer || !source) return null;
+  const LightType = source.isSpotLight ? THREE.SpotLight
+    : source.isPointLight ? THREE.PointLight : THREE.DirectionalLight;
+  if (typeof LightType !== 'function') return null;
   let perRenderer = _admissionKeyLights.get(renderer);
   if (!perRenderer) {
     perRenderer = new Map();
@@ -95,13 +100,18 @@ function admissionKeyLight(renderer, source, THREE) {
   }
   let staged = perRenderer.get(source);
   if (!staged) {
-    staged = new THREE.DirectionalLight();
+    // Local NOCTURNE shadows can be active while the solar key is unshadowed. A directional
+    // stand-in would compile under the wrong numDirLightShadows/numSpotLightShadows census.
+    staged = new LightType();
     staged.name = 'SF_AdmissionShadowDepthKey';
     perRenderer.set(source, staged);
   }
   if (staged.color && source.color && typeof staged.color.copy === 'function') staged.color.copy(source.color);
   else if (source.color !== undefined) staged.color = source.color;
   if (typeof source.intensity === 'number') staged.intensity = source.intensity;
+  for (const key of ['distance', 'angle', 'penumbra', 'decay']) {
+    if (typeof source[key] === 'number') staged[key] = source[key];
+  }
   if (typeof source.visible === 'boolean') staged.visible = source.visible;
   syncAdmissionTransform(staged, source);
   staged.castShadow = true;
@@ -1041,6 +1051,13 @@ export function createShadowDepthStagingSession(options = {}) {
   for (const sceneLight of stagedLights) {
     const clone = typeof sceneLight.clone === 'function' ? sceneLight.clone() : null;
     if (!clone) continue;
+    // The other lights contribute their structural census, not additional depth passes. Their
+    // cloned maps must neither consume the live owner's pending request nor allocate a fresh
+    // map for every staging session. Keep castShadow stable for the exact shader key.
+    if (clone.shadow) {
+      clone.shadow.autoUpdate = false;
+      clone.shadow.needsUpdate = false;
+    }
     if (sceneLight.target && sceneLight.target.isObject3D === true && clone.target) {
       // clone() aliases the source target — give the clone its own so the live
       // target object never leaves the scene across presents.

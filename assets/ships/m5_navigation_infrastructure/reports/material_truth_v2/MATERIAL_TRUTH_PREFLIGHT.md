@@ -10,7 +10,7 @@ accepted evidence are preserved.
 ## 0. Scope and authority
 
 - Repair is bounded by the causal review of 2026-09-10
-  (`design/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md`), which returned the
+  (`design/archive/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md`), which returned the
   navigation buoy with three named defects and required a diagnostic-close capture lane.
 - Frozen identity preserved: asset id `SF_PLACE_HELIOS_NAV_SPIRE`, root `SF_M4_HELIOS_NAV_SPIRE_ROOT`,
   exact runtime envelope (glTF min `[-1.4, -5.0, -1.4]`, max `[1.575, 10.3, 1.4]`), non-mesh

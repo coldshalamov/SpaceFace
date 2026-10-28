@@ -83,7 +83,7 @@ scaffolding that should stay unopened until a measurement points at one.
 > These are RESERVED identities, not admitted work. Before implementing each, admit the parent and
 > its smallest leaves into `program-queue.json` and create its active packet.
 >
-> Hard rule from `design/PERF_BUDGET.md`: never pay for performance by lowering render scale,
+> Hard rule from `design/archive/perf/PERF_BUDGET.md`: never pay for performance by lowering render scale,
 > effects, shadows, particles, asset detail or content density. Optimize invisible work. Every change
 > needs a matched before/after on the same scene and identical visible pixels.
 >

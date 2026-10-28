@@ -60,7 +60,7 @@ starter ship could not be loaded"). It is printed on its own line and is not a g
 Exit 4 is used only when no arena FAILed. Exit 2 is INCOMPLETE. Exit 0 only when every arena's
 verdict is PASS. An INCOMPLETE verdict lists each UNKNOWN check that caused it. `--gate=active` or `--gate=idle` runs that one pass; a bare
 `--gate` still runs both. `--evidence` copies the verdict and contact sheet into
-`design/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
+`design/archive/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
 review. `--prune-frames` deletes those frames; it is off unless passed.
 `--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
 screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
@@ -83,7 +83,7 @@ The harness (`scripts/player-truth/`) walks the real public route in a rendered 
 trusted keyboard/mouse input (idle first, then thrust/yaw probes, then a simple fighter or flyer),
 samples live telemetry through the observer-only `src/testing/playerTruth/reader.js`, and writes
 `scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
-`--evidence` copies the compact verdict and sheet into `design/program/player-truth/<label>/`.
+`--evidence` copies the compact verdict and sheet into `design/archive/program/player-truth/<label>/`.
 
 Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
 (every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the

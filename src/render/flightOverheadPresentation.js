@@ -13,10 +13,14 @@
 import * as THREE from 'three';
 import { globalShipMicroMotion } from './shipMicroMotion.js';
 import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
+import { nocturneForScene } from './nocturne/bridge.js';
 import { sampleBellThermal, writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 
 export function createFlightOverheadPresentation(scene) {
-  const light = new THREE.PointLight(0xfff1e0, 0, 26, 2);
+  const nocturne = nocturneForScene(scene);
+  const light = nocturne
+    ? nocturne.createLight('engine:cooldown', 'point', { color: 0xfff1e0, range: 26, priority: 1 })
+    : new THREE.PointLight(0xfff1e0, 0, 26, 2);
   light.name = 'nozzle-cooldown-light';
   light.castShadow = false;
   // Pool-light contract (vfx.js _initEventLights): three bakes the visible point-light COUNT into
@@ -25,7 +29,7 @@ export function createFlightOverheadPresentation(scene) {
   // flashes via intensity only — it must also exist before the opening compile, so the renderer
   // mounts this module eagerly rather than on first slipstream activity.
   light.visible = true;
-  if (scene && typeof scene.add === 'function') {
+  if (!nocturne && scene && typeof scene.add === 'function') {
     scene.add(light);
     // Light-set mutation — the mount changes the rendered light census, so the
     // shadow memo must not serve the pre-mount signature.
@@ -68,6 +72,7 @@ export function createFlightOverheadPresentation(scene) {
     },
 
     dispose() {
+      if (nocturne) { light.dispose(); return; }
       // Light-set mutation — keep the shadow census memo honest on teardown.
       noteShadowCensusLightMutation();
       if (light.parent) light.parent.remove(light);

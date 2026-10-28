@@ -1,7 +1,7 @@
 <!-- LIFETIME: DURABLE -->
 # SpaceFace Performance Audit & Enhancement Playbook
 
-Current execution: [real-game campaign](../design/program/PERF_2026_10_14.md).
+Current execution: [real-game campaign](../design/archive/perf/PERF_2026_10_14.md).
 The thresholds below are diagnostic prompts. Lowering default resolution, texture fidelity,
 bloom, shadows, particles or population is not an optimization accepted by the current
 same-picture contract. Separate callback cadence, world submission and simulation; an

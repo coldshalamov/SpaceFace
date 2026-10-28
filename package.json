@@ -8,6 +8,10 @@
     "node": ">=22.12.0 <25"
   },
   "scripts": {
+    "check:nocturne": "node scripts/check-nocturne.mjs",
+    "check:nocturne:authoring": "node scripts/check-nocturne-authoring.mjs",
+    "check:nocturne:gameplay": "node scripts/check-nocturne-gameplay.mjs",
+    "bench:nocturne": "node scripts/nocturne-director-bench.mjs",
     "check:aftermath-lifecycle": "node --experimental-vm-modules scripts/test-aftermath-lifecycle.mjs",
     "check:ceres-furnace:fauna-blast": "node --experimental-vm-modules scripts/test-furnace-fauna-blast.mjs",
     "check:ceres-furnace:settlement": "node --experimental-vm-modules scripts/test-furnace-settlement.mjs",

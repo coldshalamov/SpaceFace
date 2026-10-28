@@ -28,7 +28,7 @@ All paths below refer to the pinned commit. Full source links and exact hashes a
 | `src/combat/subsystems.js` | Next-tick subsystem disable/restore and attachment break behavior | Later transport clamp can use existing combat ownership |
 | `design/program/roadmap/active/PQ-148.md` | Physical cargo, named owner/destination, volatility and smuggling scope | Avoid duplicate cargo programme |
 | `design/program/roadmap/active/PQ-152.md` | Physical multi-solution set pieces and failure mutation scope | Admit this as a bounded instance, not a parallel mission plan |
-| `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md` | Newer asset-first UI authority and three-anchor/Power Rail constraints | Reconcile new art with approved hardware kit |
+| `design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md` | Newer asset-first UI authority and three-anchor/Power Rail constraints | Reconcile new art with approved hardware kit |
 
 Registry membership and an authored plan are not proof of a good player experience. The source audit establishes reuse opportunities and specific implementation contracts; the feature’s real-route and human acceptance remain open.
 

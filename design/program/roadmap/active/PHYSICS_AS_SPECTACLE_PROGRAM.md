@@ -375,7 +375,7 @@ and generated indexes remain integrator-owned.
   LOD, and residency deltas before implementation and supplies a matched floor/dense result.
 - G6 uses three matched floor/dense pairs in hardware Browser and Electron at 1920×1080 defaults
   after warmup. The user-requested 16.80 ms Intel-iGPU p95 is an additional route-specific guardrail,
-  not a relaxation of [`PERF_BUDGET.md`](../../../PERF_BUDGET.md): shipping desktop target-profile
+  not a relaxation of [`PERF_BUDGET.md`](../../../archive/perf/PERF_BUDGET.md): shipping desktop target-profile
   p95 remains **≤16.7 ms**. Report and obey both applicable thresholds, plus p99/hitch tails, pool
   bounds, residency, and image quality; when both apply to one run, the stricter 16.7 ms target wins.
 - Pay for spectacle through batching, instancing, LOD/HLOD, culling, cadence, admission, compression,
@@ -481,7 +481,7 @@ Return `BLOCKED` or a shared-change request when:
 - [`../../../../docs/visual-assets/README.md`](../../../../docs/visual-assets/README.md) and
   [`../../../../docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`](../../../../docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md)
   — authored visual routing and acceptance.
-- [`../../../PERF_BUDGET.md`](../../../PERF_BUDGET.md) — target/floor profiles and matched evidence.
+- [`../../../PERF_BUDGET.md`](../../../archive/perf/PERF_BUDGET.md) — target/floor profiles and matched evidence.
 - [`../../../../docs/VALIDATION_WORKFLOW.md`](../../../../docs/VALIDATION_WORKFLOW.md) — deterministic
   lab and broker-managed Browser/Electron evidence.
 - [`../../../../build_map.md`](../../../../build_map.md) — stable program front door.

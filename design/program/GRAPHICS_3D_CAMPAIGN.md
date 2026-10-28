@@ -98,7 +98,7 @@ Do not start quality presets, Worker/WebGPU, or Hitch polish in this campaign.
 
 ## 5. Performance while modeling
 
-Hold `design/PERF_BUDGET.md`. Default bloom/shadows/particles stay on. Do not “optimize”
+Hold `design/archive/perf/PERF_BUDGET.md`. Default bloom/shadows/particles stay on. Do not “optimize”
 by making the new mesh a worse picture.
 
 New bodies: one skin, holes cut in, join by material on export, few materials (about

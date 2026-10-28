@@ -338,7 +338,7 @@ Performance must be smooth on target hardware without lowering the intended pres
 representative player routes, identify the owning CPU/GPU/memory/I/O path, and use structural fixes:
 precompile/warm-up, amortization, pooling, caching, allocation reduction, batching/instancing,
 culling/LOD/residency, cadence control, and frame pacing. Attribute UI/compositor cost before changing
-visible treatment. Current thresholds, route duration, and evidence belong in `design/PERF_BUDGET.md`
+visible treatment. Current thresholds, route duration, and evidence belong in `design/archive/perf/PERF_BUDGET.md`
 and live probes rather than this GDD.
 
 ## 11. Economy & progression (mostly surfacing, not new sim)

@@ -1,6 +1,6 @@
 # `src/ui/kit/` — the frontend kit's JS
 
-Authority: `design/frontend/direction/DIRECTION_SHEET.md`, then `design/frontend/direction/KIT_SPEC.md`.
+Authority: `design/archive/frontend-direction/DIRECTION_SHEET.md`, then `design/archive/frontend-direction/KIT_SPEC.md`.
 The CSS half is `styles/kit.css` (linked last in `index.html`). Screens import from `./index.js`.
 
 | Module | Spec | What it does |

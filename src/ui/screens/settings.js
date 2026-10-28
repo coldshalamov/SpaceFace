@@ -931,6 +931,12 @@ export const settingsScreen = {
       // (the pooled contact shadow carries grounding); on is an opt-in at a denser map.
       // Live-applied.
       rowToggle('Sun shadows (ships/rocks/stations)', () => vd.shadows !== false, (v) => this._set(ctx, 'video', 'shadows', v));
+      rowToggle('Cinematic lighting', () => vd.nocturne !== false, (v) => this._set(ctx, 'video', 'nocturne', v));
+      rowToggle('Local light shadows', () => vd.nocturneShadows !== false, (v) => this._set(ctx, 'video', 'nocturneShadows', v));
+      rowToggle('Volumetric atmosphere', () => vd.nocturneAtmosphere !== false, (v) => this._set(ctx, 'video', 'nocturneAtmosphere', v));
+      rowSelect('Lighting quality', () => vd.nocturneQuality || 'auto',
+        [['auto', 'Automatic'], ['integrated', 'Performance'], ['balanced', 'Balanced'], ['high', 'High quality']],
+        (v) => this._set(ctx, 'video', 'nocturneQuality', v));
       rowSlider('Bloom strength', () => {
         let v = vd.bloomStrength != null ? vd.bloomStrength : DEFAULT_BLOOM_STRENGTH;
         if (v > 1) v *= 0.5;

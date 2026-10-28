@@ -10,7 +10,7 @@
     "sidecar": "src/story/campaign47a/embodiedMissions.js",
     "commsCite": "src/story/campaign47a/embodiedDialogue.js",
     "notTheOpener": "docs/worldbuilding/sheets/chapters/B3.md",
-    "liveSettle": "design/program/roadmap/receipts/PQ-032.00-REPORT.md",
+    "liveSettle": "design/archive/program/roadmap/receipts/PQ-032.00-REPORT.md",
     "liveMissionType": "tow_recovery",
     "authoredSetPieceId": "long_tow",
     "barksCite": "src/data/barks.js",

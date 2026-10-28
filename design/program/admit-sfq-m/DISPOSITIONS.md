@@ -1,6 +1,6 @@
 # ADMIT-SFQ-M — dispositions for the 36 SFQ-M mission briefs
 
-Build-map row 287. Catalog: `design/finish-expansion-2026-09/missions/M01.md` … `M36.md`.
+Build-map row 287. Catalog: `design/archive/finish-expansion-2026-09/missions/M01.md` … `M36.md`.
 Branch `codex/mission-briefs`. The integrator moves these onto the build map.
 
 Legend: **TRUE** = already landed, evidence named · **BUILT** = built on this branch ·

@@ -26,7 +26,7 @@ Do not broadly read or search:
 ```text
 .campaign/  .devshots/  build/  dist/  terminals/  agent-tools/
 advisor-artifacts/  scratch/  .tmp*/  .grok-scratch/  .zcode/  .serena/
-design/_ARCHIVE/  design/revamp/_history/  design/production/  design/graphics-sprints/  docs/handoffs/
+design/_ARCHIVE/  design/revamp/_history/  design/production/  design/graphics-sprints/  docs/archive/handoffs/
 skills/  assets/**/evidence/  assets/**/revamp-evidence/  assets/**/source/reference/
 ```
 
@@ -46,7 +46,7 @@ rg -n --hidden `
   --glob '!scratch/**' --glob '!.tmp*/**' --glob '!.zcode/**' --glob '!.serena/**' `
   --glob '!design/_ARCHIVE/**' --glob '!design/revamp/_history/**' `
   --glob '!design/production/**' --glob '!design/graphics-sprints/**' `
-  --glob '!docs/handoffs/**' --glob '!skills/**' `
+  --glob '!docs/archive/handoffs/**' --glob '!skills/**' `
   --glob '!assets/**/evidence/**' --glob '!assets/**/revamp-evidence/**' `
   --glob '!assets/**/source/reference/**' `
   "PATTERN" AGENTS.md ARCHITECTURE.md README.md package.json src scripts test design docs assets styles tools electron schemas

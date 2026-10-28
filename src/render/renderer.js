@@ -313,6 +313,8 @@ import {
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
 import { HeadlightPool } from './headlights.js';
+import { NocturneRuntime } from './nocturne/runtime.js';
+import { prepareNocturneShadowCamera } from './nocturne/shadows.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
@@ -668,8 +670,8 @@ async function driveCompileShadowDepthPipelines(depthOpts, yieldStep) {
         step = iterator.next();
       } catch (driveError) {
         closeCookStepsIter(iterator);
-        noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive');
-        laneWarn(typeof state !== 'undefined' ? state : this?.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
+        noteLaneFault(depthOpts && depthOpts.state, 'depthPipelineDrive');
+        laneWarn(depthOpts && depthOpts.state, 'depthPipelineDrive', '[render] shadow-depth pipeline drive failed; degrading to sync twin', driveError);
         const degraded = runCookSyncTwin('compile-shadow-depth-pipelines',
           () => compileShadowDepthPipelines(depthOpts),
           { skipped: true, reason: 'drive-fault', subjects: 0, aborted: true });
@@ -10537,6 +10539,7 @@ export function publishFirstPresentGpuReady(owner, lifecycle) {
 
 const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'scene', 'renderer', 'camera', 'meshes', 'cameraCtrl', 'vf', 'viewport', 'spaceBg', 'envMap',
+  'nocturne', 'headlights',
   'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
   'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
   'touchSubjectExactTarget',
@@ -10853,8 +10856,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeBolusView(owner, { disposeGpu });
   disposeMarrowCone(owner, { disposeGpu });
+  if (owner._nocturne) {
+    owner._nocturne.dispose({ disposeGpu });
+    owner._nocturne = null;
+  }
   if (owner._headlights) {
-    owner._headlights.dispose();
+    owner._headlights.dispose({ disposeGpu });
     owner._headlights = null;
   }
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
@@ -11778,6 +11785,14 @@ export const render = {
     // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
     const gpu = detectGpu(renderer);
     state.render.gpu = gpu;
+    // Mount the complete fixed local-light census before material and shadow admission.
+    // Phones stay on the legacy light owners: NOCTURNE's per-source budget was authored for
+    // desktop GPUs; the integrated-tier video defaults already read nocturne:false the same way.
+    if (!isMobileRenderContext()) {
+      this._nocturne = new NocturneRuntime({ scene, renderer, state,
+        headlights: this._headlights, gpu, bus });
+      state.render.nocturne = this._nocturne;
+    }
     // Shadows stay opt-in on every tier (owner report 2026-09-21: sun shadow maps read as crawling
     // clumps). The texel-snapped 2048 pass (assessment packet B3) improves the opt-in look; the
     // measured on-screen gain at the chase camera was too small to override that ruling by default.
@@ -12130,6 +12145,8 @@ export const render = {
             this._shadowMapDirty = true;
             this._shadowRefreshScheduled = false;
             this._activeShadowCamera = null;
+            this._nocturne?.director.invalidate();
+            this._nocturne?.atmosphere?.rebuild();
             // Refill context-derived background/planet render targets in place. Their visible mesh and
             // texture identities stay stable; no old-context object is disposed through the new GL.
             if (this.spaceBg && typeof this.spaceBg.onContextRestore === 'function') this.spaceBg.onContextRestore();
@@ -12207,18 +12224,19 @@ export const render = {
             // draw (~12 s of synchronous links inside bloomScene).
             const restoreAdmissionShadows = armAdmissionShadows({
               renderer,
-              light: this._keyLight,
-              enabled: this._shadowSettingOn === true,
+              light: this._shadowDepthLight(),
+              enabled: this._shadowDepthEnabled(),
             });
             try {
               // Prime the shadow map and the casters' depth programs first: the color program key
               // carries numDirLightShadows, which stays 0 until the light owns a map again.
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
-                light: this._keyLight,
+                light: this._shadowDepthLight(),
                 camera: cam.obj,
                 subjects: [scene],
-                forceEnable: this._shadowSettingOn === true,
+                forceEnable: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -12483,11 +12501,12 @@ export const render = {
               .filter((root) => root);
             if (depthSubjects.length > 0) {
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
-                light: this._keyLight,
+                light: this._shadowDepthLight(),
                 camera: this.cam && this.cam.obj,
                 subjects: depthSubjects,
-                forceEnable: this._shadowSettingOn === true,
+                forceEnable: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -12628,7 +12647,7 @@ export const render = {
       },
       // Mirrors the arm's own feasibility gate (shadow setting on + key light live)
       // so the mint's withhold decision and this queue's landing agree.
-      shadowStageGate: () => this._shadowSettingOn === true
+      shadowStageGate: () => this._shadowDepthEnabled()
         && !!(this.renderer && this.scene && this._keyLight),
     });
     this._entityFrame = createRenderEntityFrame();
@@ -12711,6 +12730,7 @@ export const render = {
       // Seed the CAS gate at boot — a below-res first frame must not wait for a resize.
       const disp = displayPixelFootprint();
       this.bloom.setSize(drawSize.x, drawSize.y, disp.x, disp.y);
+      this._nocturne?.attachPost(this.bloom);
     } catch (err) {
       console.warn('[render] bloom unavailable, falling back:', err);
       this.bloom = null;
@@ -13508,7 +13528,7 @@ export const render = {
       });
     };
     const openingStampContext = () => `${state.render.admissionRunGeneration}:${state.contextRestoreSeq || 0}`
-      + `:${this._envMap?.uuid || ''}:${this._shadowSettingOn === true}:${this._selectPostRoute()}`;
+      + `:${this._envMap?.uuid || ''}:${this._shadowDepthEnabled()}:${this._selectPostRoute()}`;
     const rememberOpeningPreparedLeaves = (root) => {
       if (state.mode !== 'loading' || !root) return;
       const stamps = this._openingPreparedLeaves || (this._openingPreparedLeaves = new WeakMap());
@@ -13673,7 +13693,7 @@ export const render = {
         // re-derives, links, marks and restores across presents. It also runs at admission
         // START: a sliced color compile spans presents, and a frame landing between slices
         // draws the mounted mesh's depth variant cold (the +22s GLTFKit_StaticGroup links).
-        if (state.mode !== 'flight' || this._shadowSettingOn !== true) return;
+        if (state.mode !== 'flight' || !this._shadowDepthEnabled()) return;
         const liveSubjects = batch.filter(isRootActive);
         if (liveSubjects.length === 0) return;
         const census = this._shadowCensusForFrame();
@@ -14804,7 +14824,7 @@ export const render = {
       // main-camera census, but submitted as six pod meshes plus one pin mesh by the shadow camera.
       // Treat that pass as part of the opening picture so its seven geometries and depth/color
       // programs are admitted in the same bounded loading batches as camera-visible leaves.
-      const shadowSubmissionCamera = this._shadowSettingOn === true
+      const shadowSubmissionCamera = this._shadowDepthEnabled()
         ? openingSubmissionCamera(this._activeShadowCamera)
         : null;
       yield;
@@ -14888,7 +14908,7 @@ export const render = {
             camera: submissionCamera,
             includeOffscreen: candidate.includeOffscreen === true,
             route: {
-              shadow: this._shadowSettingOn === true,
+              shadow: this._shadowDepthEnabled(),
               target: openingRoute === POST_PROCESS_ROUTE.NATIVE ? 'screen' : 'hdr-scene-target',
             },
             textures,
@@ -14909,7 +14929,7 @@ export const render = {
         flightReady: readiness && readiness.flightReady,
         route: openingRoute,
         bloomActive: openingRoute !== POST_PROCESS_ROUTE.NATIVE,
-        shadows: this._shadowSettingOn === true,
+        shadows: this._shadowDepthEnabled(),
         // These are supplied only by a content-hash-bound producer.  An absent census is a hard
         // startup failure; deriving one from whatever happened to be in renderer.info would turn
         // the exact admission contract back into metadata-only bookkeeping.
@@ -14941,11 +14961,12 @@ export const render = {
       this.prepareOpeningFirstPicture(timeoutMs, options)
     );
     const warmOpeningShadowPipelines = (subjects) => driveCompileShadowDepthPipelines({
+      state: this.state,
       renderer,
-      light: this._keyLight,
+      light: this._shadowDepthLight(),
       camera: cam.obj,
       subjects,
-      forceEnable: this._shadowSettingOn === true,
+      forceEnable: this._shadowDepthEnabled(),
       THREE,
       captureObjectHome,
       restoreObjectHome,
@@ -16436,8 +16457,8 @@ export const render = {
           // would have to re-link.
           const restoreSettleShadows = armAdmissionShadows({
             renderer,
-            light: this._keyLight,
-            enabled: this._shadowSettingOn === true,
+            light: this._shadowDepthLight(),
+            enabled: this._shadowDepthEnabled(),
           });
           try {
             if (cookStale()) return cookSuperseded;
@@ -16924,11 +16945,12 @@ export const render = {
               });
               if (cookStale()) return cookSuperseded;
               await driveCompileShadowDepthPipelines({
+                state: this.state,
                 renderer,
-                light: this._keyLight,
+                light: this._shadowDepthLight(),
                 camera: this.cam && this.cam.obj,
                 subjects: latePoolRoots,
-                forceEnable: this._shadowSettingOn === true,
+                forceEnable: this._shadowDepthEnabled(),
                 THREE,
                 captureObjectHome,
                 restoreObjectHome,
@@ -17303,7 +17325,7 @@ export const render = {
         // living-hull subtree under beginGpuWarmup (full instance counts, root visible).
         // Program-key dedupe keeps already-warm variants cheap — this pays only for what the
         // settle changed.
-        if (this._shadowSettingOn === true) {
+        if (this._shadowDepthEnabled()) {
           const depthSweepStarted = prepareNow();
           let depthSweepOutcome = 'resolved';
           let depthSweepSubjects = 0;
@@ -17326,8 +17348,9 @@ export const render = {
             const sweepResult = sweepSubjects.length === 0
               ? { skipped: true, reason: 'settle-window-closed', subjects: 0 }
               : await driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
-              light: this._keyLight,
+              light: this._shadowDepthLight(),
               camera: this.cam && this.cam.obj,
               subjects: sweepSubjects,
               forceEnable: true,
@@ -17784,8 +17807,8 @@ export const render = {
       }
       const restoreShadows = armAdmissionShadows({
         renderer,
-        light: this._keyLight,
-        enabled: this._shadowSettingOn === true,
+        light: this._shadowDepthLight(),
+        enabled: this._shadowDepthEnabled(),
       });
       const route = this._selectPostRoute();
       let programs = { skipped: true, reason: 'compile-unavailable' };
@@ -18213,8 +18236,8 @@ export const render = {
         // build that variant instead.
         const restoreTouchShadows = armAdmissionShadows({
           renderer,
-          light: this._keyLight,
-          enabled: this._shadowSettingOn === true,
+          light: this._shadowDepthLight(),
+          enabled: this._shadowDepthEnabled(),
         });
         const cohort = units.programSubjects.length > 0 ? beginScenePipelineReadinessBatch(renderer) : null;
         const issued = [];
@@ -19028,8 +19051,9 @@ export const render = {
             // registration happens in the stamp loop above). Prime depth on the same subjects
             // or the fight's first shadow refresh links it inside a measured frame.
             const depthResult = await driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
-              light: this._keyLight,
+              light: this._shadowDepthLight(),
               camera: cam.obj,
               // Scene-wide on the survival cook: the reveal pass clears frustumCulled, so
               // mounted far-field casters (stations, props) draw their depth variant in the
@@ -19039,7 +19063,7 @@ export const render = {
               subjects: (survivalCook && !cookOverBudget())
                 ? cookCompileRoots.concat([scene])
                 : cookCompileRoots,
-              forceEnable: this._shadowSettingOn === true,
+              forceEnable: this._shadowDepthEnabled(),
               THREE,
               captureObjectHome,
               restoreObjectHome,
@@ -20141,10 +20165,10 @@ export const render = {
       const driveDepthCompile = async (compileSubjects, stagingName) => {
         const depthOpts = {
           renderer,
-          light: this._keyLight,
+          light: this._shadowDepthLight(),
           camera: cam.obj,
           subjects: compileSubjects,
-          forceEnable: this._shadowSettingOn === true,
+          forceEnable: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -26117,6 +26141,7 @@ export const render = {
 
   _applySectorPostTransitionOptions(options) {
     if (!options) return;
+    this._nocturne?.setExposureBase(options.exposure);
     if (this.bloom) this.bloom.setOptions(options);
     if (this.renderer) {
       this.renderer.toneMappingExposure = Number.isFinite(options.exposure) ? options.exposure : 1;
@@ -26189,6 +26214,7 @@ export const render = {
     const sig = this._postOptionsSignature(norm, vd, sceneSamples);
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
+    this._nocturne?.setExposureBase(norm.exposure);
     const postOpts = {
       bloom: norm.bloom,
       bloomStrength: norm.bloomStrength,
@@ -30568,11 +30594,12 @@ export const render = {
       if (!stillLive()) return;
       try {
         await driveCompileShadowDepthPipelines({
+          state: this.state,
           renderer: this.renderer,
-          light: this._keyLight,
+          light: this._shadowDepthLight(),
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot].concat(poolCompileRoots || []),
-          forceEnable: this._shadowSettingOn === true,
+          forceEnable: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -30652,11 +30679,12 @@ export const render = {
       // link it here or the first live batch's shadow draw pays it mid-flight.
       try {
         await driveCompileShadowDepthPipelines({
+          state: this.state,
           renderer: this.renderer,
-          light: this._keyLight,
+          light: this._shadowDepthLight(),
           camera: this.cam && this.cam.obj,
           subjects: [warmRoot],
-          forceEnable: this._shadowSettingOn === true,
+          forceEnable: this._shadowDepthEnabled(),
           THREE,
           captureObjectHome,
           restoreObjectHome,
@@ -30922,6 +30950,10 @@ export const render = {
       yield* updateMatrixWorldSteps(this.scene, true);
     }
     yield;
+    tryPresentedCall(this, 'opening-nocturne', () => this._nocturne?.prepare(0,
+      this.cam?.obj, this._frameMembrane, this._meshes,
+      !(this._marrowSpot && this._marrowSpot.intensity > 0)));
+    yield;
     tryPresentedCall(this, 'contact-shadow-pool', () => {
       syncContactShadowPool(this._contactShadowPool, this._entityFrame);
     });
@@ -30976,6 +31008,10 @@ export const render = {
           Math.max(1, this._shadowReceiverCount)), this._activeShadowCamera)
         : null;
     }
+    if (!this._shadowSettingOn) {
+      this._activeShadowCamera = tryPresentedCall(this, 'local-shadow-camera',
+        () => this._prepareNocturneShadowCamera(), null);
+    }
     yield;
     tryPresentedCall(this, 'asteroid-instances', () => {
       this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
@@ -31012,7 +31048,7 @@ export const render = {
       {
         playerId: state.playerId,
         scene: this.scene,
-        camera: this._shadowSettingOn === true
+        camera: this._shadowDepthEnabled()
           ? openingSubmissionCamera(this._activeShadowCamera)
           : null,
       },
@@ -31874,8 +31910,8 @@ export const render = {
     });
     tryPresentedCall(this, 'marrow-cone', () => syncMarrowCone(this));
     // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
-    tryPresentedCall(this, 'headlights', () => this._headlights?.update(this.state, frameDt, this._frameMembrane,
-      { playerLamp: !(this._marrowSpot && this._marrowSpot.intensity > 0), meshes: this._meshes }));
+    tryPresentedCall(this, 'nocturne', () => this._nocturne?.prepare(frameDt, this.cam.obj,
+      this._frameMembrane, this._meshes, !(this._marrowSpot && this._marrowSpot.intensity > 0)));
     tryPresentedCall(this, 'bolus-view', () => syncBolusView(this));
     this._bgTime = (this._bgTime || 0) + frameDt * presentationTs;
     if (!holdOpeningPicture && !holdLoadingGpu) {
@@ -31925,6 +31961,10 @@ export const render = {
       this._activeShadowCamera = tryPresentedCall(this, 'active-shadow-camera', () => prepareActiveShadowCamera(
         this.renderer, this._keyLight, Math.max(1, this._shadowReceiverCount),
       ), this._activeShadowCamera);
+    }
+    if (!this._shadowSettingOn && this._nocturne?.shadowLight) {
+      this._activeShadowCamera = tryPresentedCall(this, 'local-shadow-camera',
+        () => this._prepareNocturneShadowCamera(), null);
     }
     const shadowCamera = this._activeShadowCamera || null;
     if (!holdOpeningPicture && !holdLoadingGpu) {
@@ -33223,7 +33263,7 @@ export const render = {
     // re-collects only on a genuine policy dirty, not our own post-withhold
     // invalidation. The collect is the flag twin — per-mesh mark tuples discriminate
     // staged-vs-unstaged with zero signature mints inside the presented frame.
-    const collectGate = (opts.allowCast === true && this._shadowSettingOn === true
+    const collectGate = (opts.allowCast === true && this._shadowDepthEnabled()
         && this.renderer && this.scene && this._keyLight
         && (parkedRecheck || parkedReleaseOnDrift || parkedRelease || cleanRootCensusDrift
           || (band !== 1 ? !queued : (dirtySeq > stampedSeq && dirtySeq > 0))));
@@ -33916,7 +33956,7 @@ export const render = {
   },
 
   _queueShadowDepthStage(root, lodLevel = null, entity = null, preserved = null) {
-    if (!root || this._shadowSettingOn !== true) return;
+    if (!root || !this._shadowDepthEnabled()) return;
     const pending = this._pendingDepthStageRoots
       || (this._pendingDepthStageRoots = new Map());
     // A re-queue while pending must keep the entry's escalation fields — a
@@ -34270,7 +34310,7 @@ export const render = {
       let legDriveFailed = false;
       let lightSig = '';
       let unstagedByRoot = null;
-      if (this._shadowSettingOn === true && renderer && scene && camera && this._keyLight
+      if (this._shadowDepthEnabled() && renderer && scene && camera && this._shadowDepthLight()
           && sliceRoots.length > 0) {
         try {
           // Coalesced promotions share one stage; roots whose signatures were already
@@ -34567,8 +34607,9 @@ export const render = {
             }
             let legResult = null;
             driveCompileShadowDepthPipelines({
+              state: this.state,
               renderer,
-              light: this._keyLight,
+              light: this._shadowDepthLight(),
               camera,
               subjects: leg,
               forceEnable: false,
@@ -35192,10 +35233,27 @@ export const render = {
     if (this._shadowReceiverTally) this._shadowReceiverTally.markDirty();
   },
 
+  _shadowDepthEnabled() {
+    return this._shadowSettingOn === true || this._nocturne?.shadowConfigured === true;
+  },
+
+  _shadowDepthLight() {
+    return this._shadowSettingOn === true ? this._keyLight
+      : (this._nocturne?.shadowLight || this._keyLight);
+  },
+
+  _prepareNocturneShadowCamera() {
+    const lighting = this._nocturne;
+    // Instance submission needs the new spot frustum BEFORE the depth pass. Between depth
+    // refreshes keep its previous matrix: the cached map was rendered from that exact pose.
+    return prepareNocturneShadowCamera(this.renderer, lighting?.shadowLight,
+      lighting?.enabled && lighting?.shadowsEnabled);
+  },
+
   _syncShadowMapEnabled() {
     if (!this._keyLight || !this.renderer.shadowMap) return;
     if (!this._shadowSettingOn) {
-      this.renderer.shadowMap.enabled = false;
+      this.renderer.shadowMap.enabled = this._nocturne?.shadowConfigured === true;
       // castShadow is a census-signature term — a real flip must bump the epoch or a
       // suspended depth census would mark casters under a sig the staged set never had.
       if (this._keyLight.castShadow === true) {
@@ -35204,7 +35262,7 @@ export const render = {
       }
       // A live staging session is useless while the map is off and would otherwise
       // keep cloned lights + the buffer capture parked until the next drain.
-      this._killDepthStageSession?.();
+      if (!this._nocturne?.shadowConfigured) this._killDepthStageSession?.();
       return;
     }
     if (this._shadowReceiverTally) {
@@ -35299,7 +35357,7 @@ export const render = {
       this._shadowMapDirty = true;
     }
     if (!this._shadowSettingOn) {
-      renderer.shadowMap.enabled = false;
+      renderer.shadowMap.enabled = this._nocturne?.shadowConfigured === true;
       // Change-gated like _syncShadowMapEnabled — this write can land the real
       // true→false flip first, and a census-mutation epoch bump is what lets a
       // suspended depth census observe it.
@@ -35609,6 +35667,8 @@ export const render = {
   },
 
   _renderPostRoute(route, scene, camera, time = 0) {
+    // Event VFX publish after prepareFrame. Resolve them before the one scene matrix walk.
+    if (scene === this.scene) this._nocturne?.flush(camera);
     // All transform writes for the frame are complete before this dispatch. One explicit walk
     // here replaces the per-pass walk every renderer.render(scene, …) would otherwise repeat
     // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal
@@ -35854,6 +35914,7 @@ export const render = {
         renderScale: Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1)),
       });
       this._renderGraph.setSize(drawSize.x, drawSize.y);
+      this._nocturne?.attachGraph(this._renderGraph);
     }
     // Cache the CSS-pixel viewport for the LOD projector (projectedWidthPx expects CSS px, matching
     // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.

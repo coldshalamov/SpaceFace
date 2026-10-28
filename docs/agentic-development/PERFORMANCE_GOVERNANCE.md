@@ -3,7 +3,7 @@
 
 Performance in SpaceFace is a product property: the same authored game must remain responsive and smooth. This document gives the Central Brain a way to manage performance work without turning every optimization idea into an active project or accepting quality cuts as wins.
 
-It complements `design/PERF_BUDGET.md`, `design/PERF_OPTION_SPACE.md`, the PQ-129 evidence history and runtime-witness tooling. Those remain authoritative for their exact scopes.
+It complements `design/archive/perf/PERF_BUDGET.md`, `design/archive/perf/PERF_OPTION_SPACE.md`, the PQ-129 evidence history and runtime-witness tooling. Those remain authoritative for their exact scopes.
 
 ## 1. Same-picture law
 

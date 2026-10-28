@@ -2,7 +2,7 @@
 
 Screen: `src/ui/screens/help.js` (bench id `help`). Tabs: CONTROLS, LOOPS, SHIPS, COMMODITIES, ORES, FACTIONS.
 Read first: design/frontend/review/BUILDER_BRIEF.md (rules, owner criteria, the MEASURED WEIGHT BAR), design/frontend/ORRERY.md,
-design/frontend/OVERHAUL_PLAN_2026-09-25.md (Help row), src/ui/orrery/ (library — compose, never hand-roll boxes).
+design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md (Help row), src/ui/orrery/ (library — compose, never hand-roll boxes).
 
 ## What is there now (the pre-overhaul screen)
 A generic key-binding TABLE in a sunk box: rows with 1 px rules, key caps as cut-corner chips, a tab list of tiny

@@ -31,7 +31,7 @@ nearest NPC cannot ask which title each is from. Nothing on the default route lo
 unlit, unfinished, or from another game. The picture reads as one illustrated industrial world.
 
 **Scope fence:** this brief is the 3D/world side. The 2D UI/HUD screens have their own program
-(`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`) and their own owner ruling — the
+(`design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md`) and their own owner ruling — the
 2D surfaces in the gallery (§4) are context for framing, not work targets.
 
 ## 2. Read first (law, in order)

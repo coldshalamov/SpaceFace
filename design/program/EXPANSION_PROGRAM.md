@@ -13,7 +13,7 @@ and cannot advance the Physics-as-Spectacle R5/five-minute-Ceres/R8 dependency c
 
 ## Current design and execution route
 
-The [mature game target and asset-family design](world-depth-2026-10-02/README.md) makes the
+The [mature game target and asset-family design](../archive/program/world-depth-2026-10-02/README.md) makes the
 experience and missing physical vocabulary explicit. Read that target before choosing an asset
 batch; inexpensive reuse must not determine what the finished game is allowed to become.
 The historical experiments below remain evidence for their exact scenes, not current asset or
@@ -143,7 +143,7 @@ These are all real failures from the prior lane. Each cost hours.
 
 ## 6. Performance is a hard gate
 
-The binding shipping contract is [`design/PERF_BUDGET.md`](../PERF_BUDGET.md): target-profile
+The binding shipping contract is [`design/archive/perf/PERF_BUDGET.md`](../archive/perf/PERF_BUDGET.md): target-profile
 **p95 ≤16.7 ms**, unchanged-or-better p99/hitch tails, and no quality reduction. The prior lane also
 measured an Intel-iGPU route at p95 16.80 ms; report that route-specific guardrail when applicable,
 but it never relaxes the 16.7 ms target. Measure both arms with the same admitted manifest, active

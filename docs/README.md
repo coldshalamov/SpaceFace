@@ -27,7 +27,7 @@ This is the navigation front door for engineering and world-content documentatio
 | Work on the 47-A slice | [`Spec/47A_SLICE_CONTRACT.md`](./Spec/47A_SLICE_CONTRACT.md) |
 | Retained future plans not yet scheduled | [`../design/program/06_RETAINED_FUTURE_BACKLOG.md`](../design/program/06_RETAINED_FUTURE_BACKLOG.md) and [`../design/PLAN_REGISTRY.md`](../design/PLAN_REGISTRY.md) |
 | Work on narrative/setting | [`worldbuilding/`](./worldbuilding/) and [`worldbuilding/sheets/README.md`](./worldbuilding/sheets/README.md) |
-| Review prior integration evidence | [`handoffs/`](./handoffs/) (historical, not status) |
+| Review prior integration evidence | [`handoffs/`](archive/handoffs) (historical, not status) |
 | Decide artifact retention | [`ARTIFACT_RETENTION.md`](./ARTIFACT_RETENTION.md) |
 | Resume deferred repository/context cleanup | [`REPOSITORY_HYGIENE.md`](./REPOSITORY_HYGIENE.md) |
 

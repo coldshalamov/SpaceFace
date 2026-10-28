@@ -4,8 +4,8 @@
   "sourceRepositoryHead": "89f5a5b183ba88cfa5c606b5fde66022f8df579c",
   "blenderVersion": "4.3.2",
   "origin": "Original authored reconstruction from user repository concept SF20-19. No third-party model or generated texture. Existing game Forge kit and shared texture sources copied into narrow packet unchanged.",
-  "referenceConcept": "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/19_pip_and_spanner.md",
-  "referenceArt": "design/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/art/19_pip_and_spanner.png",
+  "referenceConcept": "design/archive/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/concepts/19_pip_and_spanner.md",
+  "referenceArt": "design/archive/program/world-depth-2026-10-02/references/sf20-2026-10-03/package/art/19_pip_and_spanner.png",
   "forgeSnapshotSha256": {
     "forge/forge.py": "987500394bedd3875c916afa7eeff368c2c545e4ac7371592a9f02e3283e064d",
     "forge/forge_export.py": "633016fb1fb2561ce2840cd295c6100983273264e2e2c6373b9fee620e9ecf46",

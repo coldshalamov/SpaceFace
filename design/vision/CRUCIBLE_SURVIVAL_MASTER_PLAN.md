@@ -9286,7 +9286,7 @@ Re-audit before implementation.
 | Campaign economy | `src/systems/economy.js` or current economy owner |
 | Causal collision/death presentation | current collision-consequence, combat, presentation adapter, and VFX owners |
 | Validation | `docs/VALIDATION_WORKFLOW.md`, validation broker, deterministic Lab |
-| Performance | `design/PERF_BUDGET.md`, runtime witness, current performance packets |
+| Performance | `design/archive/perf/PERF_BUDGET.md`, runtime witness, current performance packets |
 | UI grammar | `src/ui/AGENTS.md`, `styles/AGENTS.md`, active frontend authority |
 | Visual assets and VFX standards | `docs/visual-assets/README.md` and cited standards |
 | External mechanics reference | Kooapps’ *Bullet Knight*, used only for behavioral inspiration: frequent build transformation, ricochet, chain, multishot, orbit/control, and run cadence. No code, assets, characters, maps, or text are to be copied. |

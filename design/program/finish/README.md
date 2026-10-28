@@ -273,8 +273,8 @@ never invent a clip-saver feature with no reader.
 - **Archive, don't delete history:** `git mv` superseded material under `design/archive/` and
   `docs/archive/`: the dated run folders (`agentic-run-oct18`, `agentic-run-oct20`,
   `world-depth-2026-10-02`, `world-experience-2026-10-2x`, `demo-maturity-2026-10-17`,
-  `maturity-cloud-2026-10-20`, `research-2026-10-02`, `design/finish-expansion-2026-09`), superseded UI
-  briefs, `roadmap/receipts`, `docs/ui-polish`, `docs/perf-evidence`, `docs/handoffs`, the ~59 `PERF_*`
+  `maturity-cloud-2026-10-20`, `research-2026-10-02`, `design/archive/finish-expansion-2026-09`), superseded UI
+  briefs, `roadmap/receipts`, `docs/archive/ui-polish`, `docs/archive/perf-evidence`, `docs/archive/handoffs`, the ~59 `PERF_*`
   documents (folded into one `design/perf/README.md`), and the 56-file INFERENCE workflow folder (folded
   into one ≤ 150-line law).
 - **Never** touch `design/program/vm-drop/`. Never move a file a lane prompt or board in this folder
