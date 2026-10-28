@@ -1969,15 +1969,21 @@ function maxLiveCollectorRadius(collectors) {
 }
 
 function shouldPublishSg02Snapshot(state) {
-  if (typeof window === 'undefined') return true;
   const runtime = state && state.physicsRuntime;
+  // Headless realms (Node, a future sim worker) used to publish unconditionally — that made the
+  // quantized per-body snapshot a per-tick cost the browser only pays on demand. Keep the
+  // headless default ON for evidence parity, but honor an explicit runtime opt-out so a host
+  // can match the browser's flag-gated behavior (and a worker can run the production default).
+  if (typeof window === 'undefined') return !(runtime && runtime.publishSg02Snapshot === false);
   return !!(runtime && runtime.publishSg02Snapshot === true)
     || window.__SF_PUBLISH_SG02_SNAPSHOT__ === true;
 }
 
 function shouldPublishSg02Telemetry(state) {
-  if (typeof window === 'undefined') return true;
   const runtime = state && state.physicsRuntime;
+  // Same opt-out contract as the snapshot gate above: headless default stays ON, an explicit
+  // runtime.publishSg02Telemetry === false now matches the browser's default-off behavior.
+  if (typeof window === 'undefined') return !(runtime && runtime.publishSg02Telemetry === false);
   return !!(runtime && runtime.publishSg02Telemetry === true)
     || window.__SF_PUBLISH_SG02_TELEMETRY__ === true;
 }
@@ -2382,6 +2388,12 @@ function impactPairKeyFor(aKey, bKey) {
   return key;
 }
 
+// Re-arm on every emit on purpose: setPayloadSnapshot is already idempotent inside the bus
+// (a Map.get + identity compare, not a write — and the bus's own contract is that pool
+// owners "re-arm cheaply after clear()"). A bus.clear() wipes payloadSnapshots while this
+// module cannot observe it, so caching the armed bus here would leave a cleared-and-reused
+// bus permanently delivering the mutable pooled payload — not its emit-time clone — to
+// deferred presentation tails. Do not re-hoist this without a bus-side generation check.
 function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options = {}) {
   if (!bus || typeof bus.emit !== 'function') return 0;
   if (bus.setPayloadSnapshot) bus.setPayloadSnapshot('physics:impact', snapshotImpactPayload);

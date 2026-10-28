@@ -1381,6 +1381,23 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!signature || typeof w[method] !== 'function') return { ok: false, reason: 'unknown-world-method' };
         return { ok: true, result: w[method](...signature.map((key) => args[key])) };
       }],
+      // Diagnostic wave jump for the stress probe — the main-lane equivalent is the probe
+      // writing run.wave + releasing hostiles + emitting run:waveCleared itself; on the
+      // worker lane the mirror is read-only so the same mutation must happen sim-side.
+      ['swarmCall', (args) => {
+        const method = args && args.method;
+        if (method !== 'jumpToWave') return { ok: false, reason: 'unknown-swarm-method' };
+        const wave = Number(args && args.wave);
+        const run = state && state.run;
+        if (!run || !Number.isInteger(wave) || wave < 1) return { ok: false, reason: 'bad-wave' };
+        run.wave = wave - 1;
+        for (const e of state.entities.values()) {
+          if (e && e.alive !== false && e.type === 'ship' && e.id !== state.playerId
+            && e.data && e.data.combat && e.data.combat.hostile !== false) e.alive = false;
+        }
+        host.bus.emit('run:waveCleared', { wave: wave - 1 });
+        return { ok: true, wave };
+      }],
       // Circuit arm — post + accept + sector jump + grid relocation run as ONE
       // sim-side operation so a failed arm can't split across ticks. A grid
       // refusal rolls back via mission:abandon, same owner as the main path.

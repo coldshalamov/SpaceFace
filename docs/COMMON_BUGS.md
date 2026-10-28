@@ -762,3 +762,21 @@ the overlay means a file under `src/`; only `TypeError` (fetch/resolution) point
 or a missing asset.
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*
+
+## 17. Dozens of console windows titled `cursor-agent` / `codex` / `claude` pop up on the owner's desktop
+
+**Symptom:** every time a lane launches a terminal agent from Git Bash, a new visible console
+window appears on the desktop.
+
+**Cause:** MSYS `timeout.exe` (and `start`, or invoking a `.cmd`/`.bat` shim directly) starting a
+native Windows console app makes Windows allocate a **new visible console** per launch. The shim
+chain (`batch -> powershell -> node.exe index.js`) is the window; the agent binary itself never
+opens one.
+
+**Fix protocol:** never launch a terminal agent with bash `timeout`/`start` or a raw `.cmd` on
+Windows. Use `node scripts/agent-run.mjs --log <log> --timeout <seconds> [--stdin <file>] --
+<command> <args>` — it resolves the shim to its real binary (cursor-agent's newest
+`versions/*/node.exe + index.js`; npm shim entries for codex/opencode/claude; `.exe` directly)
+and spawns it with `shell:false, windowsHide:true`, kills the whole tree on timeout (exit 124),
+and writes `[agent-run]` marker lines to the log. See `design/program/finish/TOOLS.md` §top and
+`test/agent-run.test.mjs`.

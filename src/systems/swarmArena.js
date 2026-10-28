@@ -1281,14 +1281,17 @@ export const swarmArena = {
    */
   _onDebrisImpact(payload) {
     const state = this.state;
+    // Cheap gates first: the crowd's impact fanout is mostly sub-wear-speed grazes, and
+    // liveSwarmRun pays a full validateRunState per emit. All of these are pure reads,
+    // so testing the receipt numbers before the run admits/rejects the identical set.
+    const speed = Number(payload && payload.preSolveClosingSpeed);
+    const dp = Number(payload && payload.dp);
+    if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
     const run = state && liveSwarmRun(state);
     // Only a live fight wears cover — paused phases (draft/refit/cleanup/ended) leave it alone.
     if (!run || run.phase !== 'active') return;
     const ents = state.entities;
     if (!ents || typeof ents.get !== 'function') return;
-    const speed = Number(payload && payload.preSolveClosingSpeed);
-    const dp = Number(payload && payload.dp);
-    if (!(speed >= SWARM_DEBRIS_WEAR_SPEED) || !(dp > 0)) return;
     const tick = Number.isFinite(payload.tick)
       ? Math.max(0, Math.trunc(payload.tick))
       : (Number.isFinite(state.tick) ? Math.max(0, Math.trunc(state.tick)) : 0);

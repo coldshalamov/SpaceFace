@@ -444,11 +444,17 @@ function readCampaignReceipts(map, state) {
       }
       // W-BOOKS-3-4: an authored book step speaks its own clause ahead of the
       // generic completion-method rewrite — the yard list's legs are not
-      // interchangeable tows, and the door operation is not the intro.
+      // interchangeable tows, and the door operation is not the intro. That clause
+      // is final only while the receipt carries the step's own recorded signal. A
+      // legacy whole-beat fill names the beat through a note instead of the step's
+      // accept signal, so the method or verb the receipt carried still does the
+      // telling below — and stays the generic clause when neither is known.
       const authored = stepSpeech(beatIndex, stepId, clean(raw.signal));
       if (authored) {
         put(map, speakAct(authored, at, { timed: true, then: authored.then }));
-        continue;
+        const def = beatDefAt(beatIndex);
+        const step = def && (def.steps || []).find((row) => row && row.id === stepId);
+        if (step && Array.isArray(step.accept) && step.accept.includes(clean(raw.signal))) continue;
       }
     }
     const methodSpeech = METHOD_SPEECH[clean(raw.completionMethod)];

@@ -596,6 +596,12 @@ function stepMatchesPayload(step, signal, payload) {
   return true;
 }
 
+// The physical act each retired pre-book contract actually ran. A legacy fill names
+// these step ids on its receipt and spine note — never the book list's own legs,
+// which did not happen on the legacy settle. storyLedger's STEP_SPEECH keeps the
+// matching 'beat:id' rows.
+const LEGACY_FILL_STEP_ID = Object.freeze({ 1: 'knock', 2: 'pull', 3: 'tow' });
+
 /**
  * W-BOOKS-0-2: a pre-book-list contract (the old B1 cargo leg, the B2 pod-rescue set
  * piece, the B3 tow) settles a whole beat before the ordered script lists existed on it.
@@ -622,6 +628,9 @@ export function completeBeatStepsForLegacy(state, beatIndex, simTime = 0, note =
   // written — the bar and the life ledger cite the played verb, not the fill.
   if (stepsComplete) {
     const lastStep = def.steps[def.steps.length - 1];
+    // The receipt names the retired physical act, not the last leg of the current
+    // book list — the legacy contract ran the knock/pull/tow, never the book legs.
+    const fillStepId = LEGACY_FILL_STEP_ID[def.beat] || (lastStep && lastStep.id) || null;
     const payload = {
       physicalVerb: info.physicalVerb || null,
       completionMethod: info.completionMethod || null,
@@ -630,7 +639,7 @@ export function completeBeatStepsForLegacy(state, beatIndex, simTime = 0, note =
     // spine, so a legacy fill without one would retell as the wrong beat.
     pushCampaignReceipt(own, buildStepProgressReceipt({
       beatIndex: def.beat,
-      stepId: (lastStep && lastStep.id) || null,
+      stepId: fillStepId,
       signal: note || 'legacy_contract',
       completedSteps: bucket.completed,
       stepsComplete: true,
@@ -641,7 +650,7 @@ export function completeBeatStepsForLegacy(state, beatIndex, simTime = 0, note =
     }));
     noteSpineStep(state, own, {
       beat: def.beat,
-      stepId: (lastStep && lastStep.id) || null,
+      stepId: fillStepId,
       payload,
       simTime: t,
       stepsComplete: true,

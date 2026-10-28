@@ -272,14 +272,33 @@ for (const [width, height, safeLeft, safeRight] of [[390,664,0,0],[390,844,0,0],
 
 for (const [width,height,safeLeft,safeRight] of [[844,390,0,0],[667,375,0,0],[568,320,0,0],[844,390,44,44]]) {
   test(`landscape ${width}x${height}: camera rail clears vitals, Pause and radar`, () => {
-    const right = width - Number(rail.match(/right:calc\((\d+)px/)?.[1]) - safeRight;
-    const left = right - Number(rail.match(/width:(\d+)px/)?.[1]);
-    const top = Number(rail.match(/top:calc\((\d+)px/)?.[1]);
-    const radarTop = Number(rule(landscape, '#hud .sf-rightdock').match(/top:calc\((\d+)px/)?.[1]);
+    // The compact tape is reparented into .sf-rightdock (racingHud syncParent); position:absolute
+    // resolves against the dock's box, so the rail's top/right are dock-relative, not viewport.
+    const dockRule = rule(landscape, '#hud .sf-rightdock');
+    const dockTop = Number(dockRule.match(/top:calc\((\d+)px/)?.[1]);
+    const dockRight = Number(dockRule.match(/right:calc\((\d+)px/)?.[1]);
+    // The radar is a right-aligned .75 dial inside the dock; the rail must finish before it.
+    const radarLeft = width - dockRight - safeRight - radarWidth * radarScale;
+    const right = width - dockRight - safeRight - Number(rail.match(/right:calc\((\d+)px/)?.[1]);
+    // The rail's authored width is min(180px, 100vw - 453px - safes): it yields before it
+    // can collide with the status lane on the shortest phones.
+    const railW = Math.min(
+      Number(rail.match(/width:min\((\d+)px/)?.[1]),
+      width - Number(rail.match(/100vw - (\d+)px/)?.[1]) - safeLeft - safeRight);
+    const left = right - railW;
+    const top = dockTop + Number(rail.match(/top:(-?\d+)px/)?.[1]);
+    const radarTop = dockTop;
     assert.ok(left >= 14 + safeLeft + 176 + 12, 'status strip remains separate');
+    assert.ok(right <= radarLeft, 'rail finishes before the radar column begins');
     assert.ok(right <= width - 12 - safeRight - 52 - 12, 'Pause remains separate');
-    assert.ok(right - left >= 180, 'two 44px-high keys have room for their labels');
-    assert.ok(top + 44 + 12 + 12 <= radarTop, 'touch row and padding clear the compass');
+    // Full phones carry two labeled keys side by side; the 568-wide class compacts to the
+    // authored 2x2 grid (styles.js compact row) — the rail keeps its 100px label floor.
+    assert.ok(right - left >= (width >= 660 ? 180 : 100), 'keys keep room for their labels');
+    // The rail lives in the clear strip between the hint band (alerts ~45, tutorial card
+    // ~102) and the resting stick ghost (~220 on 390-tall phones, styles.js bottom:104 +
+    // 132px svg) — it cannot share the alert band or ride onto the ring.
+    assert.ok(top >= 104, 'rail clears the alert and tutorial-card band');
+    assert.ok(top + 56 <= 220, 'rail clears the resting stick ring');
   });
 }
 

@@ -165,6 +165,12 @@ ${BOTH} > .sf-pause-foot [data-role="version"] {
   ${P} .orr-brief__read b { font-size:22px !important; }
   ${P} > .sf-pause-brief.orr-brief > .dp-copy { margin-top:4px !important; line-height:16px !important; }
   ${P} > .sf-pause-brief.orr-brief > .dp-copy--fine { margin-top:2px !important; padding:0 !important; }
+  /* the dial's outer rings run under the foot's first keys here (ESC / RESUME sat on the rim at
+     960×540 and 800×600): the keycaps take a dark fill under their bone tint and the verbs a halo */
+  ${P} > .sf-pause-foot .dp-kbd.sf-pause-key,
+  ${P} > .sf-pause-foot .sf-pause-key.dp-kbd {
+    background:linear-gradient(rgb(${BONE} / .1), rgb(${BONE} / .1)), rgb(6 8 11 / .94) !important; }
+  ${P} > .sf-pause-foot .sf-pause-key-verb { text-shadow:0 0 3px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .9) !important; }
 }
 
 /* a very short window (≤520 tall, e.g. 800×500): the dial climbs to y≈190, so the brief keeps only

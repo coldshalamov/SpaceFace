@@ -26,8 +26,10 @@ ${T} .con-curve__key { display:block; white-space:nowrap; color:rgb(${BONE} / .6
 /* the open affordance: a quiet chevron after the key, turning as the ladder opens */
 ${T} .con-curve__key::after { content:"›"; display:inline-block; margin-left:.55em; letter-spacing:0;
   color:rgb(${BONE} / .5); transition:transform var(--k-d-focus, 140ms) var(--k-ease, ease-out), color var(--k-d-focus, 140ms) var(--k-ease, ease-out); }
-${T} .con-curve__rungs { display:block; margin-top:2px; white-space:nowrap; overflow:hidden;
-  text-overflow:ellipsis; color:rgb(${BONE} / .86); }
+${T} .con-curve__rungs { display:flex; flex-wrap:wrap; margin-top:2px; line-height:1.35; height:1.35em;
+  overflow:hidden; color:rgb(${BONE} / .86); }
+${T} .con-curve__rung { white-space:nowrap; }
+${T} .con-curve__sep { white-space:pre; }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key::after { color:rgb(${WARM} / .9); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__rungs { color:rgb(${WARM}); }

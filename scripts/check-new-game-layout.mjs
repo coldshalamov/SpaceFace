@@ -200,6 +200,13 @@ async function openNewGameWithKeyboard(page, url = null) {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 20000 });
   await waitForVisible(page, '[data-screen="mainMenu"]', 'Main Menu');
   await waitForBootOverlayGone(page);
+  // A first-ever profile gets the deliberate once-only first-light offer before the menu is
+  // reachable; a player answers it. 'Play' keeps the default cut and releases focus to the menu.
+  if (await page.$('#sf-confirm-root:not([hidden])')) {
+    await page.getByRole('button', { name: 'Play', exact: true }).first().click();
+    await page.waitForFunction(() => !document.getElementById('sf-confirm-root')
+      || document.getElementById('sf-confirm-root').hidden === true, null, { timeout: 5000 });
+  }
   await focusButtonWithKeyboard(page, 'New Game');
   await page.keyboard.press('Enter');
   await waitForVisible(page, '[data-screen="newGame"]', 'New Game');

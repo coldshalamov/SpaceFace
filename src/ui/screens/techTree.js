@@ -269,7 +269,17 @@ export const techTreeScreen = {
     curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
     curveBtn.appendChild(el('span', 'con-curve__key', 'A verb every hour'));
     const curveFull = hourVerbCurveLine();
-    curveBtn.appendChild(el('span', 'con-curve__rungs', curveFull ? clipHourVerbCurve(curveFull, 46) : ''));
+    // Each rung is its own nowrap span on a one-line wrapping row, so a narrow head drops whole
+    // rungs instead of cutting one mid-word with an ellipsis (tech-treeLayouts.js).
+    const curveRungs = el('span', 'con-curve__rungs');
+    const curveShown = curveFull ? clipHourVerbCurve(curveFull, 46) : '';
+    curveShown.split(/\u00a0· | · /).filter(Boolean).forEach((part, i) => {
+      const rung = el('span', 'con-curve__rung');
+      if (i) rung.appendChild(el('span', 'con-curve__sep', ' · '));
+      rung.appendChild(document.createTextNode(part));
+      curveRungs.appendChild(rung);
+    });
+    curveBtn.appendChild(curveRungs);
     const curveFly = el('ul', 'con-rows con-curve__fly');
     curveFly.id = 'sf-curve-ladder';
     curveFly.setAttribute('aria-label', 'Verbs by research hour');
@@ -287,7 +297,7 @@ export const techTreeScreen = {
     // root's zoom clips the header's composited layer), while a child of the root does both. The
     // ladder anchors to the curve's live rect when it opens (this._bindCurve).
     rootEl.appendChild(curveFly);
-    this._curve = { root: curve, btn: curveBtn, fly: curveFly };
+    this._curve = { root: curve, btn: curveBtn, fly: curveFly, rungs: curveRungs };
     this._bindCurve();
     rootEl.appendChild(head);
 
@@ -449,6 +459,8 @@ export const techTreeScreen = {
 
   onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
 
+  dispose() { if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; } },
+
   /**
    * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,
    * styled in tech-treeLayouts.js). The ladder's shade cannot be trusted to occlude by itself:
@@ -527,6 +539,24 @@ export const techTreeScreen = {
       hideTimer = window.setTimeout(finish, 150);
     };
     this._curveReset = () => { pinned = false; close({ instant: true }); };
+    // The rungs row is one clipped line: hide any rung that wrapped below it, so a narrow head shows
+    // whole rungs and nothing half-hidden (re-checked whenever the row's width changes).
+    const rungs = this._curve.rungs;
+    if (rungs && typeof ResizeObserver === 'function') {
+      const fitRungs = () => {
+        const items = [...rungs.children];
+        for (const r of items) r.hidden = false;
+        const top = items.length ? items[0].offsetTop : 0;
+        items.forEach((r, i) => { if (i && r.offsetTop > top) r.hidden = true; });
+      };
+      // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
+      if (this._rungsObserver) this._rungsObserver.disconnect();
+      // fit on the next frame: hiding a rung resizes the observed row, which inside the callback
+      // itself raised "ResizeObserver loop completed with undelivered notifications"
+      let fitFrame = 0;
+      this._rungsObserver = new ResizeObserver(() => { cancelAnimationFrame(fitFrame); fitFrame = requestAnimationFrame(fitRungs); });
+      this._rungsObserver.observe(rungs);
+    }
     btn.addEventListener('pointerenter', open);
     btn.addEventListener('mouseenter', open); // synthetic hovers (the walk) dispatch mouseenter only
     const leave = () => {

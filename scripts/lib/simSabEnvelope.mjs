@@ -62,11 +62,13 @@ export const SAB_ENV_KIND = Object.freeze({
 });
 
 const ENV_CMD_RING = 4;
-const ENV_CMD_PAYLOAD_BYTES = 256 * 1024;
+const ENV_CMD_PAYLOAD_BYTES = 1024 * 1024; // boot/scenario directives ship whole domain packets
 const ENV_REPLY_RING = 4;
-// JSON headroom 64 KB + binary tail for a full array-backed pack
-// (4096 records x (18 f64 + u8 + u16) = 602 112 B) + slack.
-const ENV_REPLY_PAYLOAD_BYTES = 64 * 1024 + 640 * 1024;
+// Boot/newGame RPC replies carry the full domain state as JSON — ~0.8 MB for a fresh
+// sector and several MB for a restored campaign — plus the binary tail for a full
+// array-backed pack. 4 MiB covers it with headroom; a payload beyond it still fails
+// closed (loud, ordered) — a chunked overflow path is the recorded follow-up.
+const ENV_REPLY_PAYLOAD_BYTES = 4 * 1024 * 1024;
 const ENV_REPLY_STALL_MS = 5000;
 
 function alignTo(value, bytes) {
@@ -127,18 +129,27 @@ const textDecoder = new TextDecoder();
 // to bindSabEnvelopeChannel for a faster codec (node's v8.serialize rides as
 // code 1 — see scripts/lib/simSabV8Codec.mjs); the head stamps the codec so
 // the reader decodes by flag, not by which side it is.
+// TextEncoder.encodeInto rejects shared (SharedArrayBuffer-backed) destinations —
+// encode into a private grow-once scratch, then copy into the shared cell. One
+// memcpy of the payload; the JSON path already allocates the string.
+let encScratch = new Uint8Array(64 * 1024);
 const JSON_CODEC = {
   code: 0,
   into(msg, dest) {
     const text = JSON.stringify(msg, (k, v) => (typeof v === 'bigint' ? Number(v) : v));
     if (text === undefined) throw new Error('sab envelope: payload not serializable');
-    const { read, written } = textEncoder.encodeInto(text, dest);
+    if (text.length * 3 > encScratch.length) encScratch = new Uint8Array(text.length * 3);
+    const { read, written } = textEncoder.encodeInto(text, encScratch);
     if (read < text.length) {
       throw new Error(`sab envelope: payload ${text.length} chars exceeds ${dest.byteLength}-byte cell`);
     }
+    if (written > dest.byteLength) {
+      throw new Error(`sab envelope: payload ${text.length} chars exceeds ${dest.byteLength}-byte cell`);
+    }
+    dest.set(encScratch.subarray(0, written));
     return written;
   },
-  from(buf) { return JSON.parse(textDecoder.decode(buf)); },
+  from(buf) { return JSON.parse(textDecoder.decode(buf.slice())); }, // shared views rejected — copy out
 };
 
 // Writer-side envelope post. binTail is an optional Uint8Array/typed array
