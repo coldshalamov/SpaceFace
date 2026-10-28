@@ -19,6 +19,7 @@ import { COMMODITIES }  from '../../data/commodities.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
+import { spineGreeting } from '../../story/campaign47a/storySpine.js';
 import { contactDeedMemory } from '../../data/contactDeedMemory.js';
 import {
   stationContactMemoryFor,
@@ -616,7 +617,12 @@ export function authoredBarContactsForStation(stationId, state = {}) {
       memoryGlyph: contactDeedMemory(card.id, state.player?.stationContactCounters)?.glyph,
       depthProgram: card.programId,
       voiceLines: voice ? voice.lines : [],
-      choices: voice && voice.firstContact ? voice.firstContact.choices : [],
+      choices: voice && voice.firstContact
+        ? (card.id === 'contact_coldburn_rey'
+          ? voice.firstContact.choices.map((choice) => choice.id === 'settle'
+            ? { ...choice, label: 'Any work left for me?' } : choice)
+          : voice.firstContact.choices)
+        : [],
       dialogueComplete: !!(voice && voice.dialogueComplete),
       oneChoicePerVisit: card.id === 'contact_question',
     };
@@ -1367,7 +1373,22 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
       : 'The system map will not open right now. Your survey record is safe.' };
   }
   if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
-  if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
+  if (contact && contact.depthProgram) {
+    // Reach's rival remembers the actual lane, not the number of times we clicked Talk.
+    // The board remains the sole offer owner; this conversation never settles a contract.
+    if (stationId === 'station_reach' && contact.id === 'contact_coldburn_rey'
+      && (contact.choices || []).some((choice) => choice.id === choiceId)) {
+      const remembered = spineGreeting(contact.id, state);
+      if (choiceId === 'lane') {
+        return { text: remembered || 'No shared lane on the record yet. I still hauled mine first.' };
+      }
+      if (choiceId === 'settle') {
+        const work = buildReply('pilot', 'work', ctx, stationId);
+        return { ...work, text: `${remembered ? `${remembered} ` : ''}Looking for work is not a concession. ${work.text}` };
+      }
+    }
+    return buildDepthContactReply(contact, choiceId, ctx);
+  }
   if (role === 'barkeep' && choiceId === 'ilex_greenhouse' && stationId === ILEX_ARK.stationId) {
     return { text: ilexGreenhouseReply(state) || 'No Ilex planting is recorded here.' };
   }
@@ -1883,3 +1904,4 @@ function buildCanonicalReply(contact, choiceId, ctx, stationId) {
 }
 
 /* ── main panel export ──────────────────────────────────────────────── */
+
