@@ -268,7 +268,7 @@ These live in `src/systems/` but are imported by other code; they do NOT run eve
   engagement and fresh hostility authority live in `src/ai/engagementAuthority.js`.
 - **`combatants` is not a separate store** (ARCHITECTURE §0.15) — derived per-tick index over `state.entities`.
 - **No CSS effect is globally forbidden by this map.** Attribute current compositor cost and follow
-  `design/PERF_BUDGET.md`; optimize without replacing the design with an inherited panel recipe.
+  `design/archive/perf/PERF_BUDGET.md`; optimize without replacing the design with an inherited panel recipe.
 - **`design/ARCHITECTURE.md` no longer exists** — it was a stale handoff blurb that collided with the authoritative repo-root `ARCHITECTURE.md`. It has been archived to `design/_ARCHIVE/handoff_architecture.md`. The repo-root `ARCHITECTURE.md` is the only authoritative architecture doc.
 - **The working tree may differ materially from HEAD.** Always run `git diff <file>` before diagnosing;
   the fix or a newer architecture may already exist in shared work. See `AGENTS.md` §3.

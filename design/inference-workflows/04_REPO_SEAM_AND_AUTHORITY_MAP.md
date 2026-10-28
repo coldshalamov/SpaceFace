@@ -226,7 +226,7 @@ Rules:
 
 Start at:
 
-- `design/PERF_BUDGET.md`
+- `design/archive/perf/PERF_BUDGET.md`
 - `docs/VALIDATION_WORKFLOW.md`
 - `design/program/roadmap/00_EXECUTION_PROTOCOL.md`
 - current broker/scenario manifests

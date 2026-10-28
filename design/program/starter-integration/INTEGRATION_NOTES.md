@@ -152,6 +152,6 @@ Looked for that cause in the files this lane owns: `src/systems/flightV3.js`, `s
 
 `origin/codex/swarm-crucible-overhaul` at `459fa9348` does not change those files. Since master its names are the survival and swarm systems, the crucible draft UI, deep-field and background render, `src/render/lod.js`, and its tests. LOD, HLOD, whole-ship LOD policy, asset residency, crucible warm-package residency, crucible ghost, and startup GPU residency were not edited on this branch.
 
-The published summary on master (`design/program/player-truth/SUMMARY.md`), from the harness run on master `6dc08f08e`, already marks both owner reports **NOT REPRODUCED**: `player_control` 0/4 thrust/yaw probes dead across both Swarm rounds, `tumble` no uncommanded spin beyond 0.5 s. This adventure run on the starter flight code also passes both (0/2 probes dead, tumble 0 s).
+The published summary on master (`design/archive/program/player-truth/SUMMARY.md`), from the harness run on master `6dc08f08e`, already marks both owner reports **NOT REPRODUCED**: `player_control` 0/4 thrust/yaw probes dead across both Swarm rounds, `tumble` no uncommanded spin beyond 0.5 s. This adventure run on the starter flight code also passes both (0/2 probes dead, tumble 0 s).
 
 This is still not starter-experience acceptance. The harness result is INCOMPLETE, the adventure cruise does not play the massline lesson, and the branch is not on master.

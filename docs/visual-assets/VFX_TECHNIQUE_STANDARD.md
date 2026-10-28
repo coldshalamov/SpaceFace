@@ -94,8 +94,8 @@ different art. Blend their appearance without moving historical samples out of t
 
 **PQ-190.01 scope.** This is the effect-class routing and reusable recipe contract, not a palette
 or fleet remaster. It finishes the existing source candidate against the
-[accepted .00 receipt](../../design/program/roadmap/receipts/PQ-190-00-material-candidate.md)
-and its [image binding](../../design/program/roadmap/evidence/pq190-style-2026-09-06/binding.json).
+[accepted .00 receipt](../../design/archive/program/roadmap/receipts/PQ-190-00-material-candidate.md)
+and its [image binding](../../design/archive/program/roadmap/evidence/pq190-style-2026-09-06/binding.json).
 Section 3 distinguishes observed recipes from prototype directions. All B1–B19 rejection outcomes
 remain; the only narrowed prohibition is the shield-specific B17 qualification, supported by the
 accepted transparent-panel sequence. Classification never promotes an inventory acceptance status.
@@ -212,7 +212,7 @@ owners; the recipes below explain how to select and compose them, rather than du
 The following are observations from the accepted .00 images, inspected again for this leaf.
 Image names resolve under the linked binding above. These are specific reads, not acceptance of
 everything else in the frame. Fresh-route findings and source identity belong to the
-[.01 receipt](../../design/program/roadmap/receipts/PQ-190.01-REPORT.md).
+[.01 receipt](../../design/archive/program/roadmap/receipts/PQ-190.01-REPORT.md).
 
 | Anchor | What the image actually establishes | Reusable decision / limit |
 |---|---|---|
@@ -229,7 +229,7 @@ frames show the abrupt white-jet/cyan-strand handoff while preserving the bright
 rover frames retain the solid working assembly; Crucible frames separate a gold loaded connection
 from blue history but crowd the target with circular responses and panel shields. Thus the next
 improvement is continuity at the propulsion seam and differentiation around contact/influence,
-not dimmer history or a new palette. The [.01 receipt](../../design/program/roadmap/receipts/PQ-190.01-REPORT.md)
+not dimmer history or a new palette. The [.01 receipt](../../design/archive/program/roadmap/receipts/PQ-190.01-REPORT.md)
 records the individual source identities and slower combat capture clocks. These observations do
 not approve unobserved smoke, every region, or the concurrently changing runtime's performance.
 
@@ -415,7 +415,7 @@ reference IDs), preserved rejection outcomes and evidence for any narrow qualifi
 run the focused checker and preserve that coherent candidate before optional prose polish. Keep
 inventory statuses factual rather than marking old implementations accepted to obtain green.
 
-The [.01 receipt](../../design/program/roadmap/receipts/PQ-190.01-REPORT.md) owns this leaf's closure
+The [.01 receipt](../../design/archive/program/roadmap/receipts/PQ-190.01-REPORT.md) owns this leaf's closure
 and fresh-route findings. This standard owns the reusable recipes; the inventory owns construction
 status. Neither classification nor a green static scan grants visual acceptance to an unobserved
 implementation. Preserve that distinction when the next asset task uses this handoff.

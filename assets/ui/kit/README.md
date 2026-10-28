@@ -6,7 +6,7 @@ that every SpaceFace screen is assembled from, plus a kit page and three runnabl
 that prove the assembly.
 
 The frames these were built to match are in
-[`design/frontend/direction/approved/`](../../../design/frontend/direction/approved/), and the
+[`design/archive/frontend-direction/approved/`](../../../design/archive/frontend-direction/approved), and the
 frames outrank this and every other document.
 
 ---

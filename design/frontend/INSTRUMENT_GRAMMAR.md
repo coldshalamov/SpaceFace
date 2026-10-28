@@ -1,15 +1,15 @@
 <!-- LIFETIME: DURABLE -->
 
-> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
+> **SUPERSEDED 2026-09-26 (owner) — history only, not instructions.** The frontend is claimed by the ORRERY overhaul lane; the only frontend authority is [`ORRERY.md`](ORRERY.md) + [`OVERHAUL_PLAN_2026-09-25.md`](../archive/frontend-OVERHAUL_PLAN_2026-09-25.md) (status: [`ORRERY_HANDOFF.md`](ORRERY_HANDOFF.md) §2). Do not execute, resume or "finish" anything below — earlier frontend passes built from documents like this one and the owner judged the result cheap and generic.
 
 > **2026-09-10 — SUPERSEDED ON AESTHETICS by
-> [`direction/FIELD_HARDWARE_PROGRAM.md`](./direction/FIELD_HARDWARE_PROGRAM.md)** and the frames
+> [`direction/FIELD_HARDWARE_PROGRAM.md`](../archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md)** and the frames
 > under `direction/approved/`. The centerpiece-and-verb rule (§ anti-slop) survives as an
 > engineering fact; every visual rule here is void.
 >
 > **2026-09-05 — §3 (Type) and §4 (Colour) SUPERSEDED; the identity is no longer decided here.**
 > Owner ruling: agent-written design law produced a neutral dashboard and keeps the frontend cheap.
-> [`design/FRONTEND_DIRECTION.md`](../FRONTEND_DIRECTION.md) outranks this file on every aesthetic
+> [`design/archive/FRONTEND_DIRECTION.md`](../archive/FRONTEND_DIRECTION.md) outranks this file on every aesthetic
 > question; §3/§4 are replaced by `direction/DIRECTION_SHEET.md` once `PQ-187.02` locks a direction
 > the owner chose from rendered options. The 28 px display cap, "two faces only", "one accent" and
 > the "80 % neutral" rule are void. What remains binding here: the motion contract (§5), the

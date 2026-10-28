@@ -3,7 +3,7 @@
 Screen: `src/ui/screens/footprint.js` (F3; bench id `footprint`). Reads state.provenance.chains / openIncidents,
 state.player.heat and bounty; emits intents only (single-writer: heat -> WANTED heat is the heat system's).
 Read first: design/frontend/review/BUILDER_BRIEF.md (rules, owner criteria, the MEASURED WEIGHT BAR), design/frontend/ORRERY.md,
-design/frontend/OVERHAUL_PLAN_2026-09-25.md (Footprint row), src/ui/orrery/ (compose the library).
+design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md (Footprint row), src/ui/orrery/ (compose the library).
 
 ## What is there now (the pre-overhaul screen)
 The bench shows the loading state only ("FOOTPRINT IS INDEXING YOUR RECENT ACTIVITY", a spinner, a boxed OPEN

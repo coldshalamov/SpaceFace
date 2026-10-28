@@ -1,8 +1,8 @@
 # Opening-route sector experience register
 
 27 October 2026. Coverage register under the existing [build map](../../../build_map.md),
-[original concept map](../world-depth-2026-10-02/TWENTY_CONCEPT_MAP.json) and
-[open goals](../world-depth-2026-10-02/OPEN_GOALS.md), not a competing dispatch queue.
+[original concept map](../../archive/program/world-depth-2026-10-02/TWENTY_CONCEPT_MAP.json) and
+[open goals](../../archive/program/world-depth-2026-10-02/OPEN_GOALS.md), not a competing dispatch queue.
 
 This register covers the connected opening routes actually inspected and edited.
 It does not certify every activity in these sectors, every asset placement, or the

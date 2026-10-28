@@ -481,7 +481,7 @@ The flight HUD, however, has the *same disease* in `injectHudCss` (§3.1) and ne
 discipline: **reconcile layers 1–4 rather than appending layer 5.**
 
 Ranked by player-visible impact ÷ effort. Collision risk is against the **live performance agent**
-working per-frame HUD DOM writes (`design/perf/lead4-hud-dom-writes-REPORT.md`).
+working per-frame HUD DOM writes (`design/archive/perf/lead4-hud-dom-writes-REPORT.md`).
 
 **Owner** column: `THIS` = this document. `HFA` = `design/HUD_FLIGHT_ATTENTION.md` — listed only so
 the two plans do not collide or double-work; **do not action HFA rows from this document.**

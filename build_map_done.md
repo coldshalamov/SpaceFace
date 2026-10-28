@@ -24,7 +24,7 @@ Reviewed the four named commits and their existing frame-solid JSON pair (2026-1
 The PR_MATURATION_2026-10-12 sitting landed its maturation bands and player-truth verdict
 directories (swarm/adventure optics, admission hardening); the dated record file was retired in the
 2026-10-15 token-reduction pass (git history: design/program/PR_MATURATION_2026-10-12.md).
-Live state: design/program/player-truth/SUMMARY.md scoreboard.
+Live state: design/archive/program/player-truth/SUMMARY.md scoreboard.
 
 ### NXB-004 — damaged loaded ship stays controllable (2026-09-30)
 
@@ -172,7 +172,7 @@ This is not INFERENCE, not `PQ-050`, not `PQ-129`, and not Waves 1–4.
 
 **Performance hitch campaign:** if the owner reports hitching, stutter, or the game not playing
 smoothly, start at
-[`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md)
+[`design/archive/perf/PERF_HITCH_CAMPAIGN.md`](design/archive/perf/PERF_HITCH_CAMPAIGN.md)
 and the admitted packet
 [`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
 This is not INFERENCE and not `PQ-050`. Reserved identities `PQ-061`–`PQ-128` stay the catalog;
@@ -207,7 +207,7 @@ controlled experiments against one scene and scoring harness; use those results 
 the exact disconfirmed hypotheses, not as proof that every renderer or composition axis is closed.
 Its §2 records the production loop (research → worldbuild → concept → build → adversarial review)
 and §5 records measurement traps that have already cost real time. The repository performance
-contract remains [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md): target-profile p95 ≤16.7 ms,
+contract remains [`design/archive/perf/PERF_BUDGET.md`](design/archive/perf/PERF_BUDGET.md): target-profile p95 ≤16.7 ms,
 p99/hitch protection, and no quality reduction; the measured 16.80 ms Intel-iGPU route is an
 additional guardrail, never a relaxation. Pair the brief with
 [`design/graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md`](./design/graphics-sprints/GRAPHICS_ORPHAN_CENSUS.md),
@@ -305,7 +305,7 @@ accepted receipts, exact manifests, and exact live-path writers outrank the reco
 historical prose. The 2026-08-17 closeout of the external `SpaceFace-archives` parking lot is
 [`SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./design/program/roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
 The 2026-08-08 `_recovery` transaction remains durable in
-[`WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./design/program/roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md).
+[`WORKTREE-RECOVERY-2026-08-08-REPORT.md`](design/archive/program/roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md).
 Do not recreate `SpaceFace-archives`. Do not treat repeated exports as separate projects, and do not
 keep a safe disjoint unit idle because one exact path has a live writer.
 
@@ -722,7 +722,7 @@ by the integrator; nothing below is an owner ruling until the owner says so.
   replacing the passive-income haircut, with a save migration (`PQ-177.07`); forecast quality judged by
   calibration, not a 30 % uplift (`PQ-177.01` rewritten); the first durable site loop with an exterior
   consequence (`PQ-145.01`); the style slice and the effect-class VFX matrix (`PQ-190` — world art and
-  effects only; screens, HUD and type belong to the frontend direction, `design/FRONTEND_DIRECTION.md`).
+  effects only; screens, HUD and type belong to the frontend direction, `design/archive/FRONTEND_DIRECTION.md`).
 - **Adopted with a guard:** "mutate, never fail" (`PQ-138.04`) becomes a bounded policy — recovery
   where meaningful, clean failure and partial success allowed, never recursive busywork; the first-ten-
   minutes candidate sequence is attached to `PQ-163` as a candidate, not a script; industrial danger
@@ -744,7 +744,7 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 
 - Landed: content in `0cefd93a6` (foreign-titled sweep commit; own hunks verified), queue flip in
   `2391e467e`. Receipt:
-  [`PQ-193.05-REPORT.md`](./design/program/roadmap/receipts/PQ-193.05-REPORT.md).
+  [`PQ-193.05-REPORT.md`](design/archive/program/roadmap/receipts/PQ-193.05-REPORT.md).
 - Cost: mine + mass seed decommissioned as packaged bodies rather than authored (census records the
   cut); gate hoop deletion left as owner cleanup; Wave 1b implementation + Wave 2b spec review +
   inline fix close + Wave 3 quality APPROVED.
@@ -753,14 +753,14 @@ by the integrator; nothing below is an owner ruling until the owner says so.
 
 - Landed: content in `0cefd93a6` (foreign-titled sweep commit; own hunks verified), queue flip in
   `2391e467e`. Receipt:
-  [`PQ-018-cathedral-chase-read-REPORT.md`](./design/program/roadmap/receipts/PQ-018-cathedral-chase-read-REPORT.md).
+  [`PQ-018-cathedral-chase-read-REPORT.md`](design/archive/program/roadmap/receipts/PQ-018-cathedral-chase-read-REPORT.md).
 - Cost: staged-approach activation analysis only — shell plating/rebind execution stays with the
   map/autopilot owner; Wave 1b + Wave 2b PARTIAL + inline fix close + Wave 3 APPROVED.
 
 ### PQ-195.00 · The assembly and the fork are objects you can read — **DONE**
 
 - Landed: `2be848900`, queue flip in `2391e467e`. Receipt:
-  [`PQ-195.00-REPORT.md`](./design/program/roadmap/receipts/PQ-195.00-REPORT.md).
+  [`PQ-195.00-REPORT.md`](design/archive/program/roadmap/receipts/PQ-195.00-REPORT.md).
 - Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
   ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
 

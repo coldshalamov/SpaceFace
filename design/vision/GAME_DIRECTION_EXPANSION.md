@@ -271,7 +271,7 @@ the program activates a specific proposal such as
 [`PHYSICAL_PLAY_GRAMMAR.md`](../PHYSICAL_PLAY_GRAMMAR.md). Graphics-only research starts at
 [`EXPANSION_PROGRAM.md`](../program/EXPANSION_PROGRAM.md), and authored visual work follows
 [`docs/visual-assets/README.md`](../../docs/visual-assets/README.md). Performance evidence follows
-[`PERF_BUDGET.md`](../PERF_BUDGET.md). These supporting documents cannot self-admit work either.
+[`PERF_BUDGET.md`](../archive/perf/PERF_BUDGET.md). These supporting documents cannot self-admit work either.
 
 ## 8. First three candidate cuts
 

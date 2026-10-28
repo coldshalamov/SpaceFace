@@ -69,7 +69,7 @@ lanes live in that snapshot's last 30 commits were absent from it entirely:
 |---|---|---|
 | Ceres content/law | `f66f6768`, `fc5e54a0`, `446e4e06`, `f050670b`, `5a67a236`, `be47da74` | `src/systems/**`, Ceres job/law seams |
 | VFX NEXT reference library | `7933bbde`, `e776bf11` | `src/vfxnext/**`, `_vfxlab.html` |
-| Performance rescue | `39f2841f`, `216099e9`, `36fec14b`, `3ae3fce3`, `a0e9cd9a`, `3841f1f1`, `4b568d45`, `1eb4fd9b` | `design/PERF_RESCUE_LEDGER.md`, render/UI hot paths |
+| Performance rescue | `39f2841f`, `216099e9`, `36fec14b`, `3ae3fce3`, `a0e9cd9a`, `3841f1f1`, `4b568d45`, `1eb4fd9b` | `design/archive/perf/PERF_RESCUE_LEDGER.md`, render/UI hot paths |
 
 **None of those three was authored-asset surfacing.** That is a historical statement, not current
 ownership; receiver-facility Blender/GLB/evidence work was live at the `9772dfbd` reconciliation.

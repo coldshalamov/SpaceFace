@@ -3,7 +3,7 @@
 
 Research snapshot: **2026-10-14**, checkout `48563578aa425c96bde03f5a243b194ef9c715e2`.
 This is an asset-bank commission under the existing [graphics program](../program/GRAPHICS_PROGRAM.md)
-and [asset families A–I](../program/world-depth-2026-10-02/ASSET_FAMILIES.md), not another gameplay queue.
+and [asset families A–I](../archive/program/world-depth-2026-10-02/ASSET_FAMILIES.md), not another gameplay queue.
 The inventory below proposes **156 distinct reusable model entries plus 12 composition recipes**.
 It does not claim those entries are built, promoted, visually accepted, or present in gameplay.
 Production status belongs to the bank's actual manifests and the existing program owners.

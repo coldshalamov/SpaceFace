@@ -5639,7 +5639,7 @@
       "readFirst": [
         "build_map.md",
         "AGENTS.md",
-        "design/PERF_BUDGET.md",
+        "design/archive/perf/PERF_BUDGET.md",
         "src/render/AGENTS.md",
         "docs/VALIDATION_WORKFLOW.md"
       ],

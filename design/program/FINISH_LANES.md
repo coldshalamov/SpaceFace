@@ -243,7 +243,7 @@ to THE INSTRUMENT — coordinate by exact path).
 
 ## 7. Lane four — THE WORLD
 
-**Expansion design:** [Mature target, asset families and concrete place briefs](world-depth-2026-10-02/README.md).
+**Expansion design:** [Mature target, asset families and concrete place briefs](../archive/program/world-depth-2026-10-02/README.md).
 Select one bounded slice in this area; name the missing hulls, creatures, machinery and states
 needed to fulfill it. Existing models are not a creative ceiling. Stormshift at the Anvil is a
 worked first candidate; the whole-game target also includes movement landscapes, distinctive
@@ -383,7 +383,7 @@ for anything Blender-side.
 > do not start it, and do not take any of its absorbed units (PQ-162, PQ-168, PQ-180–185, PQ-187, PQ-188,
 > PQ-192, PQ-194, §22 C1–C4 and the HUD G-rows, CV-KIT, §25 Phase 4) from the queue or the gap list. The
 > Asteroid Works world-art units PQ-130/PQ-131 stay with their own campaign. The authority is
-> [`design/frontend/ORRERY.md`](../frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](../frontend/OVERHAUL_PLAN_2026-09-25.md);
+> [`design/frontend/ORRERY.md`](../frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](../archive/frontend-OVERHAUL_PLAN_2026-09-25.md);
 > live per-surface status is [`design/frontend/ORRERY_HANDOFF.md`](../frontend/ORRERY_HANDOFF.md) §2. A frontend defect found by
 > another lane is repaired within its task under root `AGENTS.md` §1/§7: minimal ORRERY-consistent
 > functional/layout fixes are allowed, with exact current-path ownership preserved. Only deferred
@@ -414,7 +414,7 @@ until lock, G8 law is a badge, G9 objective recall, G11 no dead stats, G13 hull 
 G14 bracket shapes, G15 bound-key prompts). §23: **CV-KIT**. §25 Phase 4: `CAN` becomes a shape,
 results is replay + stunts + **Again**, the demo end card moves onto ORRERY. Direction law:
 [`design/frontend/ORRERY.md`](../frontend/ORRERY.md) is the one plan; nothing under
-`design/frontend/direction/approved/` carries owner authority. Live ledger rows in this area:
+`design/archive/frontend-direction/approved/` carries owner authority. Live ledger rows in this area:
 **D35**–**D37** (the works screen under host contention — scheduling stalls and the stale fault
 strip).
 

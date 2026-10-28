@@ -73,7 +73,7 @@ Patch jobs:
   rebase the scratch branch, re-run the tests, then export). One patch per logical change so the
   importer can cherry-pick; number them in apply order.
 - `IMPORT.md` — what it is, how to apply (`git am patches/*.patch`), which perf-backlog items it
-  claims (`design/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md` numbers), and what still needs
+  claims (`design/archive/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md` numbers), and what still needs
   owner-GPU verification.
 - `DONE.md` — the evidence: focused tests added and passing, before/after `check:baseline`,
   witness numbers (GPU tier labeled), and the risks an importer should read first.
@@ -88,7 +88,7 @@ with `tools/blender/spaceface_chase_camera.py` (`play_chase`, `play_chase_abeam`
 
 ## The backlog doc is stale — verify before you build
 
-`design/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md` predates work already on master. Before starting
+`design/archive/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md` predates work already on master. Before starting
 any numbered item, read the current code and `git log --oneline master -- <path>`; if the item is
 already done, say so in `DONE.md` and take the next row. Confirmed done as of 2026-09-21: #23
 (freeze submit under UI), #33 (world-records renormalize), #34 (per-emit copy), #36 (radar blip
@@ -178,6 +178,6 @@ Ranger pull requests. Ranger has a claimed folder on `vm-drop`; do not start ano
 ## Pointers
 
 - Outbox: `design/program/vm-drop/README.md`
-- Perf backlog (stale — verify against master): [`../perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md`](../perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md)
+- Perf backlog (stale — verify against master): [`../perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md`](../archive/perf/PERF_TOP10_AND_BACKLOG_2026-09-13.md)
 - Local checkout board: [`NOW.md`](./NOW.md) — read it, do not edit it
 - Chase camera: [`../../tools/blender/spaceface_chase_camera.py`](../../tools/blender/spaceface_chase_camera.py)

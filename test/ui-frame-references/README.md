@@ -248,4 +248,4 @@ was measured on this tree and rejected as not worth its cost: maximum-compressio
 adaptive filtering and the alpha channel stripped recovered 3.9–11.6 % per frame at 1.5–29 s each
 (≈1.5 h for the matrix), and the repo's own PNG writer produces files 19–203 % *larger* than
 Playwright's. The byte count of the committed baseline is recorded in
-`design/program/roadmap/receipts/PQ-180-03-REPORT.md`.
+`design/archive/program/roadmap/receipts/PQ-180-03-REPORT.md`.

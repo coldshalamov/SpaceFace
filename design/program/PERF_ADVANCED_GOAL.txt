@@ -8,6 +8,6 @@ Do not empty the sky. Do not enable retained-slot GPU batching. Do not start
 WASM SIMD / Worker / WebGPU unless p99 still misses after waves 1–3 and a
 crowded fly names that pole.
 
-Law: design/program/PERF_ADVANCED_CAMPAIGN.md
+Law: design/archive/perf/PERF_ADVANCED_CAMPAIGN.md
 Packet: design/program/roadmap/active/PQ-204.md
 Dispatch: node scripts/program-dispatch.mjs --id PQ-204

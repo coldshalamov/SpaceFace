@@ -211,7 +211,7 @@ shared `sfx_explosion_small` / ECM fallback. The slug inhale is a bounded, sourc
 loop that dies on every `bombs:fieldEnded` / cleanup path; collapse is a separate snap.
 Thermite burn and tar residue follow `combat.entities[*].statuses` duration and stacks, so a
 thermite bomb and an incendiary weapon share the same truthful burn. Receipt:
-`design/program/roadmap/receipts/PQ-205.01-REPORT.md`.
+`design/archive/program/roadmap/receipts/PQ-205.01-REPORT.md`.
 
 Adopt the actual cue IDs in `src/data/bombs.js` into the existing audio catalog. The preliminary
 report claimed three new IDs but listed only two: `bombs.goo.burst` and `bombs.emp.pulse`; inspect
@@ -233,7 +233,7 @@ one telegraphed pursuit-lane: after `wake_mines`, `src/ai/npcBombMirror.js` call
 proxy (`adaptBombProjectileProxy`: `collides`, `Masks.PROJECTILE`, `physicsBody:false`, pose from
 the kinematic owner). Destroying it is **inert** in every pre-burst phase (safe, armed, warning):
 the payload does not cook. Same-tick bullet/command/expiry races retire or detonate exactly once.
-Receipt: `design/program/roadmap/receipts/PQ-205.02-REPORT.md`.
+Receipt: `design/archive/program/roadmap/receipts/PQ-205.02-REPORT.md`.
 
 NPCs call `bombs.drop(owner, payloadId, state)` and `commandDetonate(owner.id, state)`; no copied
 fuze/cooldown/effect implementation. Keep their ammunition/acquisition policy in its proper owner.
@@ -285,7 +285,7 @@ other physics checks passed. Two environment/packet limitations: UI screen impor
 Neither golden was edited. These limitations are not described as completed route acceptance.
 
 PQ-205.00 added the combat-tilt look walk and occupancy numbers (see
-`design/program/roadmap/receipts/PQ-205.00-REPORT.md`). Focused re-run: bombs + choreography +
+`design/archive/program/roadmap/receipts/PQ-205.00-REPORT.md`). Focused re-run: bombs + choreography +
 presentation 36/36; authored-precompile residency includes `bomb-telegraph`.
 
 Node testing used the repository's exact vendored Three 0.184 and embedded Rapier exposed locally

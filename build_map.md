@@ -15,12 +15,12 @@ Use `node scripts/strategic-chaos.mjs brief SC-01` for a complete agent assignme
 Current claims, ordinary-route acceptance, INFERENCE and the existing single-writer owners remain authoritative.
 <!-- strategic-chaos-foundations:end -->
 
-The owner-requested [Maturity and cloud implementation pack](design/program/maturity-cloud-2026-10-20/README.md)
+The owner-requested [Maturity and cloud implementation pack](design/archive/program/maturity-cloud-2026-10-20/README.md)
 expands the existing first-hour, physics/Swarm, living-world, economy and discovery rows into
 bounded workflows and ten cloud-sized slices. This is supporting detail, not a second queue;
 existing row identities, current claims and acceptance remain authoritative.
 
-The owner-directed longform world-experience treatment is [WORLD_EXPERIENCE_TREATMENT.md](design/program/world-experience-2026-10-23/WORLD_EXPERIENCE_TREATMENT.md), with its companion [WORLD_BUILD_REQUESTS.md](design/program/world-experience-2026-10-23/WORLD_BUILD_REQUESTS.md) translating the direction into bounded set-piece asks. These are supporting direction and handoff documents for the existing original SF20 scope; they add no competing queue or change board ownership or status.
+The owner-directed longform world-experience treatment is [WORLD_EXPERIENCE_TREATMENT.md](design/archive/program/world-experience-2026-10-23/WORLD_EXPERIENCE_TREATMENT.md), with its companion [WORLD_BUILD_REQUESTS.md](design/archive/program/world-experience-2026-10-23/WORLD_BUILD_REQUESTS.md) translating the direction into bounded set-piece asks. These are supporting direction and handoff documents for the existing original SF20 scope; they add no competing queue or change board ownership or status.
 
 This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
 
@@ -70,7 +70,7 @@ mentally stimulating in adventure mode because of its advanced customization and
 version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md).
 Expansion alignment is retained in the non-dispatching [`EXPANSION_MASTER_BLUEPRINT.md`](./design/program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md)
 and the story/place concept companion [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md).
-Current original-concept source handoff: [8 October checkpoint](./design/program/world-depth-2026-10-02/EXECUTION_STATUS.md#source-checkpoint-for-cloud-work---8-october-2026). Inactive sources and failed route checks remain explicitly unfinished.
+Current original-concept source handoff: [8 October checkpoint](design/archive/program/world-depth-2026-10-02/EXECUTION_STATUS.md#source-checkpoint-for-cloud-work---8-october-2026). Inactive sources and failed route checks remain explicitly unfinished.
 Those syntheses do not add queue IDs or replace packet ownership. Existing owners stay compactly mapped here:
 kinetic combat and the Massline → `PQ-137`, `PQ-026`–`PQ-031`, `PQ-140`, `PQ-146`; readable swarms and
 world reactions → `PQ-140`, `PQ-174`, `PQ-175`, `PQ-138`, `PQ-143`, `PQ-151`, `PQ-144`; readable trade
@@ -103,7 +103,7 @@ wrong still starts at the fun loop (§1.7), then returns here.
    no-go zone**: when your task needs a file under `src/ui/**` or `styles/**`, edit it — minimal, consistent with the ORRERY direction, verified, landed by pathspec; the lane reads the diff and
    works it in when it returns. A cosmetic frontend impulse your task does not need is one ledger
    row (§7 of `AGENTS.md`), never a second designer. Authority:
-   [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md).
+   [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md).
 2. **Maturity first (owner, 2026-10-04):** debugging and polish are planned production work,
    including in areas whose feature rows say `done`. For "fix the bugs", "make it solid",
    "polish" or "demo ready", use [§1.8](#18-production-maturity-debugging-and-polish).
@@ -314,14 +314,14 @@ procedure:
 | The owner says | Start here |
 |---|---|
 | "it's super buggy", "fix all the bugs", "make it solid", "debug and polish", "text overflows", "models don't load", "too much off-screen loading", "demo ready" | **[§1.8](#18-production-maturity-debugging-and-polish)** — own discovery and repair of ordinary player workflows through the existing lanes and ONE defect ledger. The owner supplies the symptom, not a technical diagnosis |
-| "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
+| "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/archive/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) lane **THE HAND**; the loop method is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) |
 | "finish the game", "what's next for release", "the professional bar", "batch the work into lanes" | **§27** → [`FINISH_LANES.md`](./design/program/FINISH_LANES.md) — take the first lane whose files are free and own that area to its bar |
 | "do the next N tasks", "next 10", countable parallel work, `--next` reports queue drained | **§1C** — the numbered board; take the N lowest OPEN rows whose paths are free, one row per agent. When only §M ADMIT rows remain, they count like any other row |
 | "swarm mode should be more fun" | §16 — the arcade-expansion revision is §16.4 (board rows 263–273); the survival engine stays `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
-| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
 | "the ship jigs / jitters / doesn't know where it is", "it's not smooth" | **§21** → run `npm run probe:smooth-flight` and read `SHIP LOST ITS PLACE` (must be 0) before anything else. The loop has ONE order — simulate, then present (`check:baseline` → `smooth-flight`). Never reintroduce a draw-first frame, a pose hold against a running sim, or a sim step cap on slow frames |
 | "the attacks are limp / frozen / a swirl that doesn't spin" | **§21** → first read `state.settings.video.motionReduce`: on 2026-09-20 the owner's Windows "Animation effects: off" had silently stripped every combat effect. Then `--id PQ-210.04` (four channels, with sound) |
 | "things pop out of existence", "asteroids vanish", "it doesn't load in time" | **§21** → `--id PQ-210.03` when it is the known retired asteroid buffer; read `state.render.asteroidInstancePool.variants[].retiredOwners` and the console for `[asteroid-pool]`. A class of pop — ships, wrecks, stations, empty locks, the glass lying — is campaign **CV-GLASS** in §23, not another prefetch constant |
@@ -504,7 +504,7 @@ admit, mutate queue truth, or replace the routing doors in this map.
 These campaigns are live or resumable and keep their own laws. `--next` already interleaves their
 units; open the door below only when the owner names the campaign.
 
-- **Hitching / stuttering** → §8.4, [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md),
+- **Hitching / stuttering** → §8.4, [`design/archive/perf/PERF_HITCH_CAMPAIGN.md`](design/archive/perf/PERF_HITCH_CAMPAIGN.md),
   `--id PQ-129`. Measure with `npm run probe:runtime-witness` first. Never cut quality or delete
   off-screen actors.
 - **3D objects look like toys next to real ships** → **§13D** `--id PQ-193` leaves `.03`–`.05`. Bar and
@@ -539,7 +539,7 @@ units; open the door below only when the owner names the campaign.
   order in §1.2; acceptance leaves that need a headed machine you do not have are recorded `unproven`
   and skipped, never stalled on.
 - **Non-Hitch flyable fleet remaster** → `--id PQ-050` and its packet
-  [`PQ-050.md`](./design/program/roadmap/retired/PQ-050.md), which owns the chase-camera law, the
+  [`PQ-050.md`](design/archive/program/roadmap/retired/PQ-050.md), which owns the chase-camera law, the
   technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
   A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
   does not close a ship.
@@ -607,7 +607,7 @@ finished plan — the board is finished only when every number in this table is 
 | Demo defect ledger (`DEMO_READINESS_2026-09-20.md` §6) | **8 open defects** — D188, D191, D199, D225, D198, D130, D227, D231 — plus standing import guard D175 and watch-only D229 (D226 landed c8eec27a272 2026-10-19; live count: `program-dispatch --status`) |
 | Landed review (`design/program/LANDED_REVIEW.md`) | **4 open** — R-cc46e17, R-48e411f, R-183df8f, R-0df2ec6. A second look at a pushed build-map or dispatched unit. The author pushes first and files the row; a later agent deletes it by reviewing. `--status` is the live count. Eight or more jump ahead of every other surface |
 | Numbered board rows (§A–§P tables below) | **95 open, plus 69 added 2026-10-21, plus 16 unfinished added 2026-10-24 — §1O 551–558 attention ledger rows, §1P 559–567 experience journey rows, claimed per-row via program law (ATTENTION_PROGRAM.md, EXPERIENCE_PROGRAM.md)** (§33 rows 482–497, the swarm-physics core and fight craft; §34 rows 498–550, THE WEIGHT expansion; seams `rock-core`, `fight-read`, `glass-tiers`, `line-progression`, `bloom`, `world-pressure`, `faction-art`, `faction-law-trade`, `faction-strange`, `campaign`, `places-people`, `cadence`, `audit-50`) — §N rows 390–481 (the 2026-10-19 A-list audit, vision and report card: 77 BUILD, 2 ART, 5 FIX, 8 SEED; §31, §32); Swarm phase C row 270 (unparked 2026-10-19: phases A and B shipped as rows 263–269); quiet-host session 284; render-animation brief 384 (precursor machine deployment; claimed by devin-graphics). Rows 381–383 and 385–389 landed 2026-10-18 (383's row deleted by agentic-run-oct18 bookkeeping). Plus 9 parked/claimed and waiting on their named gate: 16 (D24 quiet host), 17 + 18 (devin-graphics), 36 (C7 new vm drops), 65 (PQ-042 gated on 61), 271–273 (Swarm phases D–F) |
-| Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
+| Admission (§M) | **complete 2026-10-17** — every SFQ candidate, mission brief and model brief is dispositioned in [`ADMIT-DISPOSITIONS-2026-10-17.md`](design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md); the real remainder is rows 383–384 and the four INFERENCE lines still OPEN (WORLD-48, FIGHT-14, FIGHT-15 and the model-view lines SFQ-I070 and SFQ-I071) |
 | Lanes (§F) | **5 open** — L-MACHINE, L-HAND, L-FIGHTWORLD, L-LONGGAME, L-EAR; claimed: L-PICTURE (devin-graphics), L-INSTRUMENT (ORRERY); parked: L-RELEASE (pre-release) |
 | Inference catalog (`INFERENCE_IDEAS.md`) | **55 OPEN lines** — section A-LIST (AL-HF-01…15, AL-LG-01…16, AL-PR-01…16), each already owned by a §N row and taken inside it, plus section PULSE (PULSE-01…08, volume fill for the living world, §31.6) and section REPORT CARD (RC-01…50, the audited small parts of rows 456–481, §32.7) — 105 OPEN in all; every earlier catalog line SHIPPED; INFERENCE work is look-then-rotate mode (INFERENCE_GOAL.txt) under an owner INFERENCE instruction |
 | vm-drop | code stack drained; only HOLDs and 9 chase REVISEs remain, waiting on the remote machine |
@@ -674,7 +674,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | racing | devin-lanea | `racing*` systems/ui/render, `ai/racingDriver.js`, `missions/racing*`, `raceLevels.js`, `raceCourses.js`, `world/racingCorridor.js`, `raceBoard.js` (§31 THE FIGHT) | 394, 395, 472 |
 | world-answers-2 | done (devin-25-oct22) | ending application in `story.js`, `postEndingReplay.js`, `sectorSim.js` readers, faction territory-flip embodiment, `traffic.js` pickets/identity, `npcJobsRuntime.js`, `stationContacts.js`, standing-order offers (§31 THE WORLD) | - |
 | run-memory | devin-fleet-oct20 | `worldOneOffs.js`, `scanReveal.js`, `shipCapabilities.js`, `story/campaign47a/embodiedMissions.js`, B7 board hunk of `missions.js`, `story/endings/lifeLedger.js` (§31 THE LONG GAME) | 399, 400 |
-| attention | free — claim per row via §1O/§1P law | `design/program/attention/`, `design/program/experience/`, ledger surfaces | 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567 |
+| attention | free — claim per row via §1O/§1P law | `design/archive/program/attention/`, `design/archive/program/experience/`, ledger surfaces | 551, 552, 553, 554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567 |
 | hull-commit | devin-fleet-oct20 | `data/ships.js`, `systems/ships.js` refit/resale, `data/modules.js`, `techVerbLadder.js`, `shipLedger.js` (§31 THE LONG GAME) | 401, 469 |
 | works | devin-fleet-oct20 | `data/automation.js`, `automation.js`, `alphabet.js`, `claims.js`, `data/sites.js`, `siteProduction.js`, `crafting.js`, automation-panel composer (§31 THE LONG GAME) | 402, 466, 403 |
 | chain-ear | done (devin-25-oct22) | `audio/audioSystem.js` stunt/stinger handlers, `scoreDirector.js`, `themeMatrix.js`, `themeCompose.js`, `bandBeds.js` (§31 THE EAR) | - |
@@ -728,10 +728,10 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | cadence | devin-thirty-oct22 | `systems/encounterDirector.js` cooldowns and rhythm phases, `systems/tensionDirector.js`, adventure swarm-pocket shape (§33 row 497) | 497 |
 | audit-50 | claude-beta-oct23 | reads anywhere; writes only fixes inside the owning seam's files, or one demo-ledger row (§34 row 548) | 548 |
 
-**Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
-are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
-is not dispatchable. The [golden standard](./design/program/research-2026-10-02/SPACEFACE_GOLDEN_STANDARD.md)
-and [evidence atlas](./design/program/research-2026-10-02/RESEARCH_EVIDENCE.md) are supporting references,
+**Research-to-production intake:** [bounded repair briefs](design/archive/program/research-2026-10-02/ADMITTED_REPAIRS.md)
+are attached to their canonical rows below; the linked [discussion list](design/archive/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
+is not dispatchable. The [golden standard](design/archive/program/research-2026-10-02/SPACEFACE_GOLDEN_STANDARD.md)
+and [evidence atlas](design/archive/program/research-2026-10-02/RESEARCH_EVIDENCE.md) are supporting references,
 not a parallel queue, visual direction or mandatory scoring gate. Batch checks by affected route;
 finishing a research subcheck alone does not finish the original parent assignment.
 
@@ -830,7 +830,7 @@ Rows 60 (PQ-050.01–.22 fleet remaster — 22/22 KEEP), 63 (PQ-161.00 role silh
 |---|---|---|---|---|
 | 67 | L-MACHINE | Own THE MACHINE's development half — boot, hitches, admission, residency. Rows 2, 4–16, 19–34 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): demo-route machine slices BM-16..18 only; disjoint from codex render/snapshotFence + sweep-oct3 soak paths |
 | 68 | L-HAND | Own THE HAND — flight, tether, fields, verbs, input. Rows 37–38, 42 are its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): hand safe slices BM-19..20 only (no input.js/flightV3/physics/tetherGameplay/maneuver) |
-| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — writer devin-oct10-pipeline (sitting 2026-10-10): NPC-jobs slice landed (on-call yard tenders + scavengers outside Ceres); prior muse-polish-oct7 claim was stale |
+| 69 | L-FIGHTWORLD | Own THE FIGHT + THE WORLD — swarm, arenas, sectors, NPC jobs, law, consequences. Rows 1, 43–55 are its counted surface. [First-fight cohesion](design/archive/program/world-depth-2026-10-02/COHESION.md#first-fight) extends existing PQ-140 route acceptance: expose and transfer distinct physical choices; preserve shipped tactical variety and the approved Swarm expansion. [World expansion target](design/archive/program/world-depth-2026-10-02/README.md): complete a selected inhabited/physical slice with genuinely missing assets; Anvil Stormshift is the worked first candidate, not a second queue | LANE | OPEN — writer devin-oct10-pipeline (sitting 2026-10-10): NPC-jobs slice landed (on-call yard tenders + scavengers outside Ceres); prior muse-polish-oct7 claim was stale |
 | 70 | L-LONGGAME | Own THE LONG GAME — progression, economy depth, story spine, persistent ship identity. Counted surface: rows 278–283 (§L). | LANE | OPEN — writer lonngame-oct4 (sitting 1) |
 | 71 | L-EAR | Own THE EAR — audio identity and feedback. Row 41 is its counted surface. | LANE | OPEN — writer muse-polish-oct7 (sitting 1): ear units BM-01..07 + audio INF rotates; row-41 surface + demo-route audio identity |
 | — | L-PICTURE | THE PICTURE — Forge backlog GFX-1, 3–14 | LANE | CLAIMED devin-graphics (live) |
@@ -866,15 +866,15 @@ owner before building; `node scripts/board-chunks.mjs` lists free seams).
 
 ### I. Finish & Expansion Pack — loops-first finishing + the alien/machine extension (2026-09-29)
 
-Owner-delivered third reservoir, LIVE: landed at [`design/finish-expansion-2026-09/`](./design/finish-expansion-2026-09/):
+Owner-delivered third reservoir, LIVE: landed at [`design/archive/finish-expansion-2026-09/`](design/archive/finish-expansion-2026-09):
 24 programs, 240 `SFQ-B` build candidates, 96 `SFQ-I` inference candidates, 36 mission briefs, 36
 model-family briefs, 32 VFX/audio briefs, a validated prerequisite DAG. Entry:
-[`START_HERE.md`](./design/finish-expansion-2026-09/START_HERE.md) ·
-[machine-readable catalog](./design/finish-expansion-2026-09/catalog/task_catalog.json).
+[`START_HERE.md`](design/archive/finish-expansion-2026-09/START_HERE.md) ·
+[machine-readable catalog](design/archive/finish-expansion-2026-09/catalog/task_catalog.json).
 
 Laws: the pack is on this board (statuses here + `INFERENCE_IDEAS.md`; its JSON/CSV are candidate
 inventories worked through `§M` admission rows — `SFQ-` IDs never go to `program-dispatch --id`);
-map by outcome before building ([admission + crosswalk](./design/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md))
+map by outcome before building ([admission + crosswalk](design/archive/finish-expansion-2026-09/integration/01_ADMISSION_AND_CROSSWALK.md))
 — already-true closes with the native owner's evidence, residual extends the native packet, genuinely
 new takes a row here, conflicting parks in-pack; the alien/machine layers (programs 13–17) rode PR
 #170 (merged) — never build a parallel alien system; presentation converges on ORRERY/Forge/current
@@ -926,7 +926,7 @@ git history (consolidated 2026-10-15).
 
 ### K. Bounded research residuals — new owners only where no exact open assignment exists
 
-[Repair briefs](design/program/research-2026-10-02/ADMITTED_REPAIRS.md) carry the evidence,
+[Repair briefs](design/archive/program/research-2026-10-02/ADMITTED_REPAIRS.md) carry the evidence,
 preservation constraints and tests. Rows 274–277 (CRAFT-INTEGRITY, RELEASE-TRUTH, MAP-INTENT,
 CONTRACT-IDENTITY) are all DONE 2026-10-03 — narratives in git history (consolidated 2026-10-15).
 Research residuals named on still-open rows (e.g. row 241's J2/J3) stay on those rows. All remaining
@@ -958,7 +958,7 @@ still marked OPEN and are now SHIPPED, and 30 stale tests were re-pinned to the 
 
 **ADMIT** work closed 2026-10-17: every one of rows 291 and 348-380 was dispositioned against live code (240 SFQ-B and 96 SFQ-I candidates, 36 mission briefs,
 36 model briefs, the Depth roll-up). About 85% of the pack was already true in code or already landed; the evidence per candidate is in
-[`design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md`](./design/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md). What was a real gap was built
+[`design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md`](design/archive/program/roadmap/receipts/ADMIT-DISPOSITIONS-2026-10-17.md). What was a real gap was built
 the same day (see below) or minted as rows 381-387 and as INFERENCE lines. An ADMIT row leaves the board when every candidate it names is dispositioned,
 so there are none left; a future reservoir drop re-opens the process by minting new ADMIT rows.
 
@@ -1225,11 +1225,11 @@ Claim rows by editing the ledger, not this table.
 | # | ID | Work | Kind | Status |
 |---|---|---|---|---|
 | 551 | ATT-SEED | Attention program scaffolding: program law + coverage ledger + dossier phase | PLAN | DONE — this section |
-| 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
+| 552 | ATT-DOSSIER-A | Four evidence dossiers (first hour, audio/feel, world memory, economy/failure) → `design/archive/program/attention/` | ANALYZE | IN PROGRESS — first-hour landed; three running |
 | 553 | ATT-E01 | Onboarding rail + first hour (minutes 0-60): rail texture, tier-0 life, ambient traffic (directions 1-3 joint with §1P X-01; guided beat joint with §1P X-04; raid beat joint with §1P X-02) | BUILD | DONE 2026-10-25 — ledger E-01 slice shipped 9b1a6664d7 (TOURIST + first-hour bark texture, 3x-approved); all §1P joints landed by devin-lanea: X-01 (6ab0d2eb2e), X-02 (acc83ababd+dbfe5da7c5+f175abc66d), X-04 (6e0aa21444) |
-| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | DONE 2026-10-24 — SECTOR_GREETING_BARKS banked all 25 sectors (4 voice-neutral lines each) and the deterministic even-index share of patrol-greeting hails now speaks local through the same _speak budget (tribunal: `design/program/attention/v-01-plan.md`); X-06's §1P half stays open for its own claim |
+| 554 | ATT-V01 | Comms/bark density: per-sector bark banks so ambient life registers outside the rail (joint with §1P X-06) | BUILD | DONE 2026-10-24 — SECTOR_GREETING_BARKS banked all 25 sectors (4 voice-neutral lines each) and the deterministic even-index share of patrol-greeting hails now speaks local through the same _speak budget (tribunal: `design/archive/program/attention/v-01-plan.md`); X-06's §1P half stays open for its own claim |
 | 555 | ATT-T02 | Station life: named regulars, rumors, overheard plots on the most-docked stations | BUILD | PARTIAL — barkeep/regulars bark bank shipped 9b1a6664d7 (ledger T-02); named-regular arcs + overheard plots remain |
-| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | DONE 2026-10-24 — eight memorial-marker find-sites landed beside the unplated frontier wrecks (tribunal: `design/program/attention/s-13-plan.md`); catalog's ten shrank to eight — the two core wrecks already carried plates |
+| 556 | ATT-S13 | Wreck/debris fields: named dead, salvage notes, kill-marks across the wreck surfaces | BUILD | DONE 2026-10-24 — eight memorial-marker find-sites landed beside the unplated frontier wrecks (tribunal: `design/archive/program/attention/s-13-plan.md`); catalog's ten shrank to eight — the two core wrecks already carried plates |
 | 557 | ATT-H01/H02 | Hull markings: stencils and wear on starter hulls; kill tallies and owner names on traffic variants | ART | PARTIAL — hull names/swatches + kill-tally/owner bark banks shipped 9b1a6664d7 (ledger H-01/H-02); visual stencil/wear ART remains |
 | 558 | ATT-E04 | Secrets layer: easter eggs, coded barks, ritual sights that reward poking | BUILD | PARTIAL — rare roaming-event lines shipped 9b1a6664d7 (ledger E-04); coded barks + ritual sights remain |
 
@@ -1541,7 +1541,7 @@ use it instead of inventing another retry loop.
 
 Every packet that can add per-frame work, entities, colliders, DOM, particles, materials, textures, asset admission, save payload, or queries must declare a cost model before implementation and report matched before/after evidence at acceptance.
 
-Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density. The durable multi-approach tradeoff board lives in [`design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md). The exhaustive same-picture option space — including investigations, scaffolding, tabletop-correct cuts, and large Worker/WASM/WebGPU/native/Rust jobs — lives in [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) and is reserved as §8.2.
+Use [`design/archive/perf/PERF_BUDGET.md`](design/archive/perf/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density. The durable multi-approach tradeoff board lives in [`design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md). The exhaustive same-picture option space — including investigations, scaffolding, tabletop-correct cuts, and large Worker/WASM/WebGPU/native/Rust jobs — lives in [`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md) and is reserved as §8.2.
 
 Feature code should be naturally bounded:
 
@@ -1591,7 +1591,7 @@ the sequence into an audit or capture campaign.
 SpaceFace is a tilted top-down table. Later work must optimize **the glass plus a short approach
 runway**, not a horizon. Huge jobs stay listed. A plan is legal only if the player-facing game is
 unchanged. Full protocols, investigation scaffolds, and implement-after-census rules:
-[`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md).
+[`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md).
 
 These identities are reserved, not admitted. Admit a parent and its smallest leaves into
 `program-queue.json` before implementation. `PQ-094` may mint new reserved leaves when a sweep
@@ -1699,7 +1699,7 @@ emptying the glass, camera-facing soft cards for fly-past objects, or editing si
 if it is not the pole, A/B worsens, pixels change, the stall moves, or copy costs more than it
 
 The full inventory itself (technique families and their parents, per-category leaves) lives in
-[`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) — the canonical copy. This section
+[`design/archive/perf/PERF_OPTION_SPACE.md`](design/archive/perf/PERF_OPTION_SPACE.md) — the canonical copy. This section
 was consolidated to that pointer in the 2026-10-15 token-reduction pass; nothing was removed from
 the option space, only from this file.
 
@@ -1708,7 +1708,7 @@ the option space, only from this file.
 `PQ-051`–`PQ-128` remain reserved catalog identities. They do not dispatch until a campaign
 admits them. **`PQ-129` is that campaign** for the owner-visible hitching problem.
 
-Law: [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
+Law: [`design/archive/perf/PERF_HITCH_CAMPAIGN.md`](design/archive/perf/PERF_HITCH_CAMPAIGN.md).
 Packet: [`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
 Dispatch: `node scripts/program-dispatch.mjs --id PQ-129`. `--next` still returns `PQ-050`.
 
@@ -1790,7 +1790,7 @@ A receipt must say what changed, what passed, what route was observed, what perf
 
 ## 11. The frontend is the strategic half of the game
 
-> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the surface manifest, the Power Bar, the J01–J16 jobs and their order. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the surface manifest, the Power Bar, the J01–J16 jobs and their order. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
 
 The screens and the HUD are not connective tissue between the fun parts. They are where the player
 understands the world, understands their ship, and decides what to do next. Owner direction,
@@ -3172,7 +3172,7 @@ The 47-A opener is the best twelve minutes in the game; the next three beats are
 
 - **Gap:** Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. **Reference:** Freelancer campaign gating, Hades run narrative, Outer Wilds discovery.
 - **Exists:** 8 beats `src/data/missions.js:1001-1016`; `src/story/campaign47a/`; 5 endings `src/story/endings/endingDefs.js`; `postEndingReplayChains.js`; `newGamePlus.js`; eligibility gates `eligibility.js:152-168`.
-- **Routes through:** WB-B0-B7, WB-WORLD-AFTER, RV-STORY, SPEC3-32; depth P2 story-beat embodiment; retired plan superseded by this packet: design/program/roadmap/retired/PQ-032.md.
+- **Routes through:** WB-B0-B7, WB-WORLD-AFTER, RV-STORY, SPEC3-32; depth P2 story-beat embodiment; retired plan superseded by this packet: design/archive/program/roadmap/retired/PQ-032.md.
 - **Writes:** `src/data/missions.js`, `src/story/`, `src/core/newGamePlus.js`, `src/data/postEndingReplayChains.js`
 
 | Leaf | Outcome | Done when |
@@ -3533,7 +3533,7 @@ The game ships. There is a LICENSE, third-party notices and a credits screen (th
 
 - **Gap:** No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). **Reference:** spec2/08 release readiness; Steam launch checklist.
 - **Exists:** electron-builder targets, `build/web/spaceface-release-build.json` (unread), save system (5 slots, checksum, migration, rollback), `check:all`, runtime witness, adaptive quality.
-- **Routes through:** S2-08; M6-PERFORMANCE/M6-RELEASE; §8; PQ-144; retired plan superseded by this packet: design/program/roadmap/retired/PQ-033.md.
+- **Routes through:** S2-08; M6-PERFORMANCE/M6-RELEASE; §8; PQ-144; retired plan superseded by this packet: design/archive/program/roadmap/retired/PQ-033.md.
 - **Writes:** `electron/`, `package.json`, `build/`, `src/ui/screens/mainMenu.js`, `src/ui/screens/pause.js`, `LICENSE`, `NOTICE`
 
 | Leaf | Outcome | Done when |
@@ -3967,7 +3967,7 @@ A voice says Berth Three is down a flywheel and the replacement is in transit. Y
 
 ## 18. Frontend: every surface to the newest version, optimized (`PQ-180`–`PQ-185`) — ADMITTED 2026-09-03
 
-> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — `PQ-180`–`PQ-185` and their plans. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — `PQ-180`–`PQ-185` and their plans. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
 
 Historical note: the 2026-09-05 direction override (PQ-187/188 re-gating PQ-162/168/181/182/185
 on the owner's contact-sheet yes) applied while this section was live; the surface matrix and
@@ -4042,14 +4042,14 @@ The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; e
 
 ## 20. The frontend direction — the A-list plan (`PQ-187`, `PQ-188`; re-gates `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`) — ADMITTED 2026-09-05
 
-> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the 2026-09-05 direction, `PQ-187`/`PQ-188`, the 2026-09-06 task series and §20.15 Field Hardware (`PQ-194`), whose aesthetics the owner has since replaced. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
+> **CLAIMED 2026-09-26 — the ORRERY frontend overhaul lane (owner-directed 2026-09-25).** The whole section — the 2026-09-05 direction, `PQ-187`/`PQ-188`, the 2026-09-06 task series and §20.15 Field Hardware (`PQ-194`), whose aesthetics the owner has since replaced. Do not take, execute or "finish" any of it. The authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md); everything in this section is **superseded wherever it differs** and stays only as history (earlier frontend passes built from these instructions and the owner judged the result cheap and generic). Live status: [`design/frontend/ORRERY_HANDOFF.md`](./design/frontend/ORRERY_HANDOFF.md) §2. Found a frontend defect? One row in [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) §6 for the lane — never a parallel implementation.
 
 The owner's 2026-09-05 ruling that admitted this section survives in intent: the earlier frontend
 instructions were written by less design-oriented agents and "will keep reverting the frontend
 back to cheap if you rely on them as an authority" — never treat a prior frontend pass's notes as
 aesthetic authority. The section body (the direction file phase tables, the 2026-09-06 task series
 §20.14, Field Hardware §20.15) was consolidated to git history in the 2026-10-15 token-reduction
-pass; `design/FRONTEND_DIRECTION.md` remains the routed direction record.
+pass; `design/archive/FRONTEND_DIRECTION.md` remains the routed direction record.
 
 ## 21. The playable demo — smooth, solid, answering, hardware (`PQ-210`) — ADMITTED 2026-09-20
 
@@ -4171,7 +4171,7 @@ decode-settle window, not a missing hull. Reports:
 | 5 | Strict per-frame budget | `admissionSliceBudget.js` (3 ms target, 8 ms hard), heavy-admission present gate, one compile per present | Composition in flight is serial through its GPU gate. Overlapping it was tried twice 2026-09-25 (before and after the 4× cheaper assembly): throughput up, on-time appearance flat (0.56 → 0.54), parked (`.devshots/parked/flight-compose-overlap-2026-09-25-v2.patch`) | The wait is per-body GPU prep, not queue order — the answer is system 6 (a stand-in on screen while it prepares). Per-frame scans: `kickDecodeRunwayAssets` 422 → 90 ms per flight (linear pick); hold-exempt glass test hoist proposed |
 | 6 | Always something correct on screen | Each hull has LOD1/LOD2 files; pending bodies stay hidden | No instant stand-in; §13D Wave F3 is planned | §13D F2 then F3 |
 | 7 | Draw less | Package instance pools, asteroid instance pool, static batch cache, shadow present cadence | MEASURED 2026-09-25 (probe `gpu submission` / `draw census`): ~155–167 draws, ~100 program switches, ~390 texture binds per frame; 135 programs, 1174 geometries. Draw count is modest; per-object CPU bookkeeping is not: `updateMatrixWorld` 2.2 s per 64 s flight, 96 % of its auto-updating nodes never move | In progress: bounded warm roots stay parked in flight (was 51 % of those nodes). Then freeze static authored-boundary interiors except animated bells/fans/gimbals |
-| 8 | Simulation off the drawing thread | Fixed-step sim with flat state, decoupled from render | MEASURED 2026-09-25: the fixed-step sim is ~24 % of the main thread on the laptop (15 s of a 64 s flight: physics 3.5 s, flight 2.0 s, AI 1.6 s). Design exists: `design/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md` L4 (three-thread), with M9 coarse read-only worker slices and M4 packed physics membranes as the incremental path | First slice after 6: an M9 read-only AI-scoring or physics membrane worker, with a synchronous deterministic fallback |
+| 8 | Simulation off the drawing thread | Fixed-step sim with flat state, decoupled from render | MEASURED 2026-09-25: the fixed-step sim is ~24 % of the main thread on the laptop (15 s of a 64 s flight: physics 3.5 s, flight 2.0 s, AI 1.6 s). Design exists: `design/archive/perf/PERFORMANCE_OPTIMIZATION_CONSTELLATION.md` L4 (three-thread), with M9 coarse read-only worker slices and M4 packed physics membranes as the incremental path | First slice after 6: an M9 read-only AI-scoring or physics membrane worker, with a synchronous deterministic fallback |
 | 9 | Measurement guard rail | `probe:frame-solid` above; `probe:shader-timeline`, `probe:runtime-witness`, smooth-flight | An idle-machine run is still owed | Run on a quiet machine and save that baseline |
 | 10 | WebGPU | `webgpuPresent.js` gate, off | Needs 1–7 first | Later |
 
@@ -4277,7 +4277,7 @@ tests and on the chase loop. Do not close on an opinion.
 
 > **Rows C1–C4 are CLAIMED 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them. Their
 > "machined bezels / one structural kit" wording is the superseded Field Hardware direction; the
-> authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md). C5–C8 (sound, skies, hulls, wrecks) are not frontend and stay open.
+> authority is [`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md). C5–C8 (sound, skies, hulls, wrecks) are not frontend and stay open.
 
 | Id | The player gets | Done when | Files |
 |---|---|---|---|
@@ -4711,7 +4711,7 @@ fixture already passes, skip.
 
 > **Rows G1, G3, G5, G7, G8, G12, G13 and G14 (what the flight HUD and the screens show) are CLAIMED
 > 2026-09-26 by the ORRERY frontend overhaul lane** — do not take them; the lane lands them in the
-> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](./design/frontend/OVERHAUL_PLAN_2026-09-25.md)).
+> HUD pass ([`design/frontend/ORRERY.md`](./design/frontend/ORRERY.md) + [`design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md`](design/archive/frontend-OVERHAUL_PLAN_2026-09-25.md)).
 >
 > **The non-ORRERY G-rows are verified landed (2026-10-04)** — each exists in code with a green
 > fixture: G2 `tether:latchDenied` routes to the `sfx_massline_deny` voice (combatVerbCues →
@@ -5024,13 +5024,13 @@ folder; the picture you open is the evidence.
 right to look different (a mine, a bay, a wanted state) without breaking the family. Then
 retire the registers that lose.
 
-**Read.** `docs/UI_VISUAL_ITERATION.md`, `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`,
+**Read.** `docs/UI_VISUAL_ITERATION.md`, `design/archive/frontend-direction/FIELD_HARDWARE_PROGRAM.md`,
 `styles/kit.css`, `src/ui/views/hudStyles.js`, `styles/hud.css`, `styles/prompt-deck.css`.
 Shoot the real screen, open it, fix what you see, and walk the controls. A structural pin
 that is green while the screen looks cheap is not the feeling.
 
 **Thin.** A token rename. A new font. A screenshot left for later. Restoring a wood HUD or
-treating `design/frontend/direction/approved/` as law.
+treating `design/archive/frontend-direction/approved/` as law.
 
 #### CV-EAR — The ear has a signature
 

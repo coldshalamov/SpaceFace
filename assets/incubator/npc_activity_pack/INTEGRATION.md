@@ -11,7 +11,7 @@
 > `ore_carrier` (NEW role), `tender`, `salvor`, `surveyor` in
 > `src/render/partsLibrary.js` / `src/systems/traffic.js`. Whole-asset G1/G2/G4 and
 > independent G7 review remain OPEN for the promoted family (see
-> `design/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md`). The remaining
+> `design/archive/program/roadmap/receipts/PQ-045-npc-identity-REPORT.md`). The remaining
 > eleven donor families stay source-only design candidates under the verdict below.
 
 Status of every asset here: **`design_candidate`** (per `assets/ships/AGENTS.md` state

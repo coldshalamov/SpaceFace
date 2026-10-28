@@ -6,7 +6,7 @@
 
 Follow the current quiet-host/capture rules and existing profiler. Use the exact source revision, actual production route, recorded inputs, known scene, fixed camera, supported device, window resolution, and default quality settings. Retain enough information to reproduce the run. A software-rendered fixture can validate shaders or lifecycle logic but cannot certify the user's GPU performance.
 
-The inspected `design/PERF_BUDGET.md` sets a desktop target of 16.7 ms and a low-end floor of 33.3 ms. Its category budgets are 5.0 ms simulation, 7.0 ms rendering, 2.5 ms VFX, 1.2 ms UI, and 1.0 ms headroom. These are existing contract values, not measurements from this planning session. Re-read the current contract before adopting them. Do not treat a 30 fps profile as permission to run gameplay sensing or physics at an arbitrary lower frequency.
+The inspected `design/archive/perf/PERF_BUDGET.md` sets a desktop target of 16.7 ms and a low-end floor of 33.3 ms. Its category budgets are 5.0 ms simulation, 7.0 ms rendering, 2.5 ms VFX, 1.2 ms UI, and 1.0 ms headroom. These are existing contract values, not measurements from this planning session. Re-read the current contract before adopting them. Do not treat a 30 fps profile as permission to run gameplay sensing or physics at an arbitrary lower frequency.
 
 Measure the whole frame and relevant phases. CPU and GPU work can overlap, so do not add unrelated percentile values and call the result a measured frame. Include p50/p95/p99, the existing >32 ms hitch count, input-to-visible-response latency, simulation backlog/catch-up shedding, GPU timings where supported, allocations/GC, draw calls, shader programs, active physical bodies, contact/query cost, and persistent memory after repeated encounters.
 
