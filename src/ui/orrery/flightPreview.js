@@ -134,7 +134,7 @@ export const orreryFlightScreen = {
     const tape = createObjectiveTape({ width: tapeWidth });
     const toasts = createSignalToasts();
     const cluster = createFlightCluster({ shipId: 'ship_kestrel', name: 'Hitch', classLine: 'Kestrel class · starter', groups: ORDNANCE_LAYOUT });
-    const radar = createRadarOrrery({ shipId: 'ship_kestrel', rangeLabel: '4.0k wu' });
+    const radar = createRadarOrrery({ shipId: 'ship_kestrel', rangeLabel: '4.0k u' });
     const lock = createLockRing({ hostile: false });
     const threat = createThreatChannel();
 

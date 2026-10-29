@@ -1354,6 +1354,13 @@ const RACING = `
 .race-tape { position:fixed; z-index:11; top:calc(env(safe-area-inset-top,0px) + 68px); left:50%; transform:translateX(-50%); display:grid; grid-template-columns:110px minmax(0,1fr); width:min(480px,calc(100vw - 24px)); box-sizing:border-box; gap:var(--dp-pad); padding:var(--dp-pad); color:var(--dp-ink); font:12px/1.45 var(--dp-font-mono,monospace); pointer-events:none; }
 .race-tape[hidden] { display:none; }
 .race-tape[data-compact="true"] { left:auto; right:max(12px,env(safe-area-inset-right,0px)); transform:none; width:auto; grid-template-columns:1fr; }
+/* syncParent (racingHud.js) reparents the compact tape into .sf-rightdock, where the dock's
+   contain:layout makes position:fixed resolve against the dock box — the fixed top/right then
+   landed the Overhead/Circuits row mid target card. Inside the dock the tape is its first
+   column child, so static flow stacks it above the target readout and overlap is impossible.
+   Outside the dock (the #hud-root fallback mount) the fixed top-right rail above still owns
+   placement. Mobile flight overrides this wholesale with absolute anchors (mobileFlightLayouts). */
+.sf-rightdock > .race-tape[data-compact="true"] { position:static; right:auto; }
 .race-tape-map { align-self:center; }
 .race-tape-readings { min-width:0; }
 .race-tape[data-phase="handoff"] { grid-template-columns:1fr; }

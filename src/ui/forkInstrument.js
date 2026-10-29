@@ -52,7 +52,7 @@ export const FORK_INSTRUMENT_COPY = Object.freeze({
   settling: 'Verifying custody',
   // `ready` is a fresh custody CANDIDATE; the arbiter still decides. It must not claim the deal.
   ready: 'Verifying custody',
-  tooFast: (limit) => `Approach at ${limit} WU/s or less`,
+  tooFast: (limit) => `Approach at ${limit} u/s or less`,
   offMouth: 'Come through the open end',
   lost: 'Bring the assembly around again',
   aligned: 'Lined up with the open end',
@@ -61,7 +61,7 @@ export const FORK_INSTRUMENT_COPY = Object.freeze({
   guideSlow: 'Slow the assembly before contact',
   guideLineUp: 'Line the assembly up with the mouth',
   guideRecover: 'Recover it and try the approach again',
-  guideApproach: 'Bring it through the open end under 100 WU/s',
+  guideApproach: 'Bring it through the open end under 100 u/s',
 });
 
 let _receiverCache = null;
@@ -193,7 +193,7 @@ export function forkInstrumentModel(state) {
 
   const alignmentWord = acquired ? FORK_INSTRUMENT_COPY.inBay
     : (cls.aligned ? FORK_INSTRUMENT_COPY.aligned : FORK_INSTRUMENT_COPY.offCentre);
-  const speedText = `${Math.round(speed)} / ${receiver.maxEntrySpeed} WU/s`;
+  const speedText = `${Math.round(speed)} / ${receiver.maxEntrySpeed} u/s`;
   const ariaLabel = `${variant.payload.name}. ${cls.statusWord}. ${speedText}. ${alignmentWord}`;
 
   return Object.freeze({

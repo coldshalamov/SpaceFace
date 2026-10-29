@@ -654,12 +654,25 @@ export const impulseCharges = {
       if (dart.data.runCohort === 'survival' && !swarmPilotHasActed(state)) continue;
       if (this._detonatedEnts && this._detonatedEnts.has(dart)) continue;
       const triggerRange = Math.max(0, Number(spec.triggerRange) || 56);
+      const aiData = dart.data.ai || {};
+      // A doctrine-armed dart's fuse is written for the hull it is running. Ambush lanes route
+      // the named prey straight past bystanders (the player flies the same corridor), and a
+      // team-only fuse pops on whichever hull the run brushes first — the Ceres dart kept dying
+      // on the player ~156 WU short of its hauler. While the doctrine names a target (the same
+      // chain aiPorts uses to name the fight), that hull is the only fuse; a doctrineless dart
+      // or a dart whose target is lost keeps the indiscriminate ring.
+      const fuseTargetId = aiData.combatDoctrineId === 'detonator_run'
+        ? ((dart.data.combat && dart.data.combat.targetId)
+          ?? (aiData.activity && aiData.activity.targetId)
+          ?? aiData.retaliationTargetId)
+        : null;
       const near = stickCandidatesNear(state, dart.pos, triggerRange, this._stickScratch);
       let hostile = null;
       for (const cand of near) {
         if (!cand || cand.id === dart.id || cand.alive === false || !cand.pos) continue;
         if (cand.team === dart.team) continue;
         if (cand.type !== 'ship' && cand.type !== 'drone') continue;
+        if (fuseTargetId != null && cand.id !== fuseTargetId) continue;
         // stickCandidatesNear degrades to the whole entityList when no spatial hash is live —
         // the ring is the fuse's contract, so the radius is enforced here, not by the query.
         const dx = cand.pos.x - dart.pos.x, dz = cand.pos.z - dart.pos.z;

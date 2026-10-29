@@ -47,7 +47,9 @@ import {
 import {
   orientationDetachedHoldActive,
   orientationHoldHidesDrawable,
+  packageDetachSerialNow,
   preparePresentedDraw,
+  presentedDetachDrawsArmed,
   queuePresentedDetachRehydrate,
 } from './packageCpuDetach.js';
 
@@ -1342,7 +1344,7 @@ function installUnreadyDrawGuard(renderer) {
   renderer.__sfUnreadyDrawGuardDepth = 0;
   const inner = renderer.renderBufferDirect;
   const drawGuardGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
-  renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
+  function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     // Three already ran object/material before-hooks. Its instance renderer skips
     // zero counts only after program/uniform/binding work; avoid that work here.
     // Match Three's dispatch precedence: BatchedMesh owns its draw list, and an
@@ -1404,8 +1406,30 @@ function installUnreadyDrawGuard(renderer) {
       }
     }
     return inner.call(this, camera, scene, geometry, material, object, group);
-  };
+  }
+  renderer.__sfUnreadyDrawGuardInner = inner;
+  renderer.__sfUnreadyDrawGuardFn = unreadyDrawGuard;
+  renderer.renderBufferDirect = unreadyDrawGuard;
   renderer.__sfUnreadyDrawGuardWrapped = true;
+}
+
+// Steady-state unwrap (finish-program M2): once the program set and the detach latch both
+// report settled, the owning guard swaps the raw renderBufferDirect back in so hot draws stop
+// paying the safety pass; a mount, a new release, dead attribute records or an aspect hold
+// re-wraps it. Both swaps are identity-checked — a foreign wrapper stacked on top (perf
+// counters install whichever lands first) is never disturbed; in that case the guard simply
+// stays armed, which is the safe outcome anyway.
+export function rearmPresentedDrawGuard(renderer) {
+  if (!renderer || renderer.__sfUnreadyDrawGuardWrapped !== true) return false;
+  if (renderer.renderBufferDirect !== renderer.__sfUnreadyDrawGuardInner) return false;
+  renderer.renderBufferDirect = renderer.__sfUnreadyDrawGuardFn;
+  return true;
+}
+
+export function disarmPresentedDrawGuard(renderer) {
+  if (!renderer || renderer.renderBufferDirect !== renderer.__sfUnreadyDrawGuardFn) return false;
+  renderer.renderBufferDirect = renderer.__sfUnreadyDrawGuardInner;
+  return true;
 }
 
 // Mounts under a scene descendant (socket.add, mesh.add, parent.add) never touch the
@@ -1417,8 +1441,13 @@ export function recordMountedRootForUnreadyScan(object) {
   if (object && object.isObject3D === true) pendingNestedMountedRoots.push(object);
 }
 
-export function createUnreadyDrawableGuard(renderer) {
+export function createUnreadyDrawableGuard(renderer, options = {}) {
   installUnreadyDrawGuard(renderer);
+  // Production callers opt into the steady-state unwrap (M2): when every program reports ready
+  // and the detach latch is clean, hide() swaps the raw renderBufferDirect back in and a later
+  // mount/release/hold re-wraps it. Default off so the guard's wrapped contract stays absolute
+  // for call sites that never asked for the swap.
+  const disarmOnSettle = options.disarmOnSettle === true;
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
   // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
@@ -1496,6 +1525,31 @@ export function createUnreadyDrawableGuard(renderer) {
     // draw guard can refuse. Force this walk even when the program set is steady,
     // and hide the released meshes so that upload never sees a zero-length array.
     const orientationHold = orientationDetachedHoldActive(renderer);
+    // Detach latch (M2 unwrap safety): a new release, dead attribute records, a dropped
+    // residency ledger or an aspect hold can put a presented payload back on the upload path —
+    // exactly what the draw-time guard intercepts. While the latch is dirty the wrapper stays
+    // on; the armed scan re-verifies pending state on a bounded cadence so a release whose
+    // geometry never draws cannot tax every presented frame.
+    let detachGuardSettled = true;
+    if (disarmOnSettle && renderer) {
+      const detachSerial = packageDetachSerialNow();
+      if (orientationHold || detachSerial !== renderer.__sfDrawGuardDetachSerial
+          || renderer.__sfDrawGuardDetachPending === true) {
+        rearmPresentedDrawGuard(renderer);
+        if (orientationHold || detachSerial !== renderer.__sfDrawGuardDetachScanSerial
+            || (renderer.__sfDrawGuardDetachScanIn = Math.max(0, (renderer.__sfDrawGuardDetachScanIn || 0) - 1)) === 0) {
+          renderer.__sfDrawGuardDetachScanSerial = detachSerial;
+          renderer.__sfDrawGuardDetachPending = presentedDetachDrawsArmed(renderer);
+          renderer.__sfDrawGuardDetachScanIn = renderer.__sfDrawGuardDetachPending === true
+            ? UNREADY_PENDING_SWEEP_FRAMES : 0;
+          if (renderer.__sfDrawGuardDetachPending !== true) {
+            renderer.__sfDrawGuardDetachSerial = detachSerial;
+          }
+        }
+      }
+      detachGuardSettled = detachSerial === renderer.__sfDrawGuardDetachSerial
+        && renderer.__sfDrawGuardDetachPending !== true;
+    }
     // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
@@ -1556,7 +1610,10 @@ export function createUnreadyDrawableGuard(renderer) {
     // A grew-without-drain change means a mount path bypassed scene.add — failsafe below.
     if (!orientationHold && unreadyProgramsPending !== true && programs.length === unreadyProgramCount
       && programs[programs.length - 1] === unreadyProgramTail
-      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) {
+      if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
+      return;
+    }
     unreadyProgramsPending = false;
     unreadyProgramCount = programs.length;
     unreadyProgramTail = programs[programs.length - 1] || null;
@@ -1571,7 +1628,12 @@ export function createUnreadyDrawableGuard(renderer) {
       if (!ready) { unreadyProgramsPending = true; break; }
     }
     if (!orientationHold && !unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)
-      && !sceneSetChanged && unreadyMountedRoots.length === 0) return;
+      && !sceneSetChanged && unreadyMountedRoots.length === 0) {
+      if (disarmOnSettle && detachGuardSettled) disarmPresentedDrawGuard(renderer);
+      return;
+    }
+    // Not settled this pass — the draw-time wrapper must be on before this frame's draws.
+    if (disarmOnSettle) rearmPresentedDrawGuard(renderer);
     unreadyCheckedMaterials.clear();
     unreadyHiddenMaterials.clear();
     admissionScene = scene;
@@ -2297,7 +2359,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     glState.unbindTexture();
   }
 
-  const unreadyDrawables = createUnreadyDrawableGuard(renderer);
+  const unreadyDrawables = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
   const hideUnreadySceneDrawables = unreadyDrawables.hide;
   const restoreUnreadySceneDrawables = unreadyDrawables.restore;
 

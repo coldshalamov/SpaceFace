@@ -309,3 +309,23 @@ html.sf-reduce-flash .sf-gloc-vignette {
 #hud[data-glass-preset="hauler"] .sf-glass-fighter {
   opacity: .45;
 }
+
+/* ── Target panel concision (owner 2026-10-27: the readout above the radar read as a wall of
+   text). Scoped overrides live here so the injected hudStyles base keeps its single writer;
+   the .sf-hudpanel prefix wins the cascade at equal specificity. ── */
+.sf-hudpanel.sf-target { gap: 3px; }
+.sf-hudpanel .sf-target__meta { gap: 9px; }
+.sf-hudpanel .sf-target__name { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__idbits { overflow-wrap: anywhere; color: var(--hud-muted); opacity: .85; }
+.sf-hudpanel .sf-target__intent { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__object { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-overview-footer { overflow-wrap: anywhere; }
+.sf-hudpanel .sf-target__triangle { flex-wrap: nowrap; gap: 6px; margin-top: 2px; }
+/* De-boxed like .sf-alert: the target readout is a status light over the world, not a plate —
+   the owner called the machined slab "stupid" and "in the way" (2026-10-27). Legibility rides
+   the hudStyles text-shadow; this outranks the #hud .sf-target plate rule by specificity. */
+#hud .sf-hudpanel.sf-target {
+  background-color: transparent;
+  background-image: none;
+  padding: 4px 2px;
+}

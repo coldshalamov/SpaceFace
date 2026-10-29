@@ -396,8 +396,8 @@ test('moving waypoint marker retains its projection record and exact edge presen
         edge: 'bottom',
         edgeClass: true,
         onScreenClass: false,
-        label: 'GOAL · TEST VECTOR · 1.0k WU · ETA —',
-        aria: 'Current objective: TEST VECTOR, 1.0k WU, ETA —',
+        label: 'GOAL · TEST VECTOR · 1.0k u · ETA —',
+        aria: 'Current objective: TEST VECTOR, 1.0k u, ETA —',
       });
       if (expectedPresentation == null) expectedPresentation = presentation;
       else assert.deepEqual(presentation, expectedPresentation,

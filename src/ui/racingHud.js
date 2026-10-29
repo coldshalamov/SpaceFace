@@ -176,7 +176,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(cue)courseCue.textContent=cue.kind==='sectorHazard'
         ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
         :cue.kind==='anchor'?`${cueName} · optional Massline swing`
-        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} wu`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} u`
         :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
@@ -201,8 +201,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(phase==='approach'){
         line.textContent=`${name} · APPROACH`;
         const distance=grid&&player?.pos?Math.hypot(grid.x-player.pos.x,grid.z-player.pos.z):0;
-        sub.textContent=`GRID ${Math.round(distance)} wu · ${Math.round(tape.speed)} wu/s`;
-        hints.textContent='Stop within 70 wu of the marker, below 8 wu/s. Face gate 1; release the Massline.';
+        sub.textContent=`GRID ${Math.round(distance)} u · ${Math.round(tape.speed)} u/s`;
+        hints.textContent='Stop within 70 u of the marker, below 8 u/s. Face gate 1; release the Massline.';
         return;
       }
       if(phase==='handoff'){
@@ -222,7 +222,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
         lastHolding=true;return;
       }
       if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
-      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} wu/s · GATE ${tape.nextGate}/${tape.gateCount}`;
+      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} u/s · GATE ${tape.nextGate}/${tape.gateCount}`;
       pack.textContent=(race.params.raceStandings||[]).map(row=>`${row.position} ${row.name}${row.status==='finished'?' ✓':row.status==='dnf'?' DNF':''}`).join(' · ');
       const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
       const draft=race.params.raceDraft;
@@ -236,7 +236,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const precision=race.params.precisionChain>1?` · PRECISION ×${race.params.precisionChain}`:'';
       const personal=Number.isFinite(race.params.lastGhostDeltaS)?` · ${race.params.lastGhostDeltaS>=0?'+':''}${race.params.lastGhostDeltaS.toFixed(2)}s personal best`:'';
       hints.textContent=(warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
-        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
+        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} u`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
     dispose(){ for(const off of offs)off();combatLock.dispose();panel.remove(); },

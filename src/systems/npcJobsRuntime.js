@@ -5070,7 +5070,10 @@ export const npcJobsRuntime = {
       const threat = entry.threatId != null && this.state.entities
         ? this.state.entities.get(entry.threatId)
         : null;
-      if (!(Number.isFinite(ax) && Number.isFinite(az)) && threat && threat.pos) {
+      // A live remembered pursuer outranks the stamped hit site: the site freezes at the last
+      // shot while the gun keeps moving. Flee the ship on the hull's tail; only unattributed
+      // violence (no live threat) falls back to the site where it landed.
+      if (threat && threat.alive !== false && threat.pos) {
         ax = threat.pos.x;
         az = threat.pos.z;
       }
@@ -5437,6 +5440,26 @@ export const npcJobsRuntime = {
     if (!entry || !entry.job) return false;
     if (entry.control) return false;
     const wasFlee = entry.job.phase === NPC_JOB_PHASE.FLEE;
+    // The traffic alarm lane clears when the violence ring goes quiet — but a lull is not a
+    // departed attacker. A live job threat still inside the resume ring is exactly the
+    // hysteresis case _reconcileThreatResult holds; force-resuming here strands the hull in
+    // the dead band (inside RESUME_RADIUS to hold, outside FLEE_RADIUS to re-trigger) and it
+    // sails back into the fight it just fled. Hold the flee and let proximity own the exit.
+    if (wasFlee && entry.entityId != null && this.state.entities) {
+      const hull = this.state.entities.get(entry.entityId);
+      if (hull && hull.pos) {
+        const radiusSq = RESUME_RADIUS * RESUME_RADIUS;
+        for (const candidate of this.state.entities.values()) {
+          if (!this._isJobThreat(candidate) || !candidate.pos || candidate.id === hull.id) continue;
+          const dx = candidate.pos.x - hull.pos.x;
+          const dz = candidate.pos.z - hull.pos.z;
+          if (dx * dx + dz * dz <= radiusSq) {
+            entry.threatId = candidate.id;
+            return false;
+          }
+        }
+      }
+    }
     resume(entry.job);
     // INF-073: a rescued worker says so. One contextual acknowledgment per genuine return —
     // the bus event for watchers, a short toast for the pilot, both cooled down per job.

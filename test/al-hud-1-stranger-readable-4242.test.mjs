@@ -85,7 +85,7 @@ test('readable contact facts preserve authored names, quantities, legality and u
     fx.state.player.targetId = 'threat-1';
     panel.update({ slow: true });
     assert.doesNotMatch(panel.el.textContent, /internal_role_429/);
-    assert.equal(panel.el.querySelector('.sf-target__triangle').style.display, 'grid');
+      assert.equal(panel.el.querySelector('.sf-target__triangle').style.display, 'flex');
   } finally { fx.hud.destroy(); fx.restore(); }
 });
 
@@ -175,25 +175,24 @@ for (const [width, height] of [[1280, 720], [1920, 1080]]) {
       assert.ok(fx.overview.querySelectorAll('.sf-overview-row').length >= 3, 'populated roster within viewport cap');
       assert.equal(fx.state.simTime, at, 'presentation does not tick simulation');
       const css = fx.document.getElementById('sf-hud-style').textContent;
-      const stack = rule(css, '#hud .sf-rightdock');
-      for (const property of ['max-height:calc(100vh - 96px)', 'max-height:calc(100dvh - 96px)', 'overflow-y:auto', 'overflow-x:hidden', 'min-height:0']) assert.ok(stack.includes(property));
-      assert.ok(stack.indexOf('100vh') < stack.indexOf('100dvh'));
-      assert.match(rule(css, '#hud .sf-rightdock > *'), /flex:0 0 auto/);
-      const compact = rule(css, '#hud .sf-rightdock > #race-tape[data-compact="true"]');
-      for (const property of ['position:relative', 'top:auto', 'right:auto', 'left:auto', 'bottom:auto', 'transform:none', 'width:100%', 'min-width:0', 'grid-template-columns:minmax(0,1fr)']) assert.ok(compact.includes(property));
-      assert.match(rule(css, '#hud .sf-rightdock > #race-tape[data-compact="true"] .race-tape-actions'), /flex-wrap:wrap/);
-      for (const cls of ['sf-target__name', 'sf-target__identity', 'sf-target__intent', 'sf-target__object', 'sf-overview-footer']) assert.match(rule(css, `#hud .sf-rightdock .${cls}`), /overflow-wrap:anywhere/);
+      // One-owner layout (mobileFlightLayouts.js owns mobile placement; the compact tape grid
+      // moved to systems/mobile/styles.js) — the dock's anchor is DOM-asserted above, and the
+      // readability contracts this subtest guards live in the panel's own rules.
+      // The target-panel concision overrides (owner 2026-10-27: the readout was a wall of text)
+      // live in styles/hud.css so the injected base keeps its single writer.
+      const hudCss = readFileSync(new URL('../styles/hud.css', import.meta.url), 'utf8');
+      for (const cls of ['sf-target__name', 'sf-target__idbits', 'sf-target__intent', 'sf-target__object', 'sf-overview-footer']) {
+        assert.match(rule(hudCss, `.sf-hudpanel .${cls}`), /overflow-wrap:\s*anywhere/);
+      }
       const html = targetFrameHtml();
-      assert.match(html, />Weapon effect</);
-      for (const [family, cls, row] of [['Energy', 'e', 2], ['Kinetic', 'k', 3], ['Explosive', 'x', 4]]) {
-        assert.match(html, new RegExp(`>${family}</span>`));
+      assert.match(html, /aria-label="Weapon effect"/);
+      for (const [family, cls, letter] of [['Energy', 'e', 'E'], ['Kinetic', 'k', 'K'], ['Explosive', 'x', 'X']]) {
         assert.match(html, new RegExp(`sf-tri--${cls}" tabindex="0" role="img" aria-label="[^"]+" data-why="${family}"`));
-        assert.match(rule(css, `#hud .sf-rightdock .sf-tri--${cls}`), new RegExp(`grid-row:${row}`));
+        assert.match(html, new RegExp(`sf-tri--${cls}"[^>]*><span class="sf-tri__k">${letter}</span>`));
       }
       assert.match(html, /sf-tri__fill/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-target__tri-label'), /grid-row:1/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-target__tri-layer'), /grid-row:1/);
-      assert.match(rule(css, '#hud .sf-rightdock .sf-tri'), /grid-template-columns:minmax\(0,1fr\) 52px/);
+      assert.match(rule(css, '.sf-target__triangle'), /display:flex/);
+      assert.match(rule(hudCss, '.sf-hudpanel .sf-target__triangle'), /flex-wrap:\s*nowrap/);
       assert.doesNotMatch(rule(css, '.sf-tri__k'), /width:8px/);
     } finally { tape?.dispose(); fx.hud.destroy(); fx.restore(); }
   });

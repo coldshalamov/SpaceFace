@@ -55,8 +55,14 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   flagged: gzip slot preview inventing ship facts (needs the saveLoad.js call site to honor
   `meta.gz` — src/ui, ours, packet it in Wave G), index-cache trusting `_blobHash` (tractable
   in-file — add integrity sniff in a later save pass). lawsec-a: missing-method defect absent
-  (already fixed); chain review continuing. save-a (write path) + lawsec-b (impound/heat)
-  relaunched after the context wall.
+  (already fixed); chain review continuing. lawsec-b + save-a moved to Claude reviewers after
+  repeated codex context-wall deaths. **save-a REVIEWED 7.5/10** — write path heavily defended,
+  check:save-schema green; mediums → G4 split packet: hot autosave lane bypasses the delta
+  mirror (O(all-save-bytes) per autosave), no-worker commit fallback drops the gzip retry,
+  worker-encode byte-order drift vs sync lane, dirty journal is write-only (kind>>>0 coerces
+  string kinds to 0). No data-loss serialize pairs; real asymmetries: capitalBoss
+  serialize↔restore, provenanceLedger/chronicler name-mapping, unvalidated encounterDirector
+  restore.
 
 ## The ordered packets
 
@@ -107,9 +113,28 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   Bright Seam, Range Drone); visual:false lines captioned (trackerCaptionId path, clean); wu/wu/s
   in range + tender copy fixed. 14/14 + 21/21 pinned suites green; 3 onboarding-suite fails traced
   to foreign dirty `src/core/*`/`weapons.js` — watch, not ours.
-- **Row 473 RC-FRONT-DOOR** — interactive title ≤ 10 s, mm:ss clock, destination slate, first-light preset, settings density (load-time half is Lane 1's M9; coordinate in its Inbox).
-- **Row 429 AL-HUD-1** — no internal ids on screen (`ZONE_CERES_DERELICT`), no Overhead/Circuits buttons over the target card, no overlapping shipworks list text.
-- **Row 479 RC-SCREENS-TRUE** — no screen admits it is unfinished: mission log, tab-rail clipping, game over, map strip, voice ring, empty states.
+- **Row 473 RC-FRONT-DOOR — DONE** (UI scope). Verified end-to-end on the real route: mm:ss clock,
+  destination slate names the resumed sector ("Continue · Helios Reach"), first-light preset +
+  once-only regression test (rc-473 5/5), settings density readouts, empty slot says empty once.
+  Title-interactive timing is **16.5–17.4 s clean / ~26–42 s loaded on SwiftShader vs 10 s —
+  entirely inside Lane 1's boot/render pipeline** (media hold → main.js eval/boot → serial shader
+  admission); filed to Lane 1 Inbox with the file:line tape. Also repaired stale
+  check-player-facing-labels (pins the shared commodityDisplayName helper).
+- **Row 429 AL-HUD-1 — DONE.** Bench-verified at 1280×720 + 1920×1080 with `--walk`: no internal
+  ids reach the screen (sector-law attacker id + radar label glue + wreck weak-point fixed;
+  targetDisplayName path everywhere else); Overhead/Circuits tape no longer overlaps the target
+  card (compact tape was fixed-positioned inside contain:layout dock — now static flow);
+  shipworks clean both sizes; one news line during tutorial already gated. 9/9 tests incl. new
+  race-tape regression. Leftover ORRERY list: expanded radar occludes target card at 1080p
+  (modal-intent? flag), shipworks sale-list 4th row clips at 720p edge, Ctrl+K modal keeps
+  centre hits unreachable (intended?), waypoint label carries fixture distance (cosmetic).
+  Foreign `hud-contact-roster-visibility` still 2-red (projection-count contract — Lane 2's).
+- **Row 479 RC-SCREENS-TRUE — DONE** (31bb0dbb20a). All seven §32.7 items bench-verified:
+  real 47-A terms in mission log, tab-rail padding, populated game-over bench + CAUSE
+  UNRECORDED fallback, TRACKING goal on the map strip, race-board key help as a verb chip,
+  Voice live-mix ring in source, factions scroll+fade, ledger fold fade. Flags: settings
+  bench shot hangs >280s (harness issue, Lane 1/G); 2 stale test assertions at HEAD
+  (racingMap 2-polyline design, station-orbital ensureStylesheet) — Lane 2 Inbox.
 - **Row 459 RC-VIGNETTES** — lived vignettes worth meeting.
 - **Row 553 ATT-E01** — onboarding rail texture, tier-0 life, ambient traffic.
 - **Row 546 W-TEACH** — teach by situation; First Light keeps its offer with Play primary.

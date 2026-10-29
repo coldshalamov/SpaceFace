@@ -21,6 +21,8 @@ budget. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<one-line reas
 | 2026-10-28 A/B round1 (worker, post-storm-fix 530498d) | master+M1 | 68.2 / 143.0 / 191.0 (ents~177, sim 0.02 render 23.9, 175 draws) | 29.7 | pending | pending | pending | pending | contended (audit+probes) |
 | 2026-10-28 A/B wave15 (worker, post-storm-fix 530498d) | master+M1 | **129.7 / 255.1 / 314.6** (ents~230, sim 0.02 render 49.4, 746 draws; journalRebuilds 4/session) | 73.6 (p3 32.3@387d + p1 24.5@341d, composite 14.4) | pending | pending | pending | pending | contended (audit+probes) |
 | 2026-10-28 M0 loading (main) | master+merge+M1 | — | — | — | 4,168 ms (next: 1,340) | 66.6 (3 gaps >1 s, longest 3.0 s) | 74.1 s | contended; 190 MB streamed (108 MB GLB) |
+| 2026-10-28 M0 adventure (main) | master+M1 | — | — | 239.5 / 1,254.5 / 1,441.6 (ents~127, route 107 s, 359 fr) | — | — | — | contended (audit+probes) |
+| 2026-10-28 M0 adventure (worker) | master+M1+flip | — | — | 80.1 / 212.4 / 1,300.6 (ents~162, 1,247 fr; PASS, 0 ctx loss) | — | — | — | contended (audit+probes) |
 
 Targets and floors: README §4.
 
@@ -32,6 +34,7 @@ Targets and floors: README §4.
 
 - 2026-10-28, Lane 3: H0 razor commit a054f36530a touched `assets/**/measured-contract.json`, `assets/ui/kit/*`, `assets/incubator/*/INTEGRATION.md`, `assets/ships/m5_*/MATERIAL_TRUTH_PREFLIGHT.md`, `assets/ships/npc_work_fleet/PROVENANCE.json`, `tools/blender/forge/source_assets/pip_spanner/provenance.json` — mechanical ref rewrite only (provenance strings now point at `design/archive/…` after the doc moves). No asset content changed.
 - 2026-10-28, Lane 3: foreign-dirty work seen in the tree, not mine — `electron/preload.cjs`, `scripts/lib/ui-layout-measure.mjs`, `src/ui/contactHailPrompt.js`, `src/ui/views/hudStyles.js`, `test/ceres-five-minute-acceptance.test.mjs` left unstaged and preserved.
+- 2026-10-28, Lane 3 (W1-473): title-interactive on the VM profile (headless SwiftShader, retail `build/web`) measured **16.5–17.4 s** clean, ~26–42 s under host load vs the 10 s budget — over entirely inside your boot/loading/render path, nothing UI-side (menu mounts+usable the same frame the shell drops). Tape: `bootEntry.js:33` media hold → `import('../main.js')` eval ~2.5 s longtask ~3–5.5 s → `main.js:141–216` "Preparing/Starting flight systems" ~4–5 s → `main.js:470` "Opening the command deck" → **~5 s tail** (first title-scene paint: serial shader compile on software GL in `src/render/**` admission) → `loadingPresenter.hide()` (`loadingPresenter.js:374–388`, hideDelayMs 600). Evidence script+tape: `.devshots/w1-473-title-timing.mjs` (`--bundle`), run on the hour-old bundle.
 
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
@@ -91,7 +94,30 @@ thread, parity/digest tests are green, and the A/B shows the frame win.
 **M2 — Unwrap `unreadyDrawGuard` once readiness settles.** `src/render/bloom.js:~1337` wraps every draw
 (12.5 % inclusive in the Crucible round). After `unreadyProgramsPending` is false, swap in the raw
 `renderBufferDirect`; re-wrap only on a new mount. Done when the profile share is < 1 % in a settled
-round and no unready program ever draws (keep the existing guard test).
+round and no unready program ever draws (keep the existing guard test). **LANDED 2026-10-28** —
+`createUnreadyDrawableGuard(renderer, { disarmOnSettle: true })` at both production call sites;
+settled hide() swaps the raw `renderBufferDirect` in, mounts/program churn/detach events re-wrap.
+Detach side got its own latch: `packageDetachSerialNow()` bumps on release, dead attribute records,
+dropped residency stamps, manifest eviction and orientation holds, and a bounded-cadence
+`presentedDetachDrawsArmed` scan re-verifies pending payloads so a never-drawn release cannot tax
+every frame. Guard test kept green (17/17 incl. new disarm/rearm + opt-out contract tests); detach
+suites 25/25. Real-browser proof (`probe-crucible-stress` worker arm, contended):
+`drawGuardDisarmed` true in 178/897 diag samples — engaged whenever the frame is actually settled;
+combat mounts legitimately re-arm it mid-round.
+
+Audit follow-up landed same day (m008/m009): the hidden `SF_RosterPrewarm_PartCatalog` root (~30
+part holders + count-0 instanced twins + pool-witness stubs) is not a bounded warm root, so while
+parented it paid into every per-frame scene/matrix/readiness walk for the whole run. It now
+unparents once all decode lanes settle; `_rosterPartCatalogRoot` keeps it reachable for cohort
+sweeps and run-end release (pool-witness mounts and in-flight-decodes' residency predicate are
+settle-complete by then; late mounts land on the detached root harmlessly). Also fixed a teardown
+telemetry hole the audit flagged: `_releaseDetachedBoundaryOwnersSteps` passed `owner.state`
+(undefined on an Object3D) into `disposeObjectSteps`, starving `noteLaneFault` of teardown-fault
+records — now `this.state`. Focused proof: twin-promotion suite 7/7 (incl. a new test pinning
+unparent-after-settle + ownership) — that suite also got a race fix: wave-102's paced drain
+(`yieldToBrowser` per 8 ms slice) made its synchronous post-call asserts catch mid-drain state on
+a loaded box; asserts now drain the pending set first / count pending-set admissions through the
+drain. Detached-owner + liveness suites green (80/80).
 
 **M3 — Fewer programs, fewer switches, fewer draws.** `setProgram` 7.9 % + `renderBufferDirect` 10.6 %;
 203 programs in a Crucible run, split by instancing (57), vertex colour (39), light count (37) and
@@ -226,6 +252,12 @@ modules of ≤ ~3k lines each and hand them in pairs, evenly, to Grok and Gemini
 reads every line of its module and writes `.devshots/finish/lane1/audit/<module>.md` — bugs, per-frame
 allocation, dead code, duplicated paths, hidden per-frame DOM reads, debug/census code running in the
 game loop, and the three cheapest wins. Turn real findings into packets below this line.
+
+Audit status (2026-10-28 ~15:00): 135 chunks queued in `.devshots/finish/lane1/audit-manifest.json`;
+~21 attempted, grok landing steadily (~10 reports in `audit/`). **agy side is quota-dead** —
+`AGY_ERROR RESOURCE_EXHAUSTED (429), resets ~3h`; its odd chunks stay `done:false` in
+`audit-status.json` — rerun `node .devshots/finish/lane1/audit-runner.mjs --only=gemini` after the
+reset (the runner's "gemini" provider is the `agy` binary).
 
 ## INFERENCE (seed ≈ 20 lines in the brainstorm packet, README §6)
 

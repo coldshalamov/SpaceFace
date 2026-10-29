@@ -67,7 +67,7 @@ export const raceBoardScreen={
     rootEl.setAttribute('aria-label','Racing circuits');this._root=rootEl;
     const title=el('header','k-title');
     title.append(el('p','k-sentence','CIRCUITS / FLIGHT'),el('h1','k-display k-t-title','Thread the needle.'),
-      el('p','k-sentence',`${RACING_CIRCUITS.length} circuits with the same ships and drives you fly in adventure. ${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`));
+      el('p','k-sentence',`${RACING_CIRCUITS.length} circuits with the same ships and drives you fly in adventure.`));
     rootEl.appendChild(title);
     const tools=el('div','race-board-tools');
     const restored=restoreRacingCup(storageOf());
@@ -98,7 +98,11 @@ export const raceBoardScreen={
       ctx.bus.emit('settings:changed',{section:'gameplay',key:'racingGhost',value:fit.raceGhostEnabled});ghostLabel();
     });tools.appendChild(ghost);
     const view=el('button','k-word');view.type='button';
-    const viewLabel=()=>{view.textContent=`Practice: ${normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView)}`;};
+    // The key help rides the verb it fires as the deckplate key chip — never a floating
+    // block over the cards. The sentence it replaced stays as the chip's account of itself.
+    const viewKey=el('kbd','dp-kbd',BINDINGS.steeringView.label);
+    view.title=`${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`;
+    const viewLabel=()=>{view.textContent=`Practice: ${normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView)}`;view.appendChild(viewKey);};
     viewLabel();
     view.addEventListener('click',()=>{
       const cur=normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);

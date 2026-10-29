@@ -116,6 +116,11 @@ test('the launch warm twins every roster hull so the pool chunk promotes behind 
   const vf = recordingVf();
   const { owner, scene } = warmHarness(vf);
   render._admitSurvivalRosterPrewarm.call(owner, payload);
+  // The cohort drain paces itself on wall-clock slices — asserting before the pending set
+  // empties races a mid-drain yield. Warm completion IS the pending set emptying, and the
+  // drive promise is itself a member, so draining first is the deterministic shape.
+  assert.equal(await drainPending(owner), 0,
+    'the cohort drain completes before the twin census — the cook holds on the same set');
 
   for (const spec of shipSpecs) {
     const twins = vf.builds.filter((built) => built && built.id === spec.id);
@@ -144,12 +149,17 @@ test('every witness chain joins the pending set, drains it, and compiles behind 
   const shipSpecs = payload.specs.filter((spec) => spec && spec.type === 'ship');
   const vf = recordingVf();
   const { owner, compiled } = warmHarness(vf);
+  // Membership is minted as the paced drain progresses, so size-at-t0 is a wall-clock race.
+  // Count admissions through the whole drain instead — every twin chain must have joined.
+  const pendingAdds = [];
+  const add = owner._rosterPrewarmPending.add.bind(owner._rosterPrewarmPending);
+  owner._rosterPrewarmPending.add = (value) => { pendingAdds.push(value); return add(value); };
 
   render._admitSurvivalRosterPrewarm.call(owner, payload);
-
-  assert.ok(owner._rosterPrewarmPending.size >= shipSpecs.length * 2,
-    'both twins per hull hold a place in the census-hold set');
   const remaining = await drainPending(owner);
+
+  assert.ok(pendingAdds.length >= shipSpecs.length * 2,
+    'both twins per hull held a place in the census-hold set while the drain ran');
   assert.equal(remaining, 0,
     'warm completion is observable as an empty `_rosterPrewarmPending` — the exact condition ' +
     'the opening cook waits for before the pool census');
@@ -159,6 +169,29 @@ test('every witness chain joins the pending set, drains it, and compiles behind 
       `${spec.id}: both witnesses compile through the warm's own lane before the set drains — ` +
       'a witness that compiled after flight would link its pool variant inside the round');
   }
+});
+
+test('the settled part catalog leaves the presented scene but stays owned', async (t) => {
+  // Audit m008: the hidden catalog root (~30 part holders, count-0 instanced twins, pool
+  // witness stubs) is not a bounded warm root, so while parented to the scene it pays into
+  // every matrix/readiness walk for the whole run. Once every decode lane settles the subtree
+  // leaves the presented scene — the twin roots above still mount on `scene` directly — while
+  // `_rosterPartCatalogRoot` keeps it reachable for cohort sweeps and run-end release.
+  const payload = rosterPayload(t)[0];
+  const vf = recordingVf();
+  const { owner, scene } = warmHarness(vf);
+
+  render._admitSurvivalRosterPrewarm.call(owner, payload);
+  assert.equal(await drainPending(owner), 0,
+    'the catalog settle promise is itself a pending member — draining awaits the unparent');
+
+  const root = owner._rosterPartCatalogRoot;
+  assert.ok(root && root.name === 'SF_RosterPrewarm_PartCatalog',
+    'the catalog root stays reachable for cohort sweeps and run-end release');
+  assert.equal(root.parent, null,
+    'a settled catalog root no longer rides the presented scene');
+  assert.ok(!scene.children.includes(root),
+    'the presented scene no longer walks the catalog subtree');
 });
 
 test('a re-admit builds nothing: the ledger dedupes, no doubled launch warm work', async (t) => {

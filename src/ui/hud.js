@@ -408,7 +408,7 @@ export function objectiveTravelReadout(state, wp, out = null) {
     ? ((Number(vel.x) || 0) * (pos.x - player.pos.x) + (Number(vel.z) || 0) * (pos.z - player.pos.z)) / dist
     : 0;
   const etaS = closingSpeed > 5 ? dist / closingSpeed : null;
-  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k WU` : `${Math.round(dist)} WU`;
+  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k u` : `${Math.round(dist)} u`;
   const etaText = etaS == null
     ? 'ETA —'
     : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
@@ -962,12 +962,12 @@ export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
   result.speed = speed;
   result.thrusterCap = thrusterCap;
   result.earnedSpeed = earnedSpeed;
-  result.text = `${Math.max(0, Math.round(speed))} WU/S${earnedSpeed ? ' · EARNED' : ''}`;
+  result.text = `${Math.max(0, Math.round(speed))} u/s${earnedSpeed ? ' · EARNED' : ''}`;
   result.spoken = speedUnitSpeech(speed, earnedSpeed);
   return result;
 }
 
-/** Spelled-out speed. The visible unit stays WU/S. */
+/** Spelled-out speed. The visible unit stays u/s. */
 export function speedUnitSpeech(speed, earned = false) {
   const n = Math.max(0, Math.round(Number(speed) || 0));
   return earned ? `${n} world units per second, earned` : `${n} world units per second`;
@@ -4387,7 +4387,7 @@ export function createHud(ctx, alerts) {
           // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
           // callsign but never leaks its private name or scan label onto the edge ribbon.
           const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
-          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} WU`;
+          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} u`;
           setText(targetEdgeLabel, text);
           setAttr(targetEdge, 'aria-label', text);
           setDataEdge(targetEdge, marker.edge);
@@ -4795,7 +4795,13 @@ export function createHud(ctx, alerts) {
     // + weak-point callout (GDD 2.0 §7.4).
     let detail = '';
     if (c.isWreck) {
-      detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
+      // data.weakPoint is a string label on wrecks (scanner.js weakPointFor) but the object
+      // form ({label, arc…}) reaches wreck-likes via enemy defs — print the label, never the
+      // object ("WEAK [object Object]" read as a broken screen).
+      const weakWord = typeof e.data.weakPoint === 'string'
+        ? e.data.weakPoint
+        : (e.data.weakPoint && e.data.weakPoint.label) || '—';
+      detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${weakWord}` : '??? UNSCANNED';
     } else {
       // RC-NPC-READ 477: a working hull's job phase rides the detail line — HAULER · LOADING.
       const work = livingWorkStatusText(e, { depth: 'lock', state });
@@ -5290,7 +5296,7 @@ export function createHud(ctx, alerts) {
         : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
       if (driveState === 'spooling') note = 'DRIVE SPINNING UP…';
-      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' WU/S';
+      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' u/s';
       // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
       // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
       else if (driveState === 'cooldown') {
@@ -5305,7 +5311,7 @@ export function createHud(ctx, alerts) {
       if (velocity.earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
-      if (note.includes('WU/S') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
+      if (note.includes('u/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
     }
 
     // --- approach row: the stopping arc, manual burns and the held brake ---
@@ -5331,9 +5337,9 @@ export function createHud(ctx, alerts) {
       setClass(vt.root, 'sf-vtape--overshoot', !!cue.overshoot);
       if (slow) {
         const arcText = cue.overshoot
-          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' WU / ARRIVAL ' + Math.round(cue.distance) + ' WU'
-          : 'STOP ' + Math.round(cue.stopDistance) + ' WU · ARRIVAL ' + Math.round(cue.distance)
-            + ' WU · ' + brakeModeWords(cue.bestMode).toUpperCase();
+          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
+          : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
+            + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();
         setText(vt.arcLabel, arcText);
         applyDistanceSpeech(vt.arcLabel, arcText);
       }
@@ -5344,7 +5350,7 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcRing, 'left', endPct);
       setClass(vt.root, 'sf-vtape--overshoot', false);
       if (slow) {
-        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' WU';
+        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' u';
         setText(vt.arcLabel, brakeText);
         applyDistanceSpeech(vt.arcLabel, brakeText);
       }

@@ -3,6 +3,13 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { createUnreadyDrawableGuard, programWrapperDead } from '../src/render/bloom.js';
+import { bumpPackageDetachSerial, packageDetachSerialNow } from '../src/render/imageSourceDedupe.js';
+import {
+  createPackageDetachManifest,
+  detachPackageGeometry,
+  dropPackageDetachManifest,
+  isPackageGeometryDetached,
+} from '../src/render/packageCpuDetach.js';
 import { revealSubjectForCompile } from '../src/render/compilePresentSlice.js';
 import { render } from '../src/render/renderer.js';
 
@@ -437,4 +444,79 @@ test('real loading reveal still submits dormant instanced pools and restores the
       geometry.dispose(); material.dispose();
     }
   }
+});
+
+test('disarmOnSettle swaps the raw draw path once settled and re-wraps on mount or release', async () => {
+  const { renderer, draws } = rendererHarness();
+  const inner = renderer.renderBufferDirect;
+  const guard = createUnreadyDrawableGuard(renderer, { disarmOnSettle: true });
+  const wrapped = renderer.renderBufferDirect;
+  assert.notEqual(wrapped, inner, 'install wraps the draw path');
+  const scene = new THREE.Scene();
+  const leaf = new THREE.Mesh();
+  scene.add(leaf);
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, wrapped, 'the mount pass keeps the guard armed');
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'a settled pass restores the raw draw path');
+  assert.equal(renderer.renderBufferDirect(null, scene, null, leaf.material, leaf, null), 'drawn');
+
+  const late = new THREE.Mesh();
+  scene.add(late);
+  guard.hide(scene);
+  assert.equal(renderer.renderBufferDirect, wrapped, 'a mount re-wraps the draw path');
+  guard.restore();
+
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'the drained mount settles back to raw');
+
+  bumpPackageDetachSerial();
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'a benign serial bump still settles to raw');
+
+  const geometry = new THREE.BoxGeometry();
+  const manifest = createPackageDetachManifest(
+    { contentHash: 'guard-disarm-test', resources: [geometry] },
+    { redecode: async () => ({}), collectResources: () => [geometry] },
+  );
+  assert.ok(manifest, 'detach manifest created for the pending-payload arm check');
+  assert.equal(detachPackageGeometry(geometry), true, 'a non-kept attribute releases');
+  assert.equal(isPackageGeometryDetached(geometry), true);
+
+  for (let i = 0; i < 2; i++) {
+    guard.hide(scene);
+    guard.restore();
+    assert.equal(renderer.renderBufferDirect, wrapped,
+      'a released payload pending on this renderer keeps the guard wrapped');
+  }
+
+  dropPackageDetachManifest('guard-disarm-test', manifest);
+  guard.hide(scene);
+  guard.restore();
+  guard.hide(scene);
+  guard.restore();
+  assert.equal(renderer.renderBufferDirect, inner, 'the evicted manifest settles back to raw');
+  geometry.dispose();
+  await Promise.resolve();
+});
+
+test('without disarmOnSettle the guard keeps the wrapped draw path when settled', async () => {
+  const { renderer } = rendererHarness();
+  const guard = createUnreadyDrawableGuard(renderer);
+  const wrapped = renderer.renderBufferDirect;
+  const scene = new THREE.Scene();
+  scene.add(new THREE.Mesh());
+
+  for (let i = 0; i < 3; i++) {
+    guard.hide(scene);
+    guard.restore();
+    assert.equal(renderer.renderBufferDirect, wrapped, 'the draw path stays wrapped');
+  }
+  await Promise.resolve();
 });

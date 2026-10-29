@@ -276,9 +276,9 @@ export function formatRadarDistance(worldUnits) {
   if (!Number.isFinite(d) || d < 0) return 'ROUTE PENDING';
   if (d >= 1000) {
     const digits = d >= 10000 ? 0 : 1;
-    return `${(d / 1000).toFixed(digits)}k WU`;
+    return `${(d / 1000).toFixed(digits)}k u`;
   }
-  return `${Math.round(d)} WU`;
+  return `${Math.round(d)} u`;
 }
 
 export function relativeLuminance(hex) {

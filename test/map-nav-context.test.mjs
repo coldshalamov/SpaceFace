@@ -122,7 +122,7 @@ test('objective distance is measured in the GLOBAL frame from the live player po
   assert.equal(ctx.objective.label, 'Tethys Station');
   assert.equal(ctx.objective.distanceWU, 500);
   assert.equal(ctx.rows[1].tone, NAV_ROW_TONE.TRACKED);
-  assert.equal(ctx.rows[1].detail, '500 WU');
+  assert.equal(ctx.rows[1].detail, '500 u');
 });
 
 test('a sector-local goal position would be caught: the same numbers in Helios give a different distance', () => {
@@ -395,10 +395,10 @@ test('the context and its actions are deeply frozen and never mutate their input
 });
 
 test('formatDistanceWU stays readable across the whole lattice', () => {
-  assert.equal(formatDistanceWU(0), '0 WU');
-  assert.equal(formatDistanceWU(499.6), '500 WU');
-  assert.equal(formatDistanceWU(9999), '9999 WU');
-  assert.equal(formatDistanceWU(12288), '12.3k WU');
+  assert.equal(formatDistanceWU(0), '0 u');
+  assert.equal(formatDistanceWU(499.6), '500 u');
+  assert.equal(formatDistanceWU(9999), '9999 u');
+  assert.equal(formatDistanceWU(12288), '12.3k u');
   assert.equal(formatDistanceWU(NaN), '—');
   assert.equal(formatDistanceWU(null), '—');
 });

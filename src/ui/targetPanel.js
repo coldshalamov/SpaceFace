@@ -323,7 +323,7 @@ const MOTIVE_LABEL = Object.freeze({
   cargo_extortion: 'ROBBERY', predation: 'PREDATION', bounty: 'BOUNTY', contract_bounty: 'BOUNTY',
   retaliation: 'RETALIATION', territorial: 'TERRITORIAL', security: 'LAW ENFORCEMENT',
   law_enforcement: 'LAW ENFORCEMENT', escort_duty: 'ESCORT DUTY', defense: 'DEFENSE',
-  salvage_claim: 'SALVAGE CLAIM', piracy: 'PIRACY', patrol: 'PATROL DUTY', trade: 'TRADE ROUTE',
+  salvage_claim: 'SALVAGE CLAIM', piracy: 'PIRACY', assigned_interdiction: 'SENT AFTER YOU', patrol: 'PATROL DUTY', trade: 'TRADE ROUTE',
   mining: 'MINING', rescue: 'RESCUE', unknown: 'UNKNOWN',
 });
 
@@ -654,7 +654,10 @@ export function passengerLinerLastLegLine(entity) {
   if (!word) return '';
   const stationId = typeof last.stationId === 'string' ? last.stationId : '';
   const station = stationId ? STATION_BY_ID.get(stationId) : null;
-  const stationName = (station && station.name) || stationId;
+  // A station id outside the static catalog still reads as a place ("helios reach"), never
+  // the raw `station_helios_reach` slug.
+  const stationName = (station && station.name)
+    || String(stationId || '').replace(/^station_/, '').replace(/_/g, ' ').trim();
   return stationName ? `last leg: ${word} · ${stationName}` : `last leg: ${word}`;
 }
 
@@ -739,10 +742,13 @@ export function objectInfoLine(t, state, p, dist) {
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
   }
+  // d.owner is an id (entity/station/entity-slot) as often as an authored name. A live entity
+  // resolves through the world; otherwise resolve the catalog name or run it through
+  // readableIdentity — an id-shaped owner slug must not print as "Owner: npc_99".
   const ownerName = typeof d.ownerName === 'string' && d.ownerName ? d.ownerName
     : (typeof d.owner === 'string' && d.owner
       && !(state && state.entities && typeof state.entities.get === 'function' && state.entities.get(d.owner))
-      ? d.owner : null);
+      ? (readableIdentity(STATION_BY_ID.get(d.owner)?.name) || readableIdentity(d.owner)) : null);
   if (ownerName) facts.push(`Owner: ${ownerName}`);
   const interaction = interactionProfileForEntity(t);
   if (interaction.hazardous) facts.push('Hazard');
@@ -807,7 +813,7 @@ export function createTargetPanel(ctx) {
   const elWeakTxt = elWeak.querySelector('[data-txt]');
   const elComponentGlyph = elComponent.querySelector('[data-glyph]');
   const elComponentTxt = elComponent.querySelector('[data-txt]');
-  const elIdentity = el.querySelector('.sf-target__identity');
+  const elIdBits = el.querySelector('.sf-target__idbits');
   const elBounty = el.querySelector('.sf-target__bounty');
   const elIntent = el.querySelector('.sf-target__intent');
   const elCondition = el.querySelector('.sf-target__condition');
@@ -929,14 +935,15 @@ export function createTargetPanel(ctx) {
       const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}:${badgeLabel || ''}`;
       if (idKey !== lastIdentityKey) {
         lastIdentityKey = idKey;
-        const levelBit = level != null ? ` · L${level}` : '';
-        const classBit = classLabel ? ` · ${classLabel}` : '';
-        const badgeBit = badgeLabel ? ` · ${badgeLabel}` : '';
-        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}${badgeBit}`);
+        // Concision (owner 2026-10-27): the head row already names ship + role beside the faction
+        // chip, so the old identity line collapses to the meta row's level/hull/badge bits.
+        const bits = [level != null ? `L${level}` : '', classLabel, badgeLabel].filter(Boolean).join(' · ');
+        setText(elIdBits, bits);
+        const show = bits ? 'inline' : 'none';
+        if (elIdBits.style.display !== show) elIdBits.style.display = show;
       }
-      if (elIdentity.style.display !== 'block') elIdentity.style.display = 'block';
-    } else if (elIdentity.style.display !== 'none') {
-      elIdentity.style.display = 'none';
+    } else if (elIdBits.style.display !== 'none') {
+      elIdBits.style.display = 'none';
       lastIdentityKey = null;
     }
 
@@ -975,7 +982,7 @@ export function createTargetPanel(ctx) {
         triX.classList.toggle('best', eX === best);
         setText(elTriLayer, layer.toUpperCase());
       }
-      if (elTriangle.style.display !== 'grid') elTriangle.style.display = 'grid';
+      if (elTriangle.style.display !== 'flex') elTriangle.style.display = 'flex';
     } else {
       if (elTriangle.style.display !== 'none') elTriangle.style.display = 'none';
       lastTriKey = null;
@@ -1004,7 +1011,7 @@ export function createTargetPanel(ctx) {
       if (compKey !== lastComponentKey) {
         lastComponentKey = compKey;
         if (!elComponentGlyph.firstChild) elComponentGlyph.innerHTML = glyphSvg('component', 11);
-        setText(elComponentTxt, selLabel ? `COMPONENT: ${selLabel}` : `COMPONENT · ${comps.length} · click to target`);
+        setText(elComponentTxt, selLabel ? `PART: ${selLabel}` : `PARTS · ${comps.length} · CLICK`);
         const active = !!selLabel;
         if (elComponent.style.borderColor !== (active ? 'var(--visor-amber)' : '')) {
           elComponent.style.borderColor = active ? 'var(--visor-amber)' : '';
@@ -1116,7 +1123,7 @@ export function createTargetPanel(ctx) {
       const rangeFrac = Math.max(0, Math.min(1, 1 - dist / SCANNER_CONTACT_RANGE));
       const rangeScale = 'scaleX(' + rangeFrac.toFixed(3) + ')';
       if (rangeScale !== lastRangeScale) { elRangeFill.style.transform = rangeScale; lastRangeScale = rangeScale; }
-      const distText = dist > 1000 ? (dist / 1000).toFixed(1) + 'k wu' : Math.round(dist) + ' wu';
+      const distText = dist > 1000 ? (dist / 1000).toFixed(1) + 'k' : String(Math.round(dist));
       if (distText !== lastDistText) { elDist.textContent = distText; lastDistText = distText; }
       // closing speed = -dot(relVel, normalize(relPos)); positive = approaching
       const tv = t.vel || ZERO_VEL;
@@ -1124,7 +1131,7 @@ export function createTargetPanel(ctx) {
       const rvx = tv.x - pv.x, rvz = tv.z - pv.z;
       const inv = dist > 0.001 ? 1 / dist : 0;
       const closing = -((rvx * dx + rvz * dz) * inv);
-      const closeText = Math.abs(Math.round(closing)) + ' wu/s';
+      const closeText = String(Math.abs(Math.round(closing)));
       const closeGlyph = closing >= 0 ? 'closing' : 'opening';
       // Direction is carried twice already (the arrow glyph + the signed read); colour stays a
       // bone reading, never an alarm — red is threat only, and an approached asteroid is not a

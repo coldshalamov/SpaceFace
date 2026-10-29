@@ -87,8 +87,8 @@ function distanceWU(a, b) {
 export function formatDistanceWU(wu) {
   if (!Number.isFinite(wu)) return '—';
   const v = Math.abs(wu);
-  if (v < 10000) return `${Math.round(v)} WU`;
-  return `${(v / 1000).toFixed(1)}k WU`;
+  if (v < 10000) return `${Math.round(v)} u`;
+  return `${(v / 1000).toFixed(1)}k u`;
 }
 
 function sectorDisplayName(sectorId, sectorNames) {

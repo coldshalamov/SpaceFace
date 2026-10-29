@@ -9,6 +9,7 @@ import { INK_SHADOW } from './hudBrackets.js';
 import { openingInstructionSolo } from './hudAttention.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { classifyImpactResponsibility } from '../combat/killCausality.js';
+import { targetDisplayName } from './targetPanel.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const RECEIPT_TTL_S = 4;
@@ -91,7 +92,11 @@ export function authorityTargetText(payload, state) {
   if (payload.attackerId === state.playerId) {
     return /^player_(assault|piracy)$/.test(String(payload.cause || '')) ? 'YOU · AGGRESSOR' : 'YOU · INCIDENT SUBJECT';
   }
-  return entityName(entityById(state, payload.attackerId)) || `CONTACT ${String(payload.attackerId).toUpperCase()}`;
+  // The same display-name path as the roster/panel: readableIdentity rejects id-shaped names,
+  // a def resolves to its catalog name, and an entity that is gone reads as a contact — the
+  // raw attackerId (npc_12ab, ship_removed_hull) never reaches the law card.
+  const attacker = entityById(state, payload.attackerId);
+  return attacker ? targetDisplayName(attacker) : 'CONTACT';
 }
 
 export function authorityAggressorText(target) {
