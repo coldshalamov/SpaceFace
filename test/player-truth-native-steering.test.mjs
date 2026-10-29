@@ -9,7 +9,7 @@ import { applyWorldObjectSelection } from '../src/ui/worldObjectInteraction.js';
 
 const wrappedAngle = angle => Math.atan2(Math.sin(angle), Math.cos(angle));
 
-test('public radar pursuit closes native bearing error and a reachable canvas attack reaches the native weapon owner', async () => {
+test('public radar pursuit closes bearing and the fighter advances on a visible off-range contact', async () => {
   const oldWindow = globalThis.window;
   const oldDocument = globalThis.document;
   const lane = createSimHost();
@@ -106,26 +106,37 @@ test('public radar pursuit closes native bearing error and a reachable canvas at
     assert.equal(held.size, 0);
     assert.equal(nativeShots, 0, 'radar pursuit does not shoot an unseen world coordinate');
 
-    // Reacquisition is an actual native ship on the public gameplay canvas.
+    // Reacquisition is an actual native ship on the public gameplay canvas. Keep it visible
+    // but beyond the fighter's 400 WU standoff so the ordinary selected-target branch must
+    // use public forward thrust instead of only selecting and firing in place.
+    const targetStart = { x: player.pos.x + 820, z: player.pos.z + 200 };
     const reply = await send(0, { kind: 'spawn', token: 'visible-hostile', spec: {
-      type: 'ship', team: 3, pos: { x: player.pos.x + 80, y: 0, z: player.pos.z + 40 },
+      type: 'ship', team: 3, pos: { x: targetStart.x, y: 0, z: targetStart.z },
       hull: 100, hullMax: 100, radius: 8, data: { runRole: 'enemy' },
     } });
     const enemy = state.entityList.find(entity => entity.id !== player.id
-      && entity.data?.runRole === 'enemy' && entity.pos.x === player.pos.x + 80);
+      && entity.data?.runRole === 'enemy' && entity.pos.x === targetStart.x);
     assert.ok(enemy, JSON.stringify(reply.spawnAcks));
     visibleEntities.push(enemy);
     const reachable = await observe(readTarget);
     assert.equal(reachable.none, undefined);
+    assert.ok(reachable.dist > 800, 'the public target begins beyond normal weapon standoff');
+    const playerStart = { x: player.pos.x, z: player.pos.z };
+    const toTarget = { x: enemy.pos.x - playerStart.x, z: enemy.pos.z - playerStart.z };
+    const toTargetLength = Math.hypot(toTarget.x, toTarget.z);
     const attackError = Math.abs(reachable.rel);
     const attackHeading = Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x);
     await fightBeat(page, 1);
-    // Check native yaw against the observed heading. The completed chase can carry the player
-    // past this close contact during the beat, changing its bearing independently of yaw sign.
+    // Check native yaw and physical forward progress against the observed heading. The contact
+    // may turn toward the player during the beat, so progress is measured from the player pose.
     assert.ok(Math.abs(wrappedAngle(attackHeading - player.rot)) < attackError,
       `canvas pursuit uses the same native yaw sign: ${JSON.stringify({ before: reachable.rel,
         after: wrappedAngle(attackHeading - player.rot), rot: player.rot, angVel: player.angVel, nativeShots })}`);
-    assert.ok(nativeShots > 0, 'trusted canvas firing reaches the real native weapon owner');
+    const playerDelta = { x: player.pos.x - playerStart.x, z: player.pos.z - playerStart.z };
+    const forwardProgress = (playerDelta.x * toTarget.x + playerDelta.z * toTarget.z) / toTargetLength;
+    assert.ok(forwardProgress > 1,
+      `public thrust must move toward a visible target outside weapon standoff: ${JSON.stringify({ forwardProgress, playerDelta, held: [...held] })}`);
+    assert.ok(nativeShots > 0, 'the same public beat reaches the real native weapon owner');
     assert.equal(held.size, 0);
   } finally {
     lane.shutdown();
