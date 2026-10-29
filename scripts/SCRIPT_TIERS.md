@@ -10,7 +10,7 @@ entries. Tiers by role; a script belongs to exactly one tier by its prefix.
 |---|---|
 | `npm start` / `npm run serve` | the game in a browser |
 | `npm run electron` | the same route in Electron |
-| `npm test` | the focused node suite |
+| `node --test test/<name>.test.mjs` | a focused node suite |
 | `npm run build` / `dist*` | packaged builds |
 | `npm run player-truth -- --mode=<m> --gate` | binding gameplay acceptance (modes: swarm, gauntlet, adventure, racing) |
 
