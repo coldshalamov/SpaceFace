@@ -1793,8 +1793,8 @@ export const RECIPES = [
     sweepTimeS: 0.46,
     gainEnvelope: { attack: 0.004, sustain: 0.08, release: 0.5 },
     filterType: 'lowpass', filterFreq: 1400, filterQ: 4,
-    subBass: 0.5,
-    transientClick: 0.15,
+    subBass: { gain: 0.5 },
+    transientClick: { gain: 0.15 },
     reverbMix: 0.22, reverbDecay: 0.9,
   },
   {
@@ -3050,7 +3050,7 @@ export const RECIPES = [
     freqSweep: [220, 40],
     sweepTimeS: 0.5,
     gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.45 },
-    subBass: 0.5,
+    subBass: { gain: 0.5 },
     reverbMix: 0.2, reverbDecay: 0.8,
   },
   // PQ-158.04 — directed synthetic radio voice (sample body + radio recipe).

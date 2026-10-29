@@ -367,6 +367,7 @@ export const encounterDirector = {
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
+      this.bus.on('tether:broken', (p) => this._routeToSelfRegistered('tetherBroken', p));
       // Only705 consumes native contacts; do not fan every collision into unrelated runtimes.
       this.bus.on('physics:impact', (p) => {
         const liveById = this.state && this.state.encounterDirector && this.state.encounterDirector.live;
