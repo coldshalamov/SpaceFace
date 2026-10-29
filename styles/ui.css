@@ -2289,7 +2289,8 @@ html.sf-reduce-motion .orr-replay__pulse { display:none; }
 @media (max-width:640px) {
   .orr-clips__readline { flex-direction:column; align-items:center; gap:6px; }
   .orr-clip__plate.is-ghost .orr-clip__name { font-size:15px; letter-spacing:0; }
-  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; letter-spacing:.08em; }
+  /* ~107px ghosts at 390: tighter tracking and balanced wrap keep each caption to two even lines. */
+  .orr-clip__plate.is-ghost .orr-clip__sub { font-size:12px; font-stretch:100%; letter-spacing:.04em; word-spacing:.12em; line-height:1.3; text-wrap:balance; }
 }
 @media (max-height:640px) and (min-width:641px) {
   .orr-clips__rail { top:20%; }
