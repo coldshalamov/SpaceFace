@@ -31,6 +31,7 @@ import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -2481,6 +2482,12 @@ export const mining = {
     const hasCore = coreYield > BULK_HAUL_MIN_U;
     for (let i = 0; i < count; i++) {
       const isCore = hasCore && i === 0;
+      const playerExtractedCore = isCore && miner?.id === this.state.playerId
+        && this.state.mode === 'flight'
+        && this.state.run?.kind !== 'survival'
+        && !this.state.physicsVenueSession
+        && this.state.physicsVenue?.active !== true
+        && !isRacingCorridorSession(this.state);
       const ratio = isCore ? BULK_CORE_RADIUS_FRAC : 0.35 + rng() * 0.15;
       const radius = parentRadius * ratio;
       const ang = (Math.PI * 2 * i) / count + rng() * 0.6;
@@ -2523,7 +2530,9 @@ export const mining = {
           fieldId: ast.data.fieldId,
           isChunk: true,
           bulkCore: isCore,
+          ...(playerExtractedCore ? { extractedById: miner.id } : {}),
         },
+        ...(playerExtractedCore ? { flags: { persistent: true } } : {}),
       });
       chunk.data.seams = inheritChunkSeams(parentSeams, seamCount, radius, i);
       if (ast.data.scanHighlightUntil != null && ast.data.scanHighlightUntil > this.state.simTime) {
