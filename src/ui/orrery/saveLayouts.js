@@ -384,6 +384,16 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
 }
+/* ui-polish-183: a narrow desktop window (≤560 wide) gives each strip station ~68px, so a long filed name broke
+   mid-word ("RECOV / ERY") down six lines with CURRENT and its credits, into EXPORT / IMPORT. A filed station
+   breaks its name between words, not inside them, with closer tracking, and the badge steps aside (the context
+   line carries CURRENT), so the station ends above the foot. */
+@media (max-width:560px) {
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { margin-bottom:34px; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
+  html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .sf-slot-badges { display:none !important; }
+}
 /* review: a narrow and short window (≤739 × ≤460) stacks too; the title keeps the short-desktop size so LOAD stays above the fold */
 @media (max-width:739px) and (max-height:460px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} { padding-top:10px !important; row-gap:6px !important; }
