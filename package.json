@@ -768,6 +768,7 @@
     "check:handoff-stationkeeping-custody": "node --test test/handoff-stationkeeping-custody.test.mjs",
     "check:handoff-stationkeeping-native": "node --test test/handoff-stationkeeping-native.test.mjs",
     "check:handoff-trade-compatibility": "node --test test/cr-hollow-1-the-handoff.test.mjs test/next-wave-nxb-040.test.mjs",
+    "check:io-coldburn-return": "node --test test/io-coldburn-return.test.mjs",
     "check:io-love-letter-buoy-service": "node --test test/io-love-letter-buoy-service.test.mjs",
     "check:bar-authored-role-labels": "node --test test/bar-authored-role-labels.test.mjs",
     "check:grandee-causal-consequences": "node --test test/grandee-transit-encounter.test.mjs test/grandee-causal-owner.test.mjs",
