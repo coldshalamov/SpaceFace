@@ -40,7 +40,7 @@ assert.equal(
 );
 
 let ctx = makeCtx({
-  cargo: { items: { cmdty_ore_iron: 2, cmdty_ore_titanium: 1 }, usedVolume: 3, usedMass: 3, capVolume: 50, capMass: 50 },
+  cargo: { items: { cmdty_ore_iron: refineMetals.inputs.cmdty_ore_iron - 1 }, usedVolume: 1, usedMass: 1, capVolume: 50, capMass: 50 },
 });
 assert.equal(crafting.build('bp_refine_metals', 'station_forge'), false);
 assert.equal(ctx.toasts.at(-1).text, 'Need 1 Iron Ore for Refine Metals');

@@ -215,7 +215,7 @@ test('seeded warm kit stubs equal runtime Proteus models, with unseeded omission
   }
 });
 
-test('named warm-anchor mapper preserves generic non-Proteus output and RNG consumption', () => {
+test('named warm-anchor mapper preserves unnamed generic anchors and RNG consumption', () => {
   const oldFunction=warmFunction.replace(/  \/\/ Keep named anchors[^\n]*\n  const stations = \(sector\.stations \|\| \[\]\)\.map\(\(st\) => \(\{[\s\S]*?  \}\)\);/,
     '  const stations = (sector.stations || []).map((st) => (st && st.pos) || { x: 0, z: 0 });');
   assert.notEqual(oldFunction,warmFunction);
@@ -224,7 +224,7 @@ test('named warm-anchor mapper preserves generic non-Proteus output and RNG cons
     'veil_nebula','triton_wake','nereid_shoal','phoebe_rim','sedna_dark','nyx_reach'];
   for(const id of ids)for(const palette of ['core','belt','fringe','anomaly'])for(const seed of [1,37,991]) {
     const sector={id:'sector_'+id,worldRadius:5000,enemyDensity:.5,
-      stations:[{id:'station_customs',pos:{x:-640,z:-1180}},{id:'station_veil',pos:{x:20,z:40}},null],
+      stations:[{id:'station_generic_a',pos:{x:-640,z:-1180}},{id:'station_generic_b',pos:{x:20,z:40}},null],
       fields:[{center:{x:680,z:-420}}],neighbors:['other'],pois:[{id:'wreck',type:'wreck',pos:{x:1400,z:900}}]};
     assert.deepEqual(after(sector,palette,seed),before(sector,palette,seed));
     assert.equal(a.n,b.n);
