@@ -649,6 +649,12 @@ ${CX_PHONE} .cx-reader__turn-key { margin-left:0 !important; }
 ${CX_PHONE} > .k-foot { flex:none; order:5; z-index:4; margin:0 -14px !important; padding:10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
   background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10) 16px) !important; align-items:center !important; min-height:0 !important; }
 ${CX_PHONE} > .k-foot .sf-back.k-word { padding:8px 0 10px !important; min-height:40px !important; }
+/* Short portrait phones (375×667): the 140px plate and 10px gaps left the reading 100px tall, so an entry showed its title
+ *  and nothing it says. A 96px plate, 6px gaps and a 40% reading cap hand the reader ~60px: the meta and first lines show. */
+@media (min-height:561px) and (max-height:740px) {
+  ${CX_PHONE} { row-gap:6px !important; --cx-plate:min(96px, 26vw); }
+  ${CX_PHONE} > .k-stage { max-height:40% !important; }
+}
 @media (max-height:560px) {
   /* Landscape phone: hang | reader as two columns so section head + entry title + first sentence clear on first view. */
   ${CX_PHONE} { display:grid !important; grid-template-columns:minmax(0, 1.05fr) minmax(0, 1fr) !important; grid-template-rows:auto minmax(0, 1fr) auto !important;
