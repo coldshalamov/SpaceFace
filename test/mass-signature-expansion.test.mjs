@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { massSignature } from '../src/systems/massSignature.js';
+import { formatSignatureMass, massSignature } from '../src/systems/massSignature.js';
 import {
   SWEEP_SCANNER_PROFILES, signatureOf, signatureRead, signatureTier,
   heatSeekerProfileFor, HEAT_COLD_COAST, HEAT_IDLE_DRIVE, HEAT_SEEKER_MIN,
@@ -110,6 +110,12 @@ test('signature tiers sort clutter < contact < hot < massive', () => {
   assert.equal(signatureTier({ massT: 20, heat: HEAT_IDLE_DRIVE, strength: 0.74 }), 'contact');
   assert.equal(signatureTier({ massT: 20, heat: 0.95, strength: 1.4 }), 'hot');
   assert.equal(signatureTier({ massT: 900, heat: 0.06, strength: 18 }), 'massive');
+});
+
+test('signature board uses a compact, readable mass scale', () => {
+  assert.equal(formatSignatureMass(100_000_000), '100 Mt');
+  assert.equal(formatSignatureMass(12_345), '12.3 kt');
+  assert.equal(formatSignatureMass(42), '42 t');
 });
 
 // ── running quiet ───────────────────────────────────────────────────────────────────
@@ -226,7 +232,8 @@ test('the player pulse writes a signature board — loudest first, stamps the hu
   assert.equal(heavy.data.massSignature.resolvedBy, 'player', 'the pulse names what it read');
   assert.equal(mule.data.massSignature.profile, 'player_pulse');
   assert.ok(eventsNamed(bus, 'sensors:signatureReport').length === 1);
-  assert.ok(eventsNamed(bus, 'comms:log').some((e) => /Signature board/.test(e.payload.text)));
+  const scope = eventsNamed(bus, 'comms:log').find((e) => e.payload.from === 'SCOPE');
+  assert.equal(scope.payload.text, '2 signatures · max 400 t · 1 faint return');
 });
 
 test('the deep band: a massive hull reports past the ring; an ordinary one does not', () => {

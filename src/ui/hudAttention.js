@@ -229,10 +229,10 @@ export function openingInstructionSolo(state) {
   return openingWindowActive(state) && openingObjectivePending(state);
 }
 
-export function hudJobFromState(state = {}, tether = null) {
+export function hudJobFromState(state = {}, tether = null, hudLayout = null) {
   // The flight HUD already calls this every slow frame. That is the first-flight
   // moment this module can see — onboarding.js is not a mount point.
-  if (state && state.mode === 'flight') syncTutorialFlightCard(state);
+  if (state && state.mode === 'flight') syncTutorialFlightCard(state, undefined, hudLayout);
   const player = state.entities && state.playerId != null
     ? state.entities.get && state.entities.get(state.playerId)
     : null;
@@ -250,6 +250,25 @@ export function hudJobFromState(state = {}, tether = null) {
 }
 
 const TUTORIAL_FLIGHT_CARD_ID = 'sf-tutorial-flight-card';
+
+/** Keep the opening instruction clear of the live target dock without duplicating its geometry. */
+export function tutorialFlightCardLayout(layout) {
+  if (!layout || !layout.viewport) return null;
+  const w = layout.viewport.width;
+  const h = layout.viewport.height;
+  const currentMaxWidth = Math.min(672, w * 0.86);
+  // Compact screens keep their existing centered 86vw treatment; the desktop inspector
+  // reservation is too small there to justify shrinking the only opening instruction further.
+  if (w <= 760 || h <= 620 || !layout.rightDock) {
+    return { centerX: w / 2, maxWidth: currentMaxWidth };
+  }
+  const gap = 16;
+  const right = layout.rightDock.x - gap;
+  const centeredLimit = Math.max(0, 2 * (right - w / 2));
+  const maxWidth = Math.min(currentMaxWidth, centeredLimit);
+  const centerX = Math.min(w / 2, right - maxWidth / 2);
+  return { centerX, maxWidth };
+}
 
 function tutorialFlightHintsOff(state) {
   const gameplay = state && state.settings && state.settings.gameplay;
@@ -290,7 +309,7 @@ function ensureTutorialFlightCardStyle(doc) {
  * Mount CONTROL_PROMPTS.tutorialFlight once per profile. The flight HUD's slow
  * tick is the caller. A keys wall (bullet-separated bind list) is refused.
  */
-export function syncTutorialFlightCard(state, doc) {
+export function syncTutorialFlightCard(state, doc, hudLayout = null) {
   const documentRef = doc || (typeof document !== 'undefined' ? document : null);
   if (!documentRef || typeof documentRef.getElementById !== 'function') return null;
   const existing = documentRef.getElementById(TUTORIAL_FLIGHT_CARD_ID);
@@ -304,6 +323,7 @@ export function syncTutorialFlightCard(state, doc) {
   if (existing && inFlight && existing.hidden !== true) {
     const live = tutorialFlightCardText(state);
     if (live && !live.includes(' • ') && existing.textContent !== live) existing.textContent = live;
+    applyTutorialFlightCardLayout(existing, hudLayout);
   }
   if (!tutorialFlightMoment(state)) return existing && existing.hidden !== true ? existing : null;
   const root = documentRef.getElementById('hud');
@@ -322,8 +342,16 @@ export function syncTutorialFlightCard(state, doc) {
   }
   card.hidden = false;
   card.textContent = text;
+  applyTutorialFlightCardLayout(card, hudLayout);
   if (state.player) state.player.hints = markFirstUseHint(state.player.hints, 'firstFlight');
   return card;
+}
+
+function applyTutorialFlightCardLayout(card, hudLayout) {
+  if (!card?.style || !hudLayout) return;
+  const layout = tutorialFlightCardLayout(hudLayout);
+  card.style.left = `${Math.round(layout.centerX)}px`;
+  card.style.maxWidth = `${Math.round(layout.maxWidth)}px`;
 }
 
 /** The first wanted mark, once per profile. Empty on later heat. Never the surrender line. */

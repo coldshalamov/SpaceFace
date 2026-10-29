@@ -5523,7 +5523,10 @@ export function createHud(ctx, alerts) {
       const ml = masslineInstrumentReadout(tether);
       const latching = masslineInstrumentVisible(tether);
       if (document.body && document.body.dataset) {
-        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether));
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
+        const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
+        const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
+        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether, hudLayout));
       }
       updateTetherFeedback(tether, latching, ml);
       const auto = !!(state.input && state.input.autoFire);
@@ -5893,20 +5896,61 @@ export function createHud(ctx, alerts) {
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
-  function placeReceiptLane() {
+  function placeReceiptLane(resolvedLayout = null) {
     if (toastsLaneEl === null) toastsLaneEl = document.getElementById('toasts');
     const laneRoot = toastsLaneEl;
     if (!laneRoot) return;
     const w = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const h = typeof window !== 'undefined' ? window.innerHeight : 720;
-    const layout = resolveObjectiveHudLayout(w, h);
+    const layout = resolvedLayout || resolveObjectiveHudLayout(w, h);
     const lane = layout.receipt;
     if (!lane) return;
-    setStyle(laneRoot, 'left', `${Math.round(lane.x)}px`);
+    // The fixed receipt lane does not need collision measurement while it is empty. Toasts are
+    // short-lived and the next existing slow HUD placement tick handles their first visible frame.
+    const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
+    if (!activeReceipt) {
+      placeFlightReadouts(w, h);
+      return;
+    }
     setStyle(laneRoot, 'top', 'auto');
     setStyle(laneRoot, 'width', `${Math.round(lane.width)}px`);
-    // The bottom-left Cluster ends left of this lane, so receipts grow upward from the edge.
-    setStyle(laneRoot, 'bottom', `${Math.round(orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset)}px`);
+    // The bottom-left Cluster normally ends left of this lane. When its actual footprint reaches
+    // the receipt band, lift the stack into the reserved lane above the action row.
+    let bottomInset = orreryCluster ? ORRERY_RECEIPT_INSET : lane.bottomInset;
+    let laneLeft = lane.x;
+    const receiptHeight = Math.max(lane.height, laneRoot.getBoundingClientRect?.().height || 0);
+    const clusterEl = orreryCluster && orreryCluster.host?.querySelector('.orr-cluster');
+    const cluster = clusterEl && clusterEl.getBoundingClientRect ? clusterEl.getBoundingClientRect() : null;
+    const receiptTop = h - bottomInset - receiptHeight;
+    const receiptBottom = h - bottomInset;
+    const receiptRight = laneLeft + lane.width;
+    if (cluster && laneLeft < cluster.right && receiptRight > cluster.left
+      && receiptTop < cluster.bottom && cluster.top < receiptBottom) {
+      bottomInset = lane.bottomInset;
+    }
+    // A live decision outranks a receipt. If the prompt deck grows over either receipt position,
+    // seat the fading stack in the free band immediately above it and left of the player-centered
+    // playfield, below the first-flight instruction.
+    const promptDeck = document.getElementById('sf-prompt-deck');
+    if (promptDeck && !promptDeck.hidden && typeof promptDeck.getBoundingClientRect === 'function') {
+      const prompt = promptDeck.getBoundingClientRect();
+      const currentTop = h - bottomInset - receiptHeight;
+      const currentBottom = h - bottomInset;
+      const horizontalOverlap = laneLeft < prompt.right && laneLeft + lane.width > prompt.left;
+      const verticalOverlap = currentTop < prompt.bottom && prompt.top < currentBottom;
+      if (horizontalOverlap && verticalOverlap) {
+        const tutorial = document.getElementById('sf-tutorial-flight-card');
+        const tutorialBottom = tutorial && !tutorial.hidden
+          ? tutorial.getBoundingClientRect().bottom : 0;
+        const candidateTop = prompt.top - 8 - receiptHeight;
+        if (candidateTop >= tutorialBottom + 8) {
+          bottomInset = h - prompt.top + 8;
+          laneLeft = (layout.safe?.left ?? 0) + 12;
+        }
+      }
+    }
+    setStyle(laneRoot, 'left', `${Math.round(laneLeft)}px`);
+    setStyle(laneRoot, 'bottom', `${Math.round(bottomInset)}px`);
     setStyle(laneRoot, 'right', 'auto');
     setStyle(laneRoot, 'transform', 'none');
     placeFlightReadouts(w, h);

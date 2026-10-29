@@ -25,6 +25,7 @@ import {
   shouldShowFirstUseHint,
   shipGlyphBox,
   SHIP_GLYPH_BOX,
+  tutorialFlightCardLayout,
   vitalNumericVisible,
 } from '../src/ui/hudAttention.js';
 import { flightDestinationSurface, presentedEntityAnchorPos, resolveFlightObjectiveCommand, resolveObjectiveHudLayout } from '../src/ui/hud.js';
@@ -289,6 +290,24 @@ test('receipt lane sits in the HUD layout and misses radar/ship/objective', () =
     assert.deepEqual(lane, layout.receipt);
     assert.equal(receiptOverlapsReserved(layout), false, `${width}x${height} receipt misses reserved HUD`);
   }
+});
+
+test('first-flight instruction yields space to the right target dock on narrow viewports', () => {
+  const wide = tutorialFlightCardLayout(resolveObjectiveHudLayout(1440, 900));
+  assert.equal(wide.maxWidth, 672, 'the existing wide-screen card size is preserved');
+  assert.equal(wide.centerX, 720, 'the wide-screen card remains centered');
+
+  const narrowHud = resolveObjectiveHudLayout(900, 900);
+  const narrow = tutorialFlightCardLayout(narrowHud);
+  const rightDockLeft = narrowHud.rightDock.x;
+  assert.ok(narrow.maxWidth < wide.maxWidth, 'the instruction condenses when the inspector consumes space');
+  assert.ok(narrow.centerX + narrow.maxWidth / 2 <= rightDockLeft - 16,
+    'the instruction remains clear of the target inspector');
+
+  const phoneHud = resolveObjectiveHudLayout(320, 900);
+  const phone = tutorialFlightCardLayout(phoneHud);
+  assert.equal(phone.maxWidth, 275.2, 'the existing 86vw phone instruction width is preserved');
+  assert.equal(phone.centerX, 160, 'the existing centered phone placement is preserved');
 });
 
 test('roster stays reachable and collapses to a count at rest', () => {

@@ -52,6 +52,25 @@ const MAX_READS_PER_SCANNER = 96;     // hostile-state bound on one scanner's le
 const MAX_LIT_S = 30;                 // hostile-state bound on a banked dwell stamp
 const MAX_QUIET_S = 120;              // hostile-state bound on the quiet-down accumulator
 
+/** Compact the scale read for a short HUD receipt without rounding away useful magnitude. */
+export function formatSignatureMass(massT) {
+  const mass = Math.max(0, Number(massT) || 0);
+  if (!Number.isFinite(mass)) return '0 t';
+  const units = [
+    [1e12, 'Tt'],
+    [1e9, 'Gt'],
+    [1e6, 'Mt'],
+    [1e3, 'kt'],
+  ];
+  for (const [scale, suffix] of units) {
+    if (mass >= scale) {
+      const value = Number((mass / scale).toPrecision(3));
+      return `${value.toLocaleString('en-US')} ${suffix}`;
+    }
+  }
+  return `${Math.round(mass).toLocaleString('en-US')} t`;
+}
+
 /** The player's pulse reads like a weir's sensor — instant (no dwell), honest mass+heat,
  *  plus the deep band so heavy hulls show up at range. ringRadius comes from the pulse. */
 const PLAYER_PULSE_PROFILE = Object.freeze({
@@ -594,14 +613,14 @@ export const massSignature = {
       clutter,
       t: now,
     });
-    const parts = [`${contacts.length} signature${contacts.length === 1 ? '' : 's'} named`];
+    const parts = [`${contacts.length} signature${contacts.length === 1 ? '' : 's'}`];
     const heaviest = contacts[0];
     if (heaviest) {
-      parts.push(`heaviest ${Math.round(heaviest.massT)} t${heaviest.tier === 'hot' ? ' burning hot' : ''}${heaviest.spoofed ? ' (forged)' : ''}`);
+      parts.push(`max ${formatSignatureMass(heaviest.massT)}${heaviest.tier === 'hot' ? ' hot' : ''}${heaviest.spoofed ? ' forged' : ''}`);
     }
-    if (shadowed.length) parts.push(`${shadowed.length} return${shadowed.length === 1 ? '' : 's'} lost in mass shadow`);
+    if (shadowed.length) parts.push(`${shadowed.length} shadowed`);
     if (clutter) parts.push(`${clutter} faint return${clutter === 1 ? '' : 's'}`);
-    this.bus && this.bus.emit('comms:log', { from: 'SCOPE', text: `Signature board — ${parts.join(' · ')}`, kind: 'scan' });
+    this.bus && this.bus.emit('comms:log', { from: 'SCOPE', text: parts.join(' · '), kind: 'scan' });
   },
 };
 
