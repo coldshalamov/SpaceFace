@@ -5127,6 +5127,17 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
+      // Publish-seam exact touch, as the cargo/place/ship commits do (partsLibrary). The
+      // detached prepare above compiled the group away from the scene and before the caster
+      // sync, so the mounted body's live key (scene env map + fog, double-sided, direct mesh)
+      // was only linked when some other opening material happened to share it. Otherwise the
+      // first presented draw linked it after the lift (oc1v27-32: Drive_1<wreck_PackagedBody,
+      // 172-2749 ms). Touching the attached, final-state root links it in the admission
+      // continuation, behind the loading veil for the opening barge.
+      const packagedTouch = mintedAdmissionOptions.touchAuthoredExactTarget;
+      if (typeof packagedTouch === 'function') {
+        try { packagedTouch(root); } catch (_) { /* best effort: first draw still links */ }
+      }
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
