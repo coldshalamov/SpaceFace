@@ -19,7 +19,6 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 | # | What a stranger sees | Where | Next step |
 |---|---|---|---|
 | D261 | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 |
-| D267 | Flight HUD tests red on clean master (`test/hud-contact-roster-visibility.test.mjs` 2 of 7) | HUD contact roster | packet G1 |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
 
 ## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)

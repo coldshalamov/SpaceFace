@@ -171,15 +171,23 @@ test('moving prograde projection retains exact per-HUD records at high refresh',
       }
 
       // Other HUD consumers share worldToScreen on their own cadences (the threat halo scans
-      // hostiles at 30 Hz). The prograde contract is its own pair of records hit once per frame —
-      // identify them by the A/B endpoints they publish on the final frame.
+      // hostiles at 30 Hz, and the crescent's ship-under probe in orrery/hudAdapter.js projects
+      // the hull position every frame — its endpoint collides with prograde A's by design, since
+      // A is anchored at the ship). Identify the prograde pair by their call contract: the B
+      // record is the only one publishing the ship + velocity*36 endpoint, and A is the record
+      // always called immediately before B (hud.js issues them back to back).
       const lastCallByRecord = new Map();
       for (const c of calls) lastCallByRecord.set(c.src, c);
-      const progradeRecords = [...lastCallByRecord.keys()].filter((record) => {
+      const bRecord = [...lastCallByRecord.keys()].find((record) => {
         const last = lastCallByRecord.get(record).input;
-        return last.x === 100 && (last.z === 220 || last.z === 256);
+        return last.x === 100 && last.z === 256;
       });
-      assert.equal(progradeRecords.length, 2, `${fps} FPS projects exactly A and B once per frame`);
+      assert.ok(bRecord, `${fps} FPS prograde B projects the ship's forward point each frame`);
+      const bCallIdx = calls.map((c, i) => (c.src === bRecord ? i : -1)).filter((i) => i >= 0);
+      const aRecord = bCallIdx.length ? calls[bCallIdx[0] - 1].src : null;
+      assert.ok(aRecord && bCallIdx.every((i) => calls[i - 1] && calls[i - 1].src === aRecord),
+        `${fps} FPS prograde A is projected immediately before B on every frame`);
+      const progradeRecords = [aRecord, bRecord];
       const progradeCalls = calls.filter((c) => progradeRecords.includes(c.src));
       assert.equal(progradeCalls.length, frames * 2, `${fps} FPS prograde calls land once per frame`);
       const inputIdentities = new Set(progradeCalls.map((c) => c.src));
@@ -313,10 +321,11 @@ test('selected-target projections retain exact per-HUD center and radius records
   let calls = 0;
   const fixture = mountHudFixture({
     worldToScreen(point) {
-      // The threat halo scans hostiles on the overlay cadence through the same helper;
-      // count only the selected-target projections (selected wreck at x=3000 + radius ring;
-      // hostile contacts sit at x>=3100).
-      if (point.x < 3050) calls += 1;
+      // The threat halo scans hostiles on the overlay cadence through the same helper, and the
+      // crescent's ship-under probe (orrery/hudAdapter.js) projects the hull (x=0 in this
+      // fixture) every frame — count only the selected-target projections (selected wreck at
+      // x=3000 + radius ring; hostile contacts sit at x>=3100).
+      if (point.x >= 2900 && point.x < 3050) calls += 1;
       return { x: 100 + point.x, y: 200 + point.z, onScreen: true };
     },
   });
