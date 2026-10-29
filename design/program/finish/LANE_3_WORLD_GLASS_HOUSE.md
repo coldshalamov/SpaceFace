@@ -44,6 +44,17 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
 - New OPEN row found at top of ledger: **R-c1225fa** (presentation craft: palette skin, market
   SOLD OUT, bar rail bands, HC focus signal) — not in the original seven; needs a ui-bench
   breakpoint pass, queue in the next review batch.
+- **8962e68 ORRERY row — surveyed** (batch-a2 RECEIPT.md): 23 title findings are the designed
+  first-light modal (FP); REAL = shipworks receipt-over-verbs + delta off-1920 edge, crucible-door
+  tile sliver, comms+wingman radial crest svg overflow (helix x≈-3); LIKELY-FP = tech-tree
+  con-lens crop, ship row-names (needs 1 PNG), power-rail floattext, chart rail-sum; NOT-A-BUG =
+  orr-spot under-words authored spotlight, gm-level sr-only carrier, tabscale underlay.
+  8 partials reconstructed: crucible-lab, photo-mode, manifest, demoEnd, localmap-legacy,
+  starmap-legacy, resultsSheet, shareCode. Worst-five pixel queue: shipworks → crucible-door →
+  wingman-radial → comms-radial → ship. Harness defect found: dock fixture opens only ONE
+  dock-tree surface per boot — 7 surfaces (station-dock/market/industry/contracts/factions,
+  asteroid-works, base) silently unmeasured; needs fixture fix (Lane 2/G).
+  batch-a1 fixer running on the confirmed-real four.
 - Localization debt (nearby flags, W3 material): hard-coded player strings in
   `faction_understory.js` (:1069,:1134,:1154,:1735-1906), `faction_verge.js` (:137-161 via _log
   :534), `vestaWinnowRecovery.js` (:98-104,159,342,552-553), `starterWorkday.js` (:9-22),
@@ -135,7 +146,14 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   Voice live-mix ring in source, factions scroll+fade, ledger fold fade. Flags: settings
   bench shot hangs >280s (harness issue, Lane 1/G); 2 stale test assertions at HEAD
   (racingMap 2-polyline design, station-orbital ensureStylesheet) — Lane 2 Inbox.
-- **Row 459 RC-VIGNETTES** — lived vignettes worth meeting.
+- **Row 459 RC-VIGNETTES — DONE.** Most of the spec was already landed (generator recipe,
+  charge/await verbs, first-hour prop preference). The live defect: two ambient scenes carried
+  `livedRotation` and deadlocked `pickLivedVignette` — seeded 2h route stalled at 2/30 scenes.
+  Generator retags them; rotation is exactly 30 curated; regeneration synced 3 stale modules
+  (keepMotion). Acceptance green: 30 once-ever scenes, zero repeated lines, byte-identical
+  replay, real massline tow, save round-trip. Adjacent fix: `deferDuringGuidedOnboarding`
+  had zero enforcement in requestAuthoredEncounter (onboarding-opportunity-admission red at
+  HEAD) — gated, force included. 15/15 acceptance + 94/94 + 40/40 neighbors.
 - **Row 553 ATT-E01** — onboarding rail texture, tier-0 life, ambient traffic.
 - **Row 546 W-TEACH** — teach by situation; First Light keeps its offer with Play primary.
 - **Row 454 GOLD-M1** — the integration pass: play the first hour on the real route, fix until every first-hour system is gold or names its missing file.

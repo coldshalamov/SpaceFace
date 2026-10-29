@@ -102,6 +102,10 @@ test('settlement and neutral refusal ignore synchronous tick reentry',()=>{for(c
 
 // Isolate this entry from competition by consuming other entries, not by bypassing the
 // real scheduler. This proves admission gates, not the probability of a natural first visit.
+// Row 459 retired ambient scenes from the unsolicited rotation — livedRotation marks only
+// the thirty curated encounters — so the unsolicited tick never fires this scene; the
+// authored-request seam remains its real admission path (the picker tests below still
+// exercise the ambient lane directly with explicit candidates).
 function schedulerBoot(){
  const sim=createSimulation({seed:916,systems:[economy,scanner,encounterDirector]});
  const {state}=sim,sector='sector_orcus_shadow';state.mode='flight';state.simTime=3600;
@@ -116,12 +120,15 @@ function schedulerBoot(){
  const seed=Array.from({length:100},(_,i)=>i+1).find(seed=>pickLivedVignette({...args,seed})===encounter);assert.ok(seed);state.meta.seed=seed;
  const r={state,registry:sim.registry};return {sim,state,r,stats,args,seed};
 }
-test('ordinary scheduler admits Archive through its real eligibility filter and existing pacing',()=>{
+test('ambient scenes stay out of the unsolicited tick; the authored request still admits Archive',()=>{
  assert.equal(encounter.gates.externalOnly,true);
- const h=schedulerBoot();tickLivedVignettes(h.r);const l=h.state.encounterDirector.live['lived:'+encounter.id];assert.ok(l);assert.equal(l.shape,encounter);assert.equal(l.ids.length,2);assert.equal(encounter.livedRotation,true);
- assert.equal(h.stats.livedStarted[encounter.id],3600);assert.equal(h.stats.ambientLastAt[encounter.id],3600);assert.equal(h.stats.livedNextAt,3690);assert.equal(h.r._livedScanAt,3606);
+ assert.notEqual(encounter.livedRotation,true,'ambient scenes carry no rotation mark (row 459)');
+ const h=schedulerBoot();tickLivedVignettes(h.r);assert.equal(h.state.encounterDirector.live['lived:'+encounter.id],undefined,'the unsolicited tick stays quiet');assert.equal(h.stats.fired,0);
+ const fired=h.sim.registry.get('encounterDirector').requestAuthoredEncounter({shapeId:encounter.id,encounterId:'archive-admission',sectorId:'sector_orcus_shadow',anchor:{x:0,z:0},force:true,data:{sceneAxis:{ux:1,uz:0}}});
+ assert.equal(fired.ok,true,JSON.stringify(fired));
+ const l=h.state.encounterDirector.live['archive-admission'];assert.ok(l);assert.equal(l.shape,encounter);assert.equal(l.ids.length,2);
 });
-test('actual scheduler excludes consumed zero-valued seen/started stamps',()=>{
+test('consumed seen/started stamps change nothing for an out-of-rotation scene',()=>{
  for(const key of ['livedSeen','livedStarted']){const h=schedulerBoot();h.stats[key][encounter.id]=0;tickLivedVignettes(h.r);assert.equal(Object.keys(h.state.encounterDirector.live).length,0);assert.equal(h.stats.fired,0);}
 });
 test('actual picker preserves Orcus sector and exact per-scene cooldown boundary',()=>{
@@ -129,7 +136,6 @@ test('actual picker preserves Orcus sector and exact per-scene cooldown boundary
  assert.equal(pickLivedVignette({...h.args,seed:h.seed,ambientLastAt:{[encounter.id]:2400.001}}),null);
  assert.equal(pickLivedVignette({...h.args,seed:h.seed,ambientLastAt:{[encounter.id]:2400}}),encounter);
 });
-test('actual scheduler respects scan pacing, global gap, live scene and sector boundaries',()=>{
- for(const gate of ['scan','gap','live','sector']){const h=schedulerBoot();if(gate==='scan')h.r._livedScanAt=3601;if(gate==='gap')h.stats.livedNextAt=3601;if(gate==='live')h.state.encounterDirector.live.other={id:'other'};if(gate==='sector')h.state.world.currentSectorId='sector_phoebe_echo';tickLivedVignettes(h.r);assert.equal(h.state.encounterDirector.live['lived:'+encounter.id],undefined);assert.equal(h.stats.fired,0);}
- const h=schedulerBoot();h.r._livedScanAt=3600;h.stats.livedNextAt=3600;tickLivedVignettes(h.r);assert.ok(h.state.encounterDirector.live['lived:'+encounter.id]);
+test('the unsolicited tick stays closed for ambient scenes, pacing cleared or not',()=>{
+ for(const gate of ['scan','gap','live','sector','clear']){const h=schedulerBoot();if(gate==='scan')h.r._livedScanAt=3601;if(gate==='gap')h.stats.livedNextAt=3601;if(gate==='live')h.state.encounterDirector.live.other={id:'other'};if(gate==='sector')h.state.world.currentSectorId='sector_phoebe_echo';if(gate==='clear'){h.r._livedScanAt=3600;h.stats.livedNextAt=3600;}tickLivedVignettes(h.r);assert.equal(h.state.encounterDirector.live['lived:'+encounter.id],undefined);assert.equal(h.stats.fired,0);}
 });

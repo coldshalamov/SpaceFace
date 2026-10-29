@@ -168,7 +168,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "VERGE: The 24 cr stays spent — the relief still runs on your credit at Trade Lane; the close-in just never came — LAMP ON THE TRADE LANE.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",

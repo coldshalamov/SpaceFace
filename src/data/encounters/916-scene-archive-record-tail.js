@@ -295,7 +295,6 @@ export default defineEncounter(trigger, {
     "actor": "faction_archive"
   },
   "livedVignette": true,
-  "livedRotation": true,
   "ambientScene": true,
   "sectorIds": [
     "sector_orcus_shadow"

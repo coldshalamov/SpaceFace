@@ -45,7 +45,11 @@ function observe(h,at,{progress=120,range=110,relative=0,behind=true}={}) {
 test('existing cast/rewards and ambient sector eligibility are preserved',()=>{
   assert.deepEqual(spec.cast.map(x=>x.archetype),['choir_zealot','choir_zealot','choir_zealot']);
   assert.deepEqual(spec.cast.map(x=>[x.dx,x.dz]),[[0,0],[-90,0],[-180,0]]);
-  assert.equal(encounter.livedRotation,true);
+  // Row 459: ambient scenes are out of the unsolicited rotation (livedRotation marks
+  // only the thirty curated encounters); this scene stays reachable through authored
+  // requests and keeps its ambient-lane picker contract when candidates are handed in.
+  assert.notEqual(encounter.livedRotation,true);
+  assert.equal(encounter.ambientScene,true);
   assert.equal(spec.phases.find(x=>x.id==='grant_a').amount,30);
   assert.equal(spec.phases.find(x=>x.id==='rep_a').delta,2);
   for(const sectorId of encounter.sectorIds){

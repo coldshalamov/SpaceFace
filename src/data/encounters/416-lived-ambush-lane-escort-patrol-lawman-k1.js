@@ -160,7 +160,7 @@ export const spec = {
       "verb": "await",
       "timeoutS": 120,
       "timeoutLine": "WARD: The 24 cr stays spent — the relief still runs on your credit at Ambush Lane; the close-in just never came — DENT ON THE AMBUSH LANE.",
-      "keepMotion": true,
+      "keepMotion": false,
       "steps": [
         {
           "kind": "meet",

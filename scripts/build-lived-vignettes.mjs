@@ -1532,7 +1532,9 @@ function emitAmbient(row) {
   const body = {
     shape: { situation: row.situation, place: row.place, twist: row.twist, actor: row.actor },
     livedVignette: true,
-    ...(row.id === 'archive_record_tail' ? { livedRotation: true } : {}),
+    // Row 459: ambient scenes are retired from the unsolicited rotation — `livedRotation`
+    // marks only the thirty physically gated curated encounters. Ambient scenes stay
+    // generated and playable through authored requests (harness/external triggers).
     ambientScene: true,
     sectorIds: row.sectors,
     noCombat: true,
@@ -1547,8 +1549,8 @@ function emitAmbient(row) {
   };
   // Pilgrim-only escort: existing cast/settlement, earned by trailing the last lamp.
   // Save/exit abandons unfinished work through the existing transient director owner.
+  // It carries no livedRotation mark (row 459): the unsolicited pool is the curated set.
   if (row.id === 'pilgrim_lamp_walk') {
-    body.livedRotation = true;
     cast.forEach((member, index) => { member.dx = -90 * index; member.dz = 0; });
     // Offer at rest; even late acceptance retains the finite column leg.
     Object.assign(phases.find((phase) => phase.id === 'run'), { verb: 'noop' });
@@ -1704,7 +1706,23 @@ if (row459) {
     const text = rowText(row);
     if (before !== text) { writeFileSync(path, text); written++; }
   }
-  console.log(`--row=459: regenerated ${written} of ${curatedRows.length} curated modules (unchanged skipped)`);
+  // Row 459 also retires the two ambient scenes from the rotation tag: rewrite their
+  // modules at their existing slots (never the full run — that would renumber them past
+  // the occupied 4-digit orders and break every importer).
+  let ambientWritten = 0;
+  for (const id of ['pilgrim_lamp_walk', 'archive_record_tail']) {
+    const row = AMBIENT.find((entry) => entry.id === id);
+    if (!row) throw new Error(`--row=459: ambient row ${id} missing`);
+    const dashed = id.replace(/_/g, '-');
+    const name = readdirSync(DIR).find((entry) => new RegExp(`^\\d{3,4}-scene-${dashed}\\.js$`).test(entry));
+    if (!name) throw new Error(`--row=459: ambient module for ${id} not found on disk`);
+    const order = Number(name.slice(0, name.indexOf('-')));
+    const path = join(DIR, name);
+    const before = readFileSync(path, 'utf8');
+    emitAmbient({ ...row, order, file: name, encounterId: `scene_${id}` });
+    if (readFileSync(path, 'utf8') !== before) ambientWritten++;
+  }
+  console.log(`--row=459: regenerated ${written} of ${curatedRows.length} curated modules + ${ambientWritten} ambient retags`);
   process.exit(0);
 }
 for (const name of readdirSync(DIR)) {

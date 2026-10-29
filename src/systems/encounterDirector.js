@@ -1574,6 +1574,12 @@ export const encounterDirector = {
     const shape = ENCOUNTERS[payload.shapeId];
     if (!shape) return { ok: false, reason: 'missing_shape' };
     if (!encounterScriptFor(shape)) return { ok: false, reason: 'missing_runtime' };
+    // The onboarding rail owns the opening beats: a shape flagged deferDuringGuidedOnboarding
+    // stays unrequested while the rail is active, and `force` skips ordinary gates, not the
+    // rail itself — the guided run must not spend or chart the encounter early.
+    if (shape.gates && shape.gates.deferDuringGuidedOnboarding && isTutorialActive(state)) {
+      return { ok: false, reason: 'guided_onboarding' };
+    }
     const nestResume = payload.shapeId === 'the_nest' && payload.encounterId === this._nestResumePermit
       && dir.nestVisit?.status === 'active' && payload.data?.nestResume === true;
     if (payload.respectPacing && !nestResume) {

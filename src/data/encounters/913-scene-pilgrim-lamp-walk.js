@@ -275,6 +275,5 @@ export default defineEncounter(trigger, {
     "a": "You matched the last pilgrim's wake. The Choir acknowledges your escort.",
     "b": "The cantor heard your dismissal and closed the channel.",
     "c": "You declined the escort. The lamp line remains the crew's work."
-  },
-  "livedRotation": true
+  }
 });
