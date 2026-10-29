@@ -384,11 +384,11 @@ html:root:not([data-sf-mobile="1"]) ${SLD} .sf-ledger-line { grid-template-colum
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__sub.sf-slot-sub { display:none !important; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .sf-save-ledger .sf-slot-context { letter-spacing:.05em; }
 }
-/* ui-polish-183: a narrow desktop window (≤560 wide) gives each strip station ~68px, so a long filed name broke
-   mid-word ("RECOV / ERY") down six lines with CURRENT and its credits, into EXPORT / IMPORT. A filed station
-   breaks its name between words, not inside them, with closer tracking, and the badge steps aside (the context
-   line carries CURRENT), so the station ends above the foot. */
-@media (max-width:560px) {
+/* ui-polish-183/186: a narrow desktop window (≤640 wide, up to the 641 band) gives each strip station ~68-90px,
+   so a long filed name broke mid-word ("RECOV / ERY") or ran four lines with CURRENT and its credits into
+   EXPORT / IMPORT (561-599 still overlapped). A filed station breaks its name between words, not inside them,
+   with closer tracking, and the badge steps aside (the context line carries CURRENT), so it ends above the foot. */
+@media (max-width:640px) {
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list > .k-row.sf-slot:not(.empty) > div { overflow-wrap:normal; margin:0 -6px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} > .k-hang { margin-bottom:34px; }
   html:root:not([data-sf-mobile="1"]) ${SLD} .orr-film__list .k-row:not(.empty) .k-row__name.sf-slot-name { letter-spacing:0 !important; }
