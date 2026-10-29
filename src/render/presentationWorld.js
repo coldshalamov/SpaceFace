@@ -890,33 +890,50 @@ export function createPresentationWorld(options = {}) {
     return true;
   }
 
-  // Stepped twin — identical teardown, paced across presents. The retire
-  // visits by captured entity-id (not live slot index): a destroy apply or a
-  // slot reuse landing mid-suspension can only add rows the snapshot never
-  // covered, so neither can kill a resident minted after the walk started.
+  // Stepped twin — identical teardown, paced across presents. Capture the
+  // exact row identity: an ID can be destroyed and reused while this walk is
+  // suspended, so retiring by ID alone could kill the replacement occupant.
   function* clearSteps(sliceEvery = 256) {
     ensureAlive();
-    const pendingIds = new Array(activeCount);
+    const pendingRows = new Array(activeCount);
     for (let index = 0; index < activeCount; index++) {
-      pendingIds[index] = world.entityIds[world.activeSlots[index]];
+      const slot = world.activeSlots[index];
+      pendingRows[index] = {
+        slot,
+        entityId: world.entityIds[slot],
+        generation: world.slotGenerations[slot],
+      };
     }
     const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
-    maxRadius = 0;
-    for (let index = 0; index < pendingIds.length; index++) {
-      const slot = byId.get(pendingIds[index]);
-      if (slot !== undefined) retireSlot(slot);
+    for (let index = 0; index < pendingRows.length; index++) {
+      const { slot, entityId, generation } = pendingRows[index];
+      if (world.alive[slot] === 1
+          && world.slotGenerations[slot] === generation
+          && world.entityIds[slot] === entityId
+          && byId.get(entityId) === slot) {
+        retireSlot(slot);
+      }
       if (((index + 1) % every) === 0) yield;
     }
-    gridColumns.clear();
-    specialCount = 0;
-    boundCount = 0;
-    maxRadius = 0;
-    maxRadiusDirty = false;
+    if (activeCount === 0) {
+      gridColumns.clear();
+      specialCount = 0;
+      boundCount = 0;
+      maxRadius = 0;
+      maxRadiusDirty = false;
+      diagnostics.active = 0;
+      diagnostics.bound = 0;
+      diagnostics.maxRadius = 0;
+    } else {
+      // Rows minted while the clear was parked are outside its snapshot and retain their
+      // grid/special/binding memberships. Recompute only the lazily-maintained radius bound.
+      if (maxRadiusDirty) recomputeMaxRadius();
+      diagnostics.active = activeCount;
+      diagnostics.bound = boundCount;
+      diagnostics.maxRadius = maxRadius;
+    }
     asteroidDirty = true;
-    diagnostics.active = 0;
-    diagnostics.bound = 0;
     diagnostics.free = freeCount;
-    diagnostics.maxRadius = 0;
     return true;
   }
 

@@ -140,6 +140,30 @@ test('a title that finishes preparing under New Game defers its warm draw until 
   assert.equal(ops(log, 'render').length, drawsBefore + 3, 'later frames need only the presented draw');
 });
 
+test('releasing a stage during prop admission does not start its hull load afterward', async (t) => {
+  t.after(reset);
+  const calls = [];
+  const pending = [];
+  setUiStagePartLoaderForTest((url, options) => {
+    calls.push({ url, slot: options.slot });
+    return new Promise((resolve) => pending.push(resolve));
+  });
+  const renderer = stubRenderer([]);
+  const state = flightState([]);
+  state.mode = 'menu';
+  state.ui.stageRequest = { scene: 'berth', hullDefId: 'ship_kestrel' };
+  presentUiStage({ render: { renderer }, state });
+  await settle(() => calls.length === 3, 'the berth prop requests');
+
+  releaseUiStage('test-release-during-props');
+  for (const resolve of pending) resolve(null);
+  for (let i = 0; i < 6; i++) await Promise.resolve();
+
+  assert.equal(calls.length, 3, 'no hull request starts after the stage owner is released');
+  assert.ok(calls.every((call) => call.slot === 'place'));
+  assert.equal(uiStageResident(), false);
+});
+
 test('the berth is compiled, uploaded and warmed during the approach; the dock adopts it live on frame one', async (t) => {
   t.after(reset);
   const log = [];

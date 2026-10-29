@@ -853,6 +853,10 @@ async function loadSceneContent(built, renderer, request) {
     return group;
   }));
 
+  // The caller may release this stage while its prop set is loading. The in-flight owners are
+  // aborted by disposeBuilt; do not start the hull leg after that cancellation has settled.
+  if (built.disposed) return;
+
   built.marks.props = stageNow() - built.marks.start;
   built.phase = 'loading-hull';
   const hullRecord = await loadPart(hullFile, renderer, 'hull', built);
@@ -896,6 +900,7 @@ async function loadPart(file, renderer, slot, built = null, partOptions = null) 
     : [`${PART_ROOT}${file}`];
   const residencyOwner = built && built.residencyOwner;
   for (const url of urls) {
+    if (built && built.disposed) return null;
     try {
       const record = await loadAuthoredPart(url, {
         renderer,
@@ -907,10 +912,12 @@ async function loadPart(file, renderer, slot, built = null, partOptions = null) 
           : undefined,
         ...(partOptions || {}),
       });
+      if (built && built.disposed) return null;
       if (record) return record;
     } catch (error) {
       lastError = `${url}: ${error && error.message ? error.message : error}`;
       dedupWarn('uiStage.part-load', '[uiStage] part load failed', url, error);
+      if (built && built.disposed) return null;
     }
   }
   return null;
