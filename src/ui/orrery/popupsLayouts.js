@@ -146,7 +146,19 @@ const CSS = `
 /* Full height on a four-line dossier read as an unfinished sidebar; top-anchored with a viewport
    cap, a short record ends at its apron and a long one still scrolls (overflow from the base
    .sf-drawer rule). Same selector as the shared sheet, injected after it — the tie breaks late. */
-.sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: auto; max-height: 100%; }
+.sf-drawerlayer > .sf-drawer--entity { top: 0; bottom: auto; max-height: 100%; display: flex; flex-direction: column; }
+/* With the sheet's height left to its content, the deck's height:100% resolved to auto and never
+   scrolled: a long record ran past the viewport and took the sticky verbs with it (OPEN ON THE CHART
+   and CLOSE were unreachable at 960x540 and 375x667). As a flex column the deck shrinks to the
+   capped sheet and scrolls, so the apron rides the foot again. */
+.sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { height: auto; min-height: 0; }
+/* Phone: the sheet is full width, so a hugging sheet left a strip of the station foot (COMMS,
+   UNDOCK) printing under it. There it fills the screen and the verbs sit on its foot. */
+@media (max-width: 640px) {
+  .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
+  .sf-drawer--entity .sf-drawer__deck > .sf-drawer__apron { margin-top: auto; }
+}
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
 /* The quiet etched chevron — the door mark. Bone at rest, the lamp under the hand; it slides a
