@@ -345,6 +345,7 @@ export const lastShift = {
       || state.simTime < this._nextTick) return;
     this._nextTick = state.simTime + 0.25;
     this._capture(); this._materialize();
+    this._approach();
     const gate = this._returnEligibility(), recovery = this._recorderRecovery(gate);
     if (recovery !== this._lastRecoveryState) {
       this._lastRecoveryState = recovery; this._offer('recoveryUpdate');

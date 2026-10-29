@@ -101,6 +101,14 @@ function makeHarness(entities, opts = {}) {
     render: { scene },
     flightRuntime: opts.flightRuntime || null,
   };
+  // NPC propulsion is admitted only for an entity whose rendered root belongs to this scene.
+  // These focused energy tests model presented hulls, so give their NPC fixtures real scene roots.
+  for (const entity of entities) {
+    if (entity.id === state.playerId || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+    const mesh = new THREE.Object3D();
+    scene.add(mesh);
+    entity.mesh = mesh;
+  }
   const system = Object.create(vfx);
   system.init({ state, bus: createBus(), helpers: opts.helpers || {} });
   return { scene, state, system };

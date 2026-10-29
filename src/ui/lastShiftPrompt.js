@@ -19,7 +19,10 @@ const towingAdvice = 'Keep separation: a slack line won\'t brake the recorder. S
 export const lastShiftPrompt = {
   name: 'lastShiftPrompt',
   init(ctx) {
-    this.bus = ctx.bus; this._deckId = 'last-shift:evidence'; this._subs = []; this._active = null; this._epoch = 0; this._destroyed = false;
+    this.bus = ctx.bus; this.state = ctx.state; this._workerMain = ctx.simLane === 'worker';
+    this._deckId = 'last-shift:evidence'; this._subs = []; this._active = null; this._epoch = 0; this._destroyed = false;
+    this._cueToken = null;
+    this._subs.push(ctx.bus.on('lastShift:cue', row => this.cue(row)));
     this._subs.push(ctx.bus.on('lastShift:offer', row => {
       if (row?.view === 'recoveryUpdate') {
         if (!this._active?.accepted || !['recovery', 'advice'].includes(this._view)) return;
@@ -31,6 +34,31 @@ export const lastShiftPrompt = {
     for (const event of ['sector:exit', 'dock:docked', 'save:restoring', 'save:loaded', 'game:load', 'game:new', 'game:newGame']) {
       this._subs.push(ctx.bus.on(event, () => this.clear()));
     }
+  },
+  cue(row) {
+    this._cueToken = null;
+    if (!row?.id || !row.text || this.state?.mode !== 'flight' || typeof document === 'undefined'
+      || !document.getElementById('toasts')) return false;
+    const job = document.body?.dataset?.sfHudJob;
+    if (!admitReceipt({ text: row.text, kind: 'info', combat: job === 'fight' || job === 'hurt' }).admit) return false;
+    const token = {};
+    this._cueToken = token;
+    this.bus.emit('toast', { text: row.text, kind: 'info', ttl: 8 });
+    if (this._cueToken !== token || typeof document === 'undefined') return false;
+    // A root may exist before the receipt listener is bound; only its matching connected text
+    // proves that the optional cue reached the player.
+    const surfaced = [...(document.getElementById('toasts')?.querySelectorAll('.sf-toast__text') || [])]
+      .some(node => node.isConnected && node.textContent === row.text);
+    if (!surfaced || this._cueToken !== token) return false;
+    const acknowledge = () => {
+      if (this._cueToken !== token || this.state?.mode !== 'flight') return;
+      this._cueToken = null;
+      this.bus.emit('lastShift:cueSurfaced', { id: row.id });
+    };
+    // Worker replay suppresses synchronous echoes. A verified receipt crosses after replay unwinds;
+    // lifecycle interruption still cancels the acknowledgement.
+    if (this._workerMain) queueMicrotask(acknowledge); else acknowledge();
+    return true;
   },
   offer(row, view = row?.view || 'sources') {
     if (this._destroyed) return false;
@@ -68,7 +96,7 @@ export const lastShiftPrompt = {
     token.accepted = !!accepted && this._active === token && this._epoch === epoch;
     return token.accepted;
   },
-  clear() { const epoch = ++this._epoch; this._active = null; getPromptDeck()?.resolveDecision(this._deckId); return epoch; },
+  clear() { const epoch = ++this._epoch; this._active = null; this._cueToken = null; getPromptDeck()?.resolveDecision(this._deckId); return epoch; },
   newGame() { this.clear(); },
   destroy() { this._destroyed = true; this.newGame(); for (const off of this._subs || []) off(); },
 };

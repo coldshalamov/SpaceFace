@@ -15,7 +15,7 @@ const row={revision:1,clueIds:['fairlead'],text:lastShiftReport(['fairlead']),ca
 function fixture(){const bus=createBus(),prompt={...lastShiftPrompt},events=[];let spec;setPromptDeck({offerDecision(s){spec=s;return true;},resolveDecision(){return true;}});prompt.init({bus});for(const type of ['lastShift:archive','lastShift:returnRecorder'])bus.on(type,p=>events.push({type,p}));prompt.offer(row);return {bus,prompt,events,get spec(){return spec;},close(){prompt.destroy();setPromptDeck(null);}};}
 test('three realm-local prompt adapters stay on main; only current Last Shift commands are exposed',()=>{
  for(const id of ['lastShiftPrompt','ilexArkPrompt','towlineTablePrompt'])assert.equal(SYSTEM_CAPABILITIES[id].nodeSafe,false,id);
- assert.deepEqual([...MAIN_TO_SIM_BUS_EVENTS].filter(x=>x.startsWith('lastShift:')).sort(),['lastShift:archive','lastShift:cancelRecovery','lastShift:readRecovery','lastShift:recover','lastShift:returnRecorder']);
+ assert.deepEqual([...MAIN_TO_SIM_BUS_EVENTS].filter(x=>x.startsWith('lastShift:')).sort(),['lastShift:archive','lastShift:cancelRecovery','lastShift:cueSurfaced','lastShift:readRecovery','lastShift:recover','lastShift:returnRecorder']);
 });
 test('current Last Shift owner offer projects to prompt and archives exactly once without invented evidence or reward',()=>{
  const h=fixture(),authority=createBus(),record=freshLastShiftRecord();record.knownClueIds=['fairlead'];record.revision=1;
