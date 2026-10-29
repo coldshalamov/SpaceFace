@@ -13,7 +13,7 @@ active assignments. A source read or focused test does not establish ordinary-ro
 | Swarm spawn/motion observation | Published fix `4a5e683497e` corrected observer overflow and unmapped-player attribution. Corrected offline idle and active captures report zero anomalies without changing the 8 WU/s physics limit. | The original whole Swarm gate remains FAIL: the default pilot died in wave 2. Do not claim whole-mode acceptance. |
 | Ordinary Foundry Fortify | Headed public run `24057` closed after 892 simulated seconds / 25 minutes: cleared waves 1–6, reached wave 7 alive, and used all four devices plus repair/rearm through public controls. | Verdict is FAIL solely for 15 offscreen-marker misses (`no living shooter` near sim 727.9). Other core controls, round resolution/transitions, spawn motion, ships, and VFX passed. Readability and frame time remain UNKNOWN. The ten-wave/boss journey is not accepted. Original verdict/artifacts: `.devshots/finish/integration-2026-10-29/foundry-ten-wave-route/`. |
 | Hero Maneuvers | M02 public route banked, committed a bomb, and returned through phase alive; the target survived, an allowed miss. Pinball charged its physical dash and reported target lost with zero contacts; native contact behavior has separate focused coverage. | No public contact or complete three-ability experience is claimed. Boomerang/readout and readability remain under their owners. |
-| Adventure | 300.9 simulated seconds reached; core route/control checks passed. | Overall verdict remains INCOMPLETE for readability and performance authority. |
+| Adventure | 300.9 simulated seconds reached; core route/control checks passed. The later live Tethys route exposed a manual Quick Save failure (`import_node_limit`); the isolated browser remains paused. | Fix the real prolonged-session save failure before relying on Save/Continue. Readability, performance and public Sun lease remain open. |
 | NPC weapon behavior | Published `a41981ae13a`: NPC fixed mounts and turrets aim from the actual muzzle; six focused cases pass. K1 measures actual disabled intervals; SG06 preserves real multi-ship convergence. Ladder totals preserve future history without counting it toward current unlocks. | These focused results do not establish broad combat-route acceptance. |
 | Startup/rendering | Current integrated baseline passes all 17 checks in 73.07 seconds against its 90-second budget. `4a93e16099e` makes nested physical-branch traces honor the inherited job limit; this is shared-host evidence, not an isolated speedup. The bundle builds all 414 shipping render packages. | Full opening performance and the final stable build remain open. |
 | Whole game / final phase | Source packets are tracked below; targeted repairs have landed or are being integrated. | Final build-map closure, final stable checks, remaining gameplay routes, and the requested last-300-commit review remain open. Do not mark the game finished. |
@@ -22,7 +22,7 @@ active assignments. A source read or focused test does not establish ordinary-ro
 
 The Fortify, Hero Maneuvers, Borrowed Sun registration/save, and main-lane presentation changes
 remain a local integration candidate. Their dependencies must ship together; they are not yet
-available to cloud agents from master. The current bundle builds all 414 shipping render packages.
+available to cloud agents from master. The current pre-RU-7 bundle builds all 414 shipping render packages; receipt `ea2058b8c0eb75cbcaa128d077126c05d716a56e5d1143fa7ab5bdacab946494` covers 2748 files (74.00 MB raw / 41.75 MB bundled). Save schema v22/461 paths and module preloads pass.
 A duplicate Hero readout property reported by the bundler was removed.
 
 - `c2f5714f570` fixes the offscreen observer: lit detonator fuses and their danger bands are
@@ -51,11 +51,13 @@ A duplicate Hero readout property reported by the bundler was removed.
   Continue; the connected starter native circuit exercises normal trade, gate tolls, a paid fitting,
   authored seam extraction, MassLine and an earned Swing Drive. This is a native fixture with contact
   arrangement, not a browser hauling acceptance.
-- Borrowed Sun's local candidate now advances arrival/deployment on its sector calendar even while
-  the carrier is outside native physics residency. Service still requires the actual native body.
-  Its ordinary-boot native regression passes; public lease acceptance remains open while a real
-  post-gate camera/presentation mismatch is being traced. A stale birth-time main-thread phase field
-  is not evidence that the authoritative phase is stuck.
+- Borrowed Sun's local candidate advances arrival/deployment on its sector calendar outside native
+  residency; service still requires its real native body. The ordinary-boot regression passes.
+  Live gate inspection confirms world-origin updates reach both realms: the old renderer snapshot
+  was held during sector preparation and caught up when it completed. The actual carrier omitted
+  the authored-station selector, so its local fix now selects the shipped trade-hub body and repairs
+  older Continue metadata. The production-runtime/factory route and normal-gate native checks pass;
+  public lease acceptance is still being exercised from the saved nearby position.
 - Current draw census finds roughly 29 drawable objects per Wasp (57 callbacks across two passes).
   A bounded compiler experiment preserves every primitive and saves zero draws, so it was rejected.
   Quality and retained opaque batching comparisons have not shown a stable isolated win; defaults
@@ -65,6 +67,38 @@ A duplicate Hero readout property reported by the bundler was removed.
   current finding and leaves any unmeasured GPU cost explicit.
 - Published `71a898b50f7`: hidden hail availability updates skip layout reads; visible panels follow
   the current anchor. All 28 focused hail contracts pass.
+
+**Active save failure:** one instrumented public F5 produced `save:error` with
+`failure: import_node_limit`, `bytes: 0` (before encoding/writing). The failure is the 200,000-node
+preflight guard, not a file-size failure. A fresh canonical Tethys capture has 79,506 nodes and
+passes; the save owner is characterizing progression growth and must preserve other bounds.
+The failed live run is in an isolated bench store, remains paused and has not been reloaded.
+The facade mirror did not retain `lastWriteFailure`; the structured event is the exact receipt.
+
+Current broad checks and repairs:
+
+- The first serial SIM group ran all 39 commands: 38 passed; its sole Tally hail failure was a DOM
+  fixture mismatch, repaired in `ec20ab138b9` with all three focused native/presenter tests passing.
+- The first FEEL group ran all 28 commands: 23 passed. Its five failures have direct resolutions:
+  `4f564f3d5dc` gives service fixtures a real docked berth; `3cd076035a7` refreshes resized Rapier
+  observer proxies and measures a real moving-ship bump above the felt threshold; `ae6b79b67bc`
+  reconnects Last Shift cues/worker acknowledgement and repairs the reduced-motion NPC fixture.
+  The current worker/main Last Shift recovery journey passes 34 cases, VP-220 passes 25, the flight
+  lab passes, and both knock seeds retain the 10% limit with measured 2.56% responses. These focused
+  resolutions do not rewrite the original full-group report or claim a fresh full-matrix pass.
+- The targeted earlier-static-failure recheck passes 38 current commands. Its remaining attempted
+  command was a retired test; the current replacement already passed through `check:ui-identity`.
+  The previously timed-out Phoebe native case passed separately. Headed UI budgets remain pending.
+- Current Cryo idle40/45 capture has no core FAIL and passes VFX coverage (p95 1% screen, no measured
+  player/threat hiding). Overall verdict is INCOMPLETE for idle round resolution/transitions,
+  insufficient readable-body samples and performance. No active three-round or whole-mode claim.
+- `3aa38b08ea2` makes live station Services agree with Overview through the existing station record resolver; three behavior cases pass.
+- `64faa351b40` carries Pallet Jack/Kilnback authored motion through the worker read model and clears
+  retired casks; 13 focused tests pass. `a1f3974fe90` repairs the independently stale Ashline package
+  admission pin with six behavior cases. Its contribution to Wasp draw cost is not yet established.
+- The old 12.5 GB `.devshots/green813` temporary copy was inventoried. One unique historical test is
+  preserved under the ignored `green813-salvage` folder; 1,627 differing versions are in Git. The
+  execution tool rejected exact directory removal as blocked by policy, so the copy remains.
 
 ## Published changes relevant to integration
 
