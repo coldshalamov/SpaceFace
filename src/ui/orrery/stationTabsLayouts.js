@@ -1378,6 +1378,14 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${D} .sx-dossier__title { font-size:15px !important; line-height:1.15 !important; }
   ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:22px !important; }
 }
+/* a mid-width, tall desktop window (901–1149 × 801+) kept the route orrery's column, so the reading column ran 230–420px:
+   a 36px title in four lines and the terms pushed ACCEPT ~300px under the dossier's fold. ACCEPT stands at the head of the
+   reading column instead, and the title takes the size it has at 1280. */
+@media (min-width:901px) and (max-width:1149px) and (min-height:801px) {
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; position:static !important; background:none !important; -webkit-mask-image:none !important; mask-image:none !important; margin:0 0 40px !important; padding:6px 0 0 !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier__title { font-size:26px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+}
 /* the Ledger's purse has the width of its words */
 ${T} .orr-ledger-purse { width:260px; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .orr-ledger-purse { width:230px; } }
