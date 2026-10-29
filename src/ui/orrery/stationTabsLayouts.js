@@ -850,6 +850,15 @@ ${T} .sx-ledger .st-ledger-nav { margin-top:10px !important; }
 ${T} .sx-ledger > .sx-ledger__right { position:absolute; left:calc(min(560px, 46%) + clamp(28px, 4vw, 72px)); right:0; top:0; bottom:0; display:flex; flex-direction:column; gap:14px; min-width:0; overflow:hidden; }
 ${T} .sx-ledger__right > .orr-ledger-tape { flex:none; width:100%; height:clamp(150px, 22vh, 210px); margin-top:8px; }
 ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-right:0 !important; margin:0 !important; }
+/* a narrow window (not the phone sheet): the 46% column broke the title mid-word, so the tape and reading stack under it */
+@media (max-width:520px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { flex-direction:column; align-items:stretch; gap:16px; }
+  ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
+  ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
+}
 /* the empty state is one line, and the tape waits with it */
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows:auto auto auto auto auto !important; }
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .st-ledger-status { display:none !important; }
