@@ -84,7 +84,8 @@ export function migrateGameMotionDefault(settings) {
   if (!isPlainObject(settings)) return settings;
   if (!isPlainObject(settings.accessibility)) settings.accessibility = {};
   const access = settings.accessibility;
-  if (access.motionDefaultVersion === GAME_MOTION_DEFAULT_VERSION) return settings;
+  if (typeof access.motionDefaultVersion === 'number'
+    && access.motionDefaultVersion >= GAME_MOTION_DEFAULT_VERSION) return settings;
   const video = isPlainObject(settings.video) ? settings.video : null;
   // Profiles older than motionPreference carried only the effective boolean, and there a true was
   // an explicit player choice. Alongside 'system' the same boolean is only the mirrored OS hint.

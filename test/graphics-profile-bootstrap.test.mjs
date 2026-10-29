@@ -197,6 +197,16 @@ test('a profile that never chose its motion setting boots with full combat effec
   assert.equal(chosenSystem.accessibility.motionPreference, 'system',
     'a player who picks System after the migration keeps it');
 
+  const future = migrateGameMotionDefault({
+    accessibility: { motionPreference: 'system', motionDefaultVersion: GAME_MOTION_DEFAULT_VERSION + 1 },
+    video: { motionReduce: true },
+  });
+  assert.equal(future.accessibility.motionPreference, 'system',
+    'a future policy owns the meaning of its motion preference');
+  assert.equal(future.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION + 1,
+    'an older build must not downgrade a newer migration stamp');
+  assert.equal(future.video.motionReduce, true);
+
   assert.equal(createGameState(12).settings.accessibility.motionPreference, 'full',
     'a fresh profile starts with full effects and carries the version');
   assert.equal(createGameState(12).settings.accessibility.motionDefaultVersion, GAME_MOTION_DEFAULT_VERSION);
