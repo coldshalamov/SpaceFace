@@ -333,6 +333,32 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier > .k-caps { order:-3 !important; }
   ${D} .sx-dossier > .sx-dossier__title { order:-2 !important; margin-bottom:8px !important; }
 }
+/* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
+   and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
+   390×700 by 36px). The inset closes and the dossier opens on its verb. */
+@media (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${D} .sx-ct__dossier { padding:0 0 0 10px !important; }
+  ${D} .sx-dossier { padding-top:0 !important; }
+}
+/* the board shrinks under a whole row only at 720 tall or less (600×700: a 51px board for 56px rows); at 721–800 it keeps two rows and YOURS */
+@media (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${D} .sx-ct__hang { overscroll-behavior:contain; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
+  ${D} .sx-ct__hang > .sx-ct__board { flex:none !important; height:auto !important; max-height:none !important;
+    overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
+}
+/* …under 481 the dossier is the lower half (~95px at 390×700): it gets three fifths (its text keeps the board labels' 26px inset),
+   kind and title close up, and ACCEPT sits right under the title inside the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:800px) {
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(0, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .sx-ct__dossier { padding-left:26px !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+  ${D} .sx-dossier > .sx-dossier__title { margin:2px 0 6px !important; }
+}
+/* …and at 601–660 tall (420×601: a 90px dossier) the kind steps under the verb so the title and ACCEPT still share the first screen */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${D} .sx-dossier > .sx-dossier__title { order:-3 !important; margin-top:0 !important; }
+  ${D} .sx-dossier > .k-caps { order:-1 !important; margin-top:8px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-2 !important; }
+}
 /* below 700 the term value column would be under ~70px and split words ("contr/act"): the label stands over its value */
 @media (min-width:651px) and (max-width:699px) and (max-height:800px) {
   ${D} .sx-dossier__terms > li { grid-template-columns:minmax(0, 1fr) !important; row-gap:1px !important; }
