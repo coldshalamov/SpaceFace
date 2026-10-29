@@ -782,6 +782,10 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     activations: 0,
     lastReason: null,
     lastError: null,
+    preparationStage: 'idle',
+    preparationCurrentGroup: 0,
+    preparationCompletedGroups: 0,
+    preparationGroupCount: 0,
     // Diagnostic only: which per-entry stability check failed, plus a bounded subject label.
     // Not part of any rollback decision; tests and probes read it to attribute churn.
     lastDetail: null,
@@ -1136,6 +1140,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (disposed || !scene) return refreshDiagnostics();
     if (stats.supported !== true) {
       stats.status = 'disabled';
+      stats.preparationStage = 'disabled';
       stats.lastReason = 'unsupported-batched-mesh-capability';
       return refreshDiagnostics();
     }
@@ -1189,6 +1194,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       // flip invalidates again. Sources stay on their authored direct draws until quiet; the
       // signature is left unstamped so the first quiet sync plans against current roots.
       stats.status = 'settling';
+      stats.preparationStage = 'settling';
       stats.lastReason = 'shadow-flip-quiet-window';
       return refreshDiagnostics();
     }
@@ -1215,12 +1221,17 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     stats.potentialDrawReduction = plan.potentialDrawReduction;
     if (plan.groups.length === 0) {
       stats.status = 'idle';
+      stats.preparationStage = 'idle';
+      stats.preparationCurrentGroup = 0;
+      stats.preparationCompletedGroups = 0;
+      stats.preparationGroupCount = 0;
       stats.lastReason = 'no-eligible-groups';
       return refreshDiagnostics();
     }
     const prepare = typeof requestOptions.prepare === 'function' ? requestOptions.prepare : prepareDefault;
     if (typeof prepare !== 'function') {
       stats.status = 'unprepared';
+      stats.preparationStage = 'unprepared';
       stats.lastReason = 'prepare-callback-required';
       return refreshDiagnostics();
     }
@@ -1232,6 +1243,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       });
     } catch (error) {
       stats.status = 'failed';
+      stats.preparationStage = 'candidate-failed';
       stats.lastReason = 'candidate-build-failed';
       stats.lastError = String(error && error.message || error);
       return refreshDiagnostics();
@@ -1245,13 +1257,32 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       promise: null,
     };
     stats.status = 'preparing';
+    stats.preparationStage = 'prepare-starting';
+    stats.preparationCurrentGroup = 0;
+    stats.preparationCompletedGroups = 0;
+    stats.preparationGroupCount = candidate.batches.length;
+    stats.lastReason = 'preparation-running';
     stats.lastError = null;
     const activeNow = () => !disposed && pending === record && record.cancelled !== true;
+    const reportProgress = (stage, currentGroup, completedGroups, groupCount) => {
+      if (!activeNow()) return false;
+      const boundedCount = Math.max(0, Math.min(candidate.batches.length,
+        Math.trunc(Number(groupCount) || candidate.batches.length)));
+      stats.preparationStage = stage === 'group-ready' ? 'group-ready'
+        : stage === 'ready' ? 'ready' : 'compiling';
+      stats.preparationGroupCount = boundedCount;
+      stats.preparationCurrentGroup = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(currentGroup) || 0)));
+      stats.preparationCompletedGroups = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(completedGroups) || 0)));
+      return true;
+    };
     record.promise = Promise.resolve()
       .then(() => prepare(candidate.batches.map((batch) => batch.mesh), {
         roots: normalized,
         plan,
         isActive: activeNow,
+        reportProgress,
       }))
       .then((result) => {
         const wasActive = activeNow();
@@ -1270,9 +1301,15 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             lastTopology = null;
           }
           stats.status = 'idle';
+          stats.preparationStage = result?.timedOut === true ? 'timed-out'
+            : result?.skipped === true || result?.ready === false ? 'incomplete' : 'stale';
           stats.lastReason = !wasActive ? 'preparation-stale' : 'preparation-incomplete';
+          if (wasActive && result?.reason != null) {
+            stats.lastError = String(result.reason).slice(0, 240);
+          }
           return refreshDiagnostics();
         }
+        stats.preparationStage = 'validating';
         const shadowChangedOwners = new Map();
         for (const entry of candidate.entries) {
           const source = entry.source;
@@ -1293,6 +1330,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             lastRoots = [];
             lastTopology = null;
             stats.status = 'idle';
+            stats.preparationStage = 'ejection-failed';
             stats.lastReason = 'shadow-owner-ejection-failed';
             stats.lastDetail = detail;
             return refreshDiagnostics();
@@ -1308,6 +1346,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           lastRoots = [];
           lastTopology = null;
           stats.status = 'idle';
+          stats.preparationStage = 'direct-fallback';
           stats.lastReason = 'shadow-owner-direct-fallback';
           stats.lastDetail = record.shadowFallbackDetail || null;
           return refreshDiagnostics();
@@ -1324,6 +1363,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           lastRoots = [];
           lastTopology = null;
           stats.status = 'idle';
+          stats.preparationStage = topologyStable ? 'source-changed' : 'topology-changed';
           stats.lastReason = topologyStable
             ? 'source-state-changed-before-commit'
             : 'source-topology-changed-before-commit';
@@ -1360,6 +1400,9 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         pending = null;
         preparationRetry = null;
         stats.status = 'active';
+        stats.preparationStage = 'active';
+        stats.preparationCurrentGroup = 0;
+        stats.preparationCompletedGroups = candidate.batches.length;
         stats.activations += 1;
         stats.lastReason = record.shadowOwnerFallback
           ? 'shadow-owner-direct-fallback' : 'activated-after-residency';
@@ -1373,6 +1416,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         if (pending === record) pending = null;
         preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
+        stats.preparationStage = 'failed';
         stats.lastReason = 'preparation-failed';
         stats.lastError = String(error && error.message || error);
         return refreshDiagnostics();
