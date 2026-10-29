@@ -775,6 +775,11 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
   ${AU_NARROW} .au-title { font-size: 17px; }
   ${AU_NARROW} .au-top-right { flex: 1 0 100%; justify-content: space-between; }
   ${AU_NARROW} .au-flow { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px 12px; }
+  /* polish178: at 375 the four rail stations wrapped, so FLEET dropped onto the arc under DRONES
+     and its tick hit the Hand. On phones the stations spread across the full rail on one row. */
+  ${AU_NARROW} .au-tabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between;
+    width: auto; gap: 0 8px; }
+  ${AU_NARROW} .au-tab { letter-spacing: .08em; }
   ${AU_NARROW} .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   ${AU_NARROW} .au-shop .grow { grid-template-columns: minmax(0, 1fr); }
   ${AU_NARROW} .au-shop .meta { grid-column: 1; }
