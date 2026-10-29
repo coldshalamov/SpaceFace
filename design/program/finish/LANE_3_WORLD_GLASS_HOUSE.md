@@ -54,7 +54,23 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   wingman-radial → comms-radial → ship. Harness defect found: dock fixture opens only ONE
   dock-tree surface per boot — 7 surfaces (station-dock/market/industry/contracts/factions,
   asteroid-works, base) silently unmeasured; needs fixture fix (Lane 2/G).
-  batch-a1 fixer running on the confirmed-real four.
+  batch-a1 CLOSED: crest/morph clips were a clipped-column root cause — the hail panel re-seated
+  to `#ui-root` as a fixed overlay (+pointer-events repair) in `861c37f0746`; host-scrim
+  full-viewport blur killed `fb38a31448b`; crucible-door + credits items machine-verified NOT
+  real (phantom closed-details rect / authored spotlight). Flagged to G5: `#sf-why-tip`,
+  `#sf-confirm-root`, `.sf-drawer--entity` still carry flight-time blurs. Dead CSS:
+  `hudStyles.js:1254` commtape panel rule.
+- **Law/heat review landed** (`review-lawsec-b`, 8/10): 6 defects fixed `5702b742378` — impound
+  softlock on destroyed yard/lock (durable-bill repost + marker-flag id-recycle guards), dead
+  pay clerk re-staffs on cadence, cross-sector repost coord guard, warm-deserialize stale
+  fixtures dropped, heat residue no longer zeroed per tick, NaN heat normalized. Flagged:
+  `custodyConsequences.openImpoundBill` never adopts `payload.sectorId` on repost (one-line,
+  next packet); `lawSecurity.js` 8.5k-line split proposal recorded for G-wave.
+- **Save write-lane review landed** (`review-save-a`, 7.5/10): no silent non-saves, no torn byte
+  writes, all ~105 envelope keys have restore consumers. Real drift in the three parallel write
+  lanes: D1 every autosave pays a whole-corpus shared-store push (no mirrorPatch), D2 no-worker
+  fallback skips recovery rotation over gzipped previous, D3-D7 smaller. Fix packet
+  `fix-save-writelane` launched. D8-D10 design flags deferred to the Wave G4 split.
 - Localization debt (nearby flags, W3 material): hard-coded player strings in
   `faction_understory.js` (:1069,:1134,:1154,:1735-1906), `faction_verge.js` (:137-161 via _log
   :534), `vestaWinnowRecovery.js` (:98-104,159,342,552-553), `starterWorkday.js` (:9-22),
