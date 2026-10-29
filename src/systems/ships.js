@@ -16,7 +16,7 @@ import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
-import { LINE_HEAD_BY_ID, lineHeadBehavior, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
+import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -2559,6 +2559,12 @@ export const ships = {
     if (!def || def.intrinsicHull) return false;
     if (def.swarmEarned) {
       return swarmCrossoverEarned(def.swarmEarned)
+        || !!stationShopOffer(def, dockedShopStationId(this.state));
+    }
+    // Row 489: a Line-head the between-run ledger has not earned is not for
+    // sale; the station rack remains the only other door, same as swarmEarned.
+    if (def.lineGate) {
+      return lineMetaEarned(def.lineGate)
         || !!stationShopOffer(def, dockedShopStationId(this.state));
     }
     if (def.exclusivity && !exclusivityRepMet(def.exclusivity, this.state && this.state.factions)) {

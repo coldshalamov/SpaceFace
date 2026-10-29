@@ -57,6 +57,11 @@ import {
   registerCrossoverReader,
 } from '../data/swarmCrossover.js';
 import {
+  LINE_META_UNLOCK_BY_ID,
+  lineMetaUnlocksForRun,
+  registerLineMetaReader,
+} from '../data/lineProgression.js';
+import {
   earnedPerkIds,
   emptyPerks,
   migratePerks,
@@ -736,7 +741,52 @@ export function emptyCrucibleProfile() {
     // RC-CRUCIBLE-DOOR (row 481): the last death suffered OUTSIDE the door, kept so the
     // Crucible can offer a seeded drill of the thing that killed you. Null until the first one.
     lastAdventureDeath: null,
+    // Row 489: the between-run Line ledger — which §7.1 head unlocks the fixed-seed
+    // records and authored victories earned. Records, not stat boosts.
+    lineMeta: emptyLineMeta(),
   };
+}
+
+function emptyLineMeta() {
+  // earned: { unlockId: { at } } — the grants (heads, rating floors, arenas)
+  // derive from LINE_META_UNLOCK_BY_ID at read time, never a second source.
+  return { earned: {} };
+}
+
+function migrateLineMeta(raw) {
+  const out = emptyLineMeta();
+  const src = asObject(raw);
+  if (!src) return out;
+  const earned = asObject(src.earned) ? src.earned : {};
+  for (const id of Object.keys(earned)) {
+    if (!LINE_META_UNLOCK_BY_ID[id]) continue;
+    const row = asObject(earned[id]);
+    out.earned[id] = { at: row && typeof row.at === 'string' ? row.at : null };
+  }
+  return out;
+}
+
+function mergeLineMeta(a, b) {
+  const out = emptyLineMeta();
+  for (const src of [b, a]) {
+    const earned = src && src.earned;
+    if (!earned) continue;
+    for (const id of Object.keys(earned)) {
+      if (!out.earned[id]) out.earned[id] = { at: earned[id] && earned[id].at || null };
+    }
+  }
+  return out;
+}
+
+/** Row 489: settle the run onto the Line ledger — the same posture as the
+ *  crossover earn: already-earned ids never re-fire, practice proves nothing. */
+function applyLineMetaResult(meta, facts, at) {
+  const base = migrateLineMeta(meta);
+  const newly = lineMetaUnlocksForRun(facts).filter((row) => !base.earned[row.id]);
+  if (!newly.length) return { lineMeta: base, newly: [] };
+  const earned = { ...base.earned };
+  for (const row of newly) earned[row.id] = { at: typeof at === 'string' ? at : null };
+  return { lineMeta: { earned }, newly };
 }
 
 function cloneJson(value) {
@@ -789,6 +839,7 @@ function migrateProfile(raw) {
     perks: migratePerks(src.perks),
     challenges: migrateChallenges(src.challenges),
     lastAdventureDeath: normalizeAdventureDeath(src.lastAdventureDeath),
+    lineMeta: migrateLineMeta(src.lineMeta),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -1210,6 +1261,9 @@ export function mergeCrucibleProfiles(primary, secondary) {
   const out = emptyCrucibleProfile();
   // Union of unlocks — the same key names the same unlock, so the imported row simply wins.
   out.unlocks = { ...b.unlocks, ...a.unlocks };
+  // Row 489: the Line ledger merges the same way — an earned row travels with
+  // either profile; primary wins the timestamp on a shared id.
+  out.lineMeta = mergeLineMeta(a.lineMeta, b.lineMeta);
   // Records: lifetime counters max, per-key rows merge upward under the record rules.
   const lifetime = emptyLifetime();
   const la = asObject(a.records && a.records.lifetime) ? a.records.lifetime : {};
@@ -1873,6 +1927,20 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + total };
     compact.hangarBounty = bank.hangar.bounty;
   }
+  // Row 489: the run's fixed-seed thresholds and authored victories settle onto
+  // the Line ledger — practice earns nothing, and a Circuit journey's honest
+  // waves/purse count the same as any run's.
+  const lineMetaEval = isPractice
+    ? { lineMeta: migrateLineMeta(loaded.lineMeta), newly: [] }
+    : applyLineMetaResult(loaded.lineMeta, {
+      wavesCleared: compact.wavesCleared,
+      deepestWave: compact.deepestWave,
+      cullPurse: bank.banked,
+      authoredVictory: compact.outcome === 'victory',
+    }, recordedAt);
+  if (lineMetaEval.newly.length) {
+    compact.lineMetaEarned = lineMetaEval.newly.map((row) => row.id);
+  }
   const cabinet = migrateCabinet(loaded.cabinet);
   if (cabinetEligible(compact) && !isPractice) {
     const identity = stableStringify({ seed: compact.seed, rules: compact.recordRules,
@@ -1901,6 +1969,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
     hangar: bank.hangar,
+    lineMeta: lineMetaEval.lineMeta,
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();
@@ -2012,6 +2081,16 @@ export function kitBalanceBoard(cells, {
 // imports it), so the shipyard's buy gate cannot import survivalRecords without a cycle. The
 // port hands the gate the bag's own migrated read: no reader, empty ledger, never a guessed earn.
 registerCrossoverReader(() => {
+  try {
+    return loadCrucibleMeta();
+  } catch {
+    return null;
+  }
+});
+
+// Row 489: the same read port for the Line ledger — ships.js's buy gate reads
+// it without an import cycle; a missing reader is the empty ledger.
+registerLineMetaReader(() => {
   try {
     return loadCrucibleMeta();
   } catch {
