@@ -11,6 +11,7 @@ const BONE = '236 230 216';
 const VOID = '5 7 10';
 const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
 const RP = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial.has-deathdial';
+const RD = R.replace('html body', 'html:not([data-sf-mobile="1"]) body');
 const FADE = 'linear-gradient(180deg, #000 calc(100% - 28px), transparent)';
 
 /* phone (data-sf-mobile): one scrolling plate — title, instrument, column; ways-out stay docked.
@@ -55,6 +56,17 @@ ${R} :is(.sf-crres__ledger, .sf-crres__story) { display:contents !important; }
 ${R} .sf-crres__stage > *, ${R} :is(.sf-crres__ledger, .sf-crres__story) > * { flex:none; margin:0 !important; }
 ${R} .orr-crres-figures { order:1; grid-template-columns:repeat(4, minmax(0, 1fr)) !important; max-width:560px; column-gap:12px; padding:0 !important; }
 ${R} .sf-crres__band[data-band="story"] { order:2; }
+/* desktop: the column sits above the dial's shadow pool, which reaches into its right edge
+   (SALVAGE greyed out at 1280 and 1920); each figure takes its own width so BEST KILL CHAIN
+   holds one line like WAVE, KILLS and SALVAGE once the column is wide enough */
+@media (min-width:701px) {
+  ${RD} .sf-crres__stage { position:relative; z-index:2; }
+}
+/* the one-line row needs ~400px of column; narrower windows keep the even four-up grid */
+@media (min-width:940px) {
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, max-content) !important; column-gap:clamp(22px, 2.6vw, 56px) !important; }
+  ${RD} .orr-crres-figure__w { white-space:nowrap; }
+}
 ${R} .sf-crres__band[data-band="build"] { order:3; }
 ${R} .sf-crres__sheet { order:4; }
 ${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) { order:5; }
