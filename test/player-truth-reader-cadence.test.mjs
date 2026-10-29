@@ -194,6 +194,15 @@ test('preparation samples keep scalar state without scanning rows, then the firs
     assert.equal(entityReads, 0, 'menu does not walk the entity list');
     assert.equal(meshReads, 0, 'menu does not resolve per-entity meshes');
 
+    const screens = { style: { display: 'flex' }, getAttribute: () => null };
+    win.document = { getElementById: id => id === 'screens' ? screens : null };
+    state.mode = 'flight';
+    const construction = frame(12);
+    assert.equal(construction.screens, true);
+    assert.deepEqual(construction.e, [], 'a construction overlay does not duplicate paused flight bodies');
+    assert.equal(entityReads, 0);
+    assert.equal(meshReads, 0);
+    screens.style.display = 'none';
     state.mode = 'flight'; state.simTime = 2.1; state.tick = 11;
     const firstFlight = frame(16);
     assert.equal(firstFlight.mode, 'flight');

@@ -900,8 +900,10 @@ export function installPlayerTruthReader(win, opts = {}) {
     // frame, so its pixels and VFX census measure nothing. The first pixelSplit also renders the
     // scene three times into its own target and reads it back (3-5 s on SwiftShader); landing
     // behind the veil it used to delay the game's own first draw by that much.
-    const flightSample = st.mode === 'flight' && r.flightVeilHoldsSim !== true;
-    const skipWorldCensus = PREPARATION_MODES.has(st.mode);
+    const flightSample = st.mode === 'flight' && !screens && r.flightVeilHoldsSim !== true;
+    // A paused construction/refit surface can cover a flight-mode facade. Do not retain
+    // thousands of duplicate world rows behind its UI while the public controls are walked.
+    const skipWorldCensus = PREPARATION_MODES.has(st.mode) || screens;
     let threatBoxes = null; let threatSubjects = null; let bodies = null;
     if (!skipWorldCensus) {
       const list = st.entityList || [];
