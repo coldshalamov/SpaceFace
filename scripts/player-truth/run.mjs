@@ -10,6 +10,7 @@
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
 //          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
 //          --candidate-source=<manifest> tests explicit uncommitted source/assets; it is not a Git baseline
+//   diagnostic: --vfx-attribution enumerates per-draw VFX deltas only at a threat-hidden sample (up to 65 extra draws)
 //          browser: bundled Chromium
 //          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
@@ -37,6 +38,7 @@ import sharp from 'sharp';
 import { loadPlaywright } from '../lib/load-playwright.mjs';
 import { BROWSER_LOSS_SETTLE_MS, chromeStderrNotes, classifyBrowserLoss, launchChromium, readRecentKernelOom, signalsSince, installSessionSignalGuard, keepHeadedWindowNormal } from './browser.mjs';
 import { startBenchServer } from '../lib/benchServer.mjs';
+import { fortifyBetweenRounds } from './fortify.mjs';
 import { runChecks, overall } from './checks.mjs';
 import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
@@ -310,7 +312,7 @@ export async function awaitRoundHandoff(page, {
 }
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, baselineSource: null, candidateSource: false, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false, vfxAttribution: false, fortify: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
@@ -318,6 +320,8 @@ export function parseArgs(argv) {
     else if (k === 'evidence') a.evidence = true;
     else if (k === 'prune-frames') a.pruneFrames = v == null || v === '' || v === 'true';
     else if (k === 'fight') a.fight = true;
+    else if (k === 'fortify') a.fortify = v !== 'false';
+    else if (k === 'vfx-attribution') a.vfxAttribution = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k === 'baseline-source' || k === 'candidate-source') {
@@ -328,6 +332,7 @@ export function parseArgs(argv) {
     }
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
+  if (a.fortify && a.mode !== 'swarm') throw new Error('--fortify requires --mode=swarm');
   if (!MODES.includes(a.mode)) throw new Error(`--mode must be one of ${MODES.join(', ')}`);
   if (a.candidateSource && a.baseline) throw new Error('--candidate-source cannot be used as a Git performance baseline');
   // SwiftShader fill cost dominates a software run; a smaller canvas keeps a bounded run in minutes.
@@ -530,7 +535,7 @@ async function runOne(args, arena, extra = {}) {
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
   const freezeWatch = createFreezeWatch();
   freezeWatch.start();
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), sourceOverlay: args.baselineSource ? { kind: args.candidateSource ? 'candidate' : 'git-baseline', manifest: args.baselineSource.relative, requested: args.baselineSource.identity, served: null } : null, loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, fortify: args.fortify === true, requireRounds: args.requireRounds || null, vfxAttribution: args.vfxAttribution === true, performanceContext: performanceRunContext(process.env, { screenshotEveryMs: shotEveryMs }), sourceOverlay: args.baselineSource ? { kind: args.candidateSource ? 'candidate' : 'git-baseline', manifest: args.baselineSource.relative, requested: args.baselineSource.identity, served: null } : null, loadavg: { start: [...loadavg()], end: null }, ...gradedRunFields(args) }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const stampHarnessClock = () => {
     if (trace.meta.harnessFreezes) return;
     freezeWatch.stop();
@@ -582,6 +587,7 @@ async function runOne(args, arena, extra = {}) {
   let lastProgress = 0; let progressMark = null;
   let readerOn = false; let stopReason = null; let environmentLoss = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
   let impulseObserver = null;
+  let impulseWindowWave = null; let impulseWindowStarted = false; let impulseWindowFinalized = false;
   page.__ptThrustDiagnostic = async (heldSim) => {
     const records = trace.thrustDiagnostics || (trace.thrustDiagnostics = []);
     if (records.length >= 3) return;
@@ -640,27 +646,31 @@ async function runOne(args, arena, extra = {}) {
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const installReader = async () => {
-    await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'} }).start(); window.__playerTruthReady = true;` });
+    await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'}, vfxAttribution: ${args.vfxAttribution === true} }).start(); window.__playerTruthReady = true;` });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
     if (['adventure', 'swarm', 'gauntlet'].includes(args.mode)) {
-      const observerResponse = await page.evaluate(async (maxTicks) => {
+      const maxTicks = args.mode === 'adventure' ? 120 : 240;
+      const observerResponse = await page.evaluate(async (ticks) => {
         try {
           const { laneRpc } = await import('/src/core/simLaneCommands.js');
-          const response = await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks, maxReceipts: 256 });
+          const response = await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks: ticks, maxReceipts: 256,
+            // Retain every per-tick point of the bounded streams for this whole opening window.
+            maxSeriesPoints: 256 * ticks });
           return response;
         } catch (error) {
           return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
         }
-      }, args.mode === 'adventure' ? 120 : 240).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+      }, maxTicks).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
       impulseObserver = normalizeImpulseObserverResponse(observerResponse);
+      impulseWindowFinalized = false;
       trace.forceProvenance = { requested: true, ...(impulseObserver || { ok: false, status: 'unsupported' }) };
     }
     // Preparation can legitimately pause the simulation. Drain from installation, before
     // the actor enters flight, so a route timeout remains reportable without one huge RPC.
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
-  const beginImpulseObserver = async (tick) => {
+  const beginImpulseObserver = async (tick, wave = null) => {
     if (!['adventure', 'swarm', 'gauntlet'].includes(args.mode) || !impulseObserver?.ok) return null;
     const startedResponse = await page.evaluate(async (flightTick) => {
       try {
@@ -673,11 +683,24 @@ async function runOne(args, arena, extra = {}) {
     }, tick).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
     const started = normalizeImpulseObserverResponse(startedResponse);
     impulseObserver = { ...impulseObserver, ...started };
-    trace.forceProvenance = { ...(trace.forceProvenance || {}), ...started, requested: true };
+    impulseWindowWave = Number.isSafeInteger(wave) ? wave : null;
+    impulseWindowStarted = started?.ok === true;
+    impulseWindowFinalized = false;
+    if (!Array.isArray(trace.forceProvenanceWindows) || trace.forceProvenanceWindows.length === 0) {
+      trace.forceProvenance = { ...(trace.forceProvenance || {}), ...started, requested: true };
+    }
     return started;
   };
+  const recordImpulseWindow = (window) => {
+    if (!Number.isSafeInteger(window?.wave)) return;
+    trace.forceProvenanceWindows ||= [];
+    const existing = trace.forceProvenanceWindows.findIndex((entry) => entry.wave === window.wave);
+    if (existing >= 0) trace.forceProvenanceWindows[existing] = window;
+    else trace.forceProvenanceWindows.push(window);
+  };
   const finalizeImpulseObserver = async () => {
-    if (!['adventure', 'swarm', 'gauntlet'].includes(args.mode) || !impulseObserver) return;
+    if (!['adventure', 'swarm', 'gauntlet'].includes(args.mode) || !impulseObserver
+      || !impulseWindowStarted || impulseWindowFinalized) return;
     const captureResponse = await page.evaluate(async () => {
       try {
         const { laneRpc } = await import('/src/core/simLaneCommands.js');
@@ -688,6 +711,7 @@ async function runOne(args, arena, extra = {}) {
       }
     }).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
     const capture = normalizeImpulseObserverResponse(captureResponse);
+    impulseWindowFinalized = true;
     if (capture?.receipts) {
       const mapped = await page.evaluate(async (value) => {
         const reader = window.__playerTruth;
@@ -696,10 +720,50 @@ async function runOne(args, arena, extra = {}) {
         const { mapImpulseReceiptIdentities } = await import('/src/testing/playerTruth/impulseReceipts.js');
         return mapImpulseReceiptIdentities(value, identityFor);
       }, capture).catch(() => capture);
-      trace.forceProvenance = { ...(trace.forceProvenance || {}), ...mapped, requested: true };
+      const window = { wave: impulseWindowWave, ...mapped, requested: true };
+      recordImpulseWindow(window);
+      if (!Number.isSafeInteger(impulseWindowWave) || impulseWindowWave === 1) {
+        trace.forceProvenance = window;
+      }
     } else {
-      trace.forceProvenance = { ...(trace.forceProvenance || {}), ...capture, requested: true };
+      const window = { wave: impulseWindowWave, ...capture, requested: true };
+      recordImpulseWindow(window);
+      if (!Number.isSafeInteger(impulseWindowWave) || impulseWindowWave === 1) {
+        trace.forceProvenance = window;
+      }
     }
+  };
+  const installNextRoundImpulseObserver = async (wave) => {
+    if (!['swarm', 'gauntlet'].includes(args.mode) || !Number.isSafeInteger(wave)) return null;
+    const maxTicks = 240;
+    const installResponse = await page.evaluate(async (ticks) => {
+      try {
+        const { laneRpc } = await import('/src/core/simLaneCommands.js');
+        return await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks: ticks,
+          maxReceipts: 256, maxSeriesPoints: 256 * ticks });
+      } catch (error) {
+        return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
+      }
+    }, maxTicks).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+    impulseObserver = normalizeImpulseObserverResponse(installResponse);
+    impulseWindowWave = wave;
+    impulseWindowStarted = false;
+    impulseWindowFinalized = false;
+    if (!impulseObserver?.ok) {
+      recordImpulseWindow({ wave, status: 'missing-window', requested: true,
+        reason: impulseObserver?.reason || 'observer-install-failed' });
+      impulseWindowFinalized = true;
+      return impulseObserver;
+    }
+    const tick = await page.evaluate(() => window.SF.state.tick)
+      .catch(() => null);
+    const begun = await beginImpulseObserver(tick, wave);
+    if (!begun?.ok) {
+      recordImpulseWindow({ wave, status: 'missing-window', requested: true,
+        reason: begun?.reason || 'observer-begin-failed' });
+      impulseWindowFinalized = true;
+    }
+    return begun;
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
@@ -751,7 +815,9 @@ async function runOne(args, arena, extra = {}) {
       if (args.mode === 'gauntlet') {
         // Enter Gauntlet launches directly. Arm at the returned live run, retaining any exact
         // field deliveries that landed between launch and this first route observation.
-        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick));
+        const opening = await page.evaluate(() => ({ tick: window.SF.state.tick,
+          wave: window.SF.state.run?.wave ?? null }));
+        await beginImpulseObserver(opening.tick, opening.wave);
       }
       if (args.mode === 'swarm') {
         await waitForPreparationLaunch(page);
@@ -786,7 +852,7 @@ async function runOne(args, arena, extra = {}) {
         const word = await armoryLaunchWord(page);
         // The opening well acts during the intro, before the active phase is observable.
         // Begin after run:started but before the public launch button starts that intro.
-        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick));
+        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick), 1);
         await clickText(page, word || 'Launch round 1');
       } else if (doorInfo && doorInfo.doorPrep) {
         const door = doorInfo.doorPrep;
@@ -852,7 +918,15 @@ async function runOne(args, arena, extra = {}) {
           const next = await awaitRoundHandoff(page, { previousWave: round.wave,
             simLimit: trace.meta.playStartSim + args.duration,
             timeoutMs: Math.max(1, Math.min(300000, wallCapMs - (Date.now() - T0))),
-            beforeLaunch: (word) => shoot(`between rounds (${word})`, false) });
+            beforeLaunch: async (word) => {
+              if (args.fortify) {
+                const visit = await fortifyBetweenRounds(page);
+                if (visit) (trace.fortify || (trace.fortify = [])).push(visit);
+              }
+              await shoot(`between rounds (${word})`, false);
+              await installNextRoundImpulseObserver(round.wave + 1);
+            } });
+          await finalizeImpulseObserver();
           if (next?.kind === 'terminal') continue;
           if (!next || next.kind === 'cap') {
             const current = await phaseNow();
@@ -982,6 +1056,37 @@ async function runOne(args, arena, extra = {}) {
     await drain({ all: true }).catch(() => {});
   }
   await finalizeImpulseObserver();
+  // Preserve the actual remaining cohort on a capped fight. Enemy-class rows alone include
+  // unrelated world traffic and cannot explain a round ledger with one unresolved body.
+  if (args.fight && stopReason === 'wall-clock cap') {
+    trace.combatStop = await page.evaluate(() => {
+      const st = window.SF?.state;
+      if (!st || st.run?.phase !== 'active') return null;
+      const player = st.entities?.get?.(st.playerId);
+      const cohort = (st.entityList || []).filter(entity => entity.alive !== false
+        && entity.data?.runCohort === 'survival' && entity.data?.runWave === st.run.wave);
+      const pose = entity => entity?.pos ? { x: entity.pos.x, z: entity.pos.z,
+        vx: entity.vel?.x, vz: entity.vel?.z, rot: entity.rot } : null;
+      return {
+        tick: st.tick, sim: st.simTime, wave: st.run.wave,
+        spawned: st.run.spawnedThreat, resolved: st.run.resolvedThreat,
+        targetId: st.player?.targetId, input: { moveX: st.input?.moveX,
+          moveZ: st.input?.moveZ, turnIntent: st.input?.turnIntent, boost: st.input?.boost },
+        player: pose(player), count: cohort.length,
+        cohort: cohort.slice(0, 40).map(entity => ({
+          id: entity.id, generation: entity.occupantGeneration, pose: pose(entity),
+          hull: entity.hull, hullMax: entity.hullMax,
+          admission: entity.presentationAdmission, disabled: entity.disabled,
+          activity: entity.data?.ai?.activity?.kind,
+          reason: entity.data?.ai?.activity?.reason,
+          targetId: entity.data?.ai?.activity?.targetId,
+          combatTargetId: entity.data?.combat?.targetId,
+          lastStand: entity.data?.ai?.swarmLastStand,
+          doctrine: entity.data?.ai?.combatDoctrineId,
+        })),
+      };
+    }).catch(error => ({ error: String(error?.message || error).slice(0, 200) }));
+  }
   // #434 bar 2.5: record whether the opening effect warm ran or was skipped on this GPU (and why).
   trace.meta.openingEffectWarm = await page.evaluate(() => {
     const render = window.SF && window.SF.state && window.SF.state.render;
@@ -1018,7 +1123,7 @@ async function runOne(args, arena, extra = {}) {
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     rowStorage: trace.rowStorage || null,
-    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
+    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: RMB select a reachable hostile, track its visible lead pip or hull while firing, hold 230–400 u range, burn away from packs, chase a fresh public radar bearing with sustained forward thrust and aligned boost, reposition after selection misses, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: RMB select nearest reachable hostile, aim at visible lead pip or hull and fire, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''}${args.fortify ? ' · public Foundry construction and paid service between rounds' : ''} · public gameplay admission; no probe-owned invulnerability toggle`,
     stopReason, pageErrors: pageErrors.slice(0, 10), consoleErrors, arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
     sessionSignals: seenSignals, chromePid: chrome.pid, chromePgid: chrome.pgid, chromeSid: chrome.sid, chromeOwnSession: chrome.ownGroup,
   });

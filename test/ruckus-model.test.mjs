@@ -64,15 +64,30 @@ test('generated lazy manifest is reproducible and loaders retain exact authored 
  for(const invalid of [[],['body0','body0'],['../body0'],['body-0'],[null]])assert.throws(()=>renderRuckusMeshManifest(invalid),TypeError);
 });
 
-test('browser-shaped warm lane completes all deferred templates before first visual', async () => {
+test('browser-shaped model import is cold and standalone Crucible skips its unreachable Ceres warm', async () => {
  const {execFileSync}=await import('node:child_process');
  const {fileURLToPath}=await import('node:url');
  const code=`
   import assert from 'node:assert/strict';
   globalThis.window={};
+  const nativeSetTimeout=globalThis.setTimeout.bind(globalThis);
+  let warmSlices=0;
+  globalThis.setTimeout=(fn,ms,...rest)=>{
+   if((new Error().stack||'').includes('ruckusModel.js'))warmSlices++;
+   return nativeSetTimeout(fn,ms,...rest);
+  };
   const m=await import('./src/render/characters/ruckusModel.js');
   const {ruckusEntitySpec}=await import('./src/systems/ruckus.js');
-  await m.ruckusWarmReady;
+  await new Promise(resolve=>nativeSetTimeout(resolve,80));
+  assert.equal(warmSlices,0,'importing the production model requests no RU-7 payload or template slices');
+  assert.equal(m.requiresRuckusWarmForNewGame({crucibleLaunch:true}),false,'standalone Crucible cannot enter Ceres');
+  assert.equal(m.requiresRuckusWarmForNewGame({}),true,'ordinary Adventure keeps the pre-flight Ceres readiness gate');
+  assert.equal(m.requiresRuckusWarmForNewGame({crucibleLaunch:true,startSectorId:'sector_ceres_belt'}),true,'an explicit Ceres start still warms');
+  assert.equal(warmSlices,0,'classification alone does not request RU-7 chunks');
+  const ready=m.warmRuckusModel();
+  assert.strictEqual(m.warmRuckusModel(),ready,'repeated callers share one warm');
+  await ready;
+  assert.ok(warmSlices>0,'demand warm advances authored templates in bounded tasks');
   for(const part of [undefined,'core']){
    const root=m.buildRuckusVisual(ruckusEntitySpec(part));
    assert.equal(root.userData.authoredAssetState,'authored');

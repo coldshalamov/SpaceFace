@@ -1,3 +1,4 @@
+import { seedFortifyBench } from './ui-bench-fortify.js';
 // ui-bench.js — the 2D UI workbench: mount a real screen over a frozen still, click everything,
 // read what each control asked for. No boot, no simulation, no renderer startup.
 //
@@ -67,6 +68,7 @@ const SCREENS = Object.freeze({
   crucible: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleScreen),
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
+  crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),
   crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
   demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
@@ -290,6 +292,10 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
 }
 
 function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'crucibleFortify') {
+    benchOwnerUnsubs.push(seedFortifyBench(state, bus));
+    return;
+  }
   // The demo end card reads the same transient the undock trigger writes (state.ui.demoEnd) and
   // the per-save earnings counter; seed both so the shot is the card a player sees, not a stub.
   if (screenId === 'demoEnd') {

@@ -53,6 +53,7 @@ import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
+import { SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
@@ -254,6 +255,8 @@ export function createBroodEngine(deps = {}) {
   // spatial hash
   const gridHead = new Int32Array(GRID_TABLE);
   const gridNext = new Int32Array(CAP);
+  const gridCellX = new Int32Array(CAP);
+  const gridCellZ = new Int32Array(CAP);
 
   // caches
   const rockX = new Float32Array(ROCK_CACHE_MAX);
@@ -324,6 +327,17 @@ export function createBroodEngine(deps = {}) {
   const killScore = new Int32Array(CAUSE_N);
   const killPosX = new Float32Array(CAUSE_N);
   const killPosZ = new Float32Array(CAUSE_N);
+  const DIRECT_HIT_MAX = 4;
+  const directHitKind = new Uint8Array(DIRECT_HIT_MAX);
+  const directHitSlot = new Int32Array(DIRECT_HIT_MAX);
+  const directHitLife = new Int32Array(DIRECT_HIT_MAX);
+  const directHitT = new Float64Array(DIRECT_HIT_MAX);
+  const directHitScratch = { ok: false, wave: 0, kind: '', slot: -1, life: 0, t: 0, x: 0, z: 0 };
+  const segmentQueryBounds = { minX: 0, minZ: 0, maxX: 0, maxZ: 0 };
+  // A projectile entity is the bounded lifetime identity. Weak membership prevents a reused
+  // numeric id from suppressing a later projectile and lets retired projectiles collect.
+  const projectileHitObjects = new WeakSet();
+  let gridReady = false;
   // Row-270 Domino ledger: every CREDITED death leaves its own actual position here, in kill
   // order. The per-cause killPosX/Z sample is one coordinate per cause and cannot say where a
   // body died — Domino must radiate from each body, so each keeps a stable per-life key (the
@@ -469,9 +483,14 @@ export function createBroodEngine(deps = {}) {
   const liveFamilyHull = new Float32Array(FAMILY_SLOT_MAX);
   const liveFamilySpeed = new Float32Array(FAMILY_SLOT_MAX);
   let liveFamilyCount = 0;
+  let maxLiveFamilyRadius = 0;
+  let maxLiveFamilySpeed = 0;
+  let gridMaxSpeed = 0;
 
   function setFamilyMirror(defs) {
     liveFamilyCount = 0;
+    maxLiveFamilyRadius = 0;
+    maxLiveFamilySpeed = 0;
     for (let i = 0; i < Math.min(defs.length, FAMILY_SLOT_MAX); i++) {
       const def = defs[i];
       liveFamilyId[liveFamilyCount] = def.id;
@@ -480,6 +499,8 @@ export function createBroodEngine(deps = {}) {
       liveFamilyMass[liveFamilyCount] = def.mass;
       liveFamilyHull[liveFamilyCount] = def.hull;
       liveFamilySpeed[liveFamilyCount] = def.speed;
+      maxLiveFamilyRadius = Math.max(maxLiveFamilyRadius, def.radius);
+      maxLiveFamilySpeed = Math.max(maxLiveFamilySpeed, def.speed, BROOD_MAX_SPEED, BROOD_CHARGER_DASH_SPEED);
       liveFamilyCount += 1;
     }
   }
@@ -545,6 +566,7 @@ export function createBroodEngine(deps = {}) {
     strainMark = 0;
     strainLeft = 0;
     commandBuff.fill(0);
+    gridReady = false;
     // The Domino ledger dies with the room: an unflushed death must never shove in the next one.
     deathScratchCount = 0;
     publish();
@@ -877,12 +899,17 @@ export function createBroodEngine(deps = {}) {
 
   function rebuildGrid() {
     gridHead.fill(-1);
+    gridMaxSpeed = 0;
     for (let i = 0; i < CAP; i++) {
       if (!alive[i]) continue;
-      const key = cellKey(Math.floor(px[i] / CELL), Math.floor(pz[i] / CELL));
+      const cx = gridCellX[i] = Math.floor(px[i] / CELL);
+      const cz = gridCellZ[i] = Math.floor(pz[i] / CELL);
+      gridMaxSpeed = Math.max(gridMaxSpeed, Math.hypot(vx[i], vz[i]));
+      const key = cellKey(cx, cz);
       gridNext[i] = gridHead[key];
       gridHead[key] = i;
     }
+    gridReady = true;
   }
 
   // --- the step ---------------------------------------------------------------------------
@@ -1934,6 +1961,325 @@ export function createBroodEngine(deps = {}) {
 
   // --- explosions (event-driven; the shared blast receipts) --------------------------------
 
+  /** Read-only nearest physical Brood target on a projectile's already-swept segment. */
+  function queryProjectileHit({ from, to, radius = 0 } = {}, out = {}) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave || state.mode !== 'flight'
+      || !finitePoint(from) || !finitePoint(to)) return null;
+    return nearestDirectHit(from, to, radius, out);
+  }
+
+  /** Read-only nearest direct-damageable Brood life for a bounded turret target query. */
+  function queryNearestDirectTarget({ from, range } = {}, out = {}) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    const reach = Number(range);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave || state.mode !== 'flight'
+      || !finitePoint(from) || !Number.isFinite(reach) || reach < 0 || !gridReady) return null;
+
+    let bestDistanceSq = reach * reach;
+    let bestKind = 2;
+    let bestSlot = -1;
+    let bestLife = 0;
+    const padding = Math.max(maxLiveFamilyRadius, TENDRIL_SEG_RADIUS)
+      + Math.max(maxLiveFamilySpeed, gridMaxSpeed) * DT;
+    const minX = Math.floor((from.x - reach - padding) / CELL);
+    const minZ = Math.floor((from.z - reach - padding) / CELL);
+    const maxX = Math.floor((from.x + reach + padding) / CELL);
+    const maxZ = Math.floor((from.z + reach + padding) / CELL);
+
+    // The retained grid bounds this search to nearby cells. The full-capacity fallback is
+    // intentionally absent: a turret firing cadence must never turn into a per-turret roster scan.
+    for (let gx = minX; gx <= maxX; gx++) {
+      for (let gz = minZ; gz <= maxZ; gz++) {
+        for (let slot = gridHead[cellKey(gx, gz)]; slot !== -1; slot = gridNext[slot]) {
+          if (gridCellX[slot] !== gx || gridCellZ[slot] !== gz
+            || alive[slot] !== 1 || !(hp[slot] > 0) || !directDamageAllowed(slot)) continue;
+          const dx = px[slot] - from.x;
+          const dz = pz[slot] - from.z;
+          const distanceSq = dx * dx + dz * dz;
+          if (distanceSq > bestDistanceSq
+            || (distanceSq === bestDistanceSq && bestKind === 0 && serial[slot] >= bestLife)) continue;
+          bestDistanceSq = distanceSq;
+          bestKind = 0;
+          bestSlot = slot;
+          bestLife = serial[slot];
+        }
+      }
+    }
+    for (let slot = 0; slot < TENDRIL_SEG_MAX; slot++) {
+      if (segAlive[slot] !== 1 || !(segHp[slot] > 0)) continue;
+      const dx = segX[slot] - from.x;
+      const dz = segZ[slot] - from.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (distanceSq > bestDistanceSq
+        || (distanceSq === bestDistanceSq && (bestKind === 0
+          || (bestKind === 1 && slot >= bestSlot)))) continue;
+      bestDistanceSq = distanceSq;
+      bestKind = 1;
+      bestSlot = slot;
+      bestLife = liveWave;
+    }
+    if (bestSlot < 0) return null;
+
+    const isCell = bestKind === 0;
+    const x = isCell ? px[bestSlot] : segX[bestSlot];
+    const z = isCell ? pz[bestSlot] : segZ[bestSlot];
+    out.ok = true;
+    out.wave = liveWave;
+    out.kind = isCell ? 'cell' : 'segment';
+    out.life = bestLife;
+    out.id = isCell ? `cell:${bestLife}` : `segment:${bestSlot}`;
+    out.radius = isCell ? liveFamilyRadius[family[bestSlot]] : TENDRIL_SEG_RADIUS;
+    out.distanceSq = bestDistanceSq;
+    out.pos = out.pos || {};
+    out.pos.x = x;
+    out.pos.z = z;
+    out.vel = out.vel || {};
+    out.vel.x = isCell ? vx[bestSlot] : segVX[bestSlot];
+    out.vel.z = isCell ? vz[bestSlot] : segVZ[bestSlot];
+    return out;
+  }
+
+  /** Commit a projectile contact only while the exact Brood slot life still matches. */
+  function commitProjectileHit(candidate, { projectileId, ownerId, damage, sourceId, damageType } = {}) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    const projectile = projectileId == null ? null : state?.entities?.get?.(projectileId);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave || state.mode !== 'flight' || !candidate
+      || candidate.wave !== liveWave || !projectile || projectile.type !== 'projectile'
+      || projectile.id !== projectileId || state.entities.get(projectileId) !== projectile
+      || projectileHitObjects.has(projectile)) {
+      return { ok: false, reason: 'stale_brood_contact' };
+    }
+    if (!candidateIsLive(candidate)) return { ok: false, reason: 'stale_brood_life' };
+    const amount = Number(damage);
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, reason: 'invalid_damage' };
+    const credited = isCreditedDirectSource(ownerId, state);
+    const result = applyDirectHit(candidate, amount, credited);
+    if (!result.ok) return result;
+    projectileHitObjects.add(projectile);
+    flushKillsFrom(state);
+    publish();
+    const receipt = {
+      projectileId, ownerId: ownerId ?? null, sourceId: sourceId || null, damageType: damageType || null,
+      wave: liveWave, targetKind: candidate.kind, targetId: candidateId(candidate),
+      targetLife: candidate.life, pos: { x: candidate.x, z: candidate.z }, damage: result.damage,
+      hullBefore: result.hullBefore, hullAfter: result.hullAfter, killed: result.killed,
+    };
+    if (bus) bus.emit('swarm:broodProjectileHit', receipt);
+    return { ok: true, ...receipt };
+  }
+
+  /** Apply a bounded, ordered Tesla-like sweep through the Brood's own life/death ledger. */
+  function damageSegment({ from, to, radius = 0, damage, ownerId, sourceId, maxTargets = DIRECT_HIT_MAX } = {}) {
+    const state = getState();
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || run.wave !== liveWave || state.mode !== 'flight'
+      || !finitePoint(from) || !finitePoint(to)) return { hits: 0, reason: 'brood_inactive' };
+    const amount = Number(damage);
+    if (!Number.isFinite(amount) || amount <= 0) return { hits: 0, reason: 'invalid_damage' };
+    const limit = Math.max(1, Math.min(DIRECT_HIT_MAX, Math.trunc(Number(maxTargets) || DIRECT_HIT_MAX)));
+    const count = collectSegmentHits(from, to, radius, limit);
+    const credited = isCreditedDirectSource(ownerId, state);
+    let hits = 0;
+    let killed = 0;
+    for (let i = 0; i < count; i++) {
+      directHitScratch.wave = liveWave;
+      directHitScratch.kind = directHitKind[i] === 0 ? 'cell' : 'segment';
+      directHitScratch.slot = directHitSlot[i];
+      directHitScratch.life = directHitLife[i];
+      directHitScratch.t = directHitT[i];
+      directHitScratch.x = from.x + (to.x - from.x) * directHitScratch.t;
+      directHitScratch.z = from.z + (to.z - from.z) * directHitScratch.t;
+      if (!candidateIsLive(directHitScratch)) continue;
+      const result = applyDirectHit(directHitScratch, amount, credited);
+      if (!result.ok) continue;
+      hits++;
+      if (result.killed) killed++;
+      if (bus) bus.emit('swarm:broodTeslaHit', {
+        ownerId: ownerId ?? null, sourceId: sourceId || null, wave: liveWave,
+        targetKind: directHitScratch.kind, targetId: candidateId(directHitScratch),
+        targetLife: directHitScratch.life, pos: { x: directHitScratch.x, z: directHitScratch.z },
+        damage: result.damage, hullBefore: result.hullBefore, hullAfter: result.hullAfter, killed: result.killed,
+      });
+    }
+    if (hits > 0) {
+      flushKillsFrom(state);
+      publish();
+    }
+    return { hits, killed };
+  }
+
+  function nearestDirectHit(from, to, queryRadius, out) {
+    let bestT = Infinity, bestKind = 2, bestSlot = -1, bestLife = 0;
+    const radius = Math.max(0, finite(queryRadius));
+    if (gridReady) {
+      setSegmentQueryBounds(from, to, radius);
+      const bounds = segmentQueryBounds;
+      for (let gx = bounds.minX; gx <= bounds.maxX; gx++) {
+        for (let gz = bounds.minZ; gz <= bounds.maxZ; gz++) {
+          for (let i = gridHead[cellKey(gx, gz)]; i !== -1; i = gridNext[i]) {
+            if (gridCellX[i] !== gx || gridCellZ[i] !== gz || !alive[i] || !(hp[i] > 0) || !directDamageAllowed(i)) continue;
+            const hitT = segmentCircleT(from, to, px[i], pz[i], liveFamilyRadius[family[i]] + radius);
+            if (hitT == null || !directCandidateBefore(hitT, 0, serial[i], bestT, bestKind, bestLife)) continue;
+            bestT = hitT; bestKind = 0; bestSlot = i; bestLife = serial[i];
+          }
+        }
+      }
+    } else {
+      for (let i = 0; i < CAP; i++) {
+        if (!alive[i] || !(hp[i] > 0) || !directDamageAllowed(i)) continue;
+        const hitT = segmentCircleT(from, to, px[i], pz[i], liveFamilyRadius[family[i]] + radius);
+        if (hitT == null || !directCandidateBefore(hitT, 0, serial[i], bestT, bestKind, bestLife)) continue;
+        bestT = hitT; bestKind = 0; bestSlot = i; bestLife = serial[i];
+      }
+    }
+    for (let i = 0; i < TENDRIL_SEG_MAX; i++) {
+      if (!segAlive[i] || !(segHp[i] > 0)) continue;
+      const hitT = segmentCircleT(from, to, segX[i], segZ[i], TENDRIL_SEG_RADIUS + radius);
+      if (hitT == null || !directCandidateBefore(hitT, 1, i, bestT, bestKind, bestLife)) continue;
+      bestT = hitT; bestKind = 1; bestSlot = i; bestLife = liveWave;
+    }
+    if (bestSlot < 0) return null;
+    out.ok = true;
+    out.wave = liveWave;
+    out.kind = bestKind === 0 ? 'cell' : 'segment';
+    out.slot = bestSlot;
+    out.life = bestLife;
+    out.t = bestT;
+    out.x = from.x + (to.x - from.x) * bestT;
+    out.z = from.z + (to.z - from.z) * bestT;
+    return out;
+  }
+
+  function collectSegmentHits(from, to, queryRadius, limit) {
+    let count = 0;
+    const radius = Math.max(0, finite(queryRadius));
+    setSegmentQueryBounds(from, to, radius);
+    const bounds = segmentQueryBounds;
+    for (let gx = bounds.minX; gx <= bounds.maxX; gx++) {
+      for (let gz = bounds.minZ; gz <= bounds.maxZ; gz++) {
+        for (let slot = gridReady ? gridHead[cellKey(gx, gz)] : -1; slot !== -1; slot = gridNext[slot]) {
+          if (gridCellX[slot] !== gx || gridCellZ[slot] !== gz || !alive[slot] || !(hp[slot] > 0) || !directDamageAllowed(slot)) continue;
+          count = insertDirectCandidate(from, to, radius, limit, count, 0, slot, serial[slot]);
+        }
+      }
+    }
+    if (!gridReady) {
+      for (let slot = 0; slot < CAP; slot++) {
+        if (!alive[slot] || !(hp[slot] > 0) || !directDamageAllowed(slot)) continue;
+        count = insertDirectCandidate(from, to, radius, limit, count, 0, slot, serial[slot]);
+      }
+    }
+    for (let slot = 0; slot < TENDRIL_SEG_MAX; slot++) {
+      if (!segAlive[slot] || !(segHp[slot] > 0)) continue;
+      count = insertDirectCandidate(from, to, radius, limit, count, 1, slot, liveWave);
+    }
+    return count;
+  }
+
+  function insertDirectCandidate(from, to, radius, limit, count, kind, slot, life) {
+    const x = kind === 0 ? px[slot] : segX[slot];
+    const z = kind === 0 ? pz[slot] : segZ[slot];
+    const bodyRadius = kind === 0 ? liveFamilyRadius[family[slot]] : TENDRIL_SEG_RADIUS;
+    const t = segmentCircleT(from, to, x, z, bodyRadius + radius);
+    if (t == null) return count;
+    let at = count;
+    if (count === limit) {
+      const last = count - 1;
+      if (!directCandidateBefore(t, kind, life, directHitT[last], directHitKind[last], directHitLife[last])) return count;
+      at = last;
+    } else count++;
+    while (at > 0 && directCandidateBefore(t, kind, life,
+      directHitT[at - 1], directHitKind[at - 1], directHitLife[at - 1])) {
+      directHitT[at] = directHitT[at - 1];
+      directHitKind[at] = directHitKind[at - 1];
+      directHitSlot[at] = directHitSlot[at - 1];
+      directHitLife[at] = directHitLife[at - 1];
+      at--;
+    }
+    directHitT[at] = t;
+    directHitKind[at] = kind;
+    directHitSlot[at] = slot;
+    directHitLife[at] = life;
+    return count;
+  }
+
+  function setSegmentQueryBounds(from, to, radius) {
+    const reach = Math.max(0, radius) + maxLiveFamilyRadius + Math.max(maxLiveFamilySpeed, gridMaxSpeed) * DT;
+    segmentQueryBounds.minX = Math.floor((Math.min(from.x, to.x) - reach) / CELL);
+    segmentQueryBounds.minZ = Math.floor((Math.min(from.z, to.z) - reach) / CELL);
+    segmentQueryBounds.maxX = Math.floor((Math.max(from.x, to.x) + reach) / CELL);
+    segmentQueryBounds.maxZ = Math.floor((Math.max(from.z, to.z) + reach) / CELL);
+  }
+
+  function directDamageAllowed(slot) {
+    return killLawAllows(liveFamilyDef[family[slot]], 'direct') && !markRefuses(slot, 'direct');
+  }
+
+  function candidateIsLive(candidate) {
+    if (candidate.kind === 'cell') return alive[candidate.slot] === 1 && serial[candidate.slot] === candidate.life
+      && directDamageAllowed(candidate.slot);
+    return candidate.kind === 'segment' && candidate.wave === liveWave
+      && segAlive[candidate.slot] === 1 && candidate.life === liveWave;
+  }
+
+  function applyDirectHit(candidate, amount, credited) {
+    if (!candidateIsLive(candidate)) return { ok: false, reason: 'stale_brood_life' };
+    const cells = candidate.kind === 'cell';
+    const slot = candidate.slot;
+    const before = cells ? hp[slot] : segHp[slot];
+    const after = Math.max(0, before - amount);
+    if (cells) {
+      hp[slot] = after;
+      if (after <= 0) {
+        kill(slot, 'direct', candidate.x, candidate.z, credited);
+        // A swelling cell survives its first strike as an authored fuse, not a zero-health ghost.
+        if (alive[slot] && hp[slot] <= 0) hp[slot] = 1;
+      }
+    } else {
+      segHp[slot] = after;
+      if (after <= 0) killSeg(slot, 'direct', candidate.x, candidate.z, credited);
+    }
+    const remainsAlive = cells ? alive[slot] === 1 : segAlive[slot] === 1;
+    return { ok: true, damage: before - (cells ? hp[slot] : segHp[slot]), hullBefore: before,
+      hullAfter: cells ? hp[slot] : segHp[slot], killed: !remainsAlive };
+  }
+
+  function isCreditedDirectSource(ownerId, state) {
+    if (ownerId === state.playerId) return true;
+    const owner = state.entities?.get?.(ownerId);
+    const mark = owner?.data?.swarmFortify;
+    const run = liveSwarmRun(state);
+    const validBase = !!run && owner?.alive === true && owner.hull > 0 && owner.ownerId === state.playerId
+      && owner.type === 'beacon' && mark?.schemaVersion === SWARM_FORTIFY_SCHEMA_VERSION
+      && Number.isInteger(mark.runWave) && mark.runWave > 0 && mark.runWave <= run.wave
+      && Number.isInteger(mark.runToken) && mark.runToken > 0
+      && mark.operational === true && mark.offline !== true;
+    if (!validBase) return false;
+    if (mark.deviceId === 'kinetic_turret') return true;
+    if (mark.deviceId !== 'tesla_pair' || typeof mark.pairId !== 'string' || mark.pairId.length === 0
+      || (mark.endpointIndex !== 0 && mark.endpointIndex !== 1)) return false;
+    const otherIndex = 1 - mark.endpointIndex;
+    for (const endpoint of state.entityList || []) {
+      const other = endpoint?.data?.swarmFortify;
+      if (endpoint === owner || endpoint?.alive !== true || !(endpoint.hull > 0)
+        || endpoint.type !== 'beacon' || endpoint.ownerId !== state.playerId
+        || other?.schemaVersion !== SWARM_FORTIFY_SCHEMA_VERSION || other.deviceId !== 'tesla_pair'
+        || other.runToken !== mark.runToken || !Number.isInteger(other.runWave)
+        || other.runWave < 1 || other.runWave > run.wave || other.operational !== true
+        || other.offline === true || other.pairId !== mark.pairId || other.endpointIndex !== otherIndex) continue;
+      return true;
+    }
+    return false;
+  }
+
+  function candidateId(candidate) {
+    return candidate.kind === 'cell' ? `cell:${candidate.life}` : `segment:${candidate.slot}`;
+  }
+
   function onExplosion(payload) {
     const state = getState();
     const run = liveSwarmRun(state);
@@ -2481,6 +2827,10 @@ export function createBroodEngine(deps = {}) {
     step,
     clear,
     onExplosion,
+    queryProjectileHit,
+    queryNearestDirectTarget,
+    commitProjectileHit,
+    damageSegment,
     // B4 — the Hive's seams: sacs spend the wave's reserve, sacs drip acid.
     sacRelease,
     hivePool,
@@ -2491,7 +2841,7 @@ export function createBroodEngine(deps = {}) {
       return { alive: aliveCount, cap: CAP, min: SWARM_BROOD_MIN, wave: liveWave, sacBudget, reserveBudget };
     },
     // Test seams: direct, read-only unless named as a seam.
-    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, affix, commandBuff },
+    _bodies: { px, pz, vx, vz, alive, family, heading, hp, phase, timer, teleX, teleZ, teleDir, serial, seedPhase, gluedUntil, birthLeft, birthTold, liveFamilyId, liveFamilyRadius, affix, commandBuff },
     _lobs: { x: lobX, z: lobZ, t: lobT, total: lobTotal, tx: lobTX, tz: lobTZ, alive: lobAlive },
     _pools: { x: poolX, z: poolZ, age: poolAge, ttl: poolTtl },
     // B3 — the Tendril's chain: read-only buffers plus one write seam for the split test.
@@ -2536,4 +2886,27 @@ export function createBroodEngine(deps = {}) {
       publish();
     },
   };
+}
+
+function finitePoint(point) {
+  return !!point && Number.isFinite(point.x) && Number.isFinite(point.z);
+}
+
+function segmentCircleT(from, to, x, z, radius) {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  const lengthSq = dx * dx + dz * dz;
+  const mx = from.x - x, mz = from.z - z;
+  const radiusSq = Math.max(0, radius) ** 2;
+  const c = mx * mx + mz * mz - radiusSq;
+  if (c <= 0) return 0;
+  if (lengthSq <= 1e-10) return null;
+  const b = mx * dx + mz * dz;
+  const discriminant = b * b - lengthSq * c;
+  if (discriminant < 0) return null;
+  const t = (-b - Math.sqrt(discriminant)) / lengthSq;
+  return t >= 0 && t <= 1 ? t : null;
+}
+
+function directCandidateBefore(t, kind, life, otherT, otherKind, otherLife) {
+  return t < otherT || (t === otherT && (kind < otherKind || (kind === otherKind && life < otherLife)));
 }

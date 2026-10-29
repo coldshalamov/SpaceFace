@@ -630,6 +630,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
+  // Boomerang Run's phase/readiness is authored in the worker; the Crucible HUD
+  // consumes this small plain-data projection without mirroring flightRuntime.
+  'heroManeuverReadModel',
   'lossLedger.impound',
   'sectorSim.field', 'npcJobs.byId', 'npcJobs.revision', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
@@ -739,6 +742,7 @@ export const DOMAIN_CADENCE = Object.freeze({
   salvageOutfits: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   'save.sharedStoreStatus': 1,
+  'heroManeuverReadModel': 6,
   // Native phase identity shares the body reply's clock. A paced intro label over already-live
   // field motion misrepresents the public round; score/history retain the run root cadence.
   'run.kind': 1, 'run.ruleset': 1, 'run.phase': 1, 'run.wave': 1,

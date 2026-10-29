@@ -12,14 +12,20 @@ import {
 } from '../src/runtime/authoritativeSystemManifest.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
+import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { survivalRun, SURVIVAL_ARENA_INTRO_TICKS, SURVIVAL_WAVE_INTRO_TICKS } from '../src/systems/survivalRun.js';
+import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
+import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
+import { collectWaveHullDecodeKeys } from '../src/world/presentationSources.js';
 import {
   PHASE_WORDS,
   arenaLabel,
+  circuitMarkGlyph,
   phaseWord,
   objectiveWord,
   earnLine,
+  heroManeuverHudCue,
   levelProgress,
   survivalHud,
   threatCensus,
@@ -28,6 +34,41 @@ import {
 const DT = 1 / 60;
 const ARENA = 'helios_core';
 const SEED = 7;
+
+class HudTestNode {
+  constructor(tagName) {
+    this.tagName = tagName;
+    this.children = [];
+    this.attributes = {};
+    this.style = {};
+    this.dataset = {};
+    this.hidden = false;
+    this.classList = { add() {}, remove() {}, toggle() {} };
+  }
+  appendChild(child) { child.parentNode = this; child.isConnected = true; this.children.push(child); return child; }
+  removeChild(child) { this.children = this.children.filter((entry) => entry !== child); child.parentNode = null; child.isConnected = false; }
+  setAttribute(name, value) { this.attributes[name] = String(value); }
+}
+
+function withHudDocument(fn) {
+  const previous = globalThis.document;
+  const body = new HudTestNode('body');
+  const head = new HudTestNode('head');
+  const findById = (root, id) => root.children.find((child) => child.attributes.id === id)
+    || root.children.map((child) => findById(child, id)).find(Boolean);
+  globalThis.document = {
+    body, head,
+    querySelector: () => null,
+    getElementById: (id) => findById(body, id) || findById(head, id) || null,
+    createElement: (tagName) => new HudTestNode(tagName),
+  };
+  try { return fn(); }
+  finally {
+    survivalHud.destroy();
+    if (previous === undefined) delete globalThis.document;
+    else globalThis.document = previous;
+  }
+}
 
 function boot(seed = SEED) {
   const state = createGameState(seed);
@@ -140,6 +181,52 @@ test('an earn receipt names what was earned, and says nothing when nothing was',
   assert.equal(earnLine(null), null);
 });
 
+test('Hero HUD cue follows the fitted move and worker projection without sim internals', () => {
+  const state = {
+    mode: 'flight', run: { kind: 'survival', phase: 'active' },
+    player: { ownedShips: [{ fittings: ['mod_pinball_rush'] }] }, playerId: 7,
+    entities: new Map([[7, { alive: true }]]),
+    heroManeuverReadModel: { mode: 'pinball', phase: 'ready', status: 'armed',
+      text: 'ready · Needle · 28 cap', targetName: 'Needle' },
+  };
+  const pinball = heroManeuverHudCue(state);
+  assert.equal(pinball.mode, 'pinball');
+  assert.equal(pinball.status, 'armed');
+  assert.match(pinball.text, /PINBALL RUSH.*hold \/ release.*ready · Needle/);
+  assert.doesNotMatch(pinball.text, /lock a live hostile/,
+    'the main-side HUD uses the worker readiness projection, not private targets');
+  state.heroManeuverReadModel.status = 'blocked';
+  state.heroManeuverReadModel.text = '';
+  state.heroManeuverReadModel.reason = 'face_clear_approach';
+  assert.match(heroManeuverHudCue(state).text, /face clear approach/,
+    'an alignment refusal is readable instead of leaking an internal enum');
+
+  state.player.ownedShips[0].fittings = ['mod_boomerang_run'];
+  state.heroManeuverReadModel = { mode: 'boomerang', phase: 'bank', status: 'armed',
+    targetName: 'Needle', attackCommitted: false, energyRequired: 196.2 };
+  const bank = heroManeuverHudCue(state);
+  assert.equal(bank.mode, 'boomerang');
+  assert.match(bank.text, /Needle.*physical bank.*bomb reserved/);
+  assert.match(bank.text, /197 cap budget/,
+    'active readiness shows the full phase-return and bank-dash budget, not the phase reserve alone');
+  state.heroManeuverReadModel = { mode: 'boomerang', phase: 'attack_region_missed', status: 'blocked',
+    targetName: 'Needle', text: 'attack region missed · no bomb released', energyRequired: 196.2 };
+  const missed = heroManeuverHudCue(state);
+  assert.match(missed.text, /Needle.*attack region missed.*no bomb released.*197 cap budget/);
+  assert.doesNotMatch(missed.text, /4\/Y start/,
+    'a terminal result does not look like a fresh activation prompt');
+
+  state.player.ownedShips[0].fittings = ['mod_veil_step'];
+  state.heroManeuverReadModel = { mode: 'veil_step', phase: 'aiming', status: 'armed',
+    text: '84 WU · release to step', distance: 84, validLanding: true,
+    veil: { phase: 'aiming', status: 'armed', text: '84 WU · release to step', validLanding: true } };
+  const veil = heroManeuverHudCue(state);
+  assert.equal(veil.mode, 'veil_step');
+  assert.equal(veil.status, 'armed');
+  assert.match(veil.text, /VEIL STEP.*84 WU.*release to step/);
+  assert.equal(heroManeuverHudCue({ mode: 'flight', run: { kind: 'adventure' } }), null);
+});
+
 test('the wave census reaches state.run through runSession, written by nobody else', () => {
   const harness = boot();
   const run = reachActive(harness);
@@ -217,6 +304,116 @@ test('the readout is a strict no-op headless and outside a live survival run', (
   const before = JSON.stringify(harness.state.run);
   for (let i = 0; i < 50; i++) survivalHud.update(DT, harness.state);
   assert.equal(JSON.stringify(harness.state.run), before);
+});
+
+test('wave plan projection preserves the live Swarm quota, hull runway, and main HUD readout', () => {
+  const original = planWave({ seed: 4242, arenaId: ARENA, wave: 3, ruleset: 'swarm' });
+  assert.equal(original.error, undefined);
+  const wire = projectBridgeEvent('run:wavePlanned', { wave: 3, tick: 91, plan: original });
+  assert.equal(wire.dropped, false);
+  assert.equal(wire.reason, 'adapter');
+  assert.equal(wire.flat.plan.swarm.killTarget, 26);
+  assert.equal(wire.flat.plan.objective.population, 'ships');
+  assert.equal(waveOpeningLine(3, wire.flat.plan), waveOpeningLine(3, original),
+    'the main-side opening copy retains its authored objective and arrival wording');
+  assert.deepEqual(
+    collectWaveHullDecodeKeys(wire.flat.plan).map((row) => row.key),
+    collectWaveHullDecodeKeys(original).map((row) => row.key),
+    'projected schedule, packages, and roster retain every required authored hull identity',
+  );
+  assert.equal(wire.flat.plan.swarm.roster[0].weight, undefined,
+    'the bounded bridge carries hull identity, not the planner roster ledger');
+
+  withHudDocument(() => {
+    const state = createGameState(SEED);
+    state.mode = 'flight';
+    state.entities = new Map();
+    state.entityList = [];
+    state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 3,
+      arenaId: ARENA, score: 0, credits: 0, level: 1,
+      threatBudget: 26, spawnedThreat: 26, resolvedThreat: 0 };
+    const bus = createBus();
+    survivalHud.init({ state, bus });
+    bus.emit('run:wavePlanned', wire.flat);
+    survivalHud.update(DT, state);
+    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
+    assert.equal(survivalHud._dom.threatFig.textContent, '26 / 26');
+    state.run.resolvedThreat = 1;
+    survivalHud.update(DT, state);
+    assert.equal(survivalHud._dom.threatFig.textContent, '25 / 26');
+  });
+});
+
+test('late cohort progress restores the ship-count HUD while a circuit timer stays timed', () => {
+  withHudDocument(() => {
+    const state = createGameState(SEED);
+    state.mode = 'flight';
+    state.entities = new Map();
+    state.entityList = [];
+    state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 3,
+      arenaId: ARENA, score: 0, credits: 0, level: 1,
+      threatBudget: 26, spawnedThreat: 26, resolvedThreat: 0 };
+    const bus = createBus();
+    survivalHud.init({ state, bus });
+    survivalHud.update(DT, state);
+    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS',
+      'a positive projected cohort budget is enough while the plan event is still late');
+    bus.emit('run:waveProgress', { wave: 3, completionKind: 'cohort', remaining: 26, total: 26 });
+    survivalHud.update(DT, state);
+    assert.equal(survivalHud._dom.threatWord.textContent, 'HOSTILE SHIPS');
+
+    const timed = planWave({ seed: 4242, arenaId: ARENA, wave: 1, ruleset: 'swarm',
+      circuitRound: { stage: 1, localRound: 2, kind: 'survive' } });
+    assert.equal(timed.error, undefined);
+    const projected = projectBridgeEvent('run:wavePlanned', { wave: 1, tick: 92, plan: timed });
+    assert.equal(projected.dropped, false);
+    assert.equal(projected.flat.plan.objective.kind, 'survive');
+    assert.equal(projected.flat.plan.swarm.circuit.kind, 'survive');
+    assert.equal(projected.flat.plan.swarm.killTarget, 0);
+    assert.equal(projected.flat.plan.swarm.circuit.localRound, 2);
+    state.run.wave = 1;
+    bus.emit('run:wavePlanned', projected.flat);
+    bus.emit('run:waveProgress', { wave: 1, completionKind: 'duration', durationTicks: 3600, remainingTicks: 3540 });
+    survivalHud.update(DT, state);
+    assert.equal(survivalHud._dom.threatWord.textContent, 'SURVIVE');
+    assert.equal(survivalHud._dom.threatFig.textContent, '0:59',
+      'the cohort fallback must not turn a circuit clock into a kill quota');
+  });
+});
+
+test('boss wave projection preserves the announced champion and its renderer hull identity', () => {
+  const original = planWave({ seed: 4242, arenaId: ARENA, wave: 10, ruleset: 'swarm' });
+  const projected = projectBridgeEvent('run:wavePlanned', { wave: 10, tick: 600, plan: original });
+  assert.equal(projected.dropped, false);
+  assert.equal(projected.flat.plan.objective.kind, 'boss');
+  assert.equal(projected.flat.plan.swarm.boss, true);
+  assert.equal(projected.flat.plan.swarm.bossLabel, original.swarm.bossLabel);
+  assert.equal(projected.flat.plan.swarm.bossLine, original.swarm.bossLine);
+  assert.equal(projected.flat.plan.swarm.bossScoreId, original.swarm.bossScoreId);
+  assert.deepEqual(
+    collectWaveHullDecodeKeys(projected.flat.plan).map((row) => row.key),
+    collectWaveHullDecodeKeys(original).map((row) => row.key),
+  );
+});
+
+test('hold and reach circuit markers retain their coordinates and point the HUD the same way', () => {
+  const player = { pos: { x: 0, z: 0 } };
+  const cases = [
+    { kind: 'hold', field: 'zone', marker: { x: 100, z: 0, radius: 44 }, expected: '←' },
+    { kind: 'reach', field: 'gate', marker: { x: 0, z: 120, radius: 30 }, expected: '↑' },
+  ];
+  for (const [index, item] of cases.entries()) {
+    const original = planWave({ seed: 4242, arenaId: ARENA, wave: 1, ruleset: 'swarm',
+      circuitRound: { stage: 2, localRound: index ? 4 : 3, kind: item.kind, [item.field]: item.marker } });
+    assert.equal(original.error, undefined);
+    const projected = projectBridgeEvent('run:wavePlanned', { wave: 1, tick: 120 + index, plan: original });
+    assert.equal(projected.dropped, false);
+    assert.deepEqual(projected.flat.plan.swarm.circuit[item.field], item.marker);
+    const originalGlyph = circuitMarkGlyph(player, original.swarm.circuit[item.field]);
+    const projectedGlyph = circuitMarkGlyph(player, projected.flat.plan.swarm.circuit[item.field]);
+    assert.equal(originalGlyph, item.expected);
+    assert.equal(projectedGlyph, originalGlyph);
+  }
 });
 
 test('the readout is registered as a DOM-guarded sim system, after the phase machine', () => {

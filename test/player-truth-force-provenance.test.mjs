@@ -46,6 +46,23 @@ test('production-host observer reads and validates a live environmental field so
     assert.equal(capture.receipts[0].fieldId, field.id);
     assert.equal(capture.receipts[0].fieldSourceTag, 'environmental');
     assert.equal(capture.receipts[0].fieldSourceKind, 'well');
+
+    const nextWave = observer({ action: 'install', maxReceipts: 256, maxTicks: 20,
+      maxSeriesPoints: 5120 });
+    assert.equal(nextWave.ok, true, 'a finalized opening observer can be replaced for the next wave');
+    const nextTick = state.tick;
+    observeAppliedImpulse(entity, { x: 10, z: 0 }, { x: 20, z: 0 }, {
+      actorId: null, tag: 'field_well', field: { id: field.id, ownerId: null,
+        x: field.center.x, z: field.center.z, radius: field.radius },
+    }, nextTick, 'field', state);
+    state.tick = nextTick + 1;
+    assert.equal(observer({ action: 'begin', tick: state.tick }).ok, true);
+    const nextCapture = observer({ action: 'finalize' });
+    assert.equal(nextCapture.status, 'complete');
+    assert.equal(nextCapture.flightStartTick, nextTick,
+      'the next opening gets its own start boundary instead of extending wave one');
+    assert.equal(nextCapture.receiptCount, 1);
+    assert.equal(nextCapture.receipts[0].tick, nextTick);
   } finally {
     api.shutdown();
   }
@@ -171,6 +188,35 @@ function openingTrace(forceProvenance) {
   };
 }
 
+function multiWaveTrace(firstWindow, windows = null) {
+  return {
+    meta: { mode: 'swarm', rounds: true, playStartSim: 0 },
+    rounds: [{ wave: 1, startSim: 0 }, { wave: 2, startSim: 1 }], events: [],
+    samples: [
+      { f: 1, t: 16, sim: 0, tick: 9, mode: 'menu', p: null, e: [] },
+      { f: 2, t: 32, sim: 0.033, tick: 10, mode: 'flight', run: { w: 1, ph: 'active' },
+        p: { x: 0, z: 0 }, e: [[35, CLS.asteroid, 100, 0, 18, 0, 640, 360, 8, VIS.onscreen, -1, 0]] },
+      { f: 3, t: 48, sim: 0.9, tick: 20, mode: 'flight', run: { w: 2, ph: 'wave_intro' },
+        p: { x: 0, z: 0 }, e: [[70, CLS.asteroid, 120, 0, 18, 0, 640, 360, 8, VIS.onscreen, -1, 0]] },
+      { f: 4, t: 64, sim: 1, tick: 21, mode: 'flight', run: { w: 2, ph: 'active' },
+        p: { x: 0, z: 0 }, e: [[70, CLS.asteroid, 120, 0, 18, 0, 640, 360, 8, VIS.onscreen, -1, 0]] },
+    ],
+    forceProvenance: firstWindow,
+    ...(windows ? { forceProvenanceWindows: windows } : {}),
+  };
+}
+
+function mappedFieldWindow({ rawId, readerId, generation, tick }) {
+  const collector = createBoundedImpulseReceiptCollector({ maxTicks: 20 });
+  collector.arm();
+  collector.record(observation({ id: rawId, generation, tick, delta: 12 }));
+  collector.begin(tick);
+  const capture = mapImpulseReceiptIdentities(collector.snapshot(), (id, lifeGeneration) => (
+    id === rawId && lifeGeneration === generation ? readerId : null
+  ));
+  return { requested: true, ...capture };
+}
+
 test('swarm spawn_motion only promotes a delivered field receipt through the first active sample', () => {
   const collector = createBoundedImpulseReceiptCollector({ maxTicks: 20 });
   collector.arm(); collector.record(observation({ tick: 10 })); collector.begin(10);
@@ -232,6 +278,34 @@ test('spawn_motion matches a delivered receipt when the raw entity id exceeds si
   assert.equal(rejected.status, 'FAIL');
   assert.equal(rejected.offenders[0].causalReason, 'missing-identity',
     'a reader life with conflicting raw identities still fails closed');
+});
+
+test('spawn_motion grades each wave against its own bounded force window', () => {
+  const first = mappedFieldWindow({ rawId: 35, readerId: 35, generation: 7, tick: 10 });
+  const second = mappedFieldWindow({ rawId: 5_089_000_702, readerId: 70, generation: 8, tick: 20 });
+  const trace = multiWaveTrace(first, [{ wave: 1, ...first }, { wave: 2, ...second }]);
+  const complete = checkSpawnMotion(trace);
+  assert.equal(complete.status, 'PASS');
+  assert.equal(complete.causal.explained, 2);
+  assert.equal(complete.causal.missingWindows, 0);
+
+  const missingLater = checkSpawnMotion(multiWaveTrace(first, [{ wave: 1, ...first }]));
+  assert.equal(missingLater.status, 'UNKNOWN', 'a first-wave complete capture cannot explain wave two');
+  assert.equal(missingLater.causal.status, 'partial');
+  assert.equal(missingLater.causal.missingWindows, 1);
+  assert.equal(missingLater.offenders.some((row) => row.causalReason === 'missing-window'), true);
+
+  const legacyMissingLater = checkSpawnMotion(multiWaveTrace(first));
+  assert.equal(legacyMissingLater.status, 'UNKNOWN', 'legacy single-window traces stay scoped to their first wave');
+  assert.equal(legacyMissingLater.causal.missingWindows, 1);
+
+  const ambiguousLater = structuredClone(second);
+  ambiguousLater.receipts.push({ ...ambiguousLater.receipts[0], rawEntityId: 5_089_000_703,
+    occupantGeneration: 9 });
+  const ambiguous = checkSpawnMotion(multiWaveTrace(first,
+    [{ wave: 1, ...first }, { wave: 2, ...ambiguousLater }]));
+  assert.equal(ambiguous.status, 'FAIL', 'ambiguous generation mapping remains strict');
+  assert.equal(ambiguous.offenders.some((row) => row.causalReason === 'missing-identity'), true);
 });
 
 test('the four-second opening retains all 27 ordinary well streams within its finite budget', () => {

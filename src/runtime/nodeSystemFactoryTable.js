@@ -13,6 +13,8 @@ import { killcamRecorder } from '../sim/killcamTape.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
+import { swarmFortify } from '../systems/swarmFortify.js';
+import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
@@ -55,6 +57,8 @@ import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { borrowedSun } from '../systems/borrowedSun.js';
+import { borrowedSunPrompt } from '../ui/borrowedSunPrompt.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -291,6 +295,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],
+    ['swarmFortify', swarmFortify],
+    ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
     // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
@@ -363,6 +369,8 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ['borrowedSun', borrowedSun],
+    ['borrowedSunPrompt', borrowedSunPrompt],
     // Pro-experience owners (shipbreakingYard, rigWorkshop, salvageTender(+Prompt),
     // salvageOutfits(+Prompt), industrialDisasters) — node-safe sim entries shared with
     // the browser registry; shipbreakingYardBrowser stays browser-only by capability.

@@ -35,15 +35,7 @@ Current progress/clear semantics name both populations, and the HUD label is `HO
 
 Fortify has four device types, run-scoped purchases, physical fields/projectiles, paired segment
 damage, paid repair and turret rearm, and enemy weak-link counterplay. The real paused screen is
-registered in both runtime paths. Headed public Foundry run `24057` closed after 892 simulated
-seconds / 25 minutes: it cleared waves 1–6, reached wave 7 alive, and used all four devices plus
-repair/rearm through public controls. Its verdict is FAIL solely for 15 offscreen-marker misses
-(`no living shooter` near sim 727.9); other core controls, round resolution/transitions, spawn
-motion, ships, and VFX passed. Readability and frame time remain UNKNOWN. The marker observer was repaired in `c2f5714f570`: the producer intentionally admits lit
-detonator fuses and danger bands, while the old observer admitted only armed shooters. Seven
-focused cases pass, but the original route verdict remains unchanged. The ten-wave/boss journey
-is still open. See `.devshots/finish/integration-2026-10-29/foundry-ten-wave-route/` for the original
-verdict and artifacts.
+registered in both runtime paths. The current headed public Foundry run cleared waves 1–8 and reached wave 9 alive before its 45-minute cap. All four devices and paid service remain reachable through public controls. Controls, round transitions, player-model visibility, LOD/pop behavior, VFX coverage and offscreen markers pass; the latter includes 1,219 samples after `c2f5714f570`. Its original verdict is FAIL for one moving asteroid at the wave-six opening. Streaming the artifact found that force capture had stopped after the run’s first four seconds, so it could not explain a later opening. The recorder now captures each wave separately; nine focused cases pass. The original failure is retained until a new route with those windows classifies the motion. Readability and frame time remain UNKNOWN (p50 65 ms / p99 186 ms). The ten-wave/boss outcome is still unfinished. Current artifacts: `.devshots/finish/integration-2026-10-29/foundry-ten-wave-current/`.
 
 The published observer/spawn correction `4a5e683497e` fixed capture overflow and unmapped-player
 attribution. Corrected offline idle and active traces now report zero spawn-motion anomalies without

@@ -147,6 +147,7 @@ export const physics = {
   init(ctx) {
     ORCHARD_RESTORE_CAPABILITIES.set(this,Object.freeze({}));
     this.state = ctx.state;
+    this.registry = ctx.registry || null;
     ORCHARD_POSE_READERS.set(ctx.state, this);
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
@@ -154,6 +155,8 @@ export const physics = {
     this._statics = [];
     this._prevPosScratch = { x: 0, z: 0 };
     this._projectileSweepLimitScratch = { x: 0, z: 0, expired: false };
+    this._broodSweepRequestScratch = { from: { x: 0, z: 0 }, to: { x: 0, z: 0 }, radius: 0 };
+    this._broodHitScratch = { ok: false, wave: 0, kind: '', slot: -1, life: 0, t: Infinity, x: 0, z: 0 };
     this._segmentHitScratch = createSegmentHitRecord();
     this._bestSegmentHitScratch = createSegmentHitRecord();
     this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
@@ -1344,6 +1347,19 @@ export const physics = {
       this._admitProjectileSweepBodies(state, proj, start, end, extra);
       let bestTarget = this._bestProjectileTarget(proj, start, end, candidates, null, honorAuthored);
       bestTarget = this._bestProjectileTarget(proj, start, end, extra, bestTarget, honorAuthored);
+      let broodOwner = null;
+      let broodCandidate = null;
+      if (shouldQuerySwarmBroodProjectile(proj, state)) {
+        broodOwner = this.registry && typeof this.registry.get === 'function'
+          ? this.registry.get('swarmArena') : null;
+      }
+      if (typeof broodOwner?.queryBroodProjectileHit === 'function') {
+        const request = this._broodSweepRequestScratch;
+        request.from.x = start.x; request.from.z = start.z;
+        request.to.x = end.x; request.to.z = end.z;
+        request.radius = proj.radius || 0;
+        broodCandidate = broodOwner.queryBroodProjectileHit(request, this._broodHitScratch);
+      }
       // Linked shield pylons (packet 06): a hostile round stops at the first panel crossing on this
       // SAME path. The shared geometry read decides (relation-selective: the owner's and allies'
       // rounds pass), the round ends at the intercept and never also hits the target behind it, and
@@ -1351,7 +1367,9 @@ export const physics = {
       if (hasBlockingPanels(state)) {
         const wall = interceptSegment(state, PYLON_CONTACT.PROJECTILE, proj.ownerId,
           start.x, start.z, end.x, end.z, proj.radius || 0, { fallbackTeam: proj.data?.attackSource?.team ?? proj.team, sourceLife: proj.data?.attackSource?.life ?? null });
-        if (wall && (!bestTarget || wall.t < this._bestSegmentHitScratch.t)) {
+        const wallBeatsEntity = wall && (!bestTarget || wall.t < this._bestSegmentHitScratch.t);
+        const wallBeatsBrood = wall && (!broodCandidate || wall.t <= broodCandidate.t);
+        if (wallBeatsEntity && wallBeatsBrood) {
           proj.pos.x = wall.cx;
           proj.pos.z = wall.cz;
           acceptIntercept(state, wall, PYLON_CONTACT.PROJECTILE, { damage: projectileDamageOf(proj) }, proj.ownerId);
@@ -1362,6 +1380,31 @@ export const physics = {
           proj.alive = false;
           continue;
         }
+      }
+      if (broodCandidate && (!bestTarget || broodCandidate.t < this._bestSegmentHitScratch.t)) {
+        const previousX = proj.pos.x, previousZ = proj.pos.z;
+        proj.pos.x = broodCandidate.x;
+        proj.pos.z = broodCandidate.z;
+        proj.alive = false;
+        const broodReceipt = broodOwner.commitBroodProjectileHit(broodCandidate, {
+          projectileId: proj.id,
+          ownerId: proj.ownerId,
+          damage: projectileDamageOf(proj),
+          sourceId: proj.data?.weaponId || null,
+          damageType: proj.data?.damageType || null,
+        });
+        if (broodReceipt?.ok === true) {
+          this._diag.sweptProjectileHits++;
+          // Reuse the ordinary physical-contact presentation/audio path. The virtual target has
+          // no entity writer, so weapons/combat cannot apply a second hull hit; Brood already
+          // committed its typed-array life through the canonical owner above.
+          this.bus.emit('projectile:hit', projectileHitPayload(proj,
+            `brood:${broodReceipt.targetId}`, { x: broodReceipt.pos.x, z: broodReceipt.pos.z }, broodReceipt));
+          continue;
+        }
+        proj.alive = true;
+        proj.pos.x = previousX;
+        proj.pos.z = previousZ;
       }
       if (!bestTarget) {
         this._considerProjectileNearMiss(proj, start, end, state);
@@ -1721,6 +1764,19 @@ export const physics = {
     return false;
   },
 };
+
+function shouldQuerySwarmBroodProjectile(projectile, state) {
+  const run = state?.run;
+  if (state?.mode !== 'flight' || run?.kind !== 'survival' || run.phase !== 'active'
+    || !['swarm', 'scored'].includes(run.ruleset) || projectile?.data?.kind === 'missile'
+    || projectile?.type !== 'projectile' || projectile.alive === false) return false;
+  if (state.playerId != null && projectile.ownerId === state.playerId) return true;
+  const owner = state.entities?.get?.(projectile.ownerId);
+  const fortify = owner?.data?.swarmFortify;
+  return owner?.alive !== false && owner?.hull > 0 && owner?.type === 'beacon'
+    && owner.ownerId === state.playerId && fortify?.schemaVersion === 1
+    && fortify.deviceId === 'kinetic_turret' && fortify.operational === true && fortify.offline !== true;
+}
 
 function usesSg02DynamicAuthority(state) {
   const gameplay = state && state.settings && state.settings.gameplay;

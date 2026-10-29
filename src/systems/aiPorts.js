@@ -1408,6 +1408,7 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   out.exposed = base.exposed;
   out.ownedBySelf = base.ownedBySelf;
   out.objectiveValue = base.objectiveValue;
+  out.fortifyTarget = base.fortifyTarget === true;
   out.massClass = base.massClass;
   out.operationalMassBand = base.operationalMassBand;
   out.mobilityBand = base.mobilityBand;
@@ -1554,11 +1555,14 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
   const assignedTargetId = authoritativeAssignmentTargetId(selfAi.activity);
   const assigned = assignedTargetId != null && assignedTargetId !== self.id
     ? getEntity(state, assignedTargetId) : null;
-  if (assigned && assigned.alive && contactKindFor(assigned) === ContactKind.SHIP
+  const assignedKind = assigned ? contactKindFor(assigned) : null;
+  const fortifyObjective = assignedKind === ContactKind.OBJECTIVE
+    && assigned?.data?.swarmFortify?.schemaVersion === 1;
+  if (assigned && assigned.alive && (assignedKind === ContactKind.SHIP || fortifyObjective)
     && !out.some(c => c.id === assigned.id) && !cloakHidesPlayerFrom(state, self, assigned)) {
     const hostile = isHostileForAI(state, self, assigned);
     const base = buildContactBase(state, assigned, combatRuntimeFor(state, assigned.id),
-      attachmentIndex, 'ship', freeze, cacheOwner);
+      attachmentIndex, assignedKind, freeze, cacheOwner);
     const threat = threatFor(state, self, assigned, hostile);
     if (records) {
       const rec = fillSensorContact(ensureSensorContactRecord(records, out.length), base, REPORTED_TRACK_CONFIDENCE, threat, hostile);
@@ -1645,6 +1649,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     exposed: false,
     ownedBySelf: false,
     objectiveValue: objectiveValueFor(other),
+    fortifyTarget: other.data?.swarmFortify?.schemaVersion === 1,
     massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
     ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
     tags,
@@ -2082,6 +2087,7 @@ function subsystemFraction(runtime, id) {
 function contactKindFor(entity) {
   if (entity.type === 'ship' || entity.type === 'drone') return ContactKind.SHIP;
   if (entity.type === 'projectile') return ContactKind.PROJECTILE;
+  if (entity.data?.swarmFortify?.schemaVersion === 1) return ContactKind.OBJECTIVE;
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'wreck'
       || entity.type === 'masslineSnare' || entity.type === 'masslineSnareAnchor') return ContactKind.HAZARD;
   // Deliberately jettisoned freight uses a payload body; it remains a sensed cargo objective.

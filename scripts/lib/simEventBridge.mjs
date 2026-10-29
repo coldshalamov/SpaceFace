@@ -13,6 +13,7 @@
 // the adapter exists and still failed).
 
 import { SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS } from '../../src/features/shipbreakingYard/bridge.js';
+import { SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS } from '../../src/data/swarmFortifyView.js';
 
 export const EVENT_BRIDGE_DEPTH = 4;
 
@@ -48,6 +49,87 @@ function isPlainObject(value) {
   if (!value || typeof value !== 'object') return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
+}
+
+// Wave plans cross from the sim lane into the main presentation lane. Keep the
+// player-facing objective and the exact hull identities used by the renderer's
+// decode runway, without putting the planner's full schedule/ledger on the wire.
+const waveText = value => typeof value === 'string' ? value.slice(0, 160) : null;
+const waveNumber = value => Number.isFinite(value) ? value : null;
+const waveIdFields = Object.freeze(['enemyId', 'factionId', 'trafficRole']);
+function wavePoint(value) {
+  if (!value || typeof value !== 'object'
+    || !Number.isFinite(value.x) || !Number.isFinite(value.z)
+    || !Number.isFinite(value.radius) || value.radius < 0) return null;
+  return { x: value.x, z: value.z, radius: value.radius };
+}
+function waveRows(value, cap = 256) {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, cap).map((row) => {
+    if (!row || typeof row !== 'object') return null;
+    const out = {};
+    for (const key of waveIdFields) {
+      if (typeof row[key] === 'string') out[key] = row[key].slice(0, 160);
+    }
+    for (const key of ['role', 'gateGroup']) {
+      if (typeof row[key] === 'string') out[key] = row[key].slice(0, 80);
+    }
+    for (const key of ['count', 'atTick', 'packageIndex']) {
+      if (Number.isSafeInteger(row[key])) out[key] = row[key];
+    }
+    for (const key of ['champion', 'debut']) {
+      if (typeof row[key] === 'boolean') out[key] = row[key];
+    }
+    return out;
+  }).filter(Boolean);
+}
+
+function projectSurvivalWavePlan(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.plan || !isPlainObject(raw.plan)) return undefined;
+  const plan = raw.plan;
+  const objective = plan.objective && typeof plan.objective === 'object' ? {
+    kind: waveText(plan.objective.kind),
+    population: waveText(plan.objective.population),
+    supplementalPopulation: waveText(plan.objective.supplementalPopulation),
+  } : null;
+  const sourceSwarm = plan.swarm && typeof plan.swarm === 'object' ? plan.swarm : null;
+  let swarm = null;
+  if (sourceSwarm) {
+    const newcomer = sourceSwarm.newcomer && typeof sourceSwarm.newcomer === 'object'
+      ? { enemyId: waveText(sourceSwarm.newcomer.enemyId), name: waveText(sourceSwarm.newcomer.name) }
+      : null;
+    const circuitSource = sourceSwarm.circuit && typeof sourceSwarm.circuit === 'object'
+      ? sourceSwarm.circuit : null;
+    const circuit = circuitSource ? {
+      stage: waveNumber(circuitSource.stage), localRound: waveNumber(circuitSource.localRound),
+      kind: waveText(circuitSource.kind), commanderName: waveText(circuitSource.commanderName),
+      zone: wavePoint(circuitSource.zone), gate: wavePoint(circuitSource.gate),
+    } : null;
+    const actSource = sourceSwarm.act && typeof sourceSwarm.act === 'object' ? sourceSwarm.act : null;
+    swarm = {
+      killTarget: waveNumber(sourceSwarm.killTarget), boss: sourceSwarm.boss === true,
+      bossLabel: waveText(sourceSwarm.bossLabel), bossLine: waveText(sourceSwarm.bossLine),
+      bossScoreId: waveText(sourceSwarm.bossScoreId), newcomer,
+      pressureLine: waveText(sourceSwarm.pressureLine), wallLine: waveText(sourceSwarm.wallLine),
+      act: actSource ? { question: waveText(actSource.question) } : null,
+      circuit,
+      roster: waveRows(sourceSwarm.roster),
+    };
+  }
+  return {
+    wave: Number.isSafeInteger(raw.wave) ? raw.wave : null,
+    tick: Number.isSafeInteger(raw.tick) ? raw.tick : null,
+    plan: {
+      ok: plan.ok !== false,
+      mode: waveText(plan.mode),
+      heaviesOnly: plan.heaviesOnly === true,
+      openingLesson: !!plan.openingLesson,
+      objective,
+      packages: waveRows(plan.packages),
+      schedule: waveRows(plan.schedule),
+      swarm,
+    },
+  };
 }
 
 export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
@@ -109,6 +191,8 @@ export function flattenEventPayload(value, depth = 0, hits = null, path = '') {
 // undefined falls back to the generic deep-flat path.
 export const EVENT_BRIDGE_ADAPTERS = {
   ...SHIPBREAKING_YARD_EVENT_BRIDGE_ADAPTERS,
+  ...SWARM_FORTIFY_EVENT_BRIDGE_ADAPTERS,
+  'run:wavePlanned': projectSurvivalWavePlan,
   // entity:spawned carries the live entity — consumers resolve it via the
   // main-side read model by entityId (the spawn already rode the journal).
   'entity:spawned': (p) => (p && typeof p === 'object'

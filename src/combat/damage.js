@@ -23,6 +23,7 @@ import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResp
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
 import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
+import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
 
@@ -33,6 +34,22 @@ import { crossfireDisciplineFor } from '../ai/temperament.js';
  */
 function isShieldPylonEndpoint(target) {
   return !!(target && target.type === 'fieldEmitter' && target.data && target.data.shieldPylonEndpoint === true);
+}
+
+// Fortify defenses are physical, run-owned beacons rather than a generally damageable entity
+// type. Admit only the concrete schema emitted by the Fortify placement owner; ordinary beacons
+// and malformed/stale marker data keep the normal damage verb gate.
+function isSwarmFortifyStructure(target) {
+  const data = target && target.data && target.data.swarmFortify;
+  const body = target && target.physicsBody;
+  return !!(target && target.type === 'beacon' && target.alive !== false && target.collides === true
+    && body && body.schemaVersion === 1 && body.dynamic === false
+    && Number.isFinite(body.radius) && body.radius > 0
+    && Number.isFinite(target.hullMax) && target.hullMax > 0
+    && data && data.schemaVersion === SWARM_FORTIFY_SCHEMA_VERSION
+    && swarmFortifyDevice(data.deviceId)
+    && Number.isInteger(data.runToken) && data.runToken > 0
+    && Number.isInteger(data.ordinal) && data.ordinal > 0);
 }
 
 /**
@@ -188,7 +205,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       return { ...rejected('swarm_waiting_for_input', input, packet), impulseApplied: impulseResult.applied };
     }
     if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) {
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) {
       const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
       if (marks.length) {
         const runtime = ensureCombatant(state, target, catalog);
@@ -204,7 +221,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-015: damageable type-membership from the shared catalog (identical to the former
     // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
     // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target) && !isShieldPylonEndpoint(target) && !isSwarmFortifyStructure(target)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC

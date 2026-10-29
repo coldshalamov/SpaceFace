@@ -16,8 +16,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   createReadModel,
+  createDomainDiffer,
   applySpawnInfos,
   applyDestroyIds,
+  applyDomainPathUpdate,
 } from '../scripts/lib/simReadModel.mjs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 import { PRESENTATION_ADMISSION } from '../src/core/presentationAdmission.js';
@@ -87,6 +89,42 @@ test('same native occupant redelivery preserves render refs and its admission ve
   assert.equal(row.presentationAdmission, PRESENTATION_ADMISSION.ready);
   assert.equal(row.occupantGeneration, 11);
   assert.equal(Object.keys(row).includes('occupantGeneration'), false);
+});
+
+test('Boomerang readiness and lifecycle status cross the production domain mirror as plain data', () => {
+  const state = {
+    tick: 6,
+    heroManeuverReadModel: {
+      phase: 'return', status: 'armed', reason: null, text: 'phase return',
+      targetId: 81, targetName: 'Corsair', bombId: 'bomb_frag', cost: 50.4,
+      elapsed: 1.8, attackCommitted: true, updatedTick: 6,
+    },
+  };
+  const differ = createDomainDiffer();
+  const domains = new Map();
+  const result = differ.diff(state, state.tick);
+  for (const update of result.updates) applyDomainPathUpdate(domains, update, new Set());
+  assert.deepEqual(domains.get('heroManeuverReadModel'), state.heroManeuverReadModel);
+  assert.equal(result.updates.some(update => update.segs[0] === 'heroManeuverReadModel'), true);
+});
+
+test('Pinball readiness and charge status use the same worker-owned plain-data mirror', () => {
+  const state = {
+    tick: 12,
+    heroManeuverReadModel: {
+      mode: 'pinball', phase: 'pinball_charge', status: 'armed', reason: null,
+      text: 'ready · Needle', targetId: 81, targetName: 'Needle',
+      charge: 0.4, contactCount: 0, updatedTick: 12,
+      veil: { phase: 'aiming', status: 'armed', reason: 'release_to_step', text: '84 WU · release to step',
+        distance: 84, validLanding: true, energy: 92, cost: 41.44, readyAt: 0, updatedTick: 12 },
+    },
+  };
+  const differ = createDomainDiffer();
+  const domains = new Map();
+  const result = differ.diff(state, state.tick);
+  for (const update of result.updates) applyDomainPathUpdate(domains, update, new Set());
+  assert.deepEqual(domains.get('heroManeuverReadModel'), state.heroManeuverReadModel);
+  assert.equal(result.updates.some(update => update.segs[0] === 'heroManeuverReadModel'), true);
 });
 
 test('a recycled numeric id starts a fresh facade and retires its captured old owner', () => {

@@ -40,7 +40,7 @@ const TACTICAL_PROFILE = Object.freeze({
   }),
   action_burst: Object.freeze({
     tags: Object.freeze(['attack', 'ranged']),
-    targetKinds: Object.freeze([ContactKind.SHIP]),
+    targetKinds: Object.freeze([ContactKind.OBJECTIVE, ContactKind.SHIP]),
     preferredRange: 180,
   }),
   action_drop_bomb: Object.freeze({

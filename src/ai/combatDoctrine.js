@@ -307,7 +307,8 @@ export function selectDoctrineTarget(doctrineId, perception) {
   let best = null;
   let bestScore = -Infinity;
   for (const contact of perception.contacts) {
-    if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
+    const fortifyObjective = contact?.kind === ContactKind.OBJECTIVE && contact.fortifyTarget === true;
+    if (!contact || (contact.kind !== ContactKind.SHIP && !fortifyObjective) || contact.hostile !== true) continue;
     // A CONTROL/ambush-dispatched assignment arrives as a reported track — the responder is
     // ordered onto the offender on the jurisdiction's word, beyond its own sensor reach, so the
     // doctrine may close on the unseen contact. Ordinary remembered contacts stay excluded; a

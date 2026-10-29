@@ -362,8 +362,23 @@ function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFligh
 // The trace stores reader life ids, while the worker receipt stores the raw id plus its
 // occupant generation. Resolve the identity from that mapping; entity ids are not restricted to
 // six digits, so modulo-based life-id decoding can silently change a legitimate raw id.
-function gradeSpawnMotionCausality(trace, entity, frame) {
-  const capture = trace?.forceProvenance;
+function forceWindowForSpawn(trace, wave, roundIndex) {
+  const windows = trace?.forceProvenanceWindows;
+  if (Array.isArray(windows)) {
+    const window = windows.find((entry) => entry?.wave === wave);
+    return window ? { capture: window, missingWindow: window.status === 'missing-window' }
+      : { capture: null, missingWindow: true };
+  }
+  if (roundIndex === 0 || !roundsOf(trace).length) {
+    return { capture: trace?.forceProvenance || null, missingWindow: false };
+  }
+  // Legacy traces only carried one capture. It belongs to the first opening regardless of its
+  // outcome; never reuse an earlier observer's receipts or failure status for a later wave.
+  if (trace?.forceProvenance) return { capture: null, missingWindow: true };
+  return { capture: trace?.forceProvenance || null, missingWindow: false };
+}
+
+function gradeSpawnMotionCausality(trace, entity, frame, capture = trace?.forceProvenance) {
   const readerLifeId = entity?.[E.id];
   const identities = new Map();
   for (const receipt of capture?.receipts || []) {
@@ -396,8 +411,12 @@ export function checkSpawnMotion(trace) {
   if (!starts.length) return result('spawn_motion', 'Unexplained motion at spawn', 'UNKNOWN', null, `0 bodies >${T.spawnSpeed} u/s`, 'no spawn moment recorded');
   const hasRunMetadata = trace.samples.some((s) => s.run?.w != null && s.run?.ph != null);
   const offenders = []; let count = 0; let checked = 0; let missing = 0;
-  const causal = { status: trace?.forceProvenance?.status || 'unavailable', explained: 0, proofFailures: 0, residualFailures: 0 };
-  for (const st of starts) {
+  const causal = { status: trace?.forceProvenance?.status || 'unavailable', explained: 0,
+    proofFailures: 0, residualFailures: 0, missingWindows: 0 };
+  for (let roundIndex = 0; roundIndex < starts.length; roundIndex += 1) {
+    const st = starts[roundIndex];
+    const forceWindow = forceWindowForSpawn(trace, st.wave, roundIndex);
+    let missingForceWindowCounted = false;
     // Actor polls can notice the round several physics ticks after it opens. The continuous
     // reader already recorded the actual first active frame; later contacts are not spawn motion.
     const nonRound = rounds.length === 0;
@@ -452,14 +471,24 @@ export function checkSpawnMotion(trace) {
         const d = Math.hypot(e[E.x] - frame.p.x, e[E.z] - frame.p.z); if (d > T.spawnRadius) continue;
         const sp = Math.hypot(e[E.vx], e[E.vz]);
         if (sp > T.spawnSpeed) {
-          const proof = gradeSpawnMotionCausality(trace, e, frame);
+          const proof = forceWindow.missingWindow
+            ? { ok: false, reason: 'missing-window', matchedReceipts: 0, deltaV: { x: 0, z: 0 } }
+            : gradeSpawnMotionCausality(trace, e, frame, forceWindow.capture);
           if (proof.ok) {
             causal.explained++;
             continue;
           }
-          causal.proofFailures += proof.reason === 'residual-motion' ? 0 : 1;
-          causal.residualFailures += proof.reason === 'residual-motion' ? 1 : 0;
-          count++;
+          if (proof.reason === 'missing-window') {
+            if (!missingForceWindowCounted) {
+              causal.missingWindows++;
+              missing++;
+              missingForceWindowCounted = true;
+            }
+          } else {
+            causal.proofFailures += proof.reason === 'residual-motion' ? 0 : 1;
+            causal.residualFailures += proof.reason === 'residual-motion' ? 1 : 0;
+            count++;
+          }
           offenders.push({ sp, rawSp: sp, residualSp: proof.speed, causalReason: proof.reason,
             matchedReceipts: proof.matchedReceipts, deltaV: proof.deltaV,
             line: `${st.label}: ${PLAYER_TRUTH_CLASSES[e[E.cls]]} ${e[E.id]} moving ${fmt(sp, 1)} u/s ${fmt(d, 0)} u from the player before any input (${proof.reason})`,
@@ -470,8 +499,9 @@ export function checkSpawnMotion(trace) {
     if (incomplete) missing++;
   }
   offenders.sort((a, b) => b.sp - a.sp);
-  const forceDetail = trace?.forceProvenance
-    ? `; force proof ${causal.status} (${causal.explained} explained, ${causal.proofFailures} proof failures, ${causal.residualFailures} residual failures)` : '';
+  if (causal.missingWindows > 0 && causal.status === 'complete') causal.status = 'partial';
+  const forceDetail = trace?.forceProvenance || Array.isArray(trace?.forceProvenanceWindows)
+    ? `; force proof ${causal.status} (${causal.explained} explained, ${causal.proofFailures} proof failures, ${causal.residualFailures} residual failures${causal.missingWindows ? `, ${causal.missingWindows} missing window(s)` : ''})` : '';
   const verdict = result('spawn_motion', 'Unexplained motion at spawn', count > 0 ? 'FAIL' : missing ? 'UNKNOWN' : 'PASS', `${count} bodies`, `0 passive bodies >${T.spawnSpeed} u/s within ${T.spawnRadius} u`,
     `${checked} spawn moment(s) checked${missing ? `; ${missing} opening frame(s) missing` : ''}${forceDetail}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
   verdict.causal = causal;

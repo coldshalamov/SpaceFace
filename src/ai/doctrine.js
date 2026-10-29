@@ -131,7 +131,7 @@ export function effectiveActivityForAI(ai) {
  */
 const AUTHORITATIVE_ASSIGNMENT_PREFIXES = Object.freeze([
   'ambush_snare:', 'security_response:', 'wanted_warrant:', 'heist:pressure:', 'npc_grudge:',
-  'onboarding_raid:',
+  'onboarding_raid:', 'swarm_fortify:',
 ]);
 
 export function isAuthoritativeAssignmentReason(reason) {

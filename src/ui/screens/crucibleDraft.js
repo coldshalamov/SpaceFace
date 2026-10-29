@@ -1,3 +1,4 @@
+import { fortifyAvailable } from '../swarmFortifyPanel.js';
 // Crucible draft surface (PQ-133 / CRU-016) and refit surface (CRU-017).
 //
 // Both are pure DOM over receipts. They read the open offers, the re-roll price and the fittable
@@ -72,6 +73,16 @@ import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
  * attribute, so a Swarm Continue that only set `hidden` still painted. The wrap `<li>`
  * has to go with it or the row keeps an empty gap.
  */
+function appendFortifyWord(words, ctx) {
+  const button = addWord(words, word('Fortify the field', 'k-word--emph'));
+  setWordShown(button, fortifyAvailable(ctx.state?.run));
+  button.addEventListener('click', () => {
+    if (fortifyAvailable(ctx.state?.run)) ctx.bus.emit('ui:pushScreen', { id: 'crucibleFortify' });
+    else cue('deny');
+  });
+  return button;
+}
+
 function setWordShown(button, show) {
   if (!button) return;
   button.hidden = !show;
@@ -937,6 +948,7 @@ export const crucibleDraftScreen = {
     const refit = addWord(words, word('Rearrange loadout', 'k-word--emph'));
     refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
     this._refitBtn = refit;
+    this._fortifyBtn = appendFortifyWord(words, ctx);
 
     // The run wallet is filled by physical chips the player chased down. This is the one place it
     // buys something, so this is where the balance has to be legible.
@@ -1229,6 +1241,7 @@ export const crucibleDraftScreen = {
     if (this._visualArmory) this._visualArmory.wallet(context.state?.run?.credits, shop);
     this._filters.hidden = !shop;
     this._refitBtn.hidden = !shop;
+    setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
     if (this._search) this._search.hidden = !shop;
     // offer.category is stamped when the card is drawn; the regex stays as the fallback for
     // any row that reaches the rail without it.
@@ -1854,6 +1867,7 @@ export const crucibleRefitScreen = {
     const foot = el('footer', 'k-foot sf-cru-foot');
     const words = el('ul', 'k-words k-words--row');
     words.setAttribute('aria-label', 'Refit');
+    this._fortifyBtn = appendFortifyWord(words, ctx);
     // Each key carries its consequence in fine print beneath it (refitFootLines), so a stranger
     // reads what the key DOES, not three verbs that sound alike.
     const keyNote = (li) => {
@@ -2158,6 +2172,7 @@ export const crucibleRefitScreen = {
     if (!rows || !context) return;
     this._ctx = context;
     this._syncFoot(context);
+    setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
     // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
     // wave it names; the round ahead is run.wave + 1.
     if (this._preview) {

@@ -32,7 +32,11 @@ export function deferred() {
   return { promise, resolve, reject };
 }
 
-export async function productionContinueFixture({ picture = async () => true, inputEnvelope = null } = {}) {
+export async function productionContinueFixture({
+  picture = async () => true,
+  inputEnvelope = null,
+  ruckusWarm = () => Promise.resolve(),
+} = {}) {
   const priorStorage = globalThis.localStorage;
   const priorFeatures = snapshotFeatureMaps();
   const values = new Map();
@@ -77,8 +81,8 @@ export async function productionContinueFixture({ picture = async () => true, in
     applyFeatureConfigToMaps(runtime.config.features);
     const { state, bus } = runtime;
     const registry = { get: name => runtime.getSystem(name) };
-    new Function('helpers', 'bus', 'state', 'runTransitionGuard', 'nextFrame', 'ruckusWarmReady', 'console', routingSource)(
-      helpers, bus, state, guard, nextHostTurn, Promise.resolve(), testConsole,
+    new Function('helpers', 'bus', 'state', 'runTransitionGuard', 'nextFrame', 'warmRuckusModel', 'console', routingSource)(
+      helpers, bus, state, guard, nextHostTurn, ruckusWarm, testConsole,
     );
     let finalizerPromise = null, finalizerCalls = 0;
     helpers.finalizeLoadedGame = payload => {

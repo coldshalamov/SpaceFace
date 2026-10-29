@@ -44,6 +44,36 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
     ],
   },
   {
+    id: 'veil_step',
+    label: 'Veil Step',
+    blurb: 'Hold Shift to place a phase shadow. Release to cross the gap; the step spends the boost capacitor.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_veil_step' },
+    ],
+  },
+  {
+    id: 'boomerang_bomb_run',
+    label: 'Boomerang Bomb Run',
+    blurb: 'Lock a hostile and press Bomb: carve a physical bank, release one loaded bomb, then phase back to the clear start point.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_boomerang_run' },
+    ],
+  },
+  {
+    id: 'pinball_rush',
+    label: 'Pinball Rush',
+    blurb: 'Hold Boost while lining up a live hostile, then release for a charged physical dash. Contacts stay under normal collision damage and rewards.',
+    hullId: 'ship_kestrel',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_s' },
+      { slotIndex: 5, defId: 'mod_pinball_rush' },
+    ],
+  },
+  {
     id: 'kinetic_baseline',
     label: 'Baseline Kinetic',
     hullId: 'ship_hornet',

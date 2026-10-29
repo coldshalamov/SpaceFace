@@ -53,7 +53,16 @@ const REPORT_DATE = '2026-09-19';
 // evidence is `{ file, symbol }` (mechanically verified: symbol must occur in the live file) or
 // `{ declaredOnly: '<packet leaf>' }` (honestly labeled unwired key — reported every run).
 // New systems must register here, with evidence, in the same packet that introduces the key.
+const ID_MATCHED_VERBS = Object.freeze({
+  mod_claw_anchor_s: ['counter-torque a tethered hull during custody approach', 'shipjack custody control', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_claw_anchor_s')" }],
+  mod_quiet_intrusion_s: ['one quiet maintenance-handshake attempt', 'shipjack intrusion adaptation', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_quiet_intrusion_s')" }],
+  mod_proof_recorder_s: ['record custody recovery proof', 'shipjack title evidence', { file: 'src/systems/shipjack.js', symbol: "fittedBlackFlagTool(state,'mod_proof_recorder_s')" }],
+});
+
 const VERB_MOD_KEYS = Object.freeze({
+  lineHeadId: ['fitted Line-head physical behaviors', 'ships.js fold and systems/lineHeads.js', { file: 'src/systems/lineHeads.js', symbol: 'holder.data.lineHeadId' }],
+  pylonPairs: ['deploy a physical shield-pylon pair', 'systems/shieldPylons.js fitted capacity', { file: 'src/systems/shieldPylons.js', symbol: "maxFittedModuleMod(state, 'pylonPairs'" }],
+  heroManeuver: ['fitted Boomerang or Pinball maneuver (selected by module ID)', 'systems/heroManeuvers.js fitting admission', { file: 'src/systems/heroManeuvers.js', symbol: 'fittings.includes(T.moduleId)' }],
   masslineHeadId: ['tether-head verb (tractor / elastic_whip / frame_coupler / monofilament_sweep / transverse_snare / twin_bridle)', 'ships.js massline fold', { file: 'src/systems/ships.js', symbol: 'masslineHeadId' }],
   countermeasure: ['activated countermeasure (chaff / ecm / decoy)', 'systems/countermeasures.js', { file: 'src/systems/countermeasures.js', symbol: 'countermeasure' }],
   cloakBaseRadius: ['activated stealth cloak', 'systems/cloak.js', { file: 'src/systems/cloak.js', symbol: 'cloakBaseRadius' }],
@@ -158,6 +167,10 @@ function classifyModule(def) {
   if (ATTACK_TRAIT_BY_ID[def.id]) {
     classes.add('verb');
     verbSources.push(`id-matched attack trait (${ATTACK_TRAIT_BY_ID[def.id].family})`);
+  }
+  if (ID_MATCHED_VERBS[def.id]) {
+    classes.add('verb');
+    verbSources.push(ID_MATCHED_VERBS[def.id][0]);
   }
   const mods = def.mods || {};
   for (const key of Object.keys(mods)) {
@@ -293,7 +306,7 @@ function runAudit() {
   const warnings = []; // report-only: unknown enum VALUES (kind/head/deployKind) inside known keys
 
   const verbVerification = verifyVerbKeyConsumers();
-  errors.push(...verbVerification.errors);
+  errors.push(...verbVerification.errors, ...verifyVerbKeyConsumers({ vocabulary: ID_MATCHED_VERBS }).errors);
 
   const moduleRows = MODULES.map((def) => ({ def, ...classifyModule(def) }));
   const modulePass = auditModules(moduleRows);

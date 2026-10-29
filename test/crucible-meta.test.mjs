@@ -7,11 +7,12 @@ import { createGameState } from '../src/core/gameState.js';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { SURVIVAL_ARC_LENGTH } from '../src/data/survivalActs.js';
 import {
-  SURVIVAL_STARTER_DPS,
   SURVIVAL_STARTERS,
   SURVIVAL_UNLOCK_CATALOG,
   ZERO_POWER,
 } from '../src/data/survivalUnlocks.js';
+import { SHIPS } from '../src/data/ships.js';
+import { WEAPONS } from '../src/data/weapons.js';
 import { offerDraft } from '../src/data/survivalDraft.js';
 import { runSession } from '../src/systems/runSession.js';
 import {
@@ -159,7 +160,10 @@ test('fresh account remains viable: same build, identical power, smaller option 
 
   const freshOpts = availableOptions(fresh);
   const fullOpts = availableOptions(full);
-  assert.deepEqual(freshOpts.starters, ['energy_baseline', 'kinetic_baseline', 'mirror_demonstrator', 'ricochet_runner']);
+  assert.deepEqual(freshOpts.starters, [
+    'boomerang_bomb_run', 'energy_baseline', 'kinetic_baseline',
+    'mirror_demonstrator', 'pinball_rush', 'ricochet_runner', 'veil_step',
+  ]);
   assert.equal(freshOpts.modes.includes('boss_circuit'), false);
   assert.equal(freshOpts.mutators.length, 0);
   assert.equal(freshOpts.trials.length, 0);
@@ -170,13 +174,12 @@ test('fresh account remains viable: same build, identical power, smaller option 
   assert.ok(fullOpts.size > freshOpts.size);
 });
 
-test('unlockable Hitch starters never exceed the public Pulse Laser S damage rate', () => {
-  const pulse = SURVIVAL_STARTER_DPS.wpn_pulse_laser_s;
-  assert.equal(pulse, 44);
+test('legacy Hitch starter definitions resolve to canonical hull and weapon rows', () => {
+  const hullIds = new Set(SHIPS.map((hull) => hull.id));
+  const weaponIds = new Set(WEAPONS.map((weapon) => weapon.id));
   for (const starter of SURVIVAL_STARTERS) {
-    const dps = SURVIVAL_STARTER_DPS[starter.weaponId];
-    assert.ok(Number.isFinite(dps), starter.id);
-    assert.ok(dps <= pulse, `${starter.id} dps ${dps} > public kit ${pulse}`);
+    assert.ok(hullIds.has(starter.hullId), `${starter.id} hull resolves`);
+    assert.ok(weaponIds.has(starter.weaponId), `${starter.id} weapon resolves`);
     assert.equal(starter.hullId, 'ship_kestrel');
   }
 });

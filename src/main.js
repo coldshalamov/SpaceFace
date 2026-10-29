@@ -49,7 +49,7 @@ import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameO
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
-import { ruckusWarmReady } from './render/characters/ruckusModel.js';
+import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
 import {
   settleRequiredPackageAdmission,
   waitForOpeningFirstPicture,
@@ -269,11 +269,9 @@ async function boot() {
       });
       // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
       // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
-      // of dead time before the slot scans and worker dispatch could even start. The
-      // ruckus warm rides alongside it (wave-143): restored entities can materialize RU-7
-      // visuals from the first restore frame, so the synchronous template() contract must
-      // already hold — it resolves in the boot window long before a click can reach here.
-      Promise.all([nextFrame(), ruckusWarmReady]).then(restore).catch((error) => {
+      // of dead time before the slot scans and worker dispatch could even start. Continue
+      // still warms RU-7 before restored entities can materialize its synchronous visual.
+      Promise.all([nextFrame(), warmRuckusModel()]).then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
         // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
         // failure receipts already carry `error`; this outer catch was the bare one.
@@ -660,7 +658,9 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
       newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
-      await ruckusWarmReady;
+      // Adventure keeps the authored Ceres actor ready for hard and continuous sector entry.
+      // A standalone Crucible run cannot enter Ceres and does not request RU-7's four payloads.
+      if (requiresRuckusWarmForNewGame(opts)) await warmRuckusModel();
       if (laneCommandSink()) {
         // Whole-sim-worker lane: the boot's sim mutations replay inside the worker's directive
         // window as one correlated rpc; its ack resolves after the physics-prep promise the

@@ -15,6 +15,7 @@ import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { swarmDoctrineStamp } from '../data/swarmMode.js';
+import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
 import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
@@ -219,12 +220,24 @@ export function materializeWaveBatch(ctx, request) {
   const granted = Math.max(0, budget.request(requested, ownerId) | 0);
   if (granted <= 0) return emptyReceipt(requested);
 
-  const anchor = playerAnchor(ctx);
+  const fortify = req.swarm === true && typeof ctx?.registry?.get === 'function'
+    ? ctx.registry.get('swarmFortify') : null;
+  const ingressPolicy = fortify && typeof fortify.getIngressPolicy === 'function'
+    ? fortify.getIngressPolicy() : null;
+  const fixedAnchor = ingressPolicy?.gateGroupPolicy === 'fortify-three-corridor-v1'
+    ? ingressPolicy.anchor : null;
+  const fortifiedIngress = req.swarm === true && fixedAnchor
+    && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z);
+  const anchor = fortifiedIngress ? fixedAnchor : playerAnchor(ctx);
   const distance = Number.isFinite(req.distance) && req.distance > 0
     ? req.distance
     : SURVIVAL_SPAWN_DISTANCE;
-  const bearing = gateBearing(req.gateGroup);
-  const baseAngle = Math.atan2(bearing.z, bearing.x);
+  const ingressGroup = fortifiedIngress
+    ? (swarmFortifyCorridorForGate(req.gateGroup, req.wave) || req.gateGroup)
+    : req.gateGroup;
+  const bearing = gateBearing(ingressGroup);
+  const baseAngle = Math.atan2(bearing.z, bearing.x)
+    + (fortifiedIngress && Number.isFinite(anchor.rotation) ? anchor.rotation : 0);
   const level = Number.isInteger(req.level) && req.level >= 1 ? req.level : levelForWave(req.wave);
   const rng = mulberry32(batchStreamSeed(
     Number.isInteger(req.seed) ? req.seed : 1,
@@ -235,6 +248,7 @@ export function materializeWaveBatch(ctx, request) {
 
   const spawnedIds = [];
   const reserved = [];
+  let ingressPose = null;
   let deferred = 0;
   // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
   // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
@@ -271,7 +285,7 @@ export function materializeWaveBatch(ctx, request) {
       if (!spec) continue;
       if (req.swarm === true) {
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
-          { velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
+          { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
             clusterRadius: SWARM_CLUMP_RADIUS_WU });
         if (!open) { deferred++; continue; }
         spec.pos = open;
@@ -342,6 +356,17 @@ export function materializeWaveBatch(ctx, request) {
         spec.data.contractTargetId = playerId ?? null;
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
+      if (req.swarm === true && typeof req.gateGroup === 'string' && GATE_BEARINGS[req.gateGroup]) {
+        spec.data.swarmGateGroup = fortifiedIngress ? ingressGroup : req.gateGroup;
+        if (fortifiedIngress) {
+          spec.data.swarmSourceGateGroup = req.gateGroup;
+          spec.data.swarmIngressPose = {
+            x: spec.pos.x,
+            z: spec.pos.z,
+            heading: Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x),
+          };
+        }
+      }
       if (typeof req.role === 'string') spec.data.runRole = req.role;
       // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
       // later boss surface find the round's boss bodies without re-deriving the wave owner's
@@ -368,6 +393,7 @@ export function materializeWaveBatch(ctx, request) {
         }
         continue;
       }
+      if (fortifiedIngress && !ingressPose) ingressPose = { ...spec.data.swarmIngressPose };
       spawnedIds.push(id);
       reserved.push(spec);
     }
@@ -384,6 +410,11 @@ export function materializeWaveBatch(ctx, request) {
     admitted: spawnedIds.length,
     spawnedIds,
     rejected: requested - spawnedIds.length,
+    ...(fortifiedIngress ? {
+      gateGroup: ingressGroup,
+      sourceGateGroup: req.gateGroup,
+      ingressPose: ingressPose ? { ...ingressPose, origin: { x: anchor.x, z: anchor.z } } : null,
+    } : {}),
     ...(deferred > 0 ? { deferred, reason: 'unsafe_arrival' } : {}),
   };
 }

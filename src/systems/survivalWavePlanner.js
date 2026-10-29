@@ -681,7 +681,13 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
     mode: SWARM_RULESET,
-    objective: { kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')) },
+    objective: {
+      kind: swarm.boss ? 'boss' : (surviveRound ? 'survive' : (specialKind || 'resolve_hostiles')),
+      // The ordinary Swarm finish quota is the admitted ship cohort. The typed-array Brood
+      // remains supplemental room pressure; its separate deaths and rewards never become hidden
+      // cleanup debt at the wave boundary.
+      ...(swarm.killTarget > 0 ? { population: 'ships', supplementalPopulation: 'brood' } : {}),
+    },
     packages,
     schedule,
     // An authored act round owns its room: the act table's phase wins over the cycle. A pact

@@ -4,6 +4,8 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // runSession first: New Game must clear the run envelope before any content owner rebuilds.
   // Keeping this on FRESH_RUN_SYSTEMS makes that transition directly testable (the purpose of this file).
   'runSession',
+  'heroManeuvers',
+  'swarmFortify',
   // survivalWave holds the previous run's wave cohort and budget owners. Clear it with the
   // envelope, before spawnBudget wipes the ledger it reserved from.
   'survivalWave',
@@ -70,6 +72,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'secondRinse',
   'towlineTable', 'towlineTablePrompt',
   'shipbreakingYard', 'shipbreakingYardBrowser', 'salvageTender', 'salvageTenderPrompt', 'industrialDisasters', 'rigWorkshop',
+  'borrowedSun', 'borrowedSunPrompt',
   'borrowedVoice', 'borrowedVoicePrompt',
   'salvageOutfits', 'salvageOutfitsPrompt',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not

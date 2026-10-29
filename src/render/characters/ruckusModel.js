@@ -8,21 +8,20 @@ import { RUCKUS_MESH_KEYS, RUCKUS_MESH_LOADERS } from './ruckusMeshData.js';
 import { RUCKUS as C } from '../../data/ruckus.js';
 const templates = new Map();
 // Boot-eval deferral (wave-140 B5): each entry's `json` is stored as text so the module-eval task
-// only interns the string; the document is parsed here on first use or by the post-eval warm
-// below, before the first RU-7 spawn can reach a real frame.
+// only interns the string; the document is parsed here on first use or by an explicit warm before
+// the first RU-7 spawn can reach a real frame.
 const parsedDocs = new Map();
 // Wave-143 (boot F1): the packed {json, binary} entries moved off the static import graph into
-// ruckusMeshData/<key>.js modules. The post-eval warm at the bottom of this file dynamic-imports
-// each payload and feeds the same sliced decode; consumers only ever read this map — populated
-// by warm, or synchronously by coldEntry() where a Node/Electron require() exists.
+// ruckusMeshData/<key>.js modules. The explicit warm dynamic-imports each payload and feeds the
+// same sliced decode; consumers only ever read this map — populated by warm, or synchronously by
+// coldEntry() where a Node/Electron require() exists.
 const meshData = new Map();
 // Cold payload path: require(esm) returns the identical bytes synchronously without a static
 // import — the route Node tests and the Electron renderer take. A browser caller can never
 // reach this: every real template() consumer is post-title, and both title→flight transitions
-// await ruckusWarmReady before any entity can materialize (main.js prepareRun before
-// bootstrapScene; helpers.deferLoadedGameRestore before the chunked save restore). The
-// renderer's mesh-build lane also retries a failed build three times before latching _noMesh,
-// so even a hypothetical cold read degrades instead of faulting the frame.
+// await warmRuckusModel() before any entity can materialize. Browser Adventure launches and
+// restores await this promise; standalone Crucible launches omit it because RU-7 cannot spawn
+// there. The renderer's mesh-build lane also retries a failed build three times before latching _noMesh.
 function coldEntry(key) {
   const nodeModule = globalThis.process?.getBuiltinModule?.('module');
   const req = nodeModule?.createRequire?.(import.meta.url);
@@ -33,8 +32,8 @@ function coldEntry(key) {
   }
   throw new Error(
     `RU-7 asset "${key}" template was read before its data module decoded. This is unreachable `
-    + 'in production (ruckusWarmReady is awaited ahead of every spawn path) — in a workshop, '
-    + 'await ruckusWarmReady first; in Node the require() path resolves the payload synchronously.',
+    + 'in production (warmRuckusModel() is awaited before Ceres spawns) — in a workshop, '
+    + 'await warmRuckusModel() first; in Node the require() path resolves the payload synchronously.',
   );
 }
 const TYPES = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
@@ -42,7 +41,7 @@ const WIDTH = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 const ATTR = { POSITION: 'position', NORMAL: 'normal', TEXCOORD_0: 'uv', COLOR_0: 'color', TANGENT: 'tangent' };
 const sat = v => Math.max(0, Math.min(1, v));
 // Sliced template build (wave-142): templateSteps yields between decode sub-steps — JSON
-// parse, atob, chunked byte copy, materials, per-primitive geometry — so the post-eval warm
+// parse, atob, chunked byte copy, materials, per-primitive geometry — so the demand warm
 // completes the same memo in ~sub-frame tasks instead of one 15-40ms block. template() keeps
 // the synchronous contract: it pumps the same generator to completion, so a real consumer
 // arriving mid-warm finishes the in-flight build instead of duplicating it.
@@ -207,37 +206,49 @@ export function disposeRuckusVisual(root) {
   root.traverse(o => { if (o.geometry && !o.geometry.userData.spacefaceSharedAsset) geometries.add(o.geometry); if (o.material) materials.add(o.material); });
   for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); root.removeFromParent();
 }
-// Post-eval warm (wave-143): fetch + intern each payload module via dynamic import — off the
-// static graph — then advance one template sub-step per task, the same pacing contract the
-// W142 driver had. ruckusWarmReady resolves once every key has a finished template(); the
-// title→flight transitions await it before any entity can materialize, and RU-7 entities only
-// ever spawn inside a run, so no real template() consumer can precede warm completion. A
-// mid-warm template() still pumps the shared pending iterator to completion synchronously.
-export const ruckusWarmReady = typeof window === 'undefined'
-  ? Promise.resolve()
-  : (async () => {
-      const arrivals = new Map(RUCKUS_MESH_KEYS.map((key) => [
-        key,
-        RUCKUS_MESH_LOADERS[key]().then((mod) => meshData.set(key, mod.default)),
-      ]));
-      for (const key of RUCKUS_MESH_KEYS) {
-        await arrivals.get(key);
-        if (templates.has(key)) continue;
-        let it = pendingTemplates.get(key);
-        if (!it) { it = templateSteps(key); pendingTemplates.set(key, it); }
-        try {
-          let step;
-          while (!(step = it.next()).done) {
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          }
-        } finally {
-          pendingTemplates.delete(key);
+// Demand warm (wave-143): the four authored payload modules stay off standalone Crucible's
+// initial-launch request path. Adventure and Continue preserve their pre-flight readiness gate;
+// repeated callers share one promise, and synchronous template() remains authoritative if a
+// renderer consumer arrives mid-warm.
+let ruckusWarmPromise = null;
+export function warmRuckusModel() {
+  if (typeof window === 'undefined') return Promise.resolve();
+  if (ruckusWarmPromise) return ruckusWarmPromise;
+  const pending = (async () => {
+    const arrivals = new Map(RUCKUS_MESH_KEYS.map((key) => [
+      key,
+      RUCKUS_MESH_LOADERS[key]().then((mod) => meshData.set(key, mod.default)),
+    ]));
+    for (const key of RUCKUS_MESH_KEYS) {
+      await arrivals.get(key);
+      if (templates.has(key)) continue;
+      let it = pendingTemplates.get(key);
+      if (!it) { it = templateSteps(key); pendingTemplates.set(key, it); }
+      try {
+        let step;
+        while (!(step = it.next()).done) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
+      } finally {
+        pendingTemplates.delete(key);
       }
-    })();
+    }
+  })();
+  ruckusWarmPromise = pending;
+  pending.catch(() => {
+    if (ruckusWarmPromise === pending) ruckusWarmPromise = null;
+  });
+  return pending;
+}
+
+export function requiresRuckusWarmForNewGame(options = {}) {
+  const requestedStartSector = options.startingSectorId || options.startSectorId;
+  return options.crucibleLaunch !== true || requestedStartSector === C.sectorId;
+}
 /** For isolated workshops/tests after every instance has been destroyed, never during flight. */
 export function clearRuckusModelCache() {
   const geometries = new Set(), materials = new Set();
   for (const root of templates.values()) root.traverse(o => { if (o.geometry) geometries.add(o.geometry); if (o.material) materials.add(o.material); });
   for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); templates.clear();
+  ruckusWarmPromise = null;
 }

@@ -186,6 +186,7 @@ const SCREEN_MODULES = [
   // Both draft surfaces live in one module, so two entries load the same chunk by export name.
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
+  { path: './swarmFortifyPanel.js', load: () => import('./swarmFortifyPanel.js'), name: 'crucibleFortifyScreen' },
   { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleScreen' },
   { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleResultsScreen' },
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },

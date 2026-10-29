@@ -547,6 +547,10 @@ export function fieldBodyProfile(entity, state, out = null) {
   profile.anchored = isAnchoredPhysicalBody(entity) && entity.physicsBody?.anchorRecoil !== false;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
+  const cargoIdentity = entity?.data?.cargoIdentity;
+  const jettisonOrigin = entity?.data?.playerJettisonOrigin;
+  profile.ownerId = cargoIdentity?.ownerId ?? jettisonOrigin?.ownerId
+    ?? entity?.data?.ownerId ?? entity?.ownerId ?? null;
   profile.coated = gooStatus(state, entity) != null;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
@@ -1273,7 +1277,10 @@ export const fields = {
       createdAt: now,
       maxAffected: positive(anchor.maxAffected, def.maxAffected),
       tag: anchor.presentationTag || 'environmental',
-      filters: { excludeId: entity.id },
+      filters: {
+        ...(anchor.filters && typeof anchor.filters === 'object' ? anchor.filters : {}),
+        excludeId: entity.id,
+      },
     });
     rt.anchored[fieldId] = {
       fieldId,
@@ -1299,6 +1306,14 @@ export const fields = {
     });
     this._emitDeployCue('well', entity.pos.x, entity.pos.z, radius);
     return record.id;
+  },
+
+  /** Register a newly-created anchored body before its synchronous purchase transaction commits. */
+  registerAnchoredField(state, entity) {
+    const s = state && state.entities ? state : this.state;
+    if (!s || s !== this.state || !fieldsFlag('enabled') || !entity || entity.alive === false
+      || !entity.data?.fieldAnchor || !this._kernel) return null;
+    return this._registerAnchoredField(entity);
   },
 
   _syncAnchoredFields(state, rt) {
@@ -1345,6 +1360,24 @@ export const fields = {
       }
     }
     return { fieldId: rec.fieldId, armed: rec.armed === true, activateTick: rec.activateTick, radius: rec.radius };
+  },
+
+  /** Retire every anchored field owned by this physical entity immediately. */
+  unregisterAnchoredFields(state, sourceId, reason = 'owner_removed') {
+    const s = state && state.entities ? state : this.state;
+    if (!s || sourceId == null || !this._kernel) return 0;
+    const rt = ensureRuntime(s);
+    let removed = 0;
+    for (const [fieldId, rec] of Object.entries(rt.anchored || {})) {
+      if (!rec || rec.sourceId !== sourceId) continue;
+      this._kernel.unregister(fieldId, 'retired');
+      delete rt.anchored[fieldId];
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason });
+      }
+      removed++;
+    }
+    return removed;
   },
 
   _rebuildAnchoredFieldsFromEntities() {

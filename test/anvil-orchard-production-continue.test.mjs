@@ -73,6 +73,25 @@ test('production Orchard Continue retains loading until the real finalizer and f
   } finally { gate.resolve(true); h.close(); }
 });
 
+test('Continue does not restore entities until the authored Ruckus model warm is ready', { timeout: 15000 }, async () => {
+  const warm = deferred(), requested = deferred();
+  const h = await productionContinueFixture({
+    ruckusWarm: () => { requested.resolve(); return warm.promise; },
+  });
+  try {
+    const loading = h.load();
+    await requested.promise;
+    await nextHostTurn();
+    assert.equal(h.finalizerCalls(), 0, 'save restore remains behind model readiness');
+    warm.resolve();
+    assert.equal(await loading, true);
+    for (let i = 0; i < 20 && h.finalizerCalls() === 0; i += 1) await nextHostTurn();
+    assert.equal(h.finalizerCalls(), 1, 'restore resumes once the real warm promise settles');
+    await h.finalization();
+    assert.equal(h.state.mode, 'flight');
+  } finally { warm.resolve(); h.close(); }
+});
+
 test('production-composed Continue preserves an actual graphics rejection and never hands over flight', { timeout: 15000 }, async () => {
   const gate = deferred(), entered = deferred();
   const h = await productionContinueFixture({ picture: () => { entered.resolve(); return gate.promise; } });

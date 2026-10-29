@@ -10,6 +10,8 @@ import { killcamRecorder } from '../sim/killcamTape.js';
 import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
+import { swarmFortify } from '../systems/swarmFortify.js';
+import { heroManeuvers } from '../systems/heroManeuvers.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
 import { swarmJuice } from '../systems/swarmJuice.js';
@@ -50,6 +52,8 @@ import { towlineTable } from '../systems/towlineTable.js';
 import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
+import { borrowedSun } from '../systems/borrowedSun.js';
+import { borrowedSunPrompt } from '../ui/borrowedSunPrompt.js';
 import { createProExperienceSystemEntries } from '../features/proExperienceSystems.js';
 import { createShipbreakingYardBrowserEntries } from '../features/shipbreakingYard/browser.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
@@ -288,7 +292,7 @@ import { createWreckCourtSystem } from '../systems/wreckCourt.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
-import { isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
+import { getSystemCapability, isNodeSafeSystemId } from '../runtime/authoritativeSystemManifest.js';
 import { laneRpc, laneDomEvent, laneKeepalive } from './simLaneCommands.js';
 import {
   computeDiscoveredRoute,
@@ -301,6 +305,26 @@ import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
 import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
+
+export function isMainLanePresentationSystemId(id) {
+  if (!isNodeSafeSystemId(id)) return false;
+  const capability = getSystemCapability(id);
+  return capability.phase === 'platform' || capability.domGuarded === true;
+}
+
+export function laneSimOwnedSystemIds(systemIds) {
+  return new Set((systemIds || []).filter((id) => (
+    isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id)
+  )));
+}
+
+export function updateMainLaneHudSystems(systems, frameDt, state, onError = null) {
+  for (const system of systems || []) {
+    if (typeof system?.update !== 'function') continue;
+    try { system.update(frameDt, state); }
+    catch (error) { if (typeof onError === 'function') onError(system, error); }
+  }
+}
 
 // Genie 01: one campaign-gated Chronicler per GameState. Crucible/lab runs are run-sealed and
 // never chronicled. The module's default singleton export is for standalone tooling — never
@@ -553,6 +577,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalAnnounce', survivalAnnounce],
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],
+    ['swarmFortify', swarmFortify],
+    ['heroManeuvers', heroManeuvers],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
     ['swarmJuice', swarmJuice],
@@ -622,6 +648,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
     ['borrowedVoicePrompt', borrowedVoicePrompt],
+    ['borrowedSun', borrowedSun],
+    ['borrowedSunPrompt', borrowedSunPrompt],
     ...createProExperienceSystemEntries(),
     ...createShipbreakingYardBrowserEntries(),
     ['planetRuntime', planetRuntime],
@@ -1073,8 +1101,26 @@ export function createRegistry(ctx) {
   // UI owns browser polling; the authoritative pad emits connection notices once.
   if (laneWorker) ctx.gamepad = createGamepad(ctx, { connectionEvents: false, laneHaptics: true });
   const laneSimOwned = laneWorker
-    ? new Set(resolved.authoritativeSystemIds.filter((id) => isNodeSafeSystemId(id)))
+    ? laneSimOwnedSystemIds(resolved.authoritativeSystemIds)
     : null;
+  // Node-safe means the module can also run in a headless realm. It does not
+  // make its DOM observer or event-only prompt a simulation writer. Keep those
+  // owners in the main registry alongside the worker's authoritative sim.
+  const laneMainPresentationIds = laneWorker
+    ? new Set(resolved.authoritativeSystemIds.filter(isMainLanePresentationSystemId))
+    : null;
+  const laneMainHudSystems = laneMainPresentationIds
+    ? SYSTEMS.filter((system) => system && laneMainPresentationIds.has(system.name)
+      && getSystemCapability(system.name).domGuarded === true
+      && typeof system.update === 'function')
+    : null;
+  const laneMainHudErrorCounts = laneMainHudSystems ? new Map() : null;
+  const reportLaneMainHudError = laneMainHudErrorCounts && ((system, error) => {
+    const count = (laneMainHudErrorCounts.get(system.name) || 0) + 1;
+    laneMainHudErrorCounts.set(system.name, count);
+    if (count <= 10) console.error(`[loop] ${system.name} presentation update error:`, error);
+    else if (count === 11) console.error(`[loop] further ${system.name} presentation errors suppressed`);
+  });
 
   // Facade-miss diagnostic: a sim-owned id with no facade resolves undefined
   // and every caller silently degrades — cargo:jettison proved that can mean
@@ -1622,6 +1668,9 @@ export function createRegistry(ctx) {
           now: perfNow,
         });
       } finally {
+        if (laneMainHudSystems) {
+          updateMainLaneHudSystems(laneMainHudSystems, frameDt, state, reportLaneMainHudError);
+        }
         const diag = state.render && state.render.diagnostics;
         try {
           if (diag && typeof diag.update === 'function') diag.update(frameDt);

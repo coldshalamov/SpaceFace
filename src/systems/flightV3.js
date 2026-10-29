@@ -352,6 +352,38 @@ export const flightV3 = {
       this._syncPlayerFlightMode(state, autopilot);
     }
 
+    // Hero maneuvers publish bounded V3 inputs only. The choreography owner cannot write a
+    // pose or velocity; its life- and tick-bound packet is consumed here before propulsion.
+    const maneuverIntent = isPlayer && !saucer ? state.flightRuntime?.heroManeuverIntent : null;
+    const heroManeuverActive = !!(maneuverIntent && maneuverIntent.version === 1
+      && maneuverIntent.tick === state.tick
+      && maneuverIntent.playerId === entity.id
+      && maneuverIntent.occupantGeneration === entity.occupantGeneration);
+    const pinballBoostRequest = isPlayer && !saucer ? state.flightRuntime?.heroManeuverBoost : null;
+    const pinballBoostActive = !!(pinballBoostRequest && pinballBoostRequest.version === 1
+      && pinballBoostRequest.tick === state.tick
+      && pinballBoostRequest.playerId === entity.id
+      && pinballBoostRequest.occupantGeneration === entity.occupantGeneration
+      && pinballBoostRequest.suppressBoost === true);
+    if (heroManeuverActive) {
+      input.throttle = clamp(finite(maneuverIntent.throttle), -1, 1);
+      input.strafe = clamp(finite(maneuverIntent.strafe), -1, 1);
+      input.turn = clamp(finite(maneuverIntent.turn), -1, 1);
+      input.boost = maneuverIntent.boost === true;
+      input.boostPressed = input.boost && !this._prevBoost;
+      input.brake = false;
+      input.drawFlight = undefined;
+      input.travelDrive = undefined;
+      input.velocityVectoring = false;
+      input.unvectoredCruiseSteering = false;
+    }
+    if (pinballBoostActive) {
+      // A fitted Pinball Rush owns the Boost hold/release gesture for this exact hull life and
+      // tick. Ordinary steering remains live; only the competing boost/dash path is suppressed.
+      input.boost = false;
+      input.boostPressed = false;
+    }
+
     // Player boost/dash subsystem (port of src/systems/flight.js:118-188). Runs before
     // stepPropulsion so the resource-gated boost state feeds the propulsion kernel's thrust
     // scaling, and so the dash impulse is queued through physics authority this tick.
@@ -385,7 +417,8 @@ export const flightV3 = {
       // Shift throws a shadow ahead and the release puts the hull there. The
       // capacitor still refills through the boost machine, with the key forced
       // off so a dash impulse and the afterburner cannot also fire.
-      const veil = !saucer && !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      const veil = !saucer && !autoBoost && !pinballBoostActive
+        && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
       let veilBusy = false;
       if (veil) {
         const phase = stepPhaseBlink({
@@ -406,9 +439,22 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || veil || saucer,
+        suppressDash: autoBoost || veil || saucer || pinballBoostActive,
         suppressRegen: requestedTravelBurn || veilBusy,
       });
+      if (pinballBoostActive && typeof pinballBoostRequest.dashRequestId === 'string') {
+        const accepted = this._triggerDash(entity, normalizeBoostResource(entity), state,
+          pinballBoostRequest.dashScale);
+        const runtime = state.flightRuntime || (state.flightRuntime = {});
+        runtime.heroManeuverDashReceipt = {
+          requestId: pinballBoostRequest.dashRequestId,
+          tick: state.tick,
+          playerId: entity.id,
+          occupantGeneration: entity.occupantGeneration,
+          accepted,
+          reason: accepted ? null : 'dash_drive_or_energy_unavailable',
+        };
+      }
       input.boost = boosting;
       if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
         // F6: boost onset overshoots its accel mult for ~0.2 s — the kick after the dash impulse.
@@ -450,7 +496,7 @@ export const flightV3 = {
       // packet carries the resource-gated boost flag and the keys the boost block attached.
       const swingCommit = this._liveSwingCommit(entity, state, rawInput, input);
       orbitAssist = craftOrbitAssistStep(
-        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit,
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit, heroManeuverActive,
       );
       // Engagement memory (chord dwell, grace, tracked direction) lives on the entity and is
       // written only after this steering call, so both calls read the same previous-tick state.
@@ -484,7 +530,7 @@ export const flightV3 = {
       // The module returns ONE bounded additive impulse from thrust the hull already has —
       // it never writes velocity and never clamps earned speed.
       const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
-        controlsBlocked: gridHeld || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        controlsBlocked: gridHeld || heroManeuverActive || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
         tetherLive: !!(tether && tether.active === true),
         autopilotActive: !!(autopilot && autopilot.active),
       });
@@ -773,7 +819,7 @@ export const flightV3 = {
     return boosting;
   },
 
-  _triggerDash(e, boost, state) {
+  _triggerDash(e, boost, state, impulseScale = 1) {
     if (!(boost.dashImpulse > 0)) return false;
     if (boost.dashCdT > 0 || boost.energy < boost.dashCost) {
       // The press already happened. Don't play the success kick; say which gate held.
@@ -786,7 +832,7 @@ export const flightV3 = {
       return false;
     }
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
-    let imp = boost.dashImpulse;
+    let imp = boost.dashImpulse * clamp(finite(impulseScale, 1), 1, 1.5);
     let dirX = cf, dirZ = sf;
     let swung = false;
     let swingSign = 1;
@@ -1259,7 +1305,7 @@ const _diagArgs = { body: null, profile: null, control: _diagControl };
  * the probe's `.active` is always the steering call's `.active`: suppression owns exactly the
  * ticks the assist owns.
  */
-function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt, swingCommit) {
+function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt, swingCommit, maneuverActive = false) {
   const forward = finite(rawInput && (rawInput.moveZ ?? rawInput.throttle));
   const commitDirection = swingCommit && forward > ORBIT_ASSIST_TUNING_V1.minIntent
     ? swingCommit.direction
@@ -1281,7 +1327,7 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
     profile,
     strength: state.settings && state.settings.gameplay
       && state.settings.gameplay.orbitAssistStrength,
-    controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+    controlsBlocked: maneuverActive || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
   });
 }
 

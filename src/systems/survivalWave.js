@@ -1085,7 +1085,9 @@ export const survivalWave = {
         wave: this._wave,
         role: entry.role,
         enemyId: entry.enemyId,
-        gateGroup: entry.gateGroup,
+        gateGroup: receipt.gateGroup || entry.gateGroup,
+        ...(receipt.sourceGateGroup ? { sourceGateGroup: receipt.sourceGateGroup } : {}),
+        ...(receipt.ingressPose ? { ingressPose: receipt.ingressPose } : {}),
         atTick,
         requested: receipt.requested,
         admitted: receipt.admitted,
@@ -1689,6 +1691,11 @@ export const survivalWave = {
       this._emit(WAVE_CLEARED_SEAM, {
         wave: this._wave,
         completionKind: this._swarm.killTarget ? 'cohort' : 'duration',
+        ...(this._swarm.killTarget > 0 ? {
+          objectiveKind: this._plan?.objective?.kind || 'resolve_hostiles',
+          objectivePopulation: this._plan?.objective?.population || 'ships',
+          supplementalPopulation: this._plan?.objective?.supplementalPopulation || 'brood',
+        } : {}),
         durationTicks: this._durationTicks,
         requested: this._requestedTotal,
         admitted: this._admittedTotal,
@@ -1921,7 +1928,16 @@ export const survivalWave = {
       const remaining = Math.max(0, this._plannedBodies - this._resolved);
       if (!force && remaining === this._lastProgressSecond) return;
       this._lastProgressSecond = remaining;
-      this._emit('run:waveProgress', { wave: this._wave, remaining, total: this._plannedBodies, completionKind: 'cohort', circuit });
+      this._emit('run:waveProgress', {
+        wave: this._wave,
+        remaining,
+        total: this._plannedBodies,
+        completionKind: 'cohort',
+        objectiveKind: this._plan?.objective?.kind || 'resolve_hostiles',
+        objectivePopulation: this._plan?.objective?.population || 'ships',
+        supplementalPopulation: this._plan?.objective?.supplementalPopulation || 'brood',
+        circuit,
+      });
       return;
     }
     const durationTicks = Number.isInteger(this._durationTicks) && this._durationTicks > 0

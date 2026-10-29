@@ -44,19 +44,15 @@ import {
 } from '../src/systems/borrowedSun.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { BORROWED_SUN as C, BORROWED_SUN_BERTHS as BERTHS } from '../src/data/borrowedSun.js';
+import { RACING_CIRCUITS } from '../src/data/raceLevels.js';
+import { configureRacingCorridorSession, isRacingCorridorSession } from '../src/world/racingCorridor.js';
 
 const SEED = 7331;
 const tick = (s) => Math.ceil(s * 60);
 
 function boot({ credits = 50000, sectorId = BERTHS[0].sectorId } = {}) {
   const bus = createBus();
-  const helpers = {
-    borrowedSunPhysicalBody: () => ({
-      dynamic: false, radius: C.radius, mass: 1e6,
-      collisionProxyManifest: { id: 'sun-berth-proxy', docking: true }, revision: 1,
-    }),
-  };
-  const sim = createSimulation({ seed: SEED, bus, systems: [spawnBudget, borrowedSun], helpers });
+  const sim = createSimulation({ seed: SEED, bus, systems: [spawnBudget, borrowedSun] });
   const { state } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = sectorId;
@@ -158,6 +154,61 @@ test('borrowedSunServiceStatus reads the owner; foreign stations pass through', 
   // No native physics authority in the focused fixture — the honest answer is unavailable.
   assert.equal(st.ok, false);
   assert.equal(st.reason, 'carrier_unavailable');
+});
+
+test('Borrowed Sun stays dormant and rejects stale business outside ordinary Adventure', () => {
+  const contexts = [
+    ['Survival', (state) => { state.run = { kind: 'survival', phase: 'active' }; }],
+    ['physics venue session', (state) => { state.physicsVenueSession = { venueId: 'test-course' }; }],
+    ['active physics venue', (state) => { state.physicsVenue = { active: true }; }],
+    ['temporary racing corridor', (state) => {
+      const sectorId = RACING_CIRCUITS[0].sectorId;
+      state.world.sectors = { [sectorId]: { id: sectorId } };
+      configureRacingCorridorSession(state, true);
+      assert.equal(isRacingCorridorSession(state), true);
+    }],
+  ];
+
+  for (const [label, enterContext, leaveContext = null] of contexts) {
+    const { sim, state, bus, player, sys } = boot();
+    try {
+      enterContext(state);
+      sim.runTicks(3, 1 / 60);
+      assert.equal(sys._find(), null, `${label}: no carrier materializes`);
+      assert.equal(sys._row.phase, 'arrive', `${label}: visit clock stays at its initial phase`);
+      assert.equal(sys._book().nextShadowAt, 0, `${label}: the ledger clock does not advance`);
+      assert.equal(borrowedSunServiceStatus(state, C.stationId).reason, 'wrong_context');
+
+      if (leaveContext) leaveContext(state);
+      else if (label === 'Survival') state.run.phase = 'inactive';
+      else if (label === 'physics venue session') state.physicsVenueSession = null;
+      else if (label === 'active physics venue') state.physicsVenue.active = false;
+      else configureRacingCorridorSession(state, false);
+
+      sim.runTicks(3, 1 / 60);
+      const carrier = sys._find();
+      assert.ok(carrier, `${label}: the ordinary Adventure carrier can still materialize`);
+      sys._phase('open');
+      state.player.targetId = carrier.id;
+      player.pos.x = carrier.pos.x;
+      player.pos.z = carrier.pos.z + C.hailRange - 5;
+      assert.equal(sys.offer(), true, `${label}: ordinary Adventure can hail the carrier`);
+
+      enterContext(state);
+      const credits = state.player.credits;
+      const shadowClock = sys._book().nextShadowAt;
+      const leaseCount = sys._book().leases.length;
+      sim.runTicks(3, 1 / 60);
+      bus.emit('borrowedSun:leaseBuy', { visitId: sys._row.visitId });
+      assert.equal(state.player.credits, credits, `${label}: a stale prompt cannot charge credits`);
+      assert.equal(sys._book().leases.length, leaseCount, `${label}: a stale prompt cannot create a lease`);
+      assert.equal(sys._book().nextShadowAt, shadowClock, `${label}: its ledger does not advance while excluded`);
+      assert.equal(sys.offer(), false, `${label}: a stale hail is not re-presented`);
+    } finally {
+      configureRacingCorridorSession(state, false);
+      sim.dispose();
+    }
+  }
 });
 
 // ── Mirror array ──────────────────────────────────────────────────────────────

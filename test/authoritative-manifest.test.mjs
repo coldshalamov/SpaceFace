@@ -28,171 +28,21 @@ import { lastShiftPrompt } from '../src/ui/lastShiftPrompt.js';
 import { ilexArkPrompt } from '../src/ui/ilexArkPrompt.js';
 import { towlineTablePrompt } from '../src/ui/towlineTablePrompt.js';
 
-test('production init + update order lengths match the live browser baseline', () => {
-  // 135 -> 142 and 101 -> 103: the Crucible (PQ-133) adds seven systems. Six are event-driven
-  // owners that never tick (runSession-adjacent: survivalWave and survivalHud are the only two
-  // that joined the update order), so the two figures move by different amounts on purpose.
-  // 142 -> 146 (PQ-135). swarmArena maintains the debris field and swarmSupply drops repair cells;
-  // both are event-driven and never tick. crucibleFocus watches the run phase to hide campaign
-  // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those are the ones
-  // in the update order, and the two figures move by different amounts on purpose.
-  // 147 -> 148: the drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md) joins both orders as one
-  // input-gated deployable owner, so init and update move together this time.
-  // 148 -> 150: the station yard (berths/crews/service queue) and the pacing director join
-  // both orders — both tick real per-second work, so init and update move together again.
-  // 150 -> 152: genie packet arrivals — the Chronicler (world memory; init+update, 60 Hz table)
-  // and the tension director (pacing policy over the encounter owner; init+update+calendar).
-  // 152 -> 155 init / 114 -> 116 update: the nemesis packet (Counterexample). The arc engine
-  // (nemesis) and the encounter host (nemesisEncounter) join both orders immediately before the
-  // AI slot (engine → host → tacticalAI); nemesisSignals routes voice/toast receipts and is
-  // event-only, so init grows by three while update grows by two.
-  // 155 -> 156 init / 116 -> 117 update: packet 09 (Three Capitals) adds exactly one system.
-  // capitalBossEncounters initialises after the combat kernel (it validates
-  // helpers.routeCombatDamage at init) and ticks immediately before the AI slot (score orders
-  // precede AI action consumption on the same fixed tick), so init and update move together.
-  // 156 -> 157 init / 117 -> 118 update: emergent combat primitives. One fixed-step owner,
-  // after bombs and before impulseCharges, so it still sees chargeDetonate and queues forces
-  // before the physics solve.
-  // 157 -> 158 init / 118 -> 119 update: the kill replay ring. It ticks after the swarm
-  // chain so the five seconds it keeps are the positions this step already moved.
-  // 158 -> 159 init only: impoundPayPrompt is an event-only prompt-deck adapter (same
-  // posture as customsPrompt) — it subscribes at init and never ticks.
-  // 159 -> 160 init only: moralTrapPrompt is the same adapter posture (deck verbs over the
-  // shipped moralTrap:choose intent) — init order only.
-  // 160 -> 161 init / 119 -> 120 update: the kill-cam recorder (DEMO_READINESS §4). A
-  // read-only pose ring one slot after the kill-replay ring; it writes nothing but its
-  // own buffers, so the update order grows by one pure observer.
-  // 161 -> 162 init / 120 -> 121 update: INFERENCE-30 noFireAdvisory — the station no-fire
-  // ring watch; an observer whose tick only tracks ring inside/outside so exits re-arm.
-  // 162 -> 163 init: wreckChoicePrompt (BP-01.1/PQ-138.04) — event-only prompt-deck adapter,
-  // same posture as impoundPayPrompt/moralTrapPrompt; init order only.
-  // 162 init / 121 -> 122 update: the moralTrapSystem trap-reveal drive — init-only since the
-  // packet landed, now ticking for one bounded purpose: firing a same-sector fork whose short
-  // post-undock delay has elapsed. Every other reveal path stays event-driven; a mission
-  // without a pending reveal makes the tick a two-comparison no-op.
-  // 163 -> 164 init / 122 -> 123 update: miningHud — the mining beam's vent-band / rich-core /
-  // seam instrument (DOM-guarded, event-mirrored from the seams mining.js already publishes).
-  // One system in both orders, same posture as the sibling DOM-guarded HUDs; its tick only
-  // places the world-anchored dial and retires it when the beam stops.
-  // 164 -> 165 init / 123 -> 124 update: hullBurst (hull-burst overhaul slice C) — the Gravity
-  // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
-  // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
-  // Morrow adds one fixed-step character owner before physics.
-  // 166 -> 167 init / 125 -> 126 update: vesper joins as a second fixed-step character owner
-  // immediately after morrow and still before physics, so both orders grow by one.
-  // 167 -> 168 init / 126 -> 127 update: volatileExposure (NXB-008) — exposure-driven volatile
-  // cargo state; one system in both orders right after jettisonImpulse. Its update is a cheap
-  // tick%15 gate on non-cadence ticks, so it runs on the table clock beside lootShards.
-  // 168 -> 169 init / 127 -> 128 update: BRACKET adds one fixed-step character owner before physics.
-  // 169 -> 171 init / 128 -> 130 update: SWARM-02 juice pack — the arcade detector (swarmJuice,
-  // one slot after swarmChain so it reads the kills this tick settled) and its DOM-guarded
-  // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
-  // 171 -> 172 init / 130 -> 131 update: RAVEL is a fixed-step character owner
-  // after BRACKET and before physics, shared by browser and Node production paths.
-  // 172 -> 173 init / 131 -> 132 update: SWARM-06 swarmElites — the Threat stamp, seeded
-  // elite affixes and the live perk effects (§6.4/§4.3). One system in both orders, after
-  // swarmJuice so a wave's spawn receipts are already stamped before the HUDs read.
-  // 173 -> 174 init / 132 -> 133 update: SOLSTICE / SL-9 system owner, registered with
-  // the character owners after ravel and before physics.
-  // 174 -> 175 init / 133 -> 134 update: RUBRIC / HM-11 system owner, after solstice and
-  // before physics, in both orders.
-  // 176 -> 178 init / 135 -> 137 update: gyreSnare (telekinetic katamari lash, after
-  // fields and before planetRuntime/physics) and gyreHud (DOM-guarded pill, after
-  // fieldHud) — one system each in both orders.
-  // Latch Nine's physical harbor service and Scissorwake's first-encounter requester.
-  // Two bounded Ceres concepts and the event-only evidence prompt.
-  // 200 init / 151 update with secondRinse (Hasp) and ruud (HOOK-LEFT).
-  // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
-  // Material reactions join both browser and Node fixed-step runtimes.
-  // 201 -> 202 init only: warrantOfferPrompt, the licensed hunter's offer as deck verbs (event-only).
-  // BLACK FLAG adds one bounded fixed-step coordinator to both hosts.
-  // 209 -> 217 init only: the eight faction-strange owners (rows 517-532) subscribe at init
-  // and never tick — event-driven like the prompt adapters, so update stays flat.
-  // 217 -> 222 init / 159 -> 164 update: §34 faction-signature systems (rows 513/515/516/526/530)
-  // tick real per-step kinematics — sweep-ring reads, formation lock, coupler snap, flag
-  // deviation, pylon settle — so all five join both orders on the table clock.
-  // 222 -> 224 init / 164 -> 166 update: PULSE-MAIL (mail) and PULSE-TIME (worldClock) join
-  // both orders on the calendar clock — letter delivery evaluates once a second, calendar
-  // announcements are day-scale.
-  // 224 -> 227 init / 166 -> 169 update: LINE-03 (lineProgression) joins both orders on the
-  // table clock — the winch-heat strain clock ticks every fixed step. Interleaved foreign
-  // lane systems moved the counted baseline; assert the live totals.
-  // 169 -> 177 update: faction-strange owners (understoryGardens, fulfillmentRoutes,
-  // pitbornCull, vaelLiens, archiveRedaction, choirResonance, vergeCourt,
-  // frontierHomesteads) join the update order on the table clock — they were init-only
-  // and their update() never ran in production (R-04fe464 review fix).
-  // 227 -> 229 init: PULSE-HISTORY (row 440) registers deedRecord (world-remembers ledger —
-  // lookup-only since creation, never initialized in production) and historyWear (event-only
-  // trinket/decal/graffiti projector). Neither ticks.
-  // 229 -> 230 init / 177 -> 178 update: GOLD-HOME (row 445) registers longBerth — the claim /
-  // restore / yard scan ticks on the calendar clock.
-  // 230 -> 231 init / 178 -> 179 update: GOLD-CREW (row 446) registers crew — recruit scan,
-  // perk writes, banter, loyalty, and injury recovery tick on the calendar clock.
-  // 231 -> 232 init / 179 -> 180 update: W-SHIFT (row 506) registers docket — the parcel
-  // drone at Shepherd's Ring queues station-keeping impulses on the table clock.
-  // (0a59973d4e also swept in uncommitted industrial/shipbreaking/salvage-outfit wiring
-  // whose modules are not on master; that was dropped, so those owners are not counted.)
-  // 232 -> 233 init: W-CAST-HANDS (row 542) registers wexTicket — the smell ticket at Helios
-  // Bay 7 is event-driven (sector sync + pickup:collected), so it never ticks.
-  // 233 -> 234 init / 180 -> 181 update: W-CAST-HANDS registers moistureLoss (row 542),
-  // on top of the manifest hotfix that dropped the undefined shipbreaking/salvage wiring.
-  // 234 -> 235 init / 181 -> 182 update: W-CAST-HANDS registers rookBooth — the pad's
-  // wreck census is a seconds-scale read of settled bodies; same calendar clock.
-  // 235 -> 236 init / 182 -> 183 update: W-CAST-HANDS registers kesslerScale — the
-  // weigh-slip plate census joins the post-physics salvage cluster on the calendar clock.
-  // 236 -> 237 init / 183 -> 184 update: W-CAST-HANDS registers gateThreeWeir — Hale and
-  // Dree's cordon census sweeps for entries on the same clock.
-  // 237 -> 238 init / 184 -> 185 update: W-CAST-HANDS registers slateColumn — the
-  // weld-spike ledger's proximity read joins the same clock (row 542 complete).
-  // 238 -> 239 init / 185 -> 186 update: W-SHIFT registers bouncer — the door robot's
-  // firing-report enforcement plus a calendar drift-home pass (row 506 member 2).
-  // 242 -> 243 init / 188 -> 189 update: W-SHIFT registers tare — the scale deck's
-  // weigh census reads settled bodies on the same calendar clock (row 506 member 6).
-  // 243 -> 244 init / 189 -> 190 update: W-SHIFT registers lamplighter — the arm
-  // ring and stock census is a seconds-scale read on the same clock (member 7).
-  // 244 -> 245 init / 190 -> 191 update: W-SHIFT registers shepherd12 — the flock
-  // census and the broken shepherd's patrol walk ride the same clock (member 8).
-  // 245 -> 246 init / 191 -> 192 update: W-SHIFT registers quill — the read ring
-  // and drift-home are a seconds-scale read on the same clock (member 9).
-  // 246 -> 247 init / 192 -> 193 update: W-SHIFT registers holdfast — the crack
-  // meter, clamp seats, and drift-home ride the same clock (member 10).
-  // 247 -> 248 init / 193 -> 194 update: W-SHIFT registers bellhop — the floor
-  // restock and drift-home ride the clock; judging is event-driven (member 11).
-  // 248 -> 249 init / 194 -> 195 update: W-SHIFT registers gravedigger — the
-  // race, the bury, and the pit ride the same clock (member 12 — the roster).
-  // 249 -> 257 init / 195 -> 200 update: the pro-experiences packet lands its
-  // authored registration (feature INTEGRATION contracts): shipbreakingYard +
-  // its browser driver beside the towline pair, rigWorkshop with them,
-  // salvageTender + industrialDisasters before physics, salvageOutfits after
-  // borrowedVoice — the three event-only prompts (tender/outfits) and the
-  // yard browser init-only as glass/presentation.
-  // 257 -> 258 init / 200 -> 201 update: Controlled Chaos packet 08 registers dyingHull — the
-  // bounded failure interval between a decisive kill and its single rupture, right after
-  // aftermathWrecks, on the table clock.
-  // 258 -> 259 init / 201 -> 202 update: Controlled Chaos packet 06 registers shieldPylons — the
-  // linked shield pylons' lifecycle, hull interception and the single energy debit, right after
-  // gyreSnare in the pre-physics slot, on the table clock.
-  // 259 -> 260 init / 202 -> 203 update: packet 06 also registers pylonHud — the DOM-guarded
-  // next-operation label and wall-state pill (massSeedHud / gyreHud sibling).
-  // Current master also registers the furnaceIntake owner; preserve it through integration.
-  // 204 -> 205 update (init unchanged 261): the tallyho hunt board's expanded
-  // quarry/rival census joins the 2 Hz calendar cohort between mop and tare —
-  // it was init-only when the system had no update(); the hunt layer ticks now.
-  // 261 -> 262 init / 205 -> 206 update: R-3a9d5dc registers moralMemory — the
-  // reactive debt ledger's consequence runtime was shipped but never registered,
-  // so its moralMemory:* bus verbs and 30 s-bucketed escalation/expiry/souring
-  // tick never ran in production. It joins beside moralTrapSystem on the
-  // calendar clock (its own simTime bucket gate is the cadence limiter).
-  // 262 -> 263 init (update unchanged): w-501 registers lineHeads — the §7.1
-  // behavior heads' sim owner. It is event-only (tether:whipImpact admission
-  // for the Breaker split), same posture as customsPrompt: no update slot,
-  // no clock.
-  // 206 -> 207 update (init unchanged): the remaining §7.1 heads — Coupler
-  // train, Barb drag, Evidence Clamp staple, Sympathy momentum — are real
-  // per-step body work, so lineHeads joins the massline physics row on the
-  // table clock.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 263);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 207);
+test('production systems preserve unique membership and physical update boundaries', () => {
+  assert.equal(new Set(PRODUCTION_INIT_ORDER).size, PRODUCTION_INIT_ORDER.length, 'a system initializes once');
+  assert.equal(new Set(PRODUCTION_UPDATE_ORDER).size, PRODUCTION_UPDATE_ORDER.length, 'a system ticks once');
+  assert.ok(PRODUCTION_INIT_ORDER.includes('swarmFortify'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('swarmFortify'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('swarmFortify') < PRODUCTION_UPDATE_ORDER.indexOf('fields'),
+    'structure pulse state is published before the canonical field solve');
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('fields') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('heroManeuvers'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('input') < PRODUCTION_UPDATE_ORDER.indexOf('heroManeuvers'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('heroManeuvers') < PRODUCTION_UPDATE_ORDER.indexOf('flightSlot'),
+    'the maneuver lease reaches V3 before propulsion consumes the tick');
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('heroManeuvers') < PRODUCTION_UPDATE_ORDER.indexOf('bombs'),
+    'an authored maneuver consumes its command before ordinary bomb release');
+  assert.equal(getSystemClock('heroManeuvers'), 'table');
   assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {

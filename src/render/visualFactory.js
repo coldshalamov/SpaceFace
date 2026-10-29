@@ -1,3 +1,4 @@
+import { buildSwarmFortifyVisual } from './swarmFortifyVisuals.js';
 import { lastShiftPackagedFile } from './lastShiftVisualIdentity.js';
 export { lastShiftPackagedFile };
 import { buildRigWorkshopBody, isRigWorkshopBody } from '../features/rigWorkshop/view.js';
@@ -4363,6 +4364,10 @@ export function combatSpawnableExemplarSpecs(idPrefix = 'survival-roster-prewarm
     // program family is novel the first time a beacon mounts inside a live round.
     { ...base(), id: `${prefix}beacon`, type: 'beacon', radius: 10, data: {} },
     { ...base(), id: `${prefix}beacon:dead`, type: 'beacon', radius: 10, data: { laneBeaconDead: true } },
+    ...['gravity_beacon', 'repulsor_pylon', 'tesla_pair', 'kinetic_turret'].map(deviceId => ({
+      ...base(), id: `${prefix}fortify:${deviceId}`, type: 'beacon', radius: 12,
+      hull: 140, hullMax: 140, data: { swarmFortify: { deviceId } },
+    })),
     // Scripted-intro species the entity-driven cook never sees: the rescue cast's scout is a
     // drone, the grab pod a payload, the run beacon a rescueExit beacon — each mounts the same
     // procedural + packaged-body families a live spawn draws. The data flags are exactly the
@@ -7045,7 +7050,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
           // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
           // traffic haulers are closed-form route visuals that must render as haulers, not as
           // player-cyan default kestrels — hence the neutral-team mule wrap.
-          case 'beacon': return stampBuiltVisual(buildBeacon(e));
+          case 'beacon': return stampBuiltVisual(buildSwarmFortifyVisual(e) || buildBeacon(e));
           case 'freighter': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(laneTrafficVisualEntity(e), resolvePalette(laneTrafficVisualEntity(e)))));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return stampBuiltVisual(buildFallback(e));

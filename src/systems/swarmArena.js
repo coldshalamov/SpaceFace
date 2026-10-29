@@ -786,6 +786,22 @@ export const swarmArena = {
     resetSwarmPressureState();
   },
 
+  queryBroodProjectileHit(request, out) {
+    return this._brood?.queryProjectileHit?.(request, out) || null;
+  },
+
+  queryBroodTarget(request, out) {
+    return this._brood?.queryNearestDirectTarget?.(request, out) || null;
+  },
+
+  commitBroodProjectileHit(candidate, request) {
+    return this._brood?.commitProjectileHit?.(candidate, request) || { ok: false, reason: 'brood_unavailable' };
+  },
+
+  damageBroodSegment(request) {
+    return this._brood?.damageSegment?.(request) || { hits: 0, reason: 'brood_unavailable' };
+  },
+
   /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
   update() {
     const state = this.state;

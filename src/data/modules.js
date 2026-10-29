@@ -591,6 +591,16 @@ const SHIPPED_MODULES = [
     energyDraw: 1, mods: { phaseBlink: true },
   },
   {
+    id: 'mod_boomerang_run', name: 'Boomerang Run', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 0, mods: { heroManeuver: 'boomerang_bomb_run' },
+    sentence: 'Lock a hostile and press Bomb to bank through a real bomb release, then phase back to a reserved clear point.',
+  },
+  {
+    id: 'mod_pinball_rush', name: 'Pinball Rush', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
+    energyDraw: 0, mods: { heroManeuver: 'pinball_rush' },
+    sentence: 'Hold Boost while aiming at a clear hostile lane, then release for one charged physical dash.',
+  },
+  {
     // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
     // drawn to the hull (bounded attraction through physics authority), so salvage is a fly-by
     // instead of a latch-per-piece. Consumed via derived.lootMagnetRange by systems/lootShards.js.

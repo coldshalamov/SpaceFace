@@ -58,7 +58,9 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   if (!proposed || !Number.isFinite(proposed.x) || !Number.isFinite(proposed.z)
     || !Number.isFinite(radius) || radius < 0) return null;
   const player = state?.entities?.get?.(state.playerId);
-  const anchor = player?.pos || { x: 0, z: 0 };
+  const fixedAnchor = options.anchor;
+  const anchor = fixedAnchor && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z)
+    ? fixedAnchor : player?.pos || { x: 0, z: 0 };
   const dx = proposed.x - finite(anchor.x);
   const dz = proposed.z - finite(anchor.z);
   const initial = Math.hypot(dx, dz);

@@ -63,7 +63,11 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { Masks } from '../core/entity.js';
-import { readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
+import { readPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { ensureCombatant } from '../combat/runtime.js';
+import { getCombatKernel } from '../combat/kernel.js';
+import { CRYO_LOCK_DURATION_TICKS, CRYO_LOCK_STATUS_ID } from '../combat/cryoLock.js';
+import { BURNING_STATUS_ID } from '../combat/thermalShock.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
@@ -99,6 +103,7 @@ import {
   CRYO_PROP_VENT_TICKS,
   applyCryoDrift,
   createCryoRoomLineage,
+  cryoZoneAt,
   planCryoInstall,
 } from './cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
@@ -118,6 +123,9 @@ import { createSwarmEventDirector, swarmEventFrame, bearingPoint } from './swarm
 import { createSwarmLegendaryDirector } from './swarmLegendaries.js';
 import { createSwarmCallinsDirector } from './swarmCallins.js';
 import { swarmEventFor } from '../data/swarmEvents.js';
+
+const CRYO_LOCK_REFRESH_LEAD_TICKS = 30;
+const BURNING_STATUS_DURATION_TICKS = 120;
 
 export { CINDER_ARENA_ID, CRYO_ARENA_ID, LAGRANGE_ARENA_ID, STORM_ARENA_ID, MILL_ARENA_ID, HIVE_ARENA_ID };
 export const LAW_ARENA_IDS = Object.freeze([
@@ -1711,28 +1719,95 @@ export const survivalArena = {
 
   _tickCryo(state) {
     const room = this._cryoRoom;
-    if (!room) return;
+    const ctx = this.ctx;
+    if (!room || !ctx || !ctx.state || ctx.state !== state) return;
     this._syncCryoProps(state);
     const bodies = liveArenaBodies(state);
     const lineage = createCryoRoomLineage(Number.isInteger(state && state.tick) ? state.tick : 0);
+    const kernel = getCombatKernel(ctx);
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
     for (let i = 0; i < bodies.length; i++) {
       const entity = bodies[i];
-      const before = bodySnapshot(entity);
-      const result = applyCryoDrift(before, room, { lineage });
-      if (result.zone === 'outside' || result.zone === 'insulated') {
+      const zone = cryoZoneAt(room, entity.pos);
+      if (zone === 'outside' || zone === 'insulated') {
         if (this._cryoShocked) this._cryoShocked.delete(entity.id);
         continue;
       }
-      entity.controlScale = result.controlScale;
-      entity.statuses = result.statuses;
-      if (result.shock && result.shock.ok) {
-        if (!this._cryoShocked.has(entity.id)) {
-          this._cryoShocked.add(entity.id);
-          writeVel(entity, result.vx, result.vz);
-        }
-      } else if (this._cryoShocked) {
-        this._cryoShocked.delete(entity.id);
+      // A resolved shock consumes its source statuses once for this stay in the overlap.
+      // Re-applying both every tick would turn a single thermal reaction into an impulse loop.
+      const alreadyShockedThisExposure = !!(this._cryoShocked && this._cryoShocked.has(entity.id));
+      if (zone === 'shock' && alreadyShockedThisExposure) continue;
+
+      const runtime = ensureCombatant(state, entity, kernel.catalog);
+      if (!runtime) continue;
+      const cryo = runtime.statuses && runtime.statuses[CRYO_LOCK_STATUS_ID];
+      const burning = runtime.statuses && runtime.statuses[BURNING_STATUS_ID];
+      const hasPending = (id) => Array.isArray(runtime.pendingStatuses)
+        && runtime.pendingStatuses.some((status) => status && status.id === id);
+      const wantsCold = zone === 'cold' || zone === 'shock';
+      const wantsHot = zone === 'hot' || zone === 'shock';
+      if (wantsCold && !hasPending(CRYO_LOCK_STATUS_ID)
+        && (!cryo || cryo.expiresTick <= tick + CRYO_LOCK_REFRESH_LEAD_TICKS)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: CRYO_LOCK_STATUS_ID,
+          stacks: 1,
+          durationTicks: CRYO_LOCK_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
       }
+      // Burning stacks are gameplay damage. Refresh only after expiry so standing in one hot
+      // pocket cannot build three stacks just by ticking the arena system.
+      if (wantsHot && !burning && !hasPending(BURNING_STATUS_ID)) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: 1,
+          durationTicks: BURNING_STATUS_DURATION_TICKS,
+        }, { attackerId: CRYO_ARENA_ID });
+      }
+
+      const statusIds = [];
+      if (cryo && cryo.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(cryo.stacks || 1)); stack++) statusIds.push(CRYO_LOCK_STATUS_ID);
+      }
+      if (burning && burning.expiresTick > tick) {
+        for (let stack = 0; stack < Math.max(1, Math.trunc(burning.stacks || 1)); stack++) statusIds.push(BURNING_STATUS_ID);
+      }
+      const result = applyCryoDrift({ ...bodySnapshot(entity), statuses: statusIds }, room, { lineage });
+      const hasCanonicalCryo = !!(cryo && cryo.expiresTick > tick);
+      const hasCanonicalBurning = !!(burning && burning.expiresTick > tick);
+      if (alreadyShockedThisExposure || !hasCanonicalCryo || !hasCanonicalBurning
+        || !result.shock || !result.shock.ok) continue;
+
+      // Status ownership remains in the combat kernel. Thermal Shock consumes one burn stack;
+      // rebuild only its remainder through the same service, preserving its remaining lifetime.
+      const remainingBurnStacks = Math.max(0, Math.trunc(burning && burning.stacks || 0) - 1);
+      const burnRemainingTicks = Math.max(1, Math.trunc((burning && burning.expiresTick || tick + 1) - tick));
+      kernel.statuses.clear(entity, runtime, CRYO_LOCK_STATUS_ID, 'thermal_shock');
+      kernel.statuses.clear(entity, runtime, BURNING_STATUS_ID, 'thermal_shock');
+      if (remainingBurnStacks > 0) {
+        kernel.statuses.schedule(entity, runtime, {
+          id: BURNING_STATUS_ID,
+          stacks: remainingBurnStacks,
+          durationTicks: burnRemainingTicks,
+        }, { attackerId: burning.attackerId, actionId: burning.actionId });
+      }
+
+      const bodySpec = resolvePhysicsBodySpec(entity);
+      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass : 1;
+      const impulse = result.shock.impulse;
+      if (impulse) {
+        queuePhysicsImpulse(entity, { x: impulse.x * mass, y: 0, z: impulse.z * mass }, {
+          tick,
+          kind: 'cryo_thermal_shock',
+          actorId: CRYO_ARENA_ID,
+        });
+      }
+      const subsystemPulse = result.shock.subsystemPulse;
+      if (subsystemPulse) {
+        kernel.pulseSubsystem(entity.id, subsystemPulse.id, subsystemPulse.pulse, {
+          attackerId: CRYO_ARENA_ID,
+        });
+      }
+      if (this._cryoShocked) this._cryoShocked.add(entity.id);
     }
   },
 
