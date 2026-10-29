@@ -112,6 +112,57 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   'world:requestUnfiledJump': SILENT('The request is UI copy, not a world sting.'),
 
   alarm: SILENT('The wanted alarm is the existing heat voice, not a new siren.'),
+  // The bazaar bouncer's warning speaks as its comms popup line; the cleared record is bookkeeping.
+  'bouncer:wanted': SILENT('The bouncer warns through the comms popup line, not a second sting.'),
+  'bouncer:wantedCleared': SILENT('A cooled bazaar record is bookkeeping; nothing audible happened.'),
+  // Hired muscle physically shoving a hull off the berth is the shove's own voice, at the hull.
+  'bouncer:muscleShove': 'sfx_bomb_concussion_shove',
+
+  // ── Ear-audit coverage: every landed gameplay emit names a voice or its documented silence ──
+  // Drill charge sequence: the arming toggle detents, the charge bites the rock on a latch, the
+  // fuse beats on the snare arm tick, the blast is the small explosion, and the pushback that
+  // reaches your own hull is the decompression thud.
+  'drill:chargeArm': 'sfx_ui_switch_detent',
+  'drill:chargePlanted': 'sfx_hitch_latch',
+  'drill:chargeTick': 'sfx_snare_arm_tick',
+  'drill:chargeBlast': 'sfx_explosion_small',
+  'drill:backblast': 'sfx_hull_decompress',
+  // The roof speaks in the rock samples' own register: a groan before it lets go, a calve when
+  // it does. The gas seam vents as a decompression hiss.
+  'drill:rockCreak': 'sfx_ambient_rock_groan',
+  'drill:caveIn': 'sfx_ambient_rock_calve',
+  'drill:gasVent': 'sfx_hull_decompress',
+  // Cruise wrestle: the mass snare catching is the line snapping taut; slipping free is the same
+  // family letting go. Losing the wrestle keeps cruise:snared's scrape.
+  'cruise:wrestleStarted': 'sfx_tether_twang',
+  'cruise:wrestleEscaped': 'sfx_tether_twang',
+  // Shield pylon pair: placing and linking already play their confirm cue; the pane soak speaks
+  // as the shield-hit; energizing and recovering are the restore register; the pair dying is the
+  // blowout; the expiry warning is the neutral alert tick. Strain is a meter, the deny already
+  // plays its ui_deny cue, and a recall rides credits:changed.
+  'shieldPylon:placed': SILENT('The place confirm cue (audio:cue confirm) already speaks the beat.'),
+  'shieldPylon:linking': SILENT('The link confirm cue already speaks; a second voice would double it.'),
+  'shieldPylon:contact': 'sfx.shieldHit',
+  'shieldPylon:active': 'sfx_shield_restore',
+  'shieldPylon:recovered': 'sfx_shield_restore',
+  'shieldPylon:overloaded': 'sfx_shield_blowout_discharge',
+  'shieldPylon:warning': 'sfx_ui_alert',
+  'shieldPylon:strained': SILENT('Strain is a meter the pane\'s light carries, not a sting.'),
+  'shieldPylon:denied': SILENT('The refusal already plays its ui_deny cue and the warn toast.'),
+  'shieldPylon:retired': SILENT('A recall is bookkeeping; the refund rides credits:changed.'),
+  // Hails speak as their own bark/comms line, never a second sting (npc:hailed's rule).
+  'archive:courierHail': SILENT('The courier hails through its bark line.'),
+  'vael:patrolHail': SILENT('The patrol hail speaks as its ledger bark line.'),
+  'choir:relicAlarm': SILENT('The relic alarm is the comms line from the Choir.'),
+  // Claim disputes protest through their toasts, law reports and comms lines (salvage:claimJumped's rule).
+  'frontier:disputeJumped': SILENT('The protest is the justice filing and the stead\'s log line.'),
+  'helix:noticeJumped': SILENT('The protest is the filed verdict, not a second sting.'),
+  'pitborn:claimJumped': SILENT('The protest is the filed suspicion and the claim toast.'),
+  'helix:lienScraped': SILENT('The scraping is the impact voices already heard; this is the lien record.'),
+  // The interdiction pull is felt as thrust and says itself in the toast; the rope's weigh rides
+  // the strain instrument, and the reading is the customs desk's record.
+  'jump:interdictionWarning': SILENT('The pull is the toast and the felt thrust; no second siren.'),
+  'tether:massWeighed': SILENT('The strain instrument already carries the rope; the weigh is the desk\'s record.'),
   'credits:changed': 'sfx_cash_register',
   payout: 'sfx_cash_register',
 
@@ -250,6 +301,10 @@ export const PLAYER_ACTION_CUES = Object.freeze({
   // A dumb round names its cause: the guidance-loss tick borrows the falling
   // resolve (lock gone, not a hit). One play per round, guarded by _guidanceLostEmitted.
   'missile:guidanceLost': 'sfx_wanted_clear',
+  // A wing striking colors is the same falling resolution the WANTED-clear voice owns —
+  // relief, not reward, and never the reactor-overload rising threat. One voice per squad
+  // burst; the members emit on the same tick (admitted in playAuthoredVerbCue).
+  'combat:surrendered': 'sfx_wanted_clear',
   'player:respawn': 'sfx_respawn_chime',
 });
 
@@ -388,6 +443,19 @@ export function admitWeakPointVoice(book, targetId, nowTick, gapTicks = WEAK_POI
   return true;
 }
 
+/** One strike-colors voice per squad burst. A surrendering wing marks every member on the same
+ * tick; the squad's yield is one moment, so the members collapse into one voice. */
+export function admitSurrenderVoice(book, groupId, nowMs, gapMs = 250) {
+  if (!book || groupId == null) return false;
+  const now = Number(nowMs);
+  if (!Number.isFinite(now)) return false;
+  const key = String(groupId);
+  const last = book[key];
+  if (last != null && now - last < gapMs) return false;
+  book[key] = now;
+  return true;
+}
+
 export function playAuthoredVerbCue(host, id, payload) {
   const row = combatVerbCueRow(id);
   if (!host || !row || row.recipe === 'SILENT' || !row.recipe) return null;
@@ -409,8 +477,21 @@ export function playAuthoredVerbCue(host, id, payload) {
         : (typeof host._wallClockMs === 'function' ? host._wallClockMs() : NaN));
     if (!admitWeakPointVoice(book, payload && payload.targetId, tick)) return null;
   }
+  if (id === 'combat:surrendered') {
+    const rt = host.rt || (host.rt = {});
+    const book = rt._surrenderAdmit || (rt._surrenderAdmit = Object.create(null));
+    const now = typeof host._wallClockMs === 'function' ? host._wallClockMs() : 0;
+    const group = payload && (payload.squadId != null ? payload.squadId : payload.entityId);
+    if (!admitSurrenderVoice(book, group, now)) return null;
+  }
   if (typeof host.play !== 'function') return null;
-  const pos = payload && payload.pos;
+  // Emitters name a point two ways: pos {x,z} or bare x/z (pirateDisengage's surrender).
+  const pos = payload
+    ? (Number.isFinite(payload.pos?.x) && Number.isFinite(payload.pos?.z)
+      ? payload.pos
+      : (Number.isFinite(payload.x) && Number.isFinite(payload.z)
+        ? { x: payload.x, z: payload.z } : null))
+    : null;
   const recipe = row.shape === REFUSAL_SHAPE
     ? resolveRefusalRecipe(payload && payload.reason)
     : row.recipe;
