@@ -9,6 +9,8 @@ import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../src/world/activityClassification.
 import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import { getDressingRow, insertDressingRow } from '../src/world/dressingTable.js';
+import { BORROWED_SUN } from '../src/data/borrowedSun.js';
+import { resolveFarEncounters } from '../src/world/farEncounterOutcomes.js';
 import {
   FAR_ACTOR_SCHEMA,
   farActorCensus,
@@ -61,6 +63,26 @@ function spawnShip(helpers, spec) {
   ent.activity = spec.activity || { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
   return ent;
 }
+
+test('the carrier owns its transient parts instead of shelving anonymous far NPCs', () => {
+  const { state } = boot();
+  for (const type of ['drone', 'ship', 'wreck']) {
+    const body = { id: 999, alive: true, type,
+      data: { persistenceOwner: BORROWED_SUN.owner },
+      activity: { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false } };
+    assert.equal(shouldVirtualizeFarActor(body, state), false, type);
+    assert.equal(shouldVirtualizeFarActor({ ...body, data: {} }, state), true,
+      `ordinary ${type} still uses distant NPC residency`);
+  }
+  const ordinary = { id: 1000, alive: true, type: 'ship', pos: { x: 9000, z: 0 }, data: {} };
+  const shell = { id: 1001, alive: true, type: 'drone', pos: { x: 12000, z: 9000 },
+    data: { persistenceOwner: BORROWED_SUN.owner }, budgetRequester: 'borrowed_sun:sails' };
+  const table = restoreFarActorTable(state, { schema: FAR_ACTOR_SCHEMA, version: 1, rows: [ordinary, shell] });
+  assert.deepEqual(table.rows.map(row => row.id), [ordinary.id],
+    'Continue drops only unrecoverable carrier part shells, whose owner re-derives the cohort');
+  assert.equal(table.byId.has(shell.id), false);
+  assert.equal([...table.grid.values()].flat().includes(shell), false);
+});
 
 test('far dormant ships leave the combat list and rematerialize on approach', () => {
   const { state, helpers, bus, player } = boot();
@@ -444,6 +466,33 @@ test('runtime presentation stamps on shelved rows never reach the save payload',
   }
   assert.equal(saved.type, 'ship');
   assert.equal(saved.trafficRole, 'hauler');
+});
+
+test('a due far encounter rekeys catch-up before resolving a pair that crossed cells', () => {
+  const { state, helpers } = boot(47);
+  const pirate = spawnShip(helpers, { pos: { x: 399, z: 0 } });
+  pirate.team = 1;
+  pirate.vel = { x: 2, z: 0 };
+  pirate.data.trafficRole = 'pirate';
+  pirate.activity = { simTier: SIM_TIER.S3_DORMANT, lastExactT: 0, nextEventAtT: 1 };
+  const trader = spawnShip(helpers, { pos: { x: 390, z: 0 } });
+  trader.team = 0;
+  trader.vel = { x: 0, z: 0 };
+  trader.data.trafficRole = 'hauler';
+  trader.activity = { simTier: SIM_TIER.S3_DORMANT, lastExactT: 0, nextEventAtT: 1 };
+
+  const pirateRow = insertFarActor(state, pirate, 0);
+  const traderRow = insertFarActor(state, trader, 0);
+  assert.equal(pirateRow._cell, traderRow._cell, 'the scheduled pair starts in one spatial cell');
+
+  assert.equal(resolveFarEncounters(state, 1), 0);
+  assert.equal(pirateRow.pos.x, 401, 'the delayed pirate catches up to the event time');
+  assert.equal(pirateRow.type, 'ship');
+  assert.equal(traderRow.type, 'ship');
+  assert.notEqual(pirateRow._cell, traderRow._cell, 'catch-up moved the pair into separate cells');
+  const memberships = [...state.world.farActors.grid.values()].flat();
+  assert.equal(memberships.filter((row) => row === pirateRow).length, 1);
+  assert.equal(memberships.filter((row) => row === traderRow).length, 1);
 });
 
 test('a missing or empty far-actor payload restores to no table', () => {

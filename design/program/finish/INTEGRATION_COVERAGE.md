@@ -13,16 +13,16 @@ active assignments. A source read or focused test does not establish ordinary-ro
 | Swarm spawn/motion observation | Published fix `4a5e683497e` corrected observer overflow and unmapped-player attribution. Corrected offline idle and active captures report zero anomalies without changing the 8 WU/s physics limit. | The original whole Swarm gate remains FAIL: the default pilot died in wave 2. Do not claim whole-mode acceptance. |
 | Ordinary Foundry Fortify | Headed public run `24057` closed after 892 simulated seconds / 25 minutes: cleared waves 1–6, reached wave 7 alive, and used all four devices plus repair/rearm through public controls. | Verdict is FAIL solely for 15 offscreen-marker misses (`no living shooter` near sim 727.9). Other core controls, round resolution/transitions, spawn motion, ships, and VFX passed. Readability and frame time remain UNKNOWN. The ten-wave/boss journey is not accepted. Original verdict/artifacts: `.devshots/finish/integration-2026-10-29/foundry-ten-wave-route/`. |
 | Hero Maneuvers | M02 public route banked, committed a bomb, and returned through phase alive; the target survived, an allowed miss. Pinball charged its physical dash and reported target lost with zero contacts; native contact behavior has separate focused coverage. | No public contact or complete three-ability experience is claimed. Boomerang/readout and readability remain under their owners. |
-| Adventure | 300.9 simulated seconds reached; core route/control checks passed. The later live Tethys route exposed a manual Quick Save failure (`import_node_limit`); the isolated browser remains paused. | Fix the real prolonged-session save failure before relying on Save/Continue. Readability, performance and public Sun lease remain open. |
+| Adventure | 300.9 simulated seconds reached; core route/control checks passed. The later live Tethys route exposed a manual Quick Save failure (`import_node_limit`). The bounded full-world save repair is published; the isolated post-fix browser has successfully Continued into Tethys. | Finish the public Sun purchase and new Quick Save/Continue check. Readability and performance remain open. |
 | NPC weapon behavior | Published `a41981ae13a`: NPC fixed mounts and turrets aim from the actual muzzle; six focused cases pass. K1 measures actual disabled intervals; SG06 preserves real multi-ship convergence. Ladder totals preserve future history without counting it toward current unlocks. | These focused results do not establish broad combat-route acceptance. |
-| Startup/rendering | Current integrated baseline passes all 17 checks in 73.07 seconds against its 90-second budget. `4a93e16099e` makes nested physical-branch traces honor the inherited job limit; this is shared-host evidence, not an isolated speedup. The bundle builds all 414 shipping render packages. | Full opening performance and the final stable build remain open. |
+| Startup/rendering | The current integrated bundle builds all 414 shipping render packages. Its baseline passes all 17 behavior checks but takes 122.83 seconds against a 90-second budget under simultaneous live-browser and Node-suite load. The earlier shared-host run took 73.07 seconds; this does not establish an isolated speedup or a current budget pass. | Opening performance, baseline timing and the final stable checks remain open. |
 | Whole game / final phase | Source packets are tracked below; targeted repairs have landed or are being integrated. | Final build-map closure, final stable checks, remaining gameplay routes, and the requested last-300-commit review remain open. Do not mark the game finished. |
 
 ## Current integration follow-up
 
 The Fortify, Hero Maneuvers, Borrowed Sun registration/save, and main-lane presentation changes
 remain a local integration candidate. Their dependencies must ship together; they are not yet
-available to cloud agents from master. The current pre-RU-7 bundle builds all 414 shipping render packages; receipt `ea2058b8c0eb75cbcaa128d077126c05d716a56e5d1143fa7ab5bdacab946494` covers 2748 files (74.00 MB raw / 41.75 MB bundled). Save schema v22/461 paths and module preloads pass.
+available to cloud agents from master. The current bundle includes the scoped RU-7 warm and save repair and builds all 414 shipping render packages; receipt `393d6aa3a2e4a3bc01565dcc829407d6bbfc2148ed750dd4fed49b5ac9c98fe8` covers 2748 files (74.00 MB raw / 41.76 MB bundled). Save schema v22/461 paths and module preloads pass.
 A duplicate Hero readout property reported by the bundler was removed.
 
 - `c2f5714f570` fixes the offscreen observer: lit detonator fuses and their danger bands are
@@ -68,12 +68,20 @@ A duplicate Hero readout property reported by the bundler was removed.
 - Published `71a898b50f7`: hidden hail availability updates skip layout reads; visible panels follow
   the current anchor. All 28 focused hail contracts pass.
 
-**Active save failure:** one instrumented public F5 produced `save:error` with
-`failure: import_node_limit`, `bytes: 0` (before encoding/writing). The failure is the 200,000-node
-preflight guard, not a file-size failure. A fresh canonical Tethys capture has 79,506 nodes and
-passes; the save owner is characterizing progression growth and must preserve other bounds.
-The failed live run is in an isolated bench store, remains paused and has not been reloaded.
-The facade mirror did not retain `lastWriteFailure`; the structured event is the exact receipt.
+**Published save repair (`cbb6e8e020c`, regular safety-suite wiring `eeef330e7dc`):** one
+instrumented public F5 failed the old 200,000-node preflight guard before encoding/writing. A
+canonical complete-market capture contains 248,652 nodes but only 2.93 MB of JSON: bounded
+game-owned market history could exceed that guard. Main, worker and inline lanes now share a
+500,000-node allowance while retaining the 12 MiB, depth, collection and separate 200,000-node
+native-attestation limits. The safety suite passes, including full-market round trips, over-limit
+refusal, retained previous saves and native-physics negative cases. The isolated live browser has
+Continued successfully with the new worker; public purchase and fresh save/reload are in progress.
+
+The RU-7 warm is explicit and idempotent. Adventure and every Continue retain its readiness gate;
+standalone Swarm/Gauntlet starts skip four unreachable Ceres payloads (3.24 MiB raw). Unconditional
+source-page preload hints were removed too. Focused readiness/Continue/preload checks pass;
+current arena resource-request confirmation is queued behind the active Adventure route. No wall
+time or FPS improvement is claimed from the byte count alone.
 
 Current broad checks and repairs:
 
@@ -89,6 +97,30 @@ Current broad checks and repairs:
 - The targeted earlier-static-failure recheck passes 38 current commands. Its remaining attempted
   command was a retired test; the current replacement already passed through `check:ui-identity`.
   The previously timed-out Phoebe native case passed separately. Headed UI budgets remain pending.
+- The integrated Crucible arc suite now runs the cohort, three abilities and Fortify regressions in
+  the existing CI command: 78/78 pass. The runtime-maturity aggregate initially ran 932 tests,
+  with 919 passing and 13 fixture failures. The repaired aggregate then passed 934/935; its sole
+  remaining camera diagnostic call-count pin was corrected and passes all eight focused cases.
+  Published `2898adaffed` preserves the actual bounded-finalization, late-recovery and recording
+  contracts. `74d9868b404` repairs the matrix parser's Node-option handling. The 19 actual browser
+  commands remain queued for serial execution; there is no fresh whole-matrix claim.
+
+**Live Adventure slowdown:** the post-fix Continued Tethys page remained focused/visible and drew
+about 56 frames/s while advancing only 0.2 simulated seconds in ten wall seconds. The worker's
+authoritative boundary cost was about 1.52 seconds; packing and domain diff were only a few
+milliseconds. A single 11.51-second worker profile attributes roughly 11.13 seconds to
+`tickFarActors`/`resolveFarEncounters`. A native replay of the actual isolated save reproduced
+14 unique far rows growing to 1,004 by sim time 20.37; 992 were anonymous Borrowed Sun reflectors.
+Generic NPC shelving removed their identity, so the carrier reprinted four parts every fixed tick.
+The residency repair keeps the bounded carrier cohort with its owner under distant activity tiers
+and removes unrecoverable legacy part shells on Continue. The normal-gate native check retains the
+same four reflectors across 180 ticks with zero carrier far rows. An independent encounter repair
+uses deterministic team queues, respects cooldowns and dead actors, and snapshots/revalidates cells
+around catch-up; dense friendly/cooling/mixed and simultaneous-due cases pass. Combined native checks
+pass 47/47; the post-fix public lease/save route is still pending. The later
+debugger snapshot exceeded the worker's five-second watchdog and closed that isolated QA worker;
+this diagnostic-induced interruption is separate from the observed production slowdown. Its
+isolated save/server are preserved for the post-fix route.
 - Current Cryo idle40/45 capture has no core FAIL and passes VFX coverage (p95 1% screen, no measured
   player/threat hiding). Overall verdict is INCOMPLETE for idle round resolution/transitions,
   insufficient readable-body samples and performance. No active three-round or whole-mode claim.
