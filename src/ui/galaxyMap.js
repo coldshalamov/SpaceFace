@@ -40,6 +40,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { glyphForStationType } from '../data/stationGlyphs.js';
 import { gateTollFor } from '../data/travelChoices.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
@@ -2130,6 +2131,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
           entityId: e.id,
           stable: captureEntitySelection(e),
           stationId: data.stationId || null,
+          stationTypeId: data.stationTypeId || null,
           factionId: e.factionId || data.factionId || null,
           targetSectorId: isGate
             ? (data.gateTo || data.targetSectorId || data.linkSectorId || null)
@@ -2156,6 +2158,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
         drawPos: frames.drawPos,
         entityId: null,
         stationId: st.id,
+        stationTypeId: st.type || st.stationTypeId || null,
         factionId: st.factionId || null,
         sectorId: sid,
         targetSectorId: null,
@@ -6203,9 +6206,10 @@ _stepAnimation(now) {
       const isHostile = !!c.hostile && !isStation && !isGate;
       if (!isStation && !isGate && !isHostile && !c.named && items.length >= 6) continue;
       seenIds.add(cid);
-      const glyph = isStation ? '¤' : isGate ? '⊂⊃' : isHostile ? '◆' : '➤';
+      const stationReadout = isStation ? glyphForStationType(c.stationTypeId) : null;
+      const glyph = isStation ? stationReadout.glyph : isGate ? '⊂⊃' : isHostile ? '◆' : '➤';
       const color = isHostile ? INK.red : isStation ? '#f2d9a6' : isGate ? '#8fcbff' : INK.ink0;
-      const tag = isStation ? 'STATION' : isGate ? 'GATE' : isHostile ? 'HOSTILE' : 'SHIP';
+      const tag = isStation ? stationReadout.label.toUpperCase() : isGate ? 'GATE' : isHostile ? 'HOSTILE' : 'SHIP';
       const priority = isHostile ? 900 : isStation ? 850 : isGate ? 800 : (c.named ? 700 : 500);
       items.push({
         target: {
@@ -6245,9 +6249,10 @@ _stepAnimation(now) {
       const brg = compassOctant(p.x - px, p.z - pz);
       const isStation = p.kind === 'station';
       const isGate = p.kind === 'gate';
-      const glyph = isStation ? '¤' : isGate ? '⊂⊃' : '◇';
+      const stationReadout = isStation ? glyphForStationType(p.stationTypeId) : null;
+      const glyph = isStation ? stationReadout.glyph : isGate ? '⊂⊃' : '◇';
       const color = isStation ? '#f2d9a6' : isGate ? '#8fcbff' : INK.ink0;
-      const tag = isStation ? 'STATION' : isGate ? 'GATE' : 'SITE';
+      const tag = isStation ? stationReadout.label.toUpperCase() : isGate ? 'GATE' : 'SITE';
       const priority = isStation ? 840 : isGate ? 790 : 650;
       items.push({
         target: {
@@ -6453,7 +6458,8 @@ _stepAnimation(now) {
         <div class="gm-ov-key-grid" role="list" aria-label="Chart symbol key">
           <span class="gm-ov-key-item" role="listitem"><b style="color:#fcf9f0">⊙</b> You</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.amberHot}">◆</b> Goal Pin</span>
-          <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">¤</b> Station</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">⬢ ⚒ ⛏ ⚙ ⛨ ◬ ✧</b> Station types</span>
+          <span class="gm-ov-key-item" role="listitem"><b style="color:#f2d9a6">▪</b> Other station</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#8fcbff">⊂⊃</b> Jump Gate</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:${INK.red}">◆</b> Hostile</span>
           <span class="gm-ov-key-item" role="listitem"><b style="color:#b8c7d9">➤</b> Ship / Drone</span>
