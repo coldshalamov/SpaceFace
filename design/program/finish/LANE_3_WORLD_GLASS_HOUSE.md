@@ -170,8 +170,16 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   had zero enforcement in requestAuthoredEncounter (onboarding-opportunity-admission red at
   HEAD) — gated, force included. 15/15 acceptance + 94/94 + 40/40 neighbors.
 - **Row 553 ATT-E01** — onboarding rail texture, tier-0 life, ambient traffic.
-- **Row 546 W-TEACH** — teach by situation; First Light keeps its offer with Play primary.
+- ~~Row 546 W-TEACH~~ — **DONE `511b8555b52`.** flownBefore plumbs game:new→boot→pace→serialize and
+  genuinely skips stick drills + power ladder + first-flight card while the rail stays; situation
+  lines honor the rail's silence gate (stroke no longer starved). 21/21 + rc-458 12/12.
 - **Row 454 GOLD-M1** — the integration pass: play the first hour on the real route, fix until every first-hour system is gold or names its missing file.
+- **Audit-fix implementers in flight** (digests `.devshots/finish/lane3/triage-*.md`):
+  fix-c47a-truth (embodied register→Pick-a-Side lock, Deep Reach softlock, NG+ latch, dock gating),
+  fix-onboarding-continue (rescue-era Continue restores no actors/panel — top systems-b item),
+  fix-heat-victim (unprovoked fire adds zero heat — victim type read damage channel),
+  fix-encounter-bookkeeping (resolve never records completed → gated chains deadlock),
+  fix-spine-vocab (obsolete Beat-1/2 method ids → spine records nothing, six voices silenced).
 
 ### Wave G — the glass (every 2D surface; DeepSeek via OpenCode builds, Claude Sonnet reviews every ~5)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
