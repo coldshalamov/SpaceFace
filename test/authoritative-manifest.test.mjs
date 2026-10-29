@@ -183,7 +183,11 @@ test('production init + update order lengths match the live browser baseline', (
   // so its moralMemory:* bus verbs and 30 s-bucketed escalation/expiry/souring
   // tick never ran in production. It joins beside moralTrapSystem on the
   // calendar clock (its own simTime bucket gate is the cadence limiter).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 262);
+  // 262 -> 263 init (update unchanged): w-501 registers lineHeads — the §7.1
+  // behavior heads' sim owner. It is event-only (tether:whipImpact admission
+  // for the Breaker split), same posture as customsPrompt: no update slot,
+  // no clock.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 263);
   assert.equal(PRODUCTION_UPDATE_ORDER.length, 206);
   assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));

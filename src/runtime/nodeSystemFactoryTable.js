@@ -147,6 +147,7 @@ import { factionConcord } from '../systems/faction_concord.js';
 import { factionMeridian } from '../systems/faction_meridian.js';
 import { factionHelix } from '../systems/faction_helix.js';
 import { factionDrift } from '../systems/faction_drift.js';
+import { lineHeads } from '../systems/lineHeads.js';
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
@@ -423,6 +424,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['faction_meridian', factionMeridian],
     ['faction_helix', factionHelix],
     ['faction_drift', factionDrift],
+    ['lineHeads', lineHeads],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],

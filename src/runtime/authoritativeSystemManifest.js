@@ -60,6 +60,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // §34 faction-signature rows: mass/heat sensor model (513), Concord formation lock (515),
   // Meridian cargo spines (516), Helix false-flag packs + lien drones (526), Drift claim pylons (530).
   'massSignature', 'faction_concord', 'faction_meridian', 'faction_helix', 'faction_drift',
+  // w-501: the §7.1 behavior heads' sim owner — event-only (tether:whipImpact subscription),
+  // no update slot, no clock, same posture as customsPrompt.
+  'lineHeads',
   'sectorSim', 'towlineTable', 'towlineTablePrompt', 'shipbreakingYard', 'shipbreakingYardBrowser', 'rigWorkshop', 'salvageTender', 'salvageTenderPrompt', 'borrowedVoice', 'borrowedVoicePrompt', 'salvageOutfits', 'salvageOutfitsPrompt', 'npcJobsRuntime', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',

@@ -159,6 +159,7 @@ import { factionConcord } from '../systems/faction_concord.js';            // §
 import { factionMeridian } from '../systems/faction_meridian.js';          // §34 row 516 — cargo-spine couplers, hull tickers
 import { factionHelix } from '../systems/faction_helix.js';                // §34 row 526 — false-flag packs, lien drones
 import { factionDrift } from '../systems/faction_drift.js';                // §34 row 530 — claim pylons
+import { lineHeads } from '../systems/lineHeads.js';                       // w-501 — §7.1 behavior heads
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js'; // PQ-014/SF-15/W06 — drives the pure npcJobs kernel into live NPC miner/hauler/patrol hulls
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
@@ -672,6 +673,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['faction_meridian', factionMeridian],
     ['faction_helix', factionHelix],
     ['faction_drift', factionDrift],
+    ['lineHeads', lineHeads],
     ['spawnBudget', spawnBudget],
     ['world', world],
     ['heistFacilities', heistFacilities],
