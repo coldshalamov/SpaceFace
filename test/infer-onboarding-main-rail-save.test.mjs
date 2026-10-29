@@ -36,6 +36,47 @@ test('Continue retains an unfinished main mining lesson after the side rails fin
     taughtVerbLine(restored.state, 'seam', BEATS.find(beat => beat.key === 'seam').line));
 });
 
+test('Continue restages every overlapping unfinished lesson and rewinds the lost tether', () => {
+  const { state, owner } = host('raid');
+  const ob = state.onboarding;
+  ob.rescue = {
+    active: true, completed: false, current: 'shove',
+    beats: { shove: { state: 'current' } },
+    rockLatched: true, rockReeled: true, rockReleasedAfterReel: true,
+    podLatched: true, shoveShots: 3,
+  };
+  ob.raid = { active: true, ids: { raider: 20 }, gunKills: 1 };
+  ob.claimed = { active: true, resolved: false, ids: { pickups: [21] }, taken: false };
+  ob.missingThree = {
+    active: true, completed: false, current: 'boost',
+    beats: { boost: { state: 'current' } },
+  };
+  owner._resumeMainTutorial = true;
+  const restaged = [];
+  owner._spawnRescueCast = () => restaged.push('rescue');
+  owner._spawnRaidCast = () => restaged.push('raid');
+  owner._spawnClaimedCast = () => restaged.push('claimed');
+  owner._startMissingThreeBeat = key => {
+    restaged.push(`missingThree:${key}`);
+    ob.missingThree.current = key;
+    ob.missingThree.beats[key].state = 'current';
+  };
+
+  assert.equal(owner._resumeSavedRail(), true);
+  assert.deepEqual(restaged, ['rescue', 'raid', 'claimed', 'missingThree:boost']);
+  assert.equal(ob.active, true);
+  assert.equal(ob.rescue.rockLatched, false);
+  assert.equal(ob.rescue.rockReeled, false);
+  assert.equal(ob.rescue.rockReleasedAfterReel, false);
+  assert.equal(ob.rescue.podLatched, false);
+  assert.equal(ob.rescue.shoveShots, 0);
+  assert.equal(ob.raid.active, true);
+  assert.equal(ob.claimed.active, true);
+  assert.equal(ob.missingThree.beats.boost.state, 'current');
+  assert.equal(owner.entered.includes('raid'), false,
+    'the current beat must not rebuild over its already-restaged side-rail record');
+});
+
 test('a completed main beat waits for its successor rather than restaging its reward', () => {
   const { owner } = host('tether', true);
   const record = owner.serialize();

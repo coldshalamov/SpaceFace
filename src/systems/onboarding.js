@@ -89,6 +89,9 @@ import {
   isTrainingActor,
   maxWeaponHeatFraction,
 } from '../onboarding/flightDrill.js';
+
+// Keep the next first-use hint queued until the current seven-second HUD/toast window ends.
+const FIRST_USE_HINT_DISPLAY_S = 7;
 import {
   RESCUE_GATE,
   RESCUE_ORDER,
@@ -515,6 +518,8 @@ export const onboarding = {
     this._accum = 0;
     this._autoFireWasOn = null;
     this._combatStickHintOwed = false;
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
     this._lastTextAtS = -Infinity;
     this._holdGrewBeforeFull = false;
     this._holdGrewClearQueued = false;
@@ -1177,19 +1182,50 @@ export const onboarding = {
 
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
   // this is a no-op. Respects the tutorialHints setting.
-  _showHint(key, text, payload) {
+  _showHint(key, text, payload, { fromQueue = false } = {}) {
     const st = this.state;
     if (isRacingCorridorSession(st)) return;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
-    // The staged rail is already the tutorial. Contextual walls wait until it finishes so a
-    // combat hit, dock range, or cargo edge cannot queue a second lesson behind the current verb.
-    if (this._tutorialRailOwnsVoice()) return;
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints[key]) return;
+    const now = Number.isFinite(st.simTime) ? st.simTime : 0;
+    // The staged rail owns the voice first; after that, one contextual hint owns the HUD
+    // for its full display window. Preserve FIFO order so same-tick event bursts cannot
+    // mark several hints seen while the HUD only has room to show the last one.
+    if (!fromQueue && (this._tutorialRailOwnsVoice()
+      || (this._deferredHints && this._deferredHints.size > 0)
+      || now < this._firstUseHintUntilS)) {
+      if (!this._deferredHints) this._deferredHints = new Map();
+      if (this._deferredHints.size < 12 && !this._deferredHints.has(key)) {
+        this._deferredHints.set(key, { text, payload });
+      }
+      return;
+    }
     st.player.hints[key] = true;
     const entityId = resolveFirstUseEntityId(st, payload || {});
     this.bus.emit('hud:firstUse', { verbId: key, text, entityId });
+    this._firstUseHintUntilS = now + FIRST_USE_HINT_DISPLAY_S;
+  },
+
+  // Drain the deferred contextual hints the staged rail muted. Runs on the same 0.2 s
+  // cadence the shelf pending queue uses; each key replays through _showHint so the
+  // ordinary gates (settings, venue, once-per-profile) still apply at speak time.
+  _drainHintQueue() {
+    const queue = this._deferredHints;
+    if (!queue || !queue.size || this._tutorialRailOwnsVoice()) return;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (now < this._firstUseHintUntilS) return;
+    while (queue.size) {
+      const [key, rec] = queue.entries().next().value;
+      queue.delete(key);
+      if (queue.size === 0) this._deferredHints = null;
+      // Seen keys and hints whose settings/venue gate changed while queued are skipped;
+      // the first hint that can speak claims the HUD window and leaves the tail queued.
+      const before = this._firstUseHintUntilS;
+      this._showHint(key, rec.text, rec.payload, { fromQueue: true });
+      if (this._firstUseHintUntilS !== before) return;
+    }
   },
 
   // Leaving the B5 berth without taking a job is a choice too: the player flies their own plan.
@@ -1350,6 +1386,8 @@ export const onboarding = {
     this._latchDenialStreak = 0;
     this._shelfPending = null;
     this._shelfStraightS = 0;
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
     if (st.physicsVenueSession || isRacingCorridorSession(st) || payload?.crucibleLaunch === true
       || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
       // The fresh world may already have reused the old tutorial actor IDs.
@@ -1537,8 +1575,12 @@ export const onboarding = {
   },
 
   // Re-enter an unfinished rail after save:loaded tore the live tutorial down.
-  // Sub-rails run in order (rescue → raid → claimed → missingThree); the earliest
-  // incomplete one owns the resume — later rails restage when their turn comes.
+  // The sub-rails overlap in time — a rescue verb stays current across the raid and
+  // claimed tableaus — so EVERY incomplete record restages; returning after the first
+  // live rail used to strand whatever ran beside it (the audit's "no actors, no
+  // diamond, no timer" Continue). What the pilot hears afterwards obeys the same
+  // precedence as the objective diamond: a current rescue verb, then a current
+  // missing-three verb, then the saved main-beat line.
   _resumeSavedRail() {
     const st = this.state;
     const ob = st && st.onboarding;
@@ -1550,31 +1592,37 @@ export const onboarding = {
       this._resumeMainTutorial = false;
       return false;
     }
+    let resumed = false;
     const rescue = ob.rescue;
     if (rescue && rescue.active === true && rescue.completed !== true) {
       ob.active = true;
+      // A saved latch is dead state: the tether itself never survives a restore, so
+      // the beat's latch/reel progress rewinds with the restaged cast.
+      rescue.rockLatched = false;
+      rescue.rockReeled = false;
+      rescue.rockReleasedAfterReel = false;
+      rescue.podLatched = false;
+      rescue.shoveShots = 0;
       this._spawnRescueCast();
-      const cur = rescue.current;
-      if (cur && rescue.beats[cur] && rescue.beats[cur].state === 'current') {
-        const line = rescueBeatLine(cur);
-        ob.beatAction = line;
-        this._sayTutorial(line);
-      }
-      return true;
+      resumed = true;
     }
     const raid = ob.raid;
+    let raidRestaged = false;
     if (raid && ob.beatDoneAt.raid == null) {
       ob.active = true;
       raid.active = true;
       this._spawnRaidCast();
-      return true;
+      raidRestaged = true;
+      resumed = true;
     }
     const claimed = ob.claimed;
+    let claimedRestaged = false;
     if (claimed && claimed.resolved !== true) {
       ob.active = true;
       claimed.active = true;
       this._spawnClaimedCast();
-      return true;
+      claimedRestaged = true;
+      resumed = true;
     }
     const three = ob.missingThree;
     if (three && three.active === true && three.completed !== true) {
@@ -1588,30 +1636,49 @@ export const onboarding = {
         three.beats[cur].state = 'pending';
         this._startMissingThreeBeat(cur);
       }
-      return true;
+      resumed = true;
     }
     // Side rails can finish while flight, mining or the first berth is still being taught.
     // save:loaded has cleared active; the saved marker retains the main rail's ownership.
+    let speakMainBeat = false;
     if (this._resumeMainTutorial) {
       this._resumeMainTutorial = false;
       ob.active = true;
       this._storyMode = false;
-      this._injectStyle();
-      this._buildPanel();
       const beat = BEATS[ob.currentBeat];
       if (beat && ob.beatDoneAt[beat.key] == null) {
-        this._enterBeat(beat);
+        // Raid/claimed stage through their restored records above; _enterBeat would
+        // rebuild (and reset) the record the restore just preserved.
+        const subrailStaged = (beat.key === 'raid' && raidRestaged)
+          || (beat.key === 'claimed' && claimedRestaged);
+        if (!subrailStaged) this._enterBeat(beat);
         if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
-        this._sayTutorial(ob.beatAction);
+        speakMainBeat = true;
       } else {
         // A completed tether beat already dropped its salvage. Let the normal cadence
         // advance to its successor instead of replaying entry/reward work.
         this._lastTextAtS = -Infinity;
       }
-      this._refreshBeatPanel();
-      return true;
+      resumed = true;
     }
-    return false;
+    if (!resumed) return false;
+    // The tracker chrome (step strip, Range chip) is part of the restored tutorial
+    // floor on EVERY resume branch, not only the main-rail one.
+    this._injectStyle();
+    this._buildPanel();
+    const rescueCurrent = rescue && rescue.current && rescue.beats[rescue.current]
+      && rescue.beats[rescue.current].state === 'current' ? rescue.current : null;
+    if (rescueCurrent) {
+      const line = rescueBeatLine(rescueCurrent);
+      ob.beatAction = line;
+      this._sayTutorial(line);
+    } else if (three && three.current) {
+      // _startMissingThreeBeat already re-spoke the resumed verb's line.
+    } else if (speakMainBeat && ob.beatAction) {
+      this._sayTutorial(ob.beatAction);
+    }
+    this._refreshBeatPanel();
+    return true;
   },
 
   _retireTutorialPanel() {
@@ -1628,6 +1695,8 @@ export const onboarding = {
   },
 
   _teardown({ removeActors = true } = {}) {
+    this._deferredHints = null;
+    this._firstUseHintUntilS = -Infinity;
     const prepared = this._preparedRescue;
     this._preparedRescue = null;
     if (prepared && removeActors) this._discardPreparedRescue(prepared);
@@ -2062,9 +2131,14 @@ export const onboarding = {
     // The authored seam lesson advances only from ore physically cut from its marked rock. Generic
     // pickup counting remains as a fallback for old saves that entered B2 without the training rock.
     if (beat && beat.key === 'seam' && this._miningRockId != null) return;
-    // Count any ore the player collects while on/after the seam beat (B2). The pickup may also fire
-    // for the B1 salvage — that's fine, only the seam beat's DONE cares about the count.
+    // Count any ore the player collects while on/after the seam beat (B2). Salvage pods
+    // ride the same event but are 'cargo' kind — the SAMPLE card shows this count, so a
+    // tableau drop can never pre-fill it.
     if (p.collectorId != null && p.collectorId !== this.state.playerId) return;
+    // Only the ore kind feeds the seam readout: the tether/rescue/claimed tableaus
+    // drop 'cargo'-kind salvage pods, which must not pre-fill SAMPLE before the
+    // marked rock is cut.
+    if (p.kind != null && p.kind !== 'ore') return;
     if (!this._isOre(p.commodityId)) return;
     const accepted = successfulPickupAmount(p);
     if (accepted <= 0) return;
@@ -2163,6 +2237,7 @@ export const onboarding = {
       this._teachReleaseWindow();
       this._tickShelfVerbs(intervalS, state);
       this._tickFitFelt(state);
+      this._drainHintQueue();
       if (!ob.active || ob.finished) {
         // X-05: past the rail, one read before the act — the first owned lot the player gets
         // close enough to reach for names its consequence once. 15-tick cadence; the scan
@@ -2537,6 +2612,27 @@ export const onboarding = {
     if (active) {
       const spec = situationFor(active.power);
       if (!spec) { sit.active = null; return; }
+      // The props are session-local bodies: a Continue (ids never serialize), a trainer
+      // restage, or stray crossfire can leave this record pointing at nothing. An emptied
+      // setup requeues its power for the next window instead of holding the ladder on
+      // ghosts until TTL.
+      const ids = this._powerSitIds;
+      const propsLive = !!(ids && ids.length && state.entities
+        && ids.some((id) => {
+          const e = id != null && typeof state.entities.get === 'function'
+            ? state.entities.get(id) : null;
+          return !!(e && e.alive !== false);
+        }));
+      if (!propsLive) {
+        this._powerSitIds = null;
+        sit.active = null;
+        const idx = POWER_SITUATIONS.indexOf(spec);
+        if (idx >= 0 && idx < sit.next && sit.doneAt[spec.power] == null) {
+          sit.next = idx;
+          sit.nextAtS = now + POWER_SITUATION_GAP_S;
+        }
+        return;
+      }
       const action = acts ? acts[spec.power] : null;
       const used = !!(action && (action === true || action.held === true || action.pressed === true));
       if (used) {
@@ -2617,8 +2713,13 @@ export const onboarding = {
     this._powerSitIds = null;
     if (sit && sit.active) sit.active = null;
     if (!ids || !ids.length || !this.helpers || typeof this.helpers.removeEntity !== 'function') return;
+    const entities = this.state && this.state.entities;
     for (const id of ids) {
-      if (id != null) this.helpers.removeEntity(id);
+      if (id == null) continue;
+      // Entity ids recycle between worlds: only remove a body still stamped as this
+      // ladder's prop. A reissued id belongs to whatever the new world made of it.
+      const e = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+      if (e && e.data && e.data.powerSituation != null) this.helpers.removeEntity(id);
     }
   },
 
@@ -3043,8 +3144,10 @@ export const onboarding = {
     const key = this._rescueCurrentKey();
     if (!rescue || !key || !payload) return;
     // Rock whipped through the derelict: the swing-release payoff, no proximity wait needed.
+    // Same receipt as the proximity paths — the wreck sheds its scrap before the beat closes.
     if (key === 'swing' && payload.targetId === rescue.ids.rock
       && payload.victimId === rescue.ids.derelict) {
+      this._dropRescueScrap(this._rescueActor('derelict'));
       this._rescueDone('swing');
       return;
     }
@@ -3777,7 +3880,15 @@ export const onboarding = {
     if (!raid || !beat || beat.key !== 'raid') return;
     this._stepRaidWing();
     const raider = this._raidActor('raider');
-    if (!raider) return; // kill handling is event-driven (_onRaidKilled)
+    if (!raider) {
+      // Kill handling stays event-driven (_onRaidKilled), but a slot that is simply
+      // EMPTY — a Continue wiped the ids, or the cast never landed — restages the
+      // lesson instead of returning forever. A done beat never restages.
+      if (ob.beatDoneAt.raid == null && raid.ids && raid.ids.raider == null) {
+        this._respawnRaidRaider();
+      }
+      return;
+    }
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
     if (!player || !player.pos) return;
     // Tow-slam proof: the raider latched and CARRIED into the throw-target rock at speed.
@@ -3790,7 +3901,7 @@ export const onboarding = {
         : (ob.rescue && ob.rescue.ids ? ob.rescue.ids.asteroid : null);
       const wallEnt = wallId != null && this.state.entities ? this.state.entities.get(wallId) : null;
       if (wallEnt && wallEnt.pos && raider.pos) {
-        const towSpeed = Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0);
+        const towSpeed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
         const dWallRaider = Math.hypot(raider.pos.x - wallEnt.pos.x, raider.pos.z - wallEnt.pos.z);
         const contact = (Number(raider.radius) || 8) + (Number(wallEnt.radius) || 26) + 40;
         if (dWallRaider <= contact && towSpeed >= 40) {
@@ -3934,6 +4045,7 @@ export const onboarding = {
     if (!payload || payload.collectorId !== this.state.playerId) return;
     if (!claimed.ids.pickups.includes(payload.pickupId)) return;
     claimed.taken = true;
+    claimed.takenAt = this.state.simTime || 0;
     this._onBeatEvent('claimed:taken', payload);
     // Report through the real law owner entry. Law alone decides jurisdiction and witnesses;
     // heat alone consumes an accepted receipt (heat:changed drives the rest of this beat).
@@ -3995,9 +4107,16 @@ export const onboarding = {
     const now = this.state.simTime || 0;
     if (!claimed.wantedFired) {
       // Decline path: the player left the claimed cargo. Stand the tableau down, move on.
-      // (A taken cargo with an accepted receipt guarantees the heat event — that state is
-      // the wanted experience in progress, never a decline.)
-      if (!claimed.taken && now - claimed.enteredAt >= CLAIMED_WINDOW_S) this._finishClaimed('declined');
+      // A TAKEN cargo whose receipt never raised heat (the law answered "not wanted", or a
+      // Continue restored mid-report) resolves on the same clock from the take — the cargo
+      // is already aboard, so the scene stands down rather than waiting out a ring that
+      // can never come.
+      const idleSince = claimed.taken
+        ? (Number.isFinite(claimed.takenAt) ? claimed.takenAt : claimed.enteredAt)
+        : claimed.enteredAt;
+      if (now - idleSince >= CLAIMED_WINDOW_S) {
+        this._finishClaimed(claimed.taken ? 'noEscalation' : 'declined');
+      }
       return;
     }
     if (claimed.clearSince != null && now - claimed.clearSince >= CLAIMED_CLEAR_GRACE_S) {
@@ -4064,8 +4183,11 @@ export const onboarding = {
     if (ob && ob.beatDoneAt.claimed == null) return;
     const prereq = MISSING_THREE_PREREQ[next];
     if (prereq === 'grab') {
+      // No rescue rail (scenario slices, stripped records): the grab prereq dissolves —
+      // an absent rail has no grab to wait on, and the drills downstream still owe
+      // the player their lessons.
       const rescue = this.state.onboarding && this.state.onboarding.rescue;
-      if (!rescue || rescue.beats.grab.state !== 'done') return;
+      if (rescue && rescue.beats && rescue.beats.grab && rescue.beats.grab.state !== 'done') return;
     } else if (!three.beats[prereq] || three.beats[prereq].state !== 'done') {
       return;
     }
@@ -4452,6 +4574,10 @@ export const onboarding = {
     three.completed = true;
     three.completedAt = this.state.simTime || 0;
     three.current = null;
+    three.active = false;
+    // The drill props were staged to be practiced on, not kept: whatever is still
+    // standing despawns with the rail instead of orbiting as unmarked debris forever.
+    this._removeMissingThreeActors();
     this.bus.emit('firsthour:complete', buildFirstHourCompleteEvent(three.completedAt));
   },
 

@@ -5466,6 +5466,10 @@ export const save = {
    */
   async loadAsync(slot) {
     slot = slot || 'quick';
+    // Stamp before the latest-slot scan and every await. A newer restore can commit while the
+    // scan/prepare is suspended; all loser outcomes below must resolve handled without publishing
+    // the stale request's error receipt.
+    const acceptSeq = this._restoreSequence;
     let skippedNewer = null;
     let slotBurst = null;
     if (slot === 'latest') {
@@ -5473,6 +5477,7 @@ export const save = {
       try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
       const resolved = await this._latestSlotAsync(slotBurst);
       if (!resolved) {
+        if (acceptSeq !== this._restoreSequence) return true;
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
         return false;
@@ -5510,7 +5515,11 @@ export const save = {
         raw = burstRaws.has(LS_PREFIX + slot) ? burstRaws.get(LS_PREFIX + slot) : null;
       } else {
         try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
-        catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+        catch (err) {
+          if (acceptSeq !== this._restoreSequence) return true;
+          this.bus.emit('save:error', { slot, reason: 'read_failed' });
+          return false;
+        }
       }
     }
     // A spec minted under an older generation still consumes, but only after byte equality
@@ -5523,7 +5532,6 @@ export const save = {
     // NXI-234: capture the load generation before the worker roundtrip. A restore that
     // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
     // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
-    const acceptSeq = this._restoreSequence;
     // A consumed spec flushes its parked dispatch now — the debounce exists for scrub
     // cadence, and a click means the arm's row is the one being loaded.
     const specPromise = ((specHit || specByteHit) && spec && typeof spec.dispatch === 'function')
@@ -5631,6 +5639,7 @@ export const save = {
         observedBackup = confirmedBackup;
       }
       if (!stablePair) {
+        if (acceptSeq !== this._restoreSequence) return true;
         this.bus.emit('save:error', {
           slot,
           reason: 'load_failed',
@@ -5679,6 +5688,7 @@ export const save = {
         return true;
       }
     }
+    if (acceptSeq !== this._restoreSequence) return true;
     this.bus.emit('save:error', Object.assign(
       { slot, reason: primary.reason || 'no_save', recoveryReason: backup.reason || 'no_backup' },
       skippedNewer ? { skippedNewer } : null));
@@ -5878,7 +5888,7 @@ export const save = {
     const acceptSeq = this._restoreSequence;
     const prepared = await this._prepareEnvelopeStringAsync(raw);
     if (!prepared.ok) {
-      if (prepared.reason === 'superseded') return false;
+      if (prepared.reason === 'superseded' || acceptSeq !== this._restoreSequence) return false;
       this.bus.emit('save:error', {
         slot,
         reason: prepared.reason,
@@ -6336,6 +6346,7 @@ export const save = {
         rollbackSnapshot = { notNeeded: true };
       }
       if (rollbackSnapshotError) {
+        if (options.acceptSeq != null && options.acceptSeq !== this._restoreSequence) return true;
         console.error('[save] rollback snapshot failed', rollbackSnapshotError);
         if (options.emitError !== false) {
           this.bus.emit('save:error', {

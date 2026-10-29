@@ -504,10 +504,19 @@ test('the five verbs complete in play after the rescue grab, then seam may start
   assert.equal(tutorialLines(h).at(-1), missingThreeBeatLine('cone'));
   assert.equal(st.onboarding.missingThree.ids.lane.length, 3, 'cone lesson stages its lane');
 
+  const cleanupIds = [st.onboarding.missingThree.ids.scrap,
+    ...st.onboarding.missingThree.ids.clump, ...st.onboarding.missingThree.ids.lane]
+    .filter(id => id != null);
+  assert.ok(cleanupIds.length > 0, 'the final lesson still owns staged practice props');
+  st.player.targetId = cleanupIds[0];
   h.bus.emit('fields:coneToggled', { active: true, fieldId: 'field_cone_test' });
   tick(h);
   assert.equal(st.onboarding.missingThree.beats.cone.state, 'done');
   assert.equal(st.onboarding.missingThree.completed, true);
+  assert.equal(st.player.targetId, null, 'teardown releases a target lock on a drill prop');
+  for (const id of cleanupIds) {
+    assert.equal(st.entities.get(id)?.alive, false, `completed drill removes staged prop ${id}`);
+  }
   const complete = h.seen.firsthour.find((e) => e.event === 'firsthour:complete');
   assert.ok(complete);
   assert.deepEqual(complete.beats, ['boost', 'stroke', 'well', 'repulsor', 'cone']);
@@ -525,6 +534,62 @@ test('the five verbs complete in play after the rescue grab, then seam may start
   tick(h);
   const seam = ROUTE_BEATS.findIndex((b) => b.key === 'seam'); // seam follows the raid + claimed beats
   assert.equal(st.onboarding.currentBeat, seam, 'seam opens after the five verbs and silence');
+});
+
+test('SAMPLE counts accepted ore pickups, never salvage cargo with an ore commodity', () => {
+  const h = boot();
+  launchDefaultRoute(h);
+  const ob = h.state.onboarding;
+  ob.active = true;
+  ob.currentBeat = ROUTE_BEATS.findIndex(beat => beat.key === 'seam');
+  ob.oreCollected = 0;
+  h.sys._miningRockId = null; // legacy seam save without the authored training rock
+
+  h.bus.emit('pickup:collected', {
+    pickupId: 701, collectorId: h.state.playerId, kind: 'cargo', amount: 3,
+    commodityId: 'cmdty_ore_iron',
+  });
+  assert.equal(ob.oreCollected, 0, 'cargo salvage must not prefill the ore SAMPLE card');
+
+  h.bus.emit('pickup:collected', {
+    pickupId: 702, collectorId: h.state.playerId, kind: 'ore', amount: 1,
+    commodityId: 'cmdty_ore_iron',
+  });
+  assert.equal(ob.oreCollected, 1, 'a collected ore unit advances SAMPLE');
+});
+
+test('accepted theft claim without a heat receipt resolves from the take clock', () => {
+  const h = boot();
+  const milestones = [];
+  h.bus.on('firsthour:milestone', payload => milestones.push(payload));
+  launchDefaultRoute(h);
+  const st = h.state;
+  const ob = st.onboarding;
+  ob.active = true;
+  ob.currentBeat = ROUTE_BEATS.findIndex(beat => beat.key === 'claimed');
+  st.simTime = 30;
+  const claim = ob.claimed = {
+    active: true, resolved: false, taken: false, wantedFired: false,
+    enteredAt: 20, ids: { patrol: null, pickups: [703] },
+  };
+  h.sys.registry = { get: () => ({ reportIncident: () => ({ accepted: true }) }) };
+
+  h.bus.emit('pickup:collected', {
+    pickupId: 703, collectorId: st.playerId, kind: 'cargo', amount: 1,
+    commodityId: 'cmdty_salvage_electronics', pos: { x: 0, z: 0 },
+  });
+  tick(h);
+  assert.equal(claim.taken, true);
+  assert.equal(claim.takenAt, 30);
+  assert.equal(claim.resolved, false, 'the report gets its authored response window');
+  assert.equal(ob.beatDoneAt.claimed, undefined);
+
+  st.simTime += 121;
+  tick(h);
+  assert.equal(claim.resolved, true);
+  assert.equal(claim.active, false);
+  assert.notEqual(ob.beatDoneAt.claimed, undefined);
+  assert.ok(milestones.some(event => event.milestone === 'wantedBeat' && event.how === 'noEscalation'));
 });
 
 test('npc field emissions never teach the rail', () => {

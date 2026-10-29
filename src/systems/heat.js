@@ -500,6 +500,14 @@ export const heat = {
       rememberAppliedReport(player, reportId);
       return { applied: false, reason: 'already_applied', incidentReceiptId, delta: 0 };
     }
+    // THE RUN SEAL (PQ-135) — same contract as _raise/_setHeat and the wreck-court listener,
+    // which checks the seal first. Refuse BEFORE the ledger write: a receipt consumed while the
+    // seal holds could never apply once the run ends — the id would read spent with no heat ever
+    // written. Refusing keeps the id unspent so a journal replay after the seal lifts still
+    // convicts.
+    if (isRunSealed(this.state)) {
+      return { applied: false, reason: 'sealed', incidentReceiptId, delta: 0 };
+    }
 
     const delta = receipt.kind === 'lawful_kill'
       ? KILL_NONHOSTILE * 1.3
@@ -566,6 +574,11 @@ export const heat = {
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
     if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
+    // A lawful target still chips while hostile: a lawful unit that only turned hostile because
+    // the player fired first must not launder the rest of the assault — without the factionLawful
+    // clause the first hit would provoke retaliation and every later hit would read "self-defense"
+    // for free. (A law hunter chasing a genuinely WANTED pilot never reaches this line: that
+    // pilot's heat already sits at/above HIT_SUSPICION_MAX, which returns below.)
     if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
       const player = this.state.player;
       // Suspicion, never conviction: unprovoked hits can fill the ledger up to just under
@@ -701,7 +714,12 @@ export const heat = {
     if (method !== 'mass' && method !== 'speed' && method !== 'decoy') return;
     const player = this.state && this.state.player;
     if (!player || wantedTierFor(player.heat) !== WANTED_TIER.NETS) return;
-    this._dropOneLevel('broke wanted net');
+    // The nets band spans two levels, but the checkpoint is THE net: break_net is the tier's
+    // escape verb, so the drop always lands below the nets floor. A one-level step from the top
+    // of the band would leave the pilot inside nets and the law would post another checkpoint
+    // behind the one just broken — the escape would have changed nothing.
+    const dropTo = Math.min(heatLevelFor(player.heat) - 1, SCRUB_NETS_FLOOR_LEVEL - 1);
+    this._setHeat(dropTo <= 0 ? 0 : heatValueForLevel(dropTo), 'broke wanted net');
   },
 
   _onImpoundRecovered(payload) {
@@ -967,12 +985,23 @@ function isWantedHeatVictim(state, payload, victimId) {
   return true;
 }
 
+// `combat:damage` reuses `payload.type` for the dominant DAMAGE CHANNEL — 'kinetic', 'thermal',
+// 'ion', 'plasma', 'phase' (src/combat/damage.js:446), with the legacy alias words the channel
+// table also maps. The word never names the victim. Classify the victim from the live entity
+// record first; a payload type only counts as a victim kind when it could not be a channel word
+// (synthetic emitters that carry the entity kind, e.g. test harnesses and scripted payloads).
+const DAMAGE_CHANNEL_WORDS = new Set([
+  'kinetic', 'thermal', 'ion', 'plasma', 'phase', 'energy', 'explosive', 'emp',
+]);
+
 function wantedHeatVictimType(state, payload, victimId) {
-  if (payload && typeof payload.type === 'string' && payload.type) return payload.type;
   const entity = victimId != null && state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(victimId)
     : null;
-  return entity && entity.type || null;
+  if (entity && typeof entity.type === 'string' && entity.type) return entity.type;
+  const word = payload && typeof payload.type === 'string' && payload.type;
+  if (word && !DAMAGE_CHANNEL_WORDS.has(word)) return word;
+  return null;
 }
 // PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than
 // from a copy of it, and so tuning has one home.
