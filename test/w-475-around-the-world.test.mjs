@@ -8,6 +8,7 @@ import {
   stuntVariantFor,
 } from '../src/combat/stuntRecognition.js';
 import { trickBookFor } from '../src/systems/survivalRecords.js';
+import { ARENA_LAWS, arenaLawBountyFor } from '../src/data/survivalArenas.js';
 
 const receipt = (sweep, { primary = 'wrecking_ball', surface = 'hull' } = {}) => ({
   surface,
@@ -77,4 +78,18 @@ test('w-475: the Trick Book lists every trick, proven flags come from filed Best
   assert.equal(filled.find((row) => row.trickId === 'bank_job').proven, true);
   assert.equal(filled.find((row) => row.trickId === 'bolas').proven, false);
   assert.equal(filled.filter((row) => row.proven).length, 2, 'unknown ids never enter the book');
+});
+
+test('w-475: every law arena names a real signature trick, and the bounty only answers it', () => {
+  const known = new Set(KNOWN_TRICK_IDS);
+  for (const [arenaId, law] of Object.entries(ARENA_LAWS)) {
+    assert.ok(known.has(law.signatureTrick), `${arenaId} signs a real trick (${law.signatureTrick})`);
+    const bounty = arenaLawBountyFor(arenaId, law.signatureTrick);
+    assert.ok(bounty, `${arenaId} bounties its signature`);
+    assert.equal(bounty.law, law.law);
+    assert.equal(arenaLawBountyFor(arenaId, 'needle_thread'),
+      law.signatureTrick === 'needle_thread' ? bounty : null, 'a non-signature trick pays no bounty');
+  }
+  assert.equal(arenaLawBountyFor('not_an_arena', 'bank_job'), null, 'unknown arenas pay nothing');
+  assert.equal(arenaLawBountyFor(null, 'bank_job'), null);
 });

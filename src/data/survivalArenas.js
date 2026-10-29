@@ -93,30 +93,36 @@ export const ARENA_LAWS = Object.freeze({
     law: 'banks',
     verb: 'bank',
     line: 'banks and machinery kills',
+    // Row 475 — the signature trick the law bounties: the Foundry pays on a bank.
+    signatureTrick: 'bank_job',
   }),
   [LAGRANGE_ARENA_ID]: Object.freeze({
     id: LAGRANGE_ARENA_ID,
     law: 'pull',
     verb: 'sling',
     line: 'wells and slings',
+    signatureTrick: 'slingshot_golf',
   }),
   [CINDER_ARENA_ID]: Object.freeze({
     id: CINDER_ARENA_ID,
     law: 'current',
     verb: 'ride',
     line: 'riding the current',
+    signatureTrick: 'well_golf',
   }),
   [CRYO_ARENA_ID]: Object.freeze({
     id: CRYO_ARENA_ID,
     law: 'freeze',
     verb: 'plate',
     line: 'ice plates and thermal shock',
+    signatureTrick: 'ore_shotgun',
   }),
   [STORM_ARENA_ID]: Object.freeze({
     id: STORM_ARENA_ID,
     law: 'conduct',
     verb: 'conduct',
     line: 'conducted lattice',
+    signatureTrick: 'clothesline',
   }),
   // SWARM-07 B4 — the Mill grinds: break the seam and the seam pays ore.
   [MILL_ARENA_ID]: Object.freeze({
@@ -124,6 +130,7 @@ export const ARENA_LAWS = Object.freeze({
     law: 'grind',
     verb: 'grind',
     line: 'grinding the seam for ore',
+    signatureTrick: 'rock_discovery',
   }),
   // SWARM-07 B4 — the Hive breathes: walls grow shut, sacs birth the tide.
   [HIVE_ARENA_ID]: Object.freeze({
@@ -131,8 +138,20 @@ export const ARENA_LAWS = Object.freeze({
     law: 'breathe',
     verb: 'breach',
     line: 'breaching living walls and sacs',
+    signatureTrick: 'dead_mans_mass',
   }),
 });
+
+/**
+ * Row 475 — the Arena Law Bounty: each law arena names the trick its physics already teaches,
+ * and the room pays extra standing + salvage rights when a recognised act of that kind lands
+ * there. Pure lookup; stuntGrammar applies it at pay time inside a live run.
+ */
+export function arenaLawBountyFor(arenaId, trickId) {
+  const law = ARENA_LAWS[arenaId];
+  if (!law || law.signatureTrick !== trickId) return null;
+  return Object.freeze({ arenaId, trickId, law: law.law, line: law.line });
+}
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((row) => [row.id, row]));

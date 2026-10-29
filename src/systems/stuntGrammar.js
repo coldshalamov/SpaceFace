@@ -10,6 +10,7 @@ import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjecti
 import { attributeTrickKill, bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash, trickPay } from './stuntCombo.js';
 import { awardContractCompletion, contractCompletionsFor, heldCargoPodLot, isCivilianEntity } from '../combat/stuntContracts.js';
 import { isSalvageRightsItem, makeSalvageRightsItem } from '../data/killRewards.js';
+import { arenaLawBountyFor } from '../data/survivalArenas.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
 export const MAX_RECENT_TRICKS=64;
 /** New saved narrative/provenance payload beyond the world's physical state: at most 512 KiB. */
@@ -172,6 +173,20 @@ export const stuntGrammar={
   _payTrick(st,trick,prevTrick,tick) {
     const pay=trickPay(trick),prev=trickPay(prevTrick);
     const rep=Math.max(0,pay.reputation-prev.reputation),rights=Math.max(0,pay.salvageRights-prev.salvageRights);
+    // Row 475 — Arena Law Bounty: the room pays the signature trick's own rarity scale a second
+    // time, once per episode. An ordinary arena or a non-signature act never reaches this seam.
+    const bounty=arenaLawBountyFor(this.state?.run?.arenaId,trick?.trickId);
+    if(bounty){
+      st.arenaBountyEpisodes=st.arenaBountyEpisodes||{};
+      if(st.arenaBountyEpisodes[trick.episodeId]!==true){
+        st.arenaBountyEpisodes[trick.episodeId]=true;
+        st.pay.reputation+=pay.reputation;st.pay.salvageRights+=pay.salvageRights;
+        if(pay.reputation>0)this.bus?.emit('faction:repDelta',{factionId:pay.factionId,delta:pay.reputation,reason:'arena_law_bounty',trickId:trick.trickId,episodeId:trick.episodeId,tick});
+        this.bus?.emit('stunt:arenaLawBounty',{arenaId:bounty.arenaId,law:bounty.law,line:bounty.line,
+          trickId:trick.trickId,name:trick.name,episodeId:trick.episodeId,rarity:trick.rarity,
+          reputation:pay.reputation,salvageRights:pay.salvageRights,tick});
+      }
+    }
     if(rep<=0&&rights<=0)return;
     st.pay.reputation+=rep;st.pay.salvageRights+=rights;
     if(rep>0)this.bus?.emit('faction:repDelta',{factionId:pay.factionId,delta:rep,reason:'stunt_trick',trickId:trick.trickId,episodeId:trick.episodeId,tick});
