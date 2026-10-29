@@ -58,6 +58,7 @@ const PRESENTED_DETACH_TEXTURE_KEYS = Object.freeze([
 // refills them before the next upload. Steady-state draws do not take the hold.
 let orientationHolds = new WeakSet();
 let presentedDetachRehydrate = null;
+let presentedDetachHeldRenderers = null;
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
@@ -901,14 +902,24 @@ export function presentedDetachDrawsArmed(renderer) {
  * finishes: clearing it earlier lets the next frame upload the still-empty mirror.
  */
 export function queuePresentedDetachRehydrate(renderer) {
-  if (presentedDetachRehydrate) return presentedDetachRehydrate;
-  const held = renderer || null;
+  if (presentedDetachRehydrate) {
+    if (renderer) presentedDetachHeldRenderers.add(renderer);
+    return presentedDetachRehydrate;
+  }
+  const held = new Set(renderer ? [renderer] : []);
+  presentedDetachHeldRenderers = held;
   let flight = null;
   flight = Promise.resolve()
     .then(() => rehydrateDetachedPackages())
     .finally(() => {
-      if (presentedDetachRehydrate === flight) presentedDetachRehydrate = null;
-      if (held) orientationHolds.delete(held);
+      if (presentedDetachRehydrate === flight) {
+        presentedDetachRehydrate = null;
+        presentedDetachHeldRenderers = null;
+      }
+      // Preview and flight renderers share this refill. Every renderer that joined
+      // must resume; clearing only its initiator strands later views behind the hold.
+      for (const target of held) orientationHolds.delete(target);
+      held.clear();
     });
   presentedDetachRehydrate = flight;
   return flight;
@@ -1394,4 +1405,5 @@ export function resetPackageDetachManifestsForTests() {
   manifestSequence = 0;
   orientationHolds = new WeakSet();
   presentedDetachRehydrate = null;
+  presentedDetachHeldRenderers = null;
 }

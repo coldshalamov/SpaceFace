@@ -407,8 +407,16 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
  */
 export function hasUnresidentGeometry(root) {
   if (!root) return false;
-  const unresident = (object) => !!(object && object.geometry
-    && !(object.geometry.userData && object.geometry.userData.spacefaceGpuResident === true));
+  const options = { includeEmpty: true };
+  const unresident = (object) => {
+    // Match the admission census: hidden authored fallback geometry is never
+    // uploaded, while alternate quality geometries can become live on any frame.
+    if (!drawableHasWork(object, options)) return false;
+    if (object.geometry.userData?.spacefaceGpuResident !== true) return true;
+    const tiers = object.userData?.spacefaceQualityTierGeometries;
+    return Array.isArray(tiers) && tiers.some((geometry) => geometry
+      && geometry.userData?.spacefaceGpuResident !== true);
+  };
   if (typeof root.traverse !== 'function') return unresident(root);
   // traverse() cannot early-exit, so a live consult visited every descendant
   // before answering. Explicit-stack DFS stops at the first unresident

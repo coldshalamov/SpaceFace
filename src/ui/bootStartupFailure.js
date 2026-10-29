@@ -102,11 +102,16 @@ async function defaultFetchText(href) {
 }
 
 // Re-parse ONE module's own text by importing it as a blob and returning whatever it threw.
-// A malformed file throws SyntaxError; a healthy file's './relative' and bare imports cannot
-// resolve under a blob: URL, so it throws TypeError instead — and unresolvable imports mean
-// nothing from the file ever evaluates. The SyntaxError call is made by the caller.
+// A malformed file throws SyntaxError. A healthy file may have no static imports, so prepend
+// a guaranteed-unresolvable static import: the module grammar is still parsed, but dependency
+// resolution fails before any of the candidate's top-level code (including dynamic imports) runs.
+// The SyntaxError call is made by the caller.
+export function startupParseOnlySource(sourceText) {
+  return `import 'spaceface-startup-diagnostics:parse-only';\n${sourceText}`;
+}
+
 async function defaultTryParse(sourceText) {
-  const url = URL.createObjectURL(new Blob([sourceText], { type: 'text/javascript' }));
+  const url = URL.createObjectURL(new Blob([startupParseOnlySource(sourceText)], { type: 'text/javascript' }));
   try {
     await import(/* @vite-ignore */ url);
     return null;

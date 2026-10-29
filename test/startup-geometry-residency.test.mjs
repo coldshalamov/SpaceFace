@@ -17,6 +17,25 @@ import {
 
 const RENDERER_SOURCE = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 
+test('readiness ignores retired fallback layers and includes swappable quality geometry', () => {
+  const root = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  hull.geometry.userData.spacefaceGpuResident = true;
+  const fallback = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  fallback.visible = false;
+  fallback.userData.authoredReadableFallbackLayer = true;
+  root.add(hull, fallback);
+  assert.equal(hasUnresidentGeometry(root), false, 'a retired fallback cannot hide the resident hull');
+  assert.deepEqual(collectStartupGeometryDrawables([root]), [hull]);
+
+  const alternate = new THREE.BoxGeometry();
+  hull.userData.spacefaceQualityTierGeometries = [hull.geometry, alternate];
+  assert.equal(hasUnresidentGeometry(root), true, 'a future quality swap still needs admission');
+  assert.equal(collectStartupGeometryDrawables([root]).length, 2);
+  alternate.userData.spacefaceGpuResident = true;
+  assert.equal(hasUnresidentGeometry(root), false);
+});
+
 test('first-visible admission identity names late roots, leaves, materials, and program families', () => {
   const scene = new THREE.Scene();
   const planned = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
