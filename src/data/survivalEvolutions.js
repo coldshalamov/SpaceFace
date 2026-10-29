@@ -134,6 +134,50 @@ export const SURVIVAL_EVOLUTIONS = freezeDeep([
     blurb: 'The heat lure and the sink become one point-defense servo. The two loose fittings are spent.',
   },
   {
+    // Row 270 B7 — the whip and the heavy winch become one S bay: same snap law, the
+    // reel folded in. The separate winch is spent.
+    id: 'snap_whip',
+    defId: 'mod_snap_whip_s',
+    name: 'Snap Whip S',
+    verb: 'Evolve',
+    consumes: ['mod_elastic_whip_m', 'mod_winch_hd'],
+    price: 50,
+    blurb: 'The springy line and the heavy winch become one faster reel. The loose winch is spent.',
+  },
+  {
+    // Row 270 B7 — the burst drive and the ram plate fold into one S part: the closing
+    // burst is the ram. Two slots become one.
+    id: 'battering_ram',
+    defId: 'mod_battering_ram_s',
+    name: 'Battering Ram S',
+    verb: 'Evolve',
+    consumes: ['mod_afterburner_m', 'mod_ram_plate'],
+    price: 54,
+    blurb: 'The afterburner and the ram plate become one part. The burst is the hit.',
+  },
+  {
+    // Row 270 B7 — the tractor drinks the bumper's gravity tech: same pull, longer reach.
+    // The burst verb is the trade.
+    id: 'greedy_tractor',
+    defId: 'mod_tractor_beam_s',
+    name: 'Greedy Tractor S',
+    verb: 'Evolve',
+    consumes: ['mod_tractor_beam_m', 'mod_gravity_bumper_s'],
+    price: 52,
+    blurb: 'The bumper feeds the tractor: same haul, a longer reach. The burst is spent.',
+  },
+  {
+    // Row 270 B7 — the cutting line carries the rack's kick behind it. Same line,
+    // the charges ride along.
+    id: 'serrated_sweep',
+    defId: 'mod_serrated_sweep_s',
+    name: 'Serrated Sweep S',
+    verb: 'Evolve',
+    consumes: ['mod_monofilament_sweep_m', 'mod_charge_rack'],
+    price: 56,
+    blurb: 'The monofilament and the charge rack become one line. The cuts carry a kick.',
+  },
+  {
     // SEED-SW-13 — a maxed pulse laser plus its named rigs. The gun is not spent.
     id: 'pulse_cadence',
     defId: 'mod_herald_fan',

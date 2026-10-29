@@ -325,6 +325,13 @@ const SHIPPED_MODULES = [
     energyDraw: 10, mods: { boostTopSpeedPct: 0.40, boostDurS: 4, boostCdS: 12 },
   },
   {
+    // Evolution product (row 270 B7): the burst drive and the ram plate become one fitted
+    // part — the closing burst IS the ram. Two slots fold to one S bay.
+    id: 'mod_battering_ram_s', name: 'Battering Ram S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 60000,
+    requiresTech: 'tech_drive_tuning',
+    energyDraw: 8, mods: { boostTopSpeedPct: 0.40, boostDurS: 4, boostCdS: 12, ramDamageDealtMult: 1.80 },
+  },
+  {
     id: 'mod_repair_nanobots_m', name: 'Repair Nanobots M', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 38000, requiresTech: 'tech_nanofabrication',
     energyDraw: 3, mods: { hullRepairOOC: 4 },
   },
@@ -339,6 +346,13 @@ const SHIPPED_MODULES = [
     // magnetRange must beat mining.MAGNET_RANGE floor (800) so the fitted tractor is player-felt.
     // Salvage cutters snapshot this head onto their wreck latch so the player sees the pick-up verb.
     energyDraw: 3, mods: { magnetRange: 1200, masslineHeadId: 'tractor' },
+  },
+  {
+    // Evolution product (row 270 B7): tractor + the bumper's gravity tech folded into the head —
+    // same pull verb, a longer reach. The separate burst is the trade.
+    id: 'mod_tractor_beam_s', name: 'Greedy Tractor S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 58000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 3, mods: { magnetRange: 1500, masslineHeadId: 'tractor' },
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
@@ -375,6 +389,20 @@ const SHIPPED_MODULES = [
     // Scrap sweepers (and patrols netting a raider) snapshot this head on their occupational line.
     id: 'mod_elastic_whip_m', name: 'Elastic Whip M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 16000, requiresTech: 'tech_tractor_systems',
     energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },
+  },
+  {
+    // Evolution product (row 270 B7): the whip and the heavy winch become one — same snap law,
+    // the reel folded in. The separate winch is spent.
+    id: 'mod_snap_whip_s', name: 'Snap Whip S', slotType: 'utility', size: 'S', tier: 4, mass: 4, price: 56000,
+    requiresTech: 'tech_tractor_systems',
+    energyDraw: 4, mods: { masslineHeadId: 'elastic_whip', tetherReelRateMult: 1.8 },
+  },
+  {
+    // Evolution product (row 270 B7): the sweep and the charge rack — the cutting line carries
+    // the rack's kick behind it. Same line, the charges ride along.
+    id: 'mod_serrated_sweep_s', name: 'Serrated Sweep S', slotType: 'utility', size: 'S', tier: 4, mass: 3, price: 64000,
+    requiresTech: 'tech_fire_control',
+    energyDraw: 3, mods: { masslineHeadId: 'monofilament_sweep', impulseChargeCapacity: 8 },
   },
   {
     // FRAME COUPLER — the winched rest length is the hitch. A 200-mass tow turns with you.
@@ -941,6 +969,10 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_toll_saint_bridle: 'Anchors two points at once, and the pull tumbles light hulls.',
   unique_broken_ring_whip: 'Stores the stretch of a swing and gives it back as a snap.',
   mod_elastic_whip_m: 'Stretch the line, then spend that stored snap when you cut it.',
+  mod_snap_whip_s: 'The same snap law with the winch folded in — the stored snap reels back faster.',
+  mod_serrated_sweep_s: 'The cutting line carries the rack behind it — a taut swing still cuts, and the charges ride along.',
+  mod_battering_ram_s: 'The burst drive and the ram plate in one part: the closing burn IS the hit.',
+  mod_tractor_beam_s: 'The tractor drinks the bumper\'s gravity — same haul, a longer reach.',
   mod_frame_coupler_m: 'Holds a heavy tow on a hitch so the load turns with you.',
   mod_monofilament_sweep_m: 'A taut swing cuts a hostile line and staggers a light hull.',
   mod_transverse_snare_m: 'A fast hull that crosses your line gets snatched and tumbled.',
