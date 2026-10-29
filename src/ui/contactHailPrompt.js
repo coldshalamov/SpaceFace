@@ -54,19 +54,24 @@ export function createContactHailPrompt(ctx) {
       <div class="sf-contact-hail__actions" data-k="actions"></div>
       <button type="button" class="sf-contact-hail__close" data-k="close" hidden aria-label="Close route details">CLOSE DETAILS</button>
     </aside>`;
-  document.getElementById('ui-root').appendChild(root);
+  const uiRoot = document.getElementById('ui-root');
+  uiRoot.appendChild(root);
 
   const hailButton = root.querySelector('[data-k="hail"]');
   const panel = root.querySelector('[data-k="panel"]');
-  const linesEl = root.querySelector('[data-k="lines"]');
-  const actionsEl = root.querySelector('[data-k="actions"]');
-  const closeBtn = root.querySelector('[data-k="close"]');
-  const deckBtn = root.querySelector('[data-k="deck"]');
-  const crestEl = root.querySelector('[data-k="crest"]');
-  const pilotEl = root.querySelector('[data-k="pilot"]');
-  const classEl = root.querySelector('[data-k="classword"]');
-  const ribbonPath = root.querySelector('[data-k="ribbon"]');
-  const freqHost = root.querySelector('[data-k="freq"]');
+  // hud.js re-seats #sf-contact-hail into the comms tape inside .sf-leftcontext, and that column
+  // clips every descendant outside its box — the absolute panel would paint nowhere. The panel is
+  // an overlay, not tape content: it lives on #ui-root and anchors itself to the button's rect.
+  uiRoot.appendChild(panel);
+  const linesEl = panel.querySelector('[data-k="lines"]');
+  const actionsEl = panel.querySelector('[data-k="actions"]');
+  const closeBtn = panel.querySelector('[data-k="close"]');
+  const deckBtn = panel.querySelector('[data-k="deck"]');
+  const crestEl = panel.querySelector('[data-k="crest"]');
+  const pilotEl = panel.querySelector('[data-k="pilot"]');
+  const classEl = panel.querySelector('[data-k="classword"]');
+  const ribbonPath = panel.querySelector('[data-k="ribbon"]');
+  const freqHost = panel.querySelector('[data-k="freq"]');
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
 
   let active = null;
@@ -76,6 +81,15 @@ export function createContactHailPrompt(ctx) {
   let previousFreq = '';
   let nextRibbonUpdateAt = 0;
   let toldRequestId = null;
+
+  // Keep the authored relationship: the panel hangs 71px left and 38px below the channel button,
+  // wherever the button's live home puts it (the tape adoption moves it once, safe-insets after).
+  function syncPanelPosition() {
+    const r = root.getBoundingClientRect();
+    if (!r.width && !r.height) return;
+    panel.style.left = `${Math.max(8, Math.round(r.left) - 71)}px`;
+    panel.style.top = `${Math.round(r.top) + 38}px`;
+  }
 
   function activePayload() {
     if (active) return active;
@@ -90,6 +104,7 @@ export function createContactHailPrompt(ctx) {
 
   function updateDeckVisual(force = false) {
     if (panel.hidden && !force) return;
+    syncPanelPosition();
     const payload = activePayload();
     if (!payload) {
       deckBtn.hidden = true;
@@ -278,6 +293,7 @@ export function createContactHailPrompt(ctx) {
     deckBtn.removeEventListener('click', onDeckClick);
     closeBtn.removeEventListener('click', hidePanel);
     try { freqMorph.dispose(); } catch (_) {}
+    panel.remove();
     root.remove();
   }
 
@@ -327,8 +343,13 @@ function injectStyle() {
   .sf-contact-hail__deck:focus-visible {
     outline:2px solid var(--sf-goal); outline-offset:2px; }
   .sf-contact-hail__button:disabled { opacity:.72; }
-  .sf-contact-hail__panel { position:absolute; left:-71px; top:38px; width:min(332px, calc(100vw - 28px));
+  /* position:fixed on #ui-root — an overlay anchored to the button's rect by syncPanelPosition.
+     Anything inside the comms tape's clipped column would paint nowhere. pointer-events:auto:
+     #ui-root is pointer-transparent; the opt-in used to come from .sf-commtape__slots while the
+     panel lived inside it — without it the deck and its verbs are click-dead. */
+  .sf-contact-hail__panel { position:fixed; left:8px; top:58px; z-index:20; pointer-events:auto; width:min(332px, calc(100vw - 28px));
     box-sizing:border-box; padding:10px 11px; border-radius:8px;
+    font-family:var(--hud-data, var(--mono, Consolas, monospace));
     /* Glass register (hudStyles :root tokens) — no backdrop-filter, flight perf floor §7. */
     background-color:var(--glass-fill, rgb(9 14 22 / .82));
     background-image:var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%));
@@ -382,10 +403,11 @@ function injectStyle() {
     color:var(--sf-paper); }
   .sf-contact-hail__actions button:active { translate:0 1px; }
   body.ui-modal-open #sf-contact-hail,
-  body.ui-live-screen #sf-contact-hail { opacity:0; visibility:hidden; pointer-events:none; }
+  body.ui-live-screen #sf-contact-hail,
+  body.ui-modal-open .sf-contact-hail__panel,
+  body.ui-live-screen .sf-contact-hail__panel { opacity:0; visibility:hidden; pointer-events:none; }
   @media (max-width:900px), (max-height:620px) {
     #sf-contact-hail { left:85px; top:12px; }
-    .sf-contact-hail__panel { left:-71px; }
   }
   @media (prefers-reduced-motion:reduce) {
     #sf-contact-hail, .sf-contact-hail__button, .sf-contact-hail__panel, .sf-contact-hail__deck, .sf-contact-hail__actions button { transition:none; }

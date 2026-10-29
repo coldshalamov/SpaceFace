@@ -1247,10 +1247,11 @@ export function injectHudCss() {
     color:var(--hud-paper);
   }
   .sf-commtape .sf-contact-hail__button[disabled] { color:var(--hud-muted); }
-  /* The hail panel is a popover off the button; keep it anchored to the tape, not the old corner.
-     It must also paint ABOVE the adopted comms feed: #sf-comms carries z-index:1050 inside #hud's
-     stacking context, which beats every z:auto popover — the deck opened under live feed lines. */
-  .sf-commtape .sf-contact-hail__panel { left:0 !important; top:30px !important; z-index:1055; }
+  /* The hail panel is a popover off the button — since it hangs outside the clipped column it is
+     a position:fixed overlay on #ui-root (contactHailPrompt.js anchors it to the live button
+     rect); left/top pins here would override that anchoring. It must still paint ABOVE the
+     adopted comms feed: #sf-comms carries z-index:1050 inside #hud's stacking context. */
+  .sf-commtape .sf-contact-hail__panel { z-index:1055; }
   /* The tracker used a 2px amber top border to say "this is the mission". De-boxed, that job goes
      to a single amber rule under the title — one stroke, still the loudest thing in the column. */
   .sf-mission-tracker { padding:8px 10px 9px; }
