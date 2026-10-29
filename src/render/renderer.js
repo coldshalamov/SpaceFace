@@ -470,6 +470,7 @@ import { openingLoadPolicy } from './openingLoadPolicy.js';
 import {
   collectStartupGeometries,
   collectStartupGeometriesSteps,
+  collectOpeningResidencySubjects,
   collectStartupTextures,
   collectStartupTexturesSteps,
   collectUnresidentInstancedDrawables,
@@ -17059,33 +17060,38 @@ export const render = {
             });
           }
         }
-        // The pool/buffer seal is the LAST barrier before flight, not an optional extra.
-        // shouldAwaitOpeningGpuCook is false without KHR_parallel_shader_compile, so the old
-        // guard skipped this sweep on exactly the hardware that bricks worst — the Intel/ANGLE
-        // run showed a 116 ms bloomScene full of unstamped Atlas pool chunks drawn inside the
-        // presented pass. The prepare-budget gate made the same trade silently: an over-budget
-        // cook recorded 'resolved' while the seal never ran. Skipping the seal does not save
-        // wall time — the outer wait tolerates overrun and this drains in bounded yielded
-        // batches — it only moves the uploads into the first presented frames. Always seal.
+        // Seal only the exact picture and pools declared by its current plan. On routes where the
+        // plan is captured later, the exact opening residency pass and live first-flight cook own
+        // those uploads; scanning the entire scene here only admits hidden/future resources early.
         let firstFrameResidency = null;
+        let firstPictureResidencySubjects = [];
         try {
           // A raw yield makes the seal O(items x task latency): the texture loop and every
           // geometry batch each paid a full scheduling round-trip (~500 hops on a busy host).
           // The sliced cadence matches the warm-roots stamp above — real uploads still interleave
           // with the shell presenter, just without donating a frame per item.
           if (cookStale()) return cookSuperseded;
-          firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
-            geometryBatchDrawables: residencyPolicy().geometryBatchDrawables,
-            ...residencyPolicy().textureBatch,
-            yieldToMain: createSlicedYield(yieldToBrowser, {
-              sliceMs: 16,
-              shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
-              debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
-            }),
-            includeEmpty: true,
-            onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
-          });
-          if (cookStale()) return cookSuperseded;
+          const firstPicturePlan = state.render.openingSubmissionPlan;
+          firstPictureResidencySubjects = collectOpeningResidencySubjects(firstPicturePlan);
+          if (firstPictureResidencySubjects.length > 0) {
+            firstFrameResidency = await prepareStartupGpuResidency(renderer, firstPictureResidencySubjects, {
+              geometryBatchDrawables: residencyPolicy().geometryBatchDrawables,
+              ...residencyPolicy().textureBatch,
+              yieldToMain: createSlicedYield(yieldToBrowser, {
+                sliceMs: 16,
+                shouldYield: () => state.mode === 'flight' && pacedFrameSpend() >= PACED_FRAME_BUDGET_MS,
+                debit: notePacedFrameSpend, debitGate: () => state.mode === 'flight',
+              }),
+              includeEmpty: true,
+              onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+            });
+            if (cookStale()) return cookSuperseded;
+          } else {
+            firstFrameResidency = {
+              skipped: true,
+              reason: 'exact opening admission and first-flight cook own residency',
+            };
+          }
         } catch (error) {
             if (cookStale()) return cookSuperseded;
           firstFrameResidency = { skipped: true, reason: String(error && error.message || error) };
@@ -17094,6 +17100,12 @@ export const render = {
           firstPictureError ? 'error' : (firstFrameResidency && firstFrameResidency.skipped === true ? 'skipped' : 'resolved'), {
             error: firstPictureError || undefined,
             reason: firstFrameResidency && firstFrameResidency.reason,
+            subjects: firstPictureResidencySubjects?.length,
+            textures: firstFrameResidency && firstFrameResidency.textures,
+            textureUploads: firstFrameResidency && firstFrameResidency.uploads?.length,
+            geometryDrawables: firstFrameResidency && firstFrameResidency.geometryResidency?.drawables,
+            geometryWorkItems: firstFrameResidency && firstFrameResidency.geometryResidency?.geometryWorkItems,
+            geometryBatches: firstFrameResidency && firstFrameResidency.geometryResidency?.batches?.length,
           });
         if (firstPictureError) throw new Error(firstPictureError);
       }
@@ -20588,7 +20600,21 @@ export const render = {
         // Also pass deadlineMs into the uploader — Promise.race alone misses sync initTexture
         // bursts that starve the timer until well past the budget.
         const residencyBudgetMs = resourcePolicy.residencyBudgetMs;
-        const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
+        // Zero-count/current-wave pools are declared by the same opening plan, but are not
+        // visible compile leaves. Admit their exact buffers here so they cannot fall through a
+        // budget-skippable cook and become first-flight uploads. Reuse the opening owner’s
+        // attachment and mobile first-picture policy; dormant mobile pools retain on-use admission.
+        const openingResidencyLeaves = openingAdmissionSubjects(
+          Array.isArray(plan.residencySubjects) ? plan.residencySubjects : [],
+          Array.isArray(plan.pooledResourceSubjects) ? plan.pooledResourceSubjects : [],
+          scene,
+          { mobileFirstPicture: isMobileRenderContext() && !survivalRunHoldsArena(state) },
+        );
+        const openingResidencySubjects = collectOpeningResidencySubjects({
+          residencySubjects: openingResidencyLeaves,
+          textureRefs: plan.textureRefs,
+        });
+        const residency = prepareStartupGpuResidency(renderer, openingResidencySubjects, {
           // Same sliced cadence as the end-of-cook census: per-item task hops
           // cost more than the small uploads themselves on a contended host.
           yieldToMain: createSlicedYield(yieldToBrowser, {

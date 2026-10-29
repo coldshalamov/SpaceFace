@@ -133,6 +133,25 @@ function subjectRoots(subjects) {
   return Array.isArray(subjects) ? subjects : [subjects];
 }
 
+/**
+ * Live resources owned by the exact first-picture plan. The plan separates drawable leaves
+ * (required now) from declared pool resources (allowed to grow from 0→N during first flight).
+ * Keeping this scope explicit avoids turning the final picture seal into an unrelated whole-scene
+ * census; late authored roots and later-use pools retain their own admission owners.
+ */
+export function collectOpeningResidencySubjects(plan) {
+  if (!plan || typeof plan !== 'object') return [];
+  const subjects = new Set();
+  for (const field of ['residencySubjects', 'pooledResourceSubjects', 'textureRefs']) {
+    const values = plan[field];
+    if (!Array.isArray(values)) continue;
+    for (const value of values) {
+      if (value && (value.isObject3D === true || value.isTexture === true)) subjects.add(value);
+    }
+  }
+  return [...subjects];
+}
+
 export function collectStartupTextures(subjects) {
   const textures = new Set();
   const seenMaterials = new Set();

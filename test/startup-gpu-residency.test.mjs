@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 import {
+  collectOpeningResidencySubjects,
   collectStartupTextures,
   prepareStartupGpuResidency,
 } from '../src/render/startupGpuResidency.js';
@@ -51,6 +52,69 @@ test('startup GPU residency fails open when explicit uploads are unsupported', a
   );
 });
 
+test('opening residency seal contains required leaves, declared empty pools, and plan textures only', async () => {
+  const requiredTexture = new THREE.Texture();
+  const poolTexture = new THREE.Texture();
+  const futureTexture = new THREE.Texture();
+  const requiredLeaf = new THREE.Mesh(
+    new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: requiredTexture }),
+  );
+  const emptyPool = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: poolTexture }), 4,
+  );
+  emptyPool.count = 0;
+  const hiddenFuture = new THREE.Mesh(
+    new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ map: futureTexture }),
+  );
+  hiddenFuture.visible = false;
+  const fullScene = new THREE.Scene();
+  fullScene.add(requiredLeaf, emptyPool, hiddenFuture);
+
+  const subjects = collectOpeningResidencySubjects({
+    residencySubjects: [requiredLeaf],
+    pooledResourceSubjects: [emptyPool],
+    textureRefs: [requiredTexture],
+  });
+  assert.deepEqual(subjects, [requiredLeaf, emptyPool, requiredTexture]);
+  assert.ok(!subjects.includes(hiddenFuture));
+  assert.ok(!subjects.includes(futureTexture));
+  assert.deepEqual(collectOpeningResidencySubjects(null), [],
+    'a not-yet-captured plan delegates residency to the later exact opening/cook owners');
+
+  const uploaded = [];
+  const renderer = {
+    initTexture(texture) { uploaded.push(texture); },
+  };
+  const fullSceneWork = await prepareStartupGpuResidency(renderer, fullScene, {
+    includeGeometry: false, ignoreResidentStamps: true, yieldToMain: async () => {},
+  });
+  const openingWork = await prepareStartupGpuResidency(renderer, subjects, {
+    includeGeometry: false, ignoreResidentStamps: true, yieldToMain: async () => {},
+  });
+  assert.equal(fullSceneWork.textures, 3);
+  assert.equal(openingWork.textures, 2);
+  assert.equal(fullSceneWork.uploads.length, 3);
+  assert.equal(openingWork.uploads.length, 2);
+  assert.deepEqual(new Set(uploaded), new Set([requiredTexture, poolTexture, futureTexture]));
+  assert.equal(uploaded.length, 5, 'the same renderer exercised both full-scene and scoped work');
+
+  const openingOwnerStart = RENDERER_SOURCE.indexOf(
+    'const openingResidencyLeaves = openingAdmissionSubjects(',
+  );
+  const openingOwnerEnd = RENDERER_SOURCE.indexOf(
+    'const residency = prepareStartupGpuResidency(renderer, openingResidencySubjects,', openingOwnerStart,
+  );
+  assert.ok(openingOwnerStart >= 0 && openingOwnerEnd > openingOwnerStart,
+    'the required opening owner must create a residency set before uploading');
+  const openingOwner = RENDERER_SOURCE.slice(openingOwnerStart, openingOwnerEnd);
+  assert.match(openingOwner, /plan\.pooledResourceSubjects/,
+    'declared zero-count pools must reach the required opening residency set');
+  assert.match(openingOwner, /mobileFirstPicture:\s*isMobileRenderContext\(\)\s*&&\s*!survivalRunHoldsArena\(state\)/,
+    'mobile startup retains the authored immediate-first-use filter');
+  assert.match(openingOwner, /collectOpeningResidencySubjects\(\{[\s\S]*?residencySubjects:\s*openingResidencyLeaves/,
+    'the exact opening leaves and admitted pools are passed through the shared collector');
+});
+
 test('live VFX roots join the loading-stage texture upload instead of waiting for first combat use', async () => {
   const state = {
     playerId: 1,
@@ -86,8 +150,8 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   // The two anchors sit in the same startup function; the window is a proximity pin, not a line count
   // (renderer.js growth had pushed them past the old 1800-character window).
   assert.match(RENDERER_SOURCE,
-    /openingSubmissionPlan[\s\S]{0,4000}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
-    'the loading-stage renderer must derive GPU uploads from the exact opening submission plan');
+    /openingSubmissionPlan[\s\S]{0,12000}openingAdmissionSubjects\([\s\S]*?plan\.pooledResourceSubjects[\s\S]*?collectOpeningResidencySubjects\([\s\S]*?prepareStartupGpuResidency\(renderer, openingResidencySubjects/,
+    'the required opening owner must upload exact plan leaves and eligible declared pools');
   system.destroy();
   assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);
 });

@@ -408,7 +408,9 @@ try {
   }, null, 1));
   console.log(`[crucible-cpu-profile] advancing ${ADVENTURE ? 'Adventure' : 'Swarm'} simulation reached at ${(startupWallMs / 1000).toFixed(1)}s`);
 
-  if (BARE_ACTIVE) {
+  if (DIAGNOSTICS_ONLY) {
+    console.log(`[crucible-cpu-profile] diagnostics-only capture complete: ${path.join(OUT_DIR, 'opening-diagnostics.json')}`);
+  } else if (BARE_ACTIVE) {
     await page.bringToFront();
     const activeAtStart = await page.evaluate(() => {
       const state = window.SF && window.SF.state;
