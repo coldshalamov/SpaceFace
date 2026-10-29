@@ -739,9 +739,8 @@ export async function loadAuthoredPart(url, options = {}) {
 
   const task = admitAuthoredAssetTask(runtime, cacheKey, (admission) => (
     (wrapDecodeClass ? () => wrapDecodeClass(() => loadGltfDocument(url, runtime.gltf, undefined, task, () => {
-      // Parse-drain liveness — same consumer consult the compile tail runs one
-      // stage later; no registered consumers yet means the creator is the only
-      // consumer, and ownerless creators default live (aborts still read dead).
+      // Parse-drain liveness — every consumer is registered before the queued
+      // task factory starts, so canceled joiners cannot hide a live creator.
       const consumers = taskConsumerPredicates.get(task);
       return consumers && consumers.length > 0
         ? consumers.some((isLive) => isLive())
@@ -766,12 +765,6 @@ export async function loadAuthoredPart(url, options = {}) {
         const compileClass = options.admissionVisible === true
           ? 'visible'
           : (joinedAssetTaskClasses.get(task) || (deadlineClass ? 'deadline' : 'ambient'));
-        // Always register a creator predicate: an ownerless warm holds zero joiner
-        // predicates, and without one a compile tail resolves null the moment its last
-        // joiner dies — evicting the shared decode the warm exists to pre-stage. The
-        // composed check keeps real owners exact and defaults ownerless creators live
-        // (aborted signals still read dead).
-        consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
         return scheduleGltfCompile(() => {
           // Owner departed while the tail queued: compile is the expensive stage — skip it
           // and let the settled-null path cancel the request below. Joiners deduped onto
@@ -805,9 +798,10 @@ export async function loadAuthoredPart(url, options = {}) {
     if (request) request.cancel('runtime-retired-before-decode');
     return null;
   }
-  if (joinedPendingTask === task) {
-    // A consumer joining an in-flight task shares its settle — register its liveness so
-    // the compile tail keeps running when the creator's owner departs but a joiner waits.
+  // The creator and pending joiners must register before the admission factory's
+  // microtask can enqueue parsing. Settled cache hits need no liveness predicate;
+  // retaining their options closures would grow the task's consumer list forever.
+  if (runtime.pendingAssetTasks && runtime.pendingAssetTasks.has(task)) {
     consumerPredicatesFor(task).push(() => authoredConsumerIsActive(options));
   }
   if (deadlineJoin) {
