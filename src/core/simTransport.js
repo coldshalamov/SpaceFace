@@ -150,7 +150,10 @@ export function createSimTransport(options = {}) {
       recordJournal(kind, posted);
       const message = { kind, sequence: posted, payload };
       if (channel) channel.port2.postMessage(message);
-      else schedule(() => deliver('render', message));
+      else {
+        const copy = cloneQueuedMessage(message);
+        schedule(() => deliver('render', copy));
+      }
       return posted;
     },
 
@@ -160,7 +163,10 @@ export function createSimTransport(options = {}) {
       posted++;
       const message = { kind, sequence: posted, payload };
       if (channel) channel.port1.postMessage(message);
-      else schedule(() => deliver('sim', message));
+      else {
+        const copy = cloneQueuedMessage(message);
+        schedule(() => deliver('sim', copy));
+      }
       return posted;
     },
 
@@ -181,6 +187,15 @@ export function createSimTransport(options = {}) {
       return true;
     },
   };
+}
+
+function cloneQueuedMessage(message) {
+  // MessagePort clones synchronously at postMessage(). Keep the queue shim's ownership
+  // semantics identical: a sender or receiver must never mutate the other owner's payload.
+  if (typeof globalThis.structuredClone !== 'function') {
+    throw new Error('Sim transport fallback requires structuredClone.');
+  }
+  return globalThis.structuredClone(message);
 }
 
 /**
