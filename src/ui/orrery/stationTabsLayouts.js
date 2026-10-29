@@ -875,6 +875,14 @@ ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-
   ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
   ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
 }
+/* …and a 521–650 window (up to where the 651+ desktop bands start): the same 46% column left the reading 12px wide,
+   so it broke into letters. The tape and reading stack under the list; the reading keeps the purse beside it. */
+@media (min-width:521px) and (max-width:650px) {
+  ${T} .sx-ledger > .st-ledger { max-width:none; }
+  ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
+  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { gap:24px; }
+}
 /* the empty state is one line, and the tape waits with it */
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows:auto auto auto auto auto !important; }
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .st-ledger-status { display:none !important; }
