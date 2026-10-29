@@ -30,6 +30,20 @@ ${T} .con-curve__rungs { display:flex; flex-wrap:wrap; margin-top:2px; line-heig
   overflow:hidden; color:rgb(${BONE} / .86); }
 ${T} .con-curve__rung { white-space:nowrap; }
 ${T} .con-curve__sep { white-space:pre; }
+/* ui-polish-170: a desktop head with height to spare stacks the first two rungs as a short ladder
+   instead of one line. The 28ch line held only "1 Propelled charge" even at 1920, and widening it
+   pulled the dial in (the sky keeps the dial clear of the head's box); one more line under the
+   key costs the dial nothing, since the title's corner is what bounds it. */
+@media (min-width:761px) and (min-height:601px) {
+  /* the second line hangs below the head's box (negative margin): the head keeps its one-line
+     height, so the sky's avoid rect and its top fade (--con-mask-top) stay where master has them */
+  ${T} .con-curve__rungs { flex-direction:column; flex-wrap:nowrap; height:2.7em; margin-bottom:-1.35em; }
+  ${T} .con-curve { overflow:visible !important; } /* the hung line must not be clipped by the head's own box */
+  ${T} .con-curve__sep { display:none; }
+  /* while the ladder is open it lists every rung, so the head folds back to one line: the fly anchors
+     at the curve box's bottom and would otherwise land on the hung rung and half-fade it */
+  ${T} .con-curve.is-open .con-curve__rungs { height:1.35em; margin-bottom:0; }
+}
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key { color:rgb(${WARM} / .92); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__key::after { color:rgb(${WARM} / .9); }
 ${T} .con-curve__head:is(:hover, :focus-visible) .con-curve__rungs { color:rgb(${WARM}); }
