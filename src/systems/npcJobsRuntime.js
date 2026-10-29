@@ -5458,6 +5458,15 @@ export const npcJobsRuntime = {
             return false;
           }
         }
+        // The self-radius is clear, but resuming is flying the route again — if the lane to
+        // the next stop is still held by a hostile, the alarm-quiet lull is a trap with a
+        // longer fuse. The reconcile owns this same call through _routeThreatBlocker; the
+        // alarm seam must not skip it.
+        const blocker = this._routeThreatBlocker(entry);
+        if (blocker) {
+          this._holdForRouteThreat(entry, blocker, finite(this.state.simTime, 0));
+          return false;
+        }
       }
     }
     resume(entry.job);
@@ -6565,7 +6574,44 @@ export const npcJobsRuntime = {
     if (prior === NPC_JOB_PHASE.TRANSIT || prior === NPC_JOB_PHASE.RETURN) idx += 1;
     const wp = Array.isArray(job.route) ? job.route[idx] : null;
     if (!wp || !wp.pos) return null;
-    return this._stopContestedBy(wp.pos);
+    const docked = this._stopContestedBy(wp.pos);
+    if (docked) return docked;
+    // The dock is clear but the lane to it may not be: a hostile sitting on the leg this
+    // hull must transit is the same ambush with a longer fuse. Resuming anyway is sailing
+    // straight into the corridor the pirates already hold — the prior stop is the fallback.
+    const hull = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    if (hull && hull.pos) return this._legContestedBy(hull.pos, wp.pos);
+    return null;
+  },
+
+  /**
+   * The nearest live job threat lying within the route-guard band of the leg a hull would
+   * resume along, or null when the corridor is clear. Guard-ring semantics match the dock
+   * check: a pirate within the ring of the transit line IS the trap, wherever on it it sits.
+   */
+  _legContestedBy(from, to) {
+    if (!from || !to || !this.state.entities) return null;
+    const lx = to.x - from.x;
+    const lz = to.z - from.z;
+    const len2 = lx * lx + lz * lz;
+    let best = null;
+    let bestD2 = ROUTE_GUARD_WU * ROUTE_GUARD_WU;
+    for (const entity of this.state.entities.values()) {
+      if (!this._isJobThreat(entity) || !entity.pos) continue;
+      const t = len2 > 1e-9
+        ? Math.max(0, Math.min(1,
+            ((entity.pos.x - from.x) * lx + (entity.pos.z - from.z) * lz) / len2))
+        : 0;
+      const px = from.x + lx * t;
+      const pz = from.z + lz * t;
+      const dx = entity.pos.x - px;
+      const dz = entity.pos.z - pz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) { bestD2 = d2; best = entity; }
+    }
+    return best;
   },
 
   /** The nearest live job threat within the route-guard ring of a stop, or null when clear. */
