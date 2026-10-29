@@ -46,7 +46,7 @@ function makeHarness({ headId = 'head_breaker', chunkCount = 3 } = {}) {
   sys.init({
     state,
     bus: {
-      on: (verb, fn) => { sys.__fn = fn; return () => {}; },
+      on: (verb, fn) => { (sys.__fns = sys.__fns || []).push(fn); return () => {}; },
       emit: (verb, payload) => emitted.push({ verb, payload }),
     },
     helpers: {
@@ -71,9 +71,14 @@ function whip(over = {}) {
   };
 }
 
+// The bus fans out to every whipImpact subscriber (breaker + seal) — same as production.
+function fireWhip(sys, payload) {
+  for (const fn of sys.__fns || []) fn(payload);
+}
+
 test('w-501: a solid whip slam on a Breaker-held rock splits it into authored chunks', () => {
   const { sys, rock, spawned, emitted } = makeHarness();
-  sys.__fn(whip());
+  fireWhip(sys, whip());
   assert.equal(rock.alive, false, 'the slammed body is consumed');
   assert.equal(rock.data.breakerConsumed, true);
   assert.equal(spawned.length, 3, 'Worked floor authors three chunks');
@@ -96,20 +101,20 @@ test('w-501: a solid whip slam on a Breaker-held rock splits it into authored ch
 
 test('w-501: Storied provenance authors four chunks through the same seam', () => {
   const { sys, spawned } = makeHarness({ chunkCount: 4 });
-  sys.__fn(whip({ rating: 'crushing' }));
+  fireWhip(sys, whip({ rating: 'crushing' }));
   assert.equal(spawned.length, 4);
 });
 
 test('w-501: no head, wrong head, or a dead holder — the slam does nothing new', () => {
   for (const headId of [null, 'head_barb', 'head_weld']) {
     const { sys, rock, spawned } = makeHarness({ headId });
-    sys.__fn(whip());
+    fireWhip(sys, whip());
     assert.equal(spawned.length, 0, `${headId} must not split`);
     assert.equal(rock.alive, true);
   }
   const { sys, rock, spawned } = makeHarness();
   sys.state.entities.get(1).alive = false;
-  sys.__fn(whip());
+  fireWhip(sys, whip());
   assert.equal(spawned.length, 0, 'a dead holder swings nothing');
   assert.equal(rock.alive, true);
 });
@@ -117,7 +122,7 @@ test('w-501: no head, wrong head, or a dead holder — the slam does nothing new
 test('w-501: a glance is not a slam — the authored bands gate the split', () => {
   const { sys, rock, spawned } = makeHarness();
   for (const rating of ['glance', 'chip', '']) {
-    sys.__fn(whip({ rating }));
+    fireWhip(sys, whip({ rating }));
     assert.equal(spawned.length, 0, `rating '${rating}' is below the slam floor`);
   }
   assert.equal(rock.alive, true);
@@ -128,7 +133,7 @@ test('w-501: ships, stations and already-broken bodies never split under the hea
   for (const type of ['ship', 'station', 'projectile', 'shard', 'machine', 'vfx']) {
     const body = { id: 50, type, alive: true, pos: { x: 0, y: 0, z: 0 }, radius: 5, mass: 4, data: {} };
     state.entities.set(50, body);
-    sys.__fn(whip({ targetId: 50 }));
+    fireWhip(sys, whip({ targetId: 50 }));
     assert.equal(body.alive, true, `${type} is not ammunition-grade rock`);
     assert.equal(spawned.length, 0);
   }
@@ -136,26 +141,160 @@ test('w-501: ships, stations and already-broken bodies never split under the hea
 
 test('w-501: one split per body — a consumed rock cannot re-split', () => {
   const { sys, state, rock, spawned } = makeHarness();
-  sys.__fn(whip());
+  fireWhip(sys, whip());
   assert.equal(spawned.length, 3);
   // Resurrect the same body and slam again — the stamp still refuses.
   rock.alive = true;
-  sys.__fn(whip());
+  fireWhip(sys, whip());
   assert.equal(spawned.length, 3, 'breakerConsumed bodies are spent');
   // And a breaker chunk itself never chains.
   const chunk = spawned[0];
   state.entities.set(chunk.id, chunk);
-  sys.__fn(whip({ targetId: chunk.id }));
+  fireWhip(sys, whip({ targetId: chunk.id }));
   assert.equal(spawned.length, 3);
 });
 
 test('w-501: the same seed yields the same chunk census', () => {
   const a = makeHarness();
   const b = makeHarness();
-  a.sys.__fn(whip());
-  b.sys.__fn(whip());
+  fireWhip(a.sys, whip());
+  fireWhip(b.sys, whip());
   assert.deepEqual(
     a.spawned.map((c) => [c.mass, c.radius, c.pos.x, c.pos.z, c.vel.x, c.vel.z]),
     b.spawned.map((c) => [c.mass, c.radius, c.pos.x, c.pos.z, c.vel.x, c.vel.z]),
   );
+});
+
+// ── the per-step heads ───────────────────────────────────────────────────────
+
+function makeTickHarness({ headId, heldType = 'asteroid', heldMass = 8 } = {}) {
+  const entities = new Map();
+  const list = [];
+  const add = (e) => { entities.set(e.id, e); list.push(e); return e; };
+  const holder = add({
+    id: 1, type: 'ship', alive: true, factionId: 'faction_free', team: 0,
+    pos: { x: 0, y: 0, z: 0 }, vel: { x: 10, y: 0, z: 0 }, radius: 12, mass: 40,
+    tether: { active: true, targetId: 42 },
+    data: { lineHeadId: headId, derived: { lineHead: { kind: 'x', chunkCount: 3, panicWingmen: true } } },
+  });
+  const held = add({
+    id: 42, type: heldType, alive: true, factionId: 'faction_pirate', team: 1,
+    pos: { x: 80, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, radius: 8, mass: heldMass,
+    hull: 30, hullMax: 30, data: {},
+  });
+  const emitted = [];
+  const state = {
+    playerId: 1, entities, entityList: list,
+    rng: makeRng(), simTime: 50, tick: 3000, mode: 'flight',
+    world: { currentSectorId: 'sector_test' },
+  };
+  const sys = Object.create(lineHeads);
+  sys.init({
+    state,
+    bus: { on: (verb, fn) => { sys.__fns = sys.__fns || []; sys.__fns.push(fn); return () => {}; },
+           emit: (verb, payload) => emitted.push({ verb, payload }) },
+    helpers: { spawnEntity: (spec) => add({ id: 500 + list.length, alive: true, ...spec }) },
+  });
+  return { sys, state, holder, held, entities, list, emitted };
+}
+
+test('w-501: Coupler chains loose bodies near the held mass into a following train', () => {
+  const { sys, state, held, list } = makeTickHarness({ headId: 'head_coupler' });
+  const loose = { id: 60, type: 'asteroid', alive: true, pos: { x: 120, y: 0, z: 10 },
+                  vel: { x: 0, y: 0, z: 0 }, radius: 6, mass: 3, data: {} };
+  list.push(loose); state.entities.set(60, loose);
+  sys.update(1 / 60, state);
+  assert.equal(loose.data.trainOf, 1, 'the loose body joins the holder’s train');
+  assert.ok(loose.data.trainSlot >= 1);
+  const v0 = Math.hypot(loose.vel.x, loose.vel.z);
+  for (let i = 0; i < 120; i++) sys.update(1 / 60, state);
+  assert.ok(Math.hypot(loose.vel.x, loose.vel.z) > v0, 'the car accelerates to follow the line');
+  // Dropping the tether releases the consist.
+  const holder = state.entities.get(1);
+  holder.tether.active = false;
+  sys.update(1 / 60, state);
+  assert.equal(loose.data.trainOf, undefined);
+});
+
+test('w-501: Barb drags a latched light hull and the wrong target types stay free', () => {
+  const { sys, state, held } = makeTickHarness({ headId: 'head_barb', heldType: 'ship', heldMass: 20 });
+  const d0 = Math.hypot(held.pos.x, held.pos.z);
+  for (let i = 0; i < 180; i++) sys.update(1 / 60, state);
+  assert.equal(held.data.barbed, 1);
+  assert.ok(Math.hypot(held.vel.x, held.vel.z) > 0, 'the hooked hull is dragged along');
+  // A heavy ship is not a barb target.
+  const heavy = makeTickHarness({ headId: 'head_barb', heldType: 'ship', heldMass: 200 });
+  heavy.sys.update(1 / 60, heavy.state);
+  assert.equal(heavy.held.data.barbed, undefined);
+  // An asteroid is not a ship — no drag stamp.
+  const rock = makeTickHarness({ headId: 'head_barb', heldType: 'asteroid' });
+  rock.sys.update(1 / 60, rock.state);
+  assert.equal(rock.held.data.barbed, undefined);
+  void d0;
+});
+
+test('w-501: Hush hides the held mass from scales while held and lifts on release', () => {
+  const { sys, state, held } = makeTickHarness({ headId: 'head_hush' });
+  sys.update(1 / 60, state);
+  assert.equal(held.data.signatureHidden, true, 'the scale stamp the Weighing reads');
+  assert.equal(held.data.hushHeldBy, 1);
+  state.entities.get(1).tether.active = false;
+  sys.update(1 / 60, state);
+  assert.equal(held.data.signatureHidden, undefined, 'release restores the manifest read');
+  assert.equal(held.data.hushHeldBy, undefined);
+});
+
+test('w-501: Evidence Clamp staples the held body to a touched joint — the bond outlives the Line', () => {
+  const { sys, state, held, list, emitted } = makeTickHarness({ headId: 'head_evidence_clamp' });
+  const joint = { id: 90, type: 'asteroid', alive: true, pos: { x: 88.5, y: 0, z: 0 },
+                  vel: { x: 0, y: 0, z: 0 }, radius: 4, mass: 50, data: {} };
+  list.push(joint); state.entities.set(90, joint);
+  // Channel: stapleTimeS default 2.0s — under it, nothing binds.
+  for (let i = 0; i < 60; i++) sys.update(1 / 60, state);
+  assert.equal(held.data.stapledTo, undefined, 'channel incomplete — no bond');
+  for (let i = 0; i < 80; i++) sys.update(1 / 60, state);
+  assert.equal(joint.data.stapledAnchor, held.id, 'the heavier body anchors');
+  assert.equal(held.data.stapledTo, joint.id, 'the rider staples to the anchor');
+  assert.ok(emitted.some((e) => e.verb === 'lineHead:stapled'));
+  // The bond outlives the Line: release the tether, move the anchor — the rider follows.
+  state.entities.get(1).tether.active = false;
+  joint.pos.x += 30; joint.pos.z += 10;
+  joint.vel.x = 5;
+  sys.update(1 / 60, state);
+  assert.equal(held.pos.x, joint.pos.x + held.data.stapleOffset.dx);
+  assert.equal(held.vel.x, 5, 'the rider keeps the anchor’s motion');
+});
+
+test('w-501: Sympathy pulls line-linked bodies toward shared momentum', () => {
+  const { sys, state, holder, held } = makeTickHarness({ headId: 'head_sympathy' });
+  holder.vel = { x: 40, y: 0, z: 0 };
+  held.vel = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 300; i++) sys.update(1 / 60, state);
+  const shared = (40 * holder.mass + 0 * held.mass) / (holder.mass + held.mass);
+  assert.ok(Math.abs(holder.vel.x - shared) < 4, 'holder converges toward shared momentum');
+  assert.ok(Math.abs(held.vel.x - shared) < 4, 'held converges toward shared momentum');
+});
+
+test('w-501: Seal marks a stapled hostile — lawful ships take it as their security target', () => {
+  // Held rock (42) is the standard asteroid; the hostile SHIP is the whip victim.
+  const { sys, state, list, emitted } = makeTickHarness({ headId: 'head_seal' });
+  const victim = { id: 88, type: 'ship', alive: true, team: 1, factionId: 'faction_pirate',
+                   pos: { x: 90, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, radius: 9, mass: 25,
+                   data: { ai: { hostileTeams: [0] } } };
+  const cop = { id: 200, type: 'ship', alive: true, team: 0, factionId: 'faction_concord',
+                pos: { x: 400, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, radius: 10, mass: 30,
+                data: { ai: { lawful: true } } };
+  list.push(victim, cop); state.entities.set(88, victim); state.entities.set(200, cop);
+  const holder = state.entities.get(1);
+  sys.__fns.forEach((fn) => fn(whip({ victimId: 88 })));
+  assert.ok(victim.data.sealMark, 'the mark lands on the hostile');
+  assert.equal(victim.data.sealMark.by, holder.id);
+  assert.equal(cop.data.ai.securityTargetId, victim.id, 'lawful ships hunt the mark');
+  assert.ok(emitted.some((e) => e.verb === 'lineHead:sealed'));
+  // A neutral victim (player-side civilian, team 0) takes no mark.
+  const neutral = { id: 43, type: 'ship', alive: true, team: 0, factionId: 'faction_free',
+                    pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 }, data: {} };
+  list.push(neutral); state.entities.set(43, neutral);
+  sys.__fns.forEach((fn) => fn(whip({ victimId: 43 })));
+  assert.equal(neutral.data.sealMark, undefined);
 });

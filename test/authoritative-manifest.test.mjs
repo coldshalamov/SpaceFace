@@ -187,8 +187,12 @@ test('production init + update order lengths match the live browser baseline', (
   // behavior heads' sim owner. It is event-only (tether:whipImpact admission
   // for the Breaker split), same posture as customsPrompt: no update slot,
   // no clock.
+  // 206 -> 207 update (init unchanged): the remaining §7.1 heads — Coupler
+  // train, Barb drag, Evidence Clamp staple, Sympathy momentum — are real
+  // per-step body work, so lineHeads joins the massline physics row on the
+  // table clock.
   assert.equal(PRODUCTION_INIT_ORDER.length, 263);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 206);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 207);
   assert.ok(PRODUCTION_INIT_ORDER.includes('furnaceIntake'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('furnaceIntake'));
   for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {

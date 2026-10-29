@@ -131,6 +131,10 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'combatOutcome', 'aftermathWrecks', 'dyingHull', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'shipjack', 'custodyConsequences', 'mercyService', 'wreckCourt', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
+  // lineHeads: §7.1 behavior heads move or join live bodies on the same settled tick
+  // (train chaining, barb drag, sympathy momentum, staple channels) — the massline
+  // physics row's contract, before physics read the pose it already consumed.
+  'lineHeads',
   // NXB-008: exposure-driven volatile cargo state; its own 15-tick gate limits the pass,
   // so it runs on the full-rate table clock beside lootShards/fragileCargo.
   'volatileExposure', 'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'moistureLoss', 'automation', 'asteroidSites',
@@ -493,7 +497,8 @@ export const TABLE_CLOCK_IDS = Object.freeze([
   // rockCore: flail chain constraint must resolve on the 60 Hz step (5-link stability proof).
   'rockCore',
   // Massline physics owners (throws, snares, impact resolution move or damage bodies).
-  'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
+  // lineHeads rides the same row: §7.1 head behaviors are per-step body work.
+  'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow', 'lineHeads',
   // Debris/damage owners with live bodies or timed expiry.
   'lootShards', 'mining', 'fieldDepletion', 'fragileCargo',
   // NXB-008 volatile cargo exposure: table clock; the system's own tick%15 gate limits the pass.
