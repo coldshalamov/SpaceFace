@@ -244,7 +244,7 @@ import { dangerGradient } from '../ui/dangerGradient.js';              // A9: da
 import { causeLedger } from '../ui/causeLedger.js';                    // E: "why prices changed" tooltip over the live driver tags (voice:none)
 // BP-12 remaining 7 packets — SYSTEMS-only surfacing + enrich modules (event-driven; no update;
 // DOM fully guarded; voice via ctx.helpers.voice; emit-only — single-writer honored).
-import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
+import { customsPrompt } from '../ui/customsPrompt.js';                // Customs result receipts; encounter and law systems own pre-scan choices
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
 import { warrantOfferPrompt } from '../ui/warrantOfferPrompt.js';        // world-remembers: the licensed hunter's offer as deck verbs over warrant:acceptPayment
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
@@ -300,7 +300,7 @@ import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
-import { shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
 
 // Genie 01: one campaign-gated Chronicler per GameState. Crucible/lab runs are run-sealed and
 // never chronicled. The module's default singleton export is for standalone tooling — never
@@ -1521,18 +1521,7 @@ export function createRegistry(ctx) {
       // a paid repair).
       if (laneSimOwned) { laneKeepalive(wallDt); return; }
       const state = ctx.state;
-      if (input.update) input.update(dt, state);
-      if (save.update) save.update(dt, state);
-      // The yard is the one service the freeze must not starve: it only accepts a job while
-      // ui.docked is true — the same flag that freezes the world — and undock aborts the job, so
-      // without a keepalive tick a paid repair could never deliver. It runs on wall-clock dt:
-      // state.simTime stays frozen, so the seeded client schedule holds still with it.
-      const yard = byName.get('stationServices');
-      if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
-      const law = byName.get('lawSecurity');
-      if (law && typeof law.keepalive === 'function' && wallDt > 0) law.keepalive(wallDt);
-      const latch = byName.get('latchNine');
-      if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
+      runHiddenKeepalive({ state, dt, wallDt, input, getSystem: name => byName.get(name) });
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;

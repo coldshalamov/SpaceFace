@@ -19,7 +19,7 @@
 // golden/canary gates compare worker-lane sim output to the main lane's; a
 // sequencing drift surfaces there as a byte-level mismatch, not a guess.
 
-import { shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { updateQueueForThisStep } from './catchupPolicy.js';
 
 export function createAuthoritativeStepper({
@@ -32,13 +32,7 @@ export function createAuthoritativeStepper({
   const byName = typeof getSystem === 'function' ? getSystem : () => null;
 
   function keepalive(dt = 0, wallDt = dt) {
-    const save = byName('save');
-    if (input && input.update) input.update(dt, state);
-    if (save && save.update) save.update(dt, state);
-    // Same carve-out as registry.keepalive: the yard accepts docked repair work
-    // on wall-clock dt while sim time is frozen.
-    const yard = byName('stationServices');
-    if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+    runHiddenKeepalive({ state, dt, wallDt, input, getSystem: byName });
   }
 
   function publishBoundary(tickBoundary) {

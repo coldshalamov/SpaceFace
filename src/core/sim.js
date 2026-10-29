@@ -15,7 +15,7 @@ import { createBus } from './eventBus.js';
 import { createGameState } from './gameState.js';
 import { core as coreDefinition } from './coreSystem.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
-import { isHiddenKeepaliveSystem, shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { runHiddenKeepalive, shouldSkipFullTickSystems } from './presentationFreeze.js';
 
 export const SIM_DT = 1 / 60;
 
@@ -108,6 +108,20 @@ export function createSimulation(options = {}) {
   } else {
     updates = instances.slice(1);
   }
+  const hiddenKeepaliveNames = new Set(updates.map(system => system.name));
+  const hiddenKeepaliveSystem = name => hiddenKeepaliveNames.has(name) ? byName.get(name) : null;
+  let hiddenKeepaliveTier1 = null;
+  let countHiddenKeepalive = false;
+  const hiddenKeepaliveOnInvoke = name => {
+    if (countHiddenKeepalive) hiddenKeepaliveTier1.countSystemInvocation(name);
+  };
+  const hiddenKeepaliveRequest = {
+    state,
+    dt: 0,
+    wallDt: 0,
+    getSystem: hiddenKeepaliveSystem,
+    onInvoke: hiddenKeepaliveOnInvoke,
+  };
 
   let initialized = false;
   let stepping = false;
@@ -176,13 +190,13 @@ export function createSimulation(options = {}) {
       // per step; counts never touch state, rng or ordering, so goldens are unaffected.
       const tier1 = state.perfRuntime && state.perfRuntime.tier1;
       const countSystems = !!tier1 && tier1.isEnabled();
+      hiddenKeepaliveTier1 = tier1;
+      countHiddenKeepalive = countSystems;
+      hiddenKeepaliveRequest.dt = dt;
+      hiddenKeepaliveRequest.wallDt = dt;
       try {
         if (shouldSkipFullTickSystems(state)) {
-          for (const system of updates) {
-            if (!isHiddenKeepaliveSystem(system.name) || typeof system.update !== 'function') continue;
-            if (countSystems) tier1.countSystemInvocation(system.name);
-            system.update(dt, state);
-          }
+          runHiddenKeepalive(hiddenKeepaliveRequest);
           return state;
         }
         if (core.preStep) {
@@ -199,6 +213,8 @@ export function createSimulation(options = {}) {
           core.lifetimeSweep(dt, state);
         }
       } finally {
+        hiddenKeepaliveTier1 = null;
+        countHiddenKeepalive = false;
         stepping = false;
       }
       return state;

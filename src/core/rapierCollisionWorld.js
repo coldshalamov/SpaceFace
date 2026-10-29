@@ -213,27 +213,21 @@ export async function createRapierCollisionWorld() {
 
   function countContacts() {
     const pairs = new Set();
-    const identity = { x: 0, y: 0, z: 0, w: 1 };
     for (const rec of bodies.values()) {
-      const pos = rec.body.translation();
-      world.intersectionsWithShape(
-        pos,
-        identity,
-        rec.queryShape,
-        (collider) => {
-          const a = rec.collider.handle;
-          const b = collider.handle;
-          if (a === b) return true;
-          // Sibling colliders of one compound body permanently overlap by construction — they are
-          // not contacts. (Compare parent body handles, not collider handles.)
-          if (typeof collider.parent === 'function' && collider.parent() === rec.body) return true;
+      const colliders = Array.isArray(rec.colliders) && rec.colliders.length
+        ? rec.colliders
+        : [rec.collider];
+      for (const collider of colliders) {
+        // Count narrow-phase pairs for the registered silhouette. A bounding ball here reports
+        // contacts for craft whose compound/capsule colliders are still physically separated.
+        world.contactPairsWith(collider, (other) => {
+          const otherBody = typeof other.parent === 'function' ? other.parent() : null;
+          if (!otherBody || otherBody === rec.body) return;
+          const a = rec.body.handle;
+          const b = otherBody.handle;
           pairs.add(a < b ? `${a}:${b}` : `${b}:${a}`);
-          return true;
-        },
-        undefined,
-        undefined,
-        rec.collider,
-      );
+        });
+      }
     }
     return pairs.size;
   }

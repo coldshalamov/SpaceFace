@@ -30,13 +30,42 @@ function hasFlightFreeze(state) {
   return false;
 }
 
+/** One service contract shared by the browser, worker, and headless sim frozen paths. */
+const HIDDEN_KEEPALIVE_SERVICES = Object.freeze([
+  Object.freeze({ name: 'input', method: 'update', clock: 'sim', stateArg: true, when: 'always' }),
+  Object.freeze({ name: 'save', method: 'update', clock: 'sim', stateArg: true, when: 'always' }),
+  Object.freeze({ name: 'stationServices', method: 'update', clock: 'wall', stateArg: true, when: 'wall-positive' }),
+  Object.freeze({ name: 'lawSecurity', method: 'keepalive', clock: 'wall', stateArg: false, when: 'wall-positive' }),
+  Object.freeze({ name: 'latchNine', method: 'keepalive', clock: 'wall', stateArg: false, when: 'always' }),
+]);
+
+export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(
+  HIDDEN_KEEPALIVE_SERVICES.map((service) => service.name),
+);
+
 /**
- * Input, save, and the station yard keep ticking while the 3D world is hidden. Everything else
- * does not. The yard is the one docked-only service: it can only take a job while ui.docked is
- * true — the same flag that freezes the world — and undock destroys the job, so without a
- * keepalive slot a paid repair could never deliver before the player leaves.
+ * Run frozen-world services with their owner-specific clocks and arguments. The optional
+ * invocation hook retains host perf accounting without duplicating this service list.
  */
-export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save', 'stationServices', 'lawSecurity']);
+export function runHiddenKeepalive({
+  state,
+  dt = 0,
+  wallDt = dt,
+  getSystem,
+  input = null,
+  onInvoke = null,
+} = {}) {
+  const lookup = typeof getSystem === 'function' ? getSystem : () => null;
+  for (const service of HIDDEN_KEEPALIVE_SERVICES) {
+    if (service.when === 'wall-positive' && !(wallDt > 0)) continue;
+    const system = service.name === 'input' && input ? input : lookup(service.name);
+    if (!system || typeof system[service.method] !== 'function') continue;
+    if (typeof onInvoke === 'function') onInvoke(service.name, system, service.method);
+    const elapsed = service.clock === 'wall' ? wallDt : dt;
+    if (service.stateArg) system[service.method](elapsed, state);
+    else system[service.method](elapsed);
+  }
+}
 
 export function isHiddenKeepaliveSystem(name) {
   return HIDDEN_KEEPALIVE_SYSTEM_NAMES.includes(name);
