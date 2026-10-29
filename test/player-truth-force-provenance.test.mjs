@@ -204,6 +204,36 @@ test('swarm spawn_motion only promotes a delivered field receipt through the fir
   assert.equal(blocked.causal.proofFailures, 1);
 });
 
+test('spawn_motion matches a delivered receipt when the raw entity id exceeds six digits', () => {
+  const rawId = 5_089_000_702;
+  const collector = createBoundedImpulseReceiptCollector({ maxTicks: 20 });
+  collector.arm();
+  collector.record(observation({ id: rawId, tick: 10 }));
+  collector.begin(10);
+  const forceProvenance = mapImpulseReceiptIdentities(collector.snapshot(), (id, generation) => (
+    id === rawId && generation === 7 ? rawId : null
+  ));
+  forceProvenance.requested = true;
+  const trace = openingTrace(forceProvenance);
+  trace.samples[1].e[0][0] = rawId;
+
+  const result = checkSpawnMotion(trace);
+  assert.equal(result.status, 'PASS');
+  assert.equal(result.causal.explained, 1);
+  assert.equal(result.offenders.length, 0);
+
+  const ambiguous = structuredClone(trace);
+  ambiguous.forceProvenance.receipts.push({
+    ...ambiguous.forceProvenance.receipts[0],
+    rawEntityId: rawId + 1,
+    occupantGeneration: 8,
+  });
+  const rejected = checkSpawnMotion(ambiguous);
+  assert.equal(rejected.status, 'FAIL');
+  assert.equal(rejected.offenders[0].causalReason, 'missing-identity',
+    'a reader life with conflicting raw identities still fails closed');
+});
+
 test('the four-second opening retains all 27 ordinary well streams within its finite budget', () => {
   const collector = createBoundedImpulseReceiptCollector({ maxReceipts: 256, maxTicks: 240,
     maxSeriesPoints: 256 * 240 });

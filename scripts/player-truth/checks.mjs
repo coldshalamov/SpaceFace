@@ -360,17 +360,22 @@ export function isFlightInput(ev) {
 function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFlightInput(ev) && ev.sim >= a && ev.sim <= b); }
 
 // The trace stores reader life ids, while the worker receipt stores the raw id plus its
-// occupant generation. Resolve the one exact generation for this observed life; an absent or
-// ambiguous generation intentionally leaves the opening-motion failure in place.
+// occupant generation. Resolve the identity from that mapping; entity ids are not restricted to
+// six digits, so modulo-based life-id decoding can silently change a legitimate raw id.
 function gradeSpawnMotionCausality(trace, entity, frame) {
   const capture = trace?.forceProvenance;
   const readerLifeId = entity?.[E.id];
-  const rawEntityId = Number.isSafeInteger(readerLifeId) ? bodyId(readerLifeId) : null;
-  const generations = new Set((capture?.receipts || [])
-    .filter((receipt) => receipt?.readerLifeId === readerLifeId && receipt.rawEntityId === rawEntityId)
-    .map((receipt) => receipt.occupantGeneration)
-    .filter((generation) => Number.isSafeInteger(generation)));
-  const occupantGeneration = generations.size === 1 ? [...generations][0] : null;
+  const identities = new Map();
+  for (const receipt of capture?.receipts || []) {
+    if (receipt?.readerLifeId !== readerLifeId
+      || !Number.isSafeInteger(receipt.rawEntityId)
+      || !Number.isSafeInteger(receipt.occupantGeneration)) continue;
+    const key = `${receipt.rawEntityId}:${receipt.occupantGeneration}`;
+    identities.set(key, { rawEntityId: receipt.rawEntityId, occupantGeneration: receipt.occupantGeneration });
+  }
+  const identity = identities.size === 1 ? identities.values().next().value : null;
+  const rawEntityId = identity?.rawEntityId ?? null;
+  const occupantGeneration = identity?.occupantGeneration ?? null;
   return {
     rawEntityId,
     occupantGeneration,
