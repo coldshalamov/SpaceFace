@@ -16,6 +16,7 @@ import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
+import { LINE_HEAD_BY_ID, lineHeadBehavior, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -215,6 +216,24 @@ function derivedForOwned(defId, fittings, player, owned) {
     if (component?.slotType === 'shield' && Number.isFinite(derived.shieldMax)) derived.shieldMax *= factor;
     if (component?.slotType === 'sensor' && Number.isFinite(derived.radarRange)) derived.radarRange *= factor;
   }
+  // The head id is def-level and cache-safe; the behavior payload is not — it depends on the
+  // fitted instance's provenance, which the derived-stats key cannot see. Resolve it here on a
+  // shallow clone so the shared cached block is never mutated; no instance → the authored floor.
+  if (derived.lineHeadId) {
+    let headInstance = null, headDef = null;
+    for (const [slotIndex, instance] of Object.entries(owned && owned.fittedInstances || {})) {
+      const def = defById(instance && instance.defId);
+      if (def && def.mods && def.mods.lineHeadId === derived.lineHeadId) {
+        headInstance = instance;
+        headDef = def;
+        break;
+      }
+    }
+    derived = {
+      ...derived,
+      lineHead: lineHeadBehavior(derived.lineHeadId, normalizeModuleProvenance(headInstance, headDef)),
+    };
+  }
   const quirk = owned && owned.impoundQuirk;
   if (!quirk || quirk.kind !== 'overbored') return derived;
   return derivedWithOverbore(derived, quirk.accelMult);
@@ -278,16 +297,35 @@ function masslineHeadIdForDef(def) {
   return MASSLINE_HEAD_PRIORITY[id] ? id : null;
 }
 
-/** Return the differently slotted Massline head that makes this requested fit exclusive. Replacing
- * the head in its current slot is valid; fitting a second head elsewhere is not. */
+// The §7.1 behavior heads are the same kind of mutually exclusive fitting as the specialized-line
+// heads above: live fitting rejects multiples (same findMasslineHeadConflict seam is extended in
+// the fit UI), and this tier read keeps a malformed/manual fit deterministic — the rarest head
+// wins rather than whichever array slot happens to come first.
+function lineHeadIdForDef(def) {
+  const id = def && def.mods && def.mods.lineHeadId;
+  return LINE_HEAD_BY_ID[id] ? id : null;
+}
+function lineHeadTierFor(id) {
+  const head = LINE_HEAD_BY_ID[id];
+  const tier = head && PROVENANCE_TIERS[head.rarityFloor];
+  return tier ? tier.index + 1 : 0;
+}
+
+/** Return the differently slotted head that makes this requested fit exclusive, checked per
+ * axis: the §7.4 line-law heads (masslineHeadId) and the §7.1 behavior heads (lineHeadId) are
+ * independent fittings — a hull runs one law and one behavior, e.g. twin_bridle + Breaker is a
+ * legal ship. A head that carries both ids (Multi-latch) conflicts on both axes. */
 export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
-  if (!masslineHeadIdForDef(requestedDef)) return null;
+  const wantsLaw = masslineHeadIdForDef(requestedDef) != null;
+  const wantsBehavior = lineHeadIdForDef(requestedDef) != null;
+  if (!wantsLaw && !wantsBehavior) return null;
   const safeFittings = Array.isArray(fittings) ? fittings : [];
   for (let index = 0; index < safeFittings.length; index += 1) {
     const fittedId = safeFittings[index];
     if (index === slotIndex || !fittedId) continue;
     const fittedDef = defById(fittedId);
-    if (masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (wantsLaw && masslineHeadIdForDef(fittedDef)) return fittedDef;
+    if (wantsBehavior && lineHeadIdForDef(fittedDef)) return fittedDef;
   }
   return null;
 }
@@ -1340,6 +1378,10 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let magnetRange = 0;
   let lootMagnetRange = 0;
   let masslineHeadId = null;
+  // §7.1 behavior heads: derived id only here — the behavior payload resolves in derivedForOwned
+  // where the fitted instance (and its provenance) is reachable; the derived-stats cache key
+  // covers defs, not instances.
+  let lineHeadId = null, lineHeadTier = 0;
   // TOY CHEST T13: a trophy head's higher break ceiling. Only a module that IS a Massline head can
   // carry it, and heads are mutually exclusive, so this can never raise another head's line.
   let masslineLoadCapacityMult = 1;
@@ -1460,6 +1502,13 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     }
     if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
       masslineHeadId = candidateHeadId;
+    }
+    const candidateLineHeadId = lineHeadIdForDef(d);
+    const candidateLineTier = candidateLineHeadId ? lineHeadTierFor(candidateLineHeadId) : 0;
+    if (candidateLineTier > lineHeadTier
+      || (candidateLineTier === lineHeadTier && candidateLineHeadId && (!lineHeadId || candidateLineHeadId < lineHeadId))) {
+      lineHeadId = candidateLineHeadId;
+      lineHeadTier = candidateLineTier;
     }
     // Smuggling utilities are capability ratings, not additive economy bonuses. Taking the
     // strongest fitted module prevents stacking the same hidden volume or scan evasion twice.
@@ -1603,6 +1652,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, masslineLoadCapacityMult, magnetRange,
+    lineHeadId,
     lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,
@@ -2410,6 +2460,13 @@ export const ships = {
       + shipAppearanceSignature(e.data.appearance, defId);
 
     e.data.derived = derived;
+    // The §7.1 behavior head rides data.lineHeadId — the same stamp faction carriers hold — so
+    // every head owner (player or authored NPC) reads through one seam. Only the player's equip
+    // may clear it: an authored holder with no fitted module keeps its stamped head.
+    if (isPlayer) {
+      if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
+      else delete e.data.lineHeadId;
+    } else if (derived.lineHeadId) e.data.lineHeadId = derived.lineHeadId;
     if (ownedForQuirk?.shipjackDriveRemoved) e.data.shipjackDriveRemoved = true;
     else if (Object.hasOwn(e.data, 'shipjackDriveRemoved')) delete e.data.shipjackDriveRemoved;
     if (isPlayer && this.state.ui) this.state.ui.radarRange = derived.radarRange;

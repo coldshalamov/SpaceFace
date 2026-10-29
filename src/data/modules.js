@@ -7,6 +7,7 @@ import {
   userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
 } from './userContent.js';
 import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
+import { LINE_HEAD_MODULES } from './lineProgression.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
@@ -397,6 +398,9 @@ const SHIPPED_MODULES = [
     // Bolas throw: latch A then B within the 2 s combat window; relative speed tumbles both lights (B11).
     energyDraw: 8, mods: { masslineHeadId: 'twin_bridle' },
   },
+  // The §7.1 behavior heads (mod_line_head_*): the catalog rows live in lineProgression.js with
+  // the provenance model — one behavior per head, purchased at its rarity floor.
+  ...LINE_HEAD_MODULES,
   {
     id: 'mod_targeting_computer_m', name: 'Targeting Computer M', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 40000, requiresTech: 'tech_fire_control',
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
