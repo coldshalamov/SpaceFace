@@ -783,6 +783,17 @@ html body #screens #sf-automation.au-orrery .au-metric {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; }
 html body #screens #sf-automation.au-orrery .au-metric:hover { border: 0; background: none; }
 html body #screens #sf-automation.au-orrery .au-metric .v { font-size: 17px; }
+/* polish179: on phones the five conduct nodes wrapped three-and-two, leaving FLEET and CR/MIN
+   stranded under the first row. The cr/min total rides the caption row and the four classes share
+   one row, so the strip reads as a single line of throttles. The summary sub-lines balance so
+   ASSETS no longer leaves "outposts" alone on a third line. */
+@media (max-width: 520px) {
+  ${AU_NARROW} .au-flow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; }
+  ${AU_NARROW} .au-flow__cap { grid-area: 1 / 1 / 2 / 4; align-self: center; }
+  ${AU_NARROW} .au-node--purse { grid-area: 1 / 4 / 2 / 5; justify-self: end; }
+  ${AU_NARROW} .au-node__t i { letter-spacing: .02em; }
+  ${AU_NARROW} .au-metric .s { text-wrap: balance; }
+}
 /* O6 (A6): the route Beam — bone band with bloom geometry, ice pulse travelling to the berth. */
 html body #screens #sf-automation.au-orrery .au-route { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 html body #screens #sf-automation.au-orrery .au-route__from,
