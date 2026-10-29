@@ -280,8 +280,8 @@ test('dropped video callbacks do not clone metadata, while an accepted frame kee
     FakeWorker.instances[0].reply(FakeWorker.instances[0].posted[0].data.id);
     for (let i = 0; i < 6; i += 1) await Promise.resolve();
     assert.deepEqual(footage.ring.frames.map((frame) => frame.tick), [12]);
-    assert.deepEqual(footage.recording().poseFrames.map((row) => row.tick), [12],
-      'recorded pose metadata stays aligned with the captured frame tick');
+    assert.deepEqual(footage.recording().poseFrames.map((row) => row.tick), [6, 12],
+      'the independent pose poll and accepted frame stay recorded; the dropped tick 18 is absent');
     footage.dispose();
   } finally {
     browser.restore();

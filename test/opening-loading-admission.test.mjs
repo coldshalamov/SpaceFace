@@ -534,8 +534,8 @@ test('the real picture window still expires and its pool-census owner propagates
   const end = source.indexOf('\n      }\n      // Final ambient seal:', start);
   assert.ok(start > 0 && end > start);
   const finish = new Function('state', 'recordOpeningCookStep', 'censusStarted', 'firstPictureError',
-    'firstFrameResidency', source.slice(start, end));
-  assert.throws(() => finish(owner.state, () => {}, 0, error, { skipped: false }), /preparation timed out/);
+    'firstFrameResidency', 'firstPictureResidencySubjects', source.slice(start, end));
+  assert.throws(() => finish(owner.state, () => {}, 0, error, { skipped: false }, []), /preparation timed out/);
 });
 
 test('final live-sector handover replaces only stale composition samples with a fresh owner verdict', async () => {

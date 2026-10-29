@@ -31,6 +31,7 @@ import { createTimeEffects } from '../src/core/timeEffects.js';
 import { laneSetMode } from '../src/core/simLaneCommands.js';
 import { mountStartupFailurePresenter } from './helpers/startup-failure-presenter.mjs';
 import { textLines } from './helpers/fake-dom.mjs';
+import { __setStartupBudgetScaleForTests, openingGateBudgetMs } from '../src/render/startupPacing.js';
 
 const MAIN_PATH = new URL('../src/main.js', import.meta.url);
 const SOAK_PROBE_PATH = new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url);
@@ -180,8 +181,15 @@ test('every await in finalizeLoadedGame is a bounded wait', () => {
       `finalizeLoadedGame awaits "${callee}" with no declared bound — every load-finalizer wait`
       + ' must carry its own deadline so a never-settling promise cannot freeze mode:loading (D35)');
   }
-  assert.match(body, /const physicsReady = await Promise\.race\([\s\S]*?setTimeout\(\(\) => resolve\(false\), 20000\)/,
-    'the explicit Promise.race must retain the physics failure deadline');
+  assert.match(body, /const physicsReady = await Promise\.race\([\s\S]*?setTimeout\(\(\) => resolve\(false\), openingGateBudgetMs\(\)\)/,
+    'the explicit Promise.race must use the shared finite physics failure budget');
+  __setStartupBudgetScaleForTests(1);
+  try {
+    assert.equal(openingGateBudgetMs(), 20000,
+      'the physics owner resolves its documented 20-second base through the shared bounded budget');
+  } finally {
+    __setStartupBudgetScaleForTests(null);
+  }
 });
 
 test('frame waits carry a timer fallback so starved rAF cannot hang the load chain', async (t) => {
