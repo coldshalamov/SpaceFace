@@ -71,6 +71,12 @@ const CSS = `
   background: var(--dp-glass-flight, rgb(18 23 29 / .82));
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
+/* Same P9 law on the host scrim itself: .sf-find's blur(9px) otherwise repaints the whole
+   viewport behind the pane every frame the palette is up over live flight. The dim wash stays —
+   only the per-frame blur goes. */
+.sf-find.sf-find--host {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
 /* The edge: four corner brackets floating just outside the glass — the tier's edge language,
    never a border. */
 .sf-find .sf-find__pane::before { content: ""; position: absolute; inset: -8px; pointer-events: none;
