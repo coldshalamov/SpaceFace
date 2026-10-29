@@ -2591,8 +2591,9 @@ export function createHud(ctx, alerts) {
   // and the selected hull never get one. A fixed pool of the nearest few; static (no animation),
   // so reduced motion needs no variant.
   const CONTACT_MARK_POOL = 8;
-  // One path per mark, its geometry swapped by shape (3 DOM nodes a mark, not 6: the flight HUD is
-  // already over its DOM grammar budget, so the pool stays small and flat).
+  // One path per mark, its geometry swapped by shape — plus a second dark-ink pass underneath
+  // (the decal the lit stroke prints on; see .sf-cmark__back in hudStyles). 4 DOM nodes a mark,
+  // not 6: the flight HUD is already over its DOM grammar budget, so the pool stays small.
   const CONTACT_MARK_PATH = {
     triangle: 'M7 2.6 11.8 11 2.2 11Z',
     square: 'M3 3H11V11H3Z',
@@ -2606,9 +2607,11 @@ export function createHud(ctx, alerts) {
     el.setAttribute('aria-hidden', 'true');
     el.innerHTML =
       '<svg viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+      '<path class="sf-cmark__back" d="M7 2.6 11.8 11 2.2 11Z"/>' +
       '<path class="sf-cmark__shape" d="M7 2.6 11.8 11 2.2 11Z"/>' +
       '<circle class="sf-cmark__core" cx="7" cy="7" r="1.5"/></svg>';
     el._sfShapePath = el.querySelector('.sf-cmark__shape');
+    el._sfBackPath = el.querySelector('.sf-cmark__back');
     root.appendChild(el);
     contactMarkEls.push(el);
   }
@@ -4247,7 +4250,9 @@ export function createHud(ctx, alerts) {
       const mark = contactMark(contactMarkClass, px);
       if (!mark) continue;
       const el = contactMarkEls[used++];
-      setAttr(el._sfShapePath, 'd', CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square);
+      const markPath = CONTACT_MARK_PATH[mark.shape] || CONTACT_MARK_PATH.square;
+      setAttr(el._sfShapePath, 'd', markPath);
+      setAttr(el._sfBackPath, 'd', markPath);
       setAttr(el, 'data-shape', mark.shape);
       setAttr(el, 'data-variant', mark.variant);
       setAttr(el, 'data-relation', mark.relation);

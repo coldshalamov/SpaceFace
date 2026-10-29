@@ -1492,7 +1492,7 @@ const RADAR_LEGEND_ITEMS = [
   { label: 'ALLY', colour: TACTICAL_MAP_PALETTE.friendly, semantic: 'friendly', title: 'Green — allied faction ships.' },
   { label: 'HAULER', colour: TACTICAL_MAP_PALETTE.worker, semantic: 'neutral', title: 'Sage — industrial traffic: haulers, miners, tenders.' },
   { label: 'PATROL', colour: TACTICAL_MAP_PALETTE.lawful, semantic: 'neutral', title: 'Steel-blue — lawful traffic: patrols, escorts, couriers.' },
-  { label: 'TRAFFIC', colour: TACTICAL_MAP_PALETTE.neutral, semantic: 'neutral', title: 'Blue-grey — other nearby traffic. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
+  { label: 'NEUTRAL', colour: TACTICAL_MAP_PALETTE.neutral, semantic: 'neutral', title: 'Blue-grey — neutral contacts: nearby ships that are neither friend nor foe. Ordinary ships resolve only in the close band (half the dial radius); your target, mission contacts and capitals always show.' },
 ];
 
 const PING_HIT_PX = 14;

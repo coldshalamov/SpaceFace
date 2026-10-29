@@ -780,10 +780,16 @@ export function createTargetPanel(ctx) {
   el.className = 'sf-target sf-hudpanel';
   el.style.display = 'none';
   el.dataset.hudSlot = 'current-threat';
-  el.setAttribute('role', 'status');
+  // The card is its own disclosure control (owner note: the corner readout was a wall of text
+  // that "gets in the way"): compact by default in every mode — including survival runs, so the
+  // crucibleFocus idiom (state.run.kind === 'survival' && isRunSealed) needs no special case —
+  // with the deeper rows one click, keypress, hover or scan reveal away. role=button also makes
+  // the card a UI-command target (isUiCommandTarget), so its clicks and keys never fall through
+  // to flight bindings. Pure presentation: nothing on the bus, nothing written to state.
+  el.setAttribute('role', 'button');
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('aria-expanded', 'false');
   el.setAttribute('aria-label', 'Current target');
-  el.setAttribute('aria-live', 'off');
-  el.setAttribute('aria-atomic', 'false');
   el.innerHTML = targetFrameHtml();
 
   const elName = el.querySelector('.sf-target__name');
@@ -842,6 +848,49 @@ export function createTargetPanel(ctx) {
     }
   });
 
+  // Compact/detail disclosure. Three ways the deeper rows open: pinned by click or Enter/Space,
+  // peeked while the pointer rests on the card, or opened on its own while the subject carries
+  // scan-revealed intel (update() drives detailScan). The sf-target--detail class is the only
+  // state the stylesheet reads.
+  let detailPinned = false;
+  let detailPeek = false;
+  let detailScan = false;
+  let detailApplied = null;
+  function applyDetailState() {
+    const expanded = detailPinned || detailPeek || detailScan;
+    if (expanded === detailApplied) return;
+    detailApplied = expanded;
+    el.classList.toggle('sf-target--detail', expanded);
+    el.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  }
+  // Focus must never camp here: the flight adapter suppresses gameplay keys from focused
+  // buttons, so a focused card would eat movement and weapon keys. Clicking never takes
+  // focus at all (preventDefault beats the browser's focus-on-mousedown); a keyboard
+  // toggle blurs right after, so Tab→Enter opens and immediately hands control back.
+  el.addEventListener('mousedown', (ev) => ev.preventDefault());
+  el.addEventListener('click', (ev) => {
+    // The component chip is the card's one interactive child with its own verb — its click
+    // cycles parts, never toggles the card.
+    if (ev.target && ev.target.closest && ev.target.closest('.sf-target__component')) return;
+    detailPinned = !detailPinned;
+    applyDetailState();
+    el.blur();
+  });
+  el.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    // Consumed key: stopPropagation is the ONLY suppression the flight input adapter honors
+    // (ui/input.js never inspects defaultPrevented). The chip's own handler keeps its verb;
+    // the stop still shields the flight lane from a bound Enter/Space.
+    if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    if (ev.target && ev.target.closest && ev.target.closest('.sf-target__component')) return;
+    ev.preventDefault();
+    detailPinned = !detailPinned;
+    applyDetailState();
+    el.blur();
+  });
+  el.addEventListener('pointerenter', () => { detailPeek = true; applyDetailState(); });
+  el.addEventListener('pointerleave', () => { detailPeek = false; applyDetailState(); });
+
   let lastTargetId = null;
   let lastName = null;
   let lastClass = null;
@@ -878,9 +927,18 @@ export function createTargetPanel(ctx) {
       lastTargetId = null;
       lastEngagedKey = null;
       lastObjectKey = null;
+      if (detailScan) { detailScan = false; applyDetailState(); }
       return;
     }
     setPanelDisplay('block');
+    // Scan-revealed detail earns the open card: a pulse that resolved this hull to deep/full
+    // disclosure (loadout, manifest, salvage hint) or exposed a weak point is exactly the moment
+    // the hidden rows say something the compact card cannot. Class/contact-level reveals only
+    // confirm what the head already prints, so they do not open it.
+    const scanReveal = t.data && t.data.scanRevealed;
+    const scanDetail = !!(options.weakPoint
+      || (scanReveal && (scanReveal.quality === 'deep' || scanReveal.quality === 'full')));
+    if (scanDetail !== detailScan) { detailScan = scanDetail; applyDetailState(); }
     const surrendered = isSurrenderedContact(t);
     const surrenderChanged = surrendered !== lastSurrendered;
     lastSurrendered = surrendered;
