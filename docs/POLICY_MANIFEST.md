@@ -1,91 +1,40 @@
 <!-- LIFETIME: STABLE -->
-# Agent policy manifest
+# Policy and document map
 
-This file identifies which repository surfaces may direct an agent. It is a routing map, not another design bible. A file can be informative without being authoritative.
+This page identifies document roles; it does not create extra rules. Root [`AGENTS.md`](../AGENTS.md)
+is the concise operating front door. Current Finish assignments and completion criteria are in
+[`design/program/finish/README.md`](../design/program/finish/README.md) and the active lane boards.
+For the authority order and shared-checkout contract, follow those sources rather than repeating
+their text here.
 
-## Policy classes
+## Roles
 
-| Class | Meaning | Examples | Activation |
-|---|---|---|---|
-| `ACTIVE_AUTOMATIC` | inherited instructions at a real scope boundary | root/nested `AGENTS.md` | automatically for paths in scope |
-| `ACTIVE_MANUAL` | current contract or selected plan | `ARCHITECTURE.md`, `GDD_2_0.md`, active packet | only when root routing or the task selects it |
-| `MACHINE_ENFORCED` | executable behavioral/structural contract | tests, schemas, validation manifests, focused checks | when relevant to changed seams |
-| `GENERATED` | index derived from live source | `EVENT_ROUTING.md`, `SYSTEM_REGISTRY.md` | reference only; regenerate from owner |
-| `HISTORICAL` | evidence or superseded decision | `docs/archive/handoffs/`, old reviews, archived plans | archaeology only unless explicitly reactivated |
-| `IGNORED_RESIDUE` | local tool state, captures, transcripts, builds, scratch | `.campaign/`, `.zcode/`, `.serena/`, `.devshots/`, `build/` | never authority; inspect for a named forensic need |
+| Role | Examples | How to use |
+|---|---|---|
+| Inherited instructions | Root and nested `AGENTS.md` | Apply to the task and paths in scope. Root summarizes navigation and shared-tree safety; nested files describe local ownership/contracts. |
+| Current program or selected design | Finish README and lane boards; activated packet/spec; `ARCHITECTURE.md`, `VISION.md`, `GDD_2_0.md` | Read the relevant section. The Finish program directs current completion work; architecture and product docs supply technical and product intent. |
+| Executable contract | Tests, schemas, manifests, checks | Run the relevant check for the behavior or artifact being changed. These constrain behavior; they do not prescribe unrelated process. |
+| Generated index | `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md` | Use for navigation and regenerate from the owning source; do not hand-edit as authority. |
+| Current status | Finish lane boards and `design/program/NOW.md` | Boards carry current task order/status. `NOW.md` and checkpoint tools help resolve exact live path overlap; neither creates broad subsystem ownership. |
+| Historical evidence | Archived plans, old reviews, handoffs, receipts, completed-work records | Use when the active task needs historical context. They do not dispatch work or override current direction. |
+| Local/generated residue | Captures, transcripts, build output, scratch and tool state | Inspect only for a named task or diagnostic need; never treat as policy or source authority. |
 
-## Document lifetimes
+## Conflict handling
 
-Control documents declare one of these markers:
+Follow current user direction, then the repository's technical contracts and product intent, then
+the active Finish program/task specification, then supporting references. A historical document
+does not regain authority because it contains imperative wording. Live source and relevant behavior
+checks establish whether descriptive claims are currently true.
 
-- `LIFETIME: STABLE` — durable routing/contracts; no live branch, lease, snapshot, or completion facts.
-- `LIFETIME: DURABLE` — long-lived research, evidence, or rationale; informative only and never a
-  lease, dispatch instruction, acceptance decision, or priority override.
-- `LIFETIME: VOLATILE` — current state with refresh base and expiry; no historical narrative.
-- `LIFETIME: ACTIVE_PACKET` — one admitted packet; retired or replaced when integrated or materially replanned.
-- `LIFETIME: GENERATED` — derived from code; never hand-edited as source.
-- `LIFETIME: HISTORICAL` — evidence that cannot dispatch work.
+When a stale instruction would send an agent to the wrong owner or cause unnecessary work, correct
+the specific navigation text. Do not copy a full rule set into multiple documents; link to the owner.
 
-When a stable file needs a current fact, link the volatile source. When a volatile fact becomes durable evidence, move it to a receipt rather than growing the lease board forever.
+## Lifetimes
 
-## Conflict order
+Control documents may identify themselves as stable routing, active packets, generated indexes, or
+historical evidence. A stable navigation page should not copy live status. A generated index follows
+its source. An archived packet records what was true for its work; it is not a current assignment
+unless the Finish program explicitly selects it.
 
-1. Current user direction.
-2. `ARCHITECTURE.md` for technical invariants.
-3. `design/GDD_2_0.md` for product intent.
-4. `design/program/` for admitted work and status.
-5. The selected active packet or activated spec.
-6. Supporting references.
-7. Historical material.
-
-A lower item cannot impose a palette, layout recipe, asset ceiling, implementation quota, process ritual, or ownership prohibition that contradicts a higher item.
-
-Live code, current check output, and player-route evidence determine whether descriptive claims and
-packet seam maps remain true. They do not acquire higher policy authority merely by being current.
-
-## Rule admission test
-
-An automatic rule or machine check earns repository authority only when it protects at least one of:
-
-- determinism, save compatibility, state ownership, or security;
-- accessibility or input reachability;
-- licensing, provenance, or reproducible asset production;
-- a demonstrated performance invariant without lowering authored quality;
-- a player-facing behavior proven by current evidence.
-
-It must also identify the failure it prevents and the owner it constrains. Prefer a behavioral regression over source-string policing.
-
-Do not admit rules whose main effect is prescribing taste, effort, or ceremony: fixed palettes, blur bans, universal layout recipes, triangle/texture prestige numbers, technique counts, review or iteration quotas, self-scores, permanent lane restrictions, exact effect/module counts, CSS-property bans, or a worker agent's preferred implementation style.
-
-A packet may choose an art direction or technique for one outcome. That local decision does not become global policy unless the admission test is independently satisfied.
-
-## Family map
-
-| Surface | Class | Purpose | Limitation |
-|---|---|---|---|
-| root `CLAUDE.md` | `ACTIVE_AUTOMATIC` | brand alias that imports root `AGENTS.md` so every agent brand shares one front door | adds no law of its own |
-| root/nested `AGENTS.md` | `ACTIVE_AUTOMATIC` | concise routing, hazards, ownership, verification | no volatile status or design recipes |
-| `docs/ORIENTATION.md` | `ACTIVE_MANUAL` | repo map, reading ladder, planner route | routing only; no status |
-| `docs/TASK_ROUTER.md` | `ACTIVE_MANUAL` | named campaign / symptom doors behind the `AGENTS.md` start table | read by need; campaign laws stay in `build_map.md` §1B |
-| `build_map_done.md` | `ACTIVE_MANUAL` | completed-work ledger; the review surface | evidence only; never dispatches work |
-| `docs/AGENT_OPERATIONS.md` | `ACTIVE_MANUAL` | full working agreement behind the `AGENTS.md` summary | behavior, not design |
-| `docs/AGENT_LESSONS.md` | `ACTIVE_MANUAL` | owner preferences and verified workspace facts | each line must stay verifiable or be corrected |
-| `ARCHITECTURE.md` | `ACTIVE_MANUAL` | engine/data contracts | not a visual-style guide; reconcile descriptive details with code |
-| `design/GDD_2_0.md` | `ACTIVE_MANUAL` | product pillars | technique follows evidence |
-| `design/program/finish/README.md` + Lane 1/2/3 boards | `ACTIVE_MANUAL` | current game-finishing assignments, ownership, and acceptance bars | the board owns order/status; supporting plans and receipts do not silently replace it |
-| other `design/program/` surfaces | mixed | global status, active packets, receipts | each file obeys its lifetime marker |
-| `.codex/agent-checkpoints/` | `MACHINE_ENFORCED` | local per-task todo timestamps consumed by `check-now-liveness.mjs` | not production history, not a permanent lease, intentionally excluded from Git |
-| `design/vision/`, `depth-program/`, `spec2/`, `spec3/`, `revamp/`, `graphics-sprints/`, `expansion/` | `ACTIVE_MANUAL` | task-specific intent (`expansion/` is the 2026-10-21 creative bible behind `build_map.md` §34) | read only the activated slice |
-| scripts/tests/schemas/manifests | `MACHINE_ENFORCED` | executable contracts | prove behavior/contracts, not taste |
-| asset manifests/release metadata | `MACHINE_ENFORCED` | exact identity/provenance/reachability | exact IDs outrank prose inventories |
-| handoffs/reviews/archives | `HISTORICAL` | decision and integration history | never current status |
-| captures/tool state/build output | `IGNORED_RESIDUE` | evidence or disposable output | no default search or policy authority |
-
-## Maintenance
-
-- Put global status only in `design/program/`.
-- Put volatile inventories in `NOW.md`, generated indexes, or report commands.
-- Prefer links over copied rules.
-- A nested `AGENTS.md` earns its place only at a real ownership, technology, or risk boundary.
-- When an automatic rule conflicts with live truth, fix or delete it in the same change.
-- Run `node scripts/check-program-docs.mjs` after changing the control surface.
+For changes to this control surface, run `node scripts/check-program-docs.mjs` and check the links
+you changed.
