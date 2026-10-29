@@ -220,7 +220,9 @@ ${T} .con-cost dt { align-self:end; }
   ${T} > .k-corner.con-corner .con-read { flex:1 1 0; align-items:flex-start; }
   ${T} .con-read__n { font-size:clamp(26px, 7.4vw, 34px); }
   ${T} .con-read__w { max-width:none; text-align:left; letter-spacing:.16em; }
-  ${T} > .k-stage.con-stage { grid-area:stage; height:clamp(380px, 86vw, 620px); margin:0 -18px; }
+  /* the dial's radius is bound by the width (its side names need ~150px each), so the sky's height
+     follows the width too: 86vw left ~80px of empty sky over and under the dial at 600–744 wide */
+  ${T} > .k-stage.con-stage { grid-area:stage; height:clamp(380px, calc(100vw - 190px), 620px); margin:0 -18px; }
   /* the dial stands in a column that scrolls: a vertical swipe on it scrolls the column (a sideways
      drag still pans the sky); the wheel yields the same way in constellation.js */
   ${T} .con-sky { touch-action:pan-y; }
