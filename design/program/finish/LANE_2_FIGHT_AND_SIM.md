@@ -31,7 +31,8 @@ lean enough to change. Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED 
 ## Day-one review (from `LANDED_REVIEW.md`; delete the row there when done)
 
 - **R-36df771** — row 403 AL-LONG-5 drone composer + warm flight restore: re-check a saved-and-restored
-  composed loop resumes at the exact step it paused on. Fold into the first Codex batch.
+  composed loop resumes at the exact step it paused on if that claim remains materially unresolved;
+  use the review approach in README §5.3 rather than a fixed batch.
 
 ## The ordered packets
 
@@ -124,28 +125,22 @@ Start with SC-01 and SC-12 (the playground and the scenario forge make every lat
   behaviour tests as you touch them (ruling 7); keep a running count here.
 - **T4 — Test time.** Find the slowest 50 tests; make them fast or move them to a slower tier.
 
-## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+## Critical owner map
 
-**Critical systems — each gets a Codex deep review, then packets:** flight (`flightV3.js`,
-`src/core/flight/**`, the feel contract), tactical AI (`tacticalAI.js`, `src/ai/**`, `aiPorts.js`,
-`engagementAuthority.js`), physics authority and Rapier integration (`physicsAuthority.js`, contacts,
-CCD, sleeping), the Massline/tether (`tetherGameplay.js` and its verbs), weapons and damage
-(`src/combat/**`, `physicalEffects.js`, projectiles, heat), the five powers (Pull/Shove/Pin/Bomb/Rig),
-spawning and directors for Swarm/Crucible (waves, arenas, draft, round flow), enemy and creature
-behaviour, loot and salvage, the registry and system order (`registry.js`,
-`authoritativeSystemManifest.js`), input-to-action (`input.js` — focused validation required).
-**Then everything else you own**, ranked by how much a player feels it. Keep the list here with a
-status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+These are the lane's high-impact systems and remain useful when a concrete combat, AI, physics,
+mission, persistence or performance issue needs an owner: flight and feel, tactical AI, physics and
+Rapier, Massline, weapons/damage, the five powers, Swarm/Crucible spawn and round flow, enemies and
+creatures, loot/salvage, registry/system order, and input-to-action. The list is an owner map, not a
+mandatory review queue or a claim that every system is at bar.
 
-## The audit — read every line you own
+## Source coverage and current findings
 
-Split your owned paths (`src/systems/**` combat/flight/swarm/physics/AI files, `src/ai/**`,
-`src/combat/**`, `src/core/physics*`, `src/core/flight/**`, `src/sim/**`, `src/balance/**`, `src/matter/**`,
-`src/sports/**`) into modules of ≤ ~3k lines and hand them evenly to Grok and Gemini (`TOOLS.md`): each
-run reads every line and writes `.devshots/finish/lane2/audit/<module>.md` — bugs, determinism leaks
-(ambient `Math.random`, `Date.now`), single-writer violations (economy→credits, factions→reputation,
-cargo→cargo, ships→stats, heat→WANTED), O(n²) loops, per-tick allocation, dead code, duplicated systems,
-and the three cheapest wins. Turn real findings into packets below this line.
+The 2026-10-29 full-source inventory, explicit prior-read reuse and coverage caveats are in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md). Current gameplay results and open
+acceptance limits are in [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md). Use these records
+before assigning work so active or completed investigations are not repeated. Source coverage does
+not prove gameplay acceptance or blanket quality; close this board's product outcomes against the
+live owner and the smallest direct check that establishes the claim.
 
 ## INFERENCE (seed ≈ 35 lines in the brainstorm packet, README §6)
 

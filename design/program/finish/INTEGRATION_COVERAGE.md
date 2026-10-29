@@ -13,16 +13,16 @@ active assignments. A source read or focused test does not establish ordinary-ro
 | Swarm spawn/motion observation | Published fix `4a5e683497e` corrected observer overflow and unmapped-player attribution. Corrected offline idle and active captures report zero anomalies without changing the 8 WU/s physics limit. | The original whole Swarm gate remains FAIL: the default pilot died in wave 2. Do not claim whole-mode acceptance. |
 | Ordinary Foundry Fortify | Headed public run `24057` closed after 892 simulated seconds / 25 minutes: cleared waves 1–6, reached wave 7 alive, and used all four devices plus repair/rearm through public controls. | Verdict is FAIL solely for 15 offscreen-marker misses (`no living shooter` near sim 727.9). Other core controls, round resolution/transitions, spawn motion, ships, and VFX passed. Readability and frame time remain UNKNOWN. The ten-wave/boss journey is not accepted. Original verdict/artifacts: `.devshots/finish/integration-2026-10-29/foundry-ten-wave-route/`. |
 | Hero Maneuvers | M02 public route banked, committed a bomb, and returned through phase alive; the target survived, an allowed miss. Pinball charged its physical dash and reported target lost with zero contacts; native contact behavior has separate focused coverage. | No public contact or complete three-ability experience is claimed. Boomerang/readout and readability remain under their owners. |
-| Adventure | 300.9 simulated seconds reached; core route/control checks passed. The later live Tethys route exposed a manual Quick Save failure (`import_node_limit`). The bounded full-world save repair is published; the isolated post-fix browser has successfully Continued into Tethys. | Finish the public Sun purchase and new Quick Save/Continue check. Readability and performance remain open. |
+| Adventure | 300.9 simulated seconds reached; core route/control checks passed. The corrected public Tethys route reached Borrowed Sun, charged the first lease exactly 650 credits, saved, reloaded, Continued and saved again. The saved lease retained all eight completed beats. | Readability, performance, starter hauling/stealth routes and the long-session/context-loss check remain open. |
 | NPC weapon behavior | Published `a41981ae13a`: NPC fixed mounts and turrets aim from the actual muzzle; six focused cases pass. K1 measures actual disabled intervals; SG06 preserves real multi-ship convergence. Ladder totals preserve future history without counting it toward current unlocks. | These focused results do not establish broad combat-route acceptance. |
-| Startup/rendering | The current integrated bundle builds all 414 shipping render packages. Its baseline passes all 17 behavior checks but takes 122.83 seconds against a 90-second budget under simultaneous live-browser and Node-suite load. The earlier shared-host run took 73.07 seconds; this does not establish an isolated speedup or a current budget pass. | Opening performance, baseline timing and the final stable checks remain open. |
+| Startup/rendering | The last completed integrated bundle builds all 414 shipping render packages. Its baseline passes all 17 behavior checks but takes 122.83 seconds against a 90-second budget under simultaneous live-browser and Node-suite load. The earlier shared-host run took 73.07 seconds; this does not establish an isolated speedup or a current budget pass. | Opening performance, baseline timing and the final stable checks remain open. |
 | Whole game / final phase | Source packets are tracked below; targeted repairs have landed or are being integrated. | Final build-map closure, final stable checks, remaining gameplay routes, and the requested last-300-commit review remain open. Do not mark the game finished. |
 
 ## Current integration follow-up
 
 The Fortify, Hero Maneuvers, Borrowed Sun registration/save, and main-lane presentation changes
 remain a local integration candidate. Their dependencies must ship together; they are not yet
-available to cloud agents from master. The current bundle includes the scoped RU-7 warm and save repair and builds all 414 shipping render packages; receipt `393d6aa3a2e4a3bc01565dcc829407d6bbfc2148ed750dd4fed49b5ac9c98fe8` covers 2748 files (74.00 MB raw / 41.76 MB bundled). Save schema v22/461 paths and module preloads pass.
+available to cloud agents from master. The last completed bundle includes the scoped RU-7 warm and save repair and builds all 414 shipping render packages; receipt `393d6aa3a2e4a3bc01565dcc829407d6bbfc2148ed750dd4fed49b5ac9c98fe8` covers 2748 files (74.00 MB raw / 41.76 MB bundled). It predates the carrier residency and rigid shadow-owner repairs. Save schema v22/461 paths and module preloads passed in that build.
 A duplicate Hero readout property reported by the bundler was removed.
 
 - `c2f5714f570` fixes the offscreen observer: lit detonator fuses and their danger bands are
@@ -57,11 +57,17 @@ A duplicate Hero readout property reported by the bundler was removed.
   was held during sector preparation and caught up when it completed. The actual carrier omitted
   the authored-station selector, so its local fix now selects the shipped trade-hub body and repairs
   older Continue metadata. The production-runtime/factory route and normal-gate native checks pass;
-  public lease acceptance is still being exercised from the saved nearby position.
+  the public lease purchase and Quick Save/Continue path subsequently completed.
 - Current draw census finds roughly 29 drawable objects per Wasp (57 callbacks across two passes).
   A bounded compiler experiment preserves every primitive and saves zero draws, so it was rejected.
   Quality and retained opaque batching comparisons have not shown a stable isolated win; defaults
   remain unchanged. Current performance is not accepted.
+- The current census identifies visible Wasps as Ashline (`sf.render.ashline-dart`, hash `f4d38c0f…`)
+  and confirms repeated roots share drawn geometry. `a9c07600e34` keeps unaffected retained batches
+  active when another owner's shadow policy changes; both active and during-residency shared-slot
+  cases pass (29/29). The one subsequent same-flight comparison stayed in preparation with zero
+  activations, so it establishes no batching FPS gain or active/direct visual equivalence. Actual
+  canvas pictures were inspected; compile/admission progress remains a separate open measurement.
 - The current flight-footage profile measures roughly 0.22 % main-thread CPU in the recorder/codec/
   presented hook, rather than establishing the board's old 8–12 % FPS claim. M12 now records the
   current finding and leaves any unmeasured GPU cost explicit.
@@ -74,14 +80,14 @@ canonical complete-market capture contains 248,652 nodes but only 2.93 MB of JSO
 game-owned market history could exceed that guard. Main, worker and inline lanes now share a
 500,000-node allowance while retaining the 12 MiB, depth, collection and separate 200,000-node
 native-attestation limits. The safety suite passes, including full-market round trips, over-limit
-refusal, retained previous saves and native-physics negative cases. The isolated live browser has
-Continued successfully with the new worker; public purchase and fresh save/reload are in progress.
+refusal, retained previous saves and native-physics negative cases. The isolated live browser then
+completed public purchase, Quick Save, reload, Continue and a second successful Quick Save.
 
 The RU-7 warm is explicit and idempotent. Adventure and every Continue retain its readiness gate;
 standalone Swarm/Gauntlet starts skip four unreachable Ceres payloads (3.24 MiB raw). Unconditional
 source-page preload hints were removed too. Focused readiness/Continue/preload checks pass;
-current arena resource-request confirmation is queued behind the active Adventure route. No wall
-time or FPS improvement is claimed from the byte count alone.
+the current default Foundry census measured zero requests for those four payloads in both captured
+windows. No wall time or FPS improvement is claimed from the byte count alone.
 
 Current broad checks and repairs:
 
@@ -117,10 +123,16 @@ and removes unrecoverable legacy part shells on Continue. The normal-gate native
 same four reflectors across 180 ticks with zero carrier far rows. An independent encounter repair
 uses deterministic team queues, respects cooldowns and dead actors, and snapshots/revalidates cells
 around catch-up; dense friendly/cooling/mixed and simultaneous-due cases pass. Combined native checks
-pass 47/47; the post-fix public lease/save route is still pending. The later
+pass 47/47. The post-fix public route then reached the selected carrier at about 232 WU, opened its
+scanner offer, paid exactly 650 credits and completed Save/Continue. The helper's first verifier
+incorrectly expected a worker ledger on the main mirror and timed out after the successful payment.
+A later stale-index QA click bought a second note and charter in the isolated store. No real shared
+save was touched; the subsequent Quick envelope retains the first filled note, second open note and
+charter after Continue. The ignored helper now uses the actual `borrowedSun:leaseSold` receipt and
+exact debit, and warns against repeating an ambiguous purchase. The earlier
 debugger snapshot exceeded the worker's five-second watchdog and closed that isolated QA worker;
 this diagnostic-induced interruption is separate from the observed production slowdown. Its
-isolated save/server are preserved for the post-fix route.
+isolated save/server remain preserved.
 - Current Cryo idle40/45 capture has no core FAIL and passes VFX coverage (p95 1% screen, no measured
   player/threat hiding). Overall verdict is INCOMPLETE for idle round resolution/transitions,
   insufficient readable-body samples and performance. No active three-round or whole-mode claim.
