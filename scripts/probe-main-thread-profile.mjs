@@ -1062,9 +1062,12 @@ async function runSteadyFlightProfile(page, cdp) {
     const powerStateStart = await captureHostPowerState(page);
     const source = fs.readFileSync(path.resolve(EVAL_FILE), 'utf8');
     log(`running ${EVAL_FILE} in the page`);
-    if (process.argv.includes('--eval-thrust')) await page.keyboard.down('KeyW');
-    const result = await page.evaluate(source);
-    await page.keyboard.up('KeyW').catch(() => {});
+    const heldKey = process.argv.includes('--eval-brake') ? 'Digit0'
+      : process.argv.includes('--eval-thrust') ? 'KeyW' : null;
+    if (heldKey) await page.keyboard.down(heldKey);
+    let result;
+    try { result = await page.evaluate(source); }
+    finally { if (heldKey) await page.keyboard.up(heldKey).catch(() => {}); }
     fs.writeFileSync(path.join(OUT_DIR, 'eval-result.json'), JSON.stringify(result, null, 1), 'utf8');
     const sourceDigestAfter = await digestServedSourcePaths();
     const evalIdentity = await page.evaluate(() => {
