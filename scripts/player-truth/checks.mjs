@@ -474,7 +474,14 @@ export function checkKillsBeforeInput(trace) {
     const end = r.endSim != null ? r.endSim : Infinity;
     const first = inputsBetween(trace, r.startSim, end)[0];
     const cutoff = first ? first.sim : end;
-    const kills = trace.events.filter((ev) => ev.ev === 'killed' && ev.sim >= r.startSim && ev.sim <= cutoff && !ev.byPlayer && ev.type !== 'asteroid' && ev.type !== 'projectile');
+    const kills = trace.events.filter((ev) => {
+      if (ev.ev !== 'killed' || ev.sim < r.startSim || ev.sim > cutoff || ev.byPlayer
+        || ev.type === 'asteroid' || ev.type === 'projectile' || ev.type === 'wreck') return false;
+      // Current readers carry the target's hostility. Older traces did not; retain useful
+      // coverage for their combat-hull rows without mistaking wreck retirement for a kill.
+      return ev.hostile === true || (ev.hostile == null
+        && ['ship', 'drone', 'reaver', 'fauna', 'freighter'].includes(ev.type));
+    });
     n += kills.length;
     if (kills.length) {
       const by = {}; for (const k of kills) { const w = k.killerType || (k.killerId == null ? 'no killer' : 'entity ' + k.killerId); by[w] = (by[w] || 0) + 1; }
@@ -605,7 +612,14 @@ export function probeDead(trace, pr) {
     if (expect > 20 && moved < T.pinnedMoveFrac * expect) return { dead: true, a, b, why: `held W ${held} s → velocity reads ${fmt(Math.max(Math.hypot(b.p.vx, b.p.vz), dv), 0)} u/s but the ship moved ${fmt(moved, 1)} u of ${fmt(expect, 0)} u (pinned)` };
     return { dead: false, a, b };
   }
-  let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  // A healthy ship can complete a revolution during a delayed probe. Measure its
+  // observed excursion, rather than cancelling that turn at the endpoint.
+  let d = 0;
+  for (const s of [a, ...trace.samples.filter(s => s.sim >= pr.startSim && s.sim <= pr.endSim), b]) {
+    if (!Number.isFinite(s.p?.rot) || !Number.isFinite(a.p.rot)) continue;
+    const delta = Math.atan2(Math.sin(s.p.rot - a.p.rot), Math.cos(s.p.rot - a.p.rot));
+    if (Math.abs(delta) > Math.abs(d)) d = delta;
+  }
   pr.value = d;
   return Math.abs(d) < T.yawDeltaRad ? { dead: true, a, b, why: `held ${pr.key} ${fmt(pr.endSim - pr.startSim, 1)} s → turned ${fmt(d, 2)} rad` } : { dead: false, a, b };
 }

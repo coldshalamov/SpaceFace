@@ -110,6 +110,24 @@ test('round_resolution and kills_before_input reproduce the four-second idle win
   assert.equal(checkRoundResolution(trace({ mode: 'adventure' })).status, 'N/A');
 });
 
+test('kills_before_input counts hostile hull deaths, not self-retiring wrecks', () => {
+  const t = trace({
+    rounds: [{ wave: 1, startSim: 10 }],
+    events: [
+      { ev: 'killed', sim: 11, id: 40, type: 'wreck', killerId: 40, byPlayer: false, hostile: false },
+      { ev: 'killed', sim: 12, id: 41, type: 'ship', killerId: 42, byPlayer: false, hostile: true },
+    ],
+  });
+  const result = checkKillsBeforeInput(t);
+  assert.equal(result.status, 'FAIL');
+  assert.equal(result.value, '1 kills');
+  assert.match(result.offenders[0].line, /entity 42×1/);
+
+  // Older traces have no hostile bit, so ship rows remain diagnosable.
+  t.events = [{ ev: 'killed', sim: 12, id: 41, type: 'ship', killerId: 42, byPlayer: false }];
+  assert.equal(checkKillsBeforeInput(t).status, 'FAIL');
+});
+
 test('Swarm round resolution grades its settled finite cohort, including fast clears', () => {
   const t = trace({ rounds: [{ wave: 1, startSim: 10, endSim: 14, endPhase: 'cleanup' }, { wave: 2, startSim: 16 }],
     events: [{ ev: 'input', kind: 'keydown', code: 'KeyW', sim: 11 }] });
@@ -195,6 +213,18 @@ test('thrust pin detection counts travelled path across a reversal, while a stat
   const dead = probeDead({ samples: samples.map((s) => ({ ...s, p: { ...s.p, x: 0, z: 0 } })) }, pinned);
   assert.equal(dead.dead, true);
   assert.match(dead.why, /pinned|moved/);
+});
+
+test('yaw measures an observed turn even when a full revolution returns to the starting heading', () => {
+  const probe = { kind: 'yaw', key: 'KeyD', startSim: 0, endSim: 2 };
+  const samples = [0, 1, 2, 3, -2, -1, -0.015].map((rot, i) => ({
+    sim: i / 3, p: { rot },
+  }));
+  assert.equal(probeDead({ samples }, probe).dead, false);
+  assert.ok(Math.abs(probe.value) >= 0.2);
+  const jitter = samples.map(s => ({ ...s, p: { rot: s.p.rot * 0.01 } }));
+  assert.equal(probeDead({ samples: jitter }, { ...probe }).dead, true,
+    'minor jitter still cannot stand in for steering authority');
 });
 
 test('tumble flags sustained pitch out of the play plane', () => {

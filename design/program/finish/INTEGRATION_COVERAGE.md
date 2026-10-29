@@ -32,6 +32,13 @@ Reuse completed findings and do not start parallel reviews of chunks still being
 Graphics/boot/audio repairs below were published in `90731639f61`; gameplay repairs remain
 unpublished until their affected route can pass the batch gate.
 
+Additional published batches: `d23c3aac5c8` preserves a live authored-asset consumer when a joined
+consumer cancels, and bounds background work when the browser scheduler throws or rejects;
+`8e2fedc8e01` repairs two tests that observed unrelated work instead of their named scenario;
+`2df8bb0d53c` fingerprints the materialized runtime backends and resolves remounted UI controls by
+semantic identity. Ambiguous or missing controls remain untried. Focused checks passed for each
+batch; these are not whole-game acceptance claims.
+
 - A second renderer joining graphics refill stayed hidden forever. Reproduced with two renderers;
   all waiters now leave the orientation hold. Package-detach and orientation tests: 15 passed.
 - A hidden retired fallback falsely made a resident hull unready; alternate quality geometries
@@ -55,6 +62,22 @@ unpublished until their affected route can pass the batch gate.
   were observed. Active pass recorded harness-process freezes of 122 and 39 seconds; idle pass
   ended with 909 MiB free memory. Screenshot remained at the 18.1% opening boot stage. This does
   not distinguish stalled startup from host scheduling pressure; do not claim either is fixed.
+- Subsequent headed Swarm batch reached the complete public route and active flight on the Intel
+  GPU in both passes. Player models, realm isolation, input response, edge markers, VFX coverage
+  and visibility checks passed. The batch still FAILS: fourteen passive bodies moved without
+  explained provenance at spawn, and the active actor did not clear wave 1 before its eight-minute
+  wall cap. Launch took approximately four minutes. Active-play frame time was p50 331 ms and
+  p99 1,824 ms on this contended host; this is a serious observed usability problem, not certified
+  quiet-host performance. Artifacts: `.devshots/finish/integration-2026-10-29/player-truth-swarm-current/`.
+- That batch exposed two check defects, distinct from production defects: the idle yaw probe
+  completed a full revolution and was misgraded by endpoint-only comparison; a self-destructing
+  nonhostile wreck was counted as an enemy death. Corrections are being checked against the saved
+  trace and regression fixtures. They do not close the remaining spawn or wave failures.
+- Source coverage has continued through asteroid formations/sites, Ceres/Choir/Cinder,
+  contract/custody, mission recap/situation composition, and faction presence/occupation/spawn
+  budget packets. Concrete pending fixes include formation invalidation after removal and a Choir
+  malformed-save berth deadlock. Per-packet boundaries are under the ignored integration folder;
+  unexamined dependencies remain open.
 - Existing source review inventories currently enumerate 2,756 JS/TS source files. Lane 1 has
   112 reports for 135 assigned chunks and Lane 3 has 154 for 303 chunks. A report is an input to
   triage, not an approval. Local snapshot: `.devshots/finish/integration-2026-10-29/coverage-inventory.json`.
