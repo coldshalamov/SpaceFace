@@ -1,53 +1,75 @@
-# Swarm Renaissance design bible coverage
+# Swarm Renaissance: design target and current gaps
 
-Coverage and implementation gaps, 2026-10-29. Source proposal: C:/Users/93rob/Downloads/SpaceFace_Swarm_Renaissance_Extended_Design_Bible.pdf (171 pages). Full page-tagged extracted text: [full page-tagged PDF extraction](../../../.devshots/finish/integration-2026-10-29/docs/swarm-renaissance-design-bible-full.txt).
+Updated 2026-10-29 from the user-provided 171-page
+`SpaceFace_Swarm_Renaissance_Extended_Design_Bible.pdf`. The complete extracted text is a local
+scratch artifact only; this repository summary records the relevant proposal and current status.
 
-## Scope and interpretation
+## Adopted product direction
 
-The user asks to finish the game using this bible, so Parts I–X are adopted product direction for this work. The PDF still identifies itself on p.1 as design research/proposal, not an implementation claim; its p.2 reading note says the catalogs are a design bank, not a mandate to ship all entries. Respect current architecture and active lane authority when turning that direction into code. Appendix A says source inspection does not prove ordinary-route reachability or fun (p.157); each proposal remains a creative proposal until current-route verification (p.22). The catalogs (30 waves, 10 bosses, 14 arenas, 100 synergies, 360 moments, 20 agent packets) are options and references, not coverage quotas. The Gold finale (p.171) says the target is a small complete slice: Foundry, first ten waves, four construction types, three excellent player abilities, credible boss, one optional stealth mission.
+The user adopted the PDF's Parts I–X as design direction for this finish campaign. The PDF describes
+itself as research/proposal (p.1); its catalogs are a design bank, not shipment quotas (p.2). Keep
+its core player experience: a prompt, physical opening horde; clear causal combat feedback; authored
+arena rhythm; construction as an active tactical choice; and a compact, complete Foundry journey.
+Appendix A says source inspection does not establish ordinary-route reachability or fun (p.157).
 
-## Coverage map
+The requested Gold target is the small complete slice described on pp.11, 20–21, and 171:
 
-| PDF scope | Existing repo coverage | Assessment / next bounded work |
-|---|---|---|
-| Experience contract: first minute, autonomy, competence, surprise, authored rhythm (pp.6–8) | Crucible route, run phase machine, stakes, opening armory are specified in design/swarm/SWARM_PROGRAM.md; active finish board owns current Swarm work. Runtime: src/systems/survivalRun.js, survivalWave.js, src/data/swarmMode.js. Focused test families: test/crucible-*.test.mjs. PDF p.6 specifically says the ordinary release path should show a visible horde promptly and keep the solitary-opening lesson optional. swarmArena.js holds Brood when a plan includes openingLesson; survivalRun.js also gates that lesson conditionally. The launch owner did automatically enable it on a fresh profile. A candidate now makes the immediate horde the default and adds explicit Training selection; the latest headed route reaches round 3 with working controls and transitions; visual/performance acceptance remains incomplete. | Core present; candidate opening behavior now matches the advice. Finish coherent physical placement, first-wave clearance and first-minute readability on the normal route before closing it. |
-| Physical horde, two populations, ingress shape, satisfying room kills, truthful wave accounting (pp.9–10) | src/systems/swarmBrood.js owns a deterministic typed-array population (100–400 cap), separate from full ship entities; attack families/telegraphs, spatial hash, retained buffers, damage and kill receipts are in code. Data: src/data/swarmBrood.js, swarmBroodLate.js. Full ships remain on survivalWave/spawn-budget path. | Foundational architecture implemented. However, PDF p.10 and Appendix C §C5 require two-population wave accounting. survivalWave.js has no Brood receipt listener; at the kill-target clear branch (~1680–82), it checks only full-ship planned/admitted/pending/actionable cohort. swarmBrood.js emits separate swarm:broodKills receipts (~2342), currently used for chain/awards. Brood is therefore not visibly part of the kill-target completion ledger in these owners. Resolve intended semantics and, if Brood is required for the objective, add one owner-level unified ledger with unique life tokens and explicit retirements. The measured cost/player-visible density work remains Lane 2 F1/F2. |
-| Fortify as player-built kill machine; lifecycle/fairness, two objectives (pp.11–12; Catalogue II pp.58–73) | No Fortify-owned system/file surfaced in current Swarm subsystem inventory; extant room objects, fields, mines and Foundry toys are arena-authored (swarmArena.js, survivalArena.js). | Missing as a player action/lifecycle despite analogous arena hazards. PDF p.11 specifies a Fortify pilot: one stable arena, three corridors, paused build view, four devices, two consecutive waves, one repair, and an enemy deliberately attacking a weak link. PDF p.12 and Appendix C §§C6–C7 require atomic spending/placement, explicit device lifecycle, stable run identity and path fairness. Build this in increments, starting with one placeable (Gravity Beacon or Repulsor Pylon) on the p.20 Foundry loop, then complete the four-device pilot; do not prebuild the structures catalog. |
-| Hero Maneuver choreography and stealth as risk economy (pp.13–14; Catalogue I pp.23–57) | Existing flight abilities, tether/Massline and combat maneuvers have live owners in Lane 2; no reusable maneuver script-intent system or stealth Swarm loop identified in this bounded pass. | Partial foundations; proposed reuse seam unverified. Do not add a parallel flight writer. Later, build one authoring/execution seam through existing flight/physics authority; stealth is separate. |
-| Physical damage grammar, collision story, explicit exceptions (p.15) | Shared combat/physics authority; Brood routes damage and additive impulses through owners. Swarm arena and materialization include physical room interactions. | Engine foundation present; evaluate cause readability and edge behavior inside F1/F2; do not implement a second damage pipeline. |
-| Presentation: attention, causal color/sound, microinteractions (p.16; Catalogue VIII pp.134–146) | Swarm-specific systems: swarmChain.js, swarmJuice.js, swarmJuiceHud.js; audio recipes include Swarm cues. design/swarm/SWARM_ARCADE.md explicitly documents weak chain visibility / low feedback as a gap. | Runtime hooks exist, player-facing feedback likely incomplete. Verify chain bonus, kill cause, event wager and arena interaction on the Crucible route; fix absent cues/HUD. |
-| Progression/content recombination (p.17; catalogs III–VII) | Data includes swarmStakes.js, swarmCatalog.js, swarmPerks.js, swarmEvents.js, swarmLadder.js, swarmBrood.js, swarmBroodLate.js; runtime event director in src/systems/swarmEvents.js. Boss rounds/champions, weapons/evolutions and arena variants are in current code. | Multiple brainstorm bullets became real systems. Remaining ambition includes finite named Circuit journey/alternate objectives, not needed to close one vertical slice. Lane 2 C5 (row 270 SWARM-08) is the existing owner. |
-| Single writer, bounded performance, saves/replay/determinism (pp.18–19; Appendix C pp.165–171) | swarmMode.js documents pure seeded planning; swarmBrood.js documents private seed, no per-tick allocation and ownership; swarmEvents.js uses shipped event seams. Runtime wiring in src/core/registry.js and src/runtime/authoritativeSystemManifest.js. Relevant tests include test/crucible-swarm-*.test.mjs and test/crucible-wave-*.test.mjs. | Architecture/test foundation present. Performance objectives remain open on Lane 2: F1 crowd cost, F2 Wave 15 stress. Brood kill accounting exists, but wave-objective integration is not apparent in survivalWave.js (see row above). Appendix C §C5 proposes the objective ledger as runtime-owned state, not arbitrary additions to strict state.run. This pass did not verify save/replay/player-route claims. |
-| Gold vertical slice: Foundry/Pinball Siege, ingress, rocks, collision target, first post-clear structure purchase (p.20) | Existing Foundry arena/cycle and physical crowd/chain/economy pieces; no player-placed construction found. | Best acceptance target for first Fortify packet; one player-reachable loop, not 30-wave/catalog completion. |
-| Skeptical review and explicit conflict review (pp.21, 157–164) | Current authority: Finish Program README/boards (2026-10-28); Swarm design suite includes older 2026-10-02/09-29 snapshots. Root/design/docs policy specifies authority order and evidence limits. | Treat dates/claims in older Swarm docs as hypotheses until compared with code. PDF Appendix A itself says tests/source do not establish player-route reachability. Appendix C explicitly warns its contracts and pseudocode are proposals, calls out Brood-vs-ship objective accounting, construction double-spend/duplication, and route validation as negative acceptance cases (pp.167–170). |
+- From the ordinary Crucible menu, reach Foundry's first ten-wave journey and a credible distinct
+  boss.
+- The first minute presents a working starter weapon, grouped ingress, physical kills, payout, and a
+  purchase that visibly changes a later wave.
+- Provide three readable approach corridors and a build phase that preserves the field; operate all
+  four construction types across two consecutive waves; make repair/rearm meaningful.
+- Show siege counterplay against weak links, structures surviving between waves and failing fairly,
+  and at least one causal chain the player can explain.
+- Include one deliberately failed build and retain three distinct standout player abilities plus an
+  optional stealth mission. Keep the solo-opening lesson optional.
 
-## Missing and partial outcomes
+The appendix catalogs (30 waves, 10 bosses, 14 arenas, and the other large option banks) are not
+coverage quotas. This target does not authorize a second simulation, combat, or damage writer.
 
-- **Missing:** player-owned Fortify construction. Current arenas have authored hazards/toys, but no Swarm placement/lifecycle owner, build-phase UI, atomic placement payment, damage/repair/retirement, or between-wave structures.
+## Current implementation and evidence
 
-- **Unresolved objective semantics:** Brood is a deterministic light-body population with physical attacks and payout receipts; survivalWave cohort completion has no Brood receipt listener. The existing endless mode may deliberately treat Brood as a supplemental population. The Gold Fortify wave spec must explicitly decide whether Brood is required to clear the wave; if so, integrate exact-once resolution and valid retirement. This is a future objective contract, not a confirmed defect.
+The ordinary Swarm objective is the finite hostile ship cohort; Brood adds pressure and rewards.
+Current progress/clear semantics name both populations, and the HUD label is `HOSTILE SHIPS`.
 
-- **Opening repaired and route exercised:** the launch owner now defaults to the normal horde and exposes a visible Training toggle, preserving explicit lesson selection on retry. Native clicks and focused launch/safety checks pass. The latest headed public route reaches round 3, with passing idle motion/death/reward and active control/resolution/transition checks. Authored well impulses explain the passive motion through native delivery receipts; optic lattice native-collider penetration was separately repaired. The batch remains INCOMPLETE for LOD/readability/performance samples, so the first-minute craft/performance bar is still open.
+Fortify has four device types, run-scoped purchases, physical fields/projectiles, paired segment
+damage, paid repair and turret rearm, and enemy weak-link counterplay. The real paused screen is
+registered in both runtime paths. Headed public Foundry run `24057` closed after 892 simulated
+seconds / 25 minutes: it cleared waves 1–6, reached wave 7 alive, and used all four devices plus
+repair/rearm through public controls. Its verdict is FAIL solely for 15 offscreen-marker misses
+(`no living shooter` near sim 727.9); other core controls, round resolution/transitions, spawn
+motion, ships, and VFX passed. Readability and frame time remain UNKNOWN. The marker observer was repaired in `c2f5714f570`: the producer intentionally admits lit
+detonator fuses and danger bands, while the old observer admitted only armed shooters. Seven
+focused cases pass, but the original route verdict remains unchanged. The ten-wave/boss journey
+is still open. See `.devshots/finish/integration-2026-10-29/foundry-ten-wave-route/` for the original
+verdict and artifacts.
 
-- **Partial / not directly verified:** crowd staging, on-screen density, HUD causal readability, and the full ordinary-route experience. Existing tests and systems are not route evidence.
+The published observer/spawn correction `4a5e683497e` fixed capture overflow and unmapped-player
+attribution. Corrected offline idle and active traces now report zero spawn-motion anomalies without
+changing the physics speed threshold. However, the original whole Swarm idle/active player-truth gate
+remains FAIL because the default pilot died in wave 2. This is separate from the Foundry route above;
+do not claim that Swarm is green or accepted. The latest route also did not load the newly passing
+reader modal-body fix (15/15 focused checks), and its screenshot interval was configured in seconds
+instead of 3-second steps, so it provides round-event pictures only rather than continuous visual
+coverage.
 
-- **Open measured work:** Lane 2 F1/F2 crowd cost and Wave 15 stress remain current performance work; do not replace or duplicate it.
+Hero evidence remains bounded: M02 completed bank, bomb commitment, and phase return alive, while
+the target survived (an allowed miss). Pinball performed a charged physical dash and honestly
+reported target loss with zero contacts; native contact tests are separate evidence. No full public
+three-ability/contact experience is claimed.
 
-- **Partial content ambition:** current run is an endless ruleset with deep systems; the full Gold route names a first ten-wave ladder, four construction types, three standout player abilities, a credible boss, and one optional stealth mission.
+## Remaining acceptance work
 
-## Gold-slice acceptance target
+- Complete the ordinary Foundry first-ten journey, including its boss, through public controls.
+- Preserve the current four-device/service behavior while verifying two-wave survival, fair structure
+  failure, siege counterplay, readable approaches, and the deliberate failed-build case.
+- Establish clear combat cause/readability and exercise the three abilities through their real
+  player-facing controls and status. Keep the optional stealth mission reachable on its ordinary
+  route.
+- Revisit the original Swarm gate only after a material gameplay change. Keep its FAIL distinct from
+  corrected offline spawn-reader results and from the current run's partial progress.
 
-Use PDF pp.11, 20–21, and 171 as the user-requested product target, staged through Lane 2 packets. A stranger reaches it from the ordinary Crucible menu. The first minute shows a working starter weapon, visible grouped ingress, physical kills, payout, and a purchase that visibly changes the next wave. The Foundry pilot has three readable approach corridors and a build phase that preserves the field; four devices operate for two consecutive waves; at least one can be repaired; a siege specialist targets a weak link; structures survive between waves and fail visibly/fairly; a distinct boss closes the first ten-wave authored slice. The player can explain one causal chain. Include one deliberately failed build; enemies counter it without spawning inside defenses or silently deleting structures. Preserve the solo opening lesson as optional. Keep viable gun/mobility, construction, and physical-combo builds. This does not require every appendix catalog.
-
-## Concrete priorities
-
-1. Default opening and Brood truth: finish physical spawn stability and the ordinary first-clear route with the optional Training candidate. Verify visible ingress, active crowd, and first purchase. For the new Fortify objective, decide whether Brood is required to clear; if it is, unify finite objective accounting and retirement receipts with ship cohort under one wave-clear owner.
-2. Continue existing crowd/perf work: Lane 2 F1/F2 owns sim cost and wave-15 stress. Measure the six workloads in PDF p.19 as those packets evolve; do not start a duplicate campaign.
-3. Fortify vertical slice: start with one physical placeable and an atomic purchase on Foundry, then deliver the stated four-device pilot (three corridors, paused build phase, two waves, repair, siege counterplay) before expanding catalogs. Use existing runSession, field, physics and combat seams; no shadow writers.
-4. Later: C5 / row 270 SWARM-08 owns Circuit journey/objectives/arsenal expansion. Three Hero Maneuver examples and one optional stealth mission belong to the complete Gold slice (p.171) but need separate bounded packets through existing flight/physics owners.
-
-## Doc consolidation completed
-
-The active Finish Program is documented at root AGENTS.md and design/program/finish/README.md. Clean navigation now routes active work there while retaining older plans as detail: docs/README.md, docs/ORIENTATION.md, and docs/TASK_ROUTER.md point to the relevant lane board; docs/POLICY_MANIFEST.md classifies those boards as active manual routing. Root AGENTS.md now routes next-task requests to a lane board, names Lane 3 for UI ownership, points finish-game requests at the active program, gives Finish Program its current performance measurement rule, and scopes landed-review/player-truth requirements to current batch rulings. CLAUDE.md already pointed at the active program and needed no edit.
-
-No broad archive/delete is indicated. Keep older Swarm docs as supporting design where useful; they are not current status. Dirty foreign paths observed before this task included docs/EVENT_ROUTING.md, docs/SYSTEM_REGISTRY.md, src/data/swarmThreatMark.js, test/swarm-overhaul-foundry-read.test.mjs and unrelated paths; preserve them.
+Packet ownership and current route results are summarized in
+[INTEGRATION_COVERAGE.md](./INTEGRATION_COVERAGE.md); packet source-read status is in
+[SOURCE_COVERAGE_2026-10-29.md](./SOURCE_COVERAGE_2026-10-29.md).
