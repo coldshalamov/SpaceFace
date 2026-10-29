@@ -78,6 +78,13 @@ const CSS = `
   font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.16em; text-transform:uppercase; color:rgb(${BONE} / .62); white-space:nowrap; }
 .orr-lampkey.orr-lampkey--small { min-height:38px !important; font-size:13.5px !important; }
 .orr-lampkey.orr-lampkey--small .orr-lampkey__note { margin-left:14px; font-size: 12px; }
+/* the Missions ACCEPT key: small, it sits in the dossier's right-hand commit row (960x540, 1280x720) and a narrow window's half column
+   (≤650 wide): one line of "HOLD TO ACCEPT" ran ~160px past a gap of 80-150px and the dossier cut it to "HOLD TO".
+   There its note stands as two short lines beside the key, so the whole instruction reads. */
+.orr-lampkey.orr-lampkey--small.sx-ct-commit .orr-lampkey__note { white-space:normal; text-wrap:balance; width:max-content; max-width:7em; margin-left:14px; letter-spacing:.08em; line-height:1.15; }
+@media (min-width:481px) and (max-width:650px) {
+  .orr-lampkey.sx-ct-commit .orr-lampkey__note { white-space:normal; text-wrap:balance; width:max-content; max-width:7em; margin-left:14px; letter-spacing:.08em; line-height:1.15; }
+}
 html.sf-reduce-motion .orr-lampkey::after { animation:none; }
 `;
 
