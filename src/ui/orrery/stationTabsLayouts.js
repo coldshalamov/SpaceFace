@@ -855,6 +855,9 @@ ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-
   ${T} .sx-ledger > .st-ledger { max-width:none; }
   ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
   ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
+  ${T} .sx-ledger__right > .sx-ledger__row { flex-direction:column; align-items:stretch; gap:16px; }
+  ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
+  ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
 }
 /* the empty state is one line, and the tape waits with it */
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) { grid-template-rows:auto auto auto auto auto !important; }
