@@ -64,13 +64,9 @@ export const dockingCorridor = {
 
   init(ctx) {
     this.bus = ctx && ctx.bus || null;
-    // Cache of static proxy geometry per station entity, keyed with pos/rot/proxy stamp. Geometry
+    // Cache static proxy geometry per station object. Entity ids can be reused after a load.
     // only recomputes when the station record actually changes (sector entry), never per frame.
     this._proxyGeometryCache = new Map();
-    // resolveCollisionProxyManifest is deterministic on entity.data.collisionProxy + model truth —
-    // memoize per station entity so update() + _publishProxyDiagnostics() stop resolving it twice
-    // per tick (a station's collisionProxy id never changes after spawn).
-    this._manifestCache = new Map();
     this._farQuiet = null;
     for (const unsub of this._farQuietUnsubs || []) {
       try { unsub(); } catch (_) { /* ignore */ }
@@ -89,7 +85,6 @@ export const dockingCorridor = {
 
   destroy() {
     if (this._proxyGeometryCache) this._proxyGeometryCache.clear();
-    if (this._manifestCache) this._manifestCache.clear();
     this._farQuiet = null;
     for (const unsub of this._farQuietUnsubs || []) {
       try { unsub(); } catch (_) { /* ignore */ }
@@ -98,15 +93,8 @@ export const dockingCorridor = {
   },
 
   _manifestFor(station) {
-    const cache = this._manifestCache;
-    if (cache) {
-      const key = (station.data && station.data.collisionProxy) || '';
-      const hit = cache.get(station.id);
-      if (hit && hit.key === key) return hit.manifest;
-      const manifest = resolveCollisionProxyManifest(station);
-      cache.set(station.id, { key, manifest });
-      return manifest;
-    }
+    // The resolver already caches against the entity's current model/physics identity.
+    // A second id-only cache hid replacement entities and authored proxy revisions.
     return resolveCollisionProxyManifest(station);
   },
 
@@ -256,9 +244,7 @@ export const dockingCorridor = {
   _publishProxyDiagnostics(state) {
     const runtime = state.physicsRuntime || (state.physicsRuntime = {});
     const stations = (state.entityIndex && (state.entityIndex.dockStations || state.entityIndex.stations)) || state.entityList || [];
-    // Reuse the publish scratch every tick. Stations rarely move; cache the template-key on the
-    // station so settled flight stops rebuilding `${proxy}|x|z|rot|bearing` strings and allocating
-    // a fresh out[]/Set (fresh profile: _publishProxyDiagnostics ~20 ms self / 60 s).
+    // Reuse the publish scratch and compare geometry inputs without rebuilding string keys.
     const out = this._proxyDiagOut || (this._proxyDiagOut = []);
     out.length = 0;
     const seen = this._proxyDiagSeen || (this._proxyDiagSeen = new Set());
@@ -272,26 +258,13 @@ export const dockingCorridor = {
       const pz = finite(station.pos && station.pos.z);
       const rot = finite(station.rot);
       const bearing = data.corridorBearingDeg;
-      const proxyId = data.collisionProxy;
-      let key = station._sfProxyDiagKey;
-      if (!key
-        || station._sfProxyDiagPx !== px
-        || station._sfProxyDiagPz !== pz
-        || station._sfProxyDiagRot !== rot
-        || station._sfProxyDiagBearing !== bearing
-        || station._sfProxyDiagProxy !== proxyId) {
-        key = `${proxyId}|${px}|${pz}|${rot}|${bearing}`;
-        station._sfProxyDiagKey = key;
-        station._sfProxyDiagPx = px;
-        station._sfProxyDiagPz = pz;
-        station._sfProxyDiagRot = rot;
-        station._sfProxyDiagBearing = bearing;
-        station._sfProxyDiagProxy = proxyId;
-      }
-      let entry = this._proxyGeometryCache.get(station.id);
-      if (!entry || entry.key !== key) {
+      const scale = corridorScale(manifest, station);
+      let entry = this._proxyGeometryCache.get(station);
+      if (!entry || entry.manifest !== manifest || entry.px !== px || entry.pz !== pz
+        || entry.rot !== rot || entry.bearing !== bearing || entry.scale !== scale
+        || entry.stationId !== data.stationId) {
         entry = {
-          key,
+          manifest, px, pz, rot, bearing, scale, stationId: data.stationId,
           frozen: Object.freeze({
             entityId: station.id,
             stationId: data.stationId || null,
@@ -313,9 +286,9 @@ export const dockingCorridor = {
             primitives: Object.freeze(proxyWorldPrimitives(station, manifest)),
           }),
         };
-        this._proxyGeometryCache.set(station.id, entry);
+        this._proxyGeometryCache.set(station, entry);
       }
-      seen.add(station.id);
+      seen.add(station);
       out.push(entry.frozen);
     }
     for (const id of this._proxyGeometryCache.keys()) {

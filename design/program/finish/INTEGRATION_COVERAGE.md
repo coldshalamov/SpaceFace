@@ -29,8 +29,9 @@ Reuse completed findings and do not start parallel reviews of chunks still being
 
 ## Verified repair batch
 
-Graphics/boot/audio repairs below were published in `90731639f61`; gameplay repairs remain
-unpublished until their affected route can pass the batch gate.
+Graphics/boot/audio repairs below were published in `90731639f61`. The Adventure lifecycle batch
+has passed its focused checks and the default route's core gameplay checks; its route verdict is
+INCOMPLETE for the explicitly unmeasured items below. Other gameplay batches remain pending.
 
 Additional published batches: `d23c3aac5c8` preserves a live authored-asset consumer when a joined
 consumer cancels, and bounds background work when the browser scheduler throws or rejects;
@@ -49,6 +50,15 @@ batch; these are not whole-game acceptance claims.
   Startup-failure diagnostics tests: 10 passed.
 - Wingman death used `dmg` while automation reads `damage`, leaving a dead ship in the fleet
   ledger. The producer now uses the canonical field. Lifecycle tests: 2 passed.
+- Choir runner-state normalization could permanently reserve a berth for a fractional or
+  nonexistent identity. Discrete identities and loss masks now normalize without inventing
+  service or assigning a nonexistent ordinal to another runner. Continuity tests: 21 passed.
+- Docking cached manifests by entity id, losing replacement/revision truth; its proxy templates
+  also ignored berth resizing. The resolver's identity cache now owns manifests, while geometry
+  templates follow entity objects and their inputs. Lifecycle/latch/cradle/arrival checks: 13 passed.
+- A station object used its transient entity id instead of its persistent berth id for refusal
+  lookup, so guidance could miss an existing grudge. Object/string/catalog references now agree.
+  Docking and Latch checks: 22 passed, including the corrected production-shaped restore fixture.
 - Audio residency ignored `activity.pinnedExact` and treated a partial active-set miss as a final
   denial. Exact relevant voices now survive those cases. Focused pin tests: 2 passed.
 
@@ -73,6 +83,14 @@ batch; these are not whole-game acceptance claims.
   completed a full revolution and was misgraded by endpoint-only comparison; a self-destructing
   nonhostile wreck was counted as an enemy death. Corrections are being checked against the saved
   trace and regression fixtures. They do not close the remaining spawn or wave failures.
+- Current Adventure batch reached public Launch and flew 228.5 simulated seconds. No FAIL:
+  route, spawn motion, input control, tumble, player rendering, LOD, visibility, VFX/backdrop
+  coverage and uninterrupted HUD checks passed. Verdict INCOMPLETE because no suitable encounter
+  supplied readability/edge-marker samples and this contended host cannot establish quiet-host
+  frame performance. Observed frame time p50 41 ms, p99 285 ms; do not call this release performance.
+  Artifacts: `.devshots/finish/integration-2026-10-29/player-truth-adventure-current/`.
+- Scheduler memoization and scratch actor retention are bounded in `ba23b684f1b`; scheduling
+  phases remain stable through owner churn. Focused scheduler checks: 10 passed. No speed claim.
 - Source coverage has continued through asteroid formations/sites, Ceres/Choir/Cinder,
   contract/custody, mission recap/situation composition, and faction presence/occupation/spawn
   budget packets. Concrete pending fixes include formation invalidation after removal and a Choir

@@ -40,7 +40,7 @@ function findStationData(state, stationId) {
 export function resolveDockDeny(state, stationRef) {
   const stationId = typeof stationRef === 'string'
     ? stationRef
-    : (stationRef && (stationRef.stationId || stationRef.id || (stationRef.data && stationRef.data.stationId))) || null;
+    : (stationRef && (stationRef.stationId || (stationRef.data && stationRef.data.stationId) || stationRef.id)) || null;
   const station = typeof stationRef === 'object' && stationRef !== null
     ? (stationRef.data ? { ...stationRef.data, factionId: stationRef.data.factionId || stationRef.factionId || null } : stationRef)
     : findStationData(state, stationId);

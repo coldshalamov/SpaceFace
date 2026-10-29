@@ -216,7 +216,7 @@ export const wingmen = {
         // Wingman died in combat. Route through the existing onHitAsset path so the ledger stays
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
         fs.hp = 0; fs.hullPct = 0;
-        this.bus.emit('combat:hitAsset', { assetKind: 'fleet', assetId: fs.id, dmg: 9999, killerId: null });
+        this.bus.emit('combat:hitAsset', { assetKind: 'fleet', assetId: fs.id, damage: 9999, killerId: null });
         // One named line per death. Clearing _liveId below keeps later ticks silent.
         const name = (fs.customName || fs.name) || 'Wingman';
         this.bus.emit('toast', { text: 'Wingman down — ' + name, kind: 'error', ttl: 4 });
