@@ -2574,6 +2574,9 @@ export const save = {
   _noteWriteOutcome(slot, timing) {
     const bag = this.state && this.state.save;
     if (!bag || typeof bag !== 'object' || !timing) return;
+    // A superseded write is a recorded cancellation, not an outcome: the receipt belongs to a
+    // dead writer and must neither clear the live writer's pending marker nor stamp a failure.
+    if (timing.failure === 'superseded') return;
     if (bag.pendingWrite && bag.pendingWrite.slot === slot) bag.pendingWrite = null;
     const at = nowMs();
     const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : null;
@@ -2590,7 +2593,6 @@ export const save = {
       bag.consecutiveWriteFailures = 0;
       return;
     }
-    if (timing.failure === 'superseded') return;
     bag.lastWriteFailure = {
       slot,
       trigger: timing.trigger || null,
@@ -4181,7 +4183,13 @@ export const save = {
         continue;
       }
       const base = {};
+      // The serialized record's own key order, collections included: serializePlayerRecord
+      // keeps ownedShips/moduleInventory at their in-place positions, so the worker rebuilds
+      // against this order or the two encode lanes serialize identical state to different
+      // bytes (Object.assign onto a single base would move both collections to end-of-record).
+      const order = [];
       for (const playerKey in value) {
+        order.push(playerKey);
         if (playerKey === 'ownedShips' || playerKey === 'moduleInventory') continue;
         base[playerKey] = value[playerKey];
       }
@@ -4191,6 +4199,7 @@ export const save = {
         type: 'encode_player_begin',
         payload: {
           base,
+          order,
           ownedShipsLength: ownedShips.length,
           moduleInventoryLength: moduleInventory.length,
         },
@@ -4597,9 +4606,19 @@ export const save = {
     let previousRaw;
     try { previousRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
     catch (error) { previousRaw = undefined; }
-    const previousPrepared = previousRaw
-      ? await this._prepareEnvelopeStringAsync(previousRaw).catch(() => ({ ok: false, reason: 'load_failed' }))
+    let previousPrepared = previousRaw
+      ? this._cachedPreparedEnvelope(previousRaw)
+        || await this._prepareEnvelopeStringAsync(previousRaw).catch(() => null)
       : null;
+    // The async prepare only yields for plain envelopes — a gzip-compacted previous generation
+    // (the normal stored form wherever CompressionStream exists) still deserves its recovery
+    // rotation, so this lane pays the same bounded sync decode the paced chain does at
+    // _runPacedSaveChain rather than hand _writeSlot a truthy-but-failed verdict that skips
+    // both its own re-prepare and the rotation.
+    if (previousPrepared && previousPrepared.reason === 'compressed_envelope') {
+      previousPrepared = this._prepareEnvelopeForWriter(previousRaw);
+    }
+    if (previousPrepared) this._rememberPreparedEnvelope(previousRaw, previousPrepared);
     // Liveness re-check after the paced prepare: a restore/run boundary crossed during
     // the await already cancelled this job and published its own terminal receipt —
     // finish quietly instead of writing over the newer generation.
@@ -4857,6 +4876,10 @@ export const save = {
       indexMs: 0,
       workerRoundtripMs: Number(snapshot.workerRoundtripMs) || 0,
       primaryWritten: false,
+      // Final disposition of the recovery key for the mirror patch _finishAutosaveTransaction
+      // assembles — the same bookkeeping _writeSlot keeps as backupCreated/recoveryGone.
+      recoveryWritten: false,
+      recoveryGone: false,
       rollbackScheduled: false,
       rollbackDone: false,
       cancelReason: null,
@@ -4970,13 +4993,18 @@ export const save = {
       const recoveryKey = RECOVERY_PREFIX + AUTOSAVE_SLOT;
       try {
         localStorage.setItem(recoveryKey, tx.previousRaw);
+        tx.recoveryWritten = true;
       } catch (error) {
         if (error && error.name === 'QuotaExceededError') {
           // Sacrifice the stale recovery copy and retry once — a lost backup beats a lost
           // save. If it still will not fit, continue to the primary write; the read-back
           // verify + rollback in _autosaveReadback protects the previous primary either way.
-          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep going */ }
-          try { localStorage.setItem(recoveryKey, tx.previousRaw); } catch (_) { /* sacrificed */ }
+          try { localStorage.removeItem(recoveryKey); tx.recoveryGone = true; } catch (_) { /* keep going */ }
+          try {
+            localStorage.setItem(recoveryKey, tx.previousRaw);
+            tx.recoveryWritten = true;
+            tx.recoveryGone = false;
+          } catch (_) { /* sacrificed — the mirror patch ships the tombstone */ }
         } else {
           const failureMs = workNowMs() - started;
           tx.backupMs += failureMs;
@@ -5065,59 +5093,11 @@ export const save = {
     this._pushAutosaveSlice(tx, 'storage_readback', sliceMs);
     if (!matches) return this._scheduleAutosaveRollback(job, snapshot, tx, 'write_verify_failed');
 
-    const verifyStarted = workNowMs();
-    const posted = this._requestSaveWorker('validate', {
-      raw: storedRaw,
-      currentVersion: CURRENT_VERSION,
-    }, (message) => {
-      if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return;
-      const result = message && message.result;
-      if (!result || !result.ok) {
-        this._scheduleAutosaveRollback(job, snapshot, tx,
-          result && result.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed');
-        return;
-      }
-      this._scheduleAutosaveWork(() => this._autosaveWriteIndex(job, snapshot, tx));
-    }, (error) => {
-      if (error && error.message === 'superseded') {
-        this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
-        return;
-      }
-      this._scheduleAutosaveWork(() => this._autosaveValidateReadbackSync(job, snapshot, tx, storedRaw));
-    }, {
-      onSlice: (phase, ms) => {
-        tx.verifyMs += ms;
-        this._pushAutosaveSlice(tx, `readback_${phase}`, ms);
-      },
-      onRoundtrip: (ms) => { tx.workerRoundtripMs += ms; },
-    });
-    const dispatchMs = workNowMs() - verifyStarted;
-    tx.verifyMs += dispatchMs;
-    this._pushAutosaveSlice(tx, 'validate_readback_setup', dispatchMs);
-    if (!posted) this._scheduleAutosaveWork(() => this._autosaveValidateReadbackSync(job, snapshot, tx, storedRaw));
-    return true;
-  },
-
-  async _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
-    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
-    const started = workNowMs();
     // A byte-exact re-read of the string this transaction produced needs no re-verify on ANY
-    // lane — the envelope was bounded at encode (the gzip lane's proven-bytes escape, extended
-    // to plain envelopes). The mismatched path is cold (the caller only schedules this verify
-    // after the byte compare passed, so it is defensive insurance) and now rides the async
-    // prepare lane rather than bricking the scheduled task.
-    const prepared = storedRaw === snapshot.json
-      ? { ok: true }
-      : await this._prepareEnvelopeStringAsync(storedRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
-    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
-    const verifyMs = workNowMs() - started;
-    tx.verifyMs += verifyMs;
-    this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
-    if (!prepared.ok) {
-      const reason = prepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed';
-      return this._scheduleAutosaveRollback(job, snapshot, tx,
-        `${reason}:${prepared.reason || 'unknown'}${Number.isFinite(prepared.actual) ? `(${prepared.actual}>${prepared.limit})` : ''}`);
-    }
+    // lane — the envelope was bounded at encode (preflightSaveImport at autosave/worker
+    // encode), the same proven-bytes contract _writeSlot's read-back documents. The worker
+    // validate this leg used to post was one structured-clone + parse + checksum per autosave
+    // that its own sync fallback already refused to pay.
     this._scheduleAutosaveWork(() => this._autosaveWriteIndex(job, snapshot, tx));
     return true;
   },
@@ -5204,12 +5184,23 @@ export const save = {
       this._pushAutosaveSlice(tx, 'storage_write_index_conceded', concedeMs);
       return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'superseded' });
     }
-    this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope, snapshot.json);
+    const indexJson = this._updateIndex(AUTOSAVE_SLOT, snapshot.envelope, snapshot.json);
+    // The bytes just stored are proven — leave the same verdict _writeSlot caches so the next
+    // writer's rotate-over-good check answers O(1) instead of re-preparing this generation.
+    if (snapshot.envelope && typeof snapshot.envelope === 'object') {
+      this._rememberPreparedEnvelope(snapshot.json, {
+        ok: true,
+        env: snapshot.envelope,
+        data: snapshot.envelope.data,
+        version: readSaveVersion(snapshot.envelope.version).version,
+      });
+    }
     const sliceMs = workNowMs() - started;
     tx.indexMs += sliceMs;
     this._pushAutosaveSlice(tx, 'storage_write_index', sliceMs);
     return this._finishAutosaveTransaction(job, snapshot, tx, {
       ok: true,
+      indexJson,
       backupCreated: !!(tx.previousRaw && tx.previousValid),
       backupSavedAt: tx.previousSavedAt,
     });
@@ -5247,6 +5238,20 @@ export const save = {
       backupCreated: !!result.backupCreated,
       backupSavedAt: result.backupSavedAt || null,
     };
+    // The shared-store mirror ships the delta this write just landed — the primary bytes, the
+    // recovery copy or its tombstone, and the index row — the same contract _writeSlot
+    // publishes. Without it every autosave fell into _queueSharedStoreMirror's whole-corpus
+    // collect + push, megabytes of getItem/stringify per save that the delta exists to avoid.
+    if (result.ok) {
+      const mirrorPatch = { [LS_PREFIX + AUTOSAVE_SLOT]: snapshot.json };
+      if (tx.recoveryWritten && !tx.recoveryGone) {
+        mirrorPatch[RECOVERY_PREFIX + AUTOSAVE_SLOT] = tx.previousRaw;
+      } else if (tx.recoveryGone) {
+        mirrorPatch[RECOVERY_PREFIX + AUTOSAVE_SLOT] = null;
+      }
+      if (typeof result.indexJson === 'string') mirrorPatch[INDEX_KEY] = result.indexJson;
+      write.mirrorPatch = mirrorPatch;
+    }
     const timing = this._saveTiming({
       slot: AUTOSAVE_SLOT,
       reason: job.reason,
@@ -9210,10 +9215,32 @@ function buildPlayerChunkedSaveWorkerSource(source) {
         ? Math.max(0, payload.ownedShipsLength) : 0;
       const moduleInventoryLength = Number.isSafeInteger(payload.moduleInventoryLength)
         ? Math.max(0, payload.moduleInventoryLength) : 0;
-      session.data.player = Object.assign({}, payload.base || {}, {
-        ownedShips: new Array(ownedShipsLength),
-        moduleInventory: new Array(moduleInventoryLength),
-      });
+      const base = payload.base || {};
+      const order = Array.isArray(payload.order) ? payload.order : null;
+      const player = {};
+      if (order) {
+        // Rebuild in the serialized record's own key order — the sync lane keeps the two
+        // collections at their in-place positions, so end-of-record assembly here would
+        // fork the bytes (and the checksum) between encode lanes for identical state.
+        for (let index = 0; index < order.length; index++) {
+          const key = order[index];
+          if (key === 'ownedShips') player.ownedShips = new Array(ownedShipsLength);
+          else if (key === 'moduleInventory') player.moduleInventory = new Array(moduleInventoryLength);
+          else if (Object.prototype.hasOwnProperty.call(base, key)) player[key] = base[key];
+        }
+        for (const key in base) {
+          if (!Object.prototype.hasOwnProperty.call(player, key)) player[key] = base[key];
+        }
+      } else {
+        Object.assign(player, base);
+      }
+      if (!Object.prototype.hasOwnProperty.call(player, 'ownedShips')) {
+        player.ownedShips = new Array(ownedShipsLength);
+      }
+      if (!Object.prototype.hasOwnProperty.call(player, 'moduleInventory')) {
+        player.moduleInventory = new Array(moduleInventoryLength);
+      }
+      session.data.player = player;
       return;
     }
     if (request.type === 'encode_player_part') {
