@@ -171,12 +171,14 @@ html.sf-reduce-motion ${R} .pv-lane .k-row::before { transition:none !important;
   ${R} .pv-lane .k-row::before { top:16px; }
 }
 @media (max-width: 980px) {
-  ${R} { grid-template-rows:auto auto minmax(0, 1fr) auto !important; overflow-y:auto !important; }
+  ${R} { grid-template-rows:auto auto auto !important; align-content:start !important; overflow-y:auto !important; }
   ${R} > .k-title { max-width:none; padding-right:120px; }
-  ${R} > .pv-hang { grid-template-columns:minmax(0, 1fr) !important; row-gap:26px; height:auto; min-height:0; overflow-y:auto; }
+  ${R} > .pv-hang { display:flex !important; flex-direction:column; gap:26px; height:auto; overflow:visible; align-self:start; }
+  ${R} .pv-lane { flex:none; }
   ${R} .pv-lane__scroll { overflow:visible; -webkit-mask-image:none; mask-image:none; flex:0 0 auto; }
   ${R} > .pv-foot { position:sticky; bottom:0; z-index:2;
-    background-color:rgb(6 8 11 / .94) !important; background-origin:content-box !important; }
+    background-color:rgb(6 8 11 / .98) !important; background-origin:content-box !important;
+    box-shadow:0 40px 0 rgb(6 8 11 / .98), 0 -18px 18px -6px rgb(6 8 11 / .9) !important; }
 }
 `;
 
