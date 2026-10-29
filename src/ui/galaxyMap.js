@@ -6705,7 +6705,11 @@ _stepAnimation(now) {
     const t = this._selectedTarget;
     const stations = [];
     if (t && t.kind === 'station') {
-      stations.push({ id: t.id, name: t.name, services: t.services || [] });
+      const id = t.stationId || t.id;
+      const record = findStationRecord(state, id);
+      const services = Array.isArray(record?.services) ? record.services
+        : Array.isArray(t.services) ? t.services : [];
+      stations.push({ id, name: t.name, services });
     } else {
       const sectorId = (t && (t.sectorId || t.id)) || currentSectorId(state);
       const record = sectorRecordById(state, sectorId);
