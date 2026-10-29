@@ -85,6 +85,7 @@ export function createContactHailPrompt(ctx) {
   // Keep the authored relationship: the panel hangs 71px left and 38px below the channel button,
   // wherever the button's live home puts it (the tape adoption moves it once, safe-insets after).
   function syncPanelPosition() {
+    if (panel.hidden) return;
     const r = root.getBoundingClientRect();
     if (!r.width && !r.height) return;
     panel.style.left = `${Math.max(8, Math.round(r.left) - 71)}px`;
