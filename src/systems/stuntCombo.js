@@ -164,7 +164,7 @@ export function recordTrick(comboState, trick) {
   if (!act && !(points > 0)) return 0;
   if (!act) {
     if (!combo.activeCount) { combo.activeCarry = combo.postmortem ? 0 : combo.carry; combo.carry = 0; }
-    act = { episodeId, trickId: trick.trickId, name: trick.name || trick.trickId, family: spec[0],
+    act = { episodeId, trickId: trick.trickId, name: trick.variantName || trick.name || trick.trickId, family: spec[0],
       pureEscape, points: 0, tick, repetitionFactor: factor, allocation: [],
       rootId: trick.rootId ?? null, rootTick: trick.rootTick ?? tick,
       amendmentDeadlineTick: Math.min(tick + 180, num(trick.rootTick, tick) + 480),
@@ -177,7 +177,7 @@ export function recordTrick(comboState, trick) {
     combo.bridges = [];
   } else {
     // Reclassification updates the name/family without adding another act or paid timer.
-    act.trickId = trick.trickId; act.name = trick.name || trick.trickId; act.family = spec[0];
+    act.trickId = trick.trickId; act.name = trick.variantName || trick.name || trick.trickId; act.family = spec[0];
     act.modifiers = trick.modifiers || act.modifiers;
   }
   act.points += points;

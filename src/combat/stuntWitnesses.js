@@ -266,6 +266,7 @@ export const STUNT_SITUATION_LINES = Object.freeze({
 export const STUNT_VARIANT_LINES = Object.freeze({
   bolas_pair:'Two hulls, one rope, one rock.',
   own_wingman:'His own wingman finished him.',
+  around_the_world:'All the way around, then the hit.',
 });
 export function stuntSpecificLine(incident) {
   if(!incident)return null;
@@ -285,6 +286,7 @@ export function stuntAccountFor(record) {
   const source=cleanName(record?.sourceName,'the released body'),target=cleanName(record?.targetName,'the target');
   if(record?.variantId==='bolas_pair')return `bridled ${target} to a wingman and drove the pair into the rock`;
   if(record?.variantId==='own_wingman')return `put the wreck ${source} back in motion against its own wingman ${target}`;
+  if(record?.variantId==='around_the_world')return `took ${source} the whole way around and hit ${target}`;
   const account = {
     bolas:`released ${source} under load into ${target}`,
     wrecking_ball:`swung the attached ${source} into ${target}`,

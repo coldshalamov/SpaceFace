@@ -102,6 +102,13 @@ function classifyBridle(receipt,e) {
 export function stuntVariantFor(primary,receipt) {
   const e=receipt?.stuntEvidence,r=e?.root;
   if(!r)return null;
+  // Row 475 — Around the World: a recognised swing that turned the loaded line a full circle is
+  // the same trick said bigger. `constraint.sweep` already accumulates the swing angle, so the
+  // evidence revision stands; only the print name changes.
+  if(primary==='wrecking_ball'||primary==='bolas') {
+    const constraint=r.constraint||(e.previousRoot&&e.previousRoot.constraint);
+    if(constraint&&Number.isFinite(constraint.sweep)&&constraint.sweep>=360)return 'around_the_world';
+  }
   if(primary==='bolas'&&r.kind==='bridle'&&(receipt.surface==='terrain'||receipt.surface==='structure'))return 'bolas_pair';
   if(primary==='dead_mans_mass'&&receipt.targetKilled===true&&r.sourceFactionId&&e.contact) {
     const ref=e.contact.aId===receipt.targetId?e.contact.aRef:e.contact.bRef;
@@ -109,6 +116,11 @@ export function stuntVariantFor(primary,receipt) {
   }
   return null;
 }
+// The print name a recognised variant carries when it differs from the primary's. Anything not
+// listed keeps the primary's name, so adding a variant never renames an old record.
+export const STUNT_VARIANT_NAMES = Object.freeze({
+  around_the_world: 'Around the World',
+});
 const COMMODITY_NAME=new Map(COMMODITIES.map(c=>[c.id,c.name]));
 export function stuntCargoOf(root) {
   const c=root?.sourceCargo;
@@ -148,6 +160,7 @@ export class StuntDetector {
     const def=TRICK_DEFINITIONS[primary];
     // An amendment keeps the episode's variant while the primary stands; a better reading replaces it.
     const variantId=stuntVariantFor(primary,receipt)??(old&&old.trickId===primary?old.variantId??null:null);
+    const variantName=(variantId&&STUNT_VARIANT_NAMES[variantId])||null;
     const cargo=primary==='ore_shotgun'?stuntCargoOf(r)??old?.cargo??null:null;
     const collateralCount=e.path.edges>1 ? lives.length : old?.modifiers.collateralCount??1;
     const razor=r.release&&within(receipt.tick,r.release.tick,180)?r.release.grade:null;
@@ -159,7 +172,7 @@ export class StuntDetector {
       actorId:r.actorId,targetId:receipt.targetId,secondaryIds:[r.sourceId],episodeId,rootId:episodeId,rootTick:e.previousRoot?.tick??r.tick,
       tick:receipt.tick,firstPayoffTick:old?.firstPayoffTick??receipt.tick,amendment:!!old,
       amendmentDeadline:old?.amendmentDeadline??Math.min(receipt.tick+180,r.tick+480),victimLives:lives,modifiers,
-      variantId,cargo,causeChain:chain, factualTags:candidates.slice(1), evidenceRevision:EVIDENCE_REVISION,encounterId:r.encounterId,
+      variantId,variantName,cargo,causeChain:chain, factualTags:candidates.slice(1), evidenceRevision:EVIDENCE_REVISION,encounterId:r.encounterId,
       pureEscape:!!receipt.escape,threatEpisodeId:receipt.escape?.threatEpisodeId,
       consequence:{killed:receipt.targetKilled,escaped:!!receipt.escape,hullDamage:receipt.hullDamage,hullMax:receipt.targetHullMax,helmLossSeconds:receipt.helmLossSeconds},
       metrics:{payloadMass:r.reference.mass,playerDryHullMass:r.playerMass,usefulDeltaV:e.path.usefulDeltaV,referenceCruise:r.reference.cruise,

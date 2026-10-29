@@ -56,6 +56,7 @@ import {
   migrateCrossover,
   registerCrossoverReader,
 } from '../data/swarmCrossover.js';
+import { KNOWN_TRICK_IDS, STUNT_VARIANT_NAMES, TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import {
   LINE_META_UNLOCK_BY_ID,
   lineMetaUnlocksForRun,
@@ -1516,6 +1517,7 @@ export function normalizeBestLine(line) {
   if (!incoming.length || incoming.length > 32 || incoming.some(a => a?.episodeId == null || !a.trickId || !Array.isArray(a.evidence) || !a.evidence.length)) return null;
   const acts = incoming
     .map(a => ({ episodeId: a.episodeId, trickId: a.trickId, name: a.name || a.trickId, family: a.family ?? null,
+      variantId: typeof a.variantId === 'string' ? a.variantId : null,
       tick: a.tick, rootTick: a.rootTick, rootId: a.rootId ?? null, points: a.points,
       evidence: cloneJson(a.evidence.slice(0, 8)), modifiers: cloneJson(a.modifiers || {}) }));
   if (acts.some(a => !a.evidence)) return null;
@@ -2221,6 +2223,40 @@ export function grudgeLedgerFor(profile, limit = GRUDGE_LEDGER_ROWS) {
   return [...tally.values()]
     .sort((a, b) => b.count - a.count || a.attacker.localeCompare(b.attacker))
     .slice(0, Math.max(1, Number.isInteger(limit) ? limit : GRUDGE_LEDGER_ROWS));
+}
+
+/**
+ * Row 475 — the Trick Book: the seventeen named tricks, each marked proven when a filed Best
+ * Line's acts name it. A trick nobody has ever banked stays listed — the book is the menu of
+ * what the room recognises, not a trophy case. Variant flourishes (Around the World & co.)
+ * attach to their primary's row.
+ */
+export function trickBookFor(profile) {
+  const proven = new Set();
+  const variants = new Map();
+  for (const line of (profile && Array.isArray(profile.bestLines) ? profile.bestLines : [])) {
+    for (const act of (line && Array.isArray(line.acts) ? line.acts : [])) {
+      const id = act && typeof act.trickId === 'string' ? act.trickId : null;
+      if (!id || !TRICK_DEFINITIONS[id]) continue;
+      proven.add(id);
+      if (Array.isArray(act.modifiers) === false && act && typeof act.variantId === 'string' && act.variantId) {
+        const list = variants.get(id) || [];
+        if (!list.includes(act.variantId)) list.push(act.variantId);
+        variants.set(id, list);
+      }
+    }
+  }
+  return KNOWN_TRICK_IDS.map((id) => {
+    const def = TRICK_DEFINITIONS[id];
+    return Object.freeze({
+      trickId: id,
+      name: def.name,
+      family: def.family,
+      rarity: def.rarity,
+      proven: proven.has(id),
+      variants: Object.freeze((variants.get(id) || []).map((v) => STUNT_VARIANT_NAMES[v] || v)),
+    });
+  });
 }
 
 /**

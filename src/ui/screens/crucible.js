@@ -117,6 +117,7 @@ import {
   runWhatKilledYouOffer,
   grudgeLedgerFor,
   caseFilesFor,
+  trickBookFor,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -2249,6 +2250,23 @@ export const crucibleScreen = {
                 `${row.attacker}${row.weapon ? ` · ${row.weapon}` : ''} ×${row.count}`));
             }
             records.appendChild(grudgeBlock);
+          }
+          // Row 475 — the Trick Book: all seventeen named tricks, proven ones marked by the
+          // filed Best Lines. The book always lists the full menu; proof is the margin note.
+          {
+            const book = trickBookFor(doorProfile);
+            if (book.length) {
+              const bookBlock = el('div', 'sf-crd-trickbook');
+              const provenCount = book.filter((row) => row.proven).length;
+              bookBlock.appendChild(el('p', 'k-t-fine fh-legend',
+                `Trick Book — ${provenCount} of ${book.length} proven`));
+              for (const row of book) {
+                const marks = row.variants.length ? ` · ${row.variants.join(', ')}` : '';
+                bookBlock.appendChild(el('p', 'k-t-fine k-38',
+                  `${row.proven ? '✓' : '·'} ${row.name}${row.family ? ` (${row.family})` : ''}${marks}`));
+              }
+              records.appendChild(bookBlock);
+            }
           }
         }
         this._refreshCabinetBoard = () => {
