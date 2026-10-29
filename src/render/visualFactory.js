@@ -27,6 +27,7 @@ import { LAST_SHIFT, lastShiftBodyKey } from '../data/lastShift.js';
 //   Asteroids use a small pool of seeded displacement variants per type (deterministic, bounded)
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
+import { linkObjectProgramsWhileHidden } from './shaderLinkReporter.js';
 import { buildMorrowVisual } from './characters/morrowModel.js';
 import { buildVesperVisual } from './characters/vesperModel.js';
 import { buildBracketVisual } from './characters/bracketModel.js';
@@ -5037,6 +5038,9 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
         console.warn('[visualFactory] packaged body pipeline admission failed', error);
         return { status: 'fallback-after-error' };
       }
+      // Serial-link route: pay the driver link of every compiled variant while the picture is
+      // still hidden, so the detached body never publishes with an unlinked program.
+      try { linkObjectProgramsWhileHidden(renderer, packaged); } catch (_) { /* draw path links */ }
       if (packagedCommitOrphaned('packaged-body-orphaned-after-compile')) {
         disposeDetachedPackagedGroup(packaged);
         return { status: 'orphaned-before-swap' };

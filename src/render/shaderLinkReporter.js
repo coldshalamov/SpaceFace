@@ -58,6 +58,8 @@ export function installShaderLinkReporter(renderer, options = {}) {
   renderer.userData.spacefaceUnusedPrograms = {
     get size() { return pruneUnused(context); },
     drain: (max = 1) => drainUnused(context, max),
+    // First-use the listed programs now (still-unused, settled ones only); returns how many linked.
+    linkNow: (programs) => linkUnusedNow(context, programs),
   };
   guardProgramList(renderer, context);
   const canvas = renderer.domElement;
@@ -164,6 +166,50 @@ function drainUnused(context, max) {
     try { program.getUniforms(); } catch (_) { /* a failed discovery reports through the draw path */ }
   }
   return context.unused.size;
+}
+
+function linkUnusedNow(context, programs) {
+  if (!programs || pruneUnused(context) === 0) return 0;
+  let linked = 0;
+  for (const program of programs) {
+    if (!program || !context.unused.has(program) || !programSettled(program, context)) continue;
+    context.unused.delete(program);
+    try { program.getUniforms(); linked += 1; } catch (_) { /* reported through the draw path */ }
+  }
+  return linked;
+}
+
+// Wreck/packaged-body admission (oc1v28 smoke29): on the serial-link route (no
+// KHR_parallel_shader_compile) compile() only creates the program; the driver link is paid at the
+// first uniform query, i.e. inside the first draw. A wreck admitted while the veil held but left
+// for the veil's one-per-frame drain could miss the drain and link on glass after lift (2057 ms
+// Forge_bastion_gunmetal at +2.05 s). While the picture is still hidden (loading or veil held),
+// link every compiled variant of the detached subtree's materials (pooled/instanced AND plain)
+// before it is published, so the body only mounts once its programs are linked.
+export function linkObjectProgramsWhileHidden(renderer, root) {
+  const data = renderer && renderer.userData;
+  const pool = data && data.spacefaceUnusedPrograms;
+  const hidden = data && data.spacefaceHiddenLinkWindow;
+  if (!pool || typeof pool.linkNow !== 'function' || typeof hidden !== 'function') return 0;
+  let open = false;
+  try { open = hidden() === true; } catch (_) { open = false; }
+  if (!open || !root || typeof root.traverse !== 'function') return 0;
+  const props = renderer.properties;
+  if (!props || typeof props.get !== 'function') return 0;
+  const programs = new Set();
+  root.traverse((node) => {
+    const mats = Array.isArray(node.material) ? node.material : (node.material ? [node.material] : []);
+    for (const material of mats) {
+      let rec = null;
+      try { rec = props.get(material); } catch (_) { rec = null; }
+      if (!rec) continue;
+      if (rec.currentProgram) programs.add(rec.currentProgram);
+      if (rec.programs && typeof rec.programs.values === 'function') {
+        for (const program of rec.programs.values()) programs.add(program);
+      }
+    }
+  });
+  return pool.linkNow(programs);
 }
 
 // COMPLETION_STATUS_KHR is the non-blocking readiness read: false while the link is in flight,

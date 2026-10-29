@@ -15227,7 +15227,19 @@ export const render = {
     const veilSettlePending = createVeilSettle(state.render, {
       unusedPrograms: () => (renderer && renderer.userData ? renderer.userData.spacefaceUnusedPrograms : null),
     });
-    state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount + veilSettlePending();
+    // Hidden-link window for packaged-body admissions (linkObjectProgramsWhileHidden).
+    const hiddenLinkWindow = () => state.mode === 'loading'
+      || !!(state.render && state.render.flightVeilHoldsSim === true);
+    const installHiddenLinkWindow = () => {
+      if (renderer && renderer.userData && renderer.userData.spacefaceHiddenLinkWindow !== hiddenLinkWindow) {
+        renderer.userData.spacefaceHiddenLinkWindow = hiddenLinkWindow;
+      }
+    };
+    installHiddenLinkWindow();
+    state.render.pendingPipelineAdmissions = () => {
+      installHiddenLinkWindow();
+      return pipelineAdmissions.pendingCount + veilSettlePending();
+    };
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);
