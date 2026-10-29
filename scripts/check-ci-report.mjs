@@ -715,7 +715,7 @@ function staleGoldenDiagnosticText(stdout, stderr) {
   // TAP names describe the case under test, not observed golden drift. Strip only
   // stdout label metadata; stderr diagnostics and structured code-zero debt remain.
   const diagnosticStdout = String(stdout || '').replace(/\r/g, '').split('\n')
-    .filter((line) => !/^\s*(?:#\s*Subtest:|(?:not\s+)?ok\s+\d+(?:\s|$))/.test(line))
+    .filter((line) => !/^\s*(?:#\s*Subtest:|(?:not\s+)?ok\s+\d+(?:\s|$)|[✔✓✖✘▶]\s)/.test(line))
     .join('\n');
   return `${stderr || ''}\n${diagnosticStdout}`.replace(/\r/g, '').trim();
 }

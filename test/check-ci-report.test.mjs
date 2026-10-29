@@ -504,3 +504,13 @@ test('optional Charon flag keeps matrix cold-open timeout at its existing180s cl
  });
  assert.equal(matrix[0].id,'check-47a-live-cold-open');assert.equal(matrix[0].timeoutMs,180000);
 });
+
+for (const code of [0, 1]) test(`spec reporter case names cannot manufacture stale golden debt (exit ${code})`, () => {
+  const result = ciReport.createCommandResult({
+    def: { id: 'orchard-worker-recovery', command: 'node --test fixture.mjs' }, code,
+    stdout: '✔ reentrant canonical removal cannot act on stale snapshot after reuse-id (2ms)\n',
+    stderr: code ? 'AssertionError: unrelated owner failure' : '',
+  });
+  assert.equal(result.ok, code === 0);
+  assert.equal(result.classification.category, code ? 'assertion_failure' : 'passed');
+});
