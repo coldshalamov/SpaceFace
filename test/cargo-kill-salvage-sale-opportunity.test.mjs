@@ -303,3 +303,43 @@ test('only hulls that can spill a manifest body open chains; custody pods close 
     restoreLootFlags();
   }
 });
+
+test('one bulk sale redeems all outstanding salvaged lots in ledger order', () => {
+  const sim = createSimulation({ seed: 20902, systems: [economy] });
+  const { state, bus } = sim;
+  state.world.currentSectorId = SECTOR_ID;
+  state.player.credits = 100_000;
+  state.player.cargo = {
+    items: { [COMMODITY]: 10 }, usedVolume: 10, usedMass: 10, capVolume: 100, capMass: 100,
+  };
+  const makeChain = (id, victimId, manifestId, qty) => ({
+    id, victimId, manifestId, sectorId: SECTOR_ID, pos: { x: 12, z: 34 },
+    commodityId: COMMODITY,
+    lines: [{ commodityId: COMMODITY, qty }],
+    originStationId: SALE_STATION, destStationId: DEST_STATION,
+    salvaged: { [COMMODITY]: qty }, redeemed: {}, closed: false,
+  });
+  state.economy.cargoKillChains = [
+    makeChain('chain:first', 'victim:first', 'manifest:first', 3),
+    makeChain('chain:second', 'victim:second', 'manifest:second', 4),
+  ];
+  const opportunities = [];
+  bus.on('economy:cargoKillOpportunity', payload => opportunities.push(payload));
+
+  try {
+    const econ = sim.registry.get('economy');
+    econ.ensureMarket(SALE_STATION);
+    econ.ensureMarket(DEST_STATION);
+    const sale = econ.execute(SALE_STATION, COMMODITY, 'sell', 10);
+
+    assert.equal(sale.ok, true, `bulk sale succeeds: ${sale.reason || ''}`);
+    assert.equal(state.player.cargo.items[COMMODITY] || 0, 0,
+      'all ten units in the hold were sold, including the three non-chain units');
+    assert.deepEqual(state.economy.cargoKillChains.map(chain => chain.closed), [true, true]);
+    assert.deepEqual(opportunities.map(row => row.chainId), ['chain:first', 'chain:second']);
+    assert.deepEqual(opportunities.map(row => row.qty), [3, 4]);
+  } finally {
+    sim.dispose();
+    economy._instance = null;
+  }
+});

@@ -1,70 +1,28 @@
-// customsPrompt.js — BP-12 packet CUSTOMS_MOMENT ("The Customs Scan Moment").
-//
-// A patrol pings the hold — the HUD gives the player the sweat-inducing choice: submit, bribe, or
-// run. The whole customs engine (economy.runScan: scan roll, fine, confiscation, rep hit, heat) is
-// SHIPPED (src/systems/economy.js:850). This module adds only the DECISION SURFACE: it binds to the
-// public HUD signal `player:scannedByPatrol` (emitted at economy.js:854 the instant a scan starts,
-// before the patrolScan encounter resolves) and renders a 3-action panel.
-//
-// CRITICAL DISCIPLINE (the packet's failure modes, enforced structurally):
-//   • READ bribeCost/FINE_MULT from the SHIPPED payload — NEVER recompute the fine. The fine math
-//     lives in economy.runScan (FINE_MULT, BRIBE_FRAC); this panel only displays the already-computed
-//     `bribeCost` that `contraband:scanned` carries (and, before a bust, a projected estimate derived
-//     from the SAME economy.illicitCargo read the engine uses). A second fine path is forbidden.
-//   • Submit → emit nothing new; let the shipped patrolScan encounter / patrol:proximity resolve.
-//     (economy.runScan owns confiscation + rep; this panel never confiscates.)
-//   • Bribe → emit `contraband:bribe` { fine }, exactly the event economy.payBribe listens for
-//     (economy.js:293). The cost the player pays is `round(fine * BRIBE_FRAC)` inside economy — we
-//     do NOT charge credits ourselves (single-writer: economy owns credits).
-//   • Run → emit `customs:breakScan` (the additive seam); Run only avoids the SCAN, not an
-//     already-resolved bust (failureMode: a Run that dodges the shipped rep consequence). The
-//     patrolScan encounter already detects range-break and resolves 'ran' with a small rep nick;
-//     this seam lets a future input-side flight cue signal the same break.
-//   • The customs hail routes through voice.say('comms') EXACTLY ONCE per scan (debounced on
-//     state.simTime, deterministic — never two customs lines at once; voiceArbiter owns the queue).
-//
-// noTouch honored: economy.js / cargo.js / factions.js are imported read-only (their exported
-// contracts) or not at all — illicitCargo() is read via the economy registry slot at runtime, never
-// by re-implementing the legality scan. Budget: spawn:none · voice:comms (one hail) · draw:none.
+// Customs result receipts. Patrol and lawful-inspection systems own the pre-scan choice;
+// `player:scannedByPatrol` is a fact emitted after the worker has already resolved its scan.
+// This UI system reports outcomes and never opens a second, post-resolution decision deck.
 
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
-import { getPromptDeck } from './promptDeck.js';
 
-const DECK_ID = 'customs';
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
-// The fine multiplier the engine uses (economy.js:48) — mirrored ONLY to project a pre-bust
-// estimate the panel can show before the engine emits contraband:scanned. The authoritative number
-// the player actually pays is always read from the live payload (bribeCost / fine), never this.
+// Kept as pure estimate helpers for existing diagnostics. The economy remains the authority for
+// actual fines and bribe debits; these helpers do not make a scan decision or write player state.
 export const FINE_MULT = Object.freeze({ legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 });
-export const BRIBE_FRAC = 0.30; // economy.js:50 — mirrored for the estimate label only
-const DEBOUNCE_S = 4;           // same scan inside this simTime window = one panel (no double-hail)
-const PANEL_TTL_MS = 8000;      // cosmetic DOM auto-hide
+export const BRIBE_FRAC = 0.30;
 
-/** Short label for a faction (e.g. "Concord"), with a safe fallback. */
 function factionShort(factionId) {
   const f = factionId ? FACTION_BY_ID.get(factionId) : null;
   return (f && (f.short || f.name)) || 'Concord Navy';
 }
 
-/**
- * holdRisk(state, economySys) -> { hasContraband, stacks:[{commodityId,name,qty,legality,estFine}],
- * estFine, estBribe } — a PROJECTED read of the player's hold against the SHIPPED fine math.
- *
- * Reads contraband stacks through economy.illicitCargo(state) (the engine's own scan), then sizes a
- * pre-bust estimate with the SAME FINE_MULT the engine applies (per-stack basePrice*qty*mult). This
- * is the panel's risk read; it is NEVER charged. The real fine the player pays comes from
- * `contraband:scanned.fine` (post-bust) or is charged as `round(fine*BRIBE_FRAC)` inside
- * economy.payBribe (bribe). Pure over its inputs; no roll, no clock.
- */
 export function holdRisk(state, economySys) {
   const illicit = (economySys && typeof economySys.illicitCargo === 'function')
     ? economySys.illicitCargo(state) : [];
-  if (!illicit.length) {
-    return { hasContraband: false, stacks: [], estFine: 0, estBribe: 0 };
-  }
+  if (!illicit.length) return { hasContraband: false, stacks: [], estFine: 0, estBribe: 0 };
+
   let estFine = 0;
   const stacks = illicit.map((s) => {
     const def = s.def || CMDTY_BY_ID.get(s.commodityId) || {};
@@ -73,96 +31,35 @@ export function holdRisk(state, economySys) {
     estFine += lineFine;
     return { commodityId: s.commodityId, name: def.name || s.commodityId, qty: s.qty, legality: def.legality, estFine: lineFine };
   });
-  return {
-    hasContraband: true,
-    stacks,
-    estFine,
-    estBribe: Math.round(estFine * BRIBE_FRAC),
-  };
+  return { hasContraband: true, stacks, estFine, estBribe: Math.round(estFine * BRIBE_FRAC) };
 }
-
-/**
- * customsDecision(state, scanPayload, economySys) -> the panel model, or null when there is nothing
- * to surface (clean hold OR an already-resolved bust the panel must not dodge).
- *
- * `scanPayload` is the `player:scannedByPatrol` packet { hasContraband }. We combine it with a live
- * holdRisk read so the panel shows the projected fine/bribe BEFORE the engine resolves. We NEVER
- * surface a panel for a hold the engine reads clean — that's a phantom decision (failureMode).
- */
-export function customsDecision(state, scanPayload, economySys) {
-  if (!scanPayload) return null;
-  const risk = holdRisk(state, economySys);
-  // The engine's hasContraband flag is authoritative. If the engine says clean, there is no
-  // decision to surface (the panel must not imply a fine the engine won't charge).
-  const engineFlagged = !!(scanPayload.hasContraband);
-  if (!engineFlagged && !risk.hasContraband) return null;
-  const factionId = scanPayload.factionId || (economySys && typeof economySys.scanningFaction === 'function'
-    ? economySys.scanningFaction(state) : null);
-  return {
-    factionId,
-    factionShort: factionShort(factionId),
-    patrolId: scanPayload.patrolId ?? null,
-    stationId: scanPayload.stationId ?? null,
-    hasContraband: risk.hasContraband || engineFlagged,
-    risk,
-    // The bribe cost label: the projected estimate (matches what economy.payBribe will charge).
-    bribeCost: risk.estBribe,
-    actions: ['submit', 'bribe', 'run'],
-  };
-}
-
-// ── registry SYSTEMS-only entry (no update; event-driven; one voice hail; deck-rendered) ──────
-//
-// The decision renders on the flight decision deck (src/ui/promptDeck.js) with REAL verbs. The
-// pre-deck panel printed "[submit] · [bribe] · [run]" as inert text with pointer-events:none —
-// a phantom decision. Each deck choice routes through an EXISTING intent; this panel adds the
-// decision, never a second penalty path (the packet's named failure mode).
 
 export const customsPrompt = {
   name: 'customsPrompt',
 
   init(ctx) {
-    this._ctx = ctx;
-    this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
-    this._last = { t: -Infinity };
-    this._onScanned = (p) => this._handleScan(p);
+    this._bus = ctx && ctx.bus;
     this._onResolved = (p) => {
-      // PQ-048.06 owns the correlated decision surface. Do not let a real lawful-inspection
-      // result clear or replace an unrelated legacy customs panel.
+      // Durable lawful-inspection flow owns its own receipt and correlated case lifecycle.
       if (p && p.lawfulInspectionCaseId) return;
-      // INF-079: the visible result of compliance. The engine charges the fine silently;
-      // the panel that offered the decision reports what submission cost. A body
-      // surrendered to the weir is not a bust — report the impound, not a fine that
-      // was never charged and standing that was never damaged.
       if (p && p.found === true) {
-        // A body seized on someone else's line is that owner's bust — reporting
-        // "standing damaged" here would file a consequence the sim never charged.
-        const foreign = p.evidenceOwnerId != null && p.evidenceOwnerId !== this._state.playerId;
+        const playerId = this._state && this._state.playerId;
+        const foreign = p.evidenceOwnerId != null && p.evidenceOwnerId !== playerId;
         if (foreign) this._reportThirdPartySeizure();
         else if (p.surrendered === true) this._reportImpound(p);
         else this._reportBust(p);
       }
-      this._dismiss();
-    }; // a generic bust/scan clears the generic panel
-    // LAW-10: a mid-scan dump aborts the scan the panel offered. The panel that offered
-    // the decision reports the downgrade — a suspicion note, never a second penalty.
+    };
     this._onScanAborted = (p) => this._reportScanAborted(p);
     this._onTrustMarked = (p) => this._reportTrust(p, false);
     this._onScanWaived = (p) => this._reportTrust(p, true);
     if (this._bus && this._bus.on) {
-      this._bus.on('player:scannedByPatrol', this._onScanned);
       this._bus.on('contraband:scanned', this._onResolved);
       this._bus.on('customs:scanAborted', this._onScanAborted);
       this._bus.on('customs:trustMarked', this._onTrustMarked);
       this._bus.on('customs:scanWaived', this._onScanWaived);
-      this._bus.on('sector:exit', this._onResolved);
     }
-  },
-
-  _economySys() {
-    const r = this._ctx && this._ctx.registry;
-    return (r && typeof r.get === 'function') ? r.get('economy') : null;
   },
 
   _reportTrust(p, waived) {
@@ -176,97 +73,6 @@ export const customsPrompt = {
     });
   },
 
-  _handleScan(p) {
-    const state = this._state;
-    if (!state) return;
-    // The durable lawful inspection route has its own actionable prompt. This legacy surface's
-    // submit/run events have no live controller, so showing it for a correlated scan would offer
-    // a false choice after economy has already resolved the owner path.
-    if (p && p.lawfulInspectionCaseId) return;
-    // A berth-sourced sweep is the station's own surface: it fires inside the dock handler
-    // (before ui.docked is set), resolves synchronously, and the checkpoint toasts own the
-    // result. Opening the flight verb deck here would stamp a stale prompt + hail behind the
-    // station screen for three verbs that cannot act.
-    if (p && p.source === 'dock') return;
-    // A customs-weir read is a gate, not a patrol offer: lawSecurity resolves it
-    // synchronously through economy.runScan, so SUBMIT/BRIBE/BREAK RANGE would be
-    // three dead verbs on an already-decided scan. A bolt-resolved read is the same —
-    // the gate already kept what the beam caught. A jump-gate scan resolves the same
-    // way — synchronous, decided before any verb could act.
-    if (p && (p.source === 'customs_weir' || p.source === 'customs_weir_bolt' || p.source === 'jump')) return;
-    // Debounce: the same ping inside the window is ONE panel (no double-hail, deterministic).
-    const now = state.simTime || 0;
-    if ((now - this._last.t) < DEBOUNCE_S) return;
-    const decision = customsDecision(state, p, this._economySys());
-    if (!decision) return; // clean hold → surface NOTHING (the engine emits and resolves quietly)
-
-    this._last = { t: now };
-    // Additive UI state (NOT in the sim snapshot hash) — readable by dock/HUD screens and tests.
-    // INF-079: stamp the signal tick. The engine resolves every scan synchronously in the
-    // same tick as the signal, so a bribe arriving on a LATER tick is always post-resolution
-    // (an evaded scan the panel outlived) and must be declined, never charged.
-    if (!state.ui || typeof state.ui !== 'object') state.ui = {};
-    state.ui.customsPrompt = { ...decision, t: now, signalTick: state.tick };
-
-    // ONE customs hail, through the arbiter — never a raw toast, never two lines at once.
-    const helpers = (this._ctx && this._ctx.helpers) || {};
-    const hail = `${decision.factionShort} patrol is scanning your hold.`;
-    if (helpers.voice && typeof helpers.voice.say === 'function') {
-      const said = helpers.voice.say({ channel: 'comms', text: hail, kind: 'customs' });
-      if (!said && this._bus && this._bus.emit) this._bus.emit('toast', { text: hail, kind: 'info', ttl: 3 });
-    }
-
-    this._render(decision, now);
-  },
-
-  // The 3 shipped actions. Each routes through an EXISTING intent — this panel adds the decision,
-  // never a second penalty path (the packet's named failure mode).
-  choose(actionId) {
-    const bus = this._bus;
-    const ui = this._state && this._state.ui && this._state.ui.customsPrompt;
-    if (!bus || !bus.emit || !ui) { this._dismiss(); return; }
-    if (actionId === 'submit') {
-      // Let the shipped patrolScan encounter / patrol:proximity resolve. economy.runScan owns the
-      // confiscation + rep + heat. The submit intent carries the scanner's identity so the law's
-      // acknowledgment (lawSecurity) can name the unit that took the submission.
-      bus.emit('customs:submit', { factionId: ui.factionId, patrolId: ui.patrolId ?? null, stationId: ui.stationId ?? null });
-    } else if (actionId === 'bribe') {
-      // Route through economy.payBribe (listens at economy.js:293). The fine we pass is the
-      // engine's own estimate shape; economy charges round(fine*BRIBE_FRAC). We never write credits.
-      // INF-079: no post-resolution bribe. A human acts ticks after the signal, and the engine
-      // already resolved that tick — a lingering panel means the scan passed with no bust, so
-      // the 30% would buy nothing. Decline it loudly instead of double-charging. Same-tick
-      // callers (tests, deterministic replays) keep today's path.
-      const signalTick = ui.signalTick;
-      const nowTick = this._state && this._state.tick;
-      if (Number.isFinite(signalTick) && Number.isFinite(nowTick) && nowTick > signalTick) {
-        bus.emit('toast', {
-          text: 'THE SCAN PASSED — no fine due; bribe declined.', kind: 'info', ttl: 3,
-        });
-        this._dismiss();
-        return;
-      }
-      bus.emit('contraband:bribe', { fine: ui.risk.estFine });
-    } else if (actionId === 'run') {
-      // Run only avoids the SCAN — not an already-resolved bust. The seam answers on the hull:
-      // actionEventRecipes resolves the record onto the player's own drive flare (LAW-02);
-      // the patrolScan encounter also detects range-break itself.
-      bus.emit('customs:breakScan', { factionId: ui.factionId, patrolId: ui.patrolId ?? null, stationId: ui.stationId ?? null });
-    }
-    this._dismiss();
-  },
-
-  _dismiss() {
-    const state = this._state;
-    if (state && state.ui) delete state.ui.customsPrompt;
-    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
-    if (deck) deck.resolveDecision(DECK_ID);
-  },
-
-  // INF-079: the visible result of compliance. Reads the bust payload verbatim — fine,
-  // seized units, faction — and never recomputes (the engine's math stays single-writer).
-  // Standing is named qualitatively: the strike-scaled rep delta is factions' to compute.
-  // Pod scans carry no hold fine — the bust is a flag on your record, not a charge.
   _reportBust(p) {
     const units = Array.isArray(p.confiscated)
       ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
@@ -274,48 +80,29 @@ export const customsPrompt = {
     const fine = Number.isFinite(p.fine) ? p.fine : null;
     const seized = units > 0 ? ` · ${units} unit${units === 1 ? '' : 's'} seized` : '';
     const cost = fine != null ? `fined ${fine} cr` : 'contraband flagged';
-    if (this._bus && this._bus.emit) {
-      this._bus.emit('toast', {
-        text: `CUSTOMS BUST — ${factionShort(p.factionId)} ${cost}${seized}; standing damaged.`,
-        kind: 'warn',
-        ttl: 5,
-      });
-    }
+    this._bus?.emit?.('toast', {
+      text: `CUSTOMS BUST — ${factionShort(p.factionId)} ${cost}${seized}; standing damaged.`,
+      kind: 'warn', ttl: 5,
+    });
   },
 
-  // The gate working on someone else's cargo: a quiet ambient beat that shows
-  // the law acting on the world, filed against no standing of yours.
   _reportThirdPartySeizure() {
-    if (this._bus && this._bus.emit) {
-      this._bus.emit('toast', {
-        text: 'CUSTOMS GATE — cargo seized from a third-party line.',
-        kind: 'info',
-        ttl: 3,
-      });
-    }
+    this._bus?.emit?.('toast', {
+      text: 'CUSTOMS GATE — cargo seized from a third-party line.', kind: 'info', ttl: 3,
+    });
   },
 
-  // A body cut loose at the gate: the weir keeps it and the hull keeps walking.
-  // This is the legal off-ramp made visible — an impound receipt, not a bust.
   _reportImpound(p) {
     const units = Array.isArray(p.confiscated)
       ? p.confiscated.reduce((n, s) => n + (Math.max(0, s.qty | 0) || 0), 0)
       : Math.max(0, p.units | 0);
     const seized = units > 0 ? `${units} unit${units === 1 ? '' : 's'} ` : '';
-    if (this._bus && this._bus.emit) {
-      this._bus.emit('toast', {
-        text: `CUSTOMS GATE — ${seized}surrendered cargo impounded. No charge filed.`,
-        kind: 'info',
-        ttl: 4,
-      });
-    }
+    this._bus?.emit?.('toast', {
+      text: `CUSTOMS GATE — ${seized}surrendered cargo impounded. No charge filed.`,
+      kind: 'info', ttl: 4,
+    });
   },
 
-  // LAW-10: the visible result of a mid-scan dump. The scan the panel offered aborted —
-  // the finding is suspicion, never a fine the engine did not charge. Reads the abort
-  // payload verbatim (dumped lots, faction) and names the goods through the commodity
-  // registry, with the raw id as fallback. Toast + dismiss only: no cargo, credit,
-  // standing, or heat write (single-writer — the panel never confiscates).
   _reportScanAborted(p) {
     const dumped = Array.isArray(p && p.dumped) ? p.dumped : [];
     const names = dumped
@@ -326,58 +113,24 @@ export const customsPrompt = {
         return `${def.name || row.commodityId}${amount > 0 ? ` ×${amount}` : ''}`;
       });
     const detail = names.length ? `${names.join(', ')} jettisoned mid-scan` : 'cargo jettisoned mid-scan';
-    if (this._bus && this._bus.emit) {
-      this._bus.emit('toast', {
-        text: `CUSTOMS SCAN ABORTED — ${detail}; suspicion noted.`,
-        kind: 'warn',
-        ttl: 4,
-      });
-    }
-    this._dismiss();
-  },
-
-  // ── deck decision (the old inline-styled centered panel with inert text verbs is retired) ────
-  _render(decision, now) {
-    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
-    if (!deck || !decision) return;
-    const flagged = decision.hasContraband && decision.risk.stacks.length;
-    deck.offerDecision({
-      id: DECK_ID,
-      kind: 'warn',
-      sender: `${decision.factionShort.toUpperCase()} PATROL`,
-      statusFlag: 'CUSTOMS SCAN',
-      headline: flagged ? 'HOLD FLAGGED' : 'HOLD READS CLEAN',
-      detail: flagged
-        ? `Projected fine ≈ ${decision.risk.estFine} cr · bribe ≈ ${decision.bribeCost} cr. Flagged: ${decision.risk.stacks.slice(0, 3).map((s) => `${s.name} ×${s.qty}`).join(', ')}.`
-        : 'Stand by for clearance — or break range to skip the scan.',
-      deadlineAt: Number(now || (this._state && this._state.simTime) || 0) + (PANEL_TTL_MS / 1000),
-      choices: [
-        { id: 'submit', label: 'SUBMIT TO SCAN', title: 'Close this panel and let the patrol scan resolve. Any fine and seizure are charged by the patrol — submitting here charges nothing.' },
-        { id: 'bribe', label: `BRIBE — ${decision.bribeCost} CR`, title: 'Pay 30% of the projected fine through the patrol. Only works before the scan resolves — afterwards it is declined.' },
-        { id: 'run', label: 'BREAK RANGE', danger: true, title: 'Close this panel and fly out of scan range yourself — this click does not move your ship. The refusal is logged.' },
-      ],
-      onChoose: (choiceId) => this.choose(choiceId),
-      onExpire: () => this._dismiss(),
+    this._bus?.emit?.('toast', {
+      text: `CUSTOMS SCAN ABORTED — ${detail}; suspicion noted.`, kind: 'warn', ttl: 4,
     });
   },
 
   destroy() {
     if (this._bus && this._bus.off) {
-      if (this._onScanned) this._bus.off('player:scannedByPatrol', this._onScanned);
       if (this._onScanAborted) this._bus.off('customs:scanAborted', this._onScanAborted);
       if (this._onTrustMarked) this._bus.off('customs:trustMarked', this._onTrustMarked);
       if (this._onScanWaived) this._bus.off('customs:scanWaived', this._onScanWaived);
-      if (this._onResolved) {
-        this._bus.off('contraband:scanned', this._onResolved);
-        this._bus.off('sector:exit', this._onResolved);
-      }
+      if (this._onResolved) this._bus.off('contraband:scanned', this._onResolved);
     }
-    this._onScanned = null;
     this._onScanAborted = null;
     this._onTrustMarked = null;
     this._onScanWaived = null;
     this._onResolved = null;
-    this._dismiss();
+    this._bus = null;
+    this._state = null;
   },
 };
 

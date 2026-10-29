@@ -1,14 +1,12 @@
-// LAW-01 — submitting to a customs scan is acknowledged by the law. The customs deck emitted
-// `customs:submit` into a void (zero listeners): the player clicked SUBMIT and nothing answered.
-// lawSecurity now owns the seam: one lawful bark plus one compliance receipt on the incident
+// LAW-01 — the real patrol pre-scan submit choice is acknowledged by the law. lawSecurity owns
+// the seam: one lawful bark plus one compliance receipt on the incident
 // ledger, and the receipt paints the law card because it carries no incidentId. The handler
 // never charges, re-scans, or moves standing — acknowledgment only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { lawSecurity } from '../src/systems/lawSecurity.js';
-import { customsPrompt } from '../src/ui/customsPrompt.js';
-import { setPromptDeck } from '../src/ui/promptDeck.js';
+import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 
 function makeBus() {
   const handlers = new Map();
@@ -89,46 +87,30 @@ test('a duplicate same-tick submit produces no second ack', () => {
   assert.equal(state.lawSecurity.receipts.length, 1);
 });
 
-test('the seam is live end-to-end from the deck verb', () => {
+test('the real pre-scan patrol submit choice reaches the law acknowledgment', () => {
   const state = makeState();
   const { bus } = bootLaw(state);
-  const offers = [];
-  setPromptDeck({
-    offerDecision(o) { offers.push(o); return true; },
-    updateDecision() { return true; },
-    resolveDecision() { return true; },
-  });
-  const prompt = Object.create(customsPrompt);
-  try {
-    prompt.init({
-      state,
-      bus,
-      helpers: { voice: { say() { return true; } } },
-      registry: {
-        get() {
-          return {
-            illicitCargo() {
-              return [{
-                commodityId: 'cmdty_narcotics', qty: 2,
-                def: { name: 'Narcotics', basePrice: 220, legality: 'contraband', fineMult: 1.2 },
-              }];
-            },
-            scanningFaction() { return 'faction_scn'; },
-          };
-        },
-      },
-    });
-    bus.emit('player:scannedByPatrol', {
-      hasContraband: true, factionId: 'faction_scn', patrolId: 'patrol-3', stationId: 'station_helios',
-    });
-    assert.ok(state.ui.customsPrompt, 'panel surfaced');
-    prompt.choose('submit');
-    const barks = bus.emitLog.filter((e) => e.evt === 'law:voice' && e.payload.channel === 'bark');
-    assert.equal(barks.length, 1, 'the deck verb reaches the law ack');
-    const row = state.lawSecurity.receipts.at(-1);
-    assert.equal(row.outcome, 'customs_complied');
-    assert.equal(row.patrolId, 'patrol-3', 'patrol identity travels from signal to receipt');
-  } finally { setPromptDeck(null); }
+  const player = { id: 'player', pos: { x: 0, z: 0 } };
+  const leader = { id: 'patrol-3', pos: { x: 20, z: 0 } };
+  const live = { id: 'scan:1', phase: 'offer', factionId: 'faction_scn', vars: {}, data: { stationId: 'station_helios' } };
+  const d = {
+    player: () => player,
+    entsOf: () => [leader],
+    emit: (event, payload) => bus.emit(event, payload),
+    sectorSecurity: () => 0.8,
+    despawnAll() {},
+    say() {},
+    rep() {},
+    resolve() {},
+  };
+
+  ENCOUNTER_SCRIPTS.patrolScan.choose(d, live, state, 'submit');
+  const barks = bus.emitLog.filter((e) => e.evt === 'law:voice' && e.payload.channel === 'bark');
+  assert.equal(barks.length, 1, 'the pre-scan choice reaches the law acknowledgment');
+  const row = state.lawSecurity.receipts.at(-1);
+  assert.equal(row.outcome, 'customs_complied');
+  assert.equal(row.patrolId, 'patrol-3', 'patrol identity travels to the receipt');
+  assert.equal(row.stationId, 'station_helios');
 });
 
 test('a submit outside flight mode is ignored and destroy removes the listener', () => {

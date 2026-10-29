@@ -12,8 +12,7 @@ import {
   ADDITIONAL_ACTION_VFX_RECIPES,
   resolveAdditionalActionVfxReceipt,
 } from '../src/render/vfx/actionEventRecipes.js';
-import { customsPrompt } from '../src/ui/customsPrompt.js';
-import { setPromptDeck } from '../src/ui/promptDeck.js';
+import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 
 function makeBus() {
   const handlers = new Map();
@@ -77,55 +76,37 @@ test('a dead or missing player fabricates no record', () => {
   } finally { out.dispose(); }
 });
 
-test('the deck verb produces one live recipe record on the hull', () => {
+test('the real patrol pre-scan run choice produces one live recipe record on the hull', () => {
   const state = makeState();
   const bus = makeBus();
-  const offers = [];
-  setPromptDeck({
-    offerDecision(o) { offers.push(o); return true; },
-    updateDecision() { return true; },
-    resolveDecision() { return true; },
-  });
-  const prompt = Object.create(customsPrompt);
   const out = new ActionVfx(new THREE.Scene());
+  const player = state.entities.get('player');
+  const leader = { id: 'patrol-3', pos: { x: 30, z: -4 } };
+  const live = { id: 'scan:1', phase: 'offer', factionId: 'faction_scn', vars: {}, data: { stationId: 'station_helios' } };
+  const d = {
+    player: () => player,
+    entsOf: () => [leader],
+    emit: (event, payload) => bus.emit(event, payload),
+    rep() {},
+    say() {},
+    despawnAll() {},
+    resolve() {},
+  };
   try {
-    prompt.init({
-      state,
-      bus,
-      helpers: { voice: { say() { return true; } } },
-      registry: {
-        get() {
-          return {
-            illicitCargo() {
-              return [{
-                commodityId: 'cmdty_narcotics', qty: 2,
-                def: { name: 'Narcotics', basePrice: 220, legality: 'contraband', fineMult: 1.2 },
-              }];
-            },
-            scanningFaction() { return 'faction_scn'; },
-          };
-        },
-      },
-    });
     bus.on('customs:breakScan', (p) => out.emit('customs:breakScan', p, state));
-    bus.emit('player:scannedByPatrol', {
-      hasContraband: true, factionId: 'faction_scn', patrolId: 'patrol-3', stationId: 'station_helios',
-    });
-    assert.ok(state.ui.customsPrompt, 'panel surfaced');
-    prompt.choose('run');
+    ENCOUNTER_SCRIPTS.patrolScan.choose(d, live, state, 'run');
     const breaks = bus.emitLog.filter((e) => e.evt === 'customs:breakScan');
     assert.equal(breaks.length, 1, 'one break-scan intent');
     assert.equal(breaks[0].payload.patrolId, 'patrol-3', 'the scanner identity travels with the break');
-    const live = out.slots.filter((s) => s.alive && s.event === 'customs:breakScan');
-    assert.equal(live.length, 1, 'exactly one recipe record on the player hull');
-    assert.equal(live[0].id, 'player');
-    assert.equal(live[0].attached, true);
+    const records = out.slots.filter((s) => s.alive && s.event === 'customs:breakScan');
+    assert.equal(records.length, 1, 'exactly one recipe record on the player hull');
+    assert.equal(records[0].id, 'player');
+    assert.equal(records[0].attached, true);
     out.update(state);
     assert.ok(out.mesh.count > 0, 'the batch drew the flare');
     // One record, not a stream: the 0.14 s coalesce refuses an immediate double.
     assert.equal(out.emit('customs:breakScan', breaks[0].payload, state), false, 'repeat inside the window coalesces');
   } finally {
-    setPromptDeck(null);
     out.dispose();
   }
 });
@@ -133,38 +114,18 @@ test('the deck verb produces one live recipe record on the hull', () => {
 test('breaking the scan adds no heat, banner, or second penalty path', () => {
   const state = makeState();
   const bus = makeBus();
-  setPromptDeck({
-    offerDecision() { return true; },
-    updateDecision() { return true; },
-    resolveDecision() { return true; },
-  });
-  const prompt = Object.create(customsPrompt);
-  try {
-    prompt.init({
-      state,
-      bus,
-      helpers: { voice: { say() { return true; } } },
-      registry: {
-        get() {
-          return {
-            illicitCargo() {
-              return [{
-                commodityId: 'cmdty_narcotics', qty: 2,
-                def: { name: 'Narcotics', basePrice: 220, legality: 'contraband', fineMult: 1.2 },
-              }];
-            },
-            scanningFaction() { return 'faction_scn'; },
-          };
-        },
-      },
-    });
-    bus.emit('player:scannedByPatrol', { hasContraband: true, factionId: 'faction_scn' });
-    prompt.choose('run');
-    const forbidden = bus.emitLog.filter((e) => (
-      e.evt === 'heat:changed' || e.evt === 'toast' || e.evt === 'contraband:scanned'
-      || e.evt === 'economy:chargeCredits' || e.evt === 'faction:repDelta'
-    ));
-    assert.deepEqual(forbidden, [], 'no heat bump, no banner, no charge from the cue path');
-    assert.equal(state.player.credits, 5000);
-  } finally { setPromptDeck(null); }
+  const live = { id: 'scan:2', phase: 'offer', factionId: 'faction_scn', vars: {}, data: {} };
+  const d = {
+    player: () => state.entities.get('player'),
+    entsOf: () => [{ id: 'patrol-4' }],
+    emit: (event, payload) => bus.emit(event, payload),
+    rep() {}, say() {}, despawnAll() {}, resolve() {},
+  };
+  ENCOUNTER_SCRIPTS.patrolScan.choose(d, live, state, 'run');
+  const forbidden = bus.emitLog.filter((e) => (
+    e.evt === 'heat:changed' || e.evt === 'toast' || e.evt === 'contraband:scanned'
+    || e.evt === 'economy:chargeCredits' || e.evt === 'faction:repDelta'
+  ));
+  assert.deepEqual(forbidden, [], 'no heat bump, banner, charge, or second penalty path');
+  assert.equal(state.player.credits, 5000);
 });

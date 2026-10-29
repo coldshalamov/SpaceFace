@@ -542,11 +542,9 @@ function setMatchesList(set, list, scratch) {
 //   dockId — uiRoot writes state.ui.dockedStationId; resolved through entityIndex.byStationId so
 //     the pin names the station entity when materialized (a 'station:<id>' sentinel otherwise —
 //     still flips on the dock/undock transition). flags.docked without a station pins `true`.
-//   hailId — two live hail records: the customs scan prompt names the patrol entity directly
-//     (state.ui.customsPrompt.patrolId — lawSecurity emits patrol.id/scanner.id); a lawful
-//     inspection case carries the patrol's world record (player.lawfulInspection.active
-//     .patrolWorldRecordId, resolved through entityIndex.byWorldRecordId). No comms target
-//     record exists.
+//   hailId — a lawful-inspection case carries the patrol's world record
+//     (player.lawfulInspection.active.patrolWorldRecordId, resolved through
+//     entityIndex.byWorldRecordId). Scan results are receipts, not a persistent hail target.
 //   targetId — the player combat record (weapons.js writes combat.lockTarget on missile lock).
 function playerIntentPins(state, player, out = null) {
   const ui = state && state.ui;
@@ -560,17 +558,11 @@ function playerIntentPins(state, player, out = null) {
   } else if ((ui && ui.docked === true) || (player && player.flags && player.flags.docked === true)) {
     dockId = true;
   }
-  // Two durable hail records: the customs scan prompt names the patrol entity directly;
-  // a lawful-inspection case carries the patrol's world record (lawSecurity activeCase).
-  const customs = ui && ui.customsPrompt;
-  let hailId = customs && customs.patrolId != null ? customs.patrolId : null;
-  if (hailId == null) {
-    const inspection = player && player.lawfulInspection && player.lawfulInspection.active;
-    const recordId = inspection && inspection.patrolWorldRecordId;
-    const patrol = recordId != null && index && index.byWorldRecordId
-      ? index.byWorldRecordId.get(recordId) : null;
-    if (patrol && patrol.alive !== false && patrol.id != null) hailId = patrol.id;
-  }
+  const inspection = player && player.lawfulInspection && player.lawfulInspection.active;
+  const recordId = inspection && inspection.patrolWorldRecordId;
+  const patrol = recordId != null && index && index.byWorldRecordId
+    ? index.byWorldRecordId.get(recordId) : null;
+  const hailId = patrol && patrol.alive !== false && patrol.id != null ? patrol.id : null;
   const combat = player && player.data && player.data.combat;
   const targetId = combat && (combat.targetId ?? combat.lockTarget) != null
     ? (combat.targetId ?? combat.lockTarget)

@@ -403,6 +403,11 @@ const patrolScan = {
     if (choiceId === 'run') {
       // No attack on a clean (or even suspected) runner — no scan, no proof. The consequence is a
       // transponder flag: a small rep nick. WANTED heat only ever comes from heat's own inputs.
+      d.emit('customs:breakScan', {
+        factionId: live.factionId || 'faction_scn',
+        patrolId: d.entsOf(live)[0]?.id ?? null,
+        stationId: live.data && live.data.stationId || null,
+      });
       d.rep('faction_scn', -3, 'scan_refused');
       d.say(live, 'bark', 'patrol_scan_refused');
       d.despawnAll(live, 40);
@@ -420,12 +425,26 @@ const patrolScan = {
       if (fine <= 0) return;
       const cost = Math.round(fine * 0.3);
       if ((state.player.credits | 0) < cost) return;    // cannot afford → choice unavailable
-      d.emit('contraband:bribe', { fine });             // economy charges 30% (single writer)
+      // The economy writer returns its decision on this synchronous intent. Do not tell the
+      // patrol the pilot paid (or despawn/close the offer) unless the wallet debit committed.
+      const payment = { fine, encounterId: live.id, result: null };
+      d.emit('contraband:bribe', payment);
+      if (!payment.result || payment.result.ok !== true) return;
       d.rep('faction_scn', -2, 'bribe');
       d.despawnAll(live, 40);
       return d.resolve(live, 'bribed');
     }
-    // submit / comply — run the real customs machinery (economy owns fines/confiscation/rep/heat)
+    // submit / comply — acknowledge the pilot's choice, then run the real customs machinery
+    // (economy owns fines/confiscation/rep/heat). The generic scan fact is emitted after resolution
+    // and is not a UI decision signal; this is the actionable, pre-scan owner path.
+    if (choiceId === 'submit' || choiceId === 'comply') {
+      const submitLeader = d.entsOf(live)[0];
+      d.emit('customs:submit', {
+        factionId: live.factionId || 'faction_scn',
+        patrolId: submitLeader ? submitLeader.id : null,
+        stationId: live.data && live.data.stationId || null,
+      });
+    }
     const leader = d.entsOf(live)[0];
     const player = d.player();
     if (!patrolCanInitiateScan(state, leader, player)) {
