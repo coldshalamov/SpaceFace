@@ -246,7 +246,7 @@ export async function restorePrepareSaveJsonAsync(raw, currentVersion) {
 // Full-envelope graph bound in the worker so the multi-MB walk never reaches the main thread.
 // Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.
 const PREFLIGHT_MAX_DEPTH = 64;
-const PREFLIGHT_MAX_NODES = 200_000;
+const PREFLIGHT_MAX_NODES = 500_000;
 const PREFLIGHT_MAX_COLLECTION_ITEMS = 50_000;
 const PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2_048;
 export function preflightSaveImport(value) {
@@ -840,7 +840,7 @@ function restorePrepareSaveJsonAsync(raw, currentVersion) {
   });
 }
 var PREFLIGHT_MAX_DEPTH = 64;
-var PREFLIGHT_MAX_NODES = 200000;
+var PREFLIGHT_MAX_NODES = 500000;
 var PREFLIGHT_MAX_COLLECTION_ITEMS = 50000;
 var PREFLIGHT_MAX_PERSISTENT_ENTITIES = 2048;
 // Import-free twin of saveSystem's preflightSaveImport — identical limits, reasons, and order.

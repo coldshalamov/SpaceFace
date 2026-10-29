@@ -82,6 +82,7 @@ Current save version: `22`
 - `secondRinse`
 - `towlineTable`
 - `shipbreakingYard`
+- `borrowedSun`
 - `borrowedVoice`
 - `lossLedger`
 - `provenance`
@@ -192,6 +193,7 @@ Current save version: `22`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.borrowedSun` | null | null |
 | `$.borrowedVoice` | null | null |
 | `$.bracket` | object | {} |
 | `$.calendar` | object | {} |

@@ -234,7 +234,10 @@ const SAVE_MEMORY_TEXT_ENCODER = new TextEncoder();
 export const SAVE_MEMORY_SOAK_MAX_BYTES = 1024 * 1024
   + SAVE_MEMORY_MAX_BYTES.chronicler + SAVE_MEMORY_MAX_BYTES.provenance + SAVE_MEMORY_MAX_BYTES.fences;
 export const SAVE_IMPORT_MAX_DEPTH = 64;
-export const SAVE_IMPORT_MAX_NODES = 200_000;
+// Market data for all 35 authored stations is about 206k nodes / 1.33 MiB by itself. A full
+// sector snapshot with physics is about 249k nodes / 2.93 MiB. Keep bounded headroom for player
+// progress; bytes, depth, collection and persistent-entity limits remain independent.
+export const SAVE_IMPORT_MAX_NODES = 500_000;
 export const SAVE_IMPORT_MAX_COLLECTION_ITEMS = 50_000;
 export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
 // Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
@@ -1014,6 +1017,7 @@ export const save = {
       ['secondRinse', () => this._callSerialize('secondRinse')],
       ['towlineTable', () => this._callSerialize('towlineTable')],
       shipbreakingYardSavePlanEntry(this),
+      ['borrowedSun', () => this._callSerialize('borrowedSun')],
       ['borrowedVoice', () => this._callSerialize('borrowedVoice')],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
       ['provenance', () => this._serializeBoundedMemory('provenance')],
@@ -1236,6 +1240,8 @@ export const save = {
     data.towlineTable = this._callSerialize('towlineTable');
     yield 'serialize:towlineTable';
     yield* serializeShipbreakingYardSteps(this, data);
+    data.borrowedSun = this._callSerialize('borrowedSun');
+    yield 'serialize:borrowedSun';
     data.borrowedVoice = this._callSerialize('borrowedVoice');
     yield 'serialize:borrowedVoice';
     yield 'serialize:enemyMind';
@@ -6913,6 +6919,8 @@ export const save = {
       yield 'second-rinse-restored';
       this._callDeserialize('towlineTable', data.towlineTable);
       yield 'towline-table-restored';
+      this._callDeserialize('borrowedSun', data.borrowedSun);
+      yield 'borrowed-sun-restored';
       this._callDeserialize('borrowedVoice', data.borrowedVoice);
       this._reportRestoreProgress(0.12, 'Restoring pilot, cargo and economy');
       yield 'deserialized-core';
@@ -7085,6 +7093,8 @@ export const save = {
       yield 'after-continue-towlineTable';
       afterContinueShipbreakingYard(this);
       yield 'after-continue-shipbreakingYard';
+      this.registry.get('borrowedSun')?.afterContinue?.();
+      yield 'after-continue-borrowedSun';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,

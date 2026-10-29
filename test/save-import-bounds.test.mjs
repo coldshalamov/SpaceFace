@@ -112,7 +112,7 @@ test('parsed save imports reject excessive depth before clone or restore', () =>
 
 test('parsed save imports reject excessive node count before clone or restore', () => {
   const buckets = [];
-  for (let i = 0; i < 5; i++) buckets.push(new Array(50_000).fill(0));
+  for (let i = 0; i < 11; i++) buckets.push(new Array(50_000).fill(0));
   const prepared = save._prepareEnvelope(envelope({ buckets }));
   assert.equal(prepared.ok, false);
   assert.equal(prepared.reason, 'import_node_limit');
