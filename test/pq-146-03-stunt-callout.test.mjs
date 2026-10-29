@@ -412,3 +412,67 @@ test('a bottom-sheet decision card that rises under a showing column lifts it on
     'the column sits above the card instead of printing over its choices');
   owner.destroy();
 });
+
+test('worker event bursts coalesce callout layout reads to one pre-paint seat', () => {
+  const doc = fakeDocument();
+  const pending = [];
+  let selectorReads = 0;
+  let rectReads = 0;
+  let cancelReads = 0;
+  doc.defaultView = {
+    innerHeight: 844,
+    requestAnimationFrame(callback) { pending.push(callback); return pending.length; },
+    cancelAnimationFrame() { cancelReads += 1; },
+  };
+  let deckRect = null;
+  doc.querySelector = (selector) => {
+    selectorReads += 1;
+    return selector === PROMPT_DECK_SELECTOR && deckRect
+      ? { getBoundingClientRect() { rectReads += 1; return deckRect; } } : null;
+  };
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  owner.root.getBoundingClientRect = () => {
+    rectReads += 1;
+    return { left: 16, right: 134, top: 0, bottom: 0, height: 14 };
+  };
+
+  bus.emit('stunt:trickDetected', trickFor());
+  owner.update(0); // first reveal keeps its immediate, correctly seated placement
+  selectorReads = 0;
+  rectReads = 0;
+  deckRect = { left: 12, right: 588, top: 420, bottom: 726, height: 306 };
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bank_job', episodeId: 'ep2' }));
+  bus.emit('stunt:trickDetected', trickFor({ trickId: 'bolas', episodeId: 'ep3' }));
+  assert.equal(selectorReads, 0, 'receipt handling writes feedback without forcing layout reads');
+  assert.equal(pending.length, 1, 'multiple receipts schedule only one seat for the upcoming paint');
+  pending.shift()(calloutNow());
+  assert.equal(selectorReads, 3, 'the coalesced callback reads the obstacle set once');
+  assert.equal(rectReads, 2, 'only the column and newly-present card are measured');
+  assert.equal(owner.root.style.bottom, `max(32vh, ${844 - 420 + PROMPT_DECK_CLEARANCE_PX}px)`,
+    'the latest card position still protects the callout from covering choices');
+
+  bus.emit('stunt:trickDetected', trickFor({ episodeId: 'ep4' }));
+  assert.equal(pending.length, 1);
+  owner.destroy();
+  assert.equal(cancelReads, 1, 'teardown cancels a pending presentation-only seat callback');
+});
+
+test('physics log callouts ignore room-wide impacts that do not involve the player', () => {
+  const doc = fakeDocument();
+  const bus = fakeBus();
+  const owner = createStuntCallout({ state: calloutState(createComboState()), bus, doc });
+  bus.emit('physics:impact', { aId: 21, bId: 22, playerInvolved: false, impulse: 90 });
+  assert.equal(owner.update(0), false, 'an unrelated NPC collision does not wake the player feed');
+  assert.equal(calloutTextFor(owner.root), '');
+
+  bus.emit('physics:impact', { aId: 1, bId: 22, playerInvolved: true, impulse: 90 });
+  assert.equal(owner.update(1), true, 'the same qualifying impact still reaches the player');
+  assert.match(calloutTextFor(owner.root), /IMPACT LOGGED — 90/);
+
+  bus.emit('physics:impact', { aId: 22, bId: 23, playerInvolved: false, causalActorId: 1, impulse: 120 });
+  owner.update(2);
+  assert.match(calloutTextFor(owner.root), /IMPACT LOGGED — 120/,
+    'the player-caused environmental impact is still a valid receipt when the player body was not a contact');
+  owner.destroy();
+});

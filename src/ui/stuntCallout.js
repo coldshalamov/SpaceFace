@@ -491,7 +491,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       if (rarity) existing.node.setAttribute('data-rarity', calloutRarity(rarity));
-      if (!root.hidden) seatClearOfSpeedDial();
+      if (!root.hidden) scheduleSeatClearOfSpeedDial();
       return;
     }
     const node = mk(doc, 'div', 'sf-stuntcall__line' + (isBank ? ' is-bank' : ''));
@@ -508,8 +508,9 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
     // A decision card may have risen since the column was seated (e.g. IMPACT LOGGED over a
-    // recovery choice); re-seat on each new or refreshed line, never per frame.
-    if (!root.hidden) seatClearOfSpeedDial();
+    // recovery choice); request a seat on new or refreshed lines. Worker-event bursts coalesce
+    // into one pre-paint layout read.
+    if (!root.hidden) scheduleSeatClearOfSpeedDial();
   }
 
   function dismissLine(key, fallbackName = '') {
@@ -686,16 +687,17 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     return true;
   }
 
-  // getBoundingClientRect forces a synchronous layout of the whole HUD. addLine reaches this on every
-  // callout line, and a kill storm or a collision burst adds many per second, so an unthrottled
-  // re-seat measured ~9% of all main-thread CPU in a Crucible run. The three obstacles only move when
-  // the HUD re-lays out, so: look the nodes up every time (querySelector forces no layout), and
-  // re-measure only when one of them appeared or disappeared (a decision card rising under the column
-  // must lift it on the very next line) or SEAT_MIN_INTERVAL_MS has passed (a window resize, a dial
-  // that moved).
+  // getBoundingClientRect forces a synchronous layout of the whole HUD. A worker reply can deliver
+  // several callout events in one burst, so line handlers request one shared pre-paint seat instead
+  // of repeating these reads. The three obstacles only move when the HUD re-lays out: re-measure
+  // when one appears or disappears (a decision card rising under the column must lift it on the next
+  // seat) or SEAT_MIN_INTERVAL_MS has passed (a window resize, a dial that moved).
   const SEAT_MIN_INTERVAL_MS = 250;
   let lastSeatAt = -Infinity;
   let lastSeatNodes = null;
+  let seatFramePending = false;
+  let seatFrameHandle = null;
+  let seatFrameCancel = null;
 
   function seatClearOfSpeedDial() {
     const view = doc.defaultView;
@@ -721,6 +723,30 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       top = Math.min(top, rect.top - obstacles[i][1]);
     }
     root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
+  }
+
+  // Worker replies can deliver several presentation events in one burst. Keep their text and
+  // live-region receipts synchronous, but coalesce the shared HUD layout read to one pre-paint
+  // callback so each event does not independently query and measure the same obstacles.
+  function scheduleSeatClearOfSpeedDial() {
+    if (destroyed || seatFramePending) return;
+    const view = doc.defaultView;
+    const raf = (view && view.requestAnimationFrame) || globalThis.requestAnimationFrame;
+    if (typeof raf !== 'function') {
+      seatClearOfSpeedDial();
+      return;
+    }
+    seatFramePending = true;
+    seatFrameCancel = (view && view.cancelAnimationFrame)
+      ? view.cancelAnimationFrame.bind(view)
+      : (typeof globalThis.cancelAnimationFrame === 'function'
+        ? globalThis.cancelAnimationFrame.bind(globalThis) : null);
+    seatFrameHandle = raf.call(view || globalThis, () => {
+      seatFramePending = false;
+      seatFrameHandle = null;
+      seatFrameCancel = null;
+      if (!destroyed && !root.hidden) seatClearOfSpeedDial();
+    });
   }
 
   function wake() {
@@ -809,6 +835,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       const st = getState();
       const scope = calloutScope(st);
       if (!scope || physicsLogSilent(st)) return;
+      // physics:impact is a room-wide receipt, emitted for any energetic contact pair. LOG is
+      // the player's feed, so NPC-versus-NPC impacts must not refresh its register every tick.
+      if (eventName === 'physics:impact' && payload.playerInvolved !== true
+        && (st.playerId == null || (payload.aId !== st.playerId && payload.bId !== st.playerId
+          && payload.causalActorId !== st.playerId))) return;
       // SWARM-03 — the ARENA word is gated by the same contract onSwarmKill keeps: a live
       // run only, teaching causes only, friendly fire already speaks as COLLATERAL.
       if (eventName === 'swarm:killPopup'
@@ -922,6 +953,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     },
     destroy() {
       destroyed = true;
+      if (seatFramePending && seatFrameCancel && seatFrameHandle != null) {
+        try { seatFrameCancel(seatFrameHandle); } catch (_) { /* frame already retired */ }
+      }
+      seatFramePending = false;
+      seatFrameHandle = null;
+      seatFrameCancel = null;
       if (frameOff) { frameOff(); frameOff = null; }
       for (const off of unsubs) {
         if (typeof off === 'function') off();

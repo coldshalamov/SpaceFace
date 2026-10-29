@@ -59,6 +59,23 @@ export function observeEdgeMarkers({ drain = false } = {}) {
     const sf = window.SF;
     const state = sf && sf.state;
     const observedAt = performance.now();
+    const markerCanThreatenPlayer = (shooter, telegraphKind) => {
+      if (!shooter || shooter.alive === false || shooter.type !== 'ship') return false;
+      const data = shooter.data || {};
+      const weapons = data.weapons || shooter.weapons;
+      const armed = data.unarmed !== true && data.canShoot !== false
+        && (!Array.isArray(weapons) || weapons.length > 0);
+      if (armed || telegraphKind === 'detonator_fuse') return true;
+      const spec = data.detonator;
+      if (!spec || typeof spec !== 'object') return false;
+      const trigger = Number.isFinite(spec.triggerRange) ? spec.triggerRange : 56;
+      const blast = Number.isFinite(spec.blastRadius) ? spec.blastRadius : 96;
+      const band = Math.max(0, trigger + blast);
+      const player = state?.entities?.get?.(state.playerId);
+      const dx = Number(shooter.pos?.x) - Number(player?.pos?.x);
+      const dz = Number(shooter.pos?.z) - Number(player?.pos?.z);
+      return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= band * band;
+    };
     const out = [];
     const markersBySample = new Map();
     const recordMarker = (sample, marker) => {
@@ -73,6 +90,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       const marker = { edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), shooter: null };
+      const telegraphKind = el.getAttribute('data-telegraph-kind');
       const rawId = el.getAttribute('data-entity-id');
       if (rawId != null && rawId !== '') {
         const id = Number.isFinite(Number(rawId)) ? Number(rawId) : rawId;
@@ -109,10 +127,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
           if (!sourceHasShooter) reason = 'no living shooter in publication sample';
           else if (state?.tick === placed.tick) {
             const shooter = state.entities?.get?.(id);
-            const data = shooter?.data || {};
-            const weapons = data.weapons || shooter?.weapons;
-            const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
-              && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+            const eligible = markerCanThreatenPlayer(shooter, telegraphKind);
             if (!shooter) reason = 'no living shooter in publication state';
             else if (placed.generation !== (shooter.occupantGeneration ?? null)) reason = 'different shooter life';
             else if (!eligible) reason = 'ineligible shooter';
@@ -120,10 +135,7 @@ export function observeEdgeMarkers({ drain = false } = {}) {
         } else if (!reason) {
           // Direct reads have no retained source frame, so validate against the current actor.
           const shooter = state?.entities?.get?.(id);
-          const data = shooter?.data || {};
-          const weapons = data.weapons || shooter?.weapons;
-          const eligible = shooter?.alive !== false && shooter?.type === 'ship' && data.unarmed !== true
-            && data.canShoot !== false && (!Array.isArray(weapons) || weapons.length > 0);
+          const eligible = markerCanThreatenPlayer(shooter, telegraphKind);
           if (placed.generation !== (shooter?.occupantGeneration ?? null)) reason = 'different shooter life';
           else if (!eligible) reason = 'ineligible shooter';
         }
