@@ -2484,7 +2484,8 @@ export const mining = {
       const isCore = hasCore && i === 0;
       const playerExtractedCore = isCore && miner?.id === this.state.playerId
         && this.state.mode === 'flight'
-        && this.state.run?.kind !== 'survival'
+        && !(this.state.run?.kind === 'survival'
+          && this.state.run?.phase && this.state.run.phase !== 'inactive')
         && !this.state.physicsVenueSession
         && this.state.physicsVenue?.active !== true
         && !isRacingCorridorSession(this.state);

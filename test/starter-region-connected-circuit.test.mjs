@@ -32,9 +32,8 @@ async function boot(seed = 4242) {
   const previousStorage = globalThis.localStorage;
   globalThis.localStorage = memoryStorage();
   const lookup = getNodeSystemFactoryTable();
-  // This fixture authors normalized control input; all gameplay, jump, mission, economy,
-  // physics, save and NPC owners remain the production system instances.
-  lookup.set('input', { name: 'input', init() {}, update() {}, destroy() {} });
+  // The actual input owner, V3 flight, Massline and Rapier run together. Tests press the input
+  // owner's keyboard state; no normalized actions or tether state are injected downstream.
   const runtime = await createAuthoritativeRuntime({
     profileId: 'production', nodeSafeOnly: true, seed, systemLookup: lookup,
   });
@@ -61,7 +60,7 @@ async function boot(seed = 4242) {
   await runtime.getSystem('physics').prepareBackend(state, { reset: true });
   await runtime.runTicks(60, DT);
   return {
-    runtime, state, bus, player, ships,
+    runtime, state, bus, player, ships, input: runtime.getSystem('input'),
     close() {
       runtime.dispose();
       if (previousStorage === undefined) delete globalThis.localStorage;
@@ -97,7 +96,7 @@ test('native starter circuit earns a fit, changes the Helios work seam, and reca
   { timeout: 180_000 }, async (t) => {
     const h = await boot();
     t.after(() => h.close());
-    const { runtime, state, bus, player, ships } = h;
+    const { runtime, state, bus, player, ships, input } = h;
     const save = runtime.getSystem('save');
     const missions = runtime.getSystem('missions');
 
@@ -178,6 +177,44 @@ test('native starter circuit earns a fit, changes the Helios work seam, and reca
     assert.equal(state.player.credits, initialCredits + 760 - 194 - 246 - offer.price);
     assert.equal(player.data.derived.swingDrive, true, 'the ship capability is recalculated from the live fit');
 
+    // Use the bought capability through the production interaction path. The world owner moves
+    // the pilot into contact range for this native fixture; nearest-target selection still has
+    // to admit a real colliding body through Massline, then V3 input and Rapier.
+    state.ui.docked = false;
+    state.ui.dockedStationId = null;
+    player.flags.docked = false;
+    const anchor = state.entityList.find((entity) => entity?.alive !== false
+      && entity.type === 'station' && entity.data?.stationId === 'station_helios');
+    assert.ok(anchor, 'the Helios anchor is a materialized physical station');
+    const world = runtime.getSystem('world');
+    assert.equal(world.relocatePlayerInSector({
+      x: anchor.pos.x + 190, z: anchor.pos.z + 80, heading: Math.PI,
+    }, { reason: 'starter-circuit-fit-use' }), true);
+    let latchDenied = null;
+    let latchResult = null;
+    bus.on('tether:latched', (payload) => { latchResult = payload; });
+    bus.on('tether:latchDenied', (payload) => { latchDenied = payload?.reason || 'unknown'; });
+    input._keys.Space = true;
+    input._keys.ControlLeft = true;
+    await runtime.runTicks(1, DT);
+    input._keys.Space = false;
+    input._keys.ControlLeft = false;
+    // The canonical owner mirrors its accepted line on the following fixed tick.
+    await runtime.runTicks(1, DT);
+    assert.equal(state.player.tether?.active, true, `Massline accepts an existing physical target (denied: ${latchDenied}; result: ${JSON.stringify(latchResult)})`);
+    const latchedTarget = state.entities.get(latchResult.targetId);
+    assert.ok(latchedTarget && latchedTarget.alive !== false && latchedTarget.collides,
+      'the Massline authority accepted an existing live physical target');
+    assert.equal(state.player.tether.targetId, latchedTarget.id);
+    let swingDash = null;
+    bus.on('ship:swingDash', (payload) => {
+      if (payload?.shipId === player.id) swingDash = payload;
+    });
+    input._keys.ShiftLeft = true;
+    await runtime.runTicks(1, DT);
+    input._keys.ShiftLeft = false;
+    assert.ok(swingDash, 'the fitted drive turns the real boost press into a swing dash');
+
     // SaveSystem's normal slot write and load are the continuation boundary. The fit, paid
     // receipt, remaining cargo and workpiece must still be coherent after sector re-entry.
     state.ui.docked = false;
@@ -206,33 +243,42 @@ test('native starter circuit earns a fit, changes the Helios work seam, and reca
       'the return leaves another distinct local action on the Helios board');
   });
 
-test('Survival mining does not mark bulk cores as persistent Adventure workpieces', () => {
-  const spawned = [];
-  const state = {
-    playerId: 7,
-    mode: 'flight',
-    run: { kind: 'survival', phase: 'active' },
-    simTime: 1,
-    rng: () => 0.5,
-  };
-  const system = Object.assign(Object.create(miningSystem), {
-    state,
-    bus: { emit() {} },
-    helpers: {
-      spawnEntity(spec) {
-        const entity = { id: spawned.length + 1, ...spec, alive: true };
-        spawned.push(entity);
-        return entity;
+test('only a live Survival run suppresses player-workpiece persistence', () => {
+  const fractureCore = (run) => {
+    const spawned = [];
+    const state = {
+      playerId: 7,
+      mode: 'flight',
+      run,
+      simTime: 1,
+      rng: () => 0.5,
+    };
+    const system = Object.assign(Object.create(miningSystem), {
+      state,
+      bus: { emit() {} },
+      helpers: {
+        spawnEntity(spec) {
+          const entity = { id: spawned.length + 1, ...spec, alive: true };
+          spawned.push(entity);
+          return entity;
+        },
       },
-    },
-  });
-  const parent = {
-    id: 30, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 40, mass: 500,
-    data: { typeId: 'ast_metallic', fieldId: 'arena', oreHPMax: 860, yieldU: 30, seams: [] },
+    });
+    const parent = {
+      id: 30, type: 'asteroid', pos: { x: 0, z: 0 }, radius: 40, mass: 500,
+      data: { typeId: 'ast_metallic', fieldId: 'arena', oreHPMax: 860, yieldU: 30, seams: [] },
+    };
+    system._fractureAsteroid(parent, { id: 'ast_metallic' }, { id: state.playerId });
+    return spawned.find((entity) => entity.data.bulkCore);
   };
-  system._fractureAsteroid(parent, { id: 'ast_metallic' }, { id: state.playerId });
-  const core = spawned.find((entity) => entity.data.bulkCore);
-  assert.ok(core, 'the fracture still creates the ordinary Survival bulk core');
-  assert.equal(core.data.extractedById, undefined);
-  assert.equal(core.flags?.persistent, undefined, 'a Crucible pickup does not leak into Adventure Continue saves');
+
+  const activeCore = fractureCore({ kind: 'survival', phase: 'active' });
+  assert.ok(activeCore, 'an active Crucible fracture still creates its bulk core');
+  assert.equal(activeCore.data.extractedById, undefined);
+  assert.equal(activeCore.flags?.persistent, undefined, 'an active run does not leak workpieces into Adventure saves');
+
+  const inactiveCore = fractureCore({ kind: 'survival', phase: 'inactive' });
+  assert.ok(inactiveCore, 'an inactive old run does not block the next Adventure workpiece');
+  assert.equal(inactiveCore.data.extractedById, 7);
+  assert.equal(inactiveCore.flags?.persistent, true);
 });
