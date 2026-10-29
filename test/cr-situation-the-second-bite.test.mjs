@@ -52,7 +52,9 @@ async function boot(extraSystems = []) {
   return { host, state, bus, director, live, w, events, ent };
 }
 
-const outcomes = (h) => h.events.filter((e) => e.name === 'encounter:resolved').map((e) => e.p.outcome);
+const outcomes = (h) => h.events
+  .filter((e) => e.name === 'encounter:resolved' && e.p.encounterId === 'test_second_bite')
+  .map((e) => e.p.outcome);
 const grants = (h) => h.events.filter((e) => e.name === 'economy:grantCredits').map((e) => e.p.amount);
 const reps = (h) => h.events.filter((e) => e.name === 'faction:repDelta').map((e) => ({ factionId: e.p.factionId, delta: e.p.delta, reason: e.p.reason }));
 const memory = (h) => h.state.story.depthProgramEncounters.completed[SHAPE];
