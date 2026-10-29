@@ -6,9 +6,12 @@
 an agent gets its job** until every lane board below reads finished. Those files stay as detail
 references (a lane board names a build-map row; the row's prose in `build_map.md` is the spec).
 
+**Current integration direction (user, 2026-10-29).** For this integration campaign, the user requests broad game finishing with most coverage and implementation performed by GPT-6 Luna, with Codex as controller/integrator. This updates the execution method for this campaign; it does not revise the 2026-10-28 owner rulings below. This direction supersedes older provider quotas and review rituals in §5 and any copied lane prompt where they conflict.
+
 | File | What it is |
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |
+| [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md) | 2026-10-29 whole-game integration coverage, repairs, current verification limits and final review scope |
 | [`TOOLS.md`](./TOOLS.md) | verified terminal commands for Codex, Grok, Gemini, OpenCode and Claude (smoke-tested 2026-10-28) |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
@@ -149,61 +152,23 @@ what an agent can read in one sitting (§7).
 
 ## 5. The shared working protocol (every lane, every packet)
 
-### 5.1 You are the manager
-The lane agent plans, assigns, reviews and commits. It does as little hands-on token-heavy work as
-possible. Implementation goes to subagents and terminal agents; the lane agent keeps its context for
-judgment.
+### 5.1 Controller and coverage
+The current controller owns scope, integration, conflict handling, exact-path publication, and the final claim. Use GPT-6 Luna for most bounded source coverage and implementation, as requested by the user. Assign concrete player-visible outcomes, exact owned paths, existing interfaces to preserve, and a done condition; use direct work for integration or narrow edits where that is faster. Do not create parallel implementations of an active or completed task.
 
-### 5.2 One packet, start to finish
-1. **Brief.** Write `.devshots/finish/<lane>/<packet-id>/PACKET.md` (git-ignored): the player problem
-   in player words, the owned paths, the done-when as a number or a test, what not to do (the traps).
-2. **Build.** One implementer subagent (Claude), or a terminal agent for grunt work (§5.5). At most
-   **two implementer subagents** run at once per lane — concurrent Claude implementers die on the
-   session usage limit. Terminal agents run in the background and do not count.
-3. **Review ×3, in sequence.** Three reviewer subagents, one after another, each reading the diff and
-   the live owner fresh:
-   - **R1 correctness** — bugs, regressions, determinism, single-writer law, save compatibility, perf
-     cost per frame.
-   - **R2 experience** — every way it could be better for the player: more readable, more alive, more
-     on-brand (`design/VISION.md`: *"Holy shit, I did that"*), more connected to systems that already
-     exist. It lists *every* suggestion, including the expansive ones.
-   - **R3 ambition and finish** — what a studio would ship instead; what is still stand-in, silent,
-     unwired or cheap; whether the frame budget holds.
-   After each review the implementer applies everything worth applying before the next review starts.
-4. **Prove.** The done-when number or focused test, plus `npm run check:baseline` when the change
-   could plausibly break something. Gameplay batches run player-truth per §2.11.
-5. **Land.** Commit your exact paths (`git add -- <paths>` then `git commit -m "..." -- <paths>`), read
-   `git show --stat HEAD`, fetch, merge if the remote moved (never rebase, never reset, never force),
-   push `origin master`. Update your board in the same push.
+### 5.2 One outcome, start to finish
+1. **Select.** Take the next ordered item on the owning lane board. Use the smallest scope that can close a player-visible outcome; a separate packet brief is optional when the board already makes scope and acceptance clear.
+2. **Build and integrate.** Use GPT-6 Luna for the bulk of investigation and implementation. The controller owns integration into the shared checkout, preserves concurrent work, and reconciles the result with the live source owner and active contracts.
+3. **Verify directly.** Run the smallest check that establishes the claimed result at its relevant layer: a focused behavior check for an invariant, the normal player route for player-facing behavior, and a matched measurement for a performance claim. Run `npm run check:baseline` when the change could plausibly break what it touches. Gameplay batches still follow §2.11. After a failure, change the relevant cause before repeating the same check.
+5. **Land.** Commit exact owned paths and push `origin master` under §3. Preserve the shared-tree, fetch/merge, and exact-path rules there. Update the owning board in the same push.
 
-### 5.3 Every ~5 packets: Codex is the final authority
-Hand the batch's commit range to Codex (GPT 6.1 Sol, extra-high reasoning; `TOOLS.md`). Its job is
-not "is this technically correct" — it is: **find what is wrong, fix it, and make the work maximally
-ambitious.** Where an implementer took the lazy or less impressive version, Codex builds the impressive
-one. Codex edits inside the batch's owned paths only and does not commit; the lane agent reads the
-Codex diff, runs the proofs, and lands it. Codex's verdict on a disagreement wins unless it breaks a
-contract in `ARCHITECTURE.md` or a measured bar.
+### 5.3 Review when it adds value
+Use one independent, claim-relevant review when an unresolved question could materially change the fix, acceptance, or significant risk, or when a governing requirement calls for it. The controller checks the integrated result and its direct evidence. Do not run review sequences, repeat completed reviews, duplicate active investigations, add reviewer quotas, or require agreement across models. Incorporate material findings before landing; record unrelated defects in the owning lane Inbox.
 
-### 5.4 Every ~5 frontend packets: Claude Sonnet reviews the screens
-For batches that changed 2D screens, HUD or menus, run Claude Sonnet 5.5 at extra-high effort in the
-terminal (`TOOLS.md`) over the batch: it shoots each changed screen with
-`node scripts/ui-bench.mjs --shot=<id>`, opens the PNGs, judges them against
-`design/frontend/ORRERY.md` and `ORRERY_RUBRIC.md`, `--walk`s the controls, and fixes what it sees.
+### 5.4 Screen and visual claims
+For a changed screen, directly exercise the changed controls on the real route; use `node scripts/ui-bench.mjs --walk` when available and relevant. For a visual claim, inspect the actual screen at the gameplay camera and fix visible defects. Use screenshots or specialist tools when the claim requires them; there is no fixed third-party reviewer or capture quota.
 
-### 5.5 Who does what
-| Work | Who |
-|---|---|
-| Planning, judgment, briefs, merging reviews, landing | the lane agent |
-| Implementation needing care | Claude subagents (≤ 2 at a time) |
-| The three reviews per packet | Claude subagents, sequential |
-| Token-heavy grunt work — reading every line of a module, census, mechanical edits, test conversion, doc moves, data authoring | **split evenly** between Grok 4.7 extra-high (`cursor-agent`) and Gemini 3.8 Flash High (`agy`) |
-| Frontend and 3D implementation (screens, CSS, layout, Blender/Forge scripts, shader code) | DeepSeek V4.1 Flash Max through OpenCode (Go provider) |
-| Final review + ambition pass every ~5 packets | Codex GPT 6.1 Sol extra-high |
-| Frontend batch review every ~5 frontend packets | Claude Sonnet 5.5 extra-high in the terminal |
-
-Run terminal agents in the background with a timeout, several in parallel on disjoint paths. Start
-`cursor-agent` runs a few seconds apart (two starting together hit EPERM on its config file). A
-terminal agent's output is a draft: the lane agent reviews it like any other diff.
+### 5.5 Tools and delegation
+Use available tools and agents by fit to the concrete task. GPT-6 Luna is the default for most coverage and implementation in this campaign. Additional agents or terminal tools are optional, scoped to disjoint owned paths, and do not replace controller integration. There are no required provider ratios, third-party model quotas, or parallel-start rituals. A tool result is a draft until integrated and checked against the stated outcome.
 
 ### 5.6 Never stop
 The owner does not read code and cannot finish leftover work. A packet that is blocked is skipped,

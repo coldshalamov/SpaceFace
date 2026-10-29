@@ -35,7 +35,7 @@ Enter a directory through its `AGENTS.md`/`README.md`, not by listing it.
 | `src/` | The game. Enter a folder through its `AGENTS.md` (every top-level owner has one; `law/` and `physicalCargo/` are covered by `src/missions/AGENTS.md`). `core/` state and the loop facade, `runtime/` the live init/update/clock manifest, `systems/` fixed-step systems, `ai/` + `combat/` shared libraries, `data/` pure catalogs, `render/` Three.js, `ui/` DOM screens, plus audio, save, presentation, story, world, and `testing/lab/`. Code questions: `MODULE_MAP.md` finds the owner. |
 | `assets/` | Authored GLB ships/places/props, portraits, concept art, works. Pipeline rules in `assets/AGENTS.md`; ships in `assets/ships/AGENTS.md`. Evidence subfolders are historical. |
 | `design/` | Product and program authority: `GDD_2_0.md`, `VISION.md`, perf docs, plan suites (`spec2/ spec3/ revamp/ vision/ graphics-sprints/`, …). Big — enter via a link, never by sweeping. |
-| `design/program/` | The only whole-program status surface: verified-done / remaining-work split, roadmap queue + active packets, `NOW.md` lock board. Enter via `design/program/README.md`. |
+| `design/program/` | Active game-finishing work is routed by `finish/README.md` and its three lane boards; other program plans, `NOW.md`, queues and receipts remain detail/status references as each program directs. | The only whole-program status surface: verified-done / remaining-work split, roadmap queue + active packets, `NOW.md` lock board. Enter via `design/program/README.md`. |
 | `docs/` | Engineering navigation (this file, `MODULE_MAP.md`, `COMMON_BUGS.md`, `VALIDATION_WORKFLOW.md`), generated indexes, policy, worldbuilding, `handoffs/` (history only), `agentic-development/` (fleet-orchestration design; informative layer, not authority). See `docs/README.md`. |
 | `scripts/` | Node checks, `program-dispatch.mjs`, `build:indexes`. 500+ npm scripts live in `package.json`. |
 | `test/` | Sim golden files (`*.expected.json` — never edit to pass) and tests. |
@@ -76,27 +76,14 @@ legacy — do not execute).
 
 ## Route for planning / direction work
 
-You were asked to plan where the game goes next. Minimum sufficient reading:
+For active game-finishing work, start with `design/program/finish/README.md`, then take the next row
+on the relevant Lane 1, 2, or 3 board. The board owns current order and status; the README explains
+path ownership, shared protocol, and finish criteria. Build-map rows named by a board remain the
+implementation detail. Do not use the legacy program dispatcher to choose a competing assignment.
 
-1. Root `AGENTS.md` + this file. You now know the law and the map.
-2. Product truth: `design/VISION.md` whole (it is short and outranks other docs on emphasis);
-   `design/GDD_2_0.md` §1–§3 for pitch, challenge, pillars.
-3. Program truth: `build_map.md` §2 (north star), §4 (the five control surfaces), §5
-   (how work is selected and shaped).
-4. Current state: `design/program/README.md` (the status door) → its read-by-need table into
-   `01_VERIFIED_DONE.md` / `02_REMAINING_WORK.md` / `06_RETAINED_FUTURE_BACKLOG.md` (read
-   headings first; they are large). `node scripts/program-dispatch.mjs --ready` shows the
-   dependency-front units without reading the raw queue.
-5. Live locks: `design/program/NOW.md` — hints about possible collisions only, never a stop
-   (`docs/AGENT_OPERATIONS.md` explains why).
-6. Constraints on any plan you write: root `AGENTS.md` §4 authority order and §6 contracts;
-   `docs/POLICY_MANIFEST.md` conflict order; `docs/AGENT_LESSONS.md` for the owner's verified
-   preferences (quality cuts and cheap stand-ins are rejected directions).
-
-Facts for a plan come only from `design/program/`, live code, and current check output — never from
-handoffs, reviews, transcripts, or prose that names old state. When a doc and the code disagree,
-`git log` says which side moved.
-
+For product direction outside that active assignment, read `design/VISION.md` and the relevant
+`design/GDD_2_0.md` sections. `design/program/NOW.md` and checkpoint/liveness tools describe current
+claims and stale ownership; use them to preserve concurrent work, not to replace the active board.
 ## Route for answering questions about the repo
 
 Who owns X? → `docs/MODULE_MAP.md` · Why does Y break? → `docs/COMMON_BUGS.md` · What runs when? →

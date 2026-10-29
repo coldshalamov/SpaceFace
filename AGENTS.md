@@ -26,7 +26,7 @@ lanes edits only paths no lane claims, or appends to the owning lane's board Inb
 
 | Task | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **`node scripts/program-dispatch.mjs --next`** — the plan front door. It always returns one real unit (defect ledger → stale `NOW.md` rows → landed reviews → queue → ledger change-loops → free §1C seam → §M admission → vm-drop; the inference catalog only with `--lane=inference`; eight or more open landed reviews jump ahead of the defect ledger) or an honest all-closed, and never errors while any surface is open; `--status` shows every surface on one screen. Claim what it names on the board (`build_map.md` §1C) and finish it — a drained queue advances the chain, it is never an empty plan |
+| **No instruction, "next", "go", or "make it better"** | **[`design/program/finish/README.md`](design/program/finish/README.md)** — the active program assignment surface. Take the next row on the relevant Lane 1/2/3 board; its named build-map rows carry implementation detail. Do not route current finish work through `program-dispatch --next` |
 | Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
 | Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
 | Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
@@ -34,14 +34,14 @@ lanes edits only paths no lane claims, or appends to the owning lane's board Inb
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Player-facing graphics / Blender/GLB / any ship, station, prop or landmark model | `tools/blender/forge/FORGE.md` + `design/program/GRAPHICS_PROGRAM.md` (workflows, backlog GFX-n); skill `.claude/skills/forge-graphics` |
 | Lighting, shadows, grade, bloom, how surfaces answer light, "the vibe", a sector's mood | [`docs/visual-assets/LOOK.md`](docs/visual-assets/LOOK.md) — one owner for every look value (`src/data/lookMoods.js`); judge by `node scripts/look-bench.mjs` |
-| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **Owned by the ORRERY frontend overhaul lane (owner, 2026-09-26; nuanced 2026-09-27).** The lane owns the *redesign*: do not take lane sessions and do not revive the superseded briefs (`build_map.md` §11/§18/§20, PQ-162…PQ-194) — but **frontend files are not a no-go zone**: when your task needs a file under `src/ui/**` or `styles/**`, edit it — keep the edit minimal, consistent with [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md), verify it, land it by pathspec; the lane reads the diff and works it in when it returns (it runs in stretches and expects foreign diffs). A purely cosmetic frontend impulse your task does not need is one row in the demo defect ledger (§7), never a second designer. Lane status: [`design/frontend/ORRERY_HANDOFF.md`](design/frontend/ORRERY_HANDOFF.md) §2. For the lane: **`docs/UI_VISUAL_ITERATION.md`** — the frontend iteration system. Shoot the real screen over a still (`node scripts/ui-bench.mjs --shot=<id>`), open that PNG yourself, fix what you see, and `--walk` every control on the screens you changed before you call them done. Do not leave stills for a later pass. **Direction: [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md) (owner, 2026-09-22 late) — the one plan for the whole interface: an instrument of light, the Hand, the ORRERY library in `src/ui/orrery/`; screens compose library elements and never hand-roll boxes.** It supersedes FIELD_HARDWARE_PROGRAM, ONE_PHOTOGRAPH and "printed and lit" as direction (their no-material-imitation law stays). Then `src/ui/AGENTS.md` and `styles/AGENTS.md`. **OWNER RULING 2026-09-18:** nothing under `design/archive/frontend-direction/approved/` carries owner authority. The bar: *consistent, high-detail, creative, interactive, non-generic — and the live game currently reads cheap.* The picture you opened is the evidence. |
+| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **Lane 3 owns `src/ui/**` and `styles/**` under the active Finish Program** (boot/loading files belong to Lane 1). Follow its board and [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md). For changed screens use [`docs/UI_VISUAL_ITERATION.md`](docs/UI_VISUAL_ITERATION.md): capture the real screen, inspect it, fix visible issues, and walk changed controls. The prior ORRERY lane ownership claim has lapsed; its design direction remains |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Vercel deploy / "shipping manifest" build failure / release-asset regeneration | [`docs/VERCEL_DEPLOYMENT.md`](./docs/VERCEL_DEPLOYMENT.md) + `docs/COMMON_BUGS.md` §15 — git pushes do **not** build (deploys are manual); fast gate `npm run check:release-manifest-pins` before pushing `assets/ships/release/` or manifest changes |
 | Saw a defect that is not your task | **§7 total-fix mode** — small: fix it now; medium: call a subagent; otherwise one row in the demo defect ledger |
 | INFERENCE / make N missions / throw an agent at the game | Explicitly asked to develop a section or fill out the world? Use [`INFERENCE_LANES.md` §0.2](design/program/INFERENCE_LANES.md#02-explicit-section-development-requests--continue-the-existing-area) with the existing [`FINISH_LANES.md`](design/program/FINISH_LANES.md) area; otherwise copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). For the directed repair loop, an OPEN line in [`design/program/INFERENCE_IDEAS.md`](design/program/INFERENCE_IDEAS.md) is the assignment. Look, infer, rotate only when that catalog is empty. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md). Open feelings for a strong pass: `build_map.md` §23 |
-| Finish the game / it still looks unfinished / run the fleet | **`design/program/FINISH_THE_GAME.md`** — goal prompt `design/program/FINISH_THE_GAME_GOAL.txt` |
+| Finish the game / it still looks unfinished / run the fleet | **[`design/program/finish/README.md`](design/program/finish/README.md)** — active three-lane finish program, boards, and finish line |
 | Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
-| Clean machine / perf captures / quiet-host work | **[`design/program/QUIET_HOST_PROGRAM.md`](design/program/QUIET_HOST_PROGRAM.md)** — split by owner 2026-10-04: the dedicated clean machine **produces** (`SPACEFACE_QUIET_HOST=1 node scripts/quiet-host-session.mjs --push`, unattended; the runner refuses any other host with exit 2), every other machine **lands** the pushed receipt (`LAND-QUIET-HOST`: apply the row closures it names). Never produce captures on this box; never hunt a historic freeze |
+| Performance and captures | During the active Finish Program, follow [`design/program/finish/README.md`](design/program/finish/README.md) §2: measure on this machine with matched within-session A/B and print host contention. Outside that program, follow [`design/program/QUIET_HOST_PROGRAM.md`](design/program/QUIET_HOST_PROGRAM.md) for its dedicated capture host |
 
 Campaign, feel, hitch, remaster, harvest, and other named doors:
 [`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md). Do not sweep `design/`, `.campaign/`, assets,
@@ -147,15 +147,8 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
   Never `--force`. Never push someone else's branch or an open pull-request branch.
 - Push the finished local master commits, not only the one you just made. Leave other agents'
   uncommitted files unstaged. Do not wait for a clean tree, a review, or a later sitting.
-- If the unit came from the build map or from `program-dispatch --next`, add one row to
-  [`design/program/LANDED_REVIEW.md`](design/program/LANDED_REVIEW.md) in that same push. The row
-  names the commit, the task, and the one claim a second agent should re-check. You do not do
-  that review in this sitting. The push does not wait for it. A change-loop leg, a merge commit,
-  and the review itself do not add a row.
-- The next agent takes the oldest open review before starting a new feature. A player-facing
-  defect still comes first, then a stale `NOW.md` row, then the review, so the game keeps getting
-  fixed. When eight or more reviews are waiting, the oldest one jumps ahead of everything,
-  including defects — clear one. That cap is what keeps the list from becoming a second backlog.
+- Outside the active Finish Program, if the unit came from the build map or `program-dispatch --next`, add one row to [`design/program/LANDED_REVIEW.md`](design/program/LANDED_REVIEW.md) in that same push. For Finish Program packets, use its README §2.3 batch review; do not add landed-review rows. The push does not wait for the review.
+- Outside the active Finish Program, the next agent takes the oldest open review before starting a new feature; a player-facing defect still comes first. The Finish Program follows its boards and §2.3 batch review instead.
 - The reviewer reads the named commit and deletes the row in the commit that finishes the look.
   A small miss is fixed and pushed in that sitting. A bigger player-facing break gets one
   demo-ledger row. A review does not file another review.
@@ -277,7 +270,7 @@ Run the checks the change actually needs. Fast gate first; do not loop on verifi
 | Quick sanity pass | `npm run check:baseline` (~15s) — run it when the change could plausibly break something it touches; judgment, not ritual |
 | What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
 | Hitch vs pop-in in flight: longest frame, time-to-appear, shader links inside a drawn frame, what paid for each | `node scripts/probe-frame-solid.mjs` (`--cpu-profile` for who paid, `--compare=<earlier .json>` to gate a change). Plan and baseline: `build_map.md` §21.4 |
-| Any gameplay change (what the player plays and sees) | `npm run player-truth -- --mode=<mode> --gate` — attach `verdict.md` + `contact-sheet.jpg`; FAIL blocks landing |
+| Gameplay route evidence | Outside the active Finish Program, use `npm run player-truth -- --mode=<mode> --gate` when the change calls for it. Finish Program batches run player-truth once per ~5-packet batch for touched modes (§2.11) |
 | A gameplay, feel, or content claim | The live owner plus a fixed-seed number or focused test. Do not capture to review. Owner ruling: `docs/AGENT_LESSONS.md` |
 | A session-SHAPE claim (encounter pacing, spawn policy, economy phases, director cadence, law wiring) that no focused fixture can express | ONE targeted playthrough session: one archetype, one seed, hours capped to the affected window (default 3). Multi-session batteries are L4 diagnostic instruments — never a routine gate. `docs/VALIDATION_WORKFLOW.md` |
 | Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
@@ -294,13 +287,7 @@ a fresh browser profile or alternate port alone does not isolate player saves.
 
 Full ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
 
-**Player-truth gate (binding).** Any gameplay PR attaches the player-truth verdict and contact sheet
-for every mode it touches: `npm run player-truth -- --mode=<swarm|gauntlet|adventure|racing> --gate`
-(idle pass + active pass to round 3; UNKNOWN on a core gameplay check is a FAIL; `--baseline=origin/master`
-adds the before/after table)
-(`--headed` on a GPU machine; headless SwiftShader is the slow fallback and says so in the verdict).
-A FAIL blocks landing; an INCOMPLETE verdict names what was not measured. Contract and current work
-list: [`design/archive/program/player-truth/SUMMARY.md`](design/archive/program/player-truth/SUMMARY.md).
+**Player-truth gate.** Outside the active Finish Program, gameplay PRs attach the route verdict and contact sheet for each affected mode when required by the change. Within Finish Program, run player-truth once per ~5-packet batch for the touched modes, as specified in `design/program/finish/README.md` §2.11. A FAIL blocks that batch; an INCOMPLETE verdict names what was not measured. Contract and current work list: [`design/archive/program/player-truth/SUMMARY.md`](design/archive/program/player-truth/SUMMARY.md).
 
 ## 11. Depth docs (read by need, not by default)
 

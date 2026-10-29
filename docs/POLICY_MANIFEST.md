@@ -72,7 +72,8 @@ A packet may choose an art direction or technique for one outcome. That local de
 | `docs/AGENT_LESSONS.md` | `ACTIVE_MANUAL` | owner preferences and verified workspace facts | each line must stay verifiable or be corrected |
 | `ARCHITECTURE.md` | `ACTIVE_MANUAL` | engine/data contracts | not a visual-style guide; reconcile descriptive details with code |
 | `design/GDD_2_0.md` | `ACTIVE_MANUAL` | product pillars | technique follows evidence |
-| `design/program/` | mixed | global status, active packets, receipts | each file obeys its lifetime marker |
+| `design/program/finish/README.md` + Lane 1/2/3 boards | `ACTIVE_MANUAL` | current game-finishing assignments, ownership, and acceptance bars | the board owns order/status; supporting plans and receipts do not silently replace it |
+| other `design/program/` surfaces | mixed | global status, active packets, receipts | each file obeys its lifetime marker |
 | `.codex/agent-checkpoints/` | `MACHINE_ENFORCED` | local per-task todo timestamps consumed by `check-now-liveness.mjs` | not production history, not a permanent lease, intentionally excluded from Git |
 | `design/vision/`, `depth-program/`, `spec2/`, `spec3/`, `revamp/`, `graphics-sprints/`, `expansion/` | `ACTIVE_MANUAL` | task-specific intent (`expansion/` is the 2026-10-21 creative bible behind `build_map.md` §34) | read only the activated slice |
 | scripts/tests/schemas/manifests | `MACHINE_ENFORCED` | executable contracts | prove behavior/contracts, not taste |
