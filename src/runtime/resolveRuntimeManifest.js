@@ -76,7 +76,7 @@ export function resolveRuntimeManifest(options = {}) {
   // Slot identities affect material runtime behavior (AI/flight backends). Include them in
   // the manifest hash so evidence/replay/cache consumers can distinguish different backends.
   // G7: explicit system lists bind slots from the actual system objects (not leave unbound).
-  const selectedSlots = resolveSelectedSlots(options.slots, explicitSystems);
+  const selectedSlots = resolveSelectedSlots(options.slots, explicitSystems, options.systemLookup);
 
   const profileHash = fingerprintPayload({
     schema: 'spaceface.runtimeProfile.v1',
@@ -163,10 +163,11 @@ export function resolveRuntimeManifest(options = {}) {
  * @param {{ aiSlot?: object, flightSlot?: object, aiBackend?: string, flightBackend?: string }|null|undefined} slots
  * @param {object[]|null|undefined} explicitSystems
  */
-function resolveSelectedSlots(slots, explicitSystems = null) {
+function resolveSelectedSlots(slots, explicitSystems = null, systemLookup = null) {
   const s = slots || {};
-  let aiSlot = s.aiSlot || null;
-  let flightSlot = s.flightSlot || null;
+  const lookup = systemLookup ? normalizeLookup(systemLookup) : null;
+  let aiSlot = s.aiSlot || lookup?.get('aiSlot') || lookup?.get('ai') || null;
+  let flightSlot = s.flightSlot || lookup?.get('flightSlot') || lookup?.get('flight') || null;
   let aiBackend = typeof s.aiBackend === 'string' && s.aiBackend ? s.aiBackend : null;
   let flightBackend = typeof s.flightBackend === 'string' && s.flightBackend ? s.flightBackend : null;
 
@@ -196,7 +197,7 @@ function resolveSelectedSlots(slots, explicitSystems = null) {
     else aiBackend = aiName;
   }
   if (!flightBackend && flightName) {
-    flightBackend = flightName === 'flightV3' ? 'v3' : flightName;
+    flightBackend = detectFlightBackend(flightSlot, flightName);
   }
 
   return Object.freeze({

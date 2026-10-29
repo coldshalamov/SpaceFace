@@ -28,7 +28,9 @@ import { injectHudCss } from '../src/ui/views/hudStyles.js';
 import { ensureStylesheet as ensureStationStylesheet } from '../src/ui/station/stationStyles.js';
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 import { createBenchSaveSystem } from './ui-bench-saves.js';
-import { measureControlReachability } from './ui-bench-controls.js';
+import {
+  measureControlReachability, resolveBenchControl, snapshotBenchControls,
+} from './ui-bench-controls.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
 import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
@@ -2010,11 +2012,12 @@ function layoutAudit() {
   return { overlaps, clipped, offscreen, controlReachability: measureControlReachability(document, current), ...pictureAudit() };
 }
 
-function controlAction(index, kind) {
-  const el = visibleControls()[index];
-  if (!el) return '';
+function controlAction(reference, kind) {
+  const row = resolveBenchControl(visibleControls(), reference);
+  if (!row) return { found: false, identity: reference, label: '' };
+  const el = row.element;
   window.__BENCH_LAST_DISABLED = !!(el.disabled || el.getAttribute('aria-disabled') === 'true');
-  if (window.__BENCH_LAST_DISABLED) return labelOf(el);
+  if (window.__BENCH_LAST_DISABLED) return { found: true, identity: row.identity, label: labelOf(el) };
   if (kind === 'hover') {
     // Seat the synthetic pointer at the control's centre: hover reveals position themselves at the
     // pointer (whyReveal.js), and a bare 0,0 event made every tip screenshot land in the corner.
@@ -2027,7 +2030,7 @@ function controlAction(index, kind) {
     el.focus();
     el.click();
   }
-  return labelOf(el);
+  return { found: true, identity: row.identity, label: labelOf(el) };
 }
 
 // Probes and `scripts/ui-bench.mjs` read this. `report` is the layout pass; `controls` is the walk.
@@ -2038,10 +2041,10 @@ window.BENCH = {
   get screen() { return current; },
   screens: Object.keys(SCREENS),
   controls() {
-    return visibleControls().map((el, index) => ({ index, label: labelOf(el) }));
+    return snapshotBenchControls(visibleControls()).map(({ index, label, identity }) => ({ index, label, identity }));
   },
-  hover(index) { return controlAction(index, 'hover'); },
-  click(index) { return controlAction(index, 'click'); },
+  hover(reference) { return controlAction(reference, 'hover'); },
+  click(reference) { return controlAction(reference, 'click'); },
   signature() {
     // The shared tier-2 tip (#sf-why-tip) is mounted on document.body, outside both roots — fold
     // its visible words into the signature or a hover reveal reads as "no visible change" and the

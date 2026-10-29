@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fakeDom } from './helpers/fake-dom.mjs';
-import { measureControlReachability } from '../tools/ui-bench-controls.js';
+import {
+  measureControlReachability, resolveBenchControl, snapshotBenchControls,
+} from '../tools/ui-bench-controls.js';
 
 function fixture() {
   const doc = fakeDom(), nodes = new Map();
@@ -25,6 +27,19 @@ function fixture() {
 }
 
 const BUY = '.sx-mkt [data-mode="buy"]';
+
+function control(label, { action = '', parentLabel = 'Crucible' } = {}) {
+  const parent = {
+    id: '',
+    parentElement: null,
+    getAttribute: name => name === 'aria-label' ? parentLabel : null,
+  };
+  return {
+    tagName: 'BUTTON', id: '', dataset: { action }, innerText: label, textContent: label,
+    parentElement: parent,
+    getAttribute: name => name === 'aria-label' ? null : (name === 'data-action' ? action : null),
+  };
+}
 
 test('a partly off-frame BUY is a finding even when its centre can be clicked', () => {
   const { doc, add } = fixture();
@@ -114,4 +129,32 @@ test('phone title and pause menus are measured: an off-frame phone Resume is a f
   const title = fixture();
   title.add('.orr-title [data-action], .orr-title--phone [data-action]', 'New Game', [20, 455, 120, 40]);
   assert.match(measureControlReachability(title.doc, 'mainMenu')[0], /Title menu New Game.*viewport/);
+});
+
+test('control identity resolves after reinventory shifts indices and reports a missing control', () => {
+  const original = snapshotBenchControls([control('Continue', { action: 'continue' }), control('Training opening', { action: 'training' })]);
+  const target = original[1];
+  const currentTraining = control('Training opening', { action: 'training' });
+  const currentContinue = control('Continue', { action: 'continue' });
+
+  const resolved = resolveBenchControl([control('Back', { action: 'back' }), currentTraining, currentContinue], target.identity);
+  assert.equal(resolved.element, currentTraining, 'the recorded control is found by semantic identity after its index changes');
+  assert.equal(resolveBenchControl([control('Continue', { action: 'continue' })], target.identity), null,
+    'a control absent after reset is explicit instead of falling through to another index');
+});
+
+test('control identity includes semantic container context for repeated labels', () => {
+  const left = control('Continue', { action: 'continue', parentLabel: 'Draft options' });
+  const right = control('Continue', { action: 'continue', parentLabel: 'Run controls' });
+  const rows = snapshotBenchControls([left, right]);
+  assert.notEqual(rows[0].identity, rows[1].identity);
+  assert.equal(resolveBenchControl([right, left], rows[1].identity).element, right);
+});
+
+test('indistinguishable controls remain untried when a duplicate disappears on reset', () => {
+  const first = control('Continue'), second = control('Continue');
+  const rows = snapshotBenchControls([first, second]);
+  assert.equal(resolveBenchControl([first, second], rows[0].identity), null);
+  assert.equal(resolveBenchControl([second], rows[0].identity), null,
+    'the remaining duplicate must not impersonate the missing original');
 });

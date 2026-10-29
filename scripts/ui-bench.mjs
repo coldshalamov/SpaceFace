@@ -163,17 +163,30 @@ async function walk(page, id, outDir) {
   const controls = await page.evaluate(() => window.BENCH.controls());
   const limit = Math.min(controls.length, args.max), actions = [], errors = [];
   console.log(`  controls: ${controls.length}${controls.length > limit ? ` (trying ${limit}; --max= raises it)` : ''}`);
-  for (let index = 0; index < limit; index++) {
+  for (let cursor = 0; cursor < limit; cursor++) {
+    const inventory = controls[cursor];
+    const { index, label: inventoryLabel, identity } = inventory;
+    const row = { index, identity, inventoryLabel, status: 'untried' };
+    actions.push(row);
     try {
       // Always reset arrival, including the first control, then settle entrance animations.
       await page.evaluate(shotId => window.BENCH.goto(shotId), id);
       await settleAnimations(page);
       const arrival = await page.evaluate(() => window.BENCH.signature());
-      const label = await page.evaluate(i => window.BENCH.hover(i), index);
+      const hoveredControl = await page.evaluate(key => window.BENCH.hover(key), identity);
+      if (!hoveredControl.found) {
+        row.missingAt = 'arrival';
+        const message = `inventory control "${inventoryLabel || '(unlabeled)'}" is absent after reset; left untried`;
+        errors.push({ index, identity, kind: 'missing-control', message });
+        console.log(`  UNTRIED  ${message}`);
+        continue;
+      }
+      const label = hoveredControl.label || inventoryLabel;
+      row.label = label;
       await page.waitForTimeout(80);
       const hovered = await page.evaluate(() => window.BENCH.signature());
       const hoverEffect = describe(arrival, hovered), name = (label || '(unlabeled)').slice(0, 36).padEnd(36);
-      const row = { index, label, hover: hoverEffect }; actions.push(row);
+      row.hover = hoverEffect;
       if (hoverEffect !== 'no visible change' && hoverEffect !== 'disabled') {
         const hoverFile = path.join(outDir, `${safeName(id)}--hover-${String(index + 1).padStart(2, '0')}-${slug(label || String(index))}.png`);
         await page.screenshot({ path: hoverFile, timeout: args.timeoutMs });
@@ -183,22 +196,36 @@ async function walk(page, id, outDir) {
         await settleAnimations(page);
       }
       const beforeClick = await page.evaluate(() => window.BENCH.signature());
-      await page.evaluate(i => window.BENCH.click(i), index);
+      const clickedControl = await page.evaluate(key => window.BENCH.click(key), identity);
+      if (!clickedControl.found) {
+        row.missingAt = 'click';
+        const message = `inventory control "${label || '(unlabeled)'}" disappeared before click; click left untried`;
+        errors.push({ index, identity, kind: 'missing-control', message });
+        console.log(`  UNTRIED  ${message}`);
+        continue;
+      }
+      row.attempted = true;
       await page.waitForTimeout(160);
       await settleAnimations(page);
       const clicked = await page.evaluate(() => window.BENCH.signature()), clickEffect = describe(beforeClick, clicked);
       row.click = clickEffect;
+      row.status = 'attempted';
       row.controlReachability = await page.evaluate(() => window.BENCH.reachability());
       for (const finding of row.controlReachability) console.log(`  UNREACHABLE after ${label}  ${finding}`);
       if (clickEffect === 'no visible change' || clickEffect === 'disabled') { console.log(`  ${name} ${clickEffect}`); continue; }
       const clickFile = path.join(outDir, `${safeName(id)}--${String(index + 1).padStart(2, '0')}-${slug(label || 'control')}.png`);
       await page.screenshot({ path: clickFile, timeout: args.timeoutMs }); row.clickFile = path.relative(ROOT, clickFile);
       console.log(`  ${name} click  ${clickEffect}  ${row.clickFile}`);
-    } catch (error) { errors.push({ index, message: error.message }); console.log(`  control ${index + 1} probe failed: ${error.message.split('\n')[0]}`); }
+    } catch (error) {
+      const message = error.message.split('\n')[0];
+      errors.push({ index, identity, kind: 'probe-error', message });
+      console.log(`  control ${index + 1} probe failed: ${message}`);
+    }
   }
   console.log('  Open every PNG this walk printed. Each line is one control, tried from the arrival screen.');
-  return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted: limit,
-    untried: controls.length - limit, actions, errors };
+  const attempted = actions.filter(row => row.attempted).length;
+  return { complete: limit === controls.length && errors.length === 0, total: controls.length, attempted,
+    untried: controls.length - attempted, actions, errors };
 }
 function describe(before, after) {
   if (after.disabled) return 'disabled';
