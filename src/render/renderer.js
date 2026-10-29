@@ -11376,7 +11376,7 @@ const RIGID_ASHLINE_BODY_SOURCE_NAMES = new Set([0, 1, 2].flatMap((level) => [
 ].map((surface) => `LOD${level}_MOTION_HULL_CORE_${surface}`)));
 const RIGID_ASHLINE_MOTION_IDENTITY = Object.freeze({
   packageAssetId: 'sf.render.ashline-dart',
-  packageContentHash: '6aae8369e318d6ae16db20bfc3b5f395f615370ac48ff7f6d222f7e8575698e2',
+  packageContentHash: 'f4d38c0fdca92bb248501ea9661c009e4681938de4db1f9ee17aaa9d078b4727',
   bankSha256: '89c9edb48125d150ed95b74e024a24c93b5155a3a521e62a5856d5487314ee9e',
   sourceAssetId: 'SF_WHOLESHIP_ASHLINE_DART', rigId: 'hull', bindingId: 'hull_core',
 });
