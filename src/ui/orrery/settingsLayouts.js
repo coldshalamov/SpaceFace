@@ -605,6 +605,12 @@ ${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important
   ${C} .of-credits-rows .k-row { grid-template-columns:minmax(0, 1fr) !important; row-gap:3px !important; }
   ${C} .of-credits-rows .k-row > * { grid-column:1 !important; grid-row:auto !important; min-width:0; }
   ${C} .of-credits-rows .k-row__num { text-align:left !important; white-space:normal !important; line-height:1.4 !important; }
+  /* the six section words ran off the right edge as a sideways strip (only the A of ASSETS showed at 390):
+     two rows of three keep every section in view; the tagline balances instead of orphaning "ON." */
+  ${C} .k-hang > .k-words { display:grid !important; grid-template-columns:repeat(3, auto); justify-content:space-between; row-gap:0 !important; overflow:visible !important; }
+  ${C} > .k-title > p { text-wrap:balance; }
+  /* the reel head's word kept shrinking for its trailing rule, so MADE BY broke in two at 375 */
+  ${C} .orr-cr-head > b { flex:none; white-space:nowrap; }
 }
 /* a very short desktop window (844×390 / ≤460): the five-rung section ladder (and on ≤900 the
    stacked MADE BY reel head) ran into ‹ BACK. Compress title, hang, reel head and foot so CLOSE
