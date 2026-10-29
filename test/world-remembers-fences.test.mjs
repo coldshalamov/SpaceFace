@@ -667,7 +667,7 @@ test('the fence is at the bar when WANTED or trusted, with a line by state, a fa
   const h = makeHarness({ seed: 4242, heat: 0.3 });
   const contact = generateContacts(SMUGGLER.stationId, h.state).find((c) => c.fenceId);
   const label = contact.choices.find((c) => c.id === 'fence_scrub').label;
-  assert.match(label, /Clean my record \(\d+ cr\)/);
+  assert.match(label, /Cool the record one notch \(\d+ cr\)/);
   h.bus.emit('ui:talkContact', { contactId: contact.id, choiceId: 'fence_scrub', stationId: SMUGGLER.stationId });
   const reply = buildReply(contact.role, 'fence_scrub', { state: h.state, bus: h.bus }, SMUGGLER.stationId, contact);
   assert.match(reply.text, /^Done\./);

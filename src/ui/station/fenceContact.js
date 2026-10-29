@@ -49,7 +49,10 @@ export function fenceBarContact(stationId, state) {
   }
   if (fence.id === 'fence_hesper_quill') choices.push({ id: 'clinic_freight_report', label: 'Did the supplies arrive?' });
   if (fence.quirk.fixer && wanted) {
-    choices.push({ id: 'fence_scrub', label: `Clean my record (${fenceScrubCostCr(level, row.trust)} cr)` });
+    // The scrub cools ONE wanted band per fence per cooldown (heat.js SCRUB_COOL_LEVELS), priced
+    // per current level — never the whole record in one ask, and a live net or impound hold is
+    // refused outright. "Clean my record" promised the full clear; the label says the deal.
+    choices.push({ id: 'fence_scrub', label: `Cool the record one notch (${fenceScrubCostCr(level, row.trust)} cr)` });
   }
   choices.push({ id: 'fence_bye', label: 'Keep it quiet.' });
   return {

@@ -15,6 +15,7 @@ import { FACTION_LABELS } from '../../../data/encounters.js';
 import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
 import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
@@ -1447,6 +1448,8 @@ export function createMarketScreen(ctx) {
         }
       }
     }
+    // The extent cursor and overflow fold follow the inner rail that actually scrolls the rows.
+    syncScrollExtent(listEl.querySelector('.sx-mkt-browser__rail'));
   }
 
   function renderStage(state) {

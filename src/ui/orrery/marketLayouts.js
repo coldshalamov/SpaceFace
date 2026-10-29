@@ -143,11 +143,13 @@ ${M} .sx-mkt-search { ${PLAIN} position:static !important; display:block !import
   font-size:13px !important; color:rgb(248 244 234) !important; caret-color:var(--dp-hand, #f2b950); }
 ${M} .sx-mkt-search::placeholder { color:rgb(${BONE} / .48); }
 ${M} .sx-mkt-search:focus { outline:none !important; }
-/* The register column IS the scroller (the frame marks it .dp-frame__scroll), but the legacy
-   observatory sheet still reaches in through the shared .sx-observatory class and re-declares it
-   overflow:hidden, so a market with more goods than the column fits silently destroyed its bottom
-   rows — nothing could scroll to them. Take the scroll back. */
-${M} .sx-mkt__list { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain; }
+/* The frame column clips its contents; the commodity table's inner rail is the only vertical
+   scroller, so wheel/touch movement and the extent cue follow the same rows. */
+${M} .sx-mkt__list { overflow:hidden !important; }
+${M} .sx-mkt-browser__rail { overflow:auto !important; scrollbar-width:thin !important; overscroll-behavior:contain; }
+/* The register ends on a whole good. While the inner rail overflows, a row-deep fold marks the
+   continuation and the scroll keeps that much pad, so the last good reads whole at scroll end. */
+${M} .sx-mkt-browser__rail[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 28px), transparent); padding-bottom:28px !important; }
 ${M} .sx-mkt-browser__rail { ${PLAIN} }
 ${M} .sx-mkt-table { ${PLAIN} border-collapse:separate !important; border-spacing:0 !important; table-layout:fixed !important; width:100% !important; }
 ${M} .sx-mkt-table thead th:nth-child(2), ${M} .sx-mkt-row td:nth-child(2) { width:86px; }

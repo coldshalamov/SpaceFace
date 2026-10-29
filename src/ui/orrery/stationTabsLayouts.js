@@ -1698,7 +1698,9 @@ ${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { display:
 ${T} .sx-ind-process__head .sx-ind-process__count { margin-left:10px; color:rgb(${BONE} / .45) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__block { margin-left:10px; color:rgb(${BONE} / .66) !important; letter-spacing:.12em; }
 ${T} .sx-ind-process__head .sx-ind-process__block::before { content:"·  "; color:rgb(${BONE} / .4); }
-${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
+/* the ladder ends on a whole rung: the fold is a rung deep and an overflowing list keeps that much
+   pad, so at scroll end the fade lands on empty column and the last module reads whole (RC-49) */
+${T} .sx-ind__list[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 24px), transparent) !important; padding-bottom:24px !important; }
 
 /* ================================ ROUND 11: MISSIONS ======================================== */
 /* the rail runs through the seam between the board and YOURS: one scale with a block gap, ticks and all */
