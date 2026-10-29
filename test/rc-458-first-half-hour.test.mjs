@@ -5,7 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { makeEntity, Masks } from '../src/core/entity.js';
-import { BEATS as ROUTE_BEATS, onboarding } from '../src/systems/onboarding.js';
+import { BEATS as ROUTE_BEATS, onboarding, taughtVerbLine } from '../src/systems/onboarding.js';
 import { rescueBeatLine, rescuePodAtBeacon, rescueRockHitDerelict } from '../src/onboarding/rescueOpening.js';
 import { missingThreeBeatLine } from '../src/onboarding/missingThree.js';
 import { RANGE_POINTER_LINE } from '../src/ui/hudAttention.js';
@@ -563,7 +563,7 @@ test('flown-before folds exactly four drills at rest, preserves rescue, and roun
   const ob = h.state.onboarding;
   assert.deepEqual(ob.pace.folded, Object.fromEntries(pace.FLOWN_BEFORE_BEATS.map((b) => [b, 'flownBefore'])));
   assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'burst');
-  assert.equal(tutorialLines(h).at(-1), 'Fire a short burst into the raider.');
+  assert.equal(tutorialLines(h).at(-1), taughtVerbLine(h.state, 'burst', 'Fire a short burst into the raider.'));
   h._drivenIdx = DRILL_KEYS.indexOf('burst');
   driveDrillTo(h, 'burst');
   const scout = rescueActor(h, 'scout');

@@ -9,7 +9,7 @@ import {
   maxWeaponHeatFraction,
 } from '../src/onboarding/flightDrill.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
-import { onboarding, BEATS as ROUTE_BEATS } from '../src/systems/onboarding.js';
+import { onboarding, BEATS as ROUTE_BEATS, taughtVerbLine } from '../src/systems/onboarding.js';
 
 // The route table is authored in onboarding.js; drive the FSM by key so the test tracks the
 // lesson content, not the production order (the order audits live in check-first-hour).
@@ -205,7 +205,7 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   assert.ok(rock && rock.data.trainingMining, 'seam lesson owns a marked mineable rock');
   rock.data.scanHighlightUntil = state.simTime + 5;
   bus.emit('scan:completed', { found: { asteroids: 1, wrecks: 0, anomalies: 0 } });
-  assert.equal(state.onboarding.beatAction, 'Beam the bright seams.');
+  assert.equal(state.onboarding.beatAction, taughtVerbLine(state, 'seam:scan:hit', 'Beam the bright seams.'));
   bus.emit('mining:yield', {
     minerId: player.id,
     qty: 3,

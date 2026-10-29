@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
-import { onboarding, BEATS } from '../src/systems/onboarding.js';
+import { onboarding, BEATS, taughtVerbLine } from '../src/systems/onboarding.js';
 
 function host(beatKey, done = false) {
   const state = createGameState(113);
@@ -32,7 +32,8 @@ test('Continue retains an unfinished main mining lesson after the side rails fin
   assert.equal(restored.state.onboarding.active, true);
   assert.equal(restored.state.onboarding.trainingOre, 2);
   assert.deepEqual(restored.owner.entered, ['seam']);
-  assert.equal(restored.owner.spoken.at(-1), BEATS.find(beat => beat.key === 'seam').line);
+  assert.equal(restored.owner.spoken.at(-1),
+    taughtVerbLine(restored.state, 'seam', BEATS.find(beat => beat.key === 'seam').line));
 });
 
 test('a completed main beat waits for its successor rather than restaging its reward', () => {

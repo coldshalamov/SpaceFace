@@ -2184,8 +2184,11 @@ export const onboarding = {
       this._resolveRaidDone();
       this._tickSwingClinic();
       this._tickClaimed();
-      this._tickPowerSituations(state);
+      // The authored rail (missing-three advance) takes the single tutorial voice before an
+      // authored situation may speak — a situation line must never push a rail beat's silence
+      // gate out from under it. Placement itself obeys the same ≥4 s gate below.
       this._maybeAdvanceMissingThree();
+      this._tickPowerSituations(state);
       this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
       } catch (_) { /* never let onboarding break the loop */ }
@@ -2558,6 +2561,11 @@ export const onboarding = {
     // The first setup waits out the stick drills; later ones ride the voice-pacing gap.
     const earliest = sit.next === 0 ? (ob.startedAt || 0) + POWER_SITUATION_FIRST_S : sit.nextAtS;
     if (now < earliest) return;
+    // One tutorial voice: a situation may only speak after the same ≥SILENCE_S of text silence
+    // every rail beat obeys. A due setup waits for the next silent tick rather than speaking
+    // over the line another teacher just placed — the placement slot is not consumed until it
+    // lands, so the deferral retries cleanly.
+    if (now - (this._lastTextAtS == null ? -Infinity : this._lastTextAtS) < SILENCE_S) return;
     const spec = POWER_SITUATIONS[sit.next];
     // Consume the ladder slot only when the setup actually lands in the world — a placement
     // failure (no spawn helper, despawned cast) retries the same power on the next window.
