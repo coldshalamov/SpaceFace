@@ -346,8 +346,13 @@ test('PresentationJournal terminal close drains retained records and rejects eve
 
   const rebuilding = createPresentationJournal(2);
   rebuilding.requestRebuild('run-transition');
+  const suppressedDestroy = entity(9);
+  rebuilding.recordDestroy(1, suppressedDestroy);
+  assert.deepEqual([...rebuilding.getSuppressedDestroyIds()], [9]);
   assert.equal(rebuilding.close(), true);
   assert.equal(rebuilding.needsRebuild(), false);
+  assert.equal(rebuilding.getSuppressedDestroyIds().size, 0,
+    'terminal close releases rebuild-only identity receipts');
   assert.equal(rebuilding.getDiagnostics().rebuildRequired, false);
 });
 
