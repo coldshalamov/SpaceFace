@@ -4918,15 +4918,12 @@ function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
   assertQueuedAuthoredAdmissionActive(options, 'before-place-failure');
-  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
   const admissionEntity = options.admissionEntity || entity;
   // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
   // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
   // would stomp the live admission's committed state or burn its retry budget.
   if (staleAuthoredRunVerdict(boundary, options || {})) {
-    if (!flags.residencyReleased) {
-      releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
-    }
+    if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
     return false;
   }
   // Owner died mid-admission but the boundary stayed mounted (kept-GPU save recook). The abort

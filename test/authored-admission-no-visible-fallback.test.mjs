@@ -16,6 +16,7 @@ import {
   upgradeAuthoredPlaceBoundaryForProbe,
   wrapShipWithAuthoredParts,
 } from '../src/render/partsLibrary.js';
+import { getAssetResidency } from '../src/render/assetResidency.js';
 import { ILLUSTRATED_SURFACE_KEY } from '../src/render/illustratedSurface.js';
 import { modelTruthRow } from '../src/data/modelTruth.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
@@ -493,6 +494,40 @@ test('authored geology returns to the matching procedural body when pipeline adm
   assert.equal(boundary.userData.authoredAssetState, 'same-semantic-fallback');
   assert.equal(entity.presentationAdmission, 'ready');
   assert.equal(boundary.children.some((child) => child.name === 'GLTFKit_place_asteroid_rock_b'), false);
+});
+
+test('owner-inactive authored place failure keeps its mounted residency owner available for readmission', async () => {
+  const entity = {
+    id: 251,
+    type: 'fx',
+    alive: true,
+    data: { placeId: 'place_nav_buoy', placeTargetRadius: 8 },
+  };
+  const fallbackRoot = fallback('ClaimRelay');
+  const boundary = buildAuthoredPlaceProp(entity, { releaseMode: true, fallbackRoot });
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+  const renderer = {};
+
+  const swapped = await upgradeAuthoredPlaceBoundaryForProbe(
+    boundary,
+    fallbackRoot,
+    entity,
+    'places/place_nav_buoy.glb',
+    renderer,
+    scene,
+    {
+      releaseMode: true,
+      isResidencyOwnerActive: () => false,
+      loadAuthoredPart: async () => { throw new Error('Authored residency owner became inactive'); },
+    },
+  );
+
+  assert.equal(swapped, false);
+  assert.equal(boundary.parent, scene, 'the world boundary remains mounted during owner recovery');
+  assert.equal(boundary.userData.authoredAssetState, 'awaiting-authored-admission');
+  assert.equal(getAssetResidency(renderer).isOwnerReleased(boundary), false,
+    'the retained boundary must not be released before its later re-admission');
 });
 
 test('authored place LODs remain under the stable boundary and switch by authored level', async () => {
