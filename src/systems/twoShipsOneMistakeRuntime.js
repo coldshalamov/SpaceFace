@@ -378,4 +378,11 @@ export const TWO_SHIPS_ONE_MISTAKE_RUNTIME = Object.freeze({
     }
     return null;
   },
+
+  retire(_d, live) {
+    // The encounter director also retires scripts on external aborts (for example
+    // sector exit). Those paths do not pass through finish(), so release the film
+    // observer here as well as on the normal outcome path.
+    stopWatch(live);
+  },
 });

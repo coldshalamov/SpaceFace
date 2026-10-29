@@ -335,8 +335,8 @@ test('jam inside the curtain is information and does not invent a fix', () => {
   const row = run.events.results.at(-1).primary;
   assert.equal(row.distance, view.jamWu);
   const text = signalMetaText(row);
-  assert.match(text, new RegExp(`${view.jamWu.toLocaleString('en-US')} WU`));
-  assert.equal(text.includes('0 WU'), false);
+  assert.match(text, new RegExp(`${view.jamWu.toLocaleString('en-US')} u`));
+  assert.equal(text.includes('0 u'), false);
 });
 
 test('braking on the wrong drift buoy does not complete the chord', () => {

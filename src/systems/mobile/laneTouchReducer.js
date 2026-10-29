@@ -75,6 +75,20 @@ export function createLaneTouchReducer() {
     if (inputHost) { this._host = inputHost; patchVirtualUnion(this, inputHost); }
     if (!frame || typeof frame !== 'object') return;
     if (frame.active === false) {
+      const previous = this._prevHolds;
+      if (previous && this._host?._holdToggleLatches) {
+        for (const key of HOLD_VERBS) {
+          if (previous[key]) this._host._holdToggleLatches[key] = false;
+        }
+      }
+      if (previous?.massline && this._host?._masslineGrammar) {
+        const grammar = this._host._masslineGrammar;
+        const hostActions = this._host.state?.input?.actions;
+        if (grammar.snapshot && hostActions && hostActions.massline === grammar.command) {
+          hostActions.massline = grammar.snapshot();
+        }
+        grammar.reset?.(true);
+      }
       this.active = false;
       clearAxes(this);
       clearActions(this);

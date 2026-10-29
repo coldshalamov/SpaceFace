@@ -155,6 +155,33 @@ test('(a) the Third Shift launch produces a real carrier hull towing the clamped
   assert.equal(m.heist.capsuleEntityId, load.id, 'the mission tracks the clamped body');
 });
 
+test('(a2) a refused carrier or load spawn leaves no partial launch behind', () => {
+  const variant = heistLaunchVariant('breakaway_third_shift');
+  const removed = [];
+  const owner = Object.create(heistFacilities);
+  owner.state = { tick: 1, heistFacilities: {} };
+  owner.registry = { get: () => ({ kernel: { attachments: {} } }) };
+
+  let calls = 0;
+  owner.helpers = {
+    spawnEntity() { calls++; return null; },
+    removeEntity(id) { removed.push(id); return true; },
+  };
+  assert.equal(owner._spawnCarrierCagedLoad({ scheduleId: 'carrier-refused' }, variant, 1, 0, { x: 0, z: 0 }), null);
+  assert.equal(calls, 1, 'load creation is not attempted without its carrier');
+  assert.deepEqual(removed, []);
+
+  calls = 0;
+  owner.helpers.spawnEntity = (spec) => {
+    calls++;
+    return calls === 1 ? { id: 91, ...spec } : null;
+  };
+  assert.equal(owner._spawnCarrierCagedLoad({ scheduleId: 'load-refused' }, variant, 1, 0, { x: 0, z: 0 }), null);
+  assert.equal(calls, 2, 'the load attempt follows a successful carrier creation');
+  assert.deepEqual(removed, [91], 'the unpaired tug is removed when load creation is refused');
+  assert.equal(owner.state.heistFacilities.carrierEntityId, undefined, 'failed launch does not publish ownership');
+});
+
 // ── (b) the tug physically tows the load ─────────────────────────────────────────────────────────
 
 test('(b) the carrier physically tows the load down the breakaway heading', async () => {

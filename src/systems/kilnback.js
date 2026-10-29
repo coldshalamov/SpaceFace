@@ -1,4 +1,4 @@
-import { KILNBACK as C, KILNBACK_CASK_IDS, freshKilnbackActor, normalizeKilnbackActor,
+import { KILNBACK as C, KILNBACK_FLIGHT_MAX_SPEED, KILNBACK_CASK_IDS, freshKilnbackActor, normalizeKilnbackActor,
   kilnbackCoolant, kilnbackPointPose, kilnbackFlightModel } from '../data/kilnback.js';
 import { KILNBACK_RADIUS, KILNBACK_CASK_RADIUS, kilnbackPhysicalBody, kilnbackCaskPhysicalBody,
   kilnbackCaskSocket, kilnbackMouthSocket } from '../data/kilnbackBody.js';
@@ -125,7 +125,8 @@ export const kilnback = {
     const model = e.flightModel;
     if (e.physicsBody?.collisionProxyManifest?.id === body.collisionProxyManifest.id
       && e.physicsBody?.revision === body.revision && model?.mass === body.mass && model.inertia === body.inertiaY
-      && model.maxSpeed === 45 && model.maxYawRate === .55 && Math.abs(model.mainAccel * body.mass - 3240) < 1e-8) return;
+      && model.maxSpeed === KILNBACK_FLIGHT_MAX_SPEED && model.maxYawRate === .55
+      && Math.abs(model.mainAccel * body.mass - 3240) < 1e-8) return;
     e.flightModel = kilnbackFlightModel(body, e.flightModel);
     if (e.data?.derived) e.data.derived.flightModel = kilnbackFlightModel(body, e.data.derived.flightModel);
     if (e.physicsBody?.collisionProxyManifest?.id === body.collisionProxyManifest.id && e.physicsBody?.revision === body.revision) return;

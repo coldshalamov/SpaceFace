@@ -8,6 +8,11 @@ import { getCombatKernel } from '../src/combat/kernel.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { KILNBACK as C, kilnbackCoolant } from '../src/data/kilnback.js';
 import { kilnbackPresentation } from '../src/systems/kilnback.js';
+import { readTensionSensors } from '../src/systems/tensionDirector.js';
+import { TensionDirector } from '../src/ai/tensionDirector.js';
+import { witnessLineOfSight } from '../src/combat/lineOfSight.js';
+import { authorizeAIEngagement } from '../src/ai/engagementAuthority.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
 const external = (runtime, fn) => {
   const previous = snapshotFeatureMaps(); applyFeatureConfigToMaps(runtime.config.features);
@@ -17,6 +22,17 @@ const advance = (runtime, until, cap) => {
   let ticks = 0; while (!until() && ticks++ < cap) runtime.step(1 / 60);
   assert.ok(until(), `bounded production window ended after ${ticks} ticks`);
 };
+
+function opportunitySnapshot(now) {
+  const engine = new TensionDirector({ now: now - 66 });
+  const sensors = { eligible: true, suspension: null, hull: 1, shield: 1, nearbyCombat: 0,
+    liveCombat: 0, pendingCombat: 0, pendingCivilian: 0, scanTruncated: false,
+    profile: 'standard', recoveryStance: false };
+  for (let at = now - 65; at <= now; at++) engine.advance(at, sensors);
+  assert.equal(engine.state.phase, 'opportunity');
+  assert.equal(engine.state.policy.allowCombat, true);
+  return engine.snapshot();
+}
 
 test('ordinary production Ceres activation, native cask custody and cold repeated Continue preserve one finite furnace', async () => {
   const source = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 83 });
@@ -28,12 +44,17 @@ test('ordinary production Ceres activation, native cask custody and cold repeate
     source.getSystem('scissorwake').deserialize({ introduced: true, lineUse: 3 });
     state.story.beatIndex = Math.max(1, state.story.beatIndex);
     state.simTime = C.earliestSeconds; state.tick = C.earliestSeconds * 60;
+    // This route fixture begins from a legitimate saved opportunity window at the earned Ceres
+    // clock. Generate that snapshot with the canonical controller; the authored request still
+    // passes normal pressure, spacing, live-roster, and downstream encounter admission gates.
+    source.getSystem('tensionDirector').restore(opportunitySnapshot(state.simTime));
     const player = source.spawn(makeShipEntitySpec('ship_hawser', { isPlayer: true, player: state.player,
       pos: { x: 0, z: 0 }, fittings: [] })); state.playerId = player.id;
     external(source, () => source.getSystem('world').enterSector(C.sectorId, { continuous: false, noTeleport: true, placePlayer: false }));
     const station = state.entityIndex.stations.find(e => e.data?.stationId === 'station_ceres'); assert.ok(station);
+    const ambush = sectorLocalToGlobalForSector({ x: -400, z: -2400 }, C.sectorId);
     external(source, () => source.getSystem('world').relocatePlayerInSector({
-      x: station.pos.x + 1300, z: station.pos.z + 1100, heading: 0 }, { reason: 'kilnback-normal-route' }));
+      x: ambush.x, z: ambush.z, heading: 0 }, { reason: 'kilnback-normal-route' }));
     // A prior cutter introduction and reached Ceres story beat are real persisted prerequisites.
     // No force flag, custom encounter factory, alternate AI, or header bypass is used.
     assert.equal(await source.getSystem('physics').prepareBackend(state, { reset: true }), true);
@@ -45,7 +66,14 @@ test('ordinary production Ceres activation, native cask custody and cold repeate
     for (let tick = 0; tick < 5400 && !owner.serialize().actors.length; tick++) source.step(1 / 60);
     assert.equal(owner.serialize().actors.length, 1, JSON.stringify({ requests, eligible: owner._eligible(),
       simTime: state.simTime, storyBeat: state.story.beatIndex, sector: state.world.currentSectorId,
-      playerAlive: player.alive, introduced: owner._introduced, director: { pressure: state.encounterDirector?.pressure, live: Object.keys(state.encounterDirector?.live || {}), lastMeaningfulAt: state.encounterDirector?.lastMeaningfulAt }, tension: { phase: state.tensionDirector?.phase, activeS: state.tensionDirector?.activeS, goal: state.tensionDirector?.phaseGoalS, policy: state.tensionDirector?.policy } }));
+      playerAlive: player.alive, introduced: owner._introduced,
+      director: { pressure: state.encounterDirector?.pressure, live: Object.keys(state.encounterDirector?.live || {}),
+        pending: state.encounterDirector?.pending?.length, lastMeaningfulAt: state.encounterDirector?.lastMeaningfulAt },
+      tension: { phase: state.tensionDirector?.phase, activeS: state.tensionDirector?.activeS,
+        phaseEnteredS: state.tensionDirector?.phaseEnteredS, ageS: state.tensionDirector?.activeS - state.tensionDirector?.phaseEnteredS,
+        goal: state.tensionDirector?.phaseGoalS, lastCombatAt: state.tensionDirector?.lastCombatAt,
+        fatigue: state.tensionDirector?.fatigue, reentryUntilS: state.tensionDirector?.reentryUntilS,
+        metrics: state.tensionDirector?.metrics, sensors: readTensionSensors(state), policy: state.tensionDirector?.policy } }));
     let caster = state.entityList.find(e => e.alive && e.data?.lootTableId === C.enemyId); assert.ok(caster);
     assert.equal(state.entityList.filter(e => e.alive && e.data?.lootTableId === C.enemyId).length, 1);
     let row = owner._actors.get(caster.data.kilnbackKey); const key = row.key;
@@ -55,13 +83,32 @@ test('ordinary production Ceres activation, native cask custody and cold repeate
     advance(source, () => row.phase === 'preheat', 300); const preheat = row.phaseStartTick;
     advance(source, () => row.phase === 'burn' && row.pulse === 1, 180);
     assert.ok(row.phaseStartTick - preheat >= C.preheatTicks);
-    assert.ok(kilnbackPresentation(state, caster).activeHeatLanes.length > 0);
+    const heatPresentation = kilnbackPresentation(state, caster);
+    const mouth = { x: caster.pos.x + Math.cos(caster.rot || 0) * 14,
+      z: caster.pos.z + Math.sin(caster.rot || 0) * 14 };
+    const liveTarget = state.entities.get(row.targetId);
+    assert.ok(heatPresentation.activeHeatLanes.length > 0, JSON.stringify({
+      phase: row.phase, pulse: row.pulse, nativeBodyReady: heatPresentation.nativeBodyReady,
+      targetDistance: liveTarget && Math.hypot(caster.pos.x - liveTarget.pos.x, caster.pos.z - liveTarget.pos.z),
+      lineOfSight: liveTarget && witnessLineOfSight(state, caster, liveTarget.pos, [liveTarget.id]),
+      authority: liveTarget && authorizeAIEngagement({ state, self: caster, target: liveTarget,
+        objectiveReason: 'combat_doctrine:brawler_commit:commit' }),
+      disengageReason: caster.data?.ai?.activity?.reason,
+      nearbyLawfulPatrols: state.entityList.filter(e => e.alive !== false && e.data?.ai?.lawful === true
+        && (String(e.data.ai.spawnContext || '').includes('patrol')
+          || String(e.data.ai.archetype || '').includes('patrol') || e.data.ai.doctrine === 'official'))
+        .filter(e => Math.hypot(e.pos.x - caster.pos.x, e.pos.z - caster.pos.z) <= 900).length,
+      cooled: source.getSystem('fields').thermalPointCooled(mouth),
+    }));
     assert.equal(owner.sever(key, 'cask_port').ok, true);
     advance(source, () => !!owner._find(key, 'cask_port'), 5);
     let cask = owner._find(key, 'cask_port'); assert.equal(cask.data.authoredPayloadAssetId, 'SF_PROP_KILNBACK_CASK');
     assert.equal(caster.mass + cask.mass, 180); assert.equal(caster.mass, 165);
     const profile = resolveFlightProfile(caster, state);
-    assert.equal(profile.maxSpeed, 45); assert.equal(profile.maxYawRate, .55);
+    assert.equal(profile.maxSpeed, 45, JSON.stringify({ flightModelSpeed: caster.flightModel?.maxSpeed,
+      derivedSpeed: caster.data?.derived?.flightModel?.maxSpeed, mass: caster.mass,
+      bodyRevision: caster.physicsBody?.revision, ownerRevision: row.bodyRevision }));
+    assert.equal(profile.maxYawRate, .55);
     assert.ok(Math.abs(profile.mainAccel * profile.mass - 3240) < 1e-8);
     const kernel = getCombatKernel(owner.ctx), rope = kernel.attachments.create({ defId: 'tether_standard',
       ownerId: player.id, targetId: cask.id, sourceWorld: player.pos, targetWorld: cask.pos });

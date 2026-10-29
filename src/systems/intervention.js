@@ -95,7 +95,7 @@ export const intervention = {
       this._logPending(p, sectorId, value, cause);
       return;
     }
-    this._spawnSite({
+    const spawned = this._spawnSite({
       kind: p.kind || 'asset',
       value,
       sectorId: sectorId || currentSector,
@@ -105,6 +105,10 @@ export const intervention = {
       shipDefId: p.shipDefId || null,
       assetId: p.id || null,
     });
+    // A full entity budget can refuse the wreck at the exact moment of loss. Keep that
+    // recoverable site in the same bounded arrival queue used for cross-sector losses rather
+    // than publishing an active record with no salvage body (which closes on the next update).
+    if (!spawned && sectorId) this._logPending(p, sectorId, value, cause);
   },
 
   // A loss in another sector is a logged site, not a teleporting wreck. It spawns when
@@ -190,13 +194,6 @@ export const intervention = {
     if (!player || !this.helpers || !this.helpers.spawnEntity) return null;
     const recId = job.id || this._nextId++;
 
-    // Cap concurrent interventions: drop the oldest if at cap (older wrecks are likely gone anyway).
-    const list = state.interventions;
-    while (list.length >= MAX_ACTIVE) {
-      const old = list.shift();
-      // leave the wreck in the world — just stop tracking it as an active intervention
-    }
-
     const ang = this._rng() * Math.PI * 2;
     const dist = 280 + this._rng() * 220;
     const pos = { x: player.pos.x + Math.cos(ang) * dist, z: player.pos.z + Math.sin(ang) * dist };
@@ -218,6 +215,12 @@ export const intervention = {
         interventionCause: job.cause,
       },
     });
+    if (!wreck || wreck.id == null) return null;
+
+    // Cap concurrent interventions only after the new salvage body exists, so a refused spawn
+    // cannot evict an older, still-recoverable site from the tracking ledger.
+    const list = state.interventions;
+    while (list.length >= MAX_ACTIVE) list.shift();
 
     const rec = {
       id: recId,

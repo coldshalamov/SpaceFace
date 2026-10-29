@@ -117,6 +117,32 @@ test('claim offer is gated on real tow history, proximity, and a parked tug', ()
   assert.equal(offers(bus, 'longBerth:claimOffer').at(-1).visible, false);
 });
 
+test('a stale claim intent rechecks player range and tug speed', () => {
+  const state = makeState();
+  const { bus } = wire(state);
+  bus.emit('tether:latched', { targetId: 7 });
+  bus.emit('longBerth:claim', {});
+  assert.equal(state.longBerth.claimed, true, 'a current eligible claim still succeeds');
+
+  const away = makeState();
+  const stale = wire(away);
+  stale.bus.emit('tether:latched', { targetId: 7 });
+  scan(stale.sys, away);
+  assert.equal(offers(stale.bus, 'longBerth:claimOffer').at(-1).visible, true);
+  away.entities.get('player').pos = { x: 4000, z: 4000 };
+  stale.bus.emit('longBerth:claim', {});
+  assert.equal(away.longBerth?.claimed, false, 'the player must still be beside the tug');
+
+  const moving = makeState();
+  const movingWire = wire(moving);
+  movingWire.bus.emit('tether:latched', { targetId: 7 });
+  scan(movingWire.sys, moving);
+  assert.equal(offers(movingWire.bus, 'longBerth:claimOffer').at(-1).visible, true);
+  moving.entities.get(7).vel = { x: 25, z: 0 };
+  movingWire.bus.emit('longBerth:claim', {});
+  assert.equal(moving.longBerth?.claimed, false, 'the tug must still be parked');
+});
+
 test('claim mints the durable slice and registers the home berth station record', () => {
   const state = makeState();
   const { bus, sys } = wire(state);

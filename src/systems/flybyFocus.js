@@ -212,7 +212,7 @@ export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
   let bestMass = -Infinity;
   for (const ent of list || []) {
     if (!isFocusEligibleShip(state, ent, player)) continue;
-    if (cooling && cooling(ent.id)) continue;
+    if (cooling && cooling(ent.id, ent)) continue;
     const dx = ent.pos.x - px;
     const dz = ent.pos.z - pz;
     const distance = Math.hypot(dx, dz);
@@ -291,7 +291,8 @@ export const flybyFocus = {
     this.bus = ctx.bus;
     this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
     this._unsubs = [];
-    // Per-target cooldown expiries, keyed by stable entity id. Deliberately NOT on
+    // Per-target-life cooldown expiries, keyed by entity id and bound to its actual occupant.
+    // A recycled id is a new threat and must not inherit the old hull's cooldown. Deliberately NOT on
     // state.player.flybyFocus: that object is persisted, and every event that would restore or
     // replace a save (`save:loaded`, `game:started`, death, dock) already clears the cooldown
     // through _finish(resetCooldown). Persisting it would add a save-schema path whose only legal
@@ -299,7 +300,11 @@ export const flybyFocus = {
     // by state.simTime, and rebuilt from empty on every init, which is where replays begin.
     this._targetCooldowns = new Map();
     this._cooldownNow = 0;
-    this._isTargetCoolingDown = (id) => this._cooldownNow < (this._targetCooldowns.get(id) || 0);
+    this._isTargetCoolingDown = (id, entity) => {
+      const cooldown = this._targetCooldowns.get(id);
+      return !!cooldown && cooldown.entity === entity
+        && cooldown.generation === entity?.occupantGeneration && this._cooldownNow < cooldown.until;
+    };
     this._pickQuiet = null;
     this._pickWakeSeq = 0;
     ensureFocus(this.state);
@@ -376,8 +381,8 @@ export const flybyFocus = {
   _expireTargetCooldowns(now) {
     const cooldowns = this._targetCooldowns;
     if (!cooldowns || !cooldowns.size) return;
-    for (const [id, until] of cooldowns) {
-      if (!(until > now)) cooldowns.delete(id);
+    for (const [id, cooldown] of cooldowns) {
+      if (!(cooldown.until > now)) cooldowns.delete(id);
     }
   },
 
@@ -490,7 +495,11 @@ export const flybyFocus = {
     focus.startedAt = now;
     focus.until = now + FOCUS_DURATION_S;
     focus.cooldownUntil = now + COOLDOWN_S;
-    if (this._targetCooldowns) this._targetCooldowns.set(pick.id, now + TARGET_COOLDOWN_S);
+    if (this._targetCooldowns) {
+      const entity = st.entities.get(pick.id);
+      this._targetCooldowns.set(pick.id, { entity, generation: entity?.occupantGeneration,
+        until: now + TARGET_COOLDOWN_S });
+    }
     focus.targetId = pick.id;
     focus.zoom = 0.35;
     if (this.timeEffects) {

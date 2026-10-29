@@ -23,13 +23,16 @@ export const KILNBACK_ENEMY = Object.freeze({
   behavior: 'finite furnace tug; committed heat lanes, vulnerable coolant casks and a long vent window',
   loot: { creditsRange: [70, 130], drops: [] },
 });
+// The authored roster hull has a generic 92 WU/s base. Once Kilnback's finite
+// compound body is installed, its furnace-specific helm stays at this slower cap.
+export const KILNBACK_FLIGHT_MAX_SPEED = 45;
 // The furnace retains the same engine/helm when a coolant part leaves; native force/torque
 // remain bounded while the lighter compound responds through its actual mass and inertia.
 export function kilnbackFlightModel(body, base = {}) {
   const massScale = KILNBACK_ENEMY.mass / body.mass, inertiaScale = 15425 / body.inertiaY;
   return { ...base, flightClass: 'hauler', mass: body.mass, inertia: body.inertiaY,
     mainAccel: KILNBACK_ENEMY.accel * massScale, reverseAccel: 7.2 * massScale,
-    strafeAccel: 9 * massScale, maxSpeed: KILNBACK_ENEMY.maxSpeed,
+    strafeAccel: 9 * massScale, maxSpeed: KILNBACK_FLIGHT_MAX_SPEED,
     maxYawRate: KILNBACK_ENEMY.turnRate, angularAccel: 1.65 * inertiaScale,
     angularBrake: 2.75 * inertiaScale, normalMaxSpeedMult: 1, boostMult: 1, boostMaxSpeedMult: 1 };
 }

@@ -147,7 +147,7 @@ function runtimeFor(contacts, options = {}) {
   const target = hostile(2);
   const distractor = {
     id: 3, type: 'asteroid', team: null, alive: true,
-    pos: { x: 30, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
+    pos: { x: 30, z: 30 }, vel: { x: 0, z: 0 }, radius: 10, mass: 300, data: {},
   };
   const f = runtimeFor([target, distractor], { targetId: distractor.id });
   const starts = [];
@@ -208,7 +208,7 @@ function runtimeFor(contacts, options = {}) {
   const target = hostile(20, { pos: { x: 118, z: 0 } });
   const clutter = {
     id: 21, type: 'asteroid', team: null, alive: true,
-    pos: { x: 24, z: 0 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
+    pos: { x: 24, z: 30 }, vel: { x: 0, z: 0 }, radius: 11, mass: 300, data: {},
   };
   const f = runtimeFor([target, clutter], { targetId: clutter.id });
   f.system.update(DT, f.state);

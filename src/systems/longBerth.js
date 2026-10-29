@@ -147,10 +147,14 @@ export const longBerth = {
     return Math.hypot(v.x || 0, v.z || 0) <= TOW_SPEED_EPS;
   },
 
+  _claimEligible(tug, lb = ensureSlice(this.state)) {
+    const wrid = tug?.data?.worldRecordId;
+    const towed = tug?.data?.berthTowedOnce === true || (id32(wrid) && lb.towedIds.includes(wrid));
+    return !!towed && this._playerNear(tug.pos, BERTH_CLAIM_RANGE_WU) && this._tugParked(tug);
+  },
+
   _maybeOfferClaim(tug, lb) {
-    const eligible = !!(tug.data && tug.data.berthTowedOnce) || lb.towedIds.includes(
-      tug.data && tug.data.worldRecordId);
-    const visible = eligible && this._playerNear(tug.pos, BERTH_CLAIM_RANGE_WU) && this._tugParked(tug);
+    const visible = this._claimEligible(tug, lb);
     // The UI adapter owns the card; the offer is presence-gated every scan so a stale card can
     // never claim from far away.
     this.bus.emit('longBerth:claimOffer', { visible });
@@ -159,7 +163,13 @@ export const longBerth = {
   _tryClaim() {
     const lb = ensureSlice(this.state);
     const tug = this._findTug();
-    if (!tug || lb.claimed) return;
+    // The UI offer is only a snapshot. Recheck tow history, proximity and speed
+    // when its intent arrives so moving away or towing the tug again cannot claim
+    // against a stale card.
+    if (!tug || lb.claimed || !this._claimEligible(tug, lb)) {
+      if (tug && !lb.claimed) this._maybeOfferClaim(tug, lb);
+      return;
+    }
     lb.claimed = true;
     lb.stage = 0;
     lb.tugWorldRecordId = tug.data && tug.data.worldRecordId || null;

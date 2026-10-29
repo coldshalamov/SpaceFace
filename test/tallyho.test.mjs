@@ -90,6 +90,26 @@ test('spectators join the rail at rate, cap at three, seats deterministic', () =
   assert.ok(Math.abs(d0 - (TALLYHO.crowdRadius + TALLYHO.spectatorRingOffset)) < 1e-6);
 });
 
+test('double ratings advance the rail by their scored value and keep threshold remainder', () => {
+  const { bus, state } = fixture();
+  bus.emit('entity:killed', kill(501)); // one point
+  state.simTime = 108;
+  bus.emit('entity:killed', kill(502)); // fresh streak: one point
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.tallyhoSpectator).length, 0);
+
+  state.simTime = 112;
+  bus.emit('entity:killed', kill(503)); // double brings the running total to four
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.tallyhoSpectator).length, 1,
+    'a double counts twice, so the rail arrives after three rated kills');
+  state.simTime = 130;
+  bus.emit('entity:killed', kill(504));
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.tallyhoSpectator).length, 1);
+  state.simTime = 140;
+  bus.emit('entity:killed', kill(505));
+  assert.equal(state.entityList.filter((e) => e.alive && e.data?.tallyhoSpectator).length, 2,
+    'the carried point combines with two later singles to reach the next threshold');
+});
+
 test('player killing the board or a spectator does not rate', () => {
   const { bus, popups, state } = fixture();
   const board = state.entityList.find((e) => e.data?.tallyho);

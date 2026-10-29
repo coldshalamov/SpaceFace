@@ -420,10 +420,16 @@ export const shipjack = {
       spec.homeSectorId=row.sectorId;spec.data.homeSectorId=row.sectorId;spec.data.sectorId=row.sectorId;
       if(row.disabled&&row.crew==='evacuated'){spec.data.ai=null;spec.data.intent=null;spec.shieldRegenRate=0;}
       spec.hull*=row.condition;spec.shield=row.disabled?0:spec.shield;spec.vel={x:row.disabled?2:12,z:row.disabled?1:0};
-      const e=this.helpers.spawnEntity(spec);
-      this.helpers.spawnBudget?.bindEntity(e.id,budgetId);
+      let e=null;
+      try { e=this.helpers.spawnEntity(spec); }
+      catch { this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue; }
+      if(!e||(this.helpers.spawnBudget&&!this.helpers.spawnBudget.bindEntity(e.id,budgetId))){
+        if(e)this.helpers.removeEntity?.(e.id);
+        this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue;
+      }
       const v=this.admit(e,{origin:row.id,name:row.name,ownerId:row.ownerId,profile:PROFILE[row.profile] || 'civilian',crew:row.crew,legalCategory:row.legalCategory==='salvage'?'unregistered':row.legalCategory});
-      if(!v)continue;v.materializationOwner='shipjack';v.salvageEligible=row.legalCategory==='salvage';v.returnReward=row.returnReward;v.recoveryAuthorized=['recovery','warrant','salvage'].includes(row.legalCategory);
+      if(!v){this.helpers.removeEntity?.(e.id);this.helpers.spawnBudget?.release(budgetId);this._pendingEntry=true;continue;}
+      v.materializationOwner='shipjack';v.salvageEligible=row.legalCategory==='salvage';v.returnReward=row.returnReward;v.recoveryAuthorized=['recovery','warrant','salvage'].includes(row.legalCategory);
       sj.encounters[row.id]={admitted:true,vesselId:v.vesselId,outcome:'open'};
       if(row.disabled)this.helpers.disableShipjackSubsystem?.({entityId:e.id,subsystemId:'subsystem_drive'});
       this.bus.emit('shipjack:opportunity',{vesselId:v.vesselId,encounterId:row.id,entityId:e.id,stationId:row.stationId,defId:row.defId});
@@ -432,8 +438,14 @@ export const shipjack = {
         if(!this.helpers.spawnBudget||this.helpers.spawnBudget.request(1,escortBudget)>0){
           const escort=makeEnemySpawnSpec('patrol_lawman',2,{x:pos.x+110,z:pos.z-80},{factionId:row.factionId,spawnContext:'black_flag_escort'});
           escort.data.name='Sera Holt · recovery escort';
-          const guard=this.helpers.spawnEntity(escort);this.helpers.spawnBudget?.bindEntity(guard.id,escortBudget);
-          v.escortEntityId=guard.id;
+          let guard=null;
+          try { guard=this.helpers.spawnEntity(escort); } catch { /* the optional escort can be retried with its encounter */ }
+          if(guard&&(!this.helpers.spawnBudget||this.helpers.spawnBudget.bindEntity(guard.id,escortBudget))){
+            v.escortEntityId=guard.id;
+          }else{
+            if(guard)this.helpers.removeEntity?.(guard.id);
+            this.helpers.spawnBudget?.release(escortBudget);
+          }
         }
       }
       this.say(row.intro);this.dirty();
@@ -449,8 +461,13 @@ export const shipjack = {
     Object.assign(spec,{vel:vec(v.location.vel),angVel:v.location.angVel,hull:b.hull ?? spec.hull*v.condition.hull,armorHp:b.armorHp ?? spec.armorHp,shield:b.shield ?? 0,cap:b.cap ?? spec.cap});
     Object.assign(spec.data,{vesselId:v.vesselId,shipjackGeneration:v.generation,persistenceOwner:'shipjack',shipjackParked:v.custodian==='player',name:v.name,shipjackUncrewed:v.crewSafe || v.crew==='evacuated'});spec.flags={...spec.flags,persistent:true};
     if(v.location.sectorId!=null){spec.homeSectorId=v.location.sectorId;spec.data.homeSectorId=v.location.sectorId;spec.data.sectorId=v.location.sectorId;}
-    const e=this.helpers.spawnEntity(spec);v.location.entityId=e.id;v.location.kind='field';
+    let e=null;
+    try { e=this.helpers.spawnEntity(spec); }
+    catch { this._pendingEntry=true;return null; }
+    if(!e){this._pendingEntry=true;return null;}
+    v.location.entityId=e.id;v.location.kind='field';
     if(b.subsystems)this.helpers.restoreShipjackSubsystems?.({entityId:e.id,subsystems:b.subsystems});
+    return e;
   },
   berthAt(stationId){
     const station=this.stationEntity(stationId),own=peekShipjack(this.state);if(!station||!isBlackFlagAdventure(this.state))return;

@@ -90,6 +90,25 @@ test('a match pays a weighed fragment and steps the ladder', () => {
   assert.match(says(popups, 'tare_next_0')[0].text, /MASS: 45\./);
 });
 
+test('a refused fragment mint keeps the matching mass request open', () => {
+  const { state, helpers, sys } = fixture();
+  const rock = onDeck(521, 15);
+  state.entityList.push(rock);
+  const spawn = helpers.spawnEntity;
+  helpers.spawnEntity = () => null;
+
+  sys.update(0.5, state);
+  assert.equal(state.story.flags.tare_step, undefined);
+  assert.equal(state.story.flags.tare_paid, undefined);
+  assert.equal(state.entityList.filter((e) => e.data?.tareFragment).length, 0);
+
+  helpers.spawnEntity = spawn;
+  sys.update(0.5, state);
+  assert.equal(state.story.flags.tare_step, 1);
+  assert.equal(state.story.flags.tare_paid, 1);
+  assert.equal(state.entityList.filter((e) => e.data?.tareFragment).length, 1);
+});
+
 test('an off-target body reads INCORRECT and pays nothing', () => {
   const { state, popups, sys } = fixture();
   state.entityList.push(onDeck(53, 80)); // target 15 — far outside tolerance
