@@ -253,11 +253,15 @@ for (const part of manifest.parts || []) {
     triangleDetail);
   diagnose(`${label}: extras part id`, extras.partId === part.id, `extras=${extras.partId}`);
   const metadataCategory = String(extras.category || '').toLowerCase();
+  const legacyCategoryFromManifestPath = !metadataCategory && !extras.slot
+    && extras.assetId === part.id && manifestPartPathMatchesCategory(part);
   const categoryMatches = extras.category === part.category
     || metadataCategory === String(part.category || '').toLowerCase()
     || (part.category === 'places' && part.id?.startsWith('place_works_') && metadataCategory === 'works')
-    || (!metadataCategory && categoryForSlot(extras.slot) === part.category);
-  check(`${label}: extras category`, categoryMatches, `extras=${extras.category || extras.slot}`);
+    || (!metadataCategory && categoryForSlot(extras.slot) === part.category)
+    || legacyCategoryFromManifestPath;
+  check(`${label}: extras category`, categoryMatches,
+    `extras=${extras.category || extras.slot || extras.assetId || 'none'} manifest=${part.category}/${part.file}`);
   // These flat fields are legacy manifest mirrors. The runtime contract is the nested
   // spacefaceAsset metadata; keep the mirrors observable without making them universal
   // loadability requirements. Family-specific receipt checks still own any required mirror.
@@ -566,10 +570,9 @@ function visitNode(gltf, binary, nodeIndex, parentMatrix, outMin, outMax, {
     for (const primitive of mesh?.primitives || []) {
       const accessor = gltf.accessors?.[primitive.attributes?.POSITION];
       const accessorBounds = decodedAccessorBounds(gltf, accessor);
+      if (expandByAccessorVertices(gltf, binary, primitive.attributes.POSITION, world, outMin, outMax)) continue;
       if (!vector3(accessorBounds?.min) || !vector3(accessorBounds?.max)) continue;
-      if (!expandByAccessorVertices(gltf, binary, primitive.attributes.POSITION, world, outMin, outMax)) {
-        expandByAccessorBounds(accessorBounds.min, accessorBounds.max, world, outMin, outMax);
-      }
+      expandByAccessorBounds(accessorBounds.min, accessorBounds.max, world, outMin, outMax);
     }
   }
   for (const child of node.children || []) {

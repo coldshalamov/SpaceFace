@@ -72,8 +72,9 @@ export const MAP_PROXY_TRIANGLE_CAP = 256;
 
 /**
  * Decimation target for a proxy derived from a gameplay GLB, as a fraction of the source LOD0.
- * A proxy is a silhouette read at chart range; an eighth of the source is generous for that and
- * still lands every shipped `places/` asset comfortably under MAP_PROXY_TRIANGLE_CAP.
+ * A proxy is a silhouette read at chart range; an eighth of the source keeps even small authored
+ * props cheaper than the object they represent. MAP_PROXY_TRIANGLE_CAP is an upper ceiling for
+ * larger sources, not a minimum source-size requirement.
  */
 export const GLB_PROXY_DECIMATION = 1 / 8;
 

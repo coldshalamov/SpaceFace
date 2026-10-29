@@ -16,7 +16,7 @@ import {
   ATLAS_SCHEMA,
   DISCOVERY_TIER,
 } from '../src/core/atlasIndex.js';
-import { checkAtlasIntegrity } from '../scripts/check-atlas-integrity.mjs';
+import { checkAtlasIntegrity, withinAtlasRoundTripPrecision } from '../scripts/check-atlas-integrity.mjs';
 import { SECTORS } from '../src/data/sectors.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import {
@@ -132,6 +132,28 @@ test('round-trip holds for a nonzero-origin sector', () => {
   // The sector node itself must land exactly on the authored origin, not on (0,0).
   const sectorNode = atlas.getNode(NONZERO_ORIGIN_SECTOR);
   assert.deepStrictEqual({ x: sectorNode.globalPos.x, z: sectorNode.globalPos.z }, { x: origin.x, z: origin.z });
+});
+
+test('local/global atlas round-trip accepts only double-precision representation error', () => {
+  const samples = [
+    {
+      local: { x: 1400.348799000276, z: -728.2497319263825 },
+      global: { x: -39559.651200999724, z: 44327.750268073614 },
+      back: { x: 1400.348799000276, z: -728.2497319263857 },
+      origin: { x: -40960, z: 45056 },
+    },
+    {
+      local: { x: 1254.2907008894967, z: 468.4198236582945 },
+      global: { x: -23321.709299110502, z: 49620.419823658296 },
+      back: { x: 1254.290700889498, z: 468.4198236582961 },
+      origin: { x: -24576, z: 49152 },
+    },
+  ];
+  for (const sample of samples) assert.equal(withinAtlasRoundTripPrecision(sample), true);
+  assert.equal(withinAtlasRoundTripPrecision({
+    ...samples[0],
+    back: { ...samples[0].back, x: samples[0].back.x + 1e-6 },
+  }), false, 'a spatial drift of one microunit must remain visible to the integrity gate');
 });
 
 test('an anchorless place gets a null position, never a fabricated origin', () => {

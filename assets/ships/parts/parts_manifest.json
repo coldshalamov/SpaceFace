@@ -12052,6 +12052,7 @@
     {
       "id": "wholeship_thimble_recorder",
       "category": "wholeships",
+      "priority": "P1",
       "file": "wholeships/thimble_recorder.glb",
       "bytes": 370008,
       "tris": 2640,
@@ -12060,7 +12061,24 @@
         "SOCKET_Camera_Focus",
         "SOCKET_Tow_Eye"
       ],
-      "mount": "origin"
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -1,
+          -0.6000000238418579,
+          -0.675000011920929
+        ],
+        "max": [
+          1.5250000953674316,
+          0.6875,
+          0.7055000066757202
+        ],
+        "dimensionsM": [
+          2.5250000953674316,
+          1.287500023841858,
+          1.3805000185966492
+        ]
+      }
     },
     {
       "id": "place_last_shift_fairlead",
@@ -12097,6 +12115,393 @@
           4.099999904632568
         ]
       }
+    },
+    {
+      "id": "place_aftermath_wreck_liner_bow_authored_down",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_aftermath_wreck_liner_bow_authored_down.glb",
+      "mount": "origin",
+      "bytes": 1447032,
+      "tris": 16878,
+      "bounds": {
+        "min": [
+          -34.501679916120004,
+          -19.849414953558426,
+          -34.05366897583008
+        ],
+        "max": [
+          34.50106490611899,
+          19.847277051489264,
+          34.05366897583008
+        ],
+        "dimensionsM": [
+          69.002744822239,
+          39.696692005047694,
+          68.10733795166016
+        ]
+      },
+      "sockets": [
+        "SOCKET_BlackBox",
+        "SOCKET_Salvage_Bridge"
+      ]
+    },
+    {
+      "id": "place_comms_array",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_comms_array.glb",
+      "mount": "origin",
+      "bytes": 28048,
+      "tris": 908,
+      "bounds": {
+        "min": [
+          -2.9012929830679175,
+          -0.00006409939016394084,
+          -3
+        ],
+        "max": [
+          4.485003503153239,
+          7.770710387875213,
+          3.600063956820336
+        ],
+        "dimensionsM": [
+          7.386296486221156,
+          7.770774487265377,
+          6.600063956820335
+        ]
+      },
+      "sockets": [
+        "SOCKET_Dish_Axis"
+      ]
+    },
+    {
+      "id": "place_customs_pylon",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_customs_pylon.glb",
+      "mount": "origin",
+      "bytes": 15412,
+      "tris": 208,
+      "bounds": {
+        "min": [
+          -1.7000000476837158,
+          -0.00006712582068646444,
+          -1.7000000476837158
+        ],
+        "max": [
+          1.7000000476837158,
+          14.15999960899353,
+          1.7000000476837158
+        ],
+        "dimensionsM": [
+          3.4000000953674316,
+          14.160066734814217,
+          3.4000000953674316
+        ]
+      },
+      "sockets": [
+        "SOCKET_Scan_Emitter"
+      ]
+    },
+    {
+      "id": "place_drill_platform_cold",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_drill_platform_cold.glb",
+      "mount": "origin",
+      "bytes": 22572,
+      "tris": 1688,
+      "bounds": {
+        "min": [
+          -7.300000190734863,
+          -6.199966525007008,
+          -7.300000190734863
+        ],
+        "max": [
+          7.300000190734863,
+          3.9450037480564824,
+          7.300000190734863
+        ],
+        "dimensionsM": [
+          14.600000381469727,
+          10.14497027306349,
+          14.600000381469727
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_haumea_fracture_mouth",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_haumea_fracture_mouth.glb",
+      "mount": "origin",
+      "bytes": 3912,
+      "tris": 36,
+      "sockets": [],
+      "bounds": {
+        "min": [
+          -1.0399999618530273,
+          -0.12999999523162842,
+          -0.8500000238418579
+        ],
+        "max": [
+          1.0399999618530273,
+          0.1899999976158142,
+          0.8500000238418579
+        ],
+        "dimensionsM": [
+          2.0799999237060547,
+          0.3199999928474426,
+          1.7000000476837158
+        ]
+      }
+    },
+    {
+      "id": "place_hush_gap",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_hush_gap.glb",
+      "mount": "origin",
+      "bytes": 20996,
+      "tris": 256,
+      "bounds": {
+        "min": [
+          -1,
+          -0.05000000074505806,
+          -1
+        ],
+        "max": [
+          1,
+          0.05000000074505806,
+          1
+        ],
+        "dimensionsM": [
+          2,
+          0.10000000149011612,
+          2
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_hyperion_caved_shaft",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_hyperion_caved_shaft.glb",
+      "mount": "origin",
+      "bytes": 20440,
+      "tris": 260,
+      "bounds": {
+        "min": [
+          -1,
+          0,
+          -1
+        ],
+        "max": [
+          1.1299999952316284,
+          0.3199999928474426,
+          1
+        ],
+        "dimensionsM": [
+          2.1299999952316284,
+          0.3199999928474426,
+          2
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_io_reach_wreck",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_io_reach_wreck.glb",
+      "mount": "origin",
+      "bytes": 6880,
+      "tris": 72,
+      "bounds": {
+        "min": [
+          -0.7599999904632568,
+          0,
+          -1.3200000524520874
+        ],
+        "max": [
+          0.6000000238418579,
+          0.5600000023841858,
+          0.4000000059604645
+        ],
+        "dimensionsM": [
+          1.3600000143051147,
+          0.5600000023841858,
+          1.7200000584125519
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_nyx_false_gate",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_nyx_false_gate.glb",
+      "mount": "origin",
+      "bytes": 22796,
+      "tris": 292,
+      "bounds": {
+        "min": [
+          -1.090000033378601,
+          -0.09000000357627869,
+          -1
+        ],
+        "max": [
+          1.090000033378601,
+          0.09000000357627869,
+          1
+        ],
+        "dimensionsM": [
+          2.180000066757202,
+          0.18000000715255737,
+          2
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_orcus_signal_plinth",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_orcus_signal_plinth.glb",
+      "mount": "origin",
+      "bytes": 4356,
+      "tris": 36,
+      "bounds": {
+        "min": [
+          -0.41999998688697815,
+          0,
+          -0.3199999928474426
+        ],
+        "max": [
+          0.41999998688697815,
+          1.399999976158142,
+          0.3199999928474426
+        ],
+        "dimensionsM": [
+          0.8399999737739563,
+          1.399999976158142,
+          0.6399999856948853
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_phoebe_shard_sphere",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_phoebe_shard_sphere.glb",
+      "mount": "origin",
+      "bytes": 72188,
+      "tris": 720,
+      "sockets": [],
+      "bounds": {
+        "min": [
+          -1.0635032653808594,
+          -1.1100000143051147,
+          -1.0654118061065674
+        ],
+        "max": [
+          1.0849225521087646,
+          1.090000033378601,
+          1.0920060873031616
+        ],
+        "dimensionsM": [
+          2.148425817489624,
+          2.200000047683716,
+          2.157417893409729
+        ]
+      }
+    },
+    {
+      "id": "place_pirate_sensor_mast",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_pirate_sensor_mast.glb",
+      "mount": "origin",
+      "bytes": 31988,
+      "tris": 1120,
+      "bounds": {
+        "min": [
+          -2.9499998092651367,
+          -0.08554908405367012,
+          -3.7500000596046448
+        ],
+        "max": [
+          3.018879547715187,
+          11.524410132297817,
+          4.150000095367432
+        ],
+        "dimensionsM": [
+          5.968879356980324,
+          11.609959216351488,
+          7.900000154972076
+        ]
+      },
+      "sockets": [
+        "SOCKET_Listen"
+      ]
+    },
+    {
+      "id": "place_sedna_ringworld_arc",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_sedna_ringworld_arc.glb",
+      "mount": "origin",
+      "bytes": 66132,
+      "tris": 824,
+      "bounds": {
+        "min": [
+          -0.6006285548210144,
+          -0.03999999910593033,
+          -0.9999223351478577
+        ],
+        "max": [
+          1,
+          0.09000000357627869,
+          0.9999223351478577
+        ],
+        "dimensionsM": [
+          1.6006285548210144,
+          0.13000000268220901,
+          1.9998446702957153
+        ]
+      },
+      "sockets": []
+    },
+    {
+      "id": "place_triton_aperture_monolith",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_triton_aperture_monolith.glb",
+      "mount": "origin",
+      "bytes": 6092,
+      "tris": 60,
+      "bounds": {
+        "min": [
+          -0.14000000059604645,
+          0,
+          -0.5099999904632568
+        ],
+        "max": [
+          0.23999999463558197,
+          1.9299999475479126,
+          0.5099999904632568
+        ],
+        "dimensionsM": [
+          0.3799999952316284,
+          1.9299999475479126,
+          1.0199999809265137
+        ]
+      },
+      "sockets": []
     }
   ],
   "runtimeSlots": {

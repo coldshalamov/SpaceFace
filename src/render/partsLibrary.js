@@ -308,6 +308,8 @@ const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_mining.glb',
   'places/place_station_research.glb',
   'places/place_gate_jump_ring.glb',
+  'places/place_claim_outpost_base.glb',
+  'places/place_nyx_false_gate.glb',
 ]);
 // PQ-193.09: existing foundry trade-hub overlay identities. Garnish on the live hub, never a
 // replacement body and never a new faction system.
