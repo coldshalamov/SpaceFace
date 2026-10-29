@@ -251,7 +251,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 }
 /* …and the same reading column in a narrow, tall desktop window (≤650 × 801+): the board takes the left half, the
    dossier the right, and the dossier scrolls with ACCEPT at its head. The term label stands over its value. */
-@media (max-width:650px) and (min-height:601px) {
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
   ${D} .k-panel.sx-ct { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; height:100% !important; }
   ${D} .sx-ct__dossier { min-width:0 !important; }
   ${D} .sx-dossier { display:grid !important; grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; align-content:start !important;
@@ -281,7 +281,7 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 /* BAR in the same narrow, tall desktop window: the 360px rail left the reading a ~190px strip, so the contact's
    name set one syllable a line ("Capt / ain") and the reply and questions fell out of sight. The rail and the reading
    share the width, each contact's role stands under the name, and the portrait sits beside the name. */
-@media (max-width:650px) and (min-height:601px) {
+@media (max-width:650px) and (min-height:601px), (max-width:650px) and (max-height:600px) {
   ${D} .k-panel.sx-bar { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr) !important; column-gap:16px !important; }
   ${D} .sx-bar__rows .sx-bar-row { display:block !important; }
   ${D} .sx-bar-row__role { display:block !important; margin-top:1px !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; max-width:100% !important; }

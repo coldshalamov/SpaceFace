@@ -467,7 +467,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* a very short desktop window (844×390-class): the head alone ran ~196px of a 390px window in the
    live game (~260px with the bench's longer fixture) and left every tab a sliver — Shipworks showed
    no hull at all. Head heights below are .dp-frame__head measured live (?dev=screen:station). */
-@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   /* the berth scrolls: each tab keeps a 230px cell (960×540 has ~210) and the destination rail
      stays pinned to the bottom edge */
   ${D} { grid-template-rows:max-content minmax(230px, 1fr) max-content !important; overflow-x:hidden !important; overflow-y:auto !important;
@@ -583,7 +583,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and at 651-800 wide, where a four-band head leaves no working tab, the crown shares the right
    column with the title, tape and handoff. The existing 12px readings stay intact; the body is allowed
    to take the remaining height and its station-specific scroll hosts keep every tab reachable. */
-@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:800px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D} .sxb-berth.dp-frame__head { position:relative; grid-template-columns:minmax(0, 212px) minmax(0, 1fr) !important;
     grid-template-areas:"title crown" "tape crown" "handoff crown" !important; grid-template-rows:auto auto 1fr !important;
@@ -651,7 +651,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 }
 /* …below 700 wide, down to 651: the rail words and UNDOCK close up once more so LEDGER stays on, and
    CREDIT LINE OPEN wraps to two short lines instead of running into the HOLD dial */
-@media (min-width:651px) and (max-width:699px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:699px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 3px !important; }
   ${D} .sxb-ops .sx-tile__label { font-size:12px !important; }
@@ -665,7 +665,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* 700x460, 760x420 and 844x390: the full berth head left BUY/SELL and the quantity
    steps underneath the pinned foot. Keep its services in a scrollable head and give the
    Market the remaining height; the destination words and UNDOCK retain their own row. */
-@media (min-width:651px) and (max-width:1100px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:1100px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D}:has(.sx-mkt.orr-market) { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D}:has(.sx-mkt.orr-market) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
 }
@@ -676,7 +676,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
    stage also needs a real floor — seven one-line callout cards under the nameplate want
    ~150px that a 420px window cannot show at once — so its cell keeps 200px and the berth
    scrolls to the verb row below the fold, as the 651-1100 band above does at 230px. */
-@media (min-width:651px) and (max-width:800px) and (max-height:460px) {
+@media (min-width:651px) and (max-width:800px) and (max-height:460px), (max-width:650px) and (max-height:600px) {
   ${D} .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   /* the capped head fades out over its last 16px, so the dials' verbs read as scrolling on
      rather than sliced through by the tab's top edge */
@@ -684,6 +684,15 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important;
     mask-image:linear-gradient(180deg, #000 calc(100% - 16px), transparent) !important; }
   ${D}:has(.sx-sw) { grid-template-rows:max-content minmax(200px,1fr) max-content !important; }
+}
+/* …and a narrow, short desktop window (≤650 × ≤600, e.g. 580×540 or 568×320) takes that short head too: with no block of
+   its own the head kept its full desktop grid in a 500px frame, the tab body got a 70px column and the rail glosses stood
+   as seven columns of text. Five dials share ~290px here, so the labels close up and the credit line breaks between words. */
+@media (max-width:650px) and (max-height:600px) {
+  ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 184px) minmax(0, 1fr) !important; }
+  ${D} .sxb-berth .so-station-title .dp-title__name { font-size:22px !important; }
+  ${D} .sxb-vital__label { letter-spacing:.02em !important; font-stretch:100% !important; white-space:nowrap !important; overflow-wrap:normal !important; }
+  ${D} .sxb-vital--note .orr-vnum.is-word { letter-spacing:.04em !important; overflow-wrap:normal !important; }
 }
 /* A narrow, tall desktop window (≤650 wide, 801+ tall, e.g. 600×844): the head stacked five dials one under another
    with both ad boards below them, 607px of a 844px frame, so the tab body got 0px and the Missions dossier's ACCEPT
