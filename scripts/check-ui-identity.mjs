@@ -98,7 +98,9 @@ const checks = [
     path: 'src/ui/targetPanel.js',
     label: 'Target panel contact identity — faction, role, threat tier, level row',
     needs: [
-      'sf-target__identity',
+      'setText(elIdBits, bits)',
+      'targetPhysicalClassLabel',
+      'targetBuildBadgeLabel',
       'contactThreatTier',
       'contactStateWord',
       'isHostileToPlayer',

@@ -3780,7 +3780,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+          `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" data-why="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
@@ -3803,7 +3803,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const price = yard.price;
         const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
         return (
-          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+          `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" data-why="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(hullLabel)}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
@@ -4336,7 +4336,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
         : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
       const iconHtml = provMark
-        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" title="${escapeHtml(provMark)} rim">${equipmentIcon(d, 24)}</span>`
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" tabindex="0" role="img" aria-label="${escapeHtml(provMark)} rim" data-why="${escapeHtml(provMark)} rim">${equipmentIcon(d, 24)}</span>`
         : equipmentIcon(d, 24);
       return (
         `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
@@ -4408,7 +4408,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" data-why="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       const equippedIconHtml = equippedMark
-        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" title="${escapeHtml(equippedMark)} rim">${equipmentIcon(d, 24)}</span>`
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" tabindex="0" role="img" aria-label="${escapeHtml(equippedMark)} rim" data-why="${escapeHtml(equippedMark)} rim">${equipmentIcon(d, 24)}</span>`
         : equipmentIcon(d, 24);
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +

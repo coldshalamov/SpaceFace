@@ -512,7 +512,7 @@
     "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",
     "check:playable:saves": "node scripts/check-game-playable.mjs --electron --real-saves",
     "check:hud-j07": "node --test test/j07-hud-contract.test.mjs",
-    "check:ui-identity": "node scripts/check-ui-identity.mjs && node --test test/mobile-hud-lanes.test.mjs",
+    "check:ui-identity": "node scripts/check-ui-identity.mjs && node --test test/mobile-deck-instrument.test.mjs",
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf:spatial-cache && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity && node scripts/check-ui-budgets.mjs",
     "check:ui:budgets": "node scripts/check-ui-budgets.mjs",
     "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs && node --test test/bar-faction-greetings.test.mjs && npm run check:faction-registers",

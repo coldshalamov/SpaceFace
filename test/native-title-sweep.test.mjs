@@ -3,8 +3,7 @@
 // PACKET TITLE-SWEEP. Proves:
 //   • the ban regex matches real attribute writes and REJECTS the hyphenated false positive that
 //     inflated the packet's 66-count to a real 65 (data-career-title in missionLog.js);
-//   • every banned live file carries zero native title= writes; shipworks carries exactly its two
-//     pinned truncation shims (open layout debt, not a blessed pattern);
+//   • every converted live file carries zero native title= writes, including shipworks;
 //   • the converted wiring is present (data-why writers + keyboard seats), via the check module's
 //     own audit so the two can never drift;
 //   • KEYBOARD FOCUS reveals the converted whys through the REAL shared reveal
@@ -57,15 +56,15 @@ test('banned live files carry zero native titles in both forms', () => {
   }
 });
 
-test('shipworks carries exactly its two pinned truncation shims', () => {
+test('shipworks names and provenance use keyboard-reachable shared reasons', () => {
   const body = src('src/ui/station/screens/shipworks.js');
-  const total = [...body.matchAll(new RegExp(NATIVE_TITLE_RE.source, 'g'))].length;
-  assert.equal(total, Object.values(ALLOWLIST).flat().length,
-    'shipworks must match its ALLOWLIST entry count exactly — a change means the layout debt moved');
-  for (const shim of ALLOWLIST['src/ui/station/screens/shipworks.js']) {
-    assert.ok(body.includes(shim), `pinned shim drifted: ${shim}`);
+  assert.ok(body.includes('data-why="${escapeHtml(shipworksHullName(s.defId))}"'));
+  for (const mark of ['provMark', 'equippedMark']) {
+    assert.ok(body.includes(`tabindex="0" role="img" aria-label="${escapeHtmlPlaceholder(mark)} rim" data-why="${escapeHtmlPlaceholder(mark)} rim"`));
   }
 });
+
+function escapeHtmlPlaceholder(name) { return '${escapeHtml(' + name + ')}'; }
 
 test('the check module audit passes against the real tree (shared truth with the CLI check)', () => {
   const { failures } = auditNativeTitles();

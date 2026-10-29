@@ -56,6 +56,13 @@ test('only informational receipts compact in touch flight; critical copy and tou
   assert.match(MOBILE_CSS, /:is\(#toasts,#toasts \*\)\s*\{\s*pointer-events:none!important/);
 });
 
+test('mobile stylesheet comments do not swallow or corrupt following rules', () => {
+  const css = MOBILE_CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(css, /\/\*|\*\//, 'all comment delimiters are paired');
+  assert.match(css, /:root\[data-sf-mobile="1"\]\[data-sf-mobile-flight="1"\] #toasts \.sf-toast--info\s*\{/,
+    'the informational receipt rule remains a standalone selector after comments are removed');
+});
+
 test('flight receipts occupy their own touch-through lane in both orientations', () => {
   const lanes = MOBILE_CSS.slice(MOBILE_CSS.indexOf('/* Mobile flight lanes:'));
   assert.match(MOBILE_CSS, /#toasts \{[^}]*top:auto!important; bottom:calc\(max\(224px/,

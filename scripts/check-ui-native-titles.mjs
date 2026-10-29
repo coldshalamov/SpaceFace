@@ -9,11 +9,7 @@
 // The legacy station panel chain was retired in PQ-184.03. This check covers the live station
 // surfaces below; other menus retain their own accessibility contracts.
 //
-// ALLOWLIST (one file, two entries): shipworks rail rows keep a native title because the visible
-// ship name is ellipsized by design (station-workbench.css .sx-sw-row__name: nowrap + ellipsis).
-// That is a LAYOUT bug wearing a tooltip — recorded here as open debt, not blessed. The entries are
-// pinned by exact string: fix the truncation and this check goes red telling you to drop the shim
-// from ALLOWLIST, so the list cannot rot.
+// Shipworks names and equipment provenance now use the shared focusable reveal.
 //
 // Run: node scripts/check-ui-native-titles.mjs   (wired as npm run check:ui:native-titles)
 // Tests: test/native-title-sweep.test.mjs (regex unit proofs + keyboard-focus proof through the
@@ -64,6 +60,7 @@ export const BANNED_FILES = [
   'src/ui/station/stationApp.js',
   'src/ui/station/screens/market.js',
   'src/ui/station/screens/contracts.js',
+  'src/ui/station/screens/shipworks.js',
   'src/ui/screens/footprint.js',
   'src/ui/screens/automationPanel.js',
   'src/ui/screens/techTree.js',
@@ -71,13 +68,8 @@ export const BANNED_FILES = [
   'src/ui/screens/localmap.js',
 ];
 
-// The two pinned truncation shims in shipworks (see header). Exact strings, no wildcards.
-export const ALLOWLIST = {
-  'src/ui/station/screens/shipworks.js': [
-    'title="${escapeHtml(def.name || s.defId)}"',
-    'title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}"',
-  ],
-};
+// Retained export for the audit API; converted live surfaces have no exceptions.
+export const ALLOWLIST = {};
 
 // Named wiring for converted carriers: the data-why write AND its keyboard seat, pinned in source
 // like check-tier2-why pins its named set. `count` > 1 pins a repeated family of writers.
