@@ -1541,7 +1541,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         color: operational ? INK.ink0 : INK.ink2,
         name: `${partDef.role} · ${ownerName} ${partDef.name}`,
         status,
-        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
+        statusLine: `${status} · ${formatDistanceWU(infrastructure.distanceWU || 0)} route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
         playerVerb: verb,
         consequence,
         riskLine: risk,
@@ -6439,7 +6439,7 @@ _stepAnimation(now) {
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorName)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
-        <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) WU · Hdg ${headingBrg} · ${speed} u/s</span></div>
+        <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) u · Hdg ${headingBrg} · ${speed} u/s</span></div>
         ${careersInner}
       </div>
       <div class="gm-ins-section">

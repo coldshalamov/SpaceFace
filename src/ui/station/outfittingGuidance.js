@@ -449,7 +449,7 @@ export function statSnippet(def) {
     if (m.damageReductionPct) parts.push('-' + Math.round(m.damageReductionPct * 100) + '% dmg');
     if (m.ramDamageDealtMult) parts.push('+' + Math.round((m.ramDamageDealtMult - 1) * 100) + '% ram dmg');
     if (m.boostTopSpeedPct) parts.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
-    if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) parts.push(Math.round(m.magnetRange) + ' wu ore magnet');
+    if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) parts.push(Math.round(m.magnetRange) + ' u ore magnet');
     const masslineOutcome = masslineHeadOutcome(def);
     if (masslineOutcome) parts.push(masslineOutcome.replace(/^Massline\s+/i, ''));
     if (m.swingDrive) parts.push('dash swings around a taut line');
@@ -554,7 +554,7 @@ function engineeringDelta(metric) {
   const delta = Number(metric && metric.delta) || 0;
   const sign = delta > 0 ? '+' : '';
   if (metric.unit === 'pct') return sign + engineeringNumber(metric.pct, 1) + '%';
-  if (metric.unit === 'wu') return sign + String(Math.round(delta)) + ' wu';
+  if (metric.unit === 'wu') return sign + String(Math.round(delta)) + ' u';
   return sign + engineeringNumber(delta, 2);
 }
 

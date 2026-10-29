@@ -82,7 +82,7 @@ const el = (tag, cls, text) => {
 };
 
 // ------------------------------------------------------------------------------------ Radar Orrery
-export function createRadarOrrery({ shipId = 'ship_kestrel', rangeLabel = '4.0k wu' } = {}) {
+export function createRadarOrrery({ shipId = 'ship_kestrel', rangeLabel = '4.0k u' } = {}) {
   injectStyle();
   const root = el('div', 'orr-radar');
   const c = 140;
@@ -183,7 +183,7 @@ export function createObjectiveTape({ width = 640, field = 150 } = {}) {
   tapeWrap.style.position = 'relative';
   tapeWrap.append(s, marker);
   root.append(title, tapeWrap);
-  const distCounter = createCounter(distNum, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k wu` : `${Math.round(n)} wu`).toUpperCase() });
+  const distCounter = createCounter(distNum, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k u` : `${Math.round(n)} u`).toUpperCase() });
 
   let heading = 0;
   function drawTicks() {
@@ -258,7 +258,7 @@ export function createLockRing({ hostile = false } = {}) {
   meta.append(dist, detail);
   label.append(name, meta);
   root.appendChild(label);
-  const distCounter = createCounter(dist, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k wu` : `${Math.round(n)} wu`).toUpperCase() });
+  const distCounter = createCounter(dist, { format: (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k u` : `${Math.round(n)} u`).toUpperCase() });
   return {
     el: root,
     set({ x = 0, y = 0, name: n = '', detail: d = '', distance = 0, hull = 1, lead: leadAt = null } = {}) {

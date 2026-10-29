@@ -4178,7 +4178,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function moduleMetricsHtml(def, slot = null) {
     return moduleMetricRows(def, slot).map((row) => {
-      const suffix = row.label === 'RANGE' ? ' wu'
+      const suffix = row.label === 'RANGE' ? ' u'
         : row.label === 'MASS' ? ' t'
           : row.label === 'DRAW' ? ' pwr'
             : (row.label === 'CAP %' || row.label === 'HIDDEN %' || row.label === 'CLOAK %') ? '%' : '';

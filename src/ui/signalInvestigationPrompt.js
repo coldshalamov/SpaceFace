@@ -63,7 +63,7 @@ export function signalMetaText(record) {
   }
   const distance = Math.max(0, Math.round(Number(record.distance) || 0)).toLocaleString('en-US');
   const pass = Math.max(1, Math.round(Number(record.scanCount) || 1));
-  return `${signalStrengthWord(record.strength)} · ${distance} WU · PASS ${pass}`;
+  return `${signalStrengthWord(record.strength)} · ${distance} u · PASS ${pass}`;
 }
 
 // The Tethys completion hands its exact persisted Codex plate identity ({ sectorId, poiId }, the

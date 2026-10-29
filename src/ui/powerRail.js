@@ -61,7 +61,7 @@ import { injectPowerRailLayouts } from './orrery/power-railLayouts.js';
 // src/ui/orrery/power-railLayouts.js.
 injectPowerRailLayouts();
 import { armedOrdnanceCounts, readCloakState, resolveBombAction } from '../data/arsenalPresentation.js';
-import { LINE_BANK, staticVerbSentence } from '../data/arsenalWords.js';
+import { LINE_BANK, lineWords, pinWords, pullWords, shoveWords, staticVerbSentence } from '../data/arsenalWords.js';
 import { collectorRailSlot } from '../data/collectorKnot.js';
 import { collectorFitted } from '../systems/fields.js';
 
@@ -677,13 +677,47 @@ function capLabel(label) {
   return upper.slice(0, 3);
 }
 
+/**
+ * The socket's printed words — the plain-English verb the press fires, never the tool's code
+ * noun ("Draws in", not "well"; owner 2026-10-28). The band label above already names the
+ * power, so the socket says what the press DOES. Static verbs come from the same word bank
+ * the arsenal presentation reads; the bay's and the rig's live model records already name
+ * the next press, so here they are only rephrased verb-first ("throw Charge ×3").
+ */
+function socketVerb(slot, given) {
+  switch (slot.index) {
+    case POWER_SLOT.pull: return given.name || pullWords().verb;   // a fitted Collector Maw names itself
+    case POWER_SLOT.shove: return shoveWords().verb;
+    case POWER_SLOT.pin: return pinWords().verb;
+    case POWER_SLOT.bomb: {
+      const n = String(given.name || '');
+      if (!n) return slot.name;                                     // a model with no words keeps the power name
+      if (n === 'Bay') return 'Rack empty';
+      if (given.state !== 'ready' && given.state !== 'cooling') return n;  // empty/locked names its payload
+      if (given.callin) return `call in ${n}`;
+      if (given.charge) return `throw ${n}`;
+      return `drop ${n}`;
+    }
+    case POWER_SLOT.rig: {
+      const skim = given.glyph === 'skim';
+      const on = given.state === 'armed';
+      return skim ? (on ? 'Harvesting ore' : 'Harvest ore') : (on ? 'Clearing a path' : 'Clear a path');
+    }
+    case POWER_SLOT.line: return lineWords().verb;
+    default: return given.name || slot.name;
+  }
+}
+
 function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
   // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
   // under a borrowed key would advertise a power the press will not fire.
   const art = slot.answer != null ? '' : arsenalIcon(slot.glyph, 24) || fhGlyph(slot.glyph, 24);
-  const described = name
-    ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
+  // The spoken name keeps the power word the print dropped ("Pull · Draws in, key 1") so the
+  // socket does not read as a bare verb to a screen reader.
+  const spoken = slot.answer != null || name === slot.power ? name : `${slot.power} · ${name}`;
+  const described = spoken
+    ? `${spoken}${label ? `, key ${label}` : ''}, ${slot.state}`
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
     + ` data-live="${slot.live === true ? 'true' : 'false'}"`
@@ -725,7 +759,8 @@ export function createPowerRail(options = {}) {
       return {
         index: slot.index,
         band: slot.band,
-        name: given.name || slot.name,
+        power: slot.name,
+        name: socketVerb(slot, given),
         glyph: given.glyph || slot.glyph,
         badge: given.badge || '',
         description: (given.description || slot.description || '')

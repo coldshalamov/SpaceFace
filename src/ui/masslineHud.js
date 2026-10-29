@@ -46,6 +46,7 @@ import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massS
 import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
 import { announceStrokeGrade } from './stuntCallout.js';
 import { releaseReadReceipt } from './hudAttention.js';
+import { formatSpeed } from './units.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -2070,7 +2071,7 @@ export const masslineHud = {
       const anchorSpeed = Math.max(1, finite(ride.anchorSpeed));
       if (dom.rideFill) setStyle(dom.rideFill, 'transform', `scaleX(${clamp01(gained / anchorSpeed)})`);
       setAttr(dom.ridePill, 'aria-label',
-        `Riding the anchor — gained ${Math.round(gained)} of ${Math.round(finite(ride.anchorSpeed))} wu per second`);
+        `Riding the anchor — gained ${formatSpeed(gained)} of ${formatSpeed(finite(ride.anchorSpeed))}`);
     }
   },
 

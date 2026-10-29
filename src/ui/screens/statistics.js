@@ -114,7 +114,7 @@ function careerColumn(career) {
   hero.appendChild(el('p', 'orr-statistics__hero-label', 'Distance flown'));
   const numeral = el('p', 'orr-statistics__hero-n');
   numeral.appendChild(el('span', 'orr-statistics__hero-v', distance.toLocaleString('en-US')));
-  if (distance > 0) numeral.appendChild(el('span', 'orr-statistics__hero-u', 'wu'));
+  if (distance > 0) numeral.appendChild(el('span', 'orr-statistics__hero-u', 'u'));
   hero.appendChild(numeral);
   aside.appendChild(hero);
   aside.appendChild(el('div', 'orr-statistics__hero-rule'));

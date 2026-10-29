@@ -342,7 +342,7 @@ function shipDefFor(ctx, shipId) {
 export const STARTER_LINE_GLOSS = 'winch speed';
 
 function paintStarterStats(host, card, scale, others = []) {
-  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'wu/s', STARTER_LINE_GLOSS]];
+  const rows = [['Mass', 'massT', 't', ''], ['Thrust', 'thrust', '', ''], ['Line', 'lineWuPerS', 'u/s', STARTER_LINE_GLOSS]];
   host.textContent = '';
   const a0 = -110; const a1 = 110;
   const p = (a, r = 22) => [30 + r * Math.sin(a * Math.PI / 180), 30 - r * Math.cos(a * Math.PI / 180)];
@@ -804,7 +804,7 @@ export const newGameScreen = {
       const allCards = NEW_GAME_STARTERS.map((s) => starterAirCard(s));
       const ringStatsMix = (a, b, f) => {
         const ca = starterAirCard(a); const cb = starterAirCard(b || a);
-        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'wu/s']].map(([name, key, unit]) => {
+        return [['Mass', 'massT', 't'], ['Thrust', 'thrust', ''], ['Line', 'lineWuPerS', 'u/s']].map(([name, key, unit]) => {
           const value = (1 - f) * (Number(ca[key]) || 0) + f * (Number(cb[key]) || 0);
           return { name, unit, reading: value >= 1000 ? (value / 1000).toFixed(1) + 'k' : String(Math.round(value)),
             frac: value / scale[key], ghosts: allCards.map((o) => (Number(o[key]) || 0) / scale[key]),

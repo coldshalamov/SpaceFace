@@ -980,7 +980,7 @@ function subFromDerivedChip(chipId, derived, moduleDef = null) {
     case 'reel':
       return `x${formatMultiplier(derived.tetherReelRateMult)} reel`;
     case 'magnet':
-      return `${formatUnits(derived.magnetRange, ' wu')}`;
+      return `${formatUnits(derived.magnetRange, ' u')}`;
     case 'drone':
       return `${formatUnits(derived.droneBayCount)} bay`;
     case 'jump': {
@@ -1008,7 +1008,7 @@ function subFromDerivedChip(chipId, derived, moduleDef = null) {
       return `+${formatUnits(plus, '%')}`;
     }
     case 'radar':
-      return `${formatUnits(derived.radarRange, ' wu')}`;
+      return `${formatUnits(derived.radarRange, ' u')}`;
     case 'cargo':
       return `${formatUnits(derived.cargoCap, ' u')}`;
     default:

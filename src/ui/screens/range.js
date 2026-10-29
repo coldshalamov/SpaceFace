@@ -30,6 +30,7 @@ import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { drawTeachingOverlay, planTeachingOverlay, TEACHING_OVERLAY_SURFACES } from '../teachingOverlay.js';
 import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
   from '../kit/computedMaterial.js';
+import { formatDistance, formatSpeed } from '../units.js';
 import {
   RANGE_RAIL_ROWS,
   RAIL_INDEX_BY_ID,
@@ -798,7 +799,7 @@ function plusMinus(value, decimals = 1) {
 function preferredRangeText(row) {
   const range = row && row.aiDoctrine ? finite(row.aiDoctrine.preferredRange, 0) : 0;
   if (range <= 0) return '—';
-  return `${Math.round(range)} wu`;
+  return formatDistance(range);
 }
 
 function ensureRangeCleared(state) {
@@ -1528,7 +1529,7 @@ export function createSlipGapRung(options = {}) {
     ],
     gates: [{ x: gateX, centerZ: 0, tol: gapHalf, state: 'pending' }],
     bounds: { minX: -460, maxX: 480, minZ: -300, maxZ: 300 },
-    because: `The slot is ${Math.round(gapHalf * 2)} wu across and the hulls do not forgive paint.`,
+    because: `The slot is ${Math.round(gapHalf * 2)} units across and the hulls do not forgive paint.`,
   };
 }
 
@@ -1607,7 +1608,7 @@ export function createBrakeBesideLoadRung(options = {}) {
     hold: 0,
     holdArmed: false,
     bounds: { minX: -620, maxX: 560, minZ: -300, maxZ: 300 },
-    because: `The load drifts at ${loadSpeed} wu/s. Match it, don't chase it.`,
+    because: `The load drifts at ${formatSpeed(loadSpeed)}. Match it, don't chase it.`,
   };
 }
 
@@ -1653,7 +1654,7 @@ export function tickBrakeBesideLoadDrill(sim, stepS, { input = {}, advanceTime =
         verdict: {
           kind: 'clear',
           text: 'RULE CLEARED',
-          because: `You held station ${sim.holdS}s beside a load doing ${Math.round(Math.hypot(sim.load.vx, sim.load.vz))} wu/s.`,
+          because: `You held station ${sim.holdS}s beside a load doing ${formatSpeed(Math.hypot(sim.load.vx, sim.load.vz))}.`,
         },
         cue: 'confirm',
       };
@@ -1837,7 +1838,7 @@ export function createSeedParksDriftRung(options = {}) {
     parked: false,
     hitched: false,
     bounds: { minX: -560, maxX: 580, minZ: -320, maxZ: 320 },
-    because: `The drift does ${hulkSpeed} wu/s and the ring only catches what it lands near. Lead it.`,
+    because: `The drift does ${formatSpeed(hulkSpeed)} and the ring only catches what it lands near. Lead it.`,
   };
 }
 
@@ -1901,7 +1902,7 @@ export function tickSeedParksDriftDrill(sim, stepS, { input = {}, deploySeed = f
         verdict: {
           kind: 'clear',
           text: 'RULE CLEARED',
-          because: `The ring caught at ${Math.round(Math.hypot(sim.seed.x - hulk.x, sim.seed.z - hulk.z))} wu and the drift stopped ${Math.round(Math.max(0, sim.spillX - hulk.x))} wu short of the line.`,
+          because: `The ring caught at ${Math.round(Math.hypot(sim.seed.x - hulk.x, sim.seed.z - hulk.z))} units and the drift stopped ${Math.round(Math.max(0, sim.spillX - hulk.x))} units short of the line.`,
         },
         cue: 'confirm',
       };
@@ -1959,7 +1960,7 @@ export function createRepulsorBermRung(options = {}) {
     // plow's promise is mass OUT, and a body flung clear stays bowled wherever it lands.
     bermInner: def.radius * 0.78,
     bounds: { minX: -420, maxX: 480, minZ: -320, maxZ: 320 },
-    because: `The plow drops where the hull sits and shoves everything but you. ${Math.round(def.radius)} wu out is the berm.`,
+    because: `The plow drops where the hull sits and shoves everything but you. ${Math.round(def.radius)} units out is the berm.`,
   };
 }
 
@@ -2073,7 +2074,7 @@ export function createConeLaneRung(options = {}) {
     cone: { on: false, halfAngle: def.halfAngleRad, edgeSoft: def.edgeSoftRad, radius: def.radius, originGap: def.originGap, strength: def.strength },
     gates: [{ x: 420, centerZ: 0, tol: 130, state: 'pending' }],
     bounds: { minX: -540, maxX: 520, minZ: -300, maxZ: 300 },
-    because: `The wedge is ${Math.round(def.halfAngleRad * 180 / Math.PI)}° off the nose and ${Math.round(def.radius)} wu deep. What sits in it moves; what does not, does not.`,
+    because: `The wedge is ${Math.round(def.halfAngleRad * 180 / Math.PI)}° off the nose and ${Math.round(def.radius)} units deep. What sits in it moves; what does not, does not.`,
   };
 }
 
@@ -2207,7 +2208,7 @@ export function createSkimBandRung(options = {}) {
     collectNeed: 6,
     collected: 0,
     bounds: { minX: -440, maxX: 440, minZ: -340, maxZ: 340 },
-    because: `The sheet is ${Math.round(def.halfWidth * 2)} wu wide and ${Math.round(def.radius)} wu long. It harvests what it drapes, not what it points at.`,
+    because: `The sheet is ${Math.round(def.halfWidth * 2)} units wide and ${Math.round(def.radius)} units long. It harvests what it drapes, not what it points at.`,
   };
 }
 
@@ -3567,7 +3568,7 @@ export const rangeScreen = {
           { x: 290, centerZ: -165, tol: 92, state: 'pending' },
           { x: 560, centerZ: 105, tol: 92, state: 'pending' },
         ],
-        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${Math.max(1, extraRoom)} wu more room.`,
+        because: `Empty, this hull clears it. Loaded, it turns ${Math.max(1, slowerPct)}% slower and needs ${Math.max(1, extraRoom)} units more room.`,
         headingHint: `Loaded mass set to ${loadedMass} t (80% cargo cap).`,
       };
     }
@@ -3607,7 +3608,7 @@ export const rangeScreen = {
         },
         stopLine,
         startX: 0,
-        because: `From flat out this hull needs ${Math.round(stopLine)} wu to stop.`,
+        because: `From flat out this hull needs ${Math.round(stopLine)} units to stop.`,
       };
     }
 
@@ -3650,7 +3651,7 @@ export const rangeScreen = {
           exitSpeed: 0,
         },
         exitGate: { z: exitGateZ, centerX: 0, half: Math.max(60, lineLength * 0.26), crossed: false },
-        because: 'You entered at 0 wu/s and left at 0 wu/s. The rock gave you the corner.',
+        because: 'You entered at 0 u/s and left at 0 u/s. The rock gave you the corner.',
       };
     }
 
@@ -4143,7 +4144,7 @@ export const rangeScreen = {
       ['Class', drone.shipClass],
       ['Behavior', drone.behavior],
       ['Preferred range', drone.preferredRange],
-      ['Top speed', `${drone.maxSpeed} wu/s`],
+      ['Top speed', formatSpeed(drone.maxSpeed)],
       ['Turn rate', String(drone.turnRate)],
       ['Mass', `${Math.round(drone.mass)} t`],
       ['Weak arc', weakArc],
@@ -4437,7 +4438,7 @@ export const rangeScreen = {
         sim,
         'fail',
         'YOU RAN LONG',
-        `From flat out this hull needs ${Math.round(sim.stopLine)} wu. You used ${Math.round(Math.max(0, used))} wu.`,
+        `From flat out this hull needs ${Math.round(sim.stopLine)} units. You used ${Math.round(Math.max(0, used))} units.`,
       );
       return;
     }
@@ -4447,7 +4448,7 @@ export const rangeScreen = {
         sim,
         'clear',
         'RULE CLEARED',
-        `From flat out this hull needs ${Math.round(sim.stopLine)} wu. You used ${Math.round(Math.max(0, used))} wu.`,
+        `From flat out this hull needs ${Math.round(sim.stopLine)} units. You used ${Math.round(Math.max(0, used))} units.`,
       );
     }
   },
@@ -5073,7 +5074,7 @@ export const rangeScreen = {
     ctx2d.fillStyle = forced ? 'CanvasText' : ink.you;
     ctx2d.textAlign = 'left';
     ctx2d.textBaseline = 'bottom';
-    ctx2d.fillText(`${Math.round(nowStop)} wu`, Math.min(width - 80, now.x + 4), now.y + 15);
+    ctx2d.fillText(formatDistance(nowStop), Math.min(width - 80, now.x + 4), now.y + 15);
     ctx2d.restore();
   },
 

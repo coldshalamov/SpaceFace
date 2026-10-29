@@ -159,8 +159,9 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
     if (r.absent === true) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
-    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop"), not the band name.
-    if (pe && slot.index >= 1 && slot.index !== 6) entry.label = pe.label;
+    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
+    // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
+    if (pe && slot.index >= 1) entry.label = pe.label;
     if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));

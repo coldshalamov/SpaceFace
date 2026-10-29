@@ -83,7 +83,7 @@ export function speedGaugeMarkup() {
       Array.from({ length: 5 }, (_, i) => '<path fill-rule="evenodd" ' +
         (i ? 'display="none"' : 'd="' + SPEED_FIGURES['0'] + '"') + '/>').join('') +
     '</svg>' +
-    '<span class="sf-speed__unit" aria-hidden="true">WU/S</span>' +
+    '<span class="sf-speed__unit" aria-hidden="true">u/s</span>' +
     '<div class="sf-speed__track" aria-hidden="true">' +
       '<span class="sf-speed__bed"></span><span class="sf-speed__fill"></span>' +
       '<span class="sf-speed__over"></span>' +

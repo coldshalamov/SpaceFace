@@ -12,6 +12,7 @@ import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
+import { formatDistance } from './units.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -499,7 +500,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     let rangeTxt = '';
     if (player && player.pos && entity.pos) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-      rangeTxt = ' · ' + Math.round(d) + ' wu';
+      rangeTxt = ' · ' + formatDistance(d);
     }
     const hint = beamHint(entity, player);
     const status = presentationStatusWord(entity);

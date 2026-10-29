@@ -12,6 +12,7 @@ import {
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { commodityDisplayName } from '../commodityNames.js';
+import { formatDistance } from '../units.js';
 import { escapeHtml } from '../comms.js';
 import { icon } from '../station/icons.js';
 import { BINDINGS } from '../bindings.js';
@@ -999,14 +1000,14 @@ function convoyProgress(state, convoy) {
   return Math.max(0, Math.min(99, Math.round(((t - dep) / (arr - dep)) * 100)));
 }
 
-/** A survey candidate's range: live WU distance in-sector, else its sector short name. */
+/** A survey candidate's range: live distance in-sector, else its sector short name. */
 function candidateRange(state, site) {
   const cur = state && state.world && state.world.currentSectorId;
   const p = (state && state.player) || {};
   if (cur && site && site.sectorId === cur && Number.isFinite(p.x) && Number.isFinite(p.z)
     && site.pos && Number.isFinite(site.pos.x) && Number.isFinite(site.pos.z)) {
     const d = Math.hypot(site.pos.x - p.x, site.pos.z - p.z);
-    return d >= 1000 ? (d / 1000).toFixed(1) + 'k WU' : Math.round(d) + ' WU';
+    return formatDistance(d);
   }
   return String((site && site.sectorId) || '').replace(/^sector_/, '').replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());

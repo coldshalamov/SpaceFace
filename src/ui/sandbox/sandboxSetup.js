@@ -69,10 +69,10 @@ export const RECOVERY_SCENARIO_IDS = Object.freeze([
 // values intentionally use the existing camera controller's public setZoom seam, so the Sandbox
 // does not grow a second camera implementation.
 export const SANDBOX_CAMERA_CANDIDATES = Object.freeze([
-  Object.freeze({ id: 'current', label: 'Current framing (72 WU)', zoom: 72 }),
-  Object.freeze({ id: 'medium_wide', label: 'Medium-wide (96 WU)', zoom: 96 }),
-  Object.freeze({ id: 'wide_gameplay', label: 'Wide gameplay (120 WU)', zoom: 120 }),
-  Object.freeze({ id: 'physics_study', label: 'Physics-speed study (144 WU)', zoom: 144 }),
+  Object.freeze({ id: 'current', label: 'Current framing (72 u)', zoom: 72 }),
+  Object.freeze({ id: 'medium_wide', label: 'Medium-wide (96 u)', zoom: 96 }),
+  Object.freeze({ id: 'wide_gameplay', label: 'Wide gameplay (120 u)', zoom: 120 }),
+  Object.freeze({ id: 'physics_study', label: 'Physics-speed study (144 u)', zoom: 144 }),
 ]);
 
 export const SANDBOX_PHYSICS_LOADOUTS = Object.freeze([

@@ -35,6 +35,7 @@ import {
 } from '../../core/deepSpaceAddress.js';
 import { frameBoth, framePreset, MAP_PRESET_SPAN_WU } from './mapCamera.js';
 import { sectorGlobalOrigin } from '../../data/sectorCoordinates.js';
+import { formatDistance } from '../units.js';
 
 export const MAP_NAV_CONTEXT_SCHEMA = 'map_nav_context_v1';
 
@@ -81,14 +82,12 @@ function distanceWU(a, b) {
 }
 
 /**
- * Distance for display. Whole WU below 10k, then thousands with one decimal — a surveyor's table
- * does not print six significant figures for a number the pilot reads at a glance.
+ * Distance for display. Whole units below 1k, then thousands — a surveyor's table does not
+ * print six significant figures for a number the pilot reads at a glance. The shared idiom
+ * lives in ui/units.js (owner 2026-10-28); the WU name stays for existing callers.
  */
 export function formatDistanceWU(wu) {
-  if (!Number.isFinite(wu)) return '—';
-  const v = Math.abs(wu);
-  if (v < 10000) return `${Math.round(v)} u`;
-  return `${(v / 1000).toFixed(1)}k u`;
+  return formatDistance(wu);
 }
 
 function sectorDisplayName(sectorId, sectorNames) {

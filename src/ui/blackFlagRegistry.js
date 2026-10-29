@@ -30,7 +30,7 @@ export function vesselLocationText(vessel) {
   if (loc.kind === 'berth') return `Berthed · ${STATIONS.get(loc.stationId) || 'Unconfirmed berth'}`;
   if (loc.kind === 'field' || loc.kind === 'remote' || loc.kind === 'tow') {
     const position = loc.pos;
-    return `${loc.kind === 'tow' ? 'In tow' : 'Field parked'} · ${sector}${position && Number.isFinite(position.x) && Number.isFinite(position.z) ? ` · ${Math.round(position.x)}, ${Math.round(position.z)} WU` : ''}${vessel.beacon ? ' · beacon marked' : ''}`;
+    return `${loc.kind === 'tow' ? 'In tow' : 'Field parked'} · ${sector}${position && Number.isFinite(position.x) && Number.isFinite(position.z) ? ` · ${Math.round(position.x)}, ${Math.round(position.z)} u` : ''}${vessel.beacon ? ' · beacon marked' : ''}`;
   }
   return ({ in_transit: 'Recovery tug carrying the hull to a named berth', destroyed: 'Lost hull · last trajectory recorded', impounded: 'Impounded · registry hold',
     returned: 'Returned to owner', sold: 'Released to buyer' })[loc.kind] || 'Location unconfirmed';

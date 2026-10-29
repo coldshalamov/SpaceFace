@@ -27,7 +27,7 @@ export function recoveryStabilizationText(readout) {
   }
   if (readout && readout.stabilizationMode === 'massline') return 'Massline holding. Keep the wreck settled.';
   if (readout && readout.stabilizationMode === 'station_keeping') return 'Relative motion matched. Hold position.';
-  return 'Tether the wreck, or hold within 90 WU at matched speed.';
+  return 'Tether the wreck, or hold within 90 units at matched speed.';
 }
 
 function money(value) {
@@ -117,7 +117,7 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
     ].filter(Boolean).join(' · ');
     detail = `Receipt ${String(payload.id)}.`;
   } else if (phase === 'tethered') {
-    detail = `Line attached. Reel to ${threshold} WU for custody lock, then tow to ${destination}.`;
+    detail = `Line attached. Reel to ${threshold} units for custody lock, then tow to ${destination}.`;
   } else if (phase === 'secured') {
     status = timerStatus || 'LOCKED';
     detail = `Custody locked. Tow ${label} to ${destination}.`;
@@ -137,10 +137,10 @@ export function recoveryCustodyView(payload, state, simTime = state && state.sim
   } else if (payload.instruction && /relatch/i.test(payload.instruction)) {
     detail = String(payload.instruction);
   } else if (recoveryKind === 'drive_disabled') {
-    detail = `Drive disabled; Massline latch and reel inside ${threshold} WU, then tow to ${destination}.`;
+    detail = `Drive disabled; Massline latch and reel inside ${threshold} units, then tow to ${destination}.`;
   } else {
     const cargoClause = recoveryKind === 'civilian_disabled' ? ` ${cargo} cargo` : '';
-    detail = `Massline latch and reel inside ${threshold} WU${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
+    detail = `Massline latch and reel inside ${threshold} units${recoveryKind === 'surrendered' ? ' before escape' : ''}, then tow${cargoClause} to ${destination}.`;
   }
 
   const timerAria = activeRemaining == null ? '' : ` ${activeRemaining} seconds remaining.`;
@@ -271,14 +271,14 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
       detail: meta,
     };
     if (readout.phase === 'awaiting_scan') {
-      return offer({ ...base, kind: 'info', statusFlag: 'IDENTIFY', detail: 'Pulse scanner within 260 WU. Condition and ownership are still unknown.', choices: [] });
+      return offer({ ...base, kind: 'info', statusFlag: 'IDENTIFY', detail: 'Pulse scanner within 260 units. Condition and ownership are still unknown.', choices: [] });
     }
     if (readout.phase === 'hazard') {
       return offer({
         ...base,
         kind: 'danger',
         statusFlag: `CORE ${Math.max(0, Number(readout.hazardRemaining_s) || 0).toFixed(1)} S`,
-        detail: `Vent now, or tether and tow ${readout.towClear_wu || 260} WU clear.`,
+        detail: `Vent now, or tether and tow ${readout.towClear_wu || 260} units clear.`,
         choices: [{ id: 'vent', label: 'VENT CORE', title: 'Vent the reactor before its timer closes.' }],
         onChoose: (choiceId, source) => bus.emit('recovery:vent', { recoveryId: readout.recoveryId, source }),
       });

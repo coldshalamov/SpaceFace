@@ -10,7 +10,7 @@ const reasons = {
   price_changed: 'The cut changed. Review the new quote before paying.',
   cargo_changed: 'That cargo changed. Review the nearby pods again.',
   stale_quote: 'That quote expired. Review a fresh quote.',
-  out_of_range: 'That pod moved beyond 200 WU.',
+  out_of_range: 'That pod moved beyond 200 units.',
   not_docked: 'Dock at this berth to use the papers service.',
   black_market_locked: 'Complete this berth’s entrance run first.',
   station_changed: 'The berth changed. Reopen Market for a fresh quote.',
@@ -45,14 +45,14 @@ export function createLaunderService({ bus, getState, document }) {
     el.hidden = !visible;
     if (!visible) return;
     el.appendChild(node('p', 'Papers service', 'k-caps'));
-    el.appendChild(node('p', 'Choose a hot cargo pod within 200 WU. Only the pod you confirm is washed; ownership stays unchanged.', 'k-t-fine'));
+    el.appendChild(node('p', 'Choose a hot cargo pod within 200 units. Only the pod you confirm is washed; ownership stays unchanged.', 'k-t-fine'));
     const status = node('p', message || (busy ? 'Requesting papers quote…' : 'No nearby hot pods. Held cargo is not washed here.'), 'k-t-fine');
     status.setAttribute('role', 'status');
     el.appendChild(status);
     for (const quote of quotes) {
       const row = node('div', '', 'k-row');
       row.style.gridTemplateColumns = 'minmax(0, 1fr)';
-      const label = node('span', `${quote.label || names.get(quote.commodityId) || 'Cargo pod'} · ${quote.amount} u · ${quote.distance ?? '?'} WU · title: ${quote.ownerName || 'unnamed owner'}${quote.factionId ? ' · cargo faction: ' + (FACTION_LABELS[quote.factionId] || quote.factionId.replace(/^faction_/, '').replaceAll('_', ' ')) : ''} · pod reference ${quote.podId} · cut ${Math.round(quote.cutFrac * 100)}%`);
+      const label = node('span', `${quote.label || names.get(quote.commodityId) || 'Cargo pod'} · ${quote.amount} u · ${quote.distance ?? '?'} u · title: ${quote.ownerName || 'unnamed owner'}${quote.factionId ? ' · cargo faction: ' + (FACTION_LABELS[quote.factionId] || quote.factionId.replace(/^faction_/, '').replaceAll('_', ' ')) : ''} · pod reference ${quote.podId} · cut ${Math.round(quote.cutFrac * 100)}%`);
       label.style.minWidth = '0';
       label.style.overflowWrap = 'anywhere';
       row.appendChild(label);
