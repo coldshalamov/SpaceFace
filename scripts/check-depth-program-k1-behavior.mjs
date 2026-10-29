@@ -149,6 +149,9 @@ async function captureScenario({ factionId, sectorId }) {
     let fixtureDisableApplied = false;
     let fixtureDisableTick = null;
     let disabledTick = null;
+    let targetDriveDisabledTicks = 0;
+    let targetRecoveredTick = null;
+    let sawDisabledTarget = false;
     const postDisableFireTicks = new Set();
     const postDisableDamagingDecisionTicks = new Set();
 
@@ -192,18 +195,34 @@ async function captureScenario({ factionId, sectorId }) {
       disabledEvent = trace.rows.find((row) => row.event === 'combat:subsystemDisabled'
         && row.targetId === setup.disableTarget.id && row.subsystemId === 'subsystem_drive');
       if (disabledEvent && disabledTick == null) disabledTick = disabledEvent.tick;
+      if (disabledEvent?.targetDriveCapability === false) {
+        sawDisabledTarget = true;
+        targetDriveDisabledTicks = Math.max(1, targetDriveDisabledTicks);
+      }
 
       if (disabledTick != null && state.tick > disabledTick) {
-        for (const actor of actors) {
-          if (actor.data && actor.data.intent && actor.data.intent.fire) postDisableFireTicks.add(state.tick);
-        }
-        for (const decision of tacticalResult && tacticalResult.tick === state.tick
-          && tacticalResult.decisions || []) {
-          if (!actorIds.has(decision.entityId)) continue;
-          const doctrine = decision.combatDoctrine;
-          if (doctrine && (doctrine.fireWindow || doctrine.allowedActionId)) {
-            postDisableDamagingDecisionTicks.add(state.tick);
+        const targetRuntime = state.combat?.entities?.[String(setup.disableTarget.id)];
+        const targetDriveDisabled = targetRuntime?.capabilities?.drive === false;
+        if (targetDriveDisabled) {
+          sawDisabledTarget = true;
+          targetDriveDisabledTicks++;
+          for (const actor of actors) {
+            if (actor.data?.intent?.fire
+              && String(actor.data?.combat?.targetId ?? actor.data?.ai?.activity?.targetId) === String(setup.disableTarget.id)) {
+              postDisableFireTicks.add(state.tick);
+            }
           }
+          for (const decision of tacticalResult && tacticalResult.tick === state.tick
+            && tacticalResult.decisions || []) {
+            if (!actorIds.has(decision.entityId)) continue;
+            const doctrine = decision.combatDoctrine;
+            if (doctrine && String(doctrine.targetId) === String(setup.disableTarget.id)
+              && (doctrine.fireWindow || doctrine.allowedActionId)) {
+              postDisableDamagingDecisionTicks.add(state.tick);
+            }
+          }
+        } else if (sawDisabledTarget && targetRecoveredTick == null) {
+          targetRecoveredTick = state.tick;
         }
       }
 
@@ -249,7 +268,9 @@ async function captureScenario({ factionId, sectorId }) {
     const flightDiagnostics = state.flightRuntime && state.flightRuntime.diagnostics;
     const factionFires = trace.rows.filter((row) => row.event === 'combat:fire' && actorIds.has(row.ownerId));
     const factionHits = trace.rows.filter((row) => row.event === 'projectile:hit' && actorIds.has(row.ownerId));
-    const postDisableFireEvents = disabledTick == null ? [] : factionFires.filter((row) => row.tick > disabledTick);
+    const postDisableFireEvents = disabledTick == null ? [] : factionFires.filter((row) =>
+      row.tick > disabledTick && row.targetId === setup.disableTarget.id
+        && row.targetDriveCapability === false);
     const disabledEvent = trace.rows.find((row) => row.event === 'combat:subsystemDisabled'
       && row.targetId === setup.disableTarget.id && row.subsystemId === 'subsystem_drive') || null;
     return {
@@ -297,6 +318,8 @@ async function captureScenario({ factionId, sectorId }) {
         fireTicks: [...postDisableFireTicks],
         damagingDecisionTicks: [...postDisableDamagingDecisionTicks],
         fireEvents: postDisableFireEvents,
+        targetDriveDisabledTicks,
+        targetRecoveredTick,
         targetAlive: setup.disableTarget.alive !== false && setup.disableTarget.hull > 0,
       },
       combatEvidence: {
@@ -467,6 +490,7 @@ function installEventTrace(bus, state) {
       id: payload.id ?? null,
       factionId: payload.factionId ?? null,
       applied: round3(payload.applied),
+      targetDriveCapability: (target && state.combat?.entities?.[String(target.id)]?.capabilities?.drive) ?? null,
     });
   }));
   return {
@@ -766,10 +790,12 @@ function assertReport(report) {
       `${factionId} must land a production projectile before any disable fixture`);
     assert(scenario.disableEvidence, `${factionId} must produce a canonical drive-disabled transition`);
     assert.equal(scenario.postDisable.targetAlive, true, `${factionId} non-lethal target must survive`);
-    assert.deepEqual(scenario.postDisable.fireTicks, [], `${factionId} intent.fire must fail closed after disable`);
+    assert(scenario.postDisable.targetDriveDisabledTicks > 0,
+      `${factionId} must sample a live canonical disabled-drive interval`);
+    assert.deepEqual(scenario.postDisable.fireTicks, [], `${factionId} must not fire at a drive-disabled target`);
     assert.deepEqual(scenario.postDisable.damagingDecisionTicks, [],
-      `${factionId} must produce no fresh damaging decision after disable`);
-    assert.deepEqual(scenario.postDisable.fireEvents, [], `${factionId} must emit no fire after disable`);
+      `${factionId} must produce no damaging decision against a drive-disabled target`);
+    assert.deepEqual(scenario.postDisable.fireEvents, [], `${factionId} must emit no fire at a drive-disabled target`);
     assert(scenario.profiles.length > 0, `${factionId} must report sampled production doctrine`);
     profileSignatures.add(JSON.stringify(scenario.profiles));
     liveTraceSignatures.add(JSON.stringify({

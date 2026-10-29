@@ -207,6 +207,23 @@ test('migration: a profile with no ladder (or a rotten one) gets a clean slice',
   assert.deepEqual(emptyCrucibleProfile().ladder, emptySwarmLadder());
 });
 
+test('unknown arena history is preserved but cannot inflate current ladder unlock stars', () => {
+  const raw = {
+    arenas: {
+      helios_core: { zones: { 0: { stars: 1 }, 99: { stars: 3 } } },
+      future_room: { zones: { 0: { stars: 3 }, 1: { stars: 3 }, 2: { stars: 3 } } },
+    },
+  };
+  assert.equal(swarmLadderStarTotal(raw), 1);
+  assert.equal(swarmArenaIsUnlocked(raw, 'lagrange_crucible'), false,
+    'unrecognized room history cannot pay a current arena gate');
+  assert.deepEqual(Object.keys(migrateSwarmLadder(raw).arenas), ['helios_core', 'future_room']);
+  assert.equal(migrateSwarmLadder(raw).arenas.helios_core.zones['99'].stars, 3,
+    'future zone history survives an older wave cap');
+  assert.equal(migrateSwarmLadder(raw).arenas.future_room.zones['0'].stars, 3,
+    'future arena progress survives an older reader');
+});
+
 test('applySwarmLadderResult: a fresh ten-clear pays zone stars and opens the checkpoint', () => {
   const { ladder, delta } = applySwarmLadderResult(emptySwarmLadder(), {
     arenaId: 'helios_core',

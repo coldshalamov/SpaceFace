@@ -1575,7 +1575,9 @@ export const weapons = {
       // when the turret is engaging the tethered hostile — one solver everywhere it matters.
       const aim = (mountGate && tgt && tgt.id != null && String(tgt.id) === String(mountGate.targetId))
         ? mountGate.muzzleAngle
-        : this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
+        : (isPlayer
+          ? this._leadAngle(e, tgt, mountProjSpeed)
+          : this._arcadeMountAngle(e, w, tgt, mountProjSpeed));
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
@@ -1598,12 +1600,10 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.muzzleAngle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        // A locked player shot leaves the real muzzle, not the hull centre: solve from there with
-        // the same muzzle + launch-model solve G mode uses. Hull-centre lead put off-axis mounts
-        // 3-10 deg wide of the solution. NPC aim keeps the hull-centre lead (balance unchanged).
-        fixedAim = isPlayer
-          ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
-          : this._leadAngle(e, forceTarget, mountProjSpeed);
+        // A target-bound round leaves the real muzzle, not the hull centre. Use the same bounded
+        // muzzle + launch-model solve for NPC shots so hardpoint offsets do not move the physical
+        // line off an intercept. Player-directed fixed fire still follows its manual aim below.
+        fixedAim = this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed);
       }
       // G trades manual barrel alignment for independent dodging. Use the same physical shot
       // model, but no cone clamp or random aim error on this explicit hostile solution.
