@@ -169,6 +169,25 @@ const SWARM_INGRESS_RANGE_WU = 340;
 // Pack pursuit stays inside the fight. No breakaway, no 960 WU egress point.
 const PACK_PRESS_RANGE_WU = 200;
 const PACK_ORBIT_RANGE_WU = 130;
+// Owner playtest (swarm mass): one 130-WU press ring under a 15-hull wave reads as
+// cluster-jiggle — every hull weaves and fights separation for the SAME radius. The pack
+// flies three deterministic ring bands instead, biased inward so the staggered press keeps
+// closing rather than backing off: -40% / -10% / +15% of base, plus a ±4% per-hull jitter so
+// ringmates never share one exact radius. (seed, entityId) hash only — stable per hull per
+// run, no rng draw, no wall clock; the press-entry range above stays the flat 200.
+const PACK_ORBIT_RING_OFFSETS = Object.freeze([-0.4, -0.1, 0.15]);
+const PACK_ORBIT_RING_JITTER = 0.08; // ±4% of base radius inside a ring band
+
+/** Per-hull pack orbit radius: a deterministic ring assignment plus a small jitter. */
+function packOrbitRangeFor(record) {
+  const seed = record ? record.seed : 1;
+  const entityId = record ? record.entityId : 'anonymous';
+  const ring = Math.min(PACK_ORBIT_RING_OFFSETS.length - 1,
+    Math.floor(hashUnit(seed, entityId, 'pack_orbit_ring') * PACK_ORBIT_RING_OFFSETS.length));
+  const jitter = hashUnit(seed, entityId, 'pack_orbit_jitter') - 0.5;
+  return PACK_ORBIT_RANGE_WU
+    * (1 + PACK_ORBIT_RING_OFFSETS[ring] + jitter * PACK_ORBIT_RING_JITTER);
+}
 // SF-056 wounded fallback: damage to a meaningful subsystem breaks the press into a bounded
 // retreat toward a perceived affordance (the nearest friendly hull — the pack IS the cover — or
 // the shadow of a hazard), never toward a fresh firing line. Enter at a subsystem half-dead; the
@@ -1497,7 +1516,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       faceTarget = true;
       maneuverKind = phase === 'press' ? ManeuverKind.ORBIT : ManeuverKind.INTERCEPT;
     }
-    preferredRange = PACK_ORBIT_RANGE_WU;
+    preferredRange = packOrbitRangeFor(record);
     if (phase === 'press') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
     formationLocked = phase === 'ingress' || phase === 'reform';
