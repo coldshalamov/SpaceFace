@@ -566,6 +566,15 @@ export const lawSecurity = {
     // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
     delete own.playerSurrender;
     delete own.surrenderRearm;
+    // Session-scoped response fixtures name live entity ids — and spawned law bodies are
+    // never serialized, so every id they hold is stale after a load. Clearing them lets
+    // each sync re-derive from durable truth (the impound bill, the heat tier) the same
+    // way a cold session does; a surviving record's postedAt latch would otherwise pin
+    // dead fixtures in place for the rest of the run.
+    delete own.wantedWarrant;
+    delete own.wantedCheckpoint;
+    delete own.wantedImpound;
+    delete own.highSecWarrant;
     if (this._warrantWaves) this._warrantWaves.deserialize(src.warrantHunters);
     else delete own.warrantHunters;
     return own;
@@ -5577,15 +5586,37 @@ export const lawSecurity = {
     const pound = own.wantedImpound && typeof own.wantedImpound === 'object'
       ? own.wantedImpound
       : null;
+    // Entity ids recycle: verify the pound's own marker flags, not only aliveness, so a
+    // culled yard's reused id is not mistaken for the yard still standing.
     const yard = pound ? entityById(state, pound.yardId) : null;
-    const liveYard = !!(yard && yard.alive !== false);
+    const liveYard = !!(yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true);
+    const lock = pound ? entityById(state, pound.lockId) : null;
+    const liveLock = !!(lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true);
     const bill = impoundBillFor(state);
 
     if (tier !== WANTED_TIER.IMPOUND || (bill && bill.status && bill.status !== 'open')) {
       if (pound) this._releaseWantedImpound(state, pound);
       return;
     }
-    if (pound && (liveYard || pound.postedAt != null)) return;
+    if (pound && pound.open !== false && liveYard && liveLock) {
+      // The lot stands; a denied or dead desk keeps retrying on the post cadence —
+      // the pay verb must never silently vanish for the whole impound.
+      const clerk = entityById(state, pound.clerkId);
+      if (!clerk || clerk.alive === false
+        || !clerk.data || clerk.data.wantedImpoundClerk !== true) {
+        this._retryImpoundClerk(state, pound);
+      }
+      return;
+    }
+    if (pound) {
+      // The yard or lock is gone — a sector jump, a cull, or hostile fire — while the
+      // bill says the lot still stands. The IMPOUND band has no other escape, so a
+      // dead record must not sit here forever: release it and let the post below
+      // re-raise the pound from the durable bill (same path a cold load takes).
+      this._releaseWantedImpound(state, pound);
+    }
     if (Number.isInteger(own.wantedImpoundRetryTick)
       && (state.tick | 0) < own.wantedImpoundRetryTick) return;
     this._postWantedImpound(state);
@@ -5600,7 +5631,12 @@ export const lawSecurity = {
     const billId = `impound:${seed}`;
     const existing = impoundBillFor(state);
     const heading = Number.isFinite(player.rot) ? player.rot : 0;
-    const savedYard = existing && existing.status === 'open' && existing.yard;
+    // Saved lot positions only describe THIS sector — entity positions are global-frame,
+    // so after a jump the bill's stale coords would plant the yard sectors away and the
+    // honest path stays unreachable. A cross-sector repost puts the lot ahead again.
+    const sameSector = !existing || existing.sectorId == null
+      || existing.sectorId === currentSectorId(state);
+    const savedYard = sameSector && existing && existing.status === 'open' && existing.yard;
     const yardPos = savedYard && (savedYard.x || savedYard.z)
       ? { x: savedYard.x, z: savedYard.z }
       : {
@@ -5611,14 +5647,14 @@ export const lawSecurity = {
 
     const sideX = -Math.sin(heading);
     const sideZ = Math.cos(heading);
-    const savedLock = existing && existing.status === 'open' && existing.lock;
+    const savedLock = sameSector && existing && existing.status === 'open' && existing.lock;
     const lockPos = savedLock && (savedLock.x || savedLock.z)
       ? { x: savedLock.x, z: savedLock.z }
       : {
         x: yardPos.x + sideX * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
         z: yardPos.z + sideZ * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
       };
-    const workPos = existing && existing.status === 'open' && existing.work
+    const workPos = sameSector && existing && existing.status === 'open' && existing.work
       ? { x: existing.work.x, z: existing.work.z }
       : { x: yardPos.x, z: yardPos.z };
 
@@ -5705,11 +5741,12 @@ export const lawSecurity = {
     let clerk = null;
     if (grant >= 1) {
       clerk = this._spawnImpoundClerk(state, arrival, yardPos, poundId, requester, budget);
-    } else {
-      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
     }
-
-    delete own.wantedImpoundRetryTick;
+    // A denied grant or a failed spawn keeps the retry tick armed — _syncWantedImpound
+    // re-staffs the desk while the pound stands. Posting without this would leave the
+    // pay verb unreachable for the life of the impound.
+    if (clerk) delete own.wantedImpoundRetryTick;
+    else own.wantedImpoundRetryTick = (state.tick | 0) + 15;
     own.wantedImpound = {
       poundId,
       billId,
@@ -5792,6 +5829,34 @@ export const lawSecurity = {
     return spawned;
   },
 
+  // The desk is a person, not a fixture: a denied budget grant at post time or a dead
+  // clerk re-staffs on the post cadence while the lot stands. The lock and yard are
+  // the physical bill — those repost the whole pound instead (see _syncWantedImpound).
+  _retryImpoundClerk(state, pound) {
+    const own = ensureState(state);
+    if (Number.isInteger(own.wantedImpoundRetryTick)
+      && (state.tick | 0) < own.wantedImpoundRetryTick) return null;
+    own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${pound.poundId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1 || typeof this.helpers.spawnEntity !== 'function') return null;
+    const arrival = pound && pound.arrival && Number.isFinite(pound.arrival.x)
+      ? pound.arrival : null;
+    const yardPos = pound && pound.yard && Number.isFinite(pound.yard.x)
+      ? pound.yard : null;
+    if (!arrival || !yardPos) return null;
+    const clerk = this._spawnImpoundClerk(state, arrival, yardPos, pound.poundId, requester, budget);
+    if (!clerk) return null;
+    pound.clerkId = clerk.id;
+    // Keep the durable bill's desk id in step — a later repost (or the UI's pay prompt)
+    // reads the bill, not just the session record.
+    const bill = impoundBillFor(state);
+    if (bill && bill.status === 'open') bill.clerkId = clerk.id;
+    delete own.wantedImpoundRetryTick;
+    return clerk;
+  },
+
   _updateWantedImpound(dt, state) {
     const own = state && state.lawSecurity;
     const pound = own && own.wantedImpound;
@@ -5803,24 +5868,31 @@ export const lawSecurity = {
       pound.held = false;
       return;
     }
+    // Marker flags, not bare ids — a recycled id must not pass for the yard it once named.
     const yard = entityById(state, pound.yardId);
+    const liveYard = yard && yard.alive !== false
+      && yard.data && yard.data.wantedImpoundYard === true ? yard : null;
     const lock = entityById(state, pound.lockId);
-    pound.held = !!(yard && yard.alive !== false && overlapsImpoundPad(player, yard));
+    const liveLock = lock && lock.alive !== false
+      && lock.data && lock.data.wantedImpoundLock === true ? lock : null;
+    pound.held = !!(liveYard && overlapsImpoundPad(player, liveYard));
     // Pay is a choice, not an overlap: standing at the clerk OFFERS the bill; the deck verb emits
     // law:impoundPay and _payWantedImpound re-validates reach + credits before charging.
     const clerk = entityById(state, pound.clerkId);
-    const clerkNear = !!(clerk && clerk.alive !== false && overlapsImpoundPad(player, clerk));
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    const clerkNear = !!(liveClerk && overlapsImpoundPad(player, liveClerk));
     if (clerkNear !== !!this._impoundClerkNear) {
       this._impoundClerkNear = clerkNear;
       this._emit('law:impoundPayOffer', {
         poundId: pound.poundId,
         billId: bill.billId,
-        clerkId: clerk && clerk.id,
+        clerkId: liveClerk && liveClerk.id,
         owedCr: Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0)),
         clear: !clerkNear,
       });
     }
-    if (lock && lock.alive !== false && overlapsImpoundPad(player, lock)) {
+    if (liveLock && overlapsImpoundPad(player, liveLock)) {
       this._recoverWantedImpound(state, pound, 'steal', player);
       return;
     }
@@ -5845,7 +5917,9 @@ export const lawSecurity = {
     if (!bill || bill.status !== 'open') return;
     const player = entityById(state, state.playerId);
     const clerk = entityById(state, pound.clerkId);
-    if (!player || !clerk || clerk.alive === false || !overlapsImpoundPad(player, clerk)) {
+    const liveClerk = clerk && clerk.alive !== false
+      && clerk.data && clerk.data.wantedImpoundClerk === true ? clerk : null;
+    if (!player || !liveClerk || !overlapsImpoundPad(player, liveClerk)) {
       this._emit('law:impoundPayRefused', {
         reason: 'not_at_clerk',
         poundId: pound.poundId,
@@ -5900,8 +5974,11 @@ export const lawSecurity = {
     const own = ensureState(state);
     const unpin = (entity, flag) => {
       if (!entity || entity.alive === false || !entity.data) return;
+      // Ids recycle: only unpin the body that still claims the pound's marker — never
+      // rewrite a stranger's data because an old id happened to resolve again.
+      if (entity.data[flag] !== true) return;
       entity.data.missionPinned = false;
-      if (flag) entity.data[flag] = false;
+      entity.data[flag] = false;
       const ai = entity.data.ai;
       if (ai) {
         ai.forcePlayerTarget = false;

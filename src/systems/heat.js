@@ -345,7 +345,8 @@ export const heat = {
     this.bus = ctx.bus;
     this.registry = ctx.registry;
     const player = this.state.player;
-    if (player && typeof player.heat !== 'number') player.heat = 0;
+    // NaN is 'number' — a torn scalar still normalizes clean.
+    if (player && !Number.isFinite(player.heat)) player.heat = 0;
     if (player) {
       ensureHeatZone(player);
       publishWantedTier(player);
@@ -623,6 +624,9 @@ export const heat = {
       this._emitChanged('evidence expired', true);
     }
     const zone = ensureHeatZone(player);
+    // A torn scalar (NaN, ±Infinity, a foreign write) normalizes clean rather than
+    // riding the ledger forever — every reader keys on finite heat.
+    if (!Number.isFinite(player.heat)) player.heat = 0;
     if (!player.heat) {
       publishWantedTier(player);
       this._clearZone();
@@ -630,7 +634,12 @@ export const heat = {
     }
     const level = heatLevelFor(player.heat);
     if (level <= 0) {
-      this._setHeat(0, 'heat cleared');
+      // Suspicion residue is the ledger's memory of near-misses: hit chips banked under
+      // HIT_SUSPICION_MAX, an unread weir crossing, and partial cools all live below
+      // the WANTED gate and accumulate there until a signed clear lands. Zeroing the
+      // residue here made the plateau and the repeat-runner price unreachable — every
+      // sub-threshold write was discarded one tick later.
+      this._clearZone();
       return;
     }
     if (state.mode !== 'flight') return; // frozen in menus
