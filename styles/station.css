@@ -1147,8 +1147,9 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
    words for its rule, which is decoration, so the caption covers no body's words (a plate above
    the row landed on the market table, D248). It is one line, read from the rail's left, clipped
    only after the rail itself is full; the name's aria-label still speaks the whole line. Taller
-   windows keep it under the name. */
-@media (min-width: 641px) and (max-height: 900px) {
+   windows keep it under the name, except at 641–900 wide, where seven lines under seven names
+   stood as narrow columns of four to nine lines each (768x1024). */
+@media (min-width: 641px) and (max-height: 900px), (min-width: 641px) and (max-width: 900px) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { flex: 0 0 auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) > .sx-tile { flex: none; width: auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
@@ -1191,7 +1192,7 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     visibility: hidden;
   }
 }
-@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce) {
+@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce), (min-width: 641px) and (max-width: 900px) and (prefers-reduced-motion: reduce) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss { transition: none; }
 }
 
