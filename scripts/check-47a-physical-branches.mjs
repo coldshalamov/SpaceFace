@@ -92,7 +92,7 @@ try {
     '--hash',
     '--write-envelope', envelopePath,
   ]);
-  traceResults = await Promise.all(probeTapes.map(async ({ branchId, tape }) => ({
+  traceResults = await mapBounded(probeTapes, traceConcurrency(), async ({ branchId, tape }) => ({
     branchId,
     result: await runTraceAsync({
       ticks: BRANCH_TICKS,
@@ -101,7 +101,7 @@ try {
       limit: 520,
       loadEnvelope: envelopePath,
     }),
-  })));
+  }));
 } finally {
   for (const { tape } of probeTapes) tape.cleanup();
   prefixTape.cleanup();
@@ -130,3 +130,27 @@ for (const { branchId, result } of traceResults) {
 }
 
 console.log(`47-A physical branches OK (${completed.join(', ')})`);
+
+function traceConcurrency() {
+  const inherited = Number(process.env.SPACEFACE_CHECK_JOBS);
+  return Number.isFinite(inherited) && inherited > 0
+    ? Math.max(1, Math.floor(inherited))
+    : probeTapes.length;
+}
+
+async function mapBounded(items, limit, visit) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await visit(items[index]);
+    }
+  };
+  // Keep input tapes alive until every already-started trace exits, including a sibling
+  // of a failing worker. The caller's finally block owns deleting those tapes.
+  const completed = await Promise.allSettled(Array.from({ length: Math.min(limit, items.length) }, worker));
+  const failed = completed.find((entry) => entry.status === 'rejected');
+  if (failed) throw failed.reason;
+  return results;
+}
