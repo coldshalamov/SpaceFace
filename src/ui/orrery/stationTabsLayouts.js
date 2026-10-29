@@ -335,10 +335,11 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
 }
 /* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
    and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
-   390×700 by 36px). The inset closes and the dossier opens on its verb. */
+   390×700 by 36px). The inset closes to 2px (the screen-reader route and risk lines keep a strip of their own above the kind) and the
+   dossier opens on its verb. */
 @media (max-width:650px) and (min-height:601px) and (max-height:800px) {
   ${D} .sx-ct__dossier { padding:0 0 0 10px !important; }
-  ${D} .sx-dossier { padding-top:0 !important; }
+  ${D} .sx-dossier { padding-top:2px !important; }
 }
 /* the board shrinks under a whole row only at 720 tall or less (600×700: a 51px board for 56px rows); at 721–800 it keeps two rows and YOURS */
 @media (max-width:650px) and (min-height:601px) and (max-height:720px) {
@@ -346,10 +347,11 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-ct__hang > .sx-ct__board { flex:none !important; height:auto !important; max-height:none !important;
     overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; }
 }
-/* …under 481 the dossier is the lower half (~95px at 390×700): it gets three fifths (its text keeps the board labels' 26px inset),
+/* …under 481 the dossier is the lower half (~95px at 390×700): it gets three fifths, but the board never drops under the 66px
+   FEATURED row master shows at 420×601 (its text keeps the board labels' 26px inset),
    kind and title close up, and ACCEPT sits right under the title inside the first screen */
 @media (max-width:480px) and (min-height:601px) and (max-height:800px) {
-  ${D} .k-panel.sx-ct { grid-template-rows:minmax(0, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
+  ${D} .k-panel.sx-ct { grid-template-rows:minmax(66px, 2fr) minmax(0, 3fr) !important; row-gap:8px !important; }
   ${D} .sx-ct__dossier { padding-left:26px !important; -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; mask-image:linear-gradient(180deg, #000 calc(100% - 10px), transparent) !important; }
   ${D} .sx-dossier > .sx-dossier__title { margin:2px 0 6px !important; }
 }
