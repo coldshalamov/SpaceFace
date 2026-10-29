@@ -477,7 +477,10 @@ html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-i
    ≤1100 × ≤800. Desktop ≤650 wide × ≥801 tall (600×844, 390×844) has the same ~300–345px tab body,
    where the stacked 244px console stood past the right edge (BUY/SELL and the dial off the glass),
    so it runs there too, desktop-scoped (phones keep their own sheet). M is the scope selector. */
-const NARROW_TALL = '(max-width:650px) and (min-height:801px), (max-width:600px) and (min-height:601px)';
+/* …601–650 wide × 601–800 tall (620×700, 650×780) fell between the two: the 146px console beside
+   the analysis left the reading ~20px wide (RAW ORE · LEGAL one letter per line) and "Iron Ore"
+   broke mid-word in a ~140px register. It takes the same one-column stage as 600 wide (ui-polish-191). */
+const NARROW_TALL = '(max-width:650px) and (min-height:601px)';
 const compactBerth = (M, MQ) => `
 /* ---- 960×540 berth: body ~192px — every part of the trade stays on the board, just smaller ---- */
 @media ${MQ} {
@@ -920,11 +923,11 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-table :is(th, td):nth-child(4) { grid-column:3; width:auto !important; padding-right:0 !important; text-align:right !important; }
   ${MD} .sx-mkt-row td:nth-child(n+2) { padding-top:0 !important; }
 }
-/* …and on short phones (≤600 × 601–800, e.g. 375×667; 601–650 desktop keeps master's berth) the berth's dials leave the Market ~160px:
+/* …and on short windows (≤650 × 601–800, e.g. 375×667, 620×700) the berth's dials leave the Market ~160px:
    the eight families stood one per line and filled it, so no good showed, and BUY 1 sat under the
    tabs. The families ride one line that scrolls sideways (fading at its right edge), and the dial
    sets at 84px so the verbs end in the column. */
-@media (max-width:600px) and (min-height:601px) and (max-height:800px) {
+@media (max-width:650px) and (min-height:601px) and (max-height:800px) {
   ${MD} .sx-mkt-browser__filters { flex-wrap:nowrap !important; overflow-x:auto !important; overflow-y:hidden !important; column-gap:12px !important;
     -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; mask-image:linear-gradient(90deg, #000 calc(100% - 18px), transparent) !important; }
   ${MD} .sx-mkt-browser__filters li { flex:none !important; }
