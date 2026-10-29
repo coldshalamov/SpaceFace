@@ -1321,6 +1321,7 @@ function authoredPreloadPlanKey(entity, options) {
     data.towlineMemberId, data.towlineBody, data.authoredAssetId, data.persistenceOwner,
     data.mothlightKey, data.mothlightLampId, data.kilnbackKey, data.kilnbackCaskId,
     data.authoredCharacter, data.redKiteActorId, data.worldRecordId,
+    data.itinerary?.kind, data.itinerary?.role,
     data.ceresWorkfleetRole, data.placeId,
     fittings ? fittings.join(',') : '',
     options.forceWholeShipFile || '', options.lodLevel || '',
@@ -7230,14 +7231,22 @@ function jobIsStalledInFlight(job, nowMs, boundMs = AUTHORED_UPGRADE_NONSHIP_STA
   return Number.isFinite(startedAt) && nowMs - startedAt >= boundMs;
 }
 
-function authoredUpgradeSoftwareRenderer() {
-  return authoredRuntimeState()?.render?.gpu?.tier === 'software';
+function authoredUpgradeSoftwareRenderer(live = authoredRuntimeState()) {
+  return live?.render?.gpu?.tier === 'software';
 }
 
-function upgradeGlassStallBoundMs() {
-  return authoredUpgradeSoftwareRenderer()
+function upgradeGlassStallBoundMs(live = authoredRuntimeState()) {
+  return authoredUpgradeSoftwareRenderer(live)
     ? AUTHORED_UPGRADE_SOFTWARE_BOUND_MS
     : AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS;
+}
+
+/** Shared watchdog threshold decision, exposed for focused admission-lifecycle checks. */
+export function authoredUpgradeStallVerdict(job, nowMs, live = authoredRuntimeState()) {
+  const boundMs = job?.entity && entityIsOnReadableGlass(job.entity, live)
+    ? upgradeGlassStallBoundMs(live)
+    : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
+  return { boundMs, stalled: jobIsStalledInFlight(job, nowMs, boundMs) };
 }
 
 function authoredUpgradeAdmissionDeadlineMs() {
@@ -7343,7 +7352,8 @@ function abortStalledOrInactiveUpgradeJobs(state) {
     // Reuse the existing bounded owner watchdog: a staged body may approach after
     // admission, with no live mesh available to re-request its remaining work.
     promoteReadableAdmission(job);
-    if (jobIsStalledInFlight(job, now)) {
+    const stall = authoredUpgradeStallVerdict(job, now);
+    if (stall.stalled) {
       // The stall verdict closes the job's 'running' diagnostic on schedule — an aborted
       // job's completion settles 'aborted-stalled' while its record keeps the watchdog
       // verdict, and a still-live job stalls only the record, never healthy in-flight work.
@@ -7351,9 +7361,6 @@ function abortStalledOrInactiveUpgradeJobs(state) {
         job.upgradeDiagnostic.status = 'stalled-slot-released';
       }
       finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
-      const bound = entityIsOnReadableGlass(job.entity)
-        ? upgradeGlassStallBoundMs()
-        : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
       // A job whose serial slot already released is parked in detached GPU prep — aborting it
       // rescues nothing (the slot is free) and would re-mark its 'authored-prepared' boundary
       // 'awaiting-authored-admission', duplicating the whole compose+compile+upload it already
@@ -7365,8 +7372,7 @@ function abortStalledOrInactiveUpgradeJobs(state) {
       const releasedButUncommitted = job.serialSlotReleased === true
         && !(job.boundary && job.boundary.userData
           && authoredCommittedBoundaryStatus(job.boundary.userData.authoredAssetState));
-      if ((job.serialSlotReleased !== true || releasedButUncommitted)
-          && jobIsStalledInFlight(job, now, bound)) {
+      if (job.serialSlotReleased !== true || releasedButUncommitted) {
         abortStalledUpgradeJob(state, job);
       }
     }
@@ -8018,7 +8024,7 @@ function entityIsOnAuthoredGlassBand(entity, live) {
     runwayWu: TABLE_FRAME_SKIRT_WU,
     radius: entityVisualCullRadius(entity, entity.mesh),
   });
-  return band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY;
+  return band === TABLE_BAND.GLASS;
 }
 
 function entityIsOnReadableGlass(entity, state = undefined) {

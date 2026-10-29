@@ -487,6 +487,24 @@ test('whole-ship demand remains a one-file path', () => {
   });
 });
 
+test('authored preload memo reselects a stormshift receiver when its work itinerary is stamped', () => {
+  const entity = {
+    id: 'late-stamped-stormshift-receiver',
+    type: 'ship',
+    alive: true,
+    data: { trafficRole: 'stormshift_receiver', worldRecordId: 'anvil:receiver' },
+  };
+
+  const beforeWorkItinerary = partsLibrary.authoredPreloadPlanForEntity(entity, { requiredWholeShip: true });
+  assert.deepEqual(beforeWorkItinerary.hull, ['wholeships/helios_span.glb'],
+    'a role without its owning work itinerary keeps the ordinary hauler hull');
+
+  entity.data.itinerary = { kind: 'anvil_work', role: 'receiver' };
+  const receiverPlan = partsLibrary.authoredPreloadPlanForEntity(entity, { requiredWholeShip: true });
+  assert.deepEqual(receiverPlan.hull, ['wholeships/ship_stormshift_receiver_v01.glb'],
+    'the complete predicate input must invalidate the earlier memoized plan');
+});
+
 test('concurrent entity demands merge into one serial renderer admission lane', async () => {
   const renderer = {};
   const loads = new Map();
