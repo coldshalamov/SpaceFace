@@ -17,6 +17,7 @@ import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 
 import { observePipelineAdmission } from '../src/render/pipelineReadiness.js';
+import { assertCompleteAppearanceAdmission } from '../src/render/renderer.js';
 
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
@@ -82,4 +83,21 @@ test('observer channel: cancelled owner is skipped, real GPU failure still warns
   await nextTurn();
   assert.deepEqual(warnings, [gpuFailure],
     'invalid active-owner GPU failures keep their Error class and warning');
+});
+
+test('strict appearance checks classify an owner-inactive receipt as cancellation', async () => {
+  const warnings = [];
+  const completion = Promise.resolve().then(() => assertCompleteAppearanceAdmission({
+    skipped: true,
+    reason: 'owner-inactive',
+  }));
+  observePipelineAdmission(completion, (error) => warnings.push(error));
+  await assert.rejects(completion, (error) => error.name === 'AbortError'
+    && error.code === 'SF_APPEARANCE_OWNER_INACTIVE');
+  await nextTurn();
+  assert.deepEqual(warnings, [], 'retired background work is not reported as a GPU failure');
+
+  assert.throws(() => assertCompleteAppearanceAdmission({ skipped: true, reason: 'texture upload failed' }),
+    (error) => error.name === 'Error' && !error.code,
+    'real incomplete admissions keep their failure classification');
 });

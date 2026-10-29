@@ -120,6 +120,18 @@ function admissionKeyLight(renderer, source, THREE) {
   return staged;
 }
 
+// A stepped shadow admission keeps caster references while yielding between
+// sub-batches. Entity teardown can dispose a BatchedMesh during that gap; the
+// object may still be in the captured array even though Three.js has nulled
+// its backing textures. Its next bounds/shadow query calls getMatrixAt() and
+// dereferences the disposed texture's image. Retire only that unusable batch;
+// ordinary detached/hidden casters remain eligible for staging.
+function usableShadowSubject(object) {
+  if (!object || object.isBatchedMesh !== true) return !!object;
+  return !!(object.geometry && object._matricesTexture?.image?.data
+    && object._indirectTexture?.image?.data);
+}
+
 export function disposeAdmissionShadowResources(renderer, options = {}) {
   const held = _depthStageSessions.get(renderer);
   if (held) {
@@ -968,7 +980,7 @@ export function* compileShadowDepthPipelinesSteps(options = {}) {
   }
   return {
     skipped: false,
-    subjects: casting.length,
+    subjects: sliced.subjects ?? casting.length,
     programCacheKeys: sliced.programCacheKeys || [],
     programBindingFailures: sliced.programBindingFailures || [],
     // Diagnostic: which named instanced families actually drew in the staged pass — a NOVEL
@@ -1115,6 +1127,11 @@ export function createShadowDepthStagingSession(options = {}) {
       if (!Array.isArray(casting) || casting.length === 0) {
         return { skipped: false, subjects: 0 };
       }
+      // The casting list can outlive a prior yield. BatchedMesh.dispose() nulls
+      // the data textures while its Object3D can remain referenced by that
+      // snapshot, so revalidate immediately before reparenting/rendering.
+      casting = casting.filter(usableShadowSubject);
+      if (casting.length === 0) return { skipped: false, subjects: 0, drawn: [] };
       // Without forceEnable the render runs under the live shadowMap.enabled —
       // disabled draws nothing, so zero marks land: the drive must not turn an
       // un-run leg into an undrawable verdict.

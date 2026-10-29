@@ -10150,7 +10150,16 @@ export function assertCompleteAppearanceAdmission(receipt) {
     if (!value || typeof value !== 'object'
         || value.contextLost === true || value.partial === true || value.cancelled === true
         || (value.skipped === true && value.reason !== 'no drawable geometry')) {
-      throw new Error(`Incomplete appearance admission: ${value?.reason || 'missing/partial receipt'}`);
+      const reason = value?.reason || 'missing/partial receipt';
+      const error = new Error(`Incomplete appearance admission: ${reason}`);
+      // A strict caller still receives the rejection, but an owner retired while
+      // queued is expected cancellation. Keep it out of the background failure
+      // channel just like the underlying async-admission AbortError.
+      if (value?.skipped === true && value.reason === 'owner-inactive') {
+        error.name = 'AbortError';
+        error.code = 'SF_APPEARANCE_OWNER_INACTIVE';
+      }
+      throw error;
     }
     for (const key of ['pipelines', 'gpuResidency', 'geometryResidency', 'results']) {
       if (key in value) visit(value[key]);

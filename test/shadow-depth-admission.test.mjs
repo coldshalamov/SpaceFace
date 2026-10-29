@@ -8,6 +8,7 @@ import {
   collectShadowCastSubjects,
   collectUnstagedShadowCasters,
   compileShadowDepthPipelines,
+  compileShadowDepthPipelinesSteps,
   createShadowDepthStagingSession,
   disposeAdmissionShadowResources,
   UNSTAGED_COLLECT_OVER_COVER,
@@ -203,6 +204,60 @@ test('shadow depth admission restores the prior renderBufferDirect hook when the
     restoreObjectHome() {},
   }), /shadow draw failed/);
   assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect);
+});
+
+test('stepped shadow admission skips a BatchedMesh disposed while its caster list is yielded', () => {
+  const material = new THREE.MeshBasicMaterial();
+  const batch = new THREE.BatchedMesh(1, 32, 36, material);
+  const geometryId = batch.addGeometry(new THREE.BoxGeometry());
+  batch.addInstance(geometryId);
+  batch.castShadow = true;
+  batch.name = 'retiring-batch';
+  const live = Array.from({ length: 32 }, (_, index) => ({
+    isMesh: true, castShadow: true, name: `live-${index}`, visible: true,
+  }));
+  let batchDraws = 0;
+  const renderer = {
+    shadowMap: { enabled: true },
+    render(staging) {
+      if (!renderer.shadowMap.enabled) return;
+      for (const child of staging.children) {
+        if (!child.castShadow) continue;
+        if (child === batch) {
+          batchDraws += 1;
+          child.computeBoundingSphere();
+        }
+        renderer.renderBufferDirect({}, null, {}, child.material || material, child, null);
+      }
+    },
+    renderBufferDirect() {},
+    properties: { get: () => ({ currentProgram: { cacheKey: 'depth' } }) },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  const steps = compileShadowDepthPipelinesSteps({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [],
+    precollectedCasting: [...live, batch],
+    stagedLights: [],
+    THREE: mockThree(),
+    captureObjectHome: (object) => ({ object, parent: null, index: -1 }),
+    restoreObjectHome() {},
+  });
+
+  const first = steps.next();
+  assert.equal(first.done, false, 'the first 32 casters complete before the generator yields');
+  batch.dispose();
+  assert.equal(batch._matricesTexture, null, 'Three.js dispose retires the batch backing texture');
+
+  const result = steps.next();
+  assert.equal(result.done, true);
+  assert.equal(result.value.skipped, false);
+  assert.equal(result.value.subjects, 32, 'only the still-usable casters count as staged');
+  assert.equal(batchDraws, 0, 'the disposed batch never reaches bounds or shadow rendering');
+  material.dispose();
 });
 
 test('hidden zero-count instanced casters are revealed for the shadow pass', () => {
