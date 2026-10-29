@@ -114,6 +114,7 @@ export function createKilnbackVisualDriver(root, entity) {
   let retired = false;
   const quiet = () => {
     for (let i = 0; i < slats.length; i++) { slats[i].quaternion.copy(rests[i]); slats[i].updateMatrix(); }
+    for (const cask of casks) cask.visible = false;
     for (const entry of hotMaterials) entry.material.emissiveIntensity = 0;
     for (const materials of frostMaterials) for (const entry of materials) {
       entry.material.color.copy(entry.color); entry.material.roughness = entry.roughness;

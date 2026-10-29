@@ -263,6 +263,7 @@ const VITAL_FIELDS = [
   'rot', 'bank', 'pitch', 'angVel', 'radius', 'mass', 'team', 'collides', 'alive', 'ttl',
   'isPlayer', 'physicsSleeping',
 ];
+const AUTHORED_MOTION_FRAME_FIELDS = Object.freeze(['palletJackMotionFrame', 'kilnbackMotionFrame']);
 
 // Native effects are replaced on deployment; their wire identity must survive clones.
 const countermeasureEffectIds = new WeakMap();
@@ -340,6 +341,10 @@ export function entityVitalsOf(e) {
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    const value = authoredMotionFrameValue(e, key);
+    if (value !== VITAL_SHADOW_MISSING) fields[key] = value;
+  }
   return fields;
 }
 
@@ -358,6 +363,14 @@ function vitalShadowValue(value) {
     return VITAL_SHADOW_JSON_NULL;
   }
   return value;
+}
+
+function authoredMotionFrameValue(e, key) {
+  if (!e || !Object.prototype.hasOwnProperty.call(e, key)) return VITAL_SHADOW_MISSING;
+  const value = e[key];
+  // These are purpose-built renderer read frames, not general entity data.
+  // Keep their wire size bounded even if a producer accidentally expands them.
+  return typeof value === 'string' && value.length <= 4096 ? value : null;
 }
 
 function vitalShadowMatches(e, shadow) {
@@ -400,6 +413,9 @@ function vitalShadowMatches(e, shadow) {
   const seam = hasPallasSeamWorkLight(e);
   if ((seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
   if ((seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING) !== shadow[i++]) return false;
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
+  }
   return true;
 }
 
@@ -439,6 +455,9 @@ function writeVitalShadow(e, shadow) {
   const seam = hasPallasSeamWorkLight(e);
   shadow[i++] = seam ? e.data.minerShiftActive === true : VITAL_SHADOW_MISSING;
   shadow[i++] = seam ? pallasSeamStandbyTick(e) : VITAL_SHADOW_MISSING;
+  for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
+    shadow[i++] = authoredMotionFrameValue(e, key);
+  }
   shadow.length = i;
   return shadow;
 }
@@ -1465,6 +1484,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const physics = registry.get('physics') || null;
         const nativeRecord = e && physics?._sg02?.records?.get(e.id);
         const nativeBody = nativeRecord && nativeRecord.entity === e ? nativeRecord.body : null;
+        const simPlayer = state.entities && typeof state.entities.get === 'function'
+          ? state.entities.get(state.playerId) : null;
+        const playerNativeRecord = simPlayer && physics?._sg02?.records?.get(simPlayer.id);
+        const playerNativeBody = playerNativeRecord && playerNativeRecord.entity === simPlayer
+          ? playerNativeRecord.body : null;
         const telemetry = e ? readPhysicsTelemetry(e) : null;
         const stepperSystems = host.stepper && host.stepper.debugSystemNames ? host.stepper.debugSystemNames() : null;
         return {
@@ -1510,8 +1534,20 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           render: state.render ? { sectorShellAdmission: state.render.sectorShellAdmission === true } : null,
           world: state.world ? {
             currentSectorId: state.world.currentSectorId,
+            frameOrigin: state.world.frameOrigin
+              ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z } : null,
+            frameOriginSeq: Number.isSafeInteger(state.world.frameOriginSeq) ? state.world.frameOriginSeq : null,
             sectorKeys: state.world.sectors ? Object.keys(state.world.sectors).length : -1,
             activeSector: state.world.activeSector ? { id: state.world.activeSector.id, entityCount: Array.isArray(state.world.activeSector.entities) ? state.world.activeSector.entities.length : -1 } : null,
+          } : null,
+          cameraFrame: state.camera ? {
+            focus: state.camera.focus ? { x: state.camera.focus.x, z: state.camera.focus.z } : null,
+            frameOriginX: Number.isFinite(state.camera.frameOriginX) ? state.camera.frameOriginX : null,
+            frameOriginZ: Number.isFinite(state.camera.frameOriginZ) ? state.camera.frameOriginZ : null,
+            eye: Number.isFinite(state.camera.eyeX) && Number.isFinite(state.camera.eyeY) && Number.isFinite(state.camera.eyeZ)
+              ? { x: state.camera.eyeX, y: state.camera.eyeY, z: state.camera.eyeZ } : null,
+            viewKind: typeof state.camera.viewKind === 'string' ? state.camera.viewKind : null,
+            viewMix: Number.isFinite(state.camera.viewMix) ? state.camera.viewMix : null,
           } : null,
           lastRpcAck: host.lastRpcAck || null,
           lastBusEmit: host.lastBusEmit || null,
@@ -1556,6 +1592,16 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
               frameOrigin: physics._sg02.getFrameOrigin() } : null,
             control: telemetry ? { tick: telemetry.tick, force: telemetry.force,
               torque: telemetry.torque, authority: telemetry.authority, mode: telemetry.mode } : null,
+          } : null,
+          simulationPlayer: simPlayer ? {
+            id: simPlayer.id,
+            pos: simPlayer.pos ? { x: simPlayer.pos.x, y: simPlayer.pos.y, z: simPlayer.pos.z } : null,
+            prevPos: simPlayer.prevPos ? { x: simPlayer.prevPos.x, z: simPlayer.prevPos.z } : null,
+            rot: simPlayer.rot,
+            native: playerNativeBody ? {
+              position: playerNativeBody.translation(), velocity: playerNativeBody.linvel(),
+              frameOrigin: physics._sg02.getFrameOrigin(),
+            } : null,
           } : null,
           entityCount: state.entities && typeof state.entities.size === 'number' ? state.entities.size : null,
           entityListLen: Array.isArray(state.entityList) ? state.entityList.length : null,

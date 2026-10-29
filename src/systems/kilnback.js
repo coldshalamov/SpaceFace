@@ -345,6 +345,15 @@ export const kilnback = {
       }
       this._materialize(row); const e = this._find(row.key); if (e) this._drive(e, row);
       for (const id of KILNBACK_CASK_IDS) { const c = this._find(row.key, id); if (c) { row.casks[id].pose = pose(c); row.casks[id].hull = c.hull; } }
+      if (e) {
+        const nativeBodyReady = this._nativeSolved(e);
+        const activeHeatLanes = nativeBodyReady
+          ? (this.ctx.registry?.get('fields')?.thermalFieldsForSource(row.key, e.occupantGeneration) || []).filter(f => f.kind === 'burn')
+          : [];
+        e.kilnbackMotionFrame = encodeKilnbackMotionFrame({ phase: row.phase,
+          phaseStartTick: row.phaseStartTick, tick: state.tick, actorId: e.id,
+          ownerLife: e.occupantGeneration, nativeBodyReady, casks: row.casks, activeHeatLanes });
+      }
     }
     this._introduce();
   },
@@ -388,14 +397,53 @@ export const kilnback = {
 };
 
 export function kilnbackPresentation(state, entity) {
+  if (!owners.has(state)) return readKilnbackMotionFrame(state, entity);
   const owner = owners.get(state), row = owner?._actors.get(entity?.data?.kilnbackKey);
   if (!row || state.mode !== 'flight' || row.phaseStartTick > state.tick
     || entity !== owner._find(row.key, entity.data.kilnbackCaskId || 'caster')) return null;
   const nativeReady = owner._nativeSolved(entity);
-  return { phase: row.phase, phaseStartTick: row.phaseStartTick, tick: state.tick, coolant: kilnbackCoolant(row),
+  return { phase: row.phase, phaseStartTick: row.phaseStartTick, tick: state.tick, actorId: entity.id,
+    coolant: kilnbackCoolant(row),
     attachedCaskIds: owner._attached(row), casks: structuredClone(row.casks), aimAngle: row.aimAngle,
     attack: row.attack, pulse: row.pulse, nativeBodyReady: nativeReady,
     sourceRevision: row.bodyRevision, ownerLife: entity.occupantGeneration,
     activeHeatLanes: nativeReady ? (owner.ctx.registry?.get('fields')?.thermalFieldsForSource(row.key, entity.occupantGeneration) || [])
       .filter(f => f.kind === 'burn') : [] };
+}
+
+function encodeKilnbackMotionFrame(frame) {
+  if (!frame) return null;
+  const port = frame.casks?.[KILNBACK_CASK_IDS[0]], starboard = frame.casks?.[KILNBACK_CASK_IDS[1]];
+  const lanes = (frame.activeHeatLanes || []).slice(0, 2).map(lane => ({ id: lane.id,
+    ownerLife: lane.ownerLife, centerX: lane.center?.x, centerZ: lane.center?.z,
+    dirX: lane.dir?.x, dirZ: lane.dir?.z, radius: lane.radius,
+    createdAt: lane.createdAt, expireAt: lane.expireAt }));
+  return JSON.stringify({ v: 1, phase: frame.phase, phaseStartTick: frame.phaseStartTick,
+    tick: frame.tick, actorId: frame.actorId, ownerLife: frame.ownerLife, nativeBodyReady: frame.nativeBodyReady === true,
+    portStatus: port?.status ?? null, portCoolant: Number.isFinite(port?.coolant) ? port.coolant : 0,
+    starboardStatus: starboard?.status ?? null,
+    starboardCoolant: Number.isFinite(starboard?.coolant) ? starboard.coolant : 0, lanes });
+}
+
+function readKilnbackMotionFrame(state, entity) {
+  if (state?.mode !== 'flight' || !entity || entity.alive === false) return null;
+  const raw = entity.kilnbackMotionFrame;
+  if (typeof raw !== 'string') return null;
+  try {
+    const frame = JSON.parse(raw);
+    if (frame?.v !== 1 || frame.tick !== state.tick || frame.actorId !== entity.id
+      || frame.ownerLife !== entity.occupantGeneration
+      || !Number.isSafeInteger(frame.phaseStartTick) || frame.phaseStartTick > state.tick) return null;
+    const casks = {
+      [KILNBACK_CASK_IDS[0]]: { status: frame.portStatus, coolant: frame.portCoolant },
+      [KILNBACK_CASK_IDS[1]]: { status: frame.starboardStatus, coolant: frame.starboardCoolant },
+    };
+    const attachedCaskIds = KILNBACK_CASK_IDS.filter(id => casks[id].status === 'attached');
+    const activeHeatLanes = Array.isArray(frame.lanes) ? frame.lanes.slice(0, 2).map(lane => ({
+      id: lane.id, ownerLife: lane.ownerLife, kind: 'burn',
+      center: { x: lane.centerX, z: lane.centerZ }, dir: { x: lane.dirX, z: lane.dirZ },
+      radius: lane.radius, createdAt: lane.createdAt, expireAt: lane.expireAt,
+    })) : [];
+    return { ...frame, casks, attachedCaskIds, activeHeatLanes };
+  } catch (_) { return null; }
 }

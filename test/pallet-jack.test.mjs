@@ -42,6 +42,11 @@ async function fixture({ cargoData = {}, begin = true } = {}) {
   const system = sim.registry.get('palletJack');
   const row = begin ? system.begin(actor, cargo, 'fixture-pallet-jack') : null;
   if (begin) assert.ok(row, 'real ordinary cargo should bind');
+  if (begin) {
+    const frame = JSON.parse(actor.palletJackMotionFrame);
+    assert.equal(frame.phase, row.phase, 'the authoritative owner publishes its live visual phase');
+    assert.equal(frame.ownerLife, actor.occupantGeneration);
+  }
   const tick = () => { s.tick++; s.simTime += 1 / 60;
     getCombatKernel(sim.registry.ctx).prePhysics(1 / 60);
     system.update(1 / 60, s); native.syncFromEntities(s.entityList); native.step(1 / 60, s.tick); };

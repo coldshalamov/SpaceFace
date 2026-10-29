@@ -120,6 +120,9 @@ test('ordinary production Ceres activation, native cask custody and cold repeate
     assert.equal(source.getSystem('physics')._sg02.records.get(caster.id).colliders.length, 2);
     assert.ok(kilnbackPresentation(state, caster)?.nativeBodyReady);
     assert.ok(kilnbackPresentation(state, caster).activeHeatLanes.length > 0);
+    const motionFrame = JSON.parse(caster.kilnbackMotionFrame);
+    assert.equal(motionFrame.tick, state.tick, 'the authoritative owner publishes a tick-bound visual frame');
+    assert.equal(motionFrame.ownerLife, caster.occupantGeneration);
     let envelope = source.getSystem('save').serialize('kilnback-route'), previousLife = caster.occupantGeneration;
     source.dispose(); // Cold production host; existing capital owner allows one runtime per process.
     target = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 84 });
