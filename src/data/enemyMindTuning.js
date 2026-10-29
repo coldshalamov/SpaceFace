@@ -53,6 +53,9 @@ export const ENEMY_MIND_TUNING = Object.freeze({
   isolationWeight: 0.14,
   confidenceWeight: 0.15,
   allyCalm: 0.16,
+  // Physics answers morale: a hull with its helm torn loose (live tumble) spooks its pilot even
+  // before the damage numbers land. Mid-fight this tips an undisciplined pilot over panicFear.
+  tumbleFear: 0.34,
   // TUNE: utility weights. Utilities need not sum to one.
   pressBase: 0.42,
   aggressionWeight: 0.18,

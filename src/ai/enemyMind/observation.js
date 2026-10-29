@@ -102,6 +102,7 @@ export function observePilot(record, member, perception, directive, now, tick, t
     id: member.id, key: record.key, squadId: record.squadId, team: self.team ?? null,
     pos: point(self.pos), vel: point(self.vel), hull, energy: unitValue(self.energyFraction, 1),
     heat: unitValue(self.heatFraction), disabled: self.disabled === true,
+    tumbling: self.tumbling === true,
     authority,
     retreatGoal: authority === 'retreat' && validPoint(retreatAnchor) ? point(retreatAnchor) : null,
     target, known, friends,
