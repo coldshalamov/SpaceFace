@@ -253,6 +253,26 @@ test('query APIs return what the consumers need', () => {
   assert.ok(touching.every((e) => e.a === gateNode.id || e.b === gateNode.id));
 });
 
+test('query result arrays cannot mutate later atlas reads', () => {
+  const atlas = buildAtlasIndex();
+  const sectorId = ZERO_ORIGIN_SECTOR;
+  const firstSectorRows = atlas.nodesInSector(sectorId);
+  const firstStationRows = atlas.nodesOfKind('station');
+  const gate = atlas.nodesOfKind('gate')[0];
+  const firstEdgeRows = atlas.edgesFrom(gate.id);
+
+  assert.ok(Object.isFrozen(firstSectorRows));
+  assert.ok(Object.isFrozen(firstStationRows));
+  assert.ok(Object.isFrozen(firstEdgeRows));
+  assert.throws(() => firstSectorRows.pop(), TypeError);
+  assert.throws(() => firstStationRows.pop(), TypeError);
+  assert.throws(() => firstEdgeRows.pop(), TypeError);
+
+  assert.deepStrictEqual(atlas.nodesInSector(sectorId), firstSectorRows);
+  assert.deepStrictEqual(atlas.nodesOfKind('station'), firstStationRows);
+  assert.deepStrictEqual(atlas.edgesFrom(gate.id), firstEdgeRows);
+});
+
 test('discoveryTier reports the authored baseline only', () => {
   const atlas = buildAtlasIndex(syntheticSources());
   assert.equal(atlas.getNode('sector_helios_prime').discoveryTier, DISCOVERY_TIER.CHARTED);

@@ -391,6 +391,12 @@ export function buildAtlasIndex(sources = null) {
     }
   }
 
+  // The public arrays are views over these indexes. Freeze the backing rows as well as
+  // the top-level node/edge arrays, or one caller can silently corrupt later queries.
+  for (const rows of nodesBySector.values()) Object.freeze(rows);
+  for (const rows of nodesByKind.values()) Object.freeze(rows);
+  for (const rows of edgesByNode.values()) Object.freeze(rows);
+
   const frozenNodes = Object.freeze(nodes);
   const frozenEdges = Object.freeze(edges);
 
