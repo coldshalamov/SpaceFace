@@ -16368,11 +16368,73 @@ function attachPoolChunkDirectVariantWitness(chunkMesh, pool) {
     witness.matrixAutoUpdate = false;
     // Shares the pool's GPU buffers: never dispose this view (that would drop the shared attributes).
     witness.userData = { spacefacePoolDirectVariantWitness: true };
+    installPoolWitnessStats(witness);
     chunkMesh.add(witness);
     return witness;
   } catch {
     return null;
   }
+}
+
+// Opt-in debug counter (#667 review point 2). Set globalThis.__sfPoolWitnessStats = {} before boot
+// and every witness draw is counted: main-pass draws, shadow-pass draws, and the gl.useProgram calls
+// three issued while binding the witness (three caches the bound program, so each call is a real
+// program switch into the plain variant). Off by default: no callbacks are installed.
+function poolWitnessStats() {
+  const stats = globalThis.__sfPoolWitnessStats;
+  return stats && typeof stats === 'object' ? stats : null;
+}
+
+function countingUseProgram(renderer, stats) {
+  const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (!gl || typeof gl.useProgram !== 'function') return null;
+  if (!gl.__sfUseProgramCounted) {
+    const inner = gl.useProgram;
+    gl.__sfUseProgramCounted = { calls: 0 };
+    const counter = gl.__sfUseProgramCounted;
+    gl.useProgram = function countedUseProgram(program) { counter.calls += 1; return inner.call(this, program); };
+  }
+  stats.glUseProgram = gl.__sfUseProgramCounted;
+  return gl.__sfUseProgramCounted;
+}
+
+export function installPoolWitnessStats(witness) {
+  const stats = poolWitnessStats();
+  if (!stats) return;
+  stats.witnesses = (stats.witnesses || 0) + 1;
+  let before = 0;
+  witness.onBeforeRender = (renderer) => {
+    const counter = countingUseProgram(renderer, stats);
+    stats.draws = (stats.draws || 0) + 1;
+    before = counter ? counter.calls : 0;
+  };
+  witness.onAfterRender = (renderer) => {
+    const counter = countingUseProgram(renderer, stats);
+    if (counter) stats.programSwitchesIn = (stats.programSwitchesIn || 0) + (counter.calls - before);
+  };
+  witness.onBeforeShadow = () => { stats.shadowDraws = (stats.shadowDraws || 0) + 1; };
+}
+
+// Chunk teardown: the witness view shares the pool's attribute objects, and three's geometry
+// dispose deletes the GL buffers of every attribute still attached. Strip the shared attributes
+// first, then dispose, so three drops only the view's own state (its WebGLGeometries entry and the
+// per-program VAOs in WebGLBindingStates) and the pool's buffers stay alive.
+export function disposePoolChunkDirectVariantWitness(chunkMesh) {
+  if (!chunkMesh || !Array.isArray(chunkMesh.children)) return 0;
+  let disposed = 0;
+  for (const child of chunkMesh.children.slice()) {
+    if (!child || !child.userData || child.userData.spacefacePoolDirectVariantWitness !== true) continue;
+    const view = child.geometry;
+    child.removeFromParent();
+    if (view && typeof view.dispose === 'function') {
+      view.attributes = {};
+      view.index = null;
+      view.morphAttributes = {};
+      view.dispose();
+      disposed += 1;
+    }
+  }
+  return disposed;
 }
 
 function createInstanceChunk(scene, pool, ordinal, options = {}) {
@@ -16565,6 +16627,7 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   }
   if (chunk.meshDisposed !== true) {
     attempt(() => {
+      disposePoolChunkDirectVariantWitness(chunk.mesh);
       chunk.mesh.dispose();
       chunk.meshDisposed = true;
     });
