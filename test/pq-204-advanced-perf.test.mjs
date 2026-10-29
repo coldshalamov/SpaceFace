@@ -263,6 +263,55 @@ test('far hostile pairs in one cell resolve on a seeded delay', () => {
   assert.equal(resolveFarEncounters(state, 10), 0);
 });
 
+test('far encounter matching stays linear for friendly, cooling, and mixed buckets', () => {
+  const count = 1024;
+  let roleReads = 0;
+  const makeActor = (id, team, { hostile = false, due = undefined } = {}) => {
+    const actor = {
+      id, type: 'ship', alive: true, team, pos: { x: 0, z: 0 },
+      get trafficRole() { roleReads++; return hostile ? 'pirate' : 'hauler'; },
+      nextEventAtT: due,
+    };
+    return actor;
+  };
+  const run = (rows, simTime = 0) => resolveFarEncounters({
+    meta: { seed: 47 }, world: { farActors: { rows, grid: new Map([['0:0', rows]]) } },
+  }, simTime);
+
+  const friendly = Array.from({ length: count }, (_, i) => makeActor(i + 1, 1));
+  assert.equal(run(friendly), 0);
+  assert.equal(roleReads, count, 'friendly prescreen reads each role once instead of testing every pair');
+
+  roleReads = 0;
+  const cooling = Array.from({ length: count }, (_, i) => makeActor(i + 1, i % 2, {
+    hostile: i % 3 === 0, due: 50,
+  }));
+  assert.equal(run(cooling, 10), 0);
+  assert.equal(roleReads, 0, 'future cooldown rows are excluded before hostility or pair matching');
+
+  roleReads = 0;
+  const mixed = [
+    ...Array.from({ length: count / 2 }, (_, i) => makeActor(i + 1, i + 1)),
+    ...Array.from({ length: count / 2 }, (_, i) => makeActor(count / 2 + i + 1, count + i + 1, { hostile: true })),
+  ];
+  assert.equal(run(mixed), 0);
+  assert.equal(roleReads, count, 'all independent pairs are scheduled in one linear bucket pass');
+  assert.ok(mixed.every((actor) => Number.isFinite(actor.nextEventAtT)));
+});
+
+test('independent far pairs due together all resolve in the same sweep', () => {
+  const rows = [
+    { id: 11, type: 'ship', team: 1, trafficRole: 'pirate', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, lastExactT: 0, nextEventAtT: 10, hull: 40 },
+    { id: 12, type: 'ship', team: 0, trafficRole: 'hauler', alive: true, pos: { x: 8, z: 0 }, vel: { x: 0, z: 0 }, lastExactT: 0, nextEventAtT: 10, hull: 40 },
+    { id: 13, type: 'ship', team: 1, trafficRole: 'pirate', alive: true, pos: { x: 12, z: 0 }, vel: { x: 0, z: 0 }, lastExactT: 0, nextEventAtT: 10, hull: 40 },
+    { id: 14, type: 'ship', team: 0, trafficRole: 'hauler', alive: true, pos: { x: 16, z: 0 }, vel: { x: 0, z: 0 }, lastExactT: 0, nextEventAtT: 10, hull: 40 },
+  ];
+  const state = { meta: { seed: 47 }, world: { farActors: { rows, grid: new Map([['0:0', rows]]) } } };
+  assert.equal(resolveFarEncounters(state, 10), 2);
+  assert.equal(rows.filter((row) => row.type === 'wreck').length, 2);
+  assert.equal(rows.filter((row) => row.type !== 'wreck' && row.nextEventAtT === 40).length, 2);
+});
+
 test('Rapier island sleep is save-safe and skips player, projectiles, and taut lines', () => {
   assert.equal(mayRapierIslandSleep({ isPlayer: true }, { dynamic: true }), false);
   assert.equal(mayRapierIslandSleep({ type: 'projectile' }, { dynamic: true, material: 'projectile' }), false);

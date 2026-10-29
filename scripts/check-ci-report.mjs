@@ -224,7 +224,7 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
   const seenIds = new Map();
   return commands.map((command, index) => {
     const npmScript = command.match(/^npm\s+run\s+([\w:@.-]+)/)?.[1];
-    const nodeTarget = command.match(/^node\s+(?:--test\s+)?([^\s]+)/)?.[1];
+    const nodeTarget = findNodeScriptTarget(command);
     const rawId = npmScript
       ? `check-${npmScript.replace(/^check:?/, '')}`
       : nodeTarget
@@ -252,6 +252,35 @@ export function buildCommandMatrix(checkCommand = '', scripts = {}) {
         : DEFAULT_TIMEOUT_MS);
     return cmd(id, command, timeoutMs);
   });
+}
+
+// Node options can precede the script path (`node --test --test-concurrency=2 test/foo.test.mjs`).
+// Use the actual script to form the matrix ID; treating the first option as a filename leaks the
+// check into the unclassified bucket and prevents every named group from running.
+const NODE_OPTIONS_WITH_SEPARATE_VALUES = new Set([
+  '--conditions', '--experimental-loader', '--import', '--input-type', '--loader', '--max-http-header-size',
+  '--openssl-config', '--redirect-warnings', '--require', '--test-concurrency', '--test-name-pattern',
+  '--test-reporter', '--test-reporter-destination', '--title', '-e', '-p', '-r',
+]);
+
+function findNodeScriptTarget(command) {
+  const tokens = String(command).trim().split(/\s+/);
+  if (tokens[0] !== 'node') return null;
+
+  for (let index = 1; index < tokens.length; index++) {
+    const token = tokens[index];
+    if (token === '--test') continue;
+    if (token.startsWith('--')) {
+      if (!token.includes('=') && NODE_OPTIONS_WITH_SEPARATE_VALUES.has(token)) index++;
+      continue;
+    }
+    if (token.startsWith('-')) {
+      if (['-e', '-p', '-r'].includes(token)) index++;
+      continue;
+    }
+    return token;
+  }
+  return null;
 }
 
 function expandCompositeCommands(command, scripts, stack = []) {

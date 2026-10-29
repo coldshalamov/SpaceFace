@@ -782,6 +782,10 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     activations: 0,
     lastReason: null,
     lastError: null,
+    preparationStage: 'idle',
+    preparationCurrentGroup: 0,
+    preparationCompletedGroups: 0,
+    preparationGroupCount: 0,
     // Diagnostic only: which per-entry stability check failed, plus a bounded subject label.
     // Not part of any rollback decision; tests and probes read it to attribute churn.
     lastDetail: null,
@@ -1004,11 +1008,80 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     return true;
   };
 
+  // A shadow policy change belongs to its presentation owner, not to every retained ship.
+  // The changed owner's old batch lane is no longer safe, so restore that owner's direct
+  // primitives and retire only its instances. Other owners keep their valid retained copies.
+  const detachShadowChangedOwner = (batchOwner, root, restoreDirectSources) => {
+    if (!batchOwner || !root) return true;
+    let removedCount = 0;
+    for (const entry of batchOwner.entries) {
+      if (entry.root !== root || entry.removed) continue;
+      try { entry.batch.mesh.deleteInstance(entry.instanceId); }
+      catch (_) { return false; }
+      if (restoreDirectSources && entry.source.layers && Number.isFinite(entry.layersMask)) {
+        entry.source.layers.mask = entry.layersMask;
+      }
+      if (entry.visible) entry.batch.visibleCount = Math.max(0, entry.batch.visibleCount - 1);
+      entry.removed = true;
+      removedCount += 1;
+    }
+    if (!removedCount) return true;
+
+    let entryWrite = 0;
+    for (const entry of batchOwner.entries) {
+      if (entry.removed) continue;
+      batchOwner.entries[entryWrite++] = entry;
+    }
+    batchOwner.entries.length = entryWrite;
+
+    let batchWrite = 0;
+    for (const batch of batchOwner.batches) {
+      let batchEntryWrite = 0;
+      for (const entry of batch.entries) {
+        if (entry.removed) continue;
+        batch.entries[batchEntryWrite++] = entry;
+      }
+      batch.entries.length = batchEntryWrite;
+      if (batch.entries.length === 0) {
+        disposeBatch(batch, scene);
+      } else {
+        publishBatchOpeningPackage(batch);
+        batch.mesh.visible = restoreDirectSources && batch.visibleCount > 0;
+        batchOwner.batches[batchWrite++] = batch;
+      }
+    }
+    batchOwner.batches.length = batchWrite;
+    if (restoreDirectSources) batchOwner.entryTopology = captureEntryTopology(batchOwner.entries);
+    stats.eligibleMeshes = Math.max(0, stats.eligibleMeshes - removedCount);
+    stats.directFallbackMeshes += removedCount;
+    stats.lastReason = 'shadow-owner-direct-fallback';
+    return true;
+  };
+
   const validateAndRefresh = () => {
     if (!active) return false;
     if (!entryTopologyMatches(active.entryTopology)) {
       stats.lastDetail = 'entry-topology';
       return false;
+    }
+    const shadowChangedOwners = new Map();
+    for (const entry of active.entries) {
+      const source = entry.source;
+      const changedPolicy = source?.castShadow !== entry.castShadow
+        ? 'cast-shadow'
+        : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
+      if (!changedPolicy) continue;
+      noteUnstableCheck(entry)(changedPolicy);
+      if (!shadowChangedOwners.has(entry.root)) {
+        shadowChangedOwners.set(entry.root, `${changedPolicy}@${source?.name || '?'}`);
+      }
+    }
+    for (const [root, detail] of shadowChangedOwners) {
+      if (!detachShadowChangedOwner(active, root, true)) {
+        stats.lastDetail = 'shadow-owner-ejection-failed';
+        return false;
+      }
+      stats.lastDetail = detail;
     }
     let visibleCount = 0;
     const materialUniformStability = new Map();
@@ -1067,6 +1140,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     if (disposed || !scene) return refreshDiagnostics();
     if (stats.supported !== true) {
       stats.status = 'disabled';
+      stats.preparationStage = 'disabled';
       stats.lastReason = 'unsupported-batched-mesh-capability';
       return refreshDiagnostics();
     }
@@ -1120,6 +1194,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       // flip invalidates again. Sources stay on their authored direct draws until quiet; the
       // signature is left unstamped so the first quiet sync plans against current roots.
       stats.status = 'settling';
+      stats.preparationStage = 'settling';
       stats.lastReason = 'shadow-flip-quiet-window';
       return refreshDiagnostics();
     }
@@ -1146,12 +1221,17 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
     stats.potentialDrawReduction = plan.potentialDrawReduction;
     if (plan.groups.length === 0) {
       stats.status = 'idle';
+      stats.preparationStage = 'idle';
+      stats.preparationCurrentGroup = 0;
+      stats.preparationCompletedGroups = 0;
+      stats.preparationGroupCount = 0;
       stats.lastReason = 'no-eligible-groups';
       return refreshDiagnostics();
     }
     const prepare = typeof requestOptions.prepare === 'function' ? requestOptions.prepare : prepareDefault;
     if (typeof prepare !== 'function') {
       stats.status = 'unprepared';
+      stats.preparationStage = 'unprepared';
       stats.lastReason = 'prepare-callback-required';
       return refreshDiagnostics();
     }
@@ -1163,6 +1243,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       });
     } catch (error) {
       stats.status = 'failed';
+      stats.preparationStage = 'candidate-failed';
       stats.lastReason = 'candidate-build-failed';
       stats.lastError = String(error && error.message || error);
       return refreshDiagnostics();
@@ -1176,13 +1257,32 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
       promise: null,
     };
     stats.status = 'preparing';
+    stats.preparationStage = 'prepare-starting';
+    stats.preparationCurrentGroup = 0;
+    stats.preparationCompletedGroups = 0;
+    stats.preparationGroupCount = candidate.batches.length;
+    stats.lastReason = 'preparation-running';
     stats.lastError = null;
     const activeNow = () => !disposed && pending === record && record.cancelled !== true;
+    const reportProgress = (stage, currentGroup, completedGroups, groupCount) => {
+      if (!activeNow()) return false;
+      const boundedCount = Math.max(0, Math.min(candidate.batches.length,
+        Math.trunc(Number(groupCount) || candidate.batches.length)));
+      stats.preparationStage = stage === 'group-ready' ? 'group-ready'
+        : stage === 'ready' ? 'ready' : 'compiling';
+      stats.preparationGroupCount = boundedCount;
+      stats.preparationCurrentGroup = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(currentGroup) || 0)));
+      stats.preparationCompletedGroups = Math.max(0, Math.min(boundedCount,
+        Math.trunc(Number(completedGroups) || 0)));
+      return true;
+    };
     record.promise = Promise.resolve()
       .then(() => prepare(candidate.batches.map((batch) => batch.mesh), {
         roots: normalized,
         plan,
         isActive: activeNow,
+        reportProgress,
       }))
       .then((result) => {
         const wasActive = activeNow();
@@ -1201,7 +1301,54 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
             lastTopology = null;
           }
           stats.status = 'idle';
+          stats.preparationStage = result?.timedOut === true ? 'timed-out'
+            : result?.skipped === true || result?.ready === false ? 'incomplete' : 'stale';
           stats.lastReason = !wasActive ? 'preparation-stale' : 'preparation-incomplete';
+          if (wasActive && result?.reason != null) {
+            stats.lastError = String(result.reason).slice(0, 240);
+          }
+          return refreshDiagnostics();
+        }
+        stats.preparationStage = 'validating';
+        const shadowChangedOwners = new Map();
+        for (const entry of candidate.entries) {
+          const source = entry.source;
+          const changedPolicy = source?.castShadow !== entry.castShadow
+            ? 'cast-shadow'
+            : source?.receiveShadow !== entry.receiveShadow ? 'receive-shadow' : null;
+          if (!changedPolicy) continue;
+          noteUnstableCheck(entry)(changedPolicy);
+          if (!shadowChangedOwners.has(entry.root)) {
+            shadowChangedOwners.set(entry.root, `${changedPolicy}@${source?.name || '?'}`);
+          }
+        }
+        for (const [root, detail] of shadowChangedOwners) {
+          if (!detachShadowChangedOwner(candidate, root, false)) {
+            releaseCandidate(candidate, scene, true);
+            if (pending === record) pending = null;
+            lastSignature = null;
+            lastRoots = [];
+            lastTopology = null;
+            stats.status = 'idle';
+            stats.preparationStage = 'ejection-failed';
+            stats.lastReason = 'shadow-owner-ejection-failed';
+            stats.lastDetail = detail;
+            return refreshDiagnostics();
+          }
+          record.shadowOwnerFallback = true;
+          record.shadowFallbackDetail = detail;
+        }
+        if (shadowChangedOwners.size) record.entryTopology = captureEntryTopology(candidate.entries);
+        if (candidate.entries.length === 0) {
+          releaseCandidate(candidate, scene, true);
+          if (pending === record) pending = null;
+          lastSignature = null;
+          lastRoots = [];
+          lastTopology = null;
+          stats.status = 'idle';
+          stats.preparationStage = 'direct-fallback';
+          stats.lastReason = 'shadow-owner-direct-fallback';
+          stats.lastDetail = record.shadowFallbackDetail || null;
           return refreshDiagnostics();
         }
         const topologyStable = entryTopologyMatches(record.entryTopology);
@@ -1216,6 +1363,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
           lastRoots = [];
           lastTopology = null;
           stats.status = 'idle';
+          stats.preparationStage = topologyStable ? 'source-changed' : 'topology-changed';
           stats.lastReason = topologyStable
             ? 'source-state-changed-before-commit'
             : 'source-topology-changed-before-commit';
@@ -1252,8 +1400,13 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         pending = null;
         preparationRetry = null;
         stats.status = 'active';
+        stats.preparationStage = 'active';
+        stats.preparationCurrentGroup = 0;
+        stats.preparationCompletedGroups = candidate.batches.length;
         stats.activations += 1;
-        stats.lastReason = 'activated-after-residency';
+        stats.lastReason = record.shadowOwnerFallback
+          ? 'shadow-owner-direct-fallback' : 'activated-after-residency';
+        if (record.shadowFallbackDetail) stats.lastDetail = record.shadowFallbackDetail;
         return refreshDiagnostics();
       })
       .catch((error) => {
@@ -1263,6 +1416,7 @@ export function createRetainedRigidOpaqueBatchController(options = {}) {
         if (pending === record) pending = null;
         preparationRetry ||= { frames: 0, used: false };
         stats.status = 'failed';
+        stats.preparationStage = 'failed';
         stats.lastReason = 'preparation-failed';
         stats.lastError = String(error && error.message || error);
         return refreshDiagnostics();

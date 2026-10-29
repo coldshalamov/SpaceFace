@@ -198,7 +198,7 @@ frame cost, preserving useful replay moments.
 `renderer.js` (36,741 lines) below 8k (row 412): the free functions into `render/runtime/*`, the `render`
 object into per-concern modules (entity sync, shadows/LOD, residency/prewarm, post stage, lifecycle).
 `vfx.js` (18,470) into `render/vfx/` per effect family. `partsLibrary.js`: collapse the 15 sync/"stepped
-twin" pairs into one generator with a sync driver. Grunt the moves through Grok/Gemini; prove with
+twin" pairs into one generator with a sync driver. Keep the moves bounded and use a suitable implementation tool; prove with
 byte-identical golden digests, the boot census, and `check:baseline`. Do these **after** M1–M5 land.
 
 ### Wave A — the picture (taste; interleave with Wave M once M0–M5 have landed)
@@ -233,35 +233,22 @@ the existing camera/presentation owners; prove it with Lane 2's SC-01 playground
 **R1** deployed route on desktop and phone (`probe-deployed-mobile.mjs`), **R2** the 30-minute soak at
 target, **R3** a final README §4 table on the final build.
 
-## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+## Critical owner map
 
-**Critical systems — each gets a Codex deep review, then packets:** the render frame loop and entity
-sync (`renderer.js` `render` object), program admission and readiness (`pipelineReadiness.js`,
-`shaderLinkReporter.js`, `programBinaryCache.js`), presentation and recovery (`presentationRunner.js`,
-`packageCpuDetach.js`, context loss), the sim-worker lane (`simLane*.js`, `wholeSimBrowserWorker.js`),
-post-processing (`bloom.js` chain + composite), the VFX library (`vfx.js`, `render/vfx/**`, pools,
-`weaponLights.js`), asset loading and residency (`assetLoader.js`, `partsLibrary.js`, render packages,
-`glbPrepassWorker.js`), quality governance (`adaptiveQuality.js`, `slowFrameOffer.js`), the boot and
-loading pipeline (`bootEntry.js`, `bootShellPacing.js`, `loading*.js`, `bootRingWorker.js`), camera
-presentation, the Electron shell (`electron/main.cjs`).
-**Then everything else you own**, ranked by how much a player sees it. Keep the list here with a
-status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
+These are the lane's high-impact systems and remain useful when a concrete player, renderer,
+loading, memory or performance issue needs an owner: render frame/entity sync (`renderer.js`),
+program admission/readiness, presentation/recovery, sim-worker lane, post-processing, VFX/pools,
+asset loading/residency, quality governance, boot/loading, camera presentation and Electron shell.
+This is an owner map, not a mandatory review queue or a claim that each system is at bar.
 
-Status (2026-10-28): sim-worker lane — REVIEWED (Gemini line-read, `.devshots/finish/lane1/review-simlane/INVENTORY.md`: 11 findings incl. type-scoped echo gap now FIXED, 250 Hz busy-poll, unbounded domainAppliedKeys; flip surface fully mapped; Codex deep review next). All other systems — UNREVIEWED.
+## Source coverage and current findings
 
-## The audit — read every line you own
-
-Split `src/render/**`, the core frame/boot pipeline, the boot/loading UI and `electron/**` into
-modules of ≤ ~3k lines each and hand them in pairs, evenly, to Grok and Gemini (`TOOLS.md`): each run
-reads every line of its module and writes `.devshots/finish/lane1/audit/<module>.md` — bugs, per-frame
-allocation, dead code, duplicated paths, hidden per-frame DOM reads, debug/census code running in the
-game loop, and the three cheapest wins. Turn real findings into packets below this line.
-
-Audit status (2026-10-28 ~15:00): 135 chunks queued in `.devshots/finish/lane1/audit-manifest.json`;
-~21 attempted, grok landing steadily (~10 reports in `audit/`). **agy side is quota-dead** —
-`AGY_ERROR RESOURCE_EXHAUSTED (429), resets ~3h`; its odd chunks stay `done:false` in
-`audit-status.json` — rerun `node .devshots/finish/lane1/audit-runner.mjs --only=gemini` after the
-reset (the runner's "gemini" provider is the `agy` binary).
+The 2026-10-29 full-source inventory, reused reads and explicit coverage caveats are in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md). Current player-visible results,
+open integration risks and route evidence are in [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md).
+Use them before assigning work so completed reads and active findings are not duplicated. Source
+coverage is not gameplay acceptance or a blanket quality verdict; close the concrete product
+outcomes and performance/visual targets on this board with their relevant direct checks.
 
 ## INFERENCE (seed ≈ 20 lines in the brainstorm packet, README §6)
 

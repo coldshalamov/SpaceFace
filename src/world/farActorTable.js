@@ -4,6 +4,7 @@ import {claimsTallyAssessor,canPromoteTallyAssessor,decorateTallyAssessorSpec} f
 
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { MORROW } from '../data/morrow.js';
+import { BORROWED_SUN } from '../data/borrowedSun.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 import { PLANET_SITE } from '../data/planets.js';
 import { makeShipEntitySpec } from '../systems/ships.js';
@@ -211,7 +212,10 @@ export function restoreFarActorTable(state, data) {
     schema: FAR_ACTOR_SCHEMA,
     version: Number.isSafeInteger(data.version) ? data.version : 0,
     rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)
-      && !isWorldSiteStaticAnatomy(row) && !isAnonymousMorrowTwin(row)),
+      && !isWorldSiteStaticAnatomy(row) && !isAnonymousMorrowTwin(row)
+      // These transient parts re-derive from their owner's bounded book. A legacy lean row
+      // has lost its sail/collector/glass identity and cannot rejoin that cohort on promotion.
+      && row.data?.persistenceOwner !== BORROWED_SUN.owner),
   };
   // Shelved ids stay reserved through allocateEntityId's ledger check — no counter bump needed
   // here (bumping nextEntityId would shift the post-load spawn order and break save hash parity).
@@ -310,6 +314,10 @@ export function shouldVirtualizeFarActor(entity, state) {
   if (type !== 'ship' && type !== 'drone' && type !== 'wreck') return false;
   const flags = entity.flags || {};
   const data = entity.data || {};
+  // The carrier owns a bounded physical cohort and reprints a missing part. The lean NPC row
+  // drops those part tags, so shelving four reflectors created four new durable rows every tick.
+  // Keep the parts resident under their owner; distant activity/physics tiers still sleep them.
+  if (data.persistenceOwner === BORROWED_SUN.owner) return false;
   if (isWorldSiteStaticAnatomy(entity)) return false;
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;

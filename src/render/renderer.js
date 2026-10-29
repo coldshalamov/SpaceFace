@@ -11257,6 +11257,10 @@ function emptyRigidOpaqueBatchDiagnostics(owner, status = 'disabled', lastReason
     activations: 0,
     lastReason,
     lastError: null,
+    preparationStage: status === 'disabled' ? 'disabled' : 'idle',
+    preparationCurrentGroup: 0,
+    preparationCompletedGroups: 0,
+    preparationGroupCount: 0,
     lastDetail: null,
   };
 }
@@ -11554,8 +11558,11 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
           && life.root.userData.presentationEntityId === life.id
           && life.root.userData.presentationOccupantGeneration === life.generation)
         && (typeof context.isActive !== 'function' || context.isActive() === true);
-      for (const batch of batches || []) {
+      const groupCount = batches?.length || 0;
+      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
+        const batch = batches[groupIndex];
         if (!isActive()) return { skipped: true, reason: 'candidate-superseded' };
+        context.reportProgress?.('compiling', groupIndex + 1, groupIndex, groupCount);
         const result = await Promise.resolve(compile(batch, {
           explicit: true,
           strict: true,
@@ -11571,7 +11578,9 @@ function createRigidOpaqueBatchProbe(owner, scene, options = {}) {
           return { skipped: true, reason: result && result.reason || 'compile-incomplete' };
         }
         assertCompleteAppearanceAdmission(result);
+        context.reportProgress?.('group-ready', groupIndex + 1, groupIndex + 1, groupCount);
       }
+      context.reportProgress?.('ready', 0, groupCount, groupCount);
       return { ready: true };
     },
   });

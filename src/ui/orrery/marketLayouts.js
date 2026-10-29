@@ -962,6 +962,22 @@ const CSS_TAIL = `
   ${MP} .dp-frame__body--station, ${MP} .dp-frame__body--station > .sx-screen__body { flex:none !important; overflow:visible !important; }
   ${MP} footer.sxb-ops { position:sticky !important; bottom:0 !important; z-index:2; background:rgb(5 7 10) !important; }
 }
+/* Quote breakdown, opened: one column of figures, read in place. The kit laid the eleven rows in
+   two columns inside the trade console (~146-244px wide), so labels broke mid-word ("Cr/ed/its") and
+   values ran under the next column; at 901+ it floated up as a sheet that the scrolling stage clipped.
+   It now opens in the console's own flow, a label and its figure per row, and a figure that cannot fit
+   beside its label drops to its own right-aligned line instead of breaking a word. */
+${M} .so-trade-breakdown[open] .sx-trade__rows { position:static !important; width:auto !important; max-width:none !important; max-height:none !important;
+  overflow:visible !important; display:block !important; margin:6px 0 4px !important; padding:4px 0 !important; background:none !important;
+  border:0 !important; border-top:1px solid rgb(${BONE} / .12) !important; border-radius:0 !important; box-shadow:none !important; text-align:left !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li { display:flex !important; flex-wrap:wrap !important; align-items:baseline !important;
+  justify-content:space-between !important; column-gap:12px !important; row-gap:0 !important; min-height:26px !important; padding:4px 0 !important;
+  margin:0 !important; border-bottom:1px solid rgb(${BONE} / .07) !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li:last-child { border-bottom:0 !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li > span { flex:none !important; white-space:nowrap !important; overflow-wrap:normal !important;
+  font-size:12px !important; color:rgb(${BONE} / .72) !important; }
+${M} .so-trade-breakdown[open] .sx-trade__rows > li > .k-row__num { flex:1 1 auto !important; min-width:0 !important; text-align:right !important;
+  white-space:normal !important; overflow-wrap:normal !important; font-size:13px !important; }
 `;
 
 export function injectOrreryMarket(doc = globalThis.document) {

@@ -114,12 +114,20 @@ test('default renderer submission joins strict loading preparation before first-
     assert.equal(compileOptions.openingRequired, true);
     assert.equal(compileOptions.strict, true); assert.equal(compileOptions.explicit, true);
     assert.equal(compileOptions.joinOutstanding, true); assert.equal(compileOptions.isActive(), true);
+    const compiling = owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(compiling.preparationStage, 'compiling');
+    assert.equal(compiling.preparationCurrentGroup, 1);
+    assert.equal(compiling.preparationCompletedGroups, 0);
+    assert.equal(compiling.preparationGroupCount, 1);
     const waitSet = owner._openingFirstPictureUpgradePromises();
     assert.ok(waitSet.includes(completion), 'the existing bounded opening settle joins that exact promise');
     assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
     finish({ pipelines: {}, gpuResidency: {} });
     await Promise.all(waitSet);
-    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    const active = owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(active.status, 'active');
+    assert.equal(active.preparationStage, 'active');
+    assert.equal(active.preparationCompletedGroups, 1);
     assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 2);
     assert.equal(a.layers.mask, 0); assert.equal(b.layers.mask, 0);
     assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays on its live direct material');
@@ -253,25 +261,40 @@ test('retained rigid batches wait for residency before suppressing direct source
   scene.add(root);
   scene.updateMatrixWorld(true);
   let resolvePreparation;
+  let markPreparationStarted;
   const preparation = new Promise((resolve) => { resolvePreparation = resolve; });
+  const preparationStarted = new Promise((resolve) => { markPreparationStarted = resolve; });
   const controller = createRetainedRigidOpaqueBatchController({
     scene,
     prepare: async (batches, context) => {
       assert.equal(batches.length, 1);
       assert.equal(context.isActive(), true);
+      context.reportProgress('compiling', 1, 0, batches.length);
+      markPreparationStarted();
       await preparation;
+      context.reportProgress('group-ready', 1, 1, batches.length);
+      context.reportProgress('ready', 0, 1, 1);
       return { ready: true };
     },
   });
 
   const pending = controller.sync([root]);
+  await preparationStarted;
   assert.equal(a.visible, true, 'source remains drawable while pipeline/residency is pending');
   assert.equal(b.visible, true, 'source remains drawable while pipeline/residency is pending');
-  assert.equal(controller.getDiagnostics().status, 'preparing');
+  const inProgress = controller.getDiagnostics();
+  assert.equal(inProgress.status, 'preparing');
+  assert.equal(inProgress.lastReason, 'preparation-running');
+  assert.equal(inProgress.preparationStage, 'compiling');
+  assert.equal(inProgress.preparationCurrentGroup, 1);
+  assert.equal(inProgress.preparationCompletedGroups, 0);
+  assert.equal(inProgress.preparationGroupCount, 1);
 
   resolvePreparation();
   const result = await pending;
   assert.equal(result.status, 'active');
+  assert.equal(result.preparationStage, 'active');
+  assert.equal(result.preparationCompletedGroups, 1);
   assert.equal(a.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
   assert.equal(b.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
   assert.equal(a.layers.mask, 0, 'the active retained copy suppresses direct source submission');
@@ -1092,66 +1115,55 @@ test('unsupported BatchedMesh capability leaves the direct path untouched', asyn
   b.material.dispose();
 });
 
-test('a shadow-lane flip parks the flipper instead of churning the whole cohort', async () => {
+test('a shadow-lane flip restores only its owner while a shared batch retains other roots', async () => {
   const scene = new THREE.Scene();
   const { root, a, b } = makeRoot();
-  // A third leaf keeps a viable group after the flipper parks — groups under the
-  // minimum size are not planned at all.
+  // Three leaves make the affected owner large enough to share one group with the second root.
   const cMaterial = b.material.clone();
   cMaterial.onBeforeCompile = b.material.onBeforeCompile;
   cMaterial.customProgramCacheKey = b.material.customProgramCacheKey;
   const c = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), cMaterial);
   c.position.x = 4;
   root.add(c);
-  scene.add(root);
+  const other = makeRoot();
+  other.root.position.x = 12;
+  scene.add(root, other.root);
   scene.updateMatrixWorld(true);
   const controller = createRetainedRigidOpaqueBatchController({
     scene,
     prepare: () => ({ ready: true }),
   });
   try {
-    const first = await controller.sync(root);
+    const first = await controller.sync([root, other.root]);
     assert.equal(first.status, 'active');
-    assert.equal(first.instances, 3);
+    assert.equal(first.instances, 5);
+    const sharedBatch = scene.children.find(child => child.isBatchedMesh);
+    assert.ok(sharedBatch);
 
-    // The shadow-policy pass flips a lane flag between syncs — the live case that used to
-    // dispose and immediately re-prepare the entire cohort on every policy touch.
+    // The shadow-policy pass changes one owner’s lane between syncs. Its primitives return to
+    // direct draws, while instances from the same batch that belong to the other owner survive.
     a.castShadow = true;
-    const rolled = await controller.sync(root);
-    // The rollback lands in the same sync, but the replan waits for the shadow sweep to go
-    // quiet — a multi-part sweep collapses into one recommit instead of one per flipper.
-    assert.equal(rolled.rollbacks, 1);
-    assert.equal(rolled.status, 'settling');
-    assert.match(rolled.lastDetail || '', /^cast-shadow@/);
-    assert.equal(a.layers.mask, 1, 'the flipped source returns to its direct draw');
-    assert.equal(b.layers.mask, 1, 'rollback restores the rest of the cohort too');
+    const ejected = await controller.sync([root, other.root]);
+    assert.equal(ejected.rollbacks, 0);
+    assert.equal(ejected.status, 'active');
+    assert.equal(ejected.instances, 2);
+    assert.equal(ejected.batches, 1);
+    assert.equal(ejected.lastReason, 'shadow-owner-direct-fallback');
+    assert.match(ejected.lastDetail || '', /^cast-shadow@/);
+    assert.equal(a.layers.mask, 1, 'the changed owner returns to direct draws');
+    assert.equal(b.layers.mask, 1);
     assert.equal(c.layers.mask, 1);
+    assert.equal(other.a.layers.mask, 0, 'the unaffected owner remains batched');
+    assert.equal(other.b.layers.mask, 0);
+    assert.equal(sharedBatch.instanceCount, 2, 'deleted slots leave exactly the two surviving instances');
+    assert.equal(sharedBatch._instanceInfo.filter(instance => instance.active).length, 2,
+      'slot compaction does not duplicate or lose the retained owner’s instances');
 
-    // Syncs inside the quiet window keep settling without re-preparing.
-    const before = rolled.activations;
-    for (let i = 0; i < 8; i += 1) await controller.sync(root);
-    const heldEarly = await controller.sync(root);
-    assert.equal(heldEarly.status, 'settling');
-    assert.equal(heldEarly.activations, before, 'no re-prepare while flips are fresh');
-    assert.equal(heldEarly.rollbacks, 1, 'no further disposal after the one clean rollback');
-
-    // Once flips have been quiet for the replan window the cohort re-commits with the
-    // flipper parked on its authored direct draw.
-    for (let i = 0; i < 46; i += 1) await controller.sync(root);
-    const held = await controller.sync(root);
-    assert.equal(held.status, 'active');
-    assert.equal(held.instances, 2, 'only the flipper parks on the direct path');
-    assert.equal(held.rollbacks, 1);
-    assert.equal(a.layers.mask, 1);
-    assert.equal(b.layers.mask, 0);
-    assert.equal(c.layers.mask, 0);
-
-    // A parked source is not an entry, so later lane touches on it are no longer the
-    // cohort's problem: the rest stays batched and no further rollback can fire.
+    // The direct-fallback owner may keep changing its live policy without disturbing neighbors.
     a.castShadow = false;
-    const afterTouch = await controller.sync(root);
+    const afterTouch = await controller.sync([root, other.root]);
     assert.equal(afterTouch.status, 'active');
-    assert.equal(afterTouch.rollbacks, 1, 'a direct-path lane touch cannot churn the cohort');
+    assert.equal(afterTouch.rollbacks, 0, 'a direct-path lane touch cannot churn the cohort');
     assert.equal(afterTouch.instances, 2);
   } finally {
     controller.dispose();
@@ -1161,5 +1173,49 @@ test('a shadow-lane flip parks the flipper instead of churning the whole cohort'
     a.material.dispose();
     b.material.dispose();
     cMaterial.dispose();
+    other.a.geometry.dispose();
+    other.b.geometry.dispose();
+    other.a.material.dispose();
+    other.b.material.dispose();
+  }
+});
+
+test('a shadow-lane flip during residency ejects only its owner before shared-batch commit', async () => {
+  const scene = new THREE.Scene();
+  const ownerA = makeRoot();
+  const ownerB = makeRoot();
+  ownerB.root.position.x = 12;
+  scene.add(ownerA.root, ownerB.root);
+  scene.updateMatrixWorld(true);
+  let finish;
+  const controller = createRetainedRigidOpaqueBatchController({
+    scene,
+    prepare: () => new Promise(resolve => { finish = resolve; }),
+  });
+  try {
+    const completion = controller.sync([ownerA.root, ownerB.root]);
+    await Promise.resolve();
+    assert.equal(typeof finish, 'function', 'the shared candidate is preparing residency');
+    ownerA.a.castShadow = true;
+    finish({ ready: true });
+
+    const committed = await completion;
+    assert.equal(committed.status, 'active');
+    assert.equal(committed.instances, 2);
+    assert.equal(committed.batches, 1);
+    assert.equal(committed.rollbacks, 0);
+    assert.equal(committed.lastReason, 'shadow-owner-direct-fallback');
+    assert.equal(ownerA.a.layers.mask, 1);
+    assert.equal(ownerA.b.layers.mask, 1);
+    assert.equal(ownerB.a.layers.mask, 0);
+    assert.equal(ownerB.b.layers.mask, 0);
+    const batch = scene.children.find(child => child.isBatchedMesh);
+    assert.equal(batch?.instanceCount, 2);
+  } finally {
+    controller.dispose();
+    for (const source of [ownerA.a, ownerA.b, ownerB.a, ownerB.b]) {
+      source.geometry.dispose();
+      source.material.dispose();
+    }
   }
 });

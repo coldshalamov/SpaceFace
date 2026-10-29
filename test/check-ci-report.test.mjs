@@ -197,6 +197,26 @@ test('recursively expands composite npm scripts so nested failures do not hide s
   ]);
 });
 
+test('matrix IDs use the Node test file after runner options', () => {
+  const matrix = ciReport.buildCommandMatrix(
+    'node --test --test-concurrency=2 test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs'
+      + ' && node --test-concurrency 3 --test test/crucible-thirty-wave-arc.test.mjs',
+  );
+
+  assert.deepEqual(matrix.map(({ id, command }) => ({ id, command })), [
+    {
+      id: 'save-restore-atomicity-test',
+      command: 'node --test --test-concurrency=2 test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs',
+    },
+    {
+      id: 'crucible-thirty-wave-arc-test',
+      command: 'node --test-concurrency 3 --test test/crucible-thirty-wave-arc.test.mjs',
+    },
+  ]);
+  assert.equal(ciReport.classifyCommandGroup(matrix[0]), 'sim');
+  assert.equal(ciReport.classifyCommandGroup(matrix[1]), 'feel');
+});
+
 test('builds a stable ignored artifact path from the run time and command id', () => {
   assert.equal(typeof ciReport.buildArtifactPath, 'function');
   assert.equal(
