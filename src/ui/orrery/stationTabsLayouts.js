@@ -1235,6 +1235,15 @@ ${T} .sx-dossier__terms .sx-term__sub { font-size: 12px !important; color:rgb(${
 ${T} .sx-dossier__terms > li::before { top:50% !important; margin-top:-.5px; }
 ${T} .sx-dossier > .sx-dossier__foot { position:sticky !important; bottom:0; z-index:2; padding:14px 0 6px !important; background:linear-gradient(0deg, rgb(0 0 0 / .9) calc(100% - 14px), rgb(0 0 0 / 0)) !important;
   -webkit-mask-image:linear-gradient(90deg, #000 55%, transparent); mask-image:linear-gradient(90deg, #000 55%, transparent); }
+/* a narrow desktop window (≤650 × 601+) sets the foot in flow at the dossier's head, where that sticky backing's fade to
+   the right only dissolved ACCEPT's "hold to accept" note — it sat past the 55% stop in a 230-300px column — and cut the
+   key's hold track down to its right edge. The track stands 9px round the key, so the foot leaves it that room (the key
+   closes up a little to pay for it, so the two-line note still clears the column at 560 wide). */
+@media (max-width:650px) and (min-height:601px) {
+  ${D} .sx-dossier > .sx-dossier__foot { background:none !important; -webkit-mask-image:none !important; mask-image:none !important;
+    padding:6px 0 0 10px !important; margin:0 0 14px !important; }
+  ${D} .sx-dossier > .sx-dossier__foot .sx-ct-commit.orr-lampkey { padding-left:14px !important; padding-right:18px !important; }
+}
 /* the jump reading hangs under the ring's foot with its own room */
 ${T} .sx-dossier > .orr-ct-route .orr-route__caption { bottom:-14px !important; }
 /* the dispatch facts at a size the decision needs */
