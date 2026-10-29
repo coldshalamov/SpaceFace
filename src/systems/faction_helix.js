@@ -71,6 +71,37 @@ function entityListOf(state) {
   return [];
 }
 
+function survivalRunActive(state) {
+  const run = state && state.run;
+  return !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+}
+
+function resumeDocketClocks(hx, now) {
+  const pausedAt = Number(hx && hx._campaignPausedAt);
+  if (!Number.isFinite(pausedAt)) return;
+  const elapsed = Math.max(0, Number(now) - pausedAt);
+  if (elapsed > 0) {
+    const shiftFuture = (row, key) => {
+      if (row && Number.isFinite(row[key]) && row[key] > pausedAt) row[key] += elapsed;
+    };
+    shiftFuture(hx, 'nextDeskAt');
+    shiftFuture(hx.manifest, 'expiresAt');
+    for (const row of Object.values(hx.desks || {})) {
+      shiftFuture(row, 'nextNoticeAt'); shiftFuture(row, 'nextAuditAt');
+    }
+    for (const row of hx.notices || []) {
+      if (row.state === 'open') shiftFuture(row, 'expiresAt');
+    }
+    for (const row of hx.fines || []) {
+      if (row.status === 'open') shiftFuture(row, 'dueAt');
+    }
+    for (const row of hx.warrants || []) {
+      if (row.state === 'open') { shiftFuture(row, 'expiresAt'); shiftFuture(row, 'nextWritAt'); }
+    }
+  }
+  delete hx._campaignPausedAt;
+}
+
 /** Live entity by id — Map fast path, list fallback. Callers check gen + tag. */
 function ent(state, id) {
   if (id == null) return null;
@@ -1381,6 +1412,7 @@ export const factionHelix = {
 
   /** Settle an instrument at a service point. Returns the paid amount or null. */
   payFine(state, fineId) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const f = hx.fines.find((x) => x.id === fineId);
     if (!f || f.status !== 'open') return null;
@@ -1406,6 +1438,7 @@ export const factionHelix = {
 
   /** Contest an instrument before the desk's clerk — each fine is heard once. */
   contestFine(state, fineId) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const f = hx.fines.find((x) => x.id === fineId);
     if (!f || f.status !== 'open' || f.contested) return null;
@@ -1443,6 +1476,7 @@ export const factionHelix = {
 
   /** File the manifest: audits find you in order while the window holds. */
   fileManifest(state) {
+    if (survivalRunActive(state)) return null;
     const hx = ensureHelixState(state);
     const svc = this._svc(state, hx, 'NO DESK IN REACH — manifests file at the ring');
     if (!svc) return null;
@@ -1792,7 +1826,7 @@ export const factionHelix = {
   // ── 8. the kill wire — one handler reads every death for the docket ─────────────
   _onKilled(p) {
     const state = this.state;
-    if (!state || !p || p.id == null) return;
+    if (!state || survivalRunActive(state) || !p || p.id == null) return;
     const hx = ensureHelixState(state);
     const victim = ent(state, p.id);
     const vd = victim && victim.data;
@@ -1927,8 +1961,15 @@ export const factionHelix = {
 
   // ── the tick ────────────────────────────────────────────────────────────────────
   update(dt, state) {
-    const hx = ensureHelixState(state);
     const now = num(state.simTime);
+    if (survivalRunActive(state)) {
+      if (isObj(state.helix) && !Number.isFinite(state.helix._campaignPausedAt)) {
+        state.helix._campaignPausedAt = now;
+      }
+      return;
+    }
+    if (isObj(state.helix)) resumeDocketClocks(state.helix, now);
+    const hx = ensureHelixState(state);
     const step = Math.max(0, num(dt, 1 / 60));
     const entities = entityListOf(state);
     this._tickPacks(state, hx, entities, now);

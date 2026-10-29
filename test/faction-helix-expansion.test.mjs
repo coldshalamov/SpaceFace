@@ -24,6 +24,7 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { createBus } from '../src/core/eventBus.js';
 import { save } from '../src/save/saveSystem.js';
+import { runSession } from '../src/systems/runSession.js';
 import {
   factionHelix,
   ensureHelixState,
@@ -733,6 +734,81 @@ test('a recycled body never binds a stale desk record — gen + tag guard', () =
     desk.alive = false;
     sim.runTicks(2);
     assert.equal(rec.gone, true, 'a wrecked desk is marked gone');
+  } finally { sim.dispose(); }
+});
+
+test('the Helix docket and player service commands pause through an active Swarm run', () => {
+  const { sim, state, player, events, hx, quiet, spawnDesk, sys } = boot();
+  try {
+    spawnDesk(player.pos.x + 100, player.pos.z);
+    quiet();
+    const h = hx(), now = state.simTime, desk = h.desks['desk:test'];
+    const fine = sys._postFine(state, h, 'lien', 150, { subjectId: player.id });
+    fine.dueAt = now + 30;
+    fine.issuedAt = now - 4;
+    const settledFine = { ...fine, id: 'helix:settled-history', status: 'paid',
+      issuedAt: now - 60, dueAt: now - 30, settledAt: now - 20 };
+    h.fines.push(settledFine);
+    const settledWarrant = { id: 'helix:settled-warrant-history', state: 'settled',
+      postedAt: now - 80, expiresAt: now - 20, nextWritAt: now - 40, settledAt: now - 10 };
+    h.warrants.push(settledWarrant);
+    h.manifest = { filedAt: now, expiresAt: now + 100 };
+    desk.nextNoticeAt = now + 10;
+    desk.nextAuditAt = now + 15;
+    h.nextDeskAt = now + 20;
+    const pauseFields = { fineIssuedAt: fine.issuedAt, fineDueAt: fine.dueAt,
+      settledFine: { issuedAt: settledFine.issuedAt, dueAt: settledFine.dueAt, settledAt: settledFine.settledAt },
+      settledWarrant: { postedAt: settledWarrant.postedAt, expiresAt: settledWarrant.expiresAt,
+        nextWritAt: settledWarrant.nextWritAt, settledAt: settledWarrant.settledAt },
+      manifestFiledAt: h.manifest.filedAt, manifestExpiresAt: h.manifest.expiresAt,
+      deskFirstSeenAt: desk.firstSeenAt,
+      noticeAt: desk.nextNoticeAt, auditAt: desk.nextAuditAt, deskAt: h.nextDeskAt };
+    const priorEvents = events.helix.length, priorLogs = events.logs.length, credits = state.player.credits;
+
+    const runOwner = Object.create(runSession);
+    runOwner.state = state; runOwner.bus = sim.bus; runOwner.helpers = {}; runOwner._unsubs = [];
+    runOwner.begin({ kind: 'survival', ruleset: 'swarm' });
+    runOwner.transition({ expectedPhase: 'loadout', nextPhase: 'arena_intro' });
+    runOwner.transition({ expectedPhase: 'arena_intro', nextPhase: 'wave_intro' });
+    runOwner.transition({ expectedPhase: 'wave_intro', nextPhase: 'active' });
+    assert.equal(state.run.phase, 'active', 'the production run owner enters an active Survival phase');
+    sys.update(1 / 60, state);
+    const runStartedAt = state.simTime;
+    state.simTime += 1800;
+    sys.update(30, state);
+    assert.equal(sys.payFine(state, fine.id), null);
+    assert.equal(sys.contestFine(state, fine.id), null);
+    assert.equal(sys.fileManifest(state), null);
+    assert.equal(events.helix.length, priorEvents, 'no law receipt advances during the arena run');
+    assert.equal(events.logs.length, priorLogs, 'no campaign law prompt reaches comms in Swarm');
+    assert.equal(state.player.credits, credits, 'hidden service commands cannot charge the run wallet');
+    assert.equal(fine.status, 'open');
+
+    runOwner._onSaveLifecycle();
+    assert.equal(state.run.phase, 'inactive', 'save restore retires the unsaved Survival run');
+    assert.equal(state.simTime, runStartedAt + 1800, 'run restoration retains the live simulation clock');
+    sys.update(1 / 60, state);
+    assert.equal(fine.issuedAt, pauseFields.fineIssuedAt, 'an issued timestamp remains historical');
+    assert.equal(fine.dueAt, pauseFields.fineDueAt + 1800);
+    assert.equal(settledFine.issuedAt, pauseFields.settledFine.issuedAt);
+    assert.equal(settledFine.dueAt, pauseFields.settledFine.dueAt);
+    assert.equal(settledFine.settledAt, pauseFields.settledFine.settledAt);
+    assert.equal(settledWarrant.postedAt, pauseFields.settledWarrant.postedAt);
+    assert.equal(settledWarrant.expiresAt, pauseFields.settledWarrant.expiresAt);
+    assert.equal(settledWarrant.nextWritAt, pauseFields.settledWarrant.nextWritAt);
+    assert.equal(settledWarrant.settledAt, pauseFields.settledWarrant.settledAt);
+    assert.equal(h.manifest.filedAt, pauseFields.manifestFiledAt);
+    assert.equal(h.manifest.expiresAt, pauseFields.manifestExpiresAt + 1800);
+    assert.equal(desk.firstSeenAt, pauseFields.deskFirstSeenAt);
+    assert.equal(desk.nextNoticeAt, pauseFields.noticeAt + 1800);
+    assert.equal(desk.nextAuditAt, pauseFields.auditAt + 1800);
+    assert.equal(h.nextDeskAt, pauseFields.deskAt + 1800);
+    assert.equal(events.helix.length, priorEvents, 'returning to Adventure does not flush overdue Swarm-era law events');
+
+    state.simTime += 10;
+    sys.update(10, state);
+    assert.equal(helixEvents(events, 'helix:noticePosted').length, 1,
+      'ordinary campaign notice cadence resumes with its original remaining time');
   } finally { sim.dispose(); }
 });
 
