@@ -233,6 +233,22 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
   ${D} .sx-dossier > .k-caps { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:.1em !important; line-height:1.3 !important; }
 }
+/* …and in a narrow, tall desktop window (651–900 × 801+): the route orrery's 280px floor left the reading column 40–130px,
+   so the title broke into letters. One column instead: ACCEPT at its head, the reading, then the route orrery under it. */
+@media (min-width:651px) and (max-width:900px) and (min-height:801px) {
+  ${D} .sx-dossier { grid-template-columns:minmax(0, 1fr) !important; grid-auto-rows:max-content !important; row-gap:0 !important; }
+  ${D} .sx-dossier > * { grid-column:1 !important; grid-row:auto !important; }
+  ${D} .sx-dossier > .sx-dossier__foot { order:-1 !important; margin:0 0 10px !important; }
+  ${D} .sx-dossier > .orr-ct-route { order:1 !important; align-self:center !important; justify-self:center !important; width:min(100%, 300px) !important; height:240px !important; margin:14px 0 0 !important; }
+  ${D} .sx-dossier__title { font-size:22px !important; line-height:1.15 !important; overflow-wrap:normal !important; word-break:normal !important; }
+  ${D} .sx-dossier .k-hero--hero { flex-wrap:wrap !important; }
+  ${D} .sx-dossier > .sx-dossier__foot > li { flex-wrap:wrap !important; row-gap:4px !important; }
+  ${D} .sx-dossier .k-hero--hero .k-hero__n { font-size:52px !important; }
+  ${D} .sx-dossier > .orr-ct-scales { position:static !important; inset:auto !important; transform:none !important; width:auto !important; max-width:100% !important; margin:8px 0 0 !important; }
+  ${D} .sx-dossier__terms > li { grid-template-columns:112px minmax(0, 1fr) !important; }
+  ${D} .sx-dossier__terms > li > .k-62 { letter-spacing:.06em !important; overflow-wrap:normal !important; }
+  ${D} .sx-dossier > .k-caps { white-space:normal !important; letter-spacing:.1em !important; line-height:1.3 !important; }
+}
 /* …and the same reading column in a narrow, tall desktop window (≤650 × 801+): the board takes the left half, the
    dossier the right, and the dossier scrolls with ACCEPT at its head. The term label stands over its value. */
 @media (max-width:650px) and (min-height:601px) {
