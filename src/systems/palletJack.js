@@ -57,6 +57,9 @@ export const palletJack = {
     on('palletJack:drop', p => this.demandDrop(p));
     on('palletJack:trail', p => { if (p?.incidentId != null && p.incidentId === this._row.incident?.id) this.plotTrail(); });
     on('scan:pulse', p => { if (p?.source === 'player-scanner' && p.scannerId === this.state.playerId) this.offer(); });
+    on('cargo:jettisoned', () => {
+      if (!this._row.introduced && this._eligible()) this._nextRequest = Math.min(this._nextRequest, this.state.simTime || 0);
+    });
     // A pickup payload without pickupId (uniqueWrecks' salvage grant emits none) must never
     // match the incident's cargo entity — undefined === undefined would slip the guard open.
     on('pickup:collected', p => { const cargo = this._find('cargo');
@@ -290,9 +293,16 @@ export const palletJack = {
     if (['approach', 'target', 'grab', 'acquiring'].includes(r.phase) && c) {
       faceAngle = r.phase === 'approach' ? Math.atan2(c.pos.z - a.pos.z, c.pos.x - a.pos.x) : r.grabAngle;
       const cradle = palletJackCradleSocket();
+      const elapsed = Math.max(0, this.state.tick - (r.grabStartTick ?? this.state.tick)) / 60;
+      const drift = r.grabVelocity || { x: 0, z: 0 };
       flightPoint = r.phase === 'approach' ? { x: c.pos.x - Math.cos(faceAngle) * cradle.x,
-        z: c.pos.z - Math.sin(faceAngle) * cradle.x } : r.grabPose || a.pos;
-      flightVelocity = r.phase === 'approach' ? { ...c.vel } : { x: 0, z: 0 };
+        z: c.pos.z - Math.sin(faceAngle) * cradle.x } : {
+          x: (r.grabPose || a.pos).x + drift.x * elapsed,
+          z: (r.grabPose || a.pos).z + drift.z * elapsed,
+        };
+      // Keep the committed load's original drift during the tell. A player-applied change
+      // to its motion still escapes the jaws; no body pose or velocity is written here.
+      flightVelocity = r.phase === 'approach' ? { ...c.vel } : { ...drift };
     } else if (['negotiating', 'drop'].includes(r.phase)) flightPoint = a.pos;
     else faceAngle = Math.atan2(r.routeEndpoint.z - a.pos.z, r.routeEndpoint.x - a.pos.x);
     a.data.palletJack = { phase: r.phase, phaseStartTick: r.phaseStartTick, targetEntityId: c?.id ?? null,
@@ -311,7 +321,9 @@ export const palletJack = {
     if (!palletJackCargoEligible(c, this.state.simTime, true)) { this.release('custody_changed'); return; }
     const tick = this.state.tick;
     if (r.phase === 'approach' && this._grabGate()) {
-      r.grabPose = { ...a.pos }; r.grabAngle = a.rot; this._phase('target');
+      r.grabPose = { ...a.pos }; r.grabAngle = a.rot;
+      r.grabVelocity = { x: c.vel.x, z: c.vel.z }; r.grabStartTick = tick;
+      this._phase('target');
       this._cue('CLAMP REACHING — move the load before the jaws close.');
     } else if (r.phase === 'target' && tick - r.phaseStartTick >= C.targetTicks) {
       r.grabAttackId++; this._phase('grab');
@@ -414,10 +426,19 @@ export const palletJack = {
       || (state.run?.kind === 'survival' && state.run.phase !== 'inactive')) return;
     this._lastTick = state.tick; this._capture(); this._materialize(); this._drive();
     if (!this._row.introduced && this._eligible() && state.simTime >= this._nextRequest) {
-      this._nextRequest = state.simTime + C.requestSeconds; const c = this._candidate();
-      if (c) this.ctx.registry?.get('encounterDirector')?.requestAuthoredEncounter({ shapeId: C.encounterId,
-        encounterId: 'pallet-jack:first-load', sectorId: state.world.currentSectorId,
-        anchor: { x: c.pos.x - 100, z: c.pos.z + 70 }, respectPacing: true });
+      const director = this.ctx.registry?.get('encounterDirector'), c = this._candidate();
+      if (c) {
+        this._nextRequest = state.simTime + C.requestSeconds;
+        const payload = { shapeId: C.encounterId, encounterId: 'pallet-jack:first-load',
+          sectorId: state.world.currentSectorId, anchor: { x: c.pos.x - 100, z: c.pos.z + 70 },
+          zoneRadius: C.searchRadius + 250, respectPacing: true };
+        director?.requestAuthoredEncounter(payload);
+      } else {
+        // A newly jettisoned body may need one Rapier sync before `_native` can admit it. Poll
+        // absent cargo at one-second cadence; the normal five-second retry begins only after a
+        // real native eligible load exists.
+        this._nextRequest = state.simTime + 1;
+      }
     }
   },
   serialize() { this._capture(); return clone(this._row); },

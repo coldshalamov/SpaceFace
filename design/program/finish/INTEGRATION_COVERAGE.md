@@ -40,8 +40,8 @@ A duplicate Hero readout property reported by the bundler was removed.
   symbols (`ff8d63cfb54`) are published with focused checks. The actual scrolled map was inspected.
 - The Pallet Jack candidate now captures the original 60-WU/s dumped payload through the native
   clamp in a production runtime. The committed drift and objective identity survive its warning;
-  player-changed motion remains an escape. Ordinary encounter pacing and repeated Continue/parley
-  are being checked separately.
+  player-changed motion remains an escape. The ordinary purchased-and-dumped cargo route also
+  passes unchanged encounter pacing, two cold Continue restores, and nonlethal parley recovery.
 - Fortify turrets now deliberately acquire live Brood targets through the existing spatial grid,
   then fire canonical projectiles. The new regression includes real collider occlusion and ammo.
 - Hero combined fittings now refuse conflicting Veil/Pinball/Boomerang Shift ownership; the actual

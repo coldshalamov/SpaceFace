@@ -10,6 +10,7 @@ import { PALLET_JACK as C, PALLET_JACK_ENEMY as R, palletJackCargoEligible,
   palletJackForkContains, palletJackFlightModel } from '../src/data/palletJack.js';
 import { palletJackPhysicalBody, PALLET_JACK_RADIUS } from '../src/data/palletJackBody.js';
 import { palletJackDecision } from '../src/ai/palletJack.js';
+import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { pickupCustodyAllowsCollector, isPalletJackClampedPickup } from '../src/core/pickupCustody.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
@@ -54,6 +55,7 @@ test('real cargo condition rejects protected sources, stale embargo and no-cargo
   const h = await fixture({ begin: false });
   try {
     for (const data of [{ missionId: 'quest' }, { persistenceOwner: 'salvage' }, { freightCustodyPod: {} },
+      { playerCollectOnly: true, ceresProbeSource: 'ev_surveyor_probe_line', ceresProbeIndex: 0 },
       { salvorClaimedBy: 'foreman' }, { cargoManifest: { protected: true } }, { pickupEmbargoUntil: 10 }]) {
       assert.equal(palletJackCargoEligible({ ...h.cargo, data: { ...h.cargo.data, ...data } }, 2), false);
     }
@@ -228,5 +230,34 @@ test('the existing flight intent owns motion and an obstruction drops instead of
     h.tick(); assert.equal(h.row.releaseDone, true);
     assert.equal(h.row.receipts.find(p => p.kind === 'release').reason, 'exit_blocked');
     assert.equal(h.cargo.alive, true);
+  } finally { h.close(); }
+});
+
+
+test('moving clamp warning preserves the cargo objective and matches its committed drift', async () => {
+  const h = await fixture();
+  try {
+    for (const e of [h.actor, h.cargo]) {
+      h.native.records.get(e.id).body.setLinvel({ x: 60, y: 0, z: 0 }, true);
+      e.vel.x = 60;
+    }
+    h.tick();
+    assert.equal(h.row.phase, 'target');
+    const action = palletJackDecision({ entityId: h.actor.id, maneuver: {}, fire: false }, h.s);
+    const request = new ManeuverPlanner({ seed: 79 }).plan({
+      entityId: h.actor.id, tick: h.s.tick,
+      perception: { tick: h.s.tick, self: { id: h.actor.id, team: 1, pos: { ...h.actor.pos },
+        vel: { ...h.actor.vel }, rot: h.actor.rot || 0, radius: h.actor.radius,
+        energyFraction: 1, heatFraction: 0 },
+        contacts: [{ id: h.cargo.id, kind: 'objective', pos: { ...h.cargo.pos },
+          vel: { ...h.cargo.vel }, radius: h.cargo.radius, tags: ['solid'], confidence: 1 }] },
+      behavior: action,
+      directive: { formation: { slot: h.actor.pos, bound: 1, breakFormation: true } },
+    });
+    assert.equal(request.brake, false, 'the intended physical load must not become an avoidance obstacle');
+    const start = h.actor.data.palletJack.flightPoint;
+    h.tick();
+    assert.ok(Math.abs(h.actor.data.palletJack.flightPoint.x - start.x - 1) < 1e-6);
+    assert.deepEqual(h.actor.data.palletJack.flightVelocity, { x: 60, z: 0 });
   } finally { h.close(); }
 });
