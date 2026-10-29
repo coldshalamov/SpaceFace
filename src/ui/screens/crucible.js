@@ -4,11 +4,9 @@
 // (src/ui/crucibleLaunch.js). The results surface explains how the run ended and offers the same
 // seed again. Neither writes state.run, the phase, or a fitting.
 //
-// The door is Field Hardware POSTER: stencil title, imaged selector tiles, smoked window over the
-// arena, engraved seed, one hazard Launch key. Results stay a story: a hero number, a column of
-// sentences, the build as fine print. This file owns no stylesheet; hardware is produced kit
-// sprites pinned on the elements. The DOM is built with `el` + appendChild only, because the
-// results unit test mounts the plate against a minimal fake document.
+// The door composes the shared ORRERY words, tiles, keys and stage selectors. Results tell the
+// run's story through its score, consequences and build. The DOM uses `el` + appendChild so
+// the results surface also mounts against the focused test document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { todayRankedRuns } from '../../chronicler/recordsWall.js';
@@ -27,6 +25,7 @@ import {
   lastCrucibleSetup,
   normalizeSeed,
   practiceLaunchFor,
+  canChooseSwarmOpeningLesson,
 } from '../crucibleLaunch.js';
 import {
   SWARM_STAKES,
@@ -784,6 +783,7 @@ export const crucibleScreen = {
     const door = this;
     let enterButton = null;
     let preparation = null;
+    let syncTrainingChoice = () => {};
     ensurePhysicsLabRoute(ctx);
     // PQ-146 Phase 3: the Crucible play view's trick callouts mount with the door — this screen
     // family owns the layer (its own fixed overlay in src/ui/stuntCallout.js); the flight HUD is
@@ -1147,6 +1147,7 @@ export const crucibleScreen = {
     }
 
     function syncMode() {
+      syncTrainingChoice();
       // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
       // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
@@ -2325,6 +2326,7 @@ export const crucibleScreen = {
     const foot = el('footer', 'k-foot sf-crd-foot');
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Crucible');
+    let trainingOpening = false;
     // The one launch path, shared by Enter and Quick play. INF-038.
     function launchCurrent(trialRuleset = null) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
@@ -2386,6 +2388,7 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
+      payload.openingLesson = !conveyor && launchRuleset === SWARM_RULESET && trainingOpening;
       if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
@@ -2409,6 +2412,33 @@ export const crucibleScreen = {
       }
       requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
+    const training = word('Training: Off', 'k-word');
+    paintKey(training, 'small');
+    training.setAttribute('aria-pressed', 'false');
+    const trainingApplies = () => canChooseSwarmOpeningLesson({
+      ruleset, daily, weekly, raceGhost, pendingShare, practiceQueued,
+    });
+    syncTrainingChoice = () => {
+      const enabled = trainingApplies();
+      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      training.disabled = !enabled;
+      training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+      training.setAttribute('aria-label', enabled
+        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
+        : 'Training opening unavailable for the selected mode or challenge.');
+      training.title = enabled
+        ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
+        : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
+    };
+    syncTrainingChoice();
+    training.addEventListener('click', () => {
+      if (!trainingApplies()) return;
+      trainingOpening = !trainingOpening;
+      training.setAttribute('aria-pressed', trainingOpening ? 'true' : 'false');
+      syncTrainingChoice();
+      cue('confirm');
+    });
+    addWord(footWords, training);
     const quick = word('Quick play', 'k-word--emph');
     quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
     quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';

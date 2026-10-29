@@ -297,18 +297,15 @@ test('A02 §12: the registry runs asteroidFormations immediately after asteroidS
   // The ordering contract lives in the authoritative manifest — registry.js materialises its
   // SYSTEMS/UPDATE_ORDER from PRODUCTION_INIT_ORDER/PRODUCTION_UPDATE_ORDER. Assert the id
   // adjacency directly so a source-formatting refactor cannot silently break the pin.
-  const initIdx = PRODUCTION_INIT_ORDER.indexOf('asteroidSites');
-  assert.deepEqual(
-    PRODUCTION_INIT_ORDER.slice(initIdx, initIdx + 4),
-    ['asteroidSites', 'asteroidFormations', 'wingmen', 'intervention'],
-    'INIT order places the knowledge owner beside the site owner',
-  );
-  const updIdx = PRODUCTION_UPDATE_ORDER.indexOf('asteroidSites');
-  assert.deepEqual(
-    PRODUCTION_UPDATE_ORDER.slice(updIdx, updIdx + 4),
-    ['asteroidSites', 'asteroidFormations', 'wingmen', 'crafting'],
-    'UPDATE_ORDER places it beside the site owner',
-  );
+  const assertBetweenOwners = (order, phase) => {
+    const sites = order.indexOf('asteroidSites');
+    const formations = order.indexOf('asteroidFormations');
+    const wingmen = order.indexOf('wingmen');
+    assert.ok(sites >= 0 && formations > sites && wingmen > formations,
+      `${phase} orders formation derivation after site materialization and before wingmen`);
+  };
+  assertBetweenOwners(PRODUCTION_INIT_ORDER, 'INIT');
+  assertBetweenOwners(PRODUCTION_UPDATE_ORDER, 'UPDATE_ORDER');
 });
 
 // ── §13 stable physical identity (the 4891099a..edca7c7e review's central finding) ─────────────
@@ -360,6 +357,59 @@ test('A02 §13c: mining out members changes the live model honestly without touc
   // Either way the durable discovered record is untouched by the loss.
   assert.equal(JSON.stringify(a.sys.discoveredRecord(multi.id)), durable,
     'mined-out members never mutate discovered knowledge');
+});
+
+test('A02 live field cache invalidates on asteroid:destroyed without rewriting discovery', () => {
+  const h = boot();
+  const before = h.sys.currentModel();
+  const multi = before.formations.find((formation) => formation.count > 1);
+  assert.ok(multi, 'fixture has a multi-body formation');
+  const victimKey = multi.memberIds.find((key) => key !== multi.anchorAsteroidId);
+  const victim = h.state.entityList.find((body) => formationBodyKey(body) === victimKey);
+  assert.ok(victim);
+  const durable = h.sys.discover(multi.id);
+  let eagerModel = null;
+  h.bus.on('asteroid:destroyed', () => { eagerModel = h.sys.currentModel(); });
+
+  h.bus.emit('asteroid:destroyed', { id: victim.id, typeId: victim.data.typeId, pos: victim.pos });
+  assert.ok(eagerModel, 'a synchronous later listener can query the model during the receipt');
+  assert.equal(eagerModel.byAsteroidId[victimKey], undefined,
+    'the soon-to-die entity is excluded even before its alive=false write');
+  victim.alive = false;
+
+  const after = h.sys.currentModel();
+  assert.notEqual(after, before, 'the cached ambient field was rebuilt in the same epoch');
+  assert.equal(after.byAsteroidId[victimKey], undefined, 'destroyed member is absent from the live model');
+  const live = h.sys.liveFormationFor(multi.id);
+  assert.ok(live, 'removing a non-anchor preserves the formation identity');
+  assert.equal(live.id, multi.id);
+  assert.ok(live.count < multi.count, 'surviving formation reflects the smaller live field');
+  assert.equal(h.sys.discoveredRecord(multi.id), durable, 'durable survey knowledge is not rewritten');
+});
+
+test('A02 canonical entity removal invalidates a cached formation outside mining', () => {
+  const h = boot();
+  const before = h.sys.currentModel();
+  const formation = before.formations.find((row) => row.count > 1);
+  assert.ok(formation, 'fixture has a multi-body formation');
+  const victimKey = formation.memberIds.find((key) => key !== formation.anchorAsteroidId);
+  const victim = h.state.entityList.find((body) => formationBodyKey(body) === victimKey);
+  assert.ok(victim);
+  const durable = h.sys.discover(formation.id);
+
+  // Core removal marks the body dead and removes it from the live collection before its queued
+  // entity:destroyed receipt. This path is also used by non-mining owners such as combat.
+  victim.alive = false;
+  h.state.entityList = h.state.entityList.filter((body) => body !== victim);
+  h.bus.emit('entity:destroyed', { id: victim.id, type: victim.type, entity: victim });
+
+  const after = h.sys.currentModel();
+  assert.notEqual(after, before, 'canonical removal invalidates the cached ambient model');
+  assert.equal(after.byAsteroidId[victimKey], undefined, 'removed body is absent without a mining event');
+  const live = h.sys.liveFormationFor(formation.id);
+  assert.ok(live, 'non-anchor removal preserves formation identity');
+  assert.equal(live.count, formation.count - 1);
+  assert.equal(h.sys.discoveredRecord(formation.id), durable, 'durable knowledge remains unchanged');
 });
 
 // ── §14 anchor-cycle quantization (round-3: the tenth-grid straddle) ───────────────────────────

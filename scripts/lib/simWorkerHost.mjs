@@ -1105,6 +1105,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   function playerTruthImpulseObserverRpc(args = {}) {
     host.playerTruthImpulseObserver ||= createPlayerTruthImpulseObserver({
       getState: () => host.state, getBus: () => host.bus,
+      getFields: () => host.registry?.get?.('fields') || null,
     });
     return host.playerTruthImpulseObserver.rpc(args);
   }

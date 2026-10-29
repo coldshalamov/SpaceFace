@@ -4,7 +4,7 @@ import { registerStuntImpulseObserver, journalFor } from '../../combat/stuntEvid
 import { createBoundedImpulseReceiptCollector } from './impulseReceipts.js';
 
 const BOUNDARIES = ['game:new', 'game:newGame', 'game:started', 'run:started', 'save:restoring', 'save:loaded'];
-export function createPlayerTruthImpulseObserver({ getState, getBus = () => null }) {
+export function createPlayerTruthImpulseObserver({ getState, getBus = () => null, getFields = () => null }) {
   let session = null;
 
   function detachImpulse() {
@@ -69,7 +69,43 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
         if (!validSession()) return;
         if (state.entities?.get(observation?.entity?.id) !== observation?.entity) return;
         if (!Number.isSafeInteger(observation?.tick) || observation.tick < session.tickFloor || observation.tick > state.tick) return;
-        collector.record({ ...observation, mode: state.mode });
+        let delivered = observation;
+        if (observation?.kind === 'field' && typeof getFields === 'function') {
+          const evidenceField = observation.provenance?.field;
+          let fieldSystem = null;
+          try { fieldSystem = getFields(); } catch { /* a diagnostic source miss cannot alter physics */ }
+          if (fieldSystem && evidenceField?.id != null) {
+            let liveField = null;
+            try {
+              const liveFields = fieldSystem.kernelList?.();
+              if (Array.isArray(liveFields) && evidenceField?.id != null) {
+                liveField = liveFields.find(field => field?.id === evidenceField.id) || null;
+              }
+            } catch { /* no exact live record means no admissible field proof */ }
+            const liveCenter = liveField?.center;
+            const sourceCurrent = !!liveField && liveField.ownerId === evidenceField?.ownerId
+              && liveField.kind != null && observation.provenance?.tag === `field_${liveField.kind}`
+              && liveField.radius === evidenceField?.radius
+              && liveCenter?.x === evidenceField?.x && liveCenter?.z === evidenceField?.z
+              && liveField.expireAt > (Number.isFinite(state.simTime) ? state.simTime : 0);
+            // Environmental fields have no entity owner. They explain motion only when the
+            // authoritative kernel still exposes the exact source at the delivered native tick.
+            // A missing/mismatched record stays a claimed invalid receipt, never a quiet omission.
+            delivered = {
+              ...observation,
+              provenance: {
+                ...observation.provenance,
+                field: {
+                  ...evidenceField,
+                  sourceTag: liveField?.tag ?? null,
+                  sourceCurrent,
+                  sourceKind: liveField?.kind ?? null,
+                },
+              },
+            };
+          }
+        }
+        collector.record({ ...delivered, mode: state.mode });
       });
       const bus = getBus();
       if (bus?.on) for (const name of BOUNDARIES) {

@@ -2233,7 +2233,7 @@ export const weapons = {
         };
         shots.set(p.id, rec);
       }
-      if (p.alive !== false) {
+      if (rec.phase === 'fly' && p.alive !== false) {
         rec.pos.x = p.pos.x;
         rec.pos.z = p.pos.z;
       }
@@ -2248,7 +2248,12 @@ export const weapons = {
         const spawnPos = p && p.data && p.data.spawnPos ? p.data.spawnPos : null;
         const maxDist = p && p.data && Number.isFinite(p.data.maxDistance) ? p.data.maxDistance : Infinity;
         const flown = p && spawnPos ? Math.hypot(p.pos.x - spawnPos.x, p.pos.z - spawnPos.z) : 0;
-        if (dead || flown >= maxDist) this._mortarLand(rec, state, now);
+        if (dead || flown >= maxDist) {
+          this._mortarLand(rec, state, now);
+          // Range is the mortar's authored landing seam. Stop the shell here so physics cannot
+          // carry it through the well and leave a second live damaging projectile downstream.
+          if (!dead && p) p.alive = false; // core lifetime owns removal; this is not a hit receipt
+        }
       } else if (rec.phase === 'pull') {
         this._mortarPullTick(rec, state, dt);
         if (now >= rec.pullUntil) this._mortarDetonate(rec, state);

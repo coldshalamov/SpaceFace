@@ -21,13 +21,15 @@ async function fixture(t) {
   const state = createGameState(4242), bus = createBus();
   state.mode = 'menu';
   const owner = body(1, 1, -1000), victim = body(2, 2, 0), unforced = body(3, 3, 1000, 20);
+  const fieldSource = { id: 'actual-native-cone', ownerId: owner.id, kind: 'cone', tag: 'deploy',
+    center: { x: 0, z: 0 }, radius: 100, expireAt: Infinity };
   state.playerId = owner.id;
   state.entityList = [owner, victim, unforced];
   state.entities = new Map(state.entityList.map(e => [e.id, e]));
   bindStuntEvidence(state);
   const native = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
   native.syncFromEntities(state.entityList);
-  const registry = { step(dt, boundary) {
+  const registry = { get(name) { return name === 'fields' ? { kernelList: () => [fieldSource] } : null; }, step(dt, boundary) {
     state.tick++; state.simTime += dt;
     boundary.publishInputCommand(state.input, state.tick);
     native.syncFromEntities(state.entityList); native.step(dt);
@@ -40,11 +42,11 @@ async function fixture(t) {
   };
   const force = (entity = victim, dv = 10) => queuePhysicsImpulse(entity, { x: entity.mass * dv, y: 0, z: 0 }, {
     kind: 'field', tick: state.tick + 1,
-    provenance: { tag: 'field_cone', field: { id: 'actual-native-cone', ownerId: owner.id,
-      x: 0, z: 0, radius: 100 } },
+    provenance: { tag: `field_${fieldSource.kind}`, field: { id: fieldSource.id, ownerId: fieldSource.ownerId,
+      x: fieldSource.center.x, z: fieldSource.center.z, radius: fieldSource.radius } },
   });
   t.after(() => { runner.close(); native.dispose(); unbindStuntEvidence(state); uninstallSimCommandSink(); });
-  return { state, bus, native, runner, victim, unforced, rpc, force };
+  return { state, bus, native, runner, victim, unforced, rpc, force, fieldSource };
 }
 const mapped = capture => mapImpulseReceiptIdentities(capture, (id, generation) => `${id}:${generation}`);
 const grade = (capture, e, tick) => gradeCausalResidual(mapped(capture), {
@@ -67,6 +69,11 @@ test('main factory opens the same opt-in observer and attributes actual native f
   assert.equal(capture.status, 'complete'); assert.equal(capture.receiptCount, 1);
   assert.equal(capture.receipts[0].rawEntityId, f.victim.id);
   assert.equal(capture.receipts[0].occupantGeneration, f.victim.occupantGeneration);
+  assert.equal(capture.receipts[0].kind, 'field');
+  assert.equal(capture.receipts[0].fieldId, 'actual-native-cone');
+  assert.equal(capture.receipts[0].fieldOwnerId, f.state.playerId);
+  assert.equal(capture.receipts[0].fieldKind, 'field_cone');
+  assert.equal(capture.receipts[0].tick, f.state.tick);
   assert.ok(Math.abs(capture.receipts[0].actualDeltaV.x - 10) < 1e-5);
   assert.equal(grade(capture, f.victim, f.state.tick).ok, true);
   assert.ok(f.unforced.vel.x > 19.9);
@@ -126,6 +133,32 @@ test('unannounced evidence reset and future begin tick fail closed', async t => 
   resetStuntEvidence(f.state);
   const capture = await f.rpc('finalize');
   assert.equal(capture.ok, false); assert.equal(capture.status, 'stale-session'); assert.deepEqual(capture.receipts, []);
+});
+
+test('environmental receipts require a live exact field source at native delivery', async t => {
+  const f = await fixture(t);
+  f.fieldSource.ownerId = null;
+  f.fieldSource.tag = 'environmental';
+  await f.rpc('install'); f.state.mode = 'flight'; f.force(); f.runner.stepOnce();
+  await f.rpc('begin', { tick: f.state.tick });
+  const capture = await f.rpc('finalize');
+  assert.equal(capture.status, 'complete');
+  assert.equal(capture.receiptCount, 1);
+  assert.equal(capture.receipts[0].fieldId, f.fieldSource.id);
+  assert.equal(capture.receipts[0].fieldOwnerId, null);
+  assert.equal(capture.receipts[0].fieldSourceTag, 'environmental');
+  assert.equal(capture.receipts[0].fieldSourceKind, 'cone');
+  assert.equal(grade(capture, f.victim, f.state.tick).ok, true, JSON.stringify({ capture, victim: f.victim.vel }));
+
+  const stale = await fixture(t);
+  stale.fieldSource.ownerId = null;
+  stale.fieldSource.tag = 'environmental';
+  stale.fieldSource.expireAt = -1;
+  await stale.rpc('install'); stale.state.mode = 'flight'; stale.force(); stale.runner.stepOnce();
+  await stale.rpc('begin', { tick: stale.state.tick });
+  const rejected = await stale.rpc('finalize');
+  assert.equal(rejected.status, 'invalid-receipt');
+  assert.equal(grade(rejected, stale.victim, stale.state.tick).ok, false);
 });
 
 test('closing an older main factory cannot remove a newer factory RPC owner', async t => {

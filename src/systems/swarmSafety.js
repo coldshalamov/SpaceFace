@@ -1,6 +1,8 @@
 // Swarm arrival geometry and per-wave first-act admission. Placement never writes velocity.
 // While the pilot waits, canonical damage/fuse owners hold harm; bodies keep their motion
 // and resume ordinary damage after the act. The geometry tests below never park a body.
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+
 export const SWARM_ARRIVAL_GRACE_S = 2.5;
 export const SWARM_SPAWN_LOOKAHEAD_S = 0.75;
 export const SWARM_SPAWN_RETRY_TICKS = 30;
@@ -21,7 +23,11 @@ export function sweptDiscsOverlap(pos, radius, other, {
     ? Math.max(0, Math.min(Math.max(0, finite(horizon)), -(rx * vx + rz * vz) / speed2)) : 0;
   const dx = rx + vx * t;
   const dz = rz + vz * t;
-  const reach = Math.max(0, finite(radius)) + Math.max(0, finite(other.radius, 10))
+  const nativeRadius = resolvePhysicsBodySpec(other)?.radius;
+  const otherRadius = Number.isFinite(nativeRadius) && nativeRadius >= 0
+    ? nativeRadius
+    : Math.max(0, finite(other.radius, 10));
+  const reach = Math.max(0, finite(radius)) + otherRadius
     + Math.max(0, finite(clearance));
   return dx * dx + dz * dz < reach * reach;
 }

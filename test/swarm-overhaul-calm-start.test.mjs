@@ -7,13 +7,8 @@
 // (boot harness copied from round-zero-teaching-bodies.test.mjs)
 // Phase 5.3 — ROUND ZERO (build_map §25 / ZERO_TO_HERO Phase 5.3).
 //
-// The first-ever Crucible run opens wave 1 with three teaching bodies and nothing else: a rock
-// worth throwing, one light hull worth shoving, and a well field worth dropping — then the pack
-// arrives on its authored schedule shifted by 45 sim-seconds. No modal, no paragraph.
-//
-// First-run detection is the Crucible meta profile (`sf.save.crucible_meta`): a launch whose
-// profile carries no settled history gets `openingLesson` on `run:beginRequested`, and only that
-// flag makes the planner author the lesson. Every later run gets the untouched wave 1.
+// Ordinary Swarm opens with its generated horde immediately, even on a pristine profile. The
+// one-enemy lesson remains available only when the launch explicitly selects openingLesson.
 //
 // These tests drive the REAL door (requestCrucibleRun -> game:started -> applySandboxSetup ->
 // run:beginRequested), the REAL phase machine, the REAL wave owner through the REAL spawn budget,
@@ -47,6 +42,7 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { swarmRosterFor } from '../src/data/swarmMode.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { swarmPilotHasActed } from '../src/systems/swarmSafety.js';
+import { quietWellCenter } from '../src/systems/swarmArena.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -177,9 +173,10 @@ function fakeStorage() {
 }
 
 /** Drive the real door: launch config -> game:new -> game:started -> run:beginRequested. */
-function launchCrucible(h, starterId = 'kinetic_baseline', arenaId = CRUCIBLE_ARENA_ID) {
+function launchCrucible(h, starterId = 'kinetic_baseline', arenaId = CRUCIBLE_ARENA_ID, openingLesson = false) {
   const setup = crucibleSetupFor({ starterId, seed: SEED, arenaId });
   assert.equal(setup.ok, true, 'the Crucible starter validates');
+  if (openingLesson) setup.value.openingLesson = true;
   requestCrucibleRun(h.bus, setup.value);
   launchBus.emit('game:started');
 }
@@ -192,7 +189,7 @@ function reachWaveOneActive(h) {
 
 // ---------------------------------------------------------------------------
 
-test('swarm-overhaul: an idle first round stays calm — no brood, no kills, no drifting room', () => {
+test('swarm-overhaul: a fresh ordinary opening fields its horde immediately without idle rewards', () => {
   resetCrucibleMetaForTests();
   const h = boot();
   armLaunch(h);
@@ -201,19 +198,21 @@ test('swarm-overhaul: an idle first round stays calm — no brood, no kills, no 
   reachWaveOneActive(h);
   assert.equal(h.state.run.phase, 'active');
   const plan = named(h.emitted, 'run:wavePlanned').at(-1).payload.plan;
-  assert.ok(plan.openingLesson);
+  assert.notEqual(plan.openingLesson, true, 'first-run history does not switch to training');
+  const openingCohort = h.spawned.filter((e) => e && e.data && e.data.runCohort && e.alive !== false);
+  assert.ok(openingCohort.length > 1, `ordinary horde arrives immediately (${openingCohort.length} bodies)`);
 
-  tick(h, 10 * 60); // ten idle seconds into the lesson
+  tick(h, 10 * 60); // ten idle seconds into the ordinary horde
   assert.equal(named(h.emitted, 'swarm:broodKills').length, 0, 'no brood died while the pilot idled');
   assert.equal(named(h.emitted, 'entity:killed').length, 0, 'nothing died while the pilot idled');
   assert.equal(h.state.run.score, 0, 'reward before input stays +0');
   assert.equal(swarmPilotHasActed(h.state), false, 'an idle stick has not latched a pilot act');
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'the round did not resolve itself');
-  assert.equal(swarmArena._brood ? swarmArena._brood.census().alive : 0, 0, 'the brood waits with the pack');
+  assert.ok(swarmArena._brood.census().alive > 0, 'ordinary brood remains live while the pilot idles');
   const arenaFields = fields._kernel && typeof fields._kernel.list === 'function'
     ? fields._kernel.list().filter((f) => String(f.id).startsWith('survival_arena_field'))
     : [];
-  assert.equal(arenaFields.length, 0, 'the room law waits with the pack');
+  assert.equal(arenaFields.some((f) => f.id === LESSON_WELL_ID), false, 'ordinary horde does not install the optional lesson well');
   survivalArena.reset?.();
 });
 
@@ -308,15 +307,27 @@ test('an idle 120s on seed 4242 does not win wave 1 in the Foundry or the Hive',
   }
 });
 
-test('swarm-overhaul: the lesson well is planted where it pulls no furniture at rest', () => {
+test('swarm-overhaul: explicit training well only plants at a quiet furniture-free center', () => {
   resetCrucibleMetaForTests();
   const h = boot();
   armLaunch(h);
   useCrucibleMetaStorage(fakeStorage());
-  launchCrucible(h);
+  launchCrucible(h, 'kinetic_baseline', CRUCIBLE_ARENA_ID, true);
+  assert.equal(named(h.emitted, 'run:started').at(-1)?.payload.openingLesson, true,
+    'the explicit training choice reaches the run state');
   reachWaveOneActive(h);
+  assert.equal(named(h.emitted, 'run:wavePlanned').at(-1).payload.plan.openingLesson != null, true,
+    'the explicit training run uses the lesson planner');
+  const lesson = named(h.emitted, 'run:wavePlanned').at(-1).payload.plan.openingLesson;
+  const center = quietWellCenter(h.state, h.player.pos, lesson.well, lesson.well.radius);
   const well = fields._kernel.list().find((f) => f.id === LESSON_WELL_ID);
-  assert.ok(well, 'the lesson well exists');
+  if (center == null) {
+    assert.equal(well, undefined, 'no safe placement means no free-running debris blender');
+    assert.equal(swarmArena._lessonWellPlacement, null);
+    return;
+  }
+  assert.ok(well, 'a safe authored disc installs the lesson well');
+  assert.deepEqual(well.center, center);
   for (const e of h.state.entities.values()) {
     if (!e || e.alive === false || e.type !== 'asteroid' || e.collides === false) continue;
     if (e.data && e.data.openingLesson) continue;

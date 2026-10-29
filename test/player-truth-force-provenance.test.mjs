@@ -5,9 +5,10 @@ import {
   gradeCausalResidual,
   mapImpulseReceiptIdentities,
 } from '../src/testing/playerTruth/impulseReceipts.js';
+import { observeAppliedImpulse } from '../src/combat/stuntEvidence.js';
 import { checkSpawnMotion, CLS, VIS } from '../scripts/player-truth/checks.mjs';
 
-test('production-host impulse observer installs against the authoritative state', async () => {
+test('production-host observer reads and validates a live environmental field source', async () => {
   const { createSimHost } = await import('../scripts/lib/simWorkerHost.mjs');
   const { readFile } = await import('node:fs/promises');
   const scenarioContract = JSON.parse(await readFile(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
@@ -15,14 +16,36 @@ test('production-host impulse observer installs against the authoritative state'
   try {
     await api.init({ profile: 'production', seed: 4242, scenarioContract });
     const observer = api.host.rpcHandlers.get('playerTruthImpulseObserver');
+    const state = api.host.state;
+    state.mode = 'flight';
+    const fields = api.host.registry.get('fields');
+    const field = fields.registerEnvironmental({ id: 'player_truth_worker_env', kind: 'well',
+      center: { x: 0, z: 0 }, radius: 100, strength: 50 });
+    assert.ok(field);
+    const entity = api.host.sim.spawn({ type: 'wreck', pos: { x: 40, z: 0 }, radius: 5, mass: 20,
+      hull: 100, hullMax: 100, data: {} });
+    assert.ok(entity && state.entities.get(entity.id) === entity, 'worker runtime owns the observed body');
     const installed = observer({ action: 'install', maxReceipts: 256, maxTicks: 120 });
     assert.equal(installed.ok, true);
     assert.equal(installed.status, 'armed');
-    assert.equal(observer({ action: 'begin', tick: 0 }).ok, true);
+    const deliveryTick = state.tick;
+    observeAppliedImpulse(entity, { x: 0, z: 0 }, { x: 10, z: 0 }, {
+      actorId: null, tag: 'field_well', field: { id: field.id, ownerId: null,
+        x: field.center.x, z: field.center.z, radius: field.radius },
+    }, deliveryTick, 'field', state);
+    state.tick = deliveryTick + 1;
+    const started = observer({ action: 'begin', tick: state.tick });
+    assert.equal(started.ok, true);
+    assert.equal(started.flightStartTick, deliveryTick, 'pre-active physical receipt starts the bounded proof window');
     const capture = observer({ action: 'finalize' });
     assert.equal(capture.ok, true);
-    assert.notEqual(capture.status, 'unsupported');
-    assert.deepEqual(capture.receipts, []);
+    assert.equal(capture.status, 'complete');
+    assert.equal(capture.receiptCount, 1);
+    assert.equal(capture.receipts[0].rawEntityId, entity.id);
+    assert.equal(capture.receipts[0].occupantGeneration, entity.occupantGeneration);
+    assert.equal(capture.receipts[0].fieldId, field.id);
+    assert.equal(capture.receipts[0].fieldSourceTag, 'environmental');
+    assert.equal(capture.receipts[0].fieldSourceKind, 'well');
   } finally {
     api.shutdown();
   }
@@ -137,7 +160,8 @@ test('causal residual requires the exact raw id, occupant generation and mapped 
 
 function openingTrace(forceProvenance) {
   return {
-    meta: { mode: 'adventure', rounds: false, playStartSim: 0 }, rounds: [], events: [],
+    meta: { mode: 'swarm', rounds: true, playStartSim: 0 },
+    rounds: [{ wave: 1, startSim: 0 }], events: [],
     samples: [
       { f: 1, t: 16, sim: 0, tick: 9, mode: 'menu', p: null, e: [] },
       { f: 2, t: 32, sim: 0.033, tick: 10, mode: 'flight', p: { x: 0, z: 0 },
@@ -147,7 +171,7 @@ function openingTrace(forceProvenance) {
   };
 }
 
-test('spawn_motion only promotes a delivered field receipt through the first observed sample', () => {
+test('swarm spawn_motion only promotes a delivered field receipt through the first active sample', () => {
   const collector = createBoundedImpulseReceiptCollector({ maxTicks: 20 });
   collector.arm(); collector.record(observation({ tick: 10 })); collector.begin(10);
   const forceProvenance = mapImpulseReceiptIdentities(collector.snapshot(), (id, generation) => (
@@ -158,6 +182,21 @@ test('spawn_motion only promotes a delivered field receipt through the first obs
   assert.equal(explained.status, 'PASS');
   assert.equal(explained.causal.explained, 1);
   assert.equal(checkSpawnMotion(openingTrace()).status, 'FAIL', 'old captures stay strict');
+
+  const priorWindow = structuredClone(forceProvenance);
+  priorWindow.receipts[0].samples[0].tick = 9;
+  priorWindow.receipts[0].firstTick = 9;
+  priorWindow.receipts[0].lastTick = 9;
+  priorWindow.receipts[0].tick = 9;
+  assert.equal(checkSpawnMotion(openingTrace(priorWindow)).status, 'FAIL', 'prior-window force cannot explain this opening');
+
+  const wrongLife = structuredClone(forceProvenance);
+  wrongLife.receipts[0].occupantGeneration = 8;
+  wrongLife.receipts[0].readerLifeId = null;
+  wrongLife.unresolvedIdentityCount = 1;
+  const stale = checkSpawnMotion(openingTrace(wrongLife));
+  assert.equal(stale.status, 'FAIL', 'unresolved recycled lives remain strict');
+  assert.equal(stale.offenders[0].causalReason, 'missing-identity');
 
   const overflow = { ...forceProvenance, status: 'overflow', overflow: true };
   const blocked = checkSpawnMotion(openingTrace(overflow));

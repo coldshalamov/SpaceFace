@@ -53,21 +53,27 @@ function normalizeReceipt(observation) {
   const fieldId = field?.id ?? null;
   const fieldOwnerId = field?.ownerId ?? null;
   const fieldRadius = finite(field?.radius);
+  const fieldSourceTag = typeof field?.sourceTag === 'string' ? field.sourceTag : null;
+  const fieldSourceKind = typeof field?.sourceKind === 'string' ? field.sourceKind : null;
   const kind = typeof observation?.kind === 'string' ? observation.kind : null;
   const fieldKind = typeof observation?.provenance?.tag === 'string' ? observation.provenance.tag
     : typeof field?.kind === 'string' ? field.kind : null;
   const mode = typeof observation?.mode === 'string' ? observation.mode : null;
-  const fieldComplete = kind !== 'field' || (fieldId != null && fieldOwnerId != null
-    && fieldKind != null && validPoint(fieldCenter) && fieldRadius != null && fieldRadius > 0);
+  const verifiedEnvironmental = fieldOwnerId == null && fieldSourceTag === 'environmental'
+    && field?.sourceCurrent === true && fieldSourceKind != null;
+  const fieldComplete = kind !== 'field' || (fieldId != null
+    && (fieldOwnerId != null || verifiedEnvironmental)
+    && fieldKind != null && validPoint(fieldCenter) && fieldRadius != null && fieldRadius > 0
+    && field?.sourceCurrent !== false);
   const valid = rawEntityId != null && occupantGeneration != null && tick != null
     && validPoint(before) && validPoint(after) && validPoint(actualDeltaV)
     && kind != null && fieldComplete;
-  // External/environmental fields intentionally have no owning entity. They are real force
-  // sources, but without an owner they can never be an admissible causal receipt for a reader
-  // life. Ignore only a structurally complete ownerless field; malformed claimed provenance
-  // remains invalid and still fails closed.
+  // Environmental fields intentionally have no entity owner. They become admissible only when
+  // the authoritative observer attached a current kernel source tag and kind; an ownerless
+  // unverified field is ignored, while a claimed stale source remains invalid and fails closed.
   const unownedField = kind === 'field' && field != null && fieldId != null && fieldOwnerId == null
-    && fieldKind != null && validPoint(fieldCenter) && fieldRadius != null && fieldRadius > 0;
+    && fieldKind != null && validPoint(fieldCenter) && fieldRadius != null && fieldRadius > 0
+    && field?.sourceCurrent !== false && !verifiedEnvironmental;
   return {
     valid,
     // Overlapping fields are intentionally reported without provenance. They cannot explain
@@ -86,6 +92,9 @@ function normalizeReceipt(observation) {
       fieldId,
       fieldOwnerId,
       fieldKind,
+      fieldSourceTag,
+      fieldSourceKind,
+      fieldSourceCurrent: typeof field?.sourceCurrent === 'boolean' ? field.sourceCurrent : null,
       kind,
       fieldCenter,
       fieldRadius,
@@ -374,9 +383,13 @@ function validFieldReceipt(receipt) {
       Number.isSafeInteger(sample?.tick) && validPoint(sample.actualDeltaV)
     ))
     : validPoint(receipt?.actualDeltaV);
+  const verifiedEnvironmental = receipt?.fieldOwnerId == null
+    && receipt?.fieldSourceTag === 'environmental'
+    && typeof receipt?.fieldSourceKind === 'string' && receipt.fieldSourceKind.length > 0
+    && receipt?.fieldSourceCurrent === true;
   return receipt?.kind === 'field'
     && receipt.fieldId != null
-    && receipt.fieldOwnerId != null
+    && (receipt.fieldOwnerId != null || verifiedEnvironmental)
     && typeof receipt.fieldKind === 'string' && receipt.fieldKind.length > 0
     && Number.isFinite(receipt.fieldRadius) && receipt.fieldRadius > 0
     && validPoint(receipt.fieldCenter)

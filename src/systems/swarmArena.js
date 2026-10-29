@@ -240,6 +240,28 @@ function opticPlacementFootprints(state, native) {
   return footprints;
 }
 
+// Some optic recipes put large stone cells on the shared lattice. Their native circles can be
+// wider than one lattice step, so a recipe that is visually a neat grid can launch with cells
+// interpenetrating. Expand only the translated layout: the authored cell/material topology stays
+// intact, and the same expanded bodies are used for both native admission and spawning.
+function separateOpticLatticeBodies(bodies) {
+  const list = Array.isArray(bodies) ? bodies : [];
+  let scale = 1;
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    for (let j = i + 1; j < list.length; j++) {
+      const b = list[j];
+      const distance = Math.hypot(a.x - b.x, a.z - b.z);
+      if (!(distance > 1e-6)) return null;
+      const required = Math.max(0, Number(a.radius) || 0)
+        + Math.max(0, Number(b.radius) || 0) + 8;
+      if (distance < required) scale = Math.max(scale, required / distance);
+    }
+  }
+  if (scale <= 1) return list;
+  return list.map(body => ({ ...body, x: body.x * scale, z: body.z * scale }));
+}
+
 function opticLatticeOrigin(state, layout, anchor, native) {
   const footprints = opticPlacementFootprints(state, native);
   const offsets = [{ x: 0, z: 0 }];
@@ -1248,15 +1270,18 @@ export const swarmArena = {
     }
     let materialIndex = 0;
     for (const spot of spots.slice(0, want)) {
-      // The old terrain-only census missed hulls crossing the replenishment site.
-      // Recheck against the LIVE map (including this batch's accepted rocks) and swept hulls.
-      if (!swarmPlacementIsClear(state, spot, spot.radius, { clearance: 24 })) {
-        this._terrainRetry = true;
-        continue;
-      }
       const material = ballast
         ? 'debris'
         : spot.material || missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+      const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+      const colliderRadius = asteroidColliderRadius(typeId, spot.radius);
+      // The old terrain-only census missed hulls crossing the replenishment site.
+      // Recheck against the LIVE map (including this batch's accepted rocks) and their native
+      // physics footprints. Display radius can be smaller than the calibrated rock collider.
+      if (!swarmPlacementIsClear(state, spot, colliderRadius, { clearance: 24 })) {
+        this._terrainRetry = true;
+        continue;
+      }
       materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
         { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material,
@@ -1774,8 +1799,13 @@ export const swarmArena = {
     } else if (ids.length) {
       return;
     }
-    const layout = compileSwarmOptic(run && run.arenaId);
-    if (!layout || !layout.bodies || !layout.bodies.length) return;
+    const authored = compileSwarmOptic(run && run.arenaId);
+    if (!authored || !authored.bodies || !authored.bodies.length) return;
+    const bodies = separateOpticLatticeBodies(authored.bodies);
+    if (!bodies) return;
+    // Keep the compiler's authored recipe immutable. One cloned, safely spaced geometry drives
+    // both origin admission and body placement below.
+    const layout = bodies === authored.bodies ? authored : { ...authored, bodies };
     const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02);
     if (!origin) return; // Keep the prior coherent stamp and retry when the fight leaves room.
     const spawned = [];

@@ -54,12 +54,16 @@ test('the shell lands, holds a ~1 s pull, then detonates through the combat rout
   weapons._tickMortarShots.call(host, 1 / 60, state);
   const rec = host._mortarShots.get(shell.id);
   assert.equal(rec.phase, 'pull');
+  assert.equal(shell.alive, false, 'range landing ends the projectile without fabricating a hit');
+  const landing = { ...rec.pos };
   assert.ok(rec.pullUntil - state.simTime >= 1.0 - 1e-6, `pull window ${rec.pullUntil - state.simTime}s`);
   assert.ok(events.some((e) => e.name === 'weapons:mortarLanded'), 'landing receipt');
   // During the well: victim is inside the radius and NOT the owner — the pull leg runs
   // without erroring on a non-authority body.
+  shell.pos.x += 100;
   weapons._tickMortarShots.call(host, 1 / 60, state);
   assert.equal(rec.phase, 'pull', 'well still holding inside its window');
+  assert.deepEqual(rec.pos, landing, 'pull and blast stay at the accepted landing point');
   // Past the window → detonation: the victim takes the packet through routeCombatDamage,
   // the owner is excluded, and the detonation receipt names the hits.
   state.simTime = rec.pullUntil + 0.001;
@@ -69,4 +73,5 @@ test('the shell lands, holds a ~1 s pull, then detonates through the combat rout
   assert.ok(!damage.includes('player'), 'owner never takes own blast');
   const det = events.find((e) => e.name === 'weapons:mortarDetonated');
   assert.ok(det && det.payload.hits.includes('v1'), 'detonation receipt names the hit');
+  assert.deepEqual(det.payload.pos, landing, 'detonation shares the planted shell position');
 });

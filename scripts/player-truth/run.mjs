@@ -643,16 +643,16 @@ async function runOne(args, arena, extra = {}) {
     await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'} }).start(); window.__playerTruthReady = true;` });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
-    if (args.mode === 'adventure') {
-      const observerResponse = await page.evaluate(async () => {
+    if (['adventure', 'swarm', 'gauntlet'].includes(args.mode)) {
+      const observerResponse = await page.evaluate(async (maxTicks) => {
         try {
           const { laneRpc } = await import('/src/core/simLaneCommands.js');
-          const response = await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks: 120, maxReceipts: 256 });
+          const response = await laneRpc('playerTruthImpulseObserver', { action: 'install', maxTicks, maxReceipts: 256 });
           return response;
         } catch (error) {
           return { ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) };
         }
-      }).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
+      }, args.mode === 'adventure' ? 120 : 240).catch((error) => ({ ok: false, status: 'unsupported', reason: String(error?.message || error).slice(0, 200) }));
       impulseObserver = normalizeImpulseObserverResponse(observerResponse);
       trace.forceProvenance = { requested: true, ...(impulseObserver || { ok: false, status: 'unsupported' }) };
     }
@@ -661,7 +661,7 @@ async function runOne(args, arena, extra = {}) {
     if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const beginImpulseObserver = async (tick) => {
-    if (args.mode !== 'adventure' || !impulseObserver?.ok) return null;
+    if (!['adventure', 'swarm', 'gauntlet'].includes(args.mode) || !impulseObserver?.ok) return null;
     const startedResponse = await page.evaluate(async (flightTick) => {
       try {
         const { laneRpc } = await import('/src/core/simLaneCommands.js');
@@ -677,7 +677,7 @@ async function runOne(args, arena, extra = {}) {
     return started;
   };
   const finalizeImpulseObserver = async () => {
-    if (args.mode !== 'adventure' || !impulseObserver) return;
+    if (!['adventure', 'swarm', 'gauntlet'].includes(args.mode) || !impulseObserver) return;
     const captureResponse = await page.evaluate(async () => {
       try {
         const { laneRpc } = await import('/src/core/simLaneCommands.js');
@@ -748,6 +748,11 @@ async function runOne(args, arena, extra = {}) {
       doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step, {
         onShip: async () => { await shoot('ship step', false); },
       });
+      if (args.mode === 'gauntlet') {
+        // Enter Gauntlet launches directly. Arm at the returned live run, retaining any exact
+        // field deliveries that landed between launch and this first route observation.
+        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick));
+      }
       if (args.mode === 'swarm') {
         await waitForPreparationLaunch(page);
         await waitBootOverlayGone(page);
@@ -779,6 +784,9 @@ async function runOne(args, arena, extra = {}) {
             : `${shelf.cards.length} armory offers read`;
         step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${source} · ${fitted.length} fitted${fittedRead ? '' : ' (fit list not read)'} · ${probe.swapProbe}`);
         const word = await armoryLaunchWord(page);
+        // The opening well acts during the intro, before the active phase is observable.
+        // Begin after run:started but before the public launch button starts that intro.
+        await beginImpulseObserver(await page.evaluate(() => window.SF.state.tick));
         await clickText(page, word || 'Launch round 1');
       } else if (doorInfo && doorInfo.doorPrep) {
         const door = doorInfo.doorPrep;
@@ -792,6 +800,9 @@ async function runOne(args, arena, extra = {}) {
         step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${door.quote || 'no hull sentence'} · no armory shelf`);
       }
       await waitUntilFlight(page, { timeout: 600000, active: true });
+      // Freeze the bounded opening window at the first active frame. Later round motion is a
+      // separate lifecycle and cannot extend or overwrite this opening's physical receipts.
+      await finalizeImpulseObserver();
       await waitBootOverlayGone(page);
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
