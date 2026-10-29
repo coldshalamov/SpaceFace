@@ -142,6 +142,14 @@ export const MOBILE_SCREEN_CSS = `
     scroll-snap-align:start; margin:0 !important; padding:0 !important; background:none !important; border:0 !important;
     box-shadow:none !important; font-size:12px !important; line-height:15px !important; white-space:normal !important; }
   ${B} .sxb-tape:has(> .sxb-event:not([hidden]) ~ .sxb-event:not([hidden])) > .sxb-event:not([hidden]) { flex-basis:86% !important; }
+  /* The arrival ticker line rides in the tape too once a re-render writes it (seen after Bar on a short phone):
+     as a bare flex item it shrank to a word per line, ~400px tall and off to the right, and the tape grew with
+     it until the tab row and Undock fell below the screen. It takes the same two-line card as its neighbours. */
+  ${B} .sxb-tape > .sxb-berth__news:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+    flex:0 0 86% !important; min-width:0 !important; max-width:100% !important; max-height:30px; overflow:hidden !important;
+    scroll-snap-align:start; margin:0 !important; padding:0 0 0 12px !important; border-left:1px solid rgb(236 230 216 / .22) !important;
+    font-size:12px !important; line-height:15px !important; white-space:normal !important; }
+  ${B} .sxb-tape:has(> .sxb-berth__news:not([hidden])) > .sxb-event:not([hidden]) { flex-basis:86% !important; }
   /* The hull reading leads (a re-render keeps the strip on it); event and ledger peek in from the right. */
   ${B} .sxb-tape > .sxb-berth__mechanic { order:-1; }
   ${B} .sxb-tape:has(> .sxb-berth__mechanic:not([hidden])) > .sxb-event:not(.sxb-berth__mechanic):not([hidden]),
@@ -353,6 +361,15 @@ export const MOBILE_SCREEN_CSS = `
       ${B} .sxb-ops .of-facility-rail { -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
         mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
     }
+  }
+  /* Bar on a short upright phone (561-700 tall, e.g. 375x667): the berth head left the contact list a ~128px
+     window, so two of five contacts showed above the tab row. Here the berth scrolls as one page under a pinned
+     destination foot, as it does on a phone on its side, and the contacts run on below the head. */
+  @media (min-height:561px) and (max-height:700px) {
+    ${B}:has(#sx-panel > .sx-bar) { overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain;
+      padding-bottom:0 !important; scroll-padding-bottom:132px !important; }
+    ${B}:has(#sx-panel > .sx-bar) :is(.dp-frame__body--station, .dp-frame__body--station > .sx-screen__body) { flex:none !important; overflow:visible !important; }
+    ${B}:has(#sx-panel > .sx-bar) footer.sxb-ops { position:sticky !important; bottom:0 !important; background:rgb(5 7 10) !important; }
   }
   /* Market on a phone: the commodity, then the trade (dial, total, Buy/Sell), then the adventure decision, then
      the trace and its words, then the register. One column in normal flow: nothing is drawn over anything. */
