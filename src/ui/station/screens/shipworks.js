@@ -72,6 +72,7 @@ import { livingHullTrinkets } from '../../../core/livingHull.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
 import { mountSableDemo, sablePreviewStamp, sablePreviewMatches } from '../../orrery/sableDemo.js';
 import { instanceIdentityText } from '../../../systems/shipLedger.js';
+import { normalizeModuleProvenance } from '../../../data/lineProgression.js';
 import { hullNameForOwnedShip, SHIP_NAME_MAX } from '../../../data/hullIdentity.js';
 import { buildParkedHoldModel } from '../../navigation/cargoDeck.js';
 import { forwardAccelFor, governedFightSpeedFor, travelSpeedFor, turnRecordText } from '../../../systems/shipCapabilities.js';
@@ -4291,15 +4292,18 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const d = item && FITTABLE_BY_ID.get(item.defId);
       if (!d || d.slotType !== slot.type) continue;
       const instText = instanceIdentityText(item);
+      // Row 500 — a unit with a recorded history keeps its tier rim on the icon
+      // (copper/silver/gold/pearl/paper), the same mark the hull part shows.
+      const provMark = (normalizeModuleProvenance(item, d) || {}).mark || null;
       const key = d.id + '|' + instText;
       if (fits(slot, d)) {
         if (typeof item.instanceId !== 'string' || !item.instanceId) continue;
-        const row = holdByDef.get(key) || { d, count: 0, instanceId: item.instanceId, instText };
+        const row = holdByDef.get(key) || { d, count: 0, instanceId: item.instanceId, instText, provMark };
         row.count += 1;
         holdByDef.set(key, row);
       } else if (slot.type === 'weapon' && sizeFits(slot, d)) {
         // Right size, wrong mount — the buy list refuses these in words; the hold must too.
-        const row = holdRefusedByDef.get(key) || { d, count: 0, instText };
+        const row = holdRefusedByDef.get(key) || { d, count: 0, instText, provMark };
         row.count += 1;
         holdRefusedByDef.set(key, row);
       }
@@ -4308,7 +4312,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? ctx.state.player.researchedNodes : [];
     const sableTrialButton = d => sableVennServiceAvailable(ctx.state)
       ? `<button type="button" class="k-word k-word--fine" data-sable-demo="${escapeHtml(d.id)}" data-sable-slot="${slotIndex}" aria-label="Sable Venn: demonstrate ${escapeHtml(d.name)}">Demonstrate</button>` : '';
-    const holdRowHtml = ({ d, count, instanceId, instText, mountBlock }) => {
+    const holdRowHtml = ({ d, count, instanceId, instText, mountBlock, provMark }) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const prospective = fittings.slice();
       prospective[slotIndex] = d.id;
@@ -4331,9 +4335,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const btn = blocked
         ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
         : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
+      const iconHtml = provMark
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" title="${escapeHtml(provMark)} rim">${equipmentIcon(d, 24)}</span>`
+        : equipmentIcon(d, 24);
       return (
         `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${iconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
@@ -4356,6 +4363,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const equippedInstText = equipped
         ? instanceIdentityText((s.fittedInstances || {})[slotIndex])
         : '';
+      // Row 500 — the fitted unit's recorded history rims its icon with the tier mark.
+      const equippedMark = equipped
+        ? ((normalizeModuleProvenance((s.fittedInstances || {})[slotIndex], d) || {}).mark || null)
+        : null;
       const shopDelta = presentShopModuleDelta({
         defId: def.id,
         fittings,
@@ -4396,9 +4407,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : purchase.state === 'funding'
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" data-why="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
+      const equippedIconHtml = equippedMark
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" title="${escapeHtml(equippedMark)} rim">${equipmentIcon(d, 24)}</span>`
+        : equipmentIcon(d, 24);
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equippedIconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +

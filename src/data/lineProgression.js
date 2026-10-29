@@ -300,3 +300,38 @@ export function lineMetaArenaIds() {
   }
   return out;
 }
+
+/** Row 500: build one stamped history for a module instance at its source. Sources are
+ *  authored facts (salvage, derails, Cull purses, ace drops, faction arcs) — this helper
+ *  only bounds the shape so a stamp always normalizes: tier, label, source, optional
+ *  maker/deed, and the Backordered flavour's order text. Stock mints nothing. */
+export function provenanceStamp(spec = {}) {
+  const tier = provenanceTier(spec.tier || spec.rarity);
+  const backordered = spec.backordered === true
+    || (typeof spec.orderText === 'string' && !!spec.orderText.trim());
+  // provenanceTier() maps unknown keys to the stock object — never null — so a
+  // behind-tier must be named explicitly; a bare Backordered stamp defaults to Worked.
+  const behind = backordered && (!tier || tier.index === 0)
+    ? (spec.behindTier ? provenanceTier(spec.behindTier) : provenanceTier('worked'))
+    : tier;
+  if ((!behind || behind.index === 0) && !backordered) return null;
+  const out = {};
+  // Backordered always writes the real tier behind the paper flavour — a
+  // stock-floor module still carries the joke.
+  if (backordered) {
+    out.tier = 'backordered';
+    out.behindTier = provenanceTierKey(behind);
+  } else if (behind && behind.index > 0) {
+    out.tier = provenanceTierKey(behind);
+  }
+  if (typeof spec.label === 'string' && spec.label.trim()) out.label = spec.label.trim();
+  out.source = typeof spec.source === 'string' && spec.source.trim() ? spec.source.trim() : 'recorded';
+  if (typeof spec.maker === 'string' && spec.maker.trim()) out.maker = spec.maker.trim();
+  if (typeof spec.deed === 'string' && spec.deed.trim()) out.deed = spec.deed.trim();
+  if (backordered) {
+    out.backordered = true;
+    out.orderText = typeof spec.orderText === 'string' && spec.orderText.trim()
+      ? spec.orderText.trim() : 'BACKORDERED';
+  }
+  return out;
+}

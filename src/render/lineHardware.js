@@ -42,7 +42,7 @@ export function createLineHardware(state, options = {}) {
   const renderer = state?.render?.renderer;
   const owner = Object.freeze({ type: 'line-hardware' });
   const materials = [], scratch = {}, hot = new THREE.Color(0xff521c), classColor = new THREE.Color();
-  let disposed = false, parent = null, attached = false, lastClass = 0;
+  let disposed = false, parent = null, attached = false, lastClass = 0, lastHeadKey = null;
   const root = new THREE.Group(); root.name = 'LineClassHardware'; root.visible = false;
   const headMount = new THREE.Group(); headMount.position.set(-.18, .20, 0); root.add(headMount);
   const padMounts = PAD_POSITIONS.map((position, i) => {
@@ -88,10 +88,15 @@ export function createLineHardware(state, options = {}) {
         padMounts[i].visible = i < scratch.padCount;
         padMounts[i].scale.setScalar(scratch.padScale);
       }
-      if (lastClass !== scratch.classIndex) {
+      const headKey = scratch.headId ? `${scratch.headId}:${scratch.headMark || ''}` : '';
+      if (lastClass !== scratch.classIndex || lastHeadKey !== headKey) {
         root.userData.lineClass = scratch.label;
         headMount.userData.winch = scratch.hardware.winch;
-        classColor.set(scratch.color); lastClass = scratch.classIndex;
+        // Row 500 — the rim mark shows on the hull part: a fitted §7.1 head tints the
+        // head hardware's rim emissive by its provenance mark, falling back to the
+        // head's authored colour, then the class colour.
+        classColor.set(scratch.markColor ?? scratch.headColor ?? scratch.color);
+        lastClass = scratch.classIndex; lastHeadKey = headKey;
       }
       // Only private cloned materials change; cached hull/part materials retain their authored finish.
       for (const material of materials) {

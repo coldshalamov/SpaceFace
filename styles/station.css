@@ -488,6 +488,13 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-chooser__list { margin-top: calc(16px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; --k-row-cols: minmax(0, 1fr) auto; }
 .sx-chooser__list > .sx-modrow:last-child { border-bottom: 1px solid var(--k-hair); }
 .sx-modrow { align-items: start; padding-top: calc(10px * var(--k-s)); padding-bottom: calc(10px * var(--k-s)); cursor: default; }
+/* Row 500 — the provenance rim on a module icon: one thin metal ring, the tier's mark. */
+.sx-provmark { display: inline-flex; border-radius: 3px; padding: 1px; }
+.sx-provmark[data-mark='copper'] { box-shadow: 0 0 0 1px rgb(217 138 74 / .85), 0 0 6px rgb(217 138 74 / .35); }
+.sx-provmark[data-mark='silver'] { box-shadow: 0 0 0 1px rgb(200 212 224 / .85), 0 0 6px rgb(200 212 224 / .35); }
+.sx-provmark[data-mark='gold']   { box-shadow: 0 0 0 1px rgb(232 184 74 / .9),  0 0 7px rgb(232 184 74 / .4); }
+.sx-provmark[data-mark='pearl']  { box-shadow: 0 0 0 1px rgb(244 240 255 / .9), 0 0 7px rgb(244 240 255 / .45); }
+.sx-provmark[data-mark='paper']  { box-shadow: 0 0 0 1px rgb(232 224 200 / .8); }
 .sx-modrow:focus-visible { outline: none; box-shadow: none; }
 .sx-modrow.is-eq .sx-modrow__name { color: var(--k-signal); }
 .sx-modrow.is-locked .sx-modrow__name { color: var(--k-bone-38); }

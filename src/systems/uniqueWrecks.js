@@ -21,6 +21,7 @@ import {
   movingRadiationGate,
   rewardDescriptors,
 } from '../core/uniqueWreckComplications.js';
+import { provenanceStamp } from '../data/lineProgression.js';
 import {
   UNIQUE_WRECK_MATERIALIZE_PHASES,
   UNIQUE_WRECK_RECEIPT_LIMIT,
@@ -1850,9 +1851,15 @@ export const uniqueWrecks = {
               && ships.grantModule({
                 defId: reward.id,
                 reason: `unique-wreck:${def.id}:${choice.id}`,
-                // NXB-032 — the recovered instance keeps where it came from through
-                // hold/fit/resale; plain string reads through formatInstanceProvenance.
-                provenance: `Recovered: ${def.name || def.id}`,
+                // NXB-032 + row 500 — the recovered instance keeps where it came from
+                // through hold/fit/resale. Salvage is an authored provenance source:
+                // a named hull's part carries the Storied rim and its deed.
+                provenance: provenanceStamp({
+                  tier: 'storied',
+                  label: `Recovered: ${def.name || def.id}`,
+                  source: 'wreck',
+                  deed: `hull of ${def.victimLabel || def.name || def.id}`,
+                }) || `Recovered: ${def.name || def.id}`,
               }));
             if (granted) own.grants[reward.id] = { wreckId: def.id, grantedAtS: resolvedAtS };
           }
