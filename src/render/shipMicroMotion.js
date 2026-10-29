@@ -1449,6 +1449,13 @@ export function createShipMicroMotionTracker() {
     spiralDone.clear();
   }
 
+  function clearRunScopedPresentationState() {
+    clearSpiralMemory();
+    pendingPlayerActions.length = 0;
+    pendingDeathSlide = null;
+    pendingJettisonLoad = 1;
+  }
+
   function matchFreshKill(x, z, simTime) {
     const r2 = DEATH_KILL_MATCH_WU * DEATH_KILL_MATCH_WU;
     for (let i = 0; i < recentKills.length; i++) {
@@ -1720,6 +1727,13 @@ export function createShipMicroMotionTracker() {
       releaseHeatSkin(entry);
       entry.node = null;
     }
+    // The nozzle table holds Object3D references just like the bell table. An authored-root
+    // repoint can expose fewer (or no) RCS nodes; clear the unused slots so the retired tree is
+    // not retained by this otherwise-live craft record.
+    for (let i = rec.rcsNozzleCount; i < rec.rcsNozzles.length; i++) {
+      const entry = rec.rcsNozzles[i];
+      if (entry) entry.node = null;
+    }
   }
 
   function bindEvents(bus) {
@@ -1728,8 +1742,8 @@ export function createShipMicroMotionTracker() {
     busSubscribers.push(bus.on('entity:killed', onKilled, { presentation: true }));
     busSubscribers.push(bus.on('entity:spawned', onSpawned, { presentation: true }));
     busSubscribers.push(bus.on('sector:enter', clearSpiralMemory));
-    busSubscribers.push(bus.on('save:loaded', clearSpiralMemory));
-    busSubscribers.push(bus.on('game:newGame', clearSpiralMemory));
+    busSubscribers.push(bus.on('save:loaded', clearRunScopedPresentationState));
+    busSubscribers.push(bus.on('game:newGame', clearRunScopedPresentationState));
     busSubscribers.push(bus.on('combat:fire', onFire));
     busSubscribers.push(bus.on('weapons:vent', onVent));
     busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
