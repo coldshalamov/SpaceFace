@@ -117,8 +117,12 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   ${GO} > .sf-go-recap { justify-self:stretch; width:100%; height:auto; padding-top:calc(34px + var(--r) * 2.4 + 22px) !important; }
   ${GO} > .sf-go-recap::before { top:calc(34px + var(--r) * 1.2); width:calc(var(--r) * 3.4); height:calc(var(--r) * 3.4); }
   ${GO} .sf-go-ring, ${GO} .sf-go-st--hub, ${GO} .sf-go-hubscrub { top:calc(34px + var(--r) * 1.2); }
-  ${GO} .sf-go-recap__rows { position:static !important; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 20px !important; }
+  ${GO} .sf-go-recap__rows { position:static !important; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 14px !important; }
   ${GO} .sf-go-st:not(.sf-go-st--hub), ${GO} .sf-go-st[data-side] { position:static; transform:none; text-align:left; align-items:flex-start; white-space:normal; }
+  /* the two-up figures: labels track tighter so most hold one line, and each figure sits on its
+     cell's floor so a pair's numerals share a baseline even when one label still wraps */
+  ${GO} .sf-go-st:not(.sf-go-st--hub) { justify-content:flex-end; }
+  ${GO} .sf-go-st:not(.sf-go-st--hub) .sf-go-recap__k { letter-spacing:.1em !important; }
   ${GO} .sf-go-st--hub { padding:10px 14px !important; }
   ${GO} .sf-go-st--hub .sf-go-recap__v, ${GO} .sf-go-hubscrub__t { font-size:30px !important; }
   ${GO} > .sf-go-tape { height:160px; }
