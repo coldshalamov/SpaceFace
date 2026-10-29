@@ -267,7 +267,7 @@ test('a hostile hull is tinted on a clone and the shared material stays put', ()
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.notEqual(hull.material, shared);
   assert.equal(hull.material.emissive.getHex(), 0xff2438);
-  assert.equal(hull.material.emissiveIntensity, 0.5);
+  assert.equal(hull.material.emissiveIntensity, 0.35);
   assert.equal(hull.material.userData.spacefaceSharedAsset, true, 'despawn must not free a tint shared by other hulls');
   assert.equal(shared.emissive.getHex(), 0x111111);
   assert.equal(shared.emissiveIntensity, 0.2);
@@ -289,7 +289,7 @@ test('a hostile hull is tinted on a clone and the shared material stays put', ()
   const basicHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), basicShared);
   basicMesh.add(basicHull);
   syncSwarmThreatPlate(basicMesh, hostile(1, 8), camera);
-  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.22);
+  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.15);
   assert.equal(basicHull.material.color.getHex(), mixed.getHex());
   assert.equal(basicShared.color.getHex(), 0x8899aa);
   assert.notEqual(basicHull.material, basicShared);

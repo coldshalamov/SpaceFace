@@ -285,14 +285,17 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     float contrast = lumaMax - lumaMin;
     vec3 resolved = c;
     // Only a real local contrast earns the extra taps; the scale-relative gate keeps dim hull
-    // edges eligible while HDR brights skip (bloom already softens them).
-    if (contrast > max(0.012, lumaMax * 0.10)) {
+    // edges eligible while HDR brights skip (bloom already softens them). Owner complaint —
+    // edges read smeared, not drawn: the gate firmed up so faint gradients keep their authored
+    // pixel, and the resolve span tightened from ±8 to ±6 texels so a real edge still resolves
+    // but no longer reaches as far along itself.
+    if (contrast > max(0.016, lumaMax * 0.12)) {
       vec2 dir = vec2(
         -((lumaNW + lumaNE) - (lumaSW + lumaSE)),
         ((lumaNW + lumaSW) - (lumaNE + lumaSE)));
       float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.03125, 0.0078125);
       float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
-      dir = clamp(dir * rcpDirMin, -8.0, 8.0) * texel;
+      dir = clamp(dir * rcpDirMin, -6.0, 6.0) * texel;
       vec3 rgbA = 0.5 * (
         texture2D(sceneTexture, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
         texture2D(sceneTexture, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
@@ -309,7 +312,9 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
     vec4 neighbours = vec4(lumaNW, lumaSE, lumaNE, lumaSW);
     vec4 shadows = smoothstep(vec4(0.16), vec4(0.58), (vec4(y) - neighbours) / (0.035 + y));
     float pool = dot(shadows, vec4(0.25));
-    float deposit = uLookInk * solid * clamp(ink * 0.18 + pool * 0.48, 0.0, 0.52);
+    // Deposit eased back with the resolve trim: the ink still pools on the painted side of a
+    // hard edge, just no longer as deep a seam over already-soft bloom spill.
+    float deposit = uLookInk * solid * clamp(ink * 0.15 + pool * 0.40, 0.0, 0.46);
     return resolved * mix(vec3(1.0), vec3(0.40, 0.34, 0.62), deposit);
   }
 
@@ -1171,8 +1176,10 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 // Owner 2026-10-27: the wide halo is what turned a lit strip into neon and blurred silhouettes;
 // the mid/wide weights now sit well under the tight core so emissive sources keep an honest local
 // glow while the tens-of-pixels spill recedes. Weights are composite uniforms — zero pass cost.
+// Owner: glow stays, smearing goes — the 1/16 level receded again (0.20 → 0.14) so the
+// halo tightens around the emitter instead of laying a low fog over neighbouring edges.
 const BLOOM_MID_WEIGHT = 0.40;
-const BLOOM_WIDE_WEIGHT = 0.20;
+const BLOOM_WIDE_WEIGHT = 0.14;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).

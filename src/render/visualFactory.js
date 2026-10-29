@@ -2629,10 +2629,13 @@ function aimSwarmThreatGlyph(glyph, plate) {
 const _hostileTint = new THREE.Color(0xff2438);
 const _hostileTintOf = new WeakMap();
 // A light crimson cast. 0.9 emissive plus a filled disc painted every wasp into
-// a red coin. 0.5 keeps the hull a ship. MeshBasic hulls (no emissive) take a
-// small lerp so they do not become a flat crimson circle either.
-const SWARM_HOSTILE_EMISSIVE = 0.5;
-const SWARM_HOSTILE_COLOR_MIX = 0.22;
+// a red coin. 0.5 kept the hull a ship; once the threat mark grew a shaded
+// under-plate the paint could back off so authored hull shading reads through
+// (owner 2026-10: "can't tell what's an enemy or an object" — the mark now
+// carries more of that job). MeshBasic hulls (no emissive) take a small lerp
+// so they do not become a flat crimson circle either.
+const SWARM_HOSTILE_EMISSIVE = 0.35;
+const SWARM_HOSTILE_COLOR_MIX = 0.15;
 
 /**
  * One tinted clone per source material, shared by every hostile that uses it.
@@ -2692,8 +2695,11 @@ function tintSwarmHostileHull(mesh) {
  * filled disc the size of the hull, painted the ship out: enemies read as red
  * coins. Marks are MeshBasic, normal blending, tone-mapped so they do not
  * bloom into a white ring:
- *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off.
- *     An identity stroke in the 0.7–1.2 sample gap, not a disc.
+ *   - a camera-facing emblem in the 0.7–1.2 sample gap, depthTest off, built as
+ *     layered rings so it reads bordered and shaded instead of one flat stroke:
+ *     a dark under-plate ring (0.86–1.05) carries the lit crimson rim
+ *     (0.92–1.0) and a pale hairline (0.875–0.90). Still a ring family, never
+ *     a disc: the hull shows through d < 0.86.
  *   - a heading wedge on the nose, inside the hull sample, along +X
  *     (the renderer yaws with mesh.rotation.y = -entity.rot)
  *   - a camera-facing fighter glyph at SWARM_GLYPH_OF_BODY × body, sharing
@@ -2730,7 +2736,13 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (staleCard) mesh.remove(staleCard);
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
-    // Thin stroke. 0.92–1.0 sits outside the hull sample and short of the sky.
+    // Thin lit stroke over a shaded plate. The bright rim keeps 0.92–1.0, sitting
+    // outside the hull sample and short of the sky; the two children below make it
+    // a bordered emblem instead of a flat stroke. All three share the rim's
+    // contract — MeshBasic, DoubleSide, normal blending, toneMapped, depthTest
+    // off, renderOrder 12 — so no layer feeds the bloom pyramid and the mark
+    // stays readable over the hull. Children ride the plate's camera-facing
+    // quaternion and scale, so the emblem costs nothing per frame.
     plate = new THREE.Mesh(
       getGeometry('swarm:threat-rim', () => new THREE.RingGeometry(0.92, 1, 48)),
       getMaterial('swarm:threat-rim', () => new THREE.MeshBasicMaterial({
@@ -2746,6 +2758,45 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.renderOrder = 12;
     plate.frustumCulled = true;
     mesh.add(plate);
+    // Dark desaturated crimson under-plate, wider than the rim on both sides
+    // (0.86–1.05 vs 0.92–1.0), so the rim reads as a lit border over a shaded
+    // body. Its farthest reach is 1.05× the mark cap — 1.176r at the 1.12
+    // bracket, still inside the 1.2r readability background ring. Paint order is
+    // explicit renderOrder, not z position: depth is off, so a backing that
+    // painted after the rim would cover it whole. 11.98 < rim's 12 — the
+    // under-plate always paints first.
+    const under = new THREE.Mesh(
+      getGeometry('swarm:threat-under', () => new THREE.RingGeometry(0.86, 1.05, 48)),
+      getMaterial('swarm:threat-under', () => new THREE.MeshBasicMaterial({
+        color: 0x5a0f18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    under.name = 'sf-swarm-threat-under';
+    under.renderOrder = 11.98;
+    under.frustumCulled = true;
+    plate.add(under);
+    // Pale hairline on the dark plate, inside the rim: the bordered accent.
+    // 12.02 paints it last of the three ring layers — after rim and backing.
+    const line = new THREE.Mesh(
+      getGeometry('swarm:threat-line', () => new THREE.RingGeometry(0.875, 0.9, 48)),
+      getMaterial('swarm:threat-line', () => new THREE.MeshBasicMaterial({
+        color: 0xff6a70,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    line.name = 'sf-swarm-threat-line';
+    line.renderOrder = 12.02;
+    line.frustumCulled = true;
+    plate.add(line);
   }
   // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
   // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
