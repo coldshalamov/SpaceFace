@@ -10,7 +10,7 @@ test('covered flight keeps live observations without spending visual probe budge
   const camera = new THREE.OrthographicCamera(-100, 100, 100, -100, 0.1, 500);
   camera.position.set(0, 100, 0); camera.up.set(0, 0, -1); camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld(true);
-  const player = { id: 1, type: 'ship', alive: true, radius: 4,
+  const player = { id: 1, occupantGeneration: 7, type: 'ship', alive: true, radius: 4,
     pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, z: 0 } };
   const state = {
     mode: 'flight', simTime: 0, tick: 0, playerId: 1,
@@ -33,12 +33,15 @@ test('covered flight keeps live observations without spending visual probe budge
   try {
     const covered = frame();
     assert.ok(covered.p, 'live player observation remains available under the veil');
+    assert.equal(reader.identityFor(1, 7), 1, 'player-only pose must still map native impulse receipts');
     assert.equal(covered.vfx, null);
     assert.equal(covered.px, undefined);
     assert.ok(!measures.includes('player-truth:reader:px'));
-    wall = 16; state.tick++; player.pos.x = 12;
+    wall = 16; state.tick++; player.pos.x = 12; player.occupantGeneration = 8;
     state.render.flightVeilHoldsSim = false;
     const revealed = frame();
+    assert.equal(reader.identityFor(1, 7), 1, 'old player-life receipts retain their own identity');
+    assert.notEqual(reader.identityFor(1, 8), 1, 'replacement pilot cannot inherit old force evidence');
     assert.ok(revealed.vfx, 'reveal gets the first visual slot immediately');
     assert.ok(revealed.px, 'covered flight did not consume the pixel wall budget');
     assert.ok(measures.includes('player-truth:reader:px'));

@@ -172,3 +172,23 @@ test('enter a nebula, jump sector: the hazard read clears and the radar is not v
   bus.emit('hazard:enter', { entityId: player.id, zoneType: 'nebula', intensity: 0.9 });
   assert.equal(nebulaVeilActive(state), true, 'a nebula in the new sector veils again');
 });
+
+test('disposing hazard hints removes its sector listener', () => {
+  const listeners = new Map();
+  const bus = {
+    on(name, fn) {
+      const rows = listeners.get(name) || new Set();
+      rows.add(fn);
+      listeners.set(name, rows);
+    },
+    off(name, fn) { listeners.get(name)?.delete(fn); },
+    emit(name, payload) { for (const fn of listeners.get(name) || []) fn(payload); },
+  };
+  const state = { ui: { hazardRead: { type: 'sentinel' } } };
+  const system = Object.create(hazardHints);
+  system.init({ bus, state });
+  system.destroy();
+
+  bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
+  assert.deepEqual(state.ui.hazardRead, { type: 'sentinel' }, 'a disposed system leaves later UI state alone');
+});

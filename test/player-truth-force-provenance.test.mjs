@@ -203,3 +203,17 @@ test('swarm spawn_motion only promotes a delivered field receipt through the fir
   assert.equal(blocked.status, 'FAIL');
   assert.equal(blocked.causal.proofFailures, 1);
 });
+
+test('the four-second opening retains all 27 ordinary well streams within its finite budget', () => {
+  const collector = createBoundedImpulseReceiptCollector({ maxReceipts: 256, maxTicks: 240,
+    maxSeriesPoints: 256 * 240 });
+  collector.arm(); collector.begin(0);
+  for (let tick = 0; tick < 240; tick++) for (let id = 1; id <= 27; id++) {
+    assert.equal(collector.record(observation({ id, generation: id, tick, delta: 0.1 })), true);
+  }
+  const capture = collector.snapshot();
+  assert.equal(capture.status, 'complete');
+  assert.equal(capture.receiptCount, 27);
+  assert.equal(capture.seriesPointCount, 27 * 240);
+  assert.equal(collector.record(observation({ tick: 240 })), false, 'the same end boundary remains exclusive');
+});

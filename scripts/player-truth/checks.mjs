@@ -402,8 +402,14 @@ export function checkSpawnMotion(trace) {
     if (!s || !s.p) { missing++; continue; }
     const previous = trace.samples[index - 1];
     if (nonRound && s.sim !== 0 && (!previous || previous.mode === 'flight')) { missing++; continue; }
+    // Physical terrain is born during wave_intro. Its first observed velocity is the spawn
+    // reading; two seconds of legitimate well/contact motion before active is not a launch.
+    const introIndex = st.wave != null && hasRunMetadata ? trace.samples.findIndex((x, i) =>
+      i <= index && x.mode === 'flight' && x.run?.w === st.wave
+      && ['wave_intro', 'active'].includes(x.run.ph)) : index;
+    const roundStartIndex = introIndex >= 0 ? introIndex : index;
     const inputStart = st.wave != null && hasRunMetadata
-      ? Math.min(st.sim, previous?.sim ?? s.sim) : nonRound ? s.sim : st.sim;
+      ? trace.samples[roundStartIndex].sim : nonRound ? s.sim : st.sim;
     const firstIn = inputsBetween(trace, inputStart, Math.max(st.sim, s.sim) + 1e9)[0];
     if (firstIn && firstIn.sim < s.sim) continue;
     checked++;
@@ -423,7 +429,8 @@ export function checkSpawnMotion(trace) {
     // first observed state through that announcement, rather than regrade post-solve drift.
     // Include the announcement's first sample: reader sim stamps are rounded to milliseconds.
     const announced = nonRound ? trace.samples.findIndex((x, i) => i >= index && x.sim >= st.sim) : index;
-    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1) : [s];
+    const cohort = nonRound ? trace.samples.slice(index, announced < 0 ? trace.samples.length : announced + 1)
+      : trace.samples.slice(roundStartIndex, index + 1);
     const seen = new Set(); let prev = previous; let incomplete = nonRound && announced < 0;
     for (const frame of cohort) {
       if (nonRound && (frame.mode !== 'flight' || !frame.p

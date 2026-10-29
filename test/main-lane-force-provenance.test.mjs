@@ -58,7 +58,8 @@ test('main factory opens the same opt-in observer and attributes actual native f
   const f = await fixture(t);
   assert.equal((await f.rpc('status')).reason, 'observer-not-installed');
   const before = JSON.stringify({ entities: f.state.entityList, tick: f.state.tick, mode: f.state.mode });
-  const installed = await f.rpc('install', { maxReceipts: 8, maxTicks: 10 });
+  const installed = await f.rpc('install', { maxReceipts: 8, maxTicks: 10, maxSeriesPoints: 80 });
+  assert.equal((await f.rpc('status')).maxSeriesPoints, 80, 'both transports preserve the requested bounded field window');
   assert.equal(installed.ok, true); assert.equal(installed.status, 'armed'); assert.equal(installed.readOnly, true);
   assert.equal(JSON.stringify({ entities: f.state.entityList, tick: f.state.tick, mode: f.state.mode }), before);
   f.state.mode = 'flight'; f.force(); f.runner.stepOnce();

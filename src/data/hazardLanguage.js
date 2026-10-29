@@ -253,6 +253,7 @@ export const hazardHints = {
 
   destroy() {
     if (this._bus && this._bus.off) {
+      if (this._onSectorEnter) this._bus.off('sector:enter', this._onSectorEnter);
       if (this._onHazardEnter) this._bus.off('hazard:enter', this._onHazardEnter);
       if (this._onHazardExit) this._bus.off('hazard:exit', this._onHazardExit);
       if (this._onZoneEnter) this._bus.off('world:zoneEntered', this._onZoneEnter);

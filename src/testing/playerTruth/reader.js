@@ -619,8 +619,11 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   // One bounded diagnosis per reader lifetime, only after the ordinary split finds positive
   // threat pixels. This never replaces the grading mask or labels a whole threat box as hull.
-  function attributeCombatSplit({ renderer, draw, combat, baseline, mask, boxes, vw, vh, lum, boxFrac }) {
-    const maxExtraDraws = 8; const catalogCap = 64; const LUM = 10;
+  function attributeCombatSplit({ renderer, draw, combat, baseline, mask, boxes, threatSubjects, vw, vh, lum, boxFrac, expanded = false }) {
+    const catalogCap = 64;
+    const enumerateCandidates = expanded && combat.length > 8 && combat.length <= catalogCap;
+    const maxExtraDraws = enumerateCandidates ? combat.length + 1 : 8;
+    const LUM = 10;
     const objectPath = (object) => {
       const names = [];
       for (let node = object; node && !node.isScene && names.length < 6; node = node.parent) {
@@ -654,6 +657,18 @@ export function installPlayerTruthReader(win, opts = {}) {
     let originalPixels = 0;
     for (let k = 0; k < region.length; k++) if (region[k] && mask[k]) originalPixels++;
     receipt.originalPositiveThreatPixels = originalPixels;
+    const threatRegions = expanded ? boxes.map((box, index) => {
+      if (!(boxFrac(mask, box) >= 0.5)) return null;
+      const x0 = Math.max(0, Math.floor(box[0] / vw * PW)); const x1 = Math.min(PW - 1, Math.floor(box[2] / vw * PW));
+      const y0 = Math.max(0, Math.floor(box[1] / vh * PH)); const y1 = Math.min(PH - 1, Math.floor(box[3] / vh * PH));
+      let original = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (mask[(PH - 1 - y) * PW + x]) original++;
+      }
+      const subject = threatSubjects?.[index];
+      return { id: subject?.id ?? null, occupantGeneration: subject?.occupantGeneration ?? null,
+        x0, x1, y0, y1, original };
+    }) : [];
     const pixels = new Uint8Array(PW * PH * 4);
     const measure = (omitted, stability = false) => {
       if (receipt.extraDraws >= maxExtraDraws) return null;
@@ -669,9 +684,24 @@ export function installPlayerTruthReader(win, opts = {}) {
         if (strength >= LUM) changed++;
         peak = Math.max(peak, strength);
       }
+      const perThreat = stability ? [] : threatRegions.flatMap((threat) => {
+        if (!threat) return [];
+        let threatChanged = 0; let threatPeak = 0;
+        for (let y = threat.y0; y <= threat.y1; y++) for (let x = threat.x0; x <= threat.x1; x++) {
+          const k = (PH - 1 - y) * PW + x;
+          if (!mask[k]) continue;
+          const delta = lum(baseline, k * 4) - lum(pixels, k * 4);
+          if (delta >= LUM) threatChanged++;
+          threatPeak = Math.max(threatPeak, delta);
+        }
+        return [{ id: threat.id, occupantGeneration: threat.occupantGeneration,
+          positiveThreatPixels: threatChanged,
+          originalMaskFrac: threat.original ? +(threatChanged / threat.original).toFixed(3) : null,
+          peakLuminanceDelta: +threatPeak.toFixed(1) }];
+      });
       return { positiveThreatPixels: changed,
         originalMaskFrac: originalPixels ? +(changed / originalPixels).toFixed(3) : null,
-        peakLuminanceDelta: +peak.toFixed(1) };
+        peakLuminanceDelta: +peak.toFixed(1), ...(perThreat.length ? { perThreat } : {}) };
     };
     const prevTarget = renderer.getRenderTarget(); const prevAuto = renderer.info.autoReset;
     const prevShadow = renderer.shadowMap ? renderer.shadowMap.autoUpdate : null;
@@ -686,25 +716,44 @@ export function installPlayerTruthReader(win, opts = {}) {
         receipt.status = 'unstable-baseline';
         return receipt;
       }
-      let group = combat.slice(); let measuredGroup = null; let measured = null;
-      while (group.length > 1 && receipt.extraDraws < maxExtraDraws) {
-        const left = group.slice(0, Math.ceil(group.length / 2));
-        measured = measure(left); measuredGroup = left;
-        group = measured.positiveThreatPixels ? left : group.slice(left.length);
-      }
-      if (group.length === 1 && measuredGroup?.[0] === group[0] && measuredGroup.length === 1) {
-        // The last subset measurement already tested this exact individual.
-      } else if (group.length === 1) {
-        measured = measure(group); measuredGroup = group;
-      }
-      if (group.length === 1 && measured?.positiveThreatPixels) {
-        receipt.status = 'contributor-found';
-        receipt.contributor = { ...describe(group[0], combat.indexOf(group[0])), ...measured };
-        receipt.unexaminedCandidateCount = combat.length - 1;
+      if (enumerateCandidates) {
+        // Opt-in diagnostic only: measure every listed draw independently at this same failing
+        // sample so a weak first answer cannot leave the rest of an overlapping-effects case
+        // unexplored. The ordinary player-truth route retains its original eight-draw cap.
+        receipt.individualDeltas = [];
+        for (let index = 0; index < combat.length; index++) {
+          const measured = measure([combat[index]]);
+          if (!measured) break;
+          receipt.individualDeltas.push({ ...describe(combat[index], index), ...measured });
+        }
+        receipt.unexaminedCandidateCount = combat.length - receipt.individualDeltas.length;
+        receipt.contributors = receipt.individualDeltas.filter(row => row.positiveThreatPixels > 0)
+          .sort((a, b) => b.positiveThreatPixels - a.positiveThreatPixels)
+          .map(({ index, id, name, path, owner, renderOrder, positiveThreatPixels, originalMaskFrac,
+            peakLuminanceDelta, perThreat }) => ({ index, id, name, path, owner, renderOrder,
+            positiveThreatPixels, originalMaskFrac, peakLuminanceDelta, perThreat }));
+        receipt.status = receipt.unexaminedCandidateCount === 0 ? 'individual-scan-complete' : 'budget-exhausted';
       } else {
-        receipt.status = group.length > 1 || !measured ? 'budget-exhausted' : 'no-individual-delta';
-        receipt.remainingCandidateCount = group.length;
-        receipt.remainingCandidateIndices = group.slice(0, catalogCap).map((o) => combat.indexOf(o));
+        let group = combat.slice(); let measuredGroup = null; let measured = null;
+        while (group.length > 1 && receipt.extraDraws < maxExtraDraws) {
+          const left = group.slice(0, Math.ceil(group.length / 2));
+          measured = measure(left); measuredGroup = left;
+          group = measured.positiveThreatPixels ? left : group.slice(left.length);
+        }
+        if (group.length === 1 && measuredGroup?.[0] === group[0] && measuredGroup.length === 1) {
+          // The last subset measurement already tested this exact individual.
+        } else if (group.length === 1) {
+          measured = measure(group); measuredGroup = group;
+        }
+        if (group.length === 1 && measured?.positiveThreatPixels) {
+          receipt.status = 'contributor-found';
+          receipt.contributor = { ...describe(group[0], combat.indexOf(group[0])), ...measured };
+          receipt.unexaminedCandidateCount = combat.length - 1;
+        } else {
+          receipt.status = group.length > 1 || !measured ? 'budget-exhausted' : 'no-individual-delta';
+          receipt.remainingCandidateCount = group.length;
+          receipt.remainingCandidateIndices = group.slice(0, catalogCap).map((o) => combat.indexOf(o));
+        }
       }
     } catch (error) {
       receipt.status = 'diagnostic-error'; receipt.error = String(error?.message || error).slice(0, 200);
@@ -815,10 +864,11 @@ export function installPlayerTruthReader(win, opts = {}) {
     let attribution = null;
     const activePlay = SF.state.mode === 'flight'
       && (!(opts.rounds ?? (SF.state.run?.kind === 'survival')) || SF.state.run?.phase === 'active');
-    if (activePlay && ct > 0 && !pxAttributionAttempted) {
+    const attributionThreshold = opts.vfxAttribution === true ? 0.30 : 0;
+    if (activePlay && ct >= attributionThreshold && ct > 0 && !pxAttributionAttempted) {
       pxAttributionAttempted = true;
       attribution = attributeCombatSplit({ renderer, draw, combat, baseline: bufA, mask: cMask,
-        boxes: threatBoxes, vw, vh, lum, boxFrac });
+        boxes: threatBoxes, threatSubjects, vw, vh, lum, boxFrac, expanded: opts.vfxAttribution === true });
     }
     const bodyOcclusion = bodies.length ? measurePlayerTruthBodyOcclusion({
       THREE, renderer, scene, camera: cam, playerMesh, bodies, playerBox, vw, vh,
@@ -857,6 +907,8 @@ export function installPlayerTruthReader(win, opts = {}) {
       const list = st.entityList || [];
       let player = null;
       for (const e of list) if (e.id === st.playerId) { player = e; break; }
+      // Player pose has its own record below, but native field receipts also need its exact life.
+      if (player) lifeId(player);
       const playerTeam = player ? player.team : 1;
       if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
       threatBoxes = []; threatSubjects = []; bodies = [];

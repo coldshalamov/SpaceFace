@@ -61,6 +61,7 @@ export function createPlayerTruthImpulseObserver({ getState, getBus = () => null
       const collector = createBoundedImpulseReceiptCollector({
         maxReceipts: Number.isSafeInteger(args.maxReceipts) ? args.maxReceipts : undefined,
         maxTicks: Number.isSafeInteger(args.maxTicks) ? args.maxTicks : undefined,
+        maxSeriesPoints: Number.isSafeInteger(args.maxSeriesPoints) ? args.maxSeriesPoints : undefined,
       });
       collector.arm();
       session = { state, collector, lifecycleUnsubs: [], reason: null };
