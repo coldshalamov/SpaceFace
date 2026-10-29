@@ -1,207 +1,52 @@
 <!-- LIFETIME: STABLE -->
-# Agent operations — working agreement
+# Agent operations
 
-The behavioral detail behind root `AGENTS.md`. Any agent brand working in this repo is held to it.
-Git/tree rules that overlap `AGENTS.md` §3 are not repeated. Named campaign doors live in
-[`docs/TASK_ROUTER.md`](./TASK_ROUTER.md).
+This note explains how to finish assigned work. Root [`AGENTS.md`](../AGENTS.md) owns authority,
+shared-tree and Git safety, and the verification router. During the Finish Program, its
+[`README.md`](../design/program/finish/README.md) §2 owns current lane rulings; §5.1 and §5.5 own
+model/tool fit and the shared work loop. [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) owns
+validation choices.
+Do not copy those procedures into another checklist.
 
-## Work like an engineer, not a compiler
+## Finish the assigned outcome
 
-You are the engineer who owns this work; your name is on it. Tests, queue states, and receipts do
-not own it — you do, and no ritual completes it for you.
+Work from the user's request and its done condition. Follow the project authority order in root
+`AGENTS.md` §4 and the active program rulings. Resolve uncertainty with the smallest interpretation
+that fulfills the request; a process document or evidence artifact is not the outcome.
 
-Before you call anything done: run the focused proof the change actually needs — usually the
-live owner plus a number. Then interrogate it like a skeptical reviewer of someone else's
-code. Where is this weak? What breaks on the edges nobody handed you? What would make the
-owner say "this feels cheap"? Fix what you find. Headed captures are not how you look; a
-missing GPU does not keep the unit open. Done means you would put it in front of the owner
-— not that a capture matrix passed.
+Choose the smallest implementation that completes the player-visible or technical result. Inspect
+the live owner and its relevant callers, preserve single-writer and save/input contracts, and fix
+confirmed defects in the assigned path. Do not add parallel implementations, placeholder systems,
+unneeded documentation, or review steps that cannot change the result.
 
-You are the person closest to the problem. Methods are yours to choose. Specs describe what
-excellent feels like and give sanity bounds; they do not prescribe your steps. If a document tells
-you exactly how to work, trust your judgment over the document, and say so in one line when you
-deviate. When this file and the live game disagree, the live game wins.
+Verify directly at the layer that can answer the claim. A focused behavior check is usually enough
+for an owner invariant; a public route is needed when the claim is about an ordinary user route; a
+matched measurement is needed for a performance comparison. Add further checks only when the request,
+governing spec, failed/conflicting result, material risk, or honest claim requires them. Follow the
+cost ladder and route rules in [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md).
 
-Numbers in briefs are sanity bounds, not goals. Never make the game worse to hit a number. If a
-bound is wrong, change the bound and say why in the same change.
+An independent look is useful when an unresolved question could materially change the fix, result,
+or risk, or when the active program requires it. Do not repeat completed reviews, duplicate an active
+investigation, require agreement between models, or treat reports as approval quotas. Finish Program
+review cadence is in its README §2; work outside that program follows root `AGENTS.md` §3.
 
-Tests and checks are your safety net — run them. Evidence artifacts are not: no committed
-screenshots, capture strips, telemetry dumps, review JSON, unlabeled still archives, or receipt
-theater. The improved work is the proof. If you learned something non-obvious, write one paragraph
-where the next engineer will find it. That is the only reason to write prose.
+Complete authorized work without waiting for a user playtest or verdict. Only an explicit external
+action the user requested can remain deferred; report any unresolved dependency and keep unrelated
+work moving.
 
-A teammate looking at the work for unfinished bits, bugs, and cheap first tries is part of
-finishing, before you push. That look is a conversation, then you fix what is real. It is not a
-grade file and not two adversarial waves. The one later second look is a row in
-`design/program/LANDED_REVIEW.md`: file it when you push a build-map or dispatched unit, and a
-different sitting takes it. It does not gate the push.
+## Shared checkout
 
-Context is the shared budget. Every file you add is a tax on every agent who comes after you.
-Write less. Delete the document you proved wrong. Fix the rule next to the code you are editing
-instead of adding a new one anywhere.
+Inspect current ownership and the exact diff before editing. Preserve concurrent changes; stage,
+commit, and publish only the paths the active instructions assign to you. Root `AGENTS.md` §3 owns
+all Git, checkpoint, worktree, fetch/merge, and publication rules. A checkpoint is coordination
+metadata, not a lease or permission gate. This file creates no additional Git ceremony.
 
-## Finish the task
-
-The owner does not read code and cannot finish leftover agent work. If you stop halfway, it stays
-broken forever.
-
-Finish the **named outcome** of the job you were given, end to end — editing, building, reviewing,
-revising, committing, and pushing are part of the work, not permission gates. Then stop; do not
-start the next job.
-
-**Push `origin master` before you stop.** Cloud agents read the remote. A commit left only on this
-machine is not finished. Fetch first, merge if the remote moved (never rebase or reset this
-checkout), commit the exact paths, read `git show --stat HEAD`, then `git push origin master`.
-If the push is rejected, fetch and merge again, then push. Never `--force`, and never push
-someone else's branch or an open pull-request branch. Push the finished local master commits,
-not only yours, and leave other agents' uncommitted files unstaged.
-
-If the unit came from the build map or from `program-dispatch --next`, add one OPEN row to
-`design/program/LANDED_REVIEW.md` in that same push: id `R-` plus the commit's first 7
-characters, the task, and the one claim a later agent should re-check. Do not review it
-yourself in this sitting. A change-loop leg, a merge commit, and the review itself do not add
-a row. The next sitting takes the oldest open review before a new feature. A player-facing
-defect still comes first, then a stale `NOW.md` row. Eight or more waiting reviews jump ahead
-of everything else — clear one. The reviewer deletes the row in the commit that finishes the
-look, fixes a small miss and pushes it, or files one demo-ledger row for a bigger break.
-
-Not finished, even if committed, even if a check is green: a placeholder on the player route, a
-defect you found and left on camera, ending your turn to wait or ask, jargon instead of the thing
-the player would see.
-
-If something is genuinely blocked (a real external dependency, or a call only the owner can make),
-finish everything else in full and say **not done** in one plain sentence naming the blocker. A
-quality miss on the assigned outcome is not a blocker — keep working until the outcome is true.
-
-## A concurrent agent is not a blocker
-
-`HEAD` may move every few minutes and the tree may carry dozens of uncommitted files. This is
-normal, not a reason to stop.
-
-- Work inside the exact unclaimed write set. A collision is handled by preserving the foreign hunk
-  and continuing on disjoint paths — never a revert-and-reapply loop.
-- Commit only the exact paths you changed; never sweep up, delete, revert, or "clean up" another
-  lane's uncommitted files. `git add -A` and `git commit -a` *are* sweeps: they file another lane's
-  half-finished work under your message. Stage with `git add -- <paths>`.
-- **Publish with pathspecs, not from a snapshot.** `git add -- <paths>` then
-  `git commit -m "..." -- <paths>` takes those paths as they are at commit time. Snapshot flows (an
-  alternate `GIT_INDEX_FILE`, a filtered patch, `read-tree`) race: if `HEAD` moves in between, the
-  commit's tree is the old snapshot and it silently **reverts** every file that landed meanwhile.
-  That happened on 2026-09-16 - a temp-index commit reverted seven other-lane files; one publish
-  repaired it, but the history is scarred.
-- **Read `git show --stat HEAD` after every partial commit.** A file you never touched in that list
-  is such a revert: restore it from the pre-commit revision in the same turn. The stale-index
-  symptom in `git status --short` is `D ` staged for a file that exists in `HEAD` and on disk, next
-  to `??` for that same path - repair with `git reset -- <paths>`; never publish from it.
-- **Collisions are repaired additively, then forgotten.** Your hunk overwritten, your commit
-  reverted, the app unbootable from someone's mid-edit: re-land your content, revert only your own
-  broken hunk, note it in one line, keep going. No negotiation with the other lane, no waiting for a
-  reply, and no destructive command to settle it.
-- Never raise attribution. The owner does not care whose name work is filed under.
-- Questions like "should I edit this or wait for the other agent?" are yours to decide. A taste
-  question is resolved by the selected design contract, not by asking the owner.
-- No human verdict is an execution gate. Legacy `NEEDS HUMAN` / `owner verdict` labels mean an
-  independent agent evaluates the named evidence. Only an explicit external action the user
-  requested may stay deferred, and it blocks nothing else.
-
-## `NOW.md` and bounded checkpoints
-
-`design/program/NOW.md` records short mutation windows for exact dirty hunks — not task-long leases.
-They exist so two live agents do not edit the same file; they are not a general ceremony.
-
-- If other agents are live, or the task will span sessions: `node scripts/agent-checkpoint.mjs
-  start` with owner, exact paths, and a short todo list; add the exact-path NOW row with the
-  checkpoint path; release the row when mutation stops.
-- Otherwise skip it — glance at `NOW.md` before you mutate and get on with the work.
-- More than 90 minutes without progress (`node scripts/check-now-liveness.mjs`) makes a row stale by
-  definition; adopt it (`agent-checkpoint.mjs adopt`), preserve every hunk, continue
-  the same task. Never rewrite a foreign dirty file merely because its writer is gone.
-- Reading, testing, and reviewing reserve no files.
-
-## No worktrees; junctions are grenades
-
-**No worktrees.** Isolate lanes by FILE, not by checkout. Leftover worktrees and temp repo copies
-took **117 GB** of a 1 TB disk on 2026-08-23, and zombies keep resurfacing (two more on
-2026-10-04). If one is truly unavoidable, the only sanctioned shape is a single `.worktrees/<name>`
-side checkout shared by you and every subagent you spawn: port the work back onto master, then
-`git worktree remove --force` it in the same turn you finish. Removing a worktree never loses
-commits — commit uncommitted work to its own branch; the branch is the rescue, not a merge into
-master. Before you stop, run `git worktree list` — the main checkout is the only entry allowed to
-remain. A stale worktree you find is yours: salvage any dirty hunk onto a branch first, then remove
-it.
-
-**`rm -rf` and PowerShell `Remove-Item -Recurse` follow junctions and destroy the target.** Before
-deleting any directory you did not create file-by-file, list reparse points
-(`Get-ChildItem <dir> -Recurse -Force -Directory | Where-Object { $_.LinkType }`), unlink with
-`cmd //c rmdir`, and verify the target survived.
-
-**Temp copies of this repo are ~15 GB each.** Anything created under `%TEMP%` or a scratchpad must
-be deleted in the same session.
-
-## Before you stop: check the changed outcome
-
-```
-npm run check:playable
-```
-
-`check:playable` boots the real game and checks the menu, launch, live player hull, world, thrust,
-runtime errors, asset/shader admission, and quick-save return. Run it at a coherent gameplay
-integration boundary when those claims are affected, or to resolve a failed/conflicting route.
-Select the affected Browser/Electron route for startup, registry/assets, shell, or save-return work.
-
-**Do not boot after every harmless edit.** Planning/docs and mechanical changes with no plausible
-runtime effect close on the applicable links/schema/dispatch and diff checks. Gameplay development
-uses the changed-owner test and a focused production-system fixture; continuation, input recovery,
-and accessibility checks remain required when the change affects those behaviors. Compatible
-changes can share one affected route run at their integration boundary. Reuse unchanged-owner
-evidence with its honest scope, never as a new candidate's route or performance certification.
-
-This exists because the game was unplayable for two days — frozen on the loading screen — while the
-whole check suite stayed green. Roughly 400 checks inspected modules in isolation; not one of them
-asked whether a person could play it. A red result is a real failure to handle; determine whether
-the cause belongs to the game, harness, or environment rather than assuming the latest edit caused
-it. Do not loosen it and do not build a second one — extend the affected existing route.
-
-[`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) owns the cost ladder, quick scenario setup,
-agent-readable trajectories/events, and escalation rules. Inspect a rendered surface when the
-claim is appearance or interaction readability, then use that observation to improve it. A full
-launch, capture matrix, or hours-long session is not the default development loop. One capped,
-targeted session is appropriate when a real pacing/session-shape question cannot be answered by
-a focused fixture; absolute performance stays with the quiet-host program.
-
-A green check is not proof: several checks here once passed by inspecting a convenient stand-in
-while the real assets were corrupt for weeks. Confirm *what* a check looked at, not just that it
-passed.
-
-## This is the machine the owner plays on
-
-The owner plays the game on the same integrated-GPU laptop the agents work on, and there the CPU
-and the GPU share one power budget: background compute is paid for in the game's frame rate. On
-2026-09-20, with two 10-hour playthrough runs and other lanes live, the same build measured a
-locked 60 fps with no freezes and 40 fps with a 100–350 ms freeze every second, minutes apart. The
-owner experiences that as "the performance is weird".
-
-- Background compute on the play machine always runs at the lowest OS priority: every harness that
-  can run over two minutes sets `os.setPriority(os.constants.priority.PRIORITY_LOW)` at process
-  start, because CPU and iGPU share one power budget and a pinned core costs the game frames. The
-  results are identical; they arrive later when someone is playing.
-- The owner's rule of 2026-09-15 still stands on top of this: no 45-minute captures, soaks or
-  batteries inside a session, by you or by a lane you launch.
-- Every performance number you report carries the whole-machine CPU line beside it
-  (`npm run probe:smooth-flight` prints it). A frame-time number without the host load cannot be
-  compared with any other run.
-
-## Known conditions that are NOT your bug
-
-Do not stop, investigate at length, or report these as findings unless they are the actual task:
-
-- `check:assets:live` fails whenever the tree is dirty or `HEAD` is ahead of `origin/master`.
-- `check-helios-sky-kit.mjs` fails on `cycle 10: core fog density`.
-- `node scripts/check-program-docs.mjs` may warn that the `NOW.md` header is old; per-task
-  checkpoint liveness is the current ownership evidence.
-- A stochastic ~250 ms combat spike from a `buildComposedShip` admission stall.
+When code and documentation disagree, follow the authority order in root `AGENTS.md` §4 and use the
+live owner to establish current behavior. Correct the specific stale instruction when it would cause
+the next agent to make the wrong change or run unnecessary work.
 
 ## Reporting
 
-Lead with **done** or **not done**, then what changed in plain terms a player would understand. No
-paths, hashes, or check names unless asked.
+State whether the assigned outcome is done. Describe what changed, the direct check and its result,
+and any material limitation or unresolved risk. Keep `PASS`, `UNKNOWN`, and `INCOMPLETE` distinct.
+Do not present focused evidence as a public-route result, or a diagnostic measurement as acceptance.

@@ -93,8 +93,8 @@ batch; these are not whole-game acceptance claims.
   phases remain stable through owner churn. Focused scheduler checks: 10 passed. No speed claim.
 - Source coverage has continued through asteroid formations/sites, Ceres/Choir/Cinder,
   contract/custody, mission recap/situation composition, and faction presence/occupation/spawn
-  budget packets. Concrete pending fixes include formation invalidation after removal and a Choir
-  malformed-save berth deadlock. Per-packet boundaries are under the ignored integration folder;
+  budget packets. The Choir malformed-save berth deadlock is fixed and published; formation invalidation after removal
+  is reviewed and pending publication. Per-packet boundaries are under the ignored integration folder;
   unexamined dependencies remain open.
 - Existing source review inventories currently enumerate 2,756 JS/TS source files. Lane 1 has
   112 reports for 135 assigned chunks and Lane 3 has 154 for 303 chunks. A report is an input to
@@ -113,3 +113,26 @@ is under `.devshots/finish/integration-2026-10-29/docs/`. The implementation gap
 this record as `SWARM_RENAISSANCE_GAPS.md`. Preserve existing owners for movement, physics, damage,
 wallet and run phase. Fortify, maneuver and stealth work must compose those owners rather than
 create parallel writers. Do not treat a one-device prototype as the PDF's complete Fortify pilot.
+
+## Current integration checkpoint
+
+- The latest headed Swarm batch reaches round 3. No core gameplay FAIL: idle spawn motion and
+  hostile-death/reward checks pass; active controls, wave resolution and transitions pass. Verdict
+  remains INCOMPLETE for LOD/readability/performance samples. The native force observer now confirms
+  actual authored arena-well delivery before input rather than exempting unexplained motion.
+  Artifacts: `.devshots/finish/integration-2026-10-29/player-truth-swarm-fixed/`.
+- An uninstrumented active Swarm CPU profile advanced 1.78 to 9.55 sim seconds with 10 tagged
+  wave-one ships/drones, Intel D3D11, render scale 1. Whole-machine CPU busy was 82%; the 8-second
+  target occupied 11.93 seconds including profiler handoff. Native layout reads (1.02 s) and
+  material texture serialization (339 ms) are measured contributors; 58.5% unattributed program
+  time prevents a claim about the dominant total delay. No performance bar is closed by this run.
+  Artifacts: `.devshots/crucible-cpu-profile/swarm_bare_active_20261029/`.
+- Consolidated agent operations, lessons and validation guidance into their existing entry points.
+  Removed duplicated Git/review rules, obsolete implementation exemptions and contradictory quality
+  rules. Current batch checks and failure gates remain; source fixtures do not certify full play.
+- Continued source coverage found an optional Rapier observer counting radius-ball overlaps instead
+  of actual craft contacts. Its candidate uses deduplicated native narrow-phase body pairs. Frozen
+  browser/worker/headless paths now share the same law/dock/save/input keepalive contract.
+- Fortify implementation is underway through existing run-wallet, phase, physics and damage owners.
+  The full four-device/two-wave/repair/siege pilot, hero maneuvers, optional stealth mission, remaining
+  source coverage, final build-map pass and last-300-commit review are still unfinished.
