@@ -353,8 +353,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* a short narrow desktop (800×600-class): station.css stacks the head one item per row under 900 and
    caps the vitals at two gauges' width, so the five dials wrapped into three rows and the head ran
    ~500px down over every tab's body. Here the head is three bands: the name with the purse at its
-   right, the five dials on one row across the full width, then the mechanic's note and the next step. */
-@media (min-width:651px) and (max-width:900px) and (max-height:800px) {
+   right, the five dials on one row across the full width, then the mechanic's note and the next step.
+   Taller narrow windows (760×900, 768×1024) take it too: their dials stacked into a ~500px tower that
+   pushed every tab's body below the foot (ui-polish-185). */
+@media (min-width:651px) and (max-width:900px) {
   ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) auto !important;
     grid-template-areas:"title trigger" "crown crown" "tape tape" "handoff handoff" !important; grid-template-rows:auto auto auto auto !important;
     max-height:none !important; }
@@ -372,7 +374,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and the two station signs (bay screen, station wire) stacked as full-width rows under the next
    step, ~144px of an 800×600 head, so the tab body kept ~66px: the Missions list showed one cut
    row and the dossier only its title. Above 460 tall they stand side by side on one band. */
-@media (min-width:651px) and (max-width:900px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:900px) and (min-height:461px) {
   ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-column:1 / -1 !important; display:flex !important; gap:0 24px !important; align-items:flex-start !important; min-width:0 !important; }
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding-top:8px !important; }
   ${D} .sxb-signs .sx-adboard__text { margin:2px 0 0 !important; }
@@ -422,8 +424,9 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and its foot: the seven destination words (~715px at full tracking) were capped at 64vw, so at
    651–800 wide only MARKET and SHIPWORKS showed and INDUSTRY ran under COMMS. Now the words own the
    row's left side, closed up at the 12px floor, and the right side stacks UNDOCK over COMMS · HELP,
-   so every word stands on the rail inside the foot's old height. */
-@media (min-width:651px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+   so every word stands on the rail inside the foot's old height. Taller windows (760×900, 768×1024,
+   860×1000) get the same foot: there the rail ran under COMMS, HELP and UNDOCK (ui-polish-185). */
+@media (min-width:651px) and (max-width:800px) and (min-height:461px), (min-width:801px) and (max-width:900px) and (min-height:801px) {
   ${D} .sxb-ops { display:grid !important; grid-template-columns:minmax(0, 1fr) max-content !important;
     grid-template-areas:"rail launch" "rail comms" !important; column-gap:12px !important; row-gap:0 !important; align-items:start !important; }
   ${D} .sxb-ops > .of-facility-rail { grid-area:rail !important; max-width:none !important; min-width:0 !important; }
@@ -448,11 +451,11 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-launch > .so-icon { display:none !important; }
   ${D} .sxb-launch__label { font-size:18px !important; letter-spacing:.08em !important; }
 }
-@media (min-width:780px) and (max-width:800px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:780px) and (max-width:800px) and (min-height:461px) {
   ${D} .sxb-ops .sx-tile__label { letter-spacing:.04em !important; font-size:12px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 8px !important; }
 }
-@media (min-width:651px) and (max-width:699px) and (min-height:461px) and (max-height:800px) {
+@media (min-width:651px) and (max-width:699px) and (min-height:461px) {
   ${D} .sxb-ops { column-gap:6px !important; }
   ${D} .sxb-ops .sx-dock__group--nav { gap:0 4px !important; }
   ${D} .sxb-ops > .sx-comms { gap:4px !important; }
