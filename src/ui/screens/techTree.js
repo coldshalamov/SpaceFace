@@ -539,15 +539,17 @@ export const techTreeScreen = {
       hideTimer = window.setTimeout(finish, 150);
     };
     this._curveReset = () => { pinned = false; close({ instant: true }); };
-    // The rungs row is one clipped line: hide any rung that wrapped below it, so a narrow head shows
-    // whole rungs and nothing half-hidden (re-checked whenever the row's width changes).
+    // The rungs row is a clipped box (one line, or a two-rung stack on a tall desktop head, set in
+    // tech-treeLayouts.js): hide any rung that falls below it, so the head shows whole rungs and
+    // nothing half-hidden (re-checked whenever the row's size changes).
     const rungs = this._curve.rungs;
     if (rungs && typeof ResizeObserver === 'function') {
       const fitRungs = () => {
         const items = [...rungs.children];
         for (const r of items) r.hidden = false;
         const top = items.length ? items[0].offsetTop : 0;
-        items.forEach((r, i) => { if (i && r.offsetTop > top) r.hidden = true; });
+        const room = rungs.clientHeight + 1;
+        items.forEach((r, i) => { if (i && r.offsetTop - top + r.offsetHeight > room) r.hidden = true; });
       };
       // one observer per screen: a re-mount re-binds, so drop the last one first (and in dispose)
       if (this._rungsObserver) this._rungsObserver.disconnect();
