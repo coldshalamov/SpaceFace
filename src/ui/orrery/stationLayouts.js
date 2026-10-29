@@ -760,6 +760,17 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
     flex-wrap:wrap !important; white-space:normal !important; gap:2px 10px !important; }
   ${D} .sxb-ops > .sx-comms > .sx-receipt:not([hidden]) > * { min-width:0; overflow-wrap:anywhere; }
 }
+/* …and 481–650 wide but only 601–800 tall (e.g. 640×700) that stacked head still took 385px, leaving the Market's table
+   ~130px: the palette key sits beside the station name, and the credits rise into the name's row on the right */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) and (max-height:800px) {
+  ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:title !important; align-self:start !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown { margin-top:-44px !important; pointer-events:none; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown > * { pointer-events:auto; }
+}
+/* at 720 tall or less the two ad boards step aside too, as they do in the other short heads */
+@media (min-width:481px) and (max-width:650px) and (min-height:601px) and (max-height:720px) {
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+}
 /* …and under 481 wide the five dials' verbs wrap to two lines each, so the head scrolls its services past 40% of the frame
    and the next step keeps its title, not its sentence, leaving the tab a real body */
 @media (max-width:480px) and (min-height:601px) {
