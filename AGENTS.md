@@ -1,317 +1,70 @@
 <!-- LIFETIME: STABLE -->
-# SpaceFace agent orientation
+# SpaceFace agent front door
 
-SpaceFace is a Three.js browser/Electron top-down space game — fly, mine, trade, fight, upgrade, and
-build passive income in a living 2.5D universe. Technically: a flat `GameState`, an event bus, and a
-registry of systems on a 60 Hz fixed-timestep sim decoupled from rendering. New to the repo? Read
-[`docs/ORIENTATION.md`](./docs/ORIENTATION.md). [`build_map.md`](./build_map.md)
-is the single program map.
+SpaceFace is a top-down 2.5D space game for browser and Electron: fly, mine, trade, fight, take
+missions, upgrade, and build income in a living universe. Its core is a `GameState`, event bus, and
+60 Hz simulation, separate from rendering. Read [`docs/ORIENTATION.md`](docs/ORIENTATION.md) for the
+repo map; [`ARCHITECTURE.md`](ARCHITECTURE.md) is the technical contract.
 
-**Never stop halfway.** The owner does not read code and cannot complete leftover agent work. Finish
-the named outcome of the job you were given, then stop. Full working agreement:
-[`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md). Named-task index:
-[`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md).
+**Current program:** the Finish Program in [`design/program/finish/README.md`](design/program/finish/README.md).
+Its three lane boards own current assignments, order, path ownership, and finish criteria. Use the
+board matching the task; supporting build-map rows and design documents provide detail. The active
+Finish protocol supersedes conflicting older routing, ownership, provider, review, and capture
+instructions. Historical documents remain useful context only when a current task points to them.
 
-**ACTIVE PROGRAM (owner, 2026-10-28): the Finish Program — [`design/program/finish/README.md`](design/program/finish/README.md).**
-Three lanes share this checkout, each with its own board and copy-paste prompt (`PROMPT_LANE_1..3.md`):
-Lane 1 MACHINE & PICTURE (performance, renderer, loading, assets, VFX), Lane 2 FIGHT & SIM (combat,
-Crucible/Swarm, AI, physics, tests/scripts), Lane 3 WORLD, GLASS & HOUSE (Adventure, economy, story,
-every 2D screen, audio, docs). While it runs, a lane's board is its job (not `program-dispatch --next`),
-path ownership is README §3, and the owner rulings in README §2 outrank the older rules below where they
-conflict (default quality may follow the hardware budget; measure on this machine; Codex batch review
-replaces `LANDED_REVIEW.md` rows; the ORRERY frontend claim has lapsed). An agent outside the three
-lanes edits only paths no lane claims, or appends to the owning lane's board Inbox.
+## Start by task
 
-## 1. Start by task
-
-| Task | Start here |
+| Need | Start here |
 |---|---|
-| **No instruction, "next", "go", or "make it better"** | **[`design/program/finish/README.md`](design/program/finish/README.md)** — the active program assignment surface. Take the next row on the relevant Lane 1/2/3 board; its named build-map rows carry implementation detail. Do not route current finish work through `program-dispatch --next` |
-| Program map, "next N" / "what next" | **`build_map.md`**, then `design/program/NOW.md` |
-| Occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` |
-| Long-horizon VM / Blender / cloud agent work | **`design/program/VM_LANES.md`** |
-| Implement a feature/fix | `docs/MODULE_MAP.md` → nearest nested `AGENTS.md` |
-| Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
-| Player-facing graphics / Blender/GLB / any ship, station, prop or landmark model | `tools/blender/forge/FORGE.md` + `design/program/GRAPHICS_PROGRAM.md` (workflows, backlog GFX-n); skill `.claude/skills/forge-graphics` |
-| Lighting, shadows, grade, bloom, how surfaces answer light, "the vibe", a sector's mood | [`docs/visual-assets/LOOK.md`](docs/visual-assets/LOOK.md) — one owner for every look value (`src/data/lookMoods.js`); judge by `node scripts/look-bench.mjs` |
-| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **Lane 3 owns `src/ui/**` and `styles/**` under the active Finish Program** (boot/loading files belong to Lane 1). Follow its board and [`design/frontend/ORRERY.md`](design/frontend/ORRERY.md). For changed screens use [`docs/UI_VISUAL_ITERATION.md`](docs/UI_VISUAL_ITERATION.md): capture the real screen, inspect it, fix visible issues, and walk changed controls. The prior ORRERY lane ownership claim has lapsed; its design direction remains |
-| Recurring bug | `docs/COMMON_BUGS.md` |
-| Vercel deploy / "shipping manifest" build failure / release-asset regeneration | [`docs/VERCEL_DEPLOYMENT.md`](./docs/VERCEL_DEPLOYMENT.md) + `docs/COMMON_BUGS.md` §15 — git pushes do **not** build (deploys are manual); fast gate `npm run check:release-manifest-pins` before pushing `assets/ships/release/` or manifest changes |
-| Saw a defect that is not your task | **§7 total-fix mode** — small: fix it now; medium: call a subagent; otherwise one row in the demo defect ledger |
-| INFERENCE / make N missions / throw an agent at the game | Explicitly asked to develop a section or fill out the world? Use [`INFERENCE_LANES.md` §0.2](design/program/INFERENCE_LANES.md#02-explicit-section-development-requests--continue-the-existing-area) with the existing [`FINISH_LANES.md`](design/program/FINISH_LANES.md) area; otherwise copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). For the directed repair loop, an OPEN line in [`design/program/INFERENCE_IDEAS.md`](design/program/INFERENCE_IDEAS.md) is the assignment. Look, infer, rotate only when that catalog is empty. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md). Open feelings for a strong pass: `build_map.md` §23 |
-| Finish the game / it still looks unfinished / run the fleet | **[`design/program/finish/README.md`](design/program/finish/README.md)** — active three-lane finish program, boards, and finish line |
-| Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
-| Performance and captures | During the active Finish Program, follow [`design/program/finish/README.md`](design/program/finish/README.md) §2: measure on this machine with matched within-session A/B and print host contention. Outside that program, follow [`design/program/QUIET_HOST_PROGRAM.md`](design/program/QUIET_HOST_PROGRAM.md) for its dedicated capture host |
+| Active assignment or whole-game finishing | [`design/program/finish/README.md`](design/program/finish/README.md) → the relevant Lane 1, 2, or 3 board |
+| Repo overview or module owner | [`docs/ORIENTATION.md`](docs/ORIENTATION.md) → [`docs/MODULE_MAP.md`](docs/MODULE_MAP.md) → nearest nested `AGENTS.md` |
+| Product or system intent | [`design/VISION.md`](design/VISION.md), [`design/GDD_2_0.md`](design/GDD_2_0.md), and the selected spec section |
+| Named campaign, symptom, or special workflow | [`docs/TASK_ROUTER.md`](docs/TASK_ROUTER.md) |
+| Tests and checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md`; then the check relevant to the change |
+| Visual asset or lighting work | [`docs/visual-assets/README.md`](docs/visual-assets/README.md); for Blender/GLB follow the Forge route it names |
+| Current lane claims | `design/program/NOW.md` and `node scripts/check-now-liveness.mjs`; these protect paths, not unrelated work |
 
-Campaign, feel, hitch, remaster, harvest, and other named doors:
-[`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md). Do not sweep `design/`, `.campaign/`, assets,
-transcripts, or screenshots for an ordinary code task. Use the nearest nested `AGENTS.md`; do not
-copy it into another instruction layer. Do not load vendored `skills/` (not policy).
+Read only the relevant sections. Do not sweep design archives, assets, transcripts, or captures for
+an ordinary code task.
 
-## 2. Architecture in one paragraph
+## Authority and contracts
 
-A flat `GameState`, event bus, and registry of systems run in a 60 Hz fixed-timestep simulation
-decoupled from rendering. Sim code stays independent of Three.js, uses the XZ plane, and uses
-`state.rng`/`state.simTime` rather than ambient randomness or wall time. Browser and Electron launch
-the same game route. See `ARCHITECTURE.md` for the contract.
+Follow current user direction, then `ARCHITECTURE.md` for technical invariants, `design/VISION.md`
+and `design/GDD_2_0.md` for product intent, the active Finish board and selected spec, then supporting
+references. [`docs/POLICY_MANIFEST.md`](docs/POLICY_MANIFEST.md) describes document roles. Live code
+and relevant behavior checks establish whether descriptive claims are true.
 
-## 3. Preserve the shared working tree
+- Keep simulation code independent of Three.js. Use `state.rng` and `state.simTime` rather than
+  ambient randomness or wall time for deterministic behavior. Do not edit expected goldens to pass.
+- Preserve single writers: other systems send intents/events to the canonical owner. Preserve save,
+  input/rebind, and state ownership contracts.
+- Player-facing work must be reachable through the ordinary route. A hidden flag, disconnected
+  system, report, or test-only path is not a shipped player outcome.
+- Exact asset manifests, release metadata, and runtime maps outrank prose inventories. Preserve
+  authored visuals when improving performance or loading.
+- Keep input reachable, text legible, and reduced-motion/flash behavior accessible. Performance
+  changes must retain the visual contract; the active Finish README defines current quality targets.
 
-The working tree may contain valuable concurrent work that is newer than `HEAD`.
+## Shared checkout
 
-- Inspect `git status --short` and `git diff -- <owner-file>` before diagnosing or editing.
-- Ownership is **exact and current**. A path is protected when it is dirty/untracked foreign work, or
-  when a current-date `NOW.md` row names that exact path and its checkpoint is fresh. A legacy row
-  without a checkpoint uses the 90-minute path-mtime fallback. A lane label, mutex, old branch,
-  worktree, or pre-today claim alone is not a blocker.
-- If other agents are live in the tree (or the task will span sessions), drop a checkpoint row:
-  `node scripts/agent-checkpoint.mjs start` with exact paths and a short todo list; release it when
-  mutation stops. For an ordinary unit a clear pathspec commit is enough — the checkpoint ceremony
-  is optional; the preservation rules below are not.
-- A stale checkpoint (90+ minutes without progress, `node scripts/check-now-liveness.mjs`) is
-  adoptable: inspect and preserve the existing diff, continue the same work; never start a parallel
-  implementation or revert a foreign hunk because the writer left.
-- If only part of a packet overlaps protected paths, split and continue the disjoint work. Do not
-  turn one exact-path collision into ownership of a subsystem, packet, or plan.
-- Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash`. Preserve
-  unrelated edits. `git add -N` new files immediately. Stay on the current branch unless the user
-  asked to switch. Commit finished owned files as you go, then push them in the same sitting.
-  The ship rule below is the requirement. Do not wait for a review or for blanket authorization.
-- **No worktrees - keep one checkout.** Isolate lanes by file and by pathspec commit, never by a
-  second checkout: leftover worktrees and temp copies took 117 GB of this disk on 2026-08-23, and
-  zombie checkouts keep resurfacing (two more on 2026-10-04). If a side checkout is truly
-  unavoidable, the only sanctioned shape is one `.worktrees/<name>` shared by you and every
-  subagent you spawn: port the work back with a pathspec commit, then `git worktree remove
-  --force` it in the same turn you finish - a branch preserves work, a checkout never does. Temp
-  repo copies (~15 GB each) die in-session as well. Before you report done, `git worktree list`
-  shows only the main checkout; a stale worktree you find is yours to salvage-then-drop in the same
-  turn, never to leave for the next sitting.
-- **Commit with exact paths.** `git add -A` and `git commit -a` sweep other lanes' half-finished
-  work into your commit; stage only what you changed (`git add -- <paths>`). If a sweep already
-  happened, name it in the commit body instead of unpicking it.
-- **Publish partial work with pathspecs, never from a snapshot.** `git add -- <paths>` and then
-  `git commit -m "..." -- <paths>`: a pathspec commit takes those paths as they are at commit time.
-  Snapshot flows (an alternate `GIT_INDEX_FILE`, a filtered patch, `read-tree`) are race hazards:
-  when `HEAD` moves between the snapshot and the commit, the commit's tree is the old snapshot, so
-  it silently *reverts* every file that landed in between. That happened on 2026-09-16 - a
-  temp-index commit reverted seven other-lane files; the worktree kept them, so one publish repaired
-  it, but the history is scarred.
-- **Read `git show --stat HEAD` after every partial commit, before walking away.** A file you never
-  touched in that list is such a revert: restore it from the pre-commit revision in the same turn.
-  The matching index symptom: `git status --short` shows `D ` staged for a file that exists in
-  `HEAD` and on disk, next to `??` for the same path - that is a stale index, repaired with
-  `git reset -- <paths>`, never published from.
-- **A collision is repaired by content, not by winning.** If your landed hunk is overwritten or
-  reverted, re-land the content additively; if your own change breaks the app (a bad import, a red
-  core path), fix it or revert your own hunk in the same turn. Awareness of other lanes is
-  background, never permission: a live row on paths you are not editing blocks nothing.
-- **Track the published line — never let this checkout drift from `origin/master`.** Cloud
-  agents and the owner land commits on the remote while local work is in flight, so `HEAD` goes
-  stale silently. At session start, and again before you commit a finished unit, run
-  `git fetch --prune origin` and read the divergence (`git status -sb`,
-  `git rev-list --left-right --count master...origin/master`). When the remote has advanced,
-  integrate it before continuing — merge is the repo convention (`pull.rebase=false`; never
-  rebase or reset a checkout holding other agents' work). Preserve dirty foreign work first
-  (an exact-path patch or scoped stash), resolve conflicts by content — `origin/master` is
-  authoritative for what it already shipped, but a local lane can be the same subsystem evolved
-  further, so merge hunks, don't blanket-take a side — and leave foreign hunks unstaged on top.
-- **Master commits are done; pull requests are lanes in flight.** Anything on `origin/master`
-  is landed: integrate it, build on it, never redo it. An open PR belongs to the cloud agent
-  that owns it — do not merge, close, absorb, or "tidy" its branch, and do not treat its
-  content as shipped no matter how finished it looks. When a PR merges (the owner or its cloud
-  agent merges it), the result arrives as ordinary `origin/master` commits — sync them in on
-  the next fetch, as above.
-- **Cloud agents work the remote — pull their results regularly.** A quiet VM runs the
-  performance program and pushes job folders to branch `vm-drop` (all under
-  `design/program/vm-drop/<job>/`; finished folders carry `DONE.md`, `IMPORT.md`, and a
-  `patches/` series) plus scratch patch branches `vm-work/*`. `git fetch --prune origin`
-  regularly and check for new folders; sync the outbox onto master by taking the remote's
-  `design/program/vm-drop/` tree wholesale (that path is remote-authoritative — never write
-  under it locally). `vm-drop/IMPORT_DIGEST/` is the running ledger of pending patch imports;
-  importing a finished patch job onto master is normal work, done per-folder on purpose.
-  **Those lane files are also the standing coordination surface with cloud agents** — cloud
-  agents watch their lane for instructions, so direction for a cloud lane goes in its folder
-  (`design/program/vm-drop/<job>/` or [`design/program/VM_LANES.md`](./design/program/VM_LANES.md)),
-  not in chat notes or by absorbing its work. A cloud agent that needs something this box has
-  — a real GPU, a capture host — records a requisition in its lane files; a local agent that
-  wants a clean-VM run records the request the same way. Check a lane's files before touching
-  paths it claims, and never delete a cloud lane's artifacts because it looks idle.
-  Full contract: [`design/program/VM_LANES.md`](./design/program/VM_LANES.md).
+Concurrent work may be newer than `HEAD`. Before editing, inspect `git status --short` and the exact
+diff for each path you need. Preserve foreign changes. Ownership is path-specific and current; a
+lane label or stale claim does not grant a broad subsystem lock. Use `NOW.md` and checkpoints to
+resolve a real path overlap, then continue on disjoint paths.
 
-**Ship the commit, then list the second look (owner, 2026-10-18).** Cloud agents read
-`origin/master`. A commit that stays on this machine is invisible to them, so it is not finished.
+Never use tree-wide reset, restore, clean, or stash in this shared checkout. Do not create a second
+repo copy or worktree. Stage and commit only exact owned paths; never use `git add -A` or `commit -a`.
+Before publishing, fetch and integrate remote changes by merge, not rebase/reset. Never force-push.
+The Finish README describes current board updates and publication; it supersedes older review-queue
+and provider rituals.
 
-- When a unit is finished, commit the exact paths and push `origin master` by name in the same
-  sitting. Fetch first. If the remote moved, merge (`pull.rebase` is false — never rebase or
-  reset this checkout), then push. If the push is rejected, fetch and merge again, then push.
-  Never `--force`. Never push someone else's branch or an open pull-request branch.
-- Push the finished local master commits, not only the one you just made. Leave other agents'
-  uncommitted files unstaged. Do not wait for a clean tree, a review, or a later sitting.
-- Outside the active Finish Program, if the unit came from the build map or `program-dispatch --next`, add one row to [`design/program/LANDED_REVIEW.md`](design/program/LANDED_REVIEW.md) in that same push. For Finish Program packets, use its README §2.3 batch review; do not add landed-review rows. The push does not wait for the review.
-- Outside the active Finish Program, the next agent takes the oldest open review before starting a new feature; a player-facing defect still comes first. The Finish Program follows its boards and §2.3 batch review instead.
-- The reviewer reads the named commit and deletes the row in the commit that finishes the look.
-  A small miss is fixed and pushed in that sitting. A bigger player-facing break gets one
-  demo-ledger row. A review does not file another review.
+## Direct verification
 
-Detail: [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).
+Run the smallest check that answers the claim: a focused behavior check for an owner invariant, the
+ordinary player route for a player-facing result, and a matched within-session measurement for a
+performance comparison. Use the Finish Program’s batch verification rule for touched modes; do not
+invent per-packet review or capture quotas. A failed result requires a relevant fix before repeating
+the same check. Report implementation, focused checks, player-route evidence, and unresolved risks
+separately.
 
-## 4. Authority and current work
-
-When sources disagree: user direction → `ARCHITECTURE.md` (technical) → `design/VISION.md`
-(the owner's fantasy and UVP — wins on product emphasis) → `design/GDD_2_0.md` → `design/program/` →
-the activated plan/spec → supporting references. [`docs/POLICY_MANIFEST.md`](./docs/POLICY_MANIFEST.md)
-says which files may direct an agent.
-
-Live code, current checks, and player-route evidence determine whether descriptive claims are true.
-
-For a user-authorized multi-plan campaign: skip a blocked unit and continue other safe work; an empty
-ready queue is not completion; missing local code, manifests, checks, or packet files are work, not
-external blockers. Status/receipt/harness-only work is not a production outcome unless the user asked
-for those artifacts.
-
-**Owner, 2026-09-27 — the only real blocker is a missing dependency.** A task is blocked when it
-needs a file, system, or asset that does not exist yet — and that is work: build the missing thing.
-Nothing else blocks: not a lane or NOW row naming different files, not a queue state, not a parked
-acceptance leaf, not the absence of a quiet machine, not a capture plan, not a review that has not
-run yet (the landed-review row in §3 is that later look, and it never holds the push), not "the frontend lane owns that area" (see §1: task-needed frontend edits are allowed). A
-"blocked" report that cannot name the exact missing file is a misreport — fix the report or take the
-next unit. Ceremony never outranks the game: skip the ritual, keep the build moving.
-
-No human verdict is an execution gate. Older `NEEDS HUMAN` / `owner verdict` / `human review` wording
-means an independent agent review against the named evidence. Only an explicit external action the
-user requested may remain deferred.
-
-**Owner, 2026-10-04 — no playtest gates.** An agent-authored plan step that waits for the user to
-play, test, review, report back, or give feedback is not a plan step; it is a stall, and "here is
-plan A, the user will play it, then we do plan B" is a stopped program. Replace the gate with its
-agentic equivalent and proceed in the same sitting — a scripted route check, the runtime witness,
-one capped session-SHAPE playthrough (`docs/VALIDATION_WORKFLOW.md`), a fixed-seed number, or an
-independent agent review against the named evidence — then keep building. On contact with this
-rule, rewrite the plan: strike the gate, name the substitute, move on. The absence of a user
-session or verdict unblocks nothing and justifies no pause. The only standing exceptions are the
-explicit external actions the user asked for (publish, purchase, sign-up — never a gameplay
-opinion), and the quiet-host session, which is its own program (§1).
-
-## 5. Live runtime selection
-
-| Slot | Live | Compatibility path |
-|---|---|---|
-| Flight | `src/systems/flightV3.js` + `src/core/flight/` | `flight.js` / `flightDynamics.js` |
-| AI | `src/systems/tacticalAI.js` + `src/ai/` + `aiPorts.js` | `ai.js` |
-| Physics | `rapier-dynamic` via physics authority | custom legacy backend |
-
-Compatibility files remain imported and tested; do not edit them for default gameplay fixes or delete
-them casually. Confirm selection in `src/core/registry.js` and defaults in `src/core/gameState.js`.
-
-## 6. Hard engineering contracts
-
-- **One game path:** browser, Electron, probes, and packaged builds share gameplay, assets, settings,
-  and entrypoint. Launcher wrappers own shell concerns only.
-- **Determinism:** never edit `test/*.expected.json` merely to pass. Sim uses `state.rng` and
-  `state.simTime`; cosmetic render/VFX randomness is separate.
-- **Single writers:** economy→credits, factions→reputation/sector ownership, cargo→cargo,
-  ships→derived stats, heat→WANTED heat. Other systems emit intents/events.
-- **Input contract:** preserve raw axes and `state.input.actions` semantics. Editing
-  `src/systems/input.js` needs task ownership plus focused input/rebind/sim validation.
-- **Wired features:** player-facing work must be reachable on the default route. A local candidate,
-  report, or hidden flag is not completion.
-- **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories.
-  Historical lane documents are not permanent ownership.
-- **Visual craft:** start at `docs/visual-assets/README.md`. Every ship body is built with Forge
-  (`tools/blender/forge/FORGE.md`) — one kit, one surface language, one publish command. Judge
-  models by looking at the live renderer's picture (`scripts/fleet-look.mjs`, `scripts/flight-look.mjs`)
-  at the gameplay camera and fixing what you see; receipts and gate records never substitute. VFX
-  also obeys `VFX_TECHNIQUE_STANDARD.md`. A camera-facing soft square/disc is never a designed
-  object — distant background stars are the only exception, and only while tiny, bright, and at sky
-  depth.
-- **Performance:** optimize algorithms, allocation, batching, cadence, culling, residency, and frame
-  pacing. Do not pass gates by removing authored visuals. **Owner, 2026-10-28:** the default quality
-  on a machine is the highest tier that holds the frame budget on that machine — auto-applied tiers,
-  banded dynamic resolution and small measured sacrifices are allowed with a within-session A/B and a
-  look check, recorded in `docs/visual-assets/LOOK.md` (`design/program/finish/README.md` §2).
-- **Accessibility:** preserve input reachability, reduced-motion/flash behavior, legibility, and
-  contrast. Accessibility does not require a universal visual style.
-- **Dependencies/media:** the outside resources that would make this game better are named in
-  [`docs/OPEN_SOURCE_INTAKE.md`](./docs/OPEN_SOURCE_INTAKE.md) §0. Use that list. Record license,
-  bundle, performance, determinism/save, and maintenance. Do not copy Unreal Engine code. A
-  catalog line does not add a package.
-
-## 7. Total-fix mode (owner, 2026-09-22)
-
-A demo beta is due. Until it ships, the game must be a working thing with no obvious bugs, and
-every agent is in total-fix mode. A defect seen and brushed past because "not my task" is a defect
-the next session may pay hours to isolate — or never see again. The sitting that sees a bug owns
-getting it handled; the task does not have to own fixing it.
-
-- **Small** (one cause, minutes): fix it now, in this session, alongside your named task.
-- **Medium** (multi-file, or fixing it inline would convolute the unit): call a subagent to fix it
-  while you continue. Do not stop your named outcome for it.
-- **Big or cause unknown:** add ONE row to the demo defect ledger —
-  [`design/program/DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md)
-  §6 — then move on. Never open a second bug list elsewhere; a defect that is neither fixed nor
-  logged is the one unacceptable outcome.
-- **Ledger hygiene is the law:** a row leaves the ledger only by being fixed — delete it in the
-  fixing commit; never strike it through, mark it done, or archive it. Any sitting may claim any
-  row, and a sitting dispatched into files that carry an open row handles that row as part of its
-  unit. The ledger must stay readable in one minute: if it grows past a screen, clearing rows
-  outranks taking new queue units.
-
-## 8. System update order
-
-`src/core/registry.js` is the source. Generated `docs/SYSTEM_REGISTRY.md` explains system and render
-order; do not copy the list into policy files.
-
-## 9. Verification router
-
-Run the checks the change actually needs. Fast gate first; do not loop on verification rituals.
-
-| You want | Run |
-|---|---|
-| Quick sanity pass | `npm run check:baseline` (~15s) — run it when the change could plausibly break something it touches; judgment, not ritual |
-| What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
-| Hitch vs pop-in in flight: longest frame, time-to-appear, shader links inside a drawn frame, what paid for each | `node scripts/probe-frame-solid.mjs` (`--cpu-profile` for who paid, `--compare=<earlier .json>` to gate a change). Plan and baseline: `build_map.md` §21.4 |
-| Gameplay route evidence | Outside the active Finish Program, use `npm run player-truth -- --mode=<mode> --gate` when the change calls for it. Finish Program batches run player-truth once per ~5-packet batch for touched modes (§2.11) |
-| A gameplay, feel, or content claim | The live owner plus a fixed-seed number or focused test. Do not capture to review. Owner ruling: `docs/AGENT_LESSONS.md` |
-| A session-SHAPE claim (encounter pacing, spawn policy, economy phases, director cadence, law wiring) that no focused fixture can express | ONE targeted playthrough session: one archetype, one seed, hours capped to the affected window (default 3). Multi-session batteries are L4 diagnostic instruments — never a routine gate. `docs/VALIDATION_WORKFLOW.md` |
-| Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
-| Middle tier | `npm run check:all:smoke` |
-
-`check:baseline --list` shows coverage; `--only=a,b` runs a subset. Do not re-record
-`test/*.expected.json` goldens just to pass. A moving sim clock is not a live 3D picture — freeze and
-perf work starts at the runtime witness. Do not rerun the same command against the same candidate
-after the same failure fingerprint without a relevant change.
-
-Browser test servers must set `SPACEFACE_PLAYER_STORE_DIR=''` explicitly, or use
-`createGameServer` without `playerStoreDir`. An unset variable mounts the real shared save drawer;
-a fresh browser profile or alternate port alone does not isolate player saves.
-
-Full ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
-
-**Player-truth gate.** Outside the active Finish Program, gameplay PRs attach the route verdict and contact sheet for each affected mode when required by the change. Within Finish Program, run player-truth once per ~5-packet batch for the touched modes, as specified in `design/program/finish/README.md` §2.11. A FAIL blocks that batch; an INCOMPLETE verdict names what was not measured. Contract and current work list: [`design/archive/program/player-truth/SUMMARY.md`](design/archive/program/player-truth/SUMMARY.md).
-
-## 11. Depth docs (read by need, not by default)
-
-| File | What it holds |
-|---|---|
-| [`docs/ORIENTATION.md`](./docs/ORIENTATION.md) | Repo map, reading ladder, planner route |
-| [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md) | Finish-the-job, concurrent agents, `NOW.md`, worktrees, `check:playable`, reporting |
-| [`docs/AGENT_LESSONS.md`](./docs/AGENT_LESSONS.md) | Owner preferences and verified workspace facts |
-| [`docs/POLICY_MANIFEST.md`](./docs/POLICY_MANIFEST.md) | Which files may direct an agent |
-| [`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md) | Named campaign / symptom doors |
-
-## 12. Owner feel decision
-
-On 2026-09-15 the owner explicitly chose **gradually come to rest** for hands-off assisted flight.
-Keep the newer proportional settle-to-rest behavior and the separate deliberate brake. This
-supersedes the dated gap report's earlier requirement to retain at least 90 WU/s ten seconds after
-releasing at 95 WU/s; do not restore that old target as a regression fix. Newtonian-mode and
-above-cap earned-momentum contracts remain separate.
-
-## 13. Owner capture decision
-
-On 2026-09-16 the owner ruled that capture requirements had slowed production to a crawl.
-Agents review by reading the live owner and investigating; they do not make headed stills the
-proof. Default close is a number from a fixed-seed scenario or a focused test. A still is
-optional, in-session, deleted, and only for a purely visual claim. GPU/Chromium failure never
-blocks `implemented`. Detail: [`docs/AGENT_LESSONS.md`](./docs/AGENT_LESSONS.md). Craft:
-[`build_map.md`](./build_map.md) §1.3.2.
+For the complete operating agreement see [`docs/AGENT_OPERATIONS.md`](docs/AGENT_OPERATIONS.md).

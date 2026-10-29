@@ -48,6 +48,7 @@ const SEED2 = arg('repeat', 0);               // optional second seed measured i
 
 const { createAuthoritativeRuntime } = await import('../src/runtime/createAuthoritativeRuntime.js');
 const { createBus } = await import('../src/core/eventBus.js');
+const { loadRapierCompatRuntime } = await import('../src/core/rapierCompatRuntime.js');
 const { SIM_DT } = await import('../src/core/sim.js');
 const { wrapAngle } = await import('../src/core/rng.js');
 const { makeShipEntitySpec } = await import('../src/systems/ships.js');
@@ -150,12 +151,12 @@ function instrumentSystems(runtime) {
   const control = { armed: false };
   const wrap = (instance, label, fn) => {
     if (!instance || typeof fn !== 'function' || fn.__crowdWrapped) return;
-    const wrapped = function (dt, state) {
-      if (!control.armed) return fn.call(this, dt, state);
+    const wrapped = function (...args) {
+      if (!control.armed) return fn.apply(this, args);
       const m = meters.get(label) || meters.set(label, { calls: 0, ms: 0, max: 0 }).get(label);
       const t0 = performance.now();
       try {
-        return fn.call(this, dt, state);
+        return fn.apply(this, args);
       } finally {
         const d = performance.now() - t0;
         m.calls += 1; m.ms += d; if (d > m.max) m.max = d;
@@ -293,10 +294,58 @@ function instrumentPhysicsInternals(physicsSys, wrapInto) {
     if (wrapped) obj[method] = wrapped;
   }
   const owner = physicsSys && physicsSys._sg02;
+  if (owner && typeof owner.syncFromEntityLayers === 'function') {
+    const wrapped = wrapInto(owner, 'physics.ownerSyncFromLayers(rapier)', owner.syncFromEntityLayers);
+    if (wrapped) owner.syncFromEntityLayers = wrapped;
+  }
+  if (owner && typeof owner.syncFromEntities === 'function') {
+    const wrapped = wrapInto(owner, 'physics.ownerSync(rapier)', owner.syncFromEntities);
+    if (wrapped) owner.syncFromEntities = wrapped;
+  }
+  if (owner && typeof owner._captureContactImpacts === 'function') {
+    const wrapped = wrapInto(owner, 'physics.ownerCaptureImpacts', owner._captureContactImpacts);
+    if (wrapped) owner._captureContactImpacts = wrapped;
+  }
   if (owner && typeof owner.step === 'function') {
     const wrapped = wrapInto(owner, 'physics.ownerStep(rapier)', owner.step);
     if (wrapped) owner.step = wrapped;
   }
+}
+
+/** Split the authoritative Rapier-owner step at public WASM binding boundaries.
+ *  These wrappers preserve arguments/return values and are armed only for the
+ *  measured window. `contactPair` is used while translating force events; body
+ *  create/remove calls expose measured-window shape rebuilds. */
+function instrumentRapierMethods(RAPIER, ctl, meters) {
+  const restore = [];
+  const wrap = (prototype, method, label) => {
+    if (!prototype || typeof prototype[method] !== 'function') return;
+    const original = prototype[method];
+    if (original.__crowdRapierWrapped) return;
+    const wrapped = function (...args) {
+      if (!ctl.armed) return original.apply(this, args);
+      const meter = meters.get(label) || meters.set(label, { calls: 0, ms: 0, max: 0 }).get(label);
+      const t0 = performance.now();
+      try { return original.apply(this, args); }
+      finally {
+        const elapsed = performance.now() - t0;
+        meter.calls += 1;
+        meter.ms += elapsed;
+        if (elapsed > meter.max) meter.max = elapsed;
+      }
+    };
+    wrapped.__crowdRapierWrapped = true;
+    prototype[method] = wrapped;
+    restore.push(() => { if (prototype[method] === wrapped) prototype[method] = original; });
+  };
+  wrap(RAPIER.World?.prototype, 'step', 'physics.rapier.world.step');
+  wrap(RAPIER.World?.prototype, 'contactPairsWith', 'physics.rapier.world.contactPairsWith');
+  wrap(RAPIER.World?.prototype, 'contactPair', 'physics.rapier.world.contactPair');
+  wrap(RAPIER.EventQueue?.prototype, 'drainContactForceEvents', 'physics.rapier.eventQueue.drainContactForceEvents');
+  for (const method of ['createRigidBody', 'createCollider', 'removeCollider', 'removeRigidBody']) {
+    wrap(RAPIER.World?.prototype, method, `physics.rapier.world.${method}`);
+  }
+  return () => { for (let i = restore.length - 1; i >= 0; i--) restore[i](); };
 }
 
 /** Host-busy note: loadavg is 0 on Windows, so also time a fixed CPU calibration loop. */
@@ -355,6 +404,8 @@ async function runCell({ seed }) {
   const physicsSys = runtime.getSystem('physics');
   const inputSys = runtime.getSystem('input');
   const { meters, control: meterCtl, wrappedCount, wrap } = instrumentSystems(runtime);
+  const RAPIER = await loadRapierCompatRuntime();
+  const restoreRapierMethods = instrumentRapierMethods(RAPIER, meterCtl, meters);
   const ccPhaseWrapped = instrumentConsequencePhases(runtime, fanoutCtl, fanoutMeters);
   const impactStats = {
     emits: 0, pairs: new Set(), ticksWithImpacts: 0, maxPerTick: 0, _perTick: 0, _lastTick: -1,
@@ -490,7 +541,8 @@ async function runCell({ seed }) {
     }
   } finally {
     FIELD_FLAGS.enabled = prevFieldsEnabled;
-    runtime.dispose();
+    try { runtime.dispose(); }
+    finally { restoreRapierMethods(); }
   }
 
   const sum = deltas.reduce((s, d) => s + d, 0);

@@ -114,12 +114,20 @@ test('default renderer submission joins strict loading preparation before first-
     assert.equal(compileOptions.openingRequired, true);
     assert.equal(compileOptions.strict, true); assert.equal(compileOptions.explicit, true);
     assert.equal(compileOptions.joinOutstanding, true); assert.equal(compileOptions.isActive(), true);
+    const compiling = owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(compiling.preparationStage, 'compiling');
+    assert.equal(compiling.preparationCurrentGroup, 1);
+    assert.equal(compiling.preparationCompletedGroups, 0);
+    assert.equal(compiling.preparationGroupCount, 1);
     const waitSet = owner._openingFirstPictureUpgradePromises();
     assert.ok(waitSet.includes(completion), 'the existing bounded opening settle joins that exact promise');
     assert.equal(a.layers.mask, 1); assert.equal(b.layers.mask, 1);
     finish({ pipelines: {}, gpuResidency: {} });
     await Promise.all(waitSet);
-    assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().status, 'active');
+    const active = owner.getRigidOpaqueBatchDiagnosticsForBench();
+    assert.equal(active.status, 'active');
+    assert.equal(active.preparationStage, 'active');
+    assert.equal(active.preparationCompletedGroups, 1);
     assert.equal(owner.getRigidOpaqueBatchDiagnosticsForBench().instances, 2);
     assert.equal(a.layers.mask, 0); assert.equal(b.layers.mask, 0);
     assert.equal(hotIris.layers.mask, 1, 'the player hot iris stays on its live direct material');
@@ -253,25 +261,40 @@ test('retained rigid batches wait for residency before suppressing direct source
   scene.add(root);
   scene.updateMatrixWorld(true);
   let resolvePreparation;
+  let markPreparationStarted;
   const preparation = new Promise((resolve) => { resolvePreparation = resolve; });
+  const preparationStarted = new Promise((resolve) => { markPreparationStarted = resolve; });
   const controller = createRetainedRigidOpaqueBatchController({
     scene,
     prepare: async (batches, context) => {
       assert.equal(batches.length, 1);
       assert.equal(context.isActive(), true);
+      context.reportProgress('compiling', 1, 0, batches.length);
+      markPreparationStarted();
       await preparation;
+      context.reportProgress('group-ready', 1, 1, batches.length);
+      context.reportProgress('ready', 0, 1, 1);
       return { ready: true };
     },
   });
 
   const pending = controller.sync([root]);
+  await preparationStarted;
   assert.equal(a.visible, true, 'source remains drawable while pipeline/residency is pending');
   assert.equal(b.visible, true, 'source remains drawable while pipeline/residency is pending');
-  assert.equal(controller.getDiagnostics().status, 'preparing');
+  const inProgress = controller.getDiagnostics();
+  assert.equal(inProgress.status, 'preparing');
+  assert.equal(inProgress.lastReason, 'preparation-running');
+  assert.equal(inProgress.preparationStage, 'compiling');
+  assert.equal(inProgress.preparationCurrentGroup, 1);
+  assert.equal(inProgress.preparationCompletedGroups, 0);
+  assert.equal(inProgress.preparationGroupCount, 1);
 
   resolvePreparation();
   const result = await pending;
   assert.equal(result.status, 'active');
+  assert.equal(result.preparationStage, 'active');
+  assert.equal(result.preparationCompletedGroups, 1);
   assert.equal(a.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
   assert.equal(b.visible, true, 'semantic source visibility stays canonical while the direct layer is suppressed');
   assert.equal(a.layers.mask, 0, 'the active retained copy suppresses direct source submission');
