@@ -44,15 +44,13 @@ export async function createRapierCollisionWorld() {
         rec = createRecord(e, dynamic, ccdEnabled);
         bodies.set(e.id, rec);
       } else if (Math.abs(rec.radius - e.radius) > 0.001) {
-        if (Array.isArray(rec.colliders) && rec.colliders.length > 1) {
-          // Compound proxy records cannot retune a single radius — rebuild the static set.
-          removeRecord(rec);
-          rec = createRecord(e, dynamic, ccdEnabled);
-          bodies.set(e.id, rec);
-        } else if (typeof rec.collider.setRadius === 'function') rec.collider.setRadius(e.radius);
-        else if (typeof rec.collider.setShape === 'function') rec.collider.setShape(new RAPIER.Ball(e.radius));
-        rec.radius = e.radius;
-        rec.queryShape = new RAPIER.Ball(e.radius);
+        // Retuning a Rapier collider in place leaves the observer world's broad/narrow phase with
+        // the previous contact pair on some body shapes. Rebuild the bounded proxy set so the new
+        // silhouette is authoritative before the next step; entity pose, velocity and CCD are
+        // copied from the current row below.
+        removeRecord(rec);
+        rec = createRecord(e, dynamic, ccdEnabled);
+        bodies.set(e.id, rec);
       }
       if (rec.ccdEnabled !== ccdEnabled) {
         if (typeof rec.body.enableCcd === 'function') rec.body.enableCcd(ccdEnabled);

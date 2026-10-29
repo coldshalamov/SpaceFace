@@ -18,7 +18,7 @@ function knockRun(seed) {
   return runCache.get(seed);
 }
 
-function assertBar(m, seed) {
+function assertBar(m, seed, eventTrace) {
   // 1. It is the real path. A stand-in must never be able to print a B13 number.
   assert.equal(m.realPath.backend, 'rapier-dynamic',
     'a stand-in must never be able to print a B13 number: the solver backend must be the live rapier-dynamic authority');
@@ -30,6 +30,22 @@ function assertBar(m, seed) {
     'a stand-in must never be able to print a B13 number: the gameplay physics backend must be the live rapier-dynamic authority');
   assert.equal(m.realPath.flightBackend, 'v3',
     'a stand-in must never be able to print a B13 number: the hull must fly the live v3 flight path');
+  assert.ok(m.contactEvents >= 1,
+    `the measured window must contain at least one real player-contact receipt, not only planned rock geometry (seed ${seed})`);
+  assert.ok(m.maxContactDeltaVFractionOfCruise > 0,
+    `the contact receipt must contain a measured velocity response, not only a nearby body (seed ${seed})`);
+  assert.ok(m.maxContactDeltaVFractionOfCruise >= 0.005,
+    `the ordinary-contact fixture must produce a felt response above the 0.5% floor (seed ${seed}, ${m.maxContactDeltaVFractionOfCruise})`);
+  assert.ok(m.maxContactDeltaVFractionOfCruise <= 0.10,
+    `an ordinary dynamic-traffic contact must stay within the 10% cruise budget (seed ${seed}, ${m.maxContactDeltaVFractionOfCruise})`);
+  const trafficKnock = eventTrace.find((event) => event.type === 'collision:playerKnock'
+    && event.data?.contactSources?.some((source) => source.type === 'ship'
+      && source.plan?.kind === 'traffic'));
+  assert.ok(trafficKnock,
+    `the above-floor contact must come from a real moving traffic ship, not fixed-rock braking (seed ${seed})`);
+  assert.ok(trafficKnock.data.preSolveClosingFraction > 0
+    && trafficKnock.data.preSolveClosingFraction < 0.55,
+  `the traffic contact must be below the deliberate-crash closing threshold (seed ${seed}, ${trafficKnock.data.preSolveClosingFraction})`);
 
   // 2. One knock definition: ordinary magnitude is applied; raw stays beside it.
   assert.equal(m.knockSource, 'physics:impact(playerInvolved).appliedPlayerDeltaV',
@@ -78,8 +94,11 @@ function assertBar(m, seed) {
 
 test('feel.knock_budget runs the real physics authority, builds its arena, and reports B13 honestly', { timeout: 300_000 }, async () => {
   for (const seed of SEEDS) {
-    const { metrics: m } = await knockRun(seed);
+    const run = await knockRun(seed);
+    const { metrics: m } = run;
     console.log(`[knock-budget-test-01] seed ${seed} observed metrics:`, JSON.stringify({
+      contactEvents: m.contactEvents,
+      maxContactDeltaVFractionOfCruise: m.maxContactDeltaVFractionOfCruise,
       knockEventsPerMinute: m.knockEventsPerMinute,
       maxKnockDeltaVFractionOfCruise: m.maxKnockDeltaVFractionOfCruise,
       headingChangeEvents: m.headingChangeEvents,
@@ -103,7 +122,7 @@ test('feel.knock_budget runs the real physics authority, builds its arena, and r
       measuredMaxKnockDeltaVFractionOfCruise: m.measuredMaxKnockDeltaVFractionOfCruise,
       receiptVsMeasuredMaxGapFractionOfCruise: m.receiptVsMeasuredMaxGapFractionOfCruise,
     }));
-    assertBar(m, seed);
+    assertBar(m, seed, run.eventTrace);
   }
 });
 
