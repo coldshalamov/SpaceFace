@@ -1147,10 +1147,10 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
    words for its rule, which is decoration, so the caption covers no body's words (a plate above
    the row landed on the market table, D248). It is one line, read from the rail's left, clipped
    only after the rail itself is full; the name's aria-label still speaks the whole line. Taller
-   windows keep it under the name, except at 641–1920 wide, where seven lines under seven names
-   stood as narrow columns of four to ten lines each (768x1024, 960x1000, 1280x1000, 1600x1000,
-   1920x1080) and the Market table lost its commodity list under them. */
-@media (min-width: 641px) and (max-height: 900px), (min-width: 641px) and (max-width: 1920px), (max-width: 640px) and (max-height: 600px) {
+   windows keep it under the name, except at 641–1700 wide, where seven lines under seven names
+   stood as narrow columns of four to ten lines each (768x1024, 960x1000, 1280x1000, 1600x1000) and the
+   Market table lost its commodity list under them. */
+@media (min-width: 641px) and (max-height: 900px), (min-width: 641px) and (max-width: 1700px), (max-width: 640px) and (max-height: 600px) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) { flex: 0 0 auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-dock__group--nav > li:has(.sx-tile__gloss) > .sx-tile { flex: none; width: auto; }
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
@@ -1193,8 +1193,21 @@ html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
     visibility: hidden;
   }
 }
-@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce), (min-width: 641px) and (max-width: 1920px) and (prefers-reduced-motion: reduce), (max-width: 640px) and (max-height: 600px) and (prefers-reduced-motion: reduce) {
+@media (min-width: 641px) and (max-height: 900px) and (prefers-reduced-motion: reduce), (min-width: 641px) and (max-width: 1700px) and (prefers-reduced-motion: reduce), (max-width: 640px) and (max-height: 600px) and (prefers-reduced-motion: reduce) {
   html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss { transition: none; }
+}
+/* Wider than 1700 and taller than 900, the help line stays under its name, but as at most two
+   lines: unclamped, each 120px column ran four or five lines deep at 1920x1080 and pushed the
+   Market body down. Two lines hold the gist; the name's aria-label still speaks the whole line. */
+@media (min-width: 1701px) and (min-height: 901px) {
+  html:root:not([data-sf-mobile="1"]) #screens .sx-berth .sx-tile__gloss {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: break-word;
+  }
 }
 
 #screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
