@@ -17,8 +17,8 @@ export function buildStationAcquisitionIndex({
   };
 
   for (const item of commodities) add(item && item.id, 'market');
-  for (const item of modules) if (Number(item && item.price) > 0) add(item.id, 'outfitting');
-  for (const item of weapons) if (Number(item && item.price) > 0) add(item.id, 'outfitting');
+  for (const item of modules) if (item?.purchasable !== false && Number(item && item.price) > 0) add(item.id, 'outfitting');
+  for (const item of weapons) if (item?.purchasable !== false && Number(item && item.price) > 0) add(item.id, 'outfitting');
   for (const ship of ships) add(ship && ship.id, 'shipyard');
   for (const blueprint of blueprints) {
     const surface = `manufacture:${blueprint && blueprint.id || '<unknown>'}`;
@@ -98,6 +98,13 @@ export function runDepthProgramLootAudit({
     if (typeof id === 'string' && id) siteUniqueIds.push(id);
   }
   for (const id of siteUniqueIds) uniqueIds.add(id);
+  // Some authored adventure hulls carry their own salvage-only unique fittings.
+  // They have a real named acquisition owner but are not wreck drops or station stock.
+  const authoredUniqueIds = [];
+  for (const id of catalogs.authoredUniqueIds || []) {
+    if (typeof id === 'string' && id) authoredUniqueIds.push(id);
+  }
+  for (const id of authoredUniqueIds) uniqueIds.add(id);
   const authoritativeRows = declaredRows.length ? declaredRows : reservedRows;
 
   const modules = catalogs.modules || [];
@@ -147,6 +154,17 @@ export function runDepthProgramLootAudit({
         id,
         'Unique equipment must set unique:true, purchasable:false, salvageOnly:true, and price:0.',
       ));
+    }
+  }
+  for (const id of authoredUniqueIds) {
+    const equipment = equipmentById.get(id);
+    if (!equipment) {
+      issues.push(issue('audit.authored-unique-missing', id, 'Authored unique acquisition source references equipment absent from the live catalogs.'));
+      continue;
+    }
+    if (equipment.unique !== true || equipment.purchasable !== false || equipment.salvageOnly !== true) {
+      issues.push(issue('audit.authored-unique-flags', id,
+        'Authored unique equipment must set unique:true, purchasable:false, and salvageOnly:true.'));
     }
   }
   for (const equipment of equipmentById.values()) {
@@ -292,6 +310,7 @@ export function runDepthProgramLootAudit({
     stationAcquisition: [...acquisitionIndex.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, surfaces]) => ({ id, surfaces })),
+    authoredUniqueIds: [...new Set(authoredUniqueIds)].sort(),
   });
   const rollHashHex = rollHash.digest('hex');
   return {
@@ -308,6 +327,7 @@ export function runDepthProgramLootAudit({
     declaredUniqueDrops: declaredRows.length,
     equipmentUniqueDrops,
     storyUniqueDrops,
+    authoredUniqueEquipment: new Set(authoredUniqueIds).size,
     stationAcquisitionItems,
     stationAcquisitionSurfaces,
     uniqueNormalLootHits: uniqueNormalLootHits.length,
@@ -324,7 +344,7 @@ export function formatLootAuditSummary(report) {
   const stationHits = report && Array.isArray(report.stationAcquisitionHits) ? report.stationAcquisitionHits.length : 0;
   return [
     `Depth Program loot audit ${status}: ${report.runs} seeds x ${report.rollableNormalLootSources} rollable live combat tables = ${report.normalLootRolls} rolls; ${report.enumeratedNormalItems} item definitions enumerated.`,
-    `${report.declaredUniqueDrops} live-declared / ${report.reservedUniqueDrops} reserved uniques (${report.equipmentUniqueDrops} equipment, ${report.storyUniqueDrops} story); ${report.uniqueNormalLootHits} normal-loot hits; ${stationHits} station acquisition hits.`,
+    `${report.declaredUniqueDrops} live-declared / ${report.reservedUniqueDrops} reserved uniques (${report.equipmentUniqueDrops} equipment, ${report.storyUniqueDrops} story); ${report.authoredUniqueEquipment || 0} authored fitted uniques; ${report.uniqueNormalLootHits} normal-loot hits; ${stationHits} station acquisition hits.`,
     `${report.stationAcquisitionItems} station-acquirable item ids across ${report.stationAcquisitionSurfaces} surfaces.`,
     `definitionHash:${report.definitionHash}`,
     `rollHash:${report.rollHash}`,

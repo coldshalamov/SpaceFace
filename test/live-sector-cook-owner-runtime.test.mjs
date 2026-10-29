@@ -12,11 +12,13 @@ import { isInitialAuthoredCompositionEntity } from '../src/render/partsLibrary.j
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
 import { openingLoadPolicy } from '../src/render/openingLoadPolicy.js';
 import { createOpeningLoadingAdmission, observePipelineAdmission, prepareMobileOpeningFirstPicture, waitForOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
+import { createCatalogStationRestore } from '../src/save/catalogStationRestore.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
 let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode;
+const rendererMethodNodes = new Map();
 const ownerActiveAdmissionMatches = [];
 function containsOwnedExactTouch(node) {
   if (!node || typeof node !== 'object') return false;
@@ -30,6 +32,9 @@ function containsOwnedExactTouch(node) {
 }
 function walk(node) {
   if (!node || typeof node !== 'object') return;
+  if (node.type === 'ObjectMethod' && ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture'].includes(node.key?.name)) {
+    rendererMethodNodes.set(node.key.name, node);
+  }
   if (node.type === 'ArrowFunctionExpression' && node.async
       && containsOwnedExactTouch(node)
       && source.slice(node.start, node.end).includes('admissionOptions.isActive(subject) !== true')) {
@@ -79,6 +84,21 @@ const ownerInactiveTouchCheckCode = source.slice(ownerInactiveTouchCheckNode.sta
 const ownerActiveAdmissionCode = source.slice(ownerActiveAdmissionNode.start, ownerActiveAdmissionNode.end);
 const groupTouchCode = source.slice(groupTouchNode.start, groupTouchNode.end);
 const settleTouchManyCode = source.slice(settleTouchManyNode.start, settleTouchManyNode.end);
+const rendererMethods = Object.fromEntries([...rendererMethodNodes].map(([name, node]) => [
+  name,
+  new Function('return ({' + source.slice(node.start, node.end) + '}).' + name)(),
+]));
+for (const name of ['_shadowDepthLight', '_shadowDepthEnabled', 'prepareOpeningFirstPicture']) {
+  assert.equal(typeof rendererMethods[name], 'function', `expected the actual renderer ${name} owner method`);
+}
+function bindRendererOwnerMethods(owner) {
+  owner._shadowSettingOn = false;
+  owner._keyLight = null;
+  owner._nocturne = null;
+  owner._shadowDepthLight = rendererMethods._shadowDepthLight.bind(owner);
+  owner._shadowDepthEnabled = rendererMethods._shadowDepthEnabled.bind(owner);
+  owner.prepareOpeningFirstPicture = rendererMethods.prepareOpeningFirstPicture.bind(owner);
+}
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -664,6 +684,7 @@ function realRestoreFixture(f) {
   const env = {
     createTimeEffects: () => ({ reset() {}, set() {} }),
     nowMs: () => 10, RESTORE_YIELD_SLICE_MS: 8,
+    createCatalogStationRestore,
   };
   for (const [name, code] of Object.entries(saveMethods)) owner[name] = evaluate(code, owner, env);
   return { owner, boundary, events };
@@ -720,6 +741,11 @@ function preflightFixture() {
   const f = fixture(), opening = deferred();
   f.state.mode = 'loading';
   f.owner._simHelpers = null;
+  // This fixture isolates the sector-preflight owner after the exact first-picture
+  // seal. Use the real renderer method's guarded idempotent path, not a fake success callback.
+  bindRendererOwnerMethods(f.owner);
+  f.owner._openingFirstPicturePrepared = true;
+  f.state.render.openingGraphPublicationFrozen = true;
   Object.assign(f.values, {
     releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => false,
     shouldAwaitOpeningGpuCook: () => true,
@@ -822,6 +848,7 @@ test('preflight prefix error keeps original error and performs current-owner cle
 
 function gpuFixture() {
   const f = fixture();
+  bindRendererOwnerMethods(f.owner);
   f.owner._selectPostRoute = () => 'test-route';
   f.owner._compilePostRoute = async () => {};
   f.owner._startDeferredWarmDecodes = () => {};

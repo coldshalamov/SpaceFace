@@ -33,6 +33,11 @@ const SCENARIOS = Object.freeze([
   Object.freeze({ factionId: 'faction_verge_layers', sectorId: 'sector_veil_nebula' }),
 ]);
 
+function isLiveDoctrineActor(entity) {
+  return entity && entity.alive !== false
+    && normalizeFactionBehaviorProfile(entity.data?.ai?.factionPresenceDoctrine) !== null;
+}
+
 await main();
 
 async function main() {
@@ -97,7 +102,7 @@ async function captureScenario({ factionId, sectorId }) {
     bus.emit('sector:enter', { sectorId });
 
     const actors = state.entityList
-      .filter((entity) => entity && entity.alive !== false && entity.factionId === factionId)
+      .filter((entity) => entity && entity.factionId === factionId && isLiveDoctrineActor(entity))
       .sort((a, b) => Number(a.id) - Number(b.id));
     assert(actors.length > 0, `${factionId} must materialize through the live sector-entry seam`);
 
@@ -574,8 +579,8 @@ async function captureVergeNeutralControl() {
       revocations: [{ evidenceId: 'vale_gate_revocation_file' }],
     };
     bus.emit('sector:enter', { sectorId: 'sector_veil_nebula' });
-    const actors = state.entityList.filter((entity) => entity && entity.alive !== false
-      && entity.factionId === 'faction_verge_layers');
+    const actors = state.entityList.filter((entity) => entity
+      && entity.factionId === 'faction_verge_layers' && isLiveDoctrineActor(entity));
     assert(actors.length > 0, 'Vale-revocation control must materialize observer prisms');
     const origin = point(player.pos);
     actors.forEach((actor, index) => placeEntity(actor, origin.x - 480, origin.z + index * 80, 0));

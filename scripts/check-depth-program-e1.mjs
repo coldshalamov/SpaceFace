@@ -86,6 +86,14 @@ function runBranch(shapeId, choiceId, expected, index, baseSeed) {
   } else {
     t.bus.emit('encounter:choose', { encounterId: id, choiceId });
   }
+  if (shapeId === 'depth_h4_love_letter_buoy' && choiceId === 'reseed') {
+    // Reseed is a physical six-second service at the original buoy, not an immediate
+    // choice receipt. Let the production director sample its one-second work cadence.
+    for (let second = 0; second < 8
+      && !t.state.story.depthProgramEncounters?.completed?.[shapeId]; second += 1) {
+      t.sim.step(1);
+    }
+  }
   if (shapeId === 'depth_h6_patrol_ambush' && choiceId === 'wait') {
     for (let tick = 0; tick <= 20; tick += 1) t.sim.step(1);
   }
