@@ -21,6 +21,7 @@ export function formatSpeed(n) {
  * so a map, a dial and a hover tag all quote the same reading for the same world gap.
  */
 export function formatDistance(n) {
+  if (n == null || (typeof n === 'string' && !n.trim())) return '\u2014';
   const d = Number(n);
   if (!Number.isFinite(d)) return '—';
   const v = Math.abs(d);

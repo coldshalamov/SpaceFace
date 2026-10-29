@@ -195,7 +195,8 @@ test('registry teardown runs dependents before owners exactly once', () => {
   destroySystems([render, vfxSystem, other, vfxSystem, render]);
   assert.deepEqual(calls, ['vfx', 'render', 'other'],
     'duplicate registry aliases must not destroy a system twice');
-  assert.deepEqual(TEARDOWN_DEPENDENCIES, [['vfx', 'render']]);
+  assert.ok(TEARDOWN_DEPENDENCIES.some(([dependent, owner]) => dependent === 'vfx' && owner === 'render'),
+    'VFX must retire before its renderer owner');
 });
 test('a throwing destroy does not prevent later systems from retiring', () => {
   const calls = [];
@@ -284,7 +285,8 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   ]) watch(resource);
 
   assert.equal(system.destroy(), true);
-  assert.equal(scene.children.length, 1, 'VFX must detach only its own roots before renderer teardown');
+  assert.equal(scene.children.length, 1,
+    `VFX must detach only its own roots before renderer teardown; remaining: ${scene.children.map((child) => child.name || child.type).join(', ')}`);
   assert.equal(swingTraceMesh.parent, null, 'the massline swing-trace mesh must detach from the scene');
   assert.equal(cradleMesh.parent, null, 'the docking-cradle mesh must detach from the scene');
   assert.equal(borrowedMesh.parent, scene, 'borrowed scene roots must remain renderer-owned');

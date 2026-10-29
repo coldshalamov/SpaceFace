@@ -27,6 +27,9 @@ export const WALL_TIME_SCAN_DIRS = Object.freeze([
 ]);
 
 export const ALLOWED_WALL_TIME_FILES = new Map([
+  ['src/core/bootShellPacing.js', 'boot-overlay compositor scheduling only; never read by simulation'],
+  ['src/core/errorBoundary.js', 'presentation error-ring timestamps and toast cooldown; no gameplay clock'],
+  ['src/core/startupJournal.js', 'retail startup diagnostics persisted to sessionStorage; no gameplay writes'],
   // Instrumentation seam: the exported wall clock for diagnostics. physics.js / flightV3.js /
   // flight.js call perfNow() for _diag.tickMs instead of touching wall time themselves.
   ['src/core/perfRuntime.js', 'perf instrumentation clock; perfNow() is the sanctioned diagnostic seam'],

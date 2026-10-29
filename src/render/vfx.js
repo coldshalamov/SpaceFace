@@ -1867,6 +1867,8 @@ export const vfx = {
     this._bombDetonationVfx = null;
     invokeVfxDisposer(this._actionVfx, 'action answers');
     this._actionVfx = null;
+    invokeVfxDisposer(this._broodPresentation, 'swarm brood');
+    this._broodPresentation = null;
     invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
     this._stationOperationVfx = null;
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
@@ -1929,6 +1931,8 @@ export const vfx = {
     this._powerPreviewPlan = null;
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
     disposeVfxRoot(this._masslineSwingTrace && this._masslineSwingTrace.mesh, disposeState);
+    disposeVfxRoot(this._masslineLatchRim && this._masslineLatchRim.mesh, disposeState);
+    this._masslineLatchRim = null;
     disposeVfxRoot(this._masslineChainReadout && this._masslineChainReadout.mesh, disposeState);
     disposeVfxRoot(this._dockingCradle && this._dockingCradle.mesh, disposeState);
 
