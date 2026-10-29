@@ -31,6 +31,7 @@ import {
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
 import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
 import { fillSpeedLineStreak, speedLineStreakGradient } from './speedLineStrokeCache.js';
+import { LINE_RATING_TIER_MAX, lineThrowTierForBody } from '../data/lineRating.js';
 
 /**
  * Player Screen Shake slider (0–100). Absent means full shake, matching the slider's
@@ -401,7 +402,11 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   // frame. Direction is caller-resolved (context.kickDirX/Z — the way the knocked hull went); a
   // missing or degenerate direction yields magnitude-only fields with a zero unit vector, and the
   // camera declines a directionless kick.
-  const kickWu = impactKickFromMomentum(context.momentum) * falloff;
+  // Row 545: the directed kick answers only T4+ (hulk-class) contact — the heavier of the two
+  // bodies must be a whole dead hull or bigger. Callers that cannot name a tier keep the
+  // momentum table's old answer.
+  const kickTier = Number.isFinite(context.kickTier) ? context.kickTier : LINE_RATING_TIER_MAX;
+  const kickWu = kickTier >= 4 ? impactKickFromMomentum(context.momentum) * falloff : 0;
   let kickX = 0;
   let kickZ = 0;
   const kdx = Number.isFinite(context.kickDirX) ? context.kickDirX : 0;
@@ -1805,6 +1810,13 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     }
     context.kickDirX = kickDirX;
     context.kickDirZ = kickDirZ;
+    // W-CAMERA (row 545): the directed kick answers only genuinely massive contact — T4 and up
+    // on the Line throw-tier ladder, i.e. a hulk-class body or heavier. A boulder slam still
+    // reads through trauma and hitstop; it just never slides the frame.
+    context.kickTier = Math.max(
+      lineThrowTierForBody(knockBody),
+      lineThrowTierForBody(otherBody),
+    );
     const result = resolveCollisionFeel(p, context, this._collisionFeelScratch);
     if (!result) return;
     result.tick = tick;
