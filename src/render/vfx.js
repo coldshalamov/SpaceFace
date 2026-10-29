@@ -12397,9 +12397,8 @@ export const vfx = {
         // IMPACTS: a mined face is chipped rock, not molten metal. The scar pool now takes a mark
         // kind; `gouge` gives a dark rim around a fresh pale face with radial cracks, and the
         // fracture channel grows the crack count as the body is worked down.
-        // NOTE FOR THE LEAD: stampMiningScar lives in weapons/presenter.js (your seam) and must
-        // forward { markKind, fracture } into HullScorchPool.spawn for this to take effect. The
-        // extra arguments are ignored harmlessly until it does.
+        // The presenter forwards these material/progress values to HullScorchPool so the scar's
+        // surface and crack pattern follow the worked rock rather than defaulting to a hull scorch.
         const scarRock = targetId != null ? this._ent(targetId) : null;
         const scarData = (scarRock && scarRock.data) || {};
         const scarFracture = scarRock
@@ -17533,6 +17532,7 @@ export const vfx = {
         const e = easeOutCubic(Math.min(1, t * 1.2));
         scale = s.size0 + (s.size1 - s.size0) * e;
         op = s.op0 * (1 - t * t);
+        s.x += s.vx * dt; s.z += s.vz * dt;
       }
       if (s.kind === SPR_PUFF) {
         smokeOrder[smokeCount++] = i;
