@@ -358,6 +358,9 @@ const SHIPPED_WEAPONS = [
     // it is triggered off the PQ-009 provenance the hit leaves ('rcs_disruptor_spike'). Distinct from
     // the concussion cannon: it does NOT throw the ship, it removes its steering. Low hull damage —
     // this is a disable verb, not a killer.
+    // Retired from sale (row 550, §7.1 heads now exist): the Override head fires a held ship's
+    // own thrusters — steering removed by using it against itself. Owned copies keep working.
+    retiredInto: 'mod_line_head_override',
     id: 'wpn_rcs_disruptor_m', name: 'RCS Disruptor M', slotType: 'weapon', size: 'M', tier: 3, mass: 6, price: 34000, requiresTech: 'tech_plasma_dynamics',
     sentence: 'Steals the target’s steering for seconds: a hull that cannot aim is almost ammunition.',
     dmg: 16, rof: 1.4, dps: 22.4, damageType: 'emp', energyCost: 10,
