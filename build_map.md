@@ -1149,7 +1149,7 @@ production units, and never build what they write.
 | 478 | RC-STATION-STAGE | The station is a stage — bar reactions, Regulars, Appeals Window, Clearance Pending, The Tab, the Fine at Helios (§32.7) | BUILD | OPEN — M3 |
 | 479 | RC-SCREENS-TRUE | No screen admits it is unfinished — mission log, tab-rail clipping, game over, map strip, voice ring, empty states (§32.7) | FIX | OPEN — M1 |
 | 480 | RC-MARKET-PLAY | Markets you can play — Convoy Shares, Forward Slip, Auditor Penn, Dump Chute, Cold Chain, Labor Stoppage (§32.7) | BUILD | OPEN — after 465 |
-| 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | OPEN — after 456 and 270 |
+| 481 | RC-CRUCIBLE-DOOR | The Crucible door opens both ways — Run What Killed You, Call the Champion, Wreck Ballast, Case Files, Grudge Ledger (§32.7; phase-order check first) | BUILD | DONE 6b359aae98d — all six pieces land (verified 27/27 green: rc-481 door + arena kill words + mutator consumers) |
 | 482 | ROCK-GUN | The rock is the gun — impact kills ≥60 % in swarm waves 1–10; a guns-only tape is 2× slower (§33.1) | BUILD | DONE devin-25-oct22 |
 | 483 | ROCK-KATAMARI | The Katamari line — in-run line rating in tonnes, newly movable class lit in the Line colour, a visible winch (§33.1) | BUILD | DONE devin-25-oct22 |
 | 484 | ROCK-FLAIL | The flail — chained wrecks on the Line as the endgame weapon; 5 links stable at 60 fps on the iGPU (§33.1) | BUILD | DONE devin-25-oct22 |
