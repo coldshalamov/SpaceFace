@@ -15,7 +15,7 @@ active assignments. A source read or focused test does not establish ordinary-ro
 | Hero Maneuvers | M02 public route banked, committed a bomb, and returned through phase alive; the target survived, an allowed miss. Pinball charged its physical dash and reported target lost with zero contacts; native contact behavior has separate focused coverage. | No public contact or complete three-ability experience is claimed. Boomerang/readout and readability remain under their owners. |
 | Adventure | 300.9 simulated seconds reached; core route/control checks passed. | Overall verdict remains INCOMPLETE for readability and performance authority. |
 | NPC weapon behavior | Published `a41981ae13a`: NPC fixed mounts and turrets aim from the actual muzzle; six focused cases pass. K1 measures actual disabled intervals; SG06 preserves real multi-ship convergence. Ladder totals preserve future history without counting it toward current unlocks. | These focused results do not establish broad combat-route acceptance. |
-| Startup/rendering | Published fixes include required opening residency and shadow-batch retirement. The 414-package release-pin check passed on the candidate before later gameplay edits. | Current stable baseline and full opening performance remain to be checked after integration settles. |
+| Startup/rendering | Current integrated baseline passes all 17 checks in 73.07 seconds against its 90-second budget. `4a93e16099e` makes nested physical-branch traces honor the inherited job limit; this is shared-host evidence, not an isolated speedup. The bundle builds all 414 shipping render packages. | Full opening performance and the final stable build remain open. |
 | Whole game / final phase | Source packets are tracked below; targeted repairs have landed or are being integrated. | Final build-map closure, final stable checks, remaining gameplay routes, and the requested last-300-commit review remain open. Do not mark the game finished. |
 
 ## Current integration follow-up
@@ -38,7 +38,7 @@ A duplicate Hero readout property reported by the bundler was removed.
 - Atlas query-array protection (`618983f7e9e`), forward-compatible motion profile stamps
   (`441a58ef6ce`), copy-owned fallback transport (`7e649f5274d`), and actual map station type
   symbols (`ff8d63cfb54`) are published with focused checks. The actual scrolled map was inspected.
-- The Pallet Jack candidate now captures the original 60-WU/s dumped payload through the native
+- Published `6ee48f68a99`: Pallet Jack now captures the original 60-WU/s dumped payload through the native
   clamp in a production runtime. The committed drift and objective identity survive its warning;
   player-changed motion remains an escape. The ordinary purchased-and-dumped cargo route also
   passes unchanged encounter pacing, two cold Continue restores, and nonlethal parley recovery.
@@ -46,6 +46,25 @@ A duplicate Hero readout property reported by the bundler was removed.
   then fire canonical projectiles. The new regression includes real collider occlusion and ammo.
 - Hero combined fittings now refuse conflicting Veil/Pinball/Boomerang Shift ownership; the actual
   Hero-to-V3 input regression passes.
+
+- Published `e7334cd9378` and `e3494024af1`: player-mined Adventure bulk cores survive
+  Continue; the connected starter native circuit exercises normal trade, gate tolls, a paid fitting,
+  authored seam extraction, MassLine and an earned Swing Drive. This is a native fixture with contact
+  arrangement, not a browser hauling acceptance.
+- Borrowed Sun's local candidate now advances arrival/deployment on its sector calendar even while
+  the carrier is outside native physics residency. Service still requires the actual native body.
+  Its ordinary-boot native regression passes; public lease acceptance remains open while a real
+  post-gate camera/presentation mismatch is being traced. A stale birth-time main-thread phase field
+  is not evidence that the authoritative phase is stuck.
+- Current draw census finds roughly 29 drawable objects per Wasp (57 callbacks across two passes).
+  A bounded compiler experiment preserves every primitive and saves zero draws, so it was rejected.
+  Quality and retained opaque batching comparisons have not shown a stable isolated win; defaults
+  remain unchanged. Current performance is not accepted.
+- The current flight-footage profile measures roughly 0.22 % main-thread CPU in the recorder/codec/
+  presented hook, rather than establishing the board's old 8–12 % FPS claim. M12 now records the
+  current finding and leaves any unmeasured GPU cost explicit.
+- Published `71a898b50f7`: hidden hail availability updates skip layout reads; visible panels follow
+  the current anchor. All 28 focused hail contracts pass.
 
 ## Published changes relevant to integration
 

@@ -185,10 +185,14 @@ serializes every link behind one `linkActive` tail): issue links in parallel bat
 `--force_high_performance_gpu`, `powerPreference: "high-performance"`, `--ignore-gpu-blocklist`,
 and ANGLE `d3d11` vs `vulkan` (confirm the active backend in `chrome://gpu`). Keep what wins.
 
-**M12 — The footage recorder costs 8–12 % fps while recording.** Do not re-run the pixel-read
-experiments (memory: reading pixels at all is the cost). Make capture event-windowed (record only
-around a moment the replay can use) and stop it whenever the frame is over budget; keep the replay
-feature reachable.
+**M12 — Bound footage capture when its current cost warrants it.** The earlier 8–12 % FPS
+claim is historical, not a current implementation requirement. The 2026-10-29 Crucible main-thread
+profile (`finish-post-callout-main-2026-10-29`) records WebCodecs capture at 640 × 340 / 10 FPS:
+recorder, codec and presented hook cost about 0.22 % of measured main-thread CPU, with no pixel
+readback/createImageBitmap path observed. That profile does not measure GPU contention or establish
+an isolated FPS cost. Keep replay reachable; do not disable or window capture solely to satisfy the
+old estimate. Change its budget only if a current within-session comparison identifies a material
+frame cost, preserving useful replay moments.
 
 **M13 — Split the monoliths (one dedicated packet each, no other edits to that file in flight).**
 `renderer.js` (36,741 lines) below 8k (row 412): the free functions into `render/runtime/*`, the `render`
