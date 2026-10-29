@@ -23,9 +23,21 @@ import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import {
+  adventureToFlight,
+  armoryLaunchWord,
+  bootToMenu,
+  clickText,
+  crucibleToArmory,
+  waitBootOverlayGone,
+  waitForPreparationLaunch,
+} from './player-truth/routes.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
+const ADVENTURE = process.argv.includes('--adventure');
+const DIAGNOSTICS_ONLY = process.argv.includes('--diagnostics-only');
+const BARE_ACTIVE = process.argv.includes('--bare-active');
 const argValue = (name) => {
   const hit = process.argv.find((arg) => arg.startsWith(`${name}=`));
   return hit ? hit.slice(name.length + 1) : null;
@@ -36,6 +48,7 @@ const safeName = (value, max) => String(value || '')
   .replace(/^[-_]+/, '')
   .slice(0, max);
 const SAMPLE_MS = Math.max(5000, Number(process.env.SPACEFACE_CRUCIBLE_PROFILE_MS || 20_000));
+const STARTUP_PROFILE_CAP_MS = 480_000;
 // Wall-clock flight time to discard BEFORE the profiler starts. Wave 1 of a lesson opening holds
 // its roster behind OPENING_LESSON_HOLD_TICKS = 45 sim-seconds (survivalWavePlanner.js), so the
 // multi-hostile room only exists after ~65-70 s of contended wall flight. 0 profiles the opening.
@@ -133,6 +146,30 @@ function summarizeProfile(profile) {
   };
 }
 
+function writeProfileSummary(name, profile) {
+  const summary = summarizeProfile(profile);
+  const pct = (micros) => `${((100 * micros) / (summary.totalMicros || 1)).toFixed(1)}%`;
+  const ms = (micros) => (micros / 1000).toFixed(1);
+  const lines = [
+    `# ${name} CPU profile`, '',
+    `Profiled ${ms(summary.totalMicros)} ms of V8 time. JS ${(100 * (summary.totalMicros
+      - summary.buckets.idle - summary.buckets.program - summary.buckets.gc) / (summary.totalMicros || 1)).toFixed(1)}%, `
+      + `(program) ${pct(summary.buckets.program)}, idle ${pct(summary.buckets.idle)}, GC ${pct(summary.buckets.gc)}.`, '',
+    '## Top self time by function', '',
+    ...summary.self.filter((row) => row.node.callFrame.functionName !== '(idle)')
+      .slice(0, 30)
+      .map((row) => `- ${ms(row.micros)} ms (${pct(row.micros)}) — \`${nodeLabel(row.node)}\``), '',
+    '## Self time by source file', '',
+    ...summary.files.filter(([file]) => file !== '(idle)')
+      .slice(0, 25)
+      .map(([file, micros]) => `- ${ms(micros)} ms (${pct(micros)}) — \`${file}\``), '',
+  ];
+  const stem = name.toLowerCase().replace(/\s+/g, '-');
+  fs.writeFileSync(path.join(OUT_DIR, `${stem}-report.md`), lines.join('\n'));
+  fs.writeFileSync(path.join(OUT_DIR, `${stem}.cpuprofile`), JSON.stringify(profile));
+  return summary;
+}
+
 const port = await freePort();
 const server = spawn(process.execPath, ['server.js', String(port)], {
   cwd: ROOT,
@@ -140,6 +177,10 @@ const server = spawn(process.execPath, ['server.js', String(port)], {
   env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
 });
 let browser = null;
+let page = null;
+let cdp = null;
+let startupProfilerRunning = false;
+let startupDiagnostics = null;
 const consoleErrors = [];
 try {
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -154,50 +195,315 @@ try {
       '--window-size=1600,900',
     ],
   });
-  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (error) => consoleErrors.push(`[pageerror] ${String(error).slice(0, 200)}`));
-  await page.addInitScript(() => {
+  await page.addInitScript(({ capturePerfCounters, bareActive }) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
-      window.__SPACEFACE_PERF_COUNTERS__ = true;
-      // Same owner profile the smooth-flight witness boots with (Windows "Animation effects" off).
-      if (!localStorage.getItem('sf.settings.profile.v1')) {
+      window.__SPACEFACE_PERF_COUNTERS__ = capturePerfCounters;
+      // The established smooth-flight witness profile is useful for its launch probe, but a bare
+      // active capture must leave quality and motion settings at the shipped defaults.
+      if (!bareActive && !localStorage.getItem('sf.settings.profile.v1')) {
         localStorage.setItem('sf.settings.profile.v1', JSON.stringify({
           version: 1,
           settings: { accessibility: { motionPreference: 'system' }, video: { motionReduce: true } },
         }));
       }
     } catch (_) { /* storage unavailable */ }
-  });
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-
-  // Wave lifecycle stamps on the page clock, so the report can say which waves the profiled
-  // window actually covered (kills advance the roster; the ten-hostile fight is the subject).
-  await page.evaluate(() => {
-    const waves = [];
-    window.__SF_PROFILE_WAVES__ = waves;
-    for (const event of ['run:wavePlanned', 'run:waveStarted', 'run:waveMaterialized']) {
-      window.SF.bus.on(event, (p) => waves.push({
-        t: performance.now(), event, wave: p && p.wave, count: p && p.admitted,
-      }));
+  }, { capturePerfCounters: !DIAGNOSTICS_ONLY && !BARE_ACTIVE, bareActive: BARE_ACTIVE });
+  if (!DIAGNOSTICS_ONLY) {
+    cdp = await page.context().newCDPSession(page);
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: BARE_ACTIVE ? 200 : 1000 });
+    if (!BARE_ACTIVE) {
+      await cdp.send('Profiler.start');
+      startupProfilerRunning = true;
     }
-  });
+  }
+  const startupStartedAt = Date.now();
+  let startupTimeout;
+  let startupRoute;
+  try {
+    startupRoute = await Promise.race([
+      (async () => {
+        const routeSteps = [];
+        const step = (name, ok, detail) => {
+          const row = { name, ok, detail, elapsedMs: Date.now() - startupStartedAt };
+          routeSteps.push(row);
+          console.log(`[crucible-cpu-profile] ${name}: ${ok ? 'PASS' : 'FAIL'} ${detail || ''}`);
+        };
+        await bootToMenu(page, baseUrl, step);
+        await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
 
-  // The Crucible button's own route: default starter kit, fixed seed, real New Game request.
-  const launched = await page.evaluate(async () => {
-    const launch = await import('/src/ui/crucibleLaunch.js');
-    const setup = launch.crucibleSetupFor({ seed: 4242 });
-    if (!setup || !setup.ok) return false;
-    return launch.requestCrucibleRun(window.SF.bus, setup.value, setup.ruleset) !== false;
-  });
-  if (!launched) throw new Error('Crucible run did not launch');
+        if (ADVENTURE) {
+          await page.evaluate(() => {
+            window.__SF_OPENING_DIAG__ = [];
+            window.__SF_OPENING_DIAG_TIMER__ = setInterval(() => {
+              const state = window.SF && window.SF.state;
+              if (!state) return;
+              const render = state.render || {};
+              const phase = render.openingFirstPicturePhase;
+              const ledger = Array.isArray(render.openingCookLedger) ? render.openingCookLedger : [];
+              const failure = render.openingFirstPictureFailure;
+              const pendingRoots = Array.isArray(failure && failure.meshes)
+                ? failure.meshes.filter((row) => row && (row.pending || row.lod
+                  || ['loading', 'compiling-pipelines', 'awaiting-authored-admission'].includes(row.status)))
+                : [];
+              const pendingIds = new Set(pendingRoots.map((row) => Number(row.id)));
+              const scene = render.scene;
+              const admissionJobs = scene?.userData?.authoredUpgradeDiagnostics?.jobs;
+              const matchingAdmissions = Array.isArray(admissionJobs)
+                ? admissionJobs.filter((job) => pendingIds.has(Number(job && job.entityId))).map((job) => ({
+                  sequence: job.sequence, key: job.key, entityId: job.entityId,
+                  entityType: job.entityType, status: job.status, priority: job.priority,
+                  startedAtMs: job.startedAtMs, endedAtMs: job.endedAtMs,
+                  durationMs: job.durationMs, phases: job.phases, error: job.error,
+                  timeoutEvidence: job.timeoutEvidence,
+                }))
+                : [];
+              window.__SF_OPENING_DIAG__.push({
+                t: performance.now(),
+                mode: state.mode,
+                simTime: state.simTime,
+                phase: phase ? {
+                  stage: phase.stage, outcome: phase.outcome,
+                  elapsedMs: Math.round(performance.now() - phase.startedAt),
+                  budgetMs: phase.budgetMs,
+                } : null,
+                failure: failure ? {
+                  stage: failure.stage, pass: failure.pass, pendingCount: failure.pendingCount,
+                  elapsedMs: failure.elapsedMs, budgetMs: failure.budgetMs,
+                  roots: pendingRoots.map((row) => {
+                    const id = Number(row.id);
+                    const entity = state.entities && typeof state.entities.get === 'function'
+                      ? state.entities.get(id) : (state.entityList || []).find((entry) => entry && entry.id === id);
+                    const root = entity && entity.mesh;
+                    const data = root && root.userData || {};
+                    return {
+                      id, status: row.status, pending: row.pending, lod: row.lod,
+                      uuid: root && root.uuid, name: root && root.name,
+                      parentUuid: root && root.parent && root.parent.uuid,
+                      childCount: root && Array.isArray(root.children) ? root.children.length : null,
+                      authoredAssetState: data.authoredAssetState || null,
+                      authoredUpgradeRequestedAt: data.authoredUpgradeRequestedAt || null,
+                      authoredPreparePhase: data.authoredPreparePhase || null,
+                      authoredUpgradePromise: !!data.authoredUpgradePromise,
+                      requestAuthoredUpgrade: typeof data.requestAuthoredUpgrade === 'function',
+                      pipelinesPending: data.pipelinesPending === true,
+                      pipelinesPendingBy: data.pipelinesPendingBy || null,
+                      pipelinesPendingHolds: Number(data.pipelinesPendingHolds) || 0,
+                      wholeShipLodTransitionPromise: !!data.wholeShipLodTransitionPromise,
+                      admissionPhaseTimings: data.__admissionPhaseTimings || null,
+                    };
+                  }),
+                  admissions: matchingAdmissions,
+                } : null,
+                ledger: ledger.slice(-24).map((row) => ({
+                  step: row.step, ms: row.ms, outcome: row.outcome, t: row.t,
+                  budgetMs: row.budgetMs, materials: row.materials, geometries: row.geometries,
+                  requiredLeaves: row.requiredLeaves, pooledLeaves: row.pooledLeaves,
+                  deltaLeaves: row.deltaLeaves, issued: row.issued, touched: row.touched,
+                  timedOut: row.timedOut, skipped: row.skipped, failed: row.failed,
+                  reason: row.reason, stage: row.stage,
+                })),
+              });
+              if (window.__SF_OPENING_DIAG__.length > 90) window.__SF_OPENING_DIAG__.shift();
+            }, 2000);
+          });
+          const adventure = await adventureToFlight(page, step, { seed: 4242 });
+          if (adventure.runSeed !== 4242) throw new Error(`Adventure seed mismatch: requested 4242, launched ${adventure.runSeed}`);
+          step('launch', true, `Adventure seed ${adventure.runSeed}`);
+        } else {
+          // Wave lifecycle stamps on the page clock, including public preparation and launch.
+          await page.evaluate(() => {
+            const waves = [];
+            window.__SF_PROFILE_WAVES__ = waves;
+            for (const event of ['run:wavePlanned', 'run:waveStarted', 'run:waveMaterialized']) {
+              window.SF.bus.on(event, (p) => waves.push({
+                t: performance.now(), event, wave: p && p.wave, count: p && p.admitted,
+              }));
+            }
+          });
 
-  await page.waitForFunction(() => {
-    const state = window.SF && window.SF.state;
-    return state && state.mode === 'flight'
-      && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
-  }, null, { timeout: 560_000 });
+          const door = await crucibleToArmory(page, {
+            ruleset: 'swarm', arena: 'Ricochet Foundry', seed: 4242,
+          }, step);
+          if (door.runSeed !== 4242) throw new Error(`Swarm seed mismatch: requested 4242, launched ${door.runSeed}`);
+          await waitForPreparationLaunch(page, { timeoutMs: STARTUP_PROFILE_CAP_MS });
+          await waitBootOverlayGone(page);
+          const launchWord = await armoryLaunchWord(page);
+          if (!launchWord || !/^Launch round 1$/.test(launchWord)) {
+            throw new Error(`public Swarm preparation had no enabled Launch round 1 (screen ${launchWord || 'none'})`);
+          }
+          step('preparation', true, `visible ${launchWord}`);
+          // armoryLaunchWord intentionally strips the visible `Esc` shortcut suffix; match the
+          // validated Launch label as a substring so that suffix cannot make the handoff wait
+          // forever for text that is not actually rendered.
+          await clickText(page, launchWord, { timeout: 30_000 });
+          step('launch round 1', true, `seed ${door.runSeed}`);
+        }
+
+        await page.waitForFunction((adventureRoute) => {
+          const state = window.SF && window.SF.state;
+          return state && state.mode === 'flight' && (adventureRoute
+            || (state.run && state.run.phase === 'active'))
+            && Number.isFinite(state.simTime) && state.simTime >= 0.5;
+        }, ADVENTURE, { timeout: STARTUP_PROFILE_CAP_MS });
+        const activeState = await page.evaluate(() => ({
+          mode: window.SF.state.mode,
+          phase: window.SF.state.run && window.SF.state.run.phase,
+          simTime: window.SF.state.simTime,
+          wave: window.SF.state.run && window.SF.state.run.wave,
+          hostiles: window.SF.state.entityList.filter((e) => e && e.alive !== false
+            && e.type === 'ship' && e.id !== window.SF.state.playerId).length,
+        }));
+        if (activeState.mode !== 'flight' || (!ADVENTURE && activeState.phase !== 'active') || activeState.simTime < 0.5) {
+          throw new Error(`${ADVENTURE ? 'Adventure' : 'Swarm'} did not reach advancing active simulation: ${JSON.stringify(activeState)}`);
+        }
+        routeSteps.push({ name: 'advancing active simulation', ok: true, ...activeState,
+          elapsedMs: Date.now() - startupStartedAt });
+        return { routeSteps, activeState };
+      })(),
+      new Promise((_, reject) => {
+        startupTimeout = setTimeout(() => reject(
+          new Error(`Swarm public route did not reach active sim within ${STARTUP_PROFILE_CAP_MS} ms`),
+        ), STARTUP_PROFILE_CAP_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(startupTimeout);
+    if (page && !page.isClosed()) {
+      startupDiagnostics = await page.evaluate(() => {
+        clearInterval(window.__SF_OPENING_DIAG_TIMER__);
+        const state = window.SF && window.SF.state;
+        return {
+          samples: window.__SF_OPENING_DIAG__ || [],
+          finalMode: state && state.mode,
+          finalSimTime: state && state.simTime,
+          finalPhase: state?.render?.openingFirstPicturePhase || null,
+          finalLedger: state?.render?.openingCookLedger || null,
+          lastFailureSample: (window.__SF_OPENING_DIAG__ || []).slice().reverse()
+            .find((sample) => sample && sample.failure)?.failure || null,
+        };
+      }).catch(() => null);
+      if (startupDiagnostics) {
+        fs.writeFileSync(path.join(OUT_DIR, 'opening-diagnostics.json'), JSON.stringify(startupDiagnostics, null, 1));
+      }
+    }
+  }
+
+  const startupWallMs = Date.now() - startupStartedAt;
+  if (startupProfilerRunning && cdp) {
+    const startupProfile = (await cdp.send('Profiler.stop')).profile;
+    startupProfilerRunning = false;
+    writeProfileSummary('launch', startupProfile);
+  }
+  fs.writeFileSync(path.join(OUT_DIR, 'launch-timing.json'), JSON.stringify({
+    route: ADVENTURE ? 'public player-truth Adventure New Game and Launch' : 'public player-truth Swarm preparation and Launch round 1',
+    seed: 4242,
+    arena: ADVENTURE ? null : 'Ricochet Foundry',
+    startupWallMs,
+    activeState: startupRoute.activeState,
+    routeSteps: startupRoute.routeSteps,
+  }, null, 1));
+  console.log(`[crucible-cpu-profile] advancing ${ADVENTURE ? 'Adventure' : 'Swarm'} simulation reached at ${(startupWallMs / 1000).toFixed(1)}s`);
+
+  if (BARE_ACTIVE) {
+    await page.bringToFront();
+    const activeAtStart = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      if (!state) return null;
+      const waveOneCohort = (state.entityList || []).filter((entity) => entity && entity.alive !== false
+        && entity.id !== state.playerId && (entity.type === 'ship' || entity.type === 'drone')
+        && entity.data?.runCohort === 'survival' && entity.data?.runWave === 1).length;
+      const brood = state.swarmBrood || null;
+      return {
+        mode: state.mode,
+        phase: state.run && state.run.phase,
+        simTime: state.simTime,
+        seed: state.run && state.run.seed,
+        wave: state.run && state.run.wave,
+        waveOneCohort,
+        broodAliveCount: Number.isFinite(brood?.aliveCount) ? brood.aliveCount : null,
+        broodWave: Number.isFinite(brood?.wave) ? brood.wave : null,
+      };
+    });
+    if (!activeAtStart || activeAtStart.mode !== 'flight' || activeAtStart.phase !== 'active'
+        || !Number.isFinite(activeAtStart.simTime) || activeAtStart.simTime < 0.5
+        || activeAtStart.seed !== 4242 || activeAtStart.wave !== 1 || activeAtStart.waveOneCohort < 1) {
+      throw new Error(`bare active CPU window refused a non-active first-wave route: ${JSON.stringify(activeAtStart)}`);
+    }
+    const cpuBefore = cpuSnapshot();
+    const started = Date.now();
+    await cdp.send('Profiler.start');
+    await page.waitForTimeout(SAMPLE_MS);
+    const { profile } = await cdp.send('Profiler.stop');
+    const hostBusy = hostBusyPct(cpuBefore, cpuSnapshot());
+    const activeAtEnd = await page.evaluate(() => {
+      const state = window.SF && window.SF.state;
+      if (!state) return null;
+      const list = Array.isArray(state.entityList) ? state.entityList : [];
+      let waveOneCohort = 0, projectiles = 0;
+      for (const entity of list) {
+        if (!entity || entity.alive === false) continue;
+        if ((entity.type === 'ship' || entity.type === 'drone') && entity.id !== state.playerId
+            && entity.data?.runCohort === 'survival' && entity.data?.runWave === 1) waveOneCohort++;
+        else if (entity.type === 'projectile') projectiles++;
+      }
+      const brood = state.swarmBrood || null;
+      return {
+        mode: state.mode,
+        phase: state.run && state.run.phase,
+        simTime: state.simTime,
+        seed: state.run && state.run.seed,
+        wave: state.run && state.run.wave,
+        waveOneCohort,
+        projectiles,
+        entities: list.length,
+        broodAliveCount: Number.isFinite(brood?.aliveCount) ? brood.aliveCount : null,
+        broodWave: Number.isFinite(brood?.wave) ? brood.wave : null,
+        gpu: state.render && state.render.gpu ? state.render.gpu.renderer : null,
+        renderScale: state.settings?.video?.renderScale ?? null,
+        pixelRatioCap: state.settings?.video?.pixelRatioCap ?? null,
+      };
+    });
+    const windowMs = Date.now() - started;
+    const activeSimDelta = Number(activeAtEnd?.simTime) - activeAtStart.simTime;
+    const summary = writeProfileSummary('active', profile);
+    const receipt = {
+      route: 'public Swarm preparation and Launch round 1',
+      seed: 4242,
+      arena: 'Ricochet Foundry',
+      startupWallMs,
+      profileWindowMs: windowMs,
+      sampleTargetMs: SAMPLE_MS,
+      samplingIntervalUs: 200,
+      perfCounters: false,
+      domInstrumentation: false,
+      screenshots: false,
+      pixelReader: false,
+      cpuBusyPctOfWholeMachine: hostBusy,
+      logicalCpuCount: os.cpus().length,
+      activeAtStart,
+      activeAtEnd,
+      activeSimDelta,
+      profiledV8Micros: summary.totalMicros,
+      routeSteps: startupRoute.routeSteps,
+    };
+    fs.writeFileSync(path.join(OUT_DIR, 'active-window.json'), JSON.stringify(receipt, null, 1));
+    console.log(`[crucible-cpu-profile] bare active profile: ${(windowMs / 1000).toFixed(1)}s, `
+      + `sim ${activeAtStart.simTime.toFixed(2)}→${Number(activeAtEnd?.simTime || 0).toFixed(2)}s, `
+      + `${activeAtEnd?.waveOneCohort ?? 0} wave-1 survival ships/drones, `
+      + `Brood ${activeAtEnd?.broodAliveCount ?? 'n/a'}, ${activeAtEnd?.entities ?? 0} entities, `
+      + `whole-machine CPU busy ${hostBusy.toFixed(0)}%`);
+    if (!activeAtEnd || activeAtEnd.mode !== 'flight' || activeAtEnd.phase !== 'active'
+        || !(activeSimDelta > 0) || activeAtEnd.seed !== 4242 || activeAtEnd.wave !== 1
+        || activeAtEnd.waveOneCohort < 1) {
+      throw new Error(`bare CPU profile did not remain in advancing active sim: ${JSON.stringify(receipt)}`);
+    }
+  } else if (ADVENTURE) {
+    console.log(`[crucible-cpu-profile] public Adventure route passed startup; diagnostics saved at ${path.join(OUT_DIR, 'opening-diagnostics.json')}`);
+  } else {
 
   await page.bringToFront();
   await page.mouse.move(1100, 300);
@@ -272,8 +578,15 @@ try {
     requestAnimationFrame(tick);
   });
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Profiler.enable');
+  const activeAtStart = await page.evaluate(() => ({
+    mode: window.SF.state.mode,
+    phase: window.SF.state.run && window.SF.state.run.phase,
+    simTime: window.SF.state.simTime,
+  }));
+  if (activeAtStart.mode !== 'flight' || activeAtStart.phase !== 'active' || !(activeAtStart.simTime >= 0.5)) {
+    throw new Error(`active CPU window refused non-active simulation: ${JSON.stringify(activeAtStart)}`);
+  }
+
   await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
 
   if (SETTLE_MS > 0) {
@@ -372,8 +685,10 @@ try {
       programs: info && Array.isArray(info.programs) ? info.programs.length : 0,
       gpu: state.render && state.render.gpu ? state.render.gpu.renderer : null,
       simTime: state.simTime,
+      runPhase: state.run && state.run.phase,
     };
   });
+  const activeSimDelta = windowStats.simTime - activeAtStart.simTime;
 
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   const summary = summarizeProfile(profile);
@@ -388,6 +703,7 @@ try {
     `  route                    CRUCIBLE seed 4242, default kit; at end ${w.hostiles} hostiles (peak ${w.foePeak}), ${w.projectiles} projectiles (peak ${w.projectilePeak}), ${w.entities} entities, ${w.drawCalls} draw calls, ${w.programs} programs`,
     `  fight progression        ${kills == null ? 'n/a' : `${kills.kills} kills; waves materialized: ${kills.waves.join(' ') || 'none'}`}`,
     `  window                   ${(SAMPLE_MS / 1000).toFixed(0)} s weave-and-shoot, ${w.frames} frames`,
+    `  active simulation        ${activeAtStart.simTime.toFixed(2)} → ${w.simTime.toFixed(2)} s (${activeSimDelta.toFixed(2)} s; phase ${w.runPhase || 'unknown'})`,
     `  callback ms p50/p95      ${w.callbackP50.toFixed(1)} / ${w.callbackP95.toFixed(1)}; mean ${w.callbackMean.toFixed(1)}; >33.4 ms: ${w.over33}`,
     `  phase means (ms)         ${Object.entries(w.mean).map(([k, v]) => `${k} ${v.toFixed(1)}`).join('  ')}`,
     `  visible scene lights     point ${w.lights.pointVisible}/${w.lights.point}  spot ${w.lights.spotVisible}/${w.lights.spot}  dir ${w.lights.dirVisible}/${w.lights.dir}  (visible/total; the visible count is baked into every lit program)`,
@@ -410,7 +726,17 @@ try {
   const report = lines.join('\n');
   fs.writeFileSync(path.join(OUT_DIR, 'report.md'), report, 'utf8');
   console.log(report);
+  if (w.runPhase !== 'active' || !(activeSimDelta > 0)) {
+    throw new Error(`active profile did not observe advancing active simulation: ${JSON.stringify({ activeAtStart, simTime: w.simTime, runPhase: w.runPhase })}`);
+  }
+  }
 } finally {
+  if (startupProfilerRunning && cdp) {
+    try {
+      const { profile } = await cdp.send('Profiler.stop');
+      writeProfileSummary('launch-incomplete', profile);
+    } catch { /* browser teardown owns a disconnected profiling session */ }
+  }
   if (browser) await browser.close().catch(() => {});
   server.kill();
 }

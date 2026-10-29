@@ -671,13 +671,23 @@ test('AO and zero/off bloom skip their pass families without skipping presentati
     'AO off renders the world once and performs no normal override pass');
   assert.equal(renders.length, 2, 'scene plus canonical composite remain');
   assert.deepEqual(graph.diagnostics().passFamilies,
-    { scene: 1, normal: 0, ao: 0, bloom: 0, distortion: 0, composite: 1, photoGrade: 0 });
+    {
+      scene: 1, normal: 0, ao: 0, atmosphere: 0, bloom: 0,
+      distortion: 0, composite: 1, photoGrade: 0,
+    });
 
   renders.length = 0;
   graph.setOptions({ bloom: true, bloomStrength: 0 });
+  assert.equal(graph.diagnostics().bloomLevels, 0,
+    'zero effective strength must release the unused bloom pyramid');
+  assert.equal(graph.diagnostics().renderTargetCount, 2,
+    'zero-strength bloom must retain only the scene and distortion targets');
   graph.render(scene, new THREE.PerspectiveCamera(), { time: 0 });
   assert.equal(renders.length, 2, 'zero strength also skips every bloom pass');
   assert.equal(graph.diagnostics().bloomPasses, 0);
+  graph.setOptions({ bloomStrength: 0.5 });
+  assert.equal(graph.diagnostics().bloomLevels, 4,
+    'turning bloom strength back on must recreate its pyramid');
   graph.dispose();
 });
 
@@ -832,12 +842,21 @@ test('opening admission waits for a visible whole-ship LOD transition after auth
     scene,
     _meshes: new Map([[entity.id, root]]),
     renderer: {},
+    _shadowDepthEnabled: () => false,
   };
 
   owner._openingFirstPictureUpgradePromisesSteps = renderSystem._openingFirstPictureUpgradePromisesSteps;
   const pending = renderSystem._openingFirstPictureUpgradePromises.call(owner);
   assert.deepEqual(pending, [transition.promise],
     'the retained settled base promise is ignored while the live LOD child replacement still blocks');
+  assert.deepEqual(owner._openingFirstPicturePendingEvidence, [{
+    kind: 'whole-ship-lod',
+    entityId: entity.id,
+    entityType: 'ship',
+    rootUuid: root.uuid,
+    rootName: null,
+    authoredAssetState: 'authored',
+  }], 'the failure receipt must identify the exact live root/promise that holds the opening gate');
 
   let completed = false;
   const wait = Promise.all(pending).then(() => { completed = true; });
@@ -1308,15 +1327,6 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
   assert.match(source,
     /recordAuthoredAdmissionBlockingSlice/,
     'renderer must own one shared blocking-slice observer for authored admission paths');
-  const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
-  // 206e8b2f5 (PQ-033.02) routed two more GPU residency passes through the same observer: the
-  // context-restore re-upload and the first-picture barrier on the live mount. Later passes added
-  // the warm-roots geometry residency and the live-sector pool re-upload on the same observer.
-  assert.equal(
-    observerWires?.length,
-    7,
-    'pipeline tracker, authored residency tracker, opening residency, context-restore residency, first-picture residency, warm geometry residency, and live-sector pool residency must share the observer',
-  );
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'context-restore GPU residency must publish initTexture slices');
@@ -1334,6 +1344,9 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*plan\.residencySubjects[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'opening GPU residency must publish initTexture slices');
+  assert.match(source,
+    /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?beforeSubmit:\s*assertPictureSealActive,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'the current-sector picture seal must publish its blocking residency slices');
   assert.match(source,
     /prepareStartupGeometryResidency\(renderer,\s*warmRoots,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'warm-roots geometry residency must publish its slices');

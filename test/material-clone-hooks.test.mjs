@@ -27,6 +27,62 @@ test('cloneMaterialPreservingShaderHooks keeps both own-property hooks Material.
   assert.equal(preserved.version, base.version + 1, 'clone is marked needsUpdate');
 });
 
+test('material clone preserves nested texture references without serializing or taking texture ownership', () => {
+  const texture = new THREE.Texture();
+  const originalToJSON = texture.toJSON;
+  let textureSerializations = 0;
+  texture.toJSON = function toJSON(...args) {
+    textureSerializations += 1;
+    return originalToJSON.apply(this, args);
+  };
+
+  const base = new THREE.MeshStandardMaterial({
+    map: texture,
+    normalMap: texture,
+    roughnessMap: texture,
+    emissiveMap: texture,
+  });
+  base.userData = {
+    spacefaceHullStencils: {
+      decalId: 'concord',
+      texture,
+      strength: 0.6,
+      center: [1, 2, 3],
+      size: [4, 5, 6],
+    },
+    authored: {
+      surface: { finish: { name: 'forge-v1' } },
+      label: 'forge-finish',
+    },
+  };
+  let textureDisposed = 0;
+  texture.addEventListener('dispose', () => { textureDisposed += 1; });
+
+  const clone = cloneMaterialPreservingShaderHooks(base);
+
+  assert.equal(textureSerializations, 0, 'the userData reference must not serialize the image');
+  for (const slot of ['map', 'normalMap', 'roughnessMap', 'emissiveMap']) {
+    assert.equal(clone[slot], texture, `Three Material.copy continues to share ${slot}`);
+  }
+  assert.equal(clone.userData.spacefaceHullStencils.texture, texture,
+    'the authored stencil payload retains its shared canvas texture');
+  assert.notEqual(clone.userData, base.userData, 'material userData remains isolated');
+  assert.notEqual(clone.userData.spacefaceHullStencils, base.userData.spacefaceHullStencils,
+    'the stencil payload remains isolated');
+  assert.notEqual(clone.userData.spacefaceHullStencils.center, base.userData.spacefaceHullStencils.center);
+  assert.notEqual(clone.userData.authored, base.userData.authored, 'nested plain metadata remains isolated');
+  assert.notEqual(clone.userData.authored.surface, base.userData.authored.surface);
+  clone.userData.authored.surface.finish.name = 'clone-only';
+  clone.userData.spacefaceHullStencils.center[0] = 99;
+  assert.equal(base.userData.authored.surface.finish.name, 'forge-v1');
+  assert.equal(base.userData.spacefaceHullStencils.center[0], 1);
+
+  clone.dispose();
+  assert.equal(textureDisposed, 0, 'disposing a material clone does not dispose its shared texture');
+  texture.toJSON = originalToJSON;
+  base.dispose();
+});
+
 test('partsLibrary keeps re-exporting cloneMaterialPreservingShaderHooks for existing importers', () => {
   assert.equal(partsLibrary.cloneMaterialPreservingShaderHooks, cloneMaterialPreservingShaderHooks);
 });

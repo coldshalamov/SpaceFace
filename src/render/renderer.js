@@ -12888,6 +12888,21 @@ export const render = {
               restore();
             }
           },
+          touchMany: (subjects) => {
+            if (!lifecycle.isActive()) {
+              return Promise.reject(new Error('renderer lifecycle destroyed during opening touch'));
+            }
+            const restores = [];
+            try {
+              for (const subject of subjects) restores.push(revealSubjectForCompile(subject));
+              return this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+                ? this.bloom.touchScenePipelines(subjects, cam.obj, scene)
+                : touchSubjectOnExactTarget(renderer, null, subjects, cam.obj, scene);
+            } finally {
+              for (let index = restores.length - 1; index >= 0; index--) restores[index]();
+            }
+          },
+          touchBatchSize: 4,
           yieldToMain: async () => {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
             await yieldToBrowser();
@@ -15123,6 +15138,15 @@ export const render = {
             }
             return touched;
           }),
+          touchMany: async (subjects) => {
+            const touched = await touchExactTargetSubjects(subjects);
+            if (options.strict === true && touched?.skipped === true) {
+              const names = subjects.map((subject) => subject.name || subject.uuid || subject.type || 'unnamed');
+              throw new Error(`Opening exact drawables ${names.join(', ')} skipped: ${touched.reason || 'not drawn'}`);
+            }
+            return touched;
+          },
+          touchBatchSize: state.mode === 'loading' ? 4 : 1,
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };
@@ -31066,10 +31090,12 @@ export const render = {
           : null,
       },
     )).map((candidate) => candidate.root));
-    const pending = new Set();
+    const pending = new Map();
     if (state?.mode === 'loading' && this._rigidOpaqueBatchDefaultCohort === true) {
       const retained = this._syncRigidOpaqueBatchProbe();
-      if (retained && typeof retained.then === 'function') pending.add(retained);
+      if (retained && typeof retained.then === 'function') {
+        pending.set(retained, { kind: 'rigid-opaque-batch' });
+      }
     }
     let upgradeVisited = 0;
     // Same stride-cost bound as the shadow-caster census: each row can pay a
@@ -31112,11 +31138,30 @@ export const render = {
           // census can no longer starve the bodies the first frame actually draws.
           completion = requestAuthoredUpgrade(root, this.renderer, this.scene, { admissionVisible: true });
         }
-        if (completion && typeof completion.then === 'function') pending.add(completion);
+        if (completion && typeof completion.then === 'function') {
+          pending.set(completion, {
+            kind: 'authored-upgrade',
+            entityId: id,
+            entityType: entity.type || null,
+            rootUuid: root && root.uuid || null,
+            rootName: root && root.name || null,
+            authoredAssetState: status || null,
+          });
+        }
       }
-      if (lodTransition && typeof lodTransition.then === 'function') pending.add(lodTransition);
+      if (lodTransition && typeof lodTransition.then === 'function') {
+        pending.set(lodTransition, {
+          kind: 'whole-ship-lod',
+          entityId: id,
+          entityType: entity.type || null,
+          rootUuid: root && root.uuid || null,
+          rootName: root && root.name || null,
+          authoredAssetState: status || null,
+        });
+      }
     }
-    return [...pending];
+    this._openingFirstPicturePendingEvidence = [...pending.values()];
+    return [...pending.keys()];
   },
 
   /**
@@ -31172,6 +31217,7 @@ export const render = {
     // Keep the failing leg before startup cleanup removes the original mesh graph.
     // Diagnostic only: this does not change admission, deadlines or authored quality.
     let preparationStage = 'mesh-staging', preparationPass = -1, pendingCount = null;
+    let preparationPendingEvidence = [];
     // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
     // roots may finish their authored child swap below; no new residency/build pass can introduce a
     // different root after capture and before the first draw.
@@ -31320,6 +31366,7 @@ export const render = {
         preparationStage = 'upgrade-walk';
         const pending = await driveUpgradePromises();
         pendingCount = pending?.length ?? null;
+        preparationPendingEvidence = (this._openingFirstPicturePendingEvidence || []).slice();
         assertOwnerCurrent();
         if (pending === null) throw new Error('opening first-picture camera unavailable');
         if (pending.length === 0) {
@@ -31339,6 +31386,7 @@ export const render = {
           preparationStage = 'final-upgrade-walk';
           const late = await driveUpgradePromises();
           pendingCount = late?.length ?? null;
+          preparationPendingEvidence = (this._openingFirstPicturePendingEvidence || []).slice();
           assertOwnerCurrent();
           if (late === null) throw new Error('opening first-picture camera unavailable');
           if (late.length === 0) {
@@ -31446,6 +31494,13 @@ export const render = {
           stage: preparationStage, pass: preparationPass, pendingCount,
           elapsedMs: Math.round((globalThis.performance?.now?.() ?? Date.now()) - started),
           budgetMs: waitMs,
+          owner: {
+            worldEnterSerial: ownerEnterSerial ?? null,
+            admissionRunGeneration: ownerGeneration ?? null,
+            rendererGeneration: ownerRendererGeneration ?? null,
+            contextRestoreSeq: ownerContextRestoreSeq ?? null,
+          },
+          pending: preparationPendingEvidence,
           meshes: [...(this._meshes || [])].map(([id, root]) => ({
             id, status: root?.userData?.authoredAssetState || null,
             pending: root?.userData?.pipelinesPending === true,

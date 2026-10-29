@@ -6644,7 +6644,12 @@ export function enqueueBoundaryUpgrade(scene, job) {
   // Refusing at enqueue keeps the boundary armed ('awaiting-authored-admission'), so the ordinary
   // approach trigger re-requests it if the player ever closes to the fight-fit envelope — and
   // anything still deferred re-requests when the run ends and the sector returns.
-  if (survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
+  // The loading composition explicitly names these subjects for the first picture and regrades
+  // their queued work as visible. Do not let the survival off-glass policy refuse that admission:
+  // restoring the boundary to awaiting-authored-admission leaves no promise to settle the opening
+  // wait, which then times out on a subject it already admitted into the composition.
+  if (job.options?.admissionVisible !== true
+      && survivalDefersArenaDressingJob(job.entity, authoredRuntimeState())) {
     return Promise.resolve({ status: 'deferred-arena-dressing', boundary: job.boundary });
   }
   // Cool off after an admit re-grade evict. Skipped only while the stamp is fresh AND the

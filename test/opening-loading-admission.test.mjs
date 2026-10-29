@@ -419,6 +419,34 @@ test('a failed or cancelled current-sector cook never authorizes the exact pictu
   }
 });
 
+test('a failed current-sector composition preserves its bounded admission receipt', async () => {
+  const { state, calls } = fixture({ openingLiveSectorReady: Promise.resolve({
+    skipped: false,
+    opening: {
+      settled: false,
+      reason: 'unstartable',
+      pending: 7,
+      ids: ['player', 'wing', 'actor-3', 'actor-4', 'actor-5', 'actor-6', 'actor-7'],
+      statuses: ['player:loading', 'wing:no-hook', 'actor-3:loading'],
+    },
+  }) });
+
+  await assert.rejects(waitForOpeningFirstPicture(state, 1000), (error) => {
+    assert.match(error.message, /reason=unstartable pending=7/);
+    assert.match(error.message, /ids=player\/wing\/actor-3\/actor-4\/actor-5\/actor-6/);
+    assert.deepEqual(error.diagnostic, {
+      reason: 'unstartable',
+      pending: 7,
+      ids: ['player', 'wing', 'actor-3', 'actor-4', 'actor-5', 'actor-6'],
+      statuses: ['player:loading', 'wing:no-hook', 'actor-3:loading'],
+    });
+    assert.deepEqual(state.render.openingCurrentSectorFailure, error.diagnostic);
+    return true;
+  });
+  assert.deepEqual(calls, ['begin']);
+  assert.notEqual(state.render.openingFirstPictureReady, true);
+});
+
 test('the current-sector wait remains bounded and cannot submit after its deadline', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const cook = deferred();

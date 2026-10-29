@@ -393,7 +393,23 @@ export function waitForOpeningFirstPicture(state, timeoutMs = DEFAULT_OPENING_BU
           || cooked?.cancelled === true || cooked?.reason === 'sector-superseded'
           || cooked?.cook?.reason === 'sector-superseded'
           || cooked?.opening?.settled === false) {
-        throw new Error('opening current-sector preparation did not complete');
+        const opening = cooked && cooked.opening;
+        const diagnostic = {
+          reason: cooked?.reason || cooked?.cook?.reason || opening?.reason || null,
+          pending: Number.isFinite(opening?.pending) ? opening.pending : null,
+          ids: Array.isArray(opening?.ids) ? opening.ids.slice(0, 6).map(String) : [],
+          statuses: Array.isArray(opening?.statuses) ? opening.statuses.slice(0, 6).map(String) : [],
+        };
+        render.openingCurrentSectorFailure = diagnostic;
+        const details = [
+          diagnostic.reason && `reason=${diagnostic.reason}`,
+          diagnostic.pending !== null && `pending=${diagnostic.pending}`,
+          diagnostic.ids.length && `ids=${diagnostic.ids.join('/')}`,
+          diagnostic.statuses.length && `statuses=${diagnostic.statuses.join('/')}`,
+        ].filter(Boolean).join(' ');
+        const error = new Error(`opening current-sector preparation did not complete${details ? ` (${details})` : ''}`);
+        error.diagnostic = diagnostic;
+        throw error;
       }
     } else if (state.run?.kind === 'survival') {
       phaseBudgetMs = openingPresentBudgetMs(state, timeoutMs, options);
