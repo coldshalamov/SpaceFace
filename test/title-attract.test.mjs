@@ -2,13 +2,14 @@
 //
 // What this file proves:
 //   1. The attract world is a REAL fight: ships move, weapons fire, hulls die.
-//   2. It is deterministic: same seed, same tape — the committed replay module
-//      (src/sim/titleAttractTapeData.js) byte-matches a fresh bake or the test fails.
+//   2. It is deterministic: same seed, same tape — the committed replay asset
+//      (src/sim/titleAttractTapeData.json) byte-matches a fresh bake or the test fails.
 //   3. The title gate holds: nothing steps before start(), the menu arms the live
 //      scene only after the idle window, reduced motion never arms it, and every
 //      teardown path (pick / hide / dispose) drops the flag and stops the world.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createTitleAttractWorld, TITLE_ATTRACT_SEED } from '../src/sim/titleAttract.js';
 import {
@@ -19,8 +20,10 @@ import {
   TITLE_ATTRACT_TAPE_SCHEMA,
   TAPE_DURATION_TICKS,
 } from '../src/sim/titleAttractTape.js';
-import { TITLE_ATTRACT_TAPE } from '../src/sim/titleAttractTapeData.js';
 import { mainMenuScreen } from '../src/ui/screens/mainMenu.js';
+
+const TITLE_ATTRACT_TAPE = JSON.parse(readFileSync(
+  new URL('../src/sim/titleAttractTapeData.json', import.meta.url), 'utf8'));
 
 // ---------------------------------------------------------------------------
 // The world itself: gate, fight, determinism, teardown.
@@ -98,7 +101,7 @@ test('tape recorder captures ship lives and shots', async () => {
 
 test('the committed replay tape matches a fresh bake of the seeded scenario', async () => {
   // THE determinism gate: if roster, seed, or any of the five systems moved the
-  // fight, this bake diverges from src/sim/titleAttractTapeData.js — re-bake with
+  // fight, this bake diverges from src/sim/titleAttractTapeData.json — re-bake with
   // `node scripts/bake-title-attract.mjs` after reviewing the semantic change.
   const world = await createTitleAttractWorld({ seed: TITLE_ATTRACT_SEED });
   world.start();

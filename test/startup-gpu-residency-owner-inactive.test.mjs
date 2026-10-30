@@ -114,11 +114,54 @@ test('a definitively retired authored boundary is an informational cancellation'
   }, 'the existing last-owner diagnostic remains available for inspection');
 });
 
-test('current or required authored owners retain warning severity on cancellation', () => {
+test('a live nonrequired boundary superseded only by context loss is informational', () => {
+  const result = captureGuardCall(() => false, {
+    ownerType: 'authored-boundary',
+    entityId: 774,
+    entityAlive: true,
+    entityIsCurrent: true,
+    entityStillRequired: false,
+    boundaryAttached: true,
+    renderMatches: true,
+    rendererMatches: true,
+    admissionGenerationMatches: true,
+    contextLossGenerationMatches: false,
+    portMatches: true,
+  });
+  assert.equal(result.error.name, 'AbortError');
+  assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.infos, [[
+    '[render] authored GPU residency cancelled after context loss for boundary 774',
+  ]]);
+});
+
+test('required, same-generation, mismatched, and unknown authored owners retain warning severity', () => {
   for (const ownerSnapshot of [
     { ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: true },
     { ownerType: 'authored-boundary', entityAlive: false, entityIsCurrent: false, entityStillRequired: true },
     { ownerType: 'authored-boundary', entityAlive: false, entityIsCurrent: true, entityStillRequired: false },
+    {
+      ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: false,
+      boundaryAttached: true, renderMatches: true, rendererMatches: true,
+      admissionGenerationMatches: true, contextLossGenerationMatches: true, portMatches: true,
+    },
+    {
+      ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: false,
+      boundaryAttached: true, renderMatches: true, rendererMatches: false,
+      admissionGenerationMatches: true, contextLossGenerationMatches: false, portMatches: true,
+    },
+    {
+      ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: false,
+      boundaryAttached: true, renderMatches: true, rendererMatches: true,
+      admissionGenerationMatches: true, contextLossGenerationMatches: false, portMatches: false,
+    },
+    {
+      ownerType: 'authored-boundary', entityAlive: true, entityIsCurrent: true, entityStillRequired: false,
+      boundaryAttached: false, renderMatches: true, rendererMatches: true,
+      admissionGenerationMatches: true, contextLossGenerationMatches: false, portMatches: true,
+    },
+    { ownerType: 'authored-boundary' },
   ]) {
     const result = captureGuardCall(() => false, ownerSnapshot);
     assert.equal(result.error.code, 'GPU_RESIDENCY_OWNER_INACTIVE');

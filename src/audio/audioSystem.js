@@ -42,7 +42,7 @@ import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrume
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
-import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
+import { ceresActivityActorWorldRecordId } from '../data/trafficPresentationReads.js';
 import { isRunSealed } from '../core/runSeal.js';
 
 /** Remote-engine candidate lanes — hoisted so the 10 Hz census doesn't mint an array

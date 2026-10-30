@@ -14143,9 +14143,23 @@ export const render = {
             && ownerSnapshot.entityAlive === false
             && ownerSnapshot.entityIsCurrent === false
             && ownerSnapshot.entityStillRequired === false;
+          const supersededAuthoredBoundaryAfterContextLoss = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === true
+            && ownerSnapshot.entityIsCurrent === true
+            && ownerSnapshot.entityStillRequired === false
+            && ownerSnapshot.boundaryAttached === true
+            && ownerSnapshot.renderMatches === true
+            && ownerSnapshot.rendererMatches === true
+            && ownerSnapshot.admissionGenerationMatches === true
+            && ownerSnapshot.contextLossGenerationMatches === false
+            && ownerSnapshot.portMatches === true;
           if (retiredAuthoredBoundary) {
             console.info(
               `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else if (supersededAuthoredBoundaryAfterContextLoss) {
+            console.info(
+              `[render] authored GPU residency cancelled after context loss for boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
             );
           } else {
             console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
