@@ -45,6 +45,10 @@ import { ENTRIES_INTERACT_B } from './entries-interact-b.js';
 import { ENTRIES_INTERACT_C } from './entries-interact-c.js';
 import { ENTRIES_INTERACT_D } from './entries-interact-d.js';
 import { ENTRIES_ANNEX } from './entries-annex.js';
+import { ENTRIES_ANNEX2_A } from './entries-annex2-a.js';
+import { ENTRIES_ANNEX2_B } from './entries-annex2-b.js';
+import { ENTRIES_ANNEX2_C } from './entries-annex2-c.js';
+import { ENTRIES_ANNEX2_D } from './entries-annex2-d.js';
 
 export const SPECIAL500 = Object.freeze([
   ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
@@ -60,7 +64,17 @@ export const SPECIAL500_COMPLETE = true; // all 500 ratified entries authored
 // 30 new SPX-D proposals, riding the same director and flag/memory schema. The
 // ratified catalog above stays exactly 500; the director sweeps SPECIAL500_ALL.
 export const SPECIAL500_ANNEX = Object.freeze([...ENTRIES_ANNEX]);
-export const SPECIAL500_ALL = Object.freeze([...SPECIAL500, ...SPECIAL500_ANNEX]);
+
+// Annex wave 2: two hundred new SPX-E proposals in four batches — place records
+// at virgin anchors, receipt beats on verified emitters, calendar/hashDaily/
+// sectorEntry/simWindow ambience, and after/flag chains that make earlier
+// entries into continuing documents. Same director, same flag/memory schema.
+export const SPECIAL500_ANNEX_2 = Object.freeze([
+  ...ENTRIES_ANNEX2_A, ...ENTRIES_ANNEX2_B, ...ENTRIES_ANNEX2_C, ...ENTRIES_ANNEX2_D,
+]);
+export const SPECIAL500_ALL = Object.freeze([
+  ...SPECIAL500, ...SPECIAL500_ANNEX, ...SPECIAL500_ANNEX_2,
+]);
 
 const BY_ID = new Map(SPECIAL500_ALL.map((e) => [e.id, e]));
 export function special500ById(id) {
