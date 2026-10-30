@@ -112,6 +112,39 @@ export function lanePressureLine(state, stationId, commodityId) {
   return `Your hauler lane ${stationShort(r.from)}→${stationShort(r.to)} (delivery #${r.n}) ${leg}. Re-route it from the Automation board to let the spread recover.`;
 }
 
+/** A lot the board can feel: the quote's own impact math moves on any stock change, but a
+ *  two-unit buy claiming the price is the ledger overreaching. TUNE, not a physical constant. */
+export const HAND_TRADE_PRESSURE_MIN_QTY = 10;
+/** Attribution goes stale: past this window the move has usually settled back out. */
+export const HAND_TRADE_PRESSURE_WINDOW_S = 1200;
+
+/**
+ * handTradeLine(state, stationId, commodityId) -> one receipt-cited cause line or null.
+ *
+ * The hand-trade twin of lanePressureLine: the player's OWN settled trade of this good at this
+ * station, read from the economy-owned trade ledger (state.player.tradeLedger — the same record
+ * tradeTruth projects). Every settled trade moves the mid price by the stock it shifts (the
+ * quote's impact math), so the receipt IS the cause record; the line names the lot and lets the
+ * spread recover on its own. Newest matching receipt only, inside the freshness window, and a
+ * lot big enough to claim. PURE + deterministic; null renders NOTHING.
+ */
+export function handTradeLine(state, stationId, commodityId) {
+  const entries = state && state.player && state.player.tradeLedger;
+  if (!stationId || !commodityId || !Array.isArray(entries)) return null;
+  const now = Number(state && state.simTime) || 0;
+  const hit = entries.find((e) => e && String(e.stationId || '') === String(stationId)
+    && e.commodityId === commodityId
+    && Number.isFinite(Number(e.seenAt)) && now - Number(e.seenAt) >= 0
+    && now - Number(e.seenAt) <= HAND_TRADE_PRESSURE_WINDOW_S
+    && Math.floor(Number(e.qty) || 0) >= HAND_TRADE_PRESSURE_MIN_QTY);
+  if (!hit) return null;
+  const qty = Math.floor(Number(hit.qty));
+  const verb = hit.side === 'sell' ? 'pressed' : 'lifted';
+  const leg = hit.side === 'sell' ? 'sold' : 'bought';
+  const seq = Number(hit.tradeSequence) > 0 ? ` (receipt #${Number(hit.tradeSequence)})` : '';
+  return `Your last trade here ${verb} this board: ${qty}u of lot ${leg}${seq}. The spread recovers as the stock settles.`;
+}
+
 /**
  * causeFor(state, sectorId) -> stable current field snapshot + 1–3 sanctioned cause receipts
  * or null for an unknown sector.
@@ -189,12 +222,14 @@ export const causeLedger = {
       // INF-090: per-commodity lane record. The row carries the good; the docked station is
       // the market being read. A paid lane receipt on this station+good appends its line.
       let lane = null;
+      let hand = null;
       try {
         const cmdty = row.getAttribute && row.getAttribute('data-cmdty');
         const docked = this._state && this._state.ui && this._state.ui.dockedStationId;
         lane = cmdty ? lanePressureLine(this._state, docked, cmdty) : null;
-      } catch (_) { lane = null; }
-      const text = [lines && lines.pricePressure, lines && lines.danger, lane].filter(Boolean).join('\n');
+        hand = cmdty ? handTradeLine(this._state, docked, cmdty) : null;
+      } catch (_) { lane = null; hand = null; }
+      const text = [lines && lines.pricePressure, lines && lines.danger, lane, hand].filter(Boolean).join('\n');
       if (!text) { this._hideTip(); return; }
       this._showTip(text, ev.clientX, ev.clientY);
     };
