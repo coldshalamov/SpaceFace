@@ -26,6 +26,8 @@ export const SHIP_HULL_PAINTS = Object.freeze([
   { id: 'toll_grey', name: 'Toll grey', hex: '#5c6066', sentence: 'The color of every booth on the lane. Blends into the queue it refuses to join.' },
   { id: 'ore_ochre', name: 'Ore ochre', hex: '#8a5f2a', sentence: 'Drift-claim ochre. The dust never fully washes out of this one.' },
   { id: 'impound_red', name: 'Impound red', hex: '#7e3226', sentence: 'Seizure-yard red. The last owner\'s livery, kept as a warning or a boast.' },
+  { id: 'patna_buff', name: 'Patna buff', hex: '#b5a284', sentence: 'The pale coat of a liner her crew filed as lost. Somewhere she is still floating.' },
+  { id: 'lock_stock', name: 'Lock stock', hex: '#43484e', sentence: 'Two barrels of smoked primer. The yard sells them as a pair or not at all.' },
 ]);
 
 export const SHIP_ACCENT_PAINTS = Object.freeze([

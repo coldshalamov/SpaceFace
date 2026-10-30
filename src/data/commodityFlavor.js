@@ -191,7 +191,7 @@ export const COMMODITY_FLAVOR = {
   cmdty_food: {
     displayName: 'Hardtack Provisions, Ceres Galley Standard',
     desc: 'Shelf-stable meal bricks and hydroponic supplement packs.',
-    lore: 'Ceres galleys stock the standard brick. Mining camps burn through it; blackmarket repacks near-expiry lots cheap.',
+    lore: 'Ceres galleys stock the licensed brick. The second crop belongs to the broker. Blackmarket bins repack near-expiry lots cheap.',
   },
   cmdty_medical: {
     displayName: 'Trauma Crate Medical, Concord Field Standard',
