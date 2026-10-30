@@ -25,9 +25,21 @@ function harness({ flownBefore = false, startedAt = 0 } = {}) {
   const sys = Object.create(onboarding);
   sys.state = state;
   sys.bus = { emit: () => {} };
+  // Mirror core's entity helpers: a spawned body is live in state.entities until it is
+  // removed. Onboarding's prop-liveness check reads state.entities, so a harness that only
+  // returned the spec would look like the setup vanished and requeue it every tick.
   sys.helpers = {
-    spawnEntity: (spec) => { const e = { id: `rock${spawned.length}`, ...spec }; spawned.push(e); return e; },
-    removeEntity: (id) => removed.push(id),
+    spawnEntity: (spec) => {
+      const e = { id: `rock${spawned.length}`, alive: true, ...spec };
+      spawned.push(e);
+      state.entities.set(e.id, e);
+      return e;
+    },
+    removeEntity: (id) => {
+      removed.push(id);
+      const e = state.entities.get(id);
+      if (e) { e.alive = false; state.entities.delete(id); }
+    },
   };
   sys._emitMilestone = (id, payload) => milestones.push({ id, ...payload });
   sys._sayTutorial = () => {};

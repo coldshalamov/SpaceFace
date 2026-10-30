@@ -206,7 +206,7 @@ test('Continue mid-raid restages the raid cast AND the still-open rescue cast, t
   // An uncredited kill restages the raider and keeps the beat alive.
   const firstRaider = ob.raid.ids.raider;
   h.bus.emit('entity:killed', { id: firstRaider, killerId: 999, ownerId: 999 });
-  assert.equal(ob.beatAction, 'the raider broke off');
+  assert.equal(ob.beatAction, 'The raider broke off.');
   assert.ok(ob.raid.ids.raider && ob.raid.ids.raider !== firstRaider, 'a fresh raider is staged');
   assert.ok(alive(h, ob.raid.ids.raider));
 

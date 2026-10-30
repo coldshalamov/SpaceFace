@@ -532,6 +532,15 @@ export const onboarding = {
     this._trainerId = null;
     this._firstRunSplashPending = false;
     this._preparedRescue = null;
+    // The system object is a module singleton every runtime re-inits. Session-local ids and
+    // resume/story latches from a previous run must not survive into the next world (prop ids
+    // recycle; a stale resume latch would restage a tutorial the new run never saved).
+    this._powerSitIds = null;
+    this._resumeMainTutorial = false;
+    this._storyMode = false;
+    this._storySig = '';
+    this._ownedScanAt = undefined;
+    this._rangePromptEl = null;
 
     const bus = this.bus;
     bus.on('orbital-gallery:started', () => this._teardown());
@@ -3809,7 +3818,7 @@ export const onboarding = {
       return;
     }
     const credited = payload.killerId === this.state.playerId || payload.ownerId === this.state.playerId;
-    if (!credited) { this._respawnRaidRaider('the raider broke off'); return; }
+    if (!credited) { this._respawnRaidRaider('The raider broke off.'); return; }
     const now = this.state.simTime || 0;
     const fromThrow = raid.lastWhipAt != null && (now - raid.lastWhipAt) <= RAID_WHIP_KILL_WINDOW_S;
     if (fromThrow) {
