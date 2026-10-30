@@ -10,7 +10,7 @@
 // The radial keeps the player's hands on thrust/trigger — open, pick, gone — matching the cockpit feel.
 
 import { injectWingmanLayouts } from './orrery/wingmanLayouts.js';
-import { injectFlightRadialsLayouts } from './orrery/flight-radialsLayouts.js';
+import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight-radialsLayouts.js';
 import { BINDINGS } from './bindings.js';
 import { dpIcon } from './deckplate/icons.js';
 
@@ -184,6 +184,7 @@ export function createWingmanRadial(ctx) {
   function flashReceipt() {
     receiptFlash = true;
     overlay.hidden = false;
+    syncRadialOwnsFrame();
     overlay.classList.remove('sf-wradial--in'); void overlay.offsetWidth;
     overlay.classList.add('sf-wradial--in', 'sf-wradial--receipt');
     scheduleReceiptEnd();
@@ -203,7 +204,7 @@ export function createWingmanRadial(ctx) {
       receiptFlash = false;
       if (open) return;                       // the pilot opened the dial mid-flash
       overlay.classList.remove('sf-wradial--in', 'sf-wradial--receipt');
-      setTimeout(() => { if (!open && !receiptFlash) overlay.hidden = true; }, 160);
+      setTimeout(() => { if (!open && !receiptFlash) { overlay.hidden = true; syncRadialOwnsFrame(); } }, 160);
     }
   }
 
@@ -236,6 +237,7 @@ export function createWingmanRadial(ctx) {
     wedgeEls[0].disabled = !hasTarget;
     wedgeEls[0].setAttribute('aria-disabled', String(!hasTarget));
     overlay.hidden = false;
+    syncRadialOwnsFrame();
     overlay.classList.remove('sf-wradial--in'); void overlay.offsetWidth;
     overlay.classList.add('sf-wradial--in');
     document.addEventListener('keydown', onKey, true);
@@ -256,7 +258,7 @@ export function createWingmanRadial(ctx) {
     previousFocus = null;
     if (restore && restore.isConnected !== false && !restore.disabled) focusSafely(restore);
     // let the fade-out play before hiding
-    setTimeout(() => { if (!open) overlay.hidden = true; }, 160);
+    setTimeout(() => { if (!open) { overlay.hidden = true; syncRadialOwnsFrame(); } }, 160);
   }
 
   function issue(opt) {

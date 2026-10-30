@@ -84,8 +84,10 @@ ${F} .sf-commsfan__wedge { height:var(--fan-key-h, 40px); }
    through the ATTACK wedge as a dim octagon (critic findings 1 + 6). Suppression is paint only:
    .sf-tells is already aria-hidden decorative and the shared assertive live region announces in
    hud.js pushDoctrineTell — speech is untouched. hidden covers the dial's 160ms fade-out, so a
-   mark can never pop in mid-exit. */
-body:has(#sf-commsfan.is-open, .sf-drawer--haildeck.is-open, .sf-wradial:not([hidden]))
+   mark can never pop in mid-exit. The body class is set by syncRadialOwnsFrame() at radial
+   open/close transitions only: a body-anchored :has() here restyled the whole HUD subtree
+   (~900 elements) on every ordinary HUD text/attribute write. */
+body.sf-radial-owns-frame
   :is(.sf-tells, .sf-lockdiamond, .sf-gravity-mark, .sf-momentum-sink) { visibility:hidden !important; }
 
 /* ── comms fan: the shade pool becomes a machined bezel, not a rounded slab ───────────────────
@@ -142,6 +144,16 @@ ${W}:has(.sf-wradial__wedge:is(:hover, :focus-visible)) .sf-wradial__hub:hover .
 html.sf-reduce-motion ${W} .sf-wradial__hub,
 html.sf-reduce-motion ${W} .sf-wradial__face { transition:none; }
 `;
+
+const RADIAL_OWNS_FRAME_SEL = '#sf-commsfan.is-open, .sf-drawer--haildeck.is-open, .sf-wradial:not([hidden])';
+
+/* Call after any radial open/close/hidden transition. Writes the body class only on change. */
+export function syncRadialOwnsFrame(doc = globalThis.document) {
+  const body = doc && doc.body;
+  if (!body || typeof doc.querySelector !== 'function') return;
+  const owns = !!doc.querySelector(RADIAL_OWNS_FRAME_SEL);
+  if (body.classList.contains('sf-radial-owns-frame') !== owns) body.classList.toggle('sf-radial-owns-frame', owns);
+}
 
 export function injectFlightRadialsLayouts(doc = globalThis.document) {
   if (!doc || !doc.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
