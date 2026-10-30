@@ -24,6 +24,8 @@ import { getSalvageTenderReadModel, getSalvageTenderHomeMarker, getSalvageTender
 import { salvageTenderPrompt, createSalvageTenderPromptSystem } from '../src/features/salvageTender/prompts.js';
 import { freshSalvageTender, discoverTenderState } from '../src/features/salvageTender/model.js';
 import { createSalvageTenderPresentation, TENDER_EQUIPMENT, bindSalvageTenderAudio } from '../src/features/salvageTender/presentation.js';
+import { bindNocturneScene, createLogicalLight, unbindNocturneScene } from '../src/render/nocturne/bridge.js';
+import { NocturneRegistry } from '../src/render/nocturne/registry.js';
 import { setPromptDeck } from '../src/ui/promptDeck.js';
 import { resolveCourseTarget, commitCoursePayload, resolveGalaxyMapPrimaryAction } from '../src/ui/galaxyMap.js';
 
@@ -827,6 +829,39 @@ test('tender authored deck changes all three machinery stages and follows presen
   assert.equal(owner.group.parent, null); assert.equal(l.retired, 6); assert.equal(l.releases, 1);
   assert.equal(l.sharedDisposed, 0, 'authoritative shared package assets remain resident for other users');
   assert.equal(owner.diagnostics().mounted, 0);
+});
+
+test('tender lamp uses the fixed Nocturne pool and follows the presented pose', async () => {
+  const f = presentationFixture(), l = presentationLeases();
+  const registry = new NocturneRegistry();
+  const nocturne = { createLight: (id, kind, options) => createLogicalLight(registry, id, kind, options) };
+  bindNocturneScene(f.scene, nocturne);
+  for (let i = 0; i < 8; i++) f.scene.add(new THREE.PointLight());
+  const countLights = () => { let n = 0; f.scene.traverseVisible(o => { if (o.isPointLight) n++; }); return n; };
+  const owner = createSalvageTenderPresentation({ state: f.state, leaseFactory: l.factory });
+  try {
+    await owner.ready;
+    f.row.stage = 1; f.row.owned = true; f.row.revision++;
+    f.state.settings.video.motionReduce = true;
+    owner.update();
+    const source = registry.get('salvage-tender:berth-lamp');
+    assert.ok(source);
+    assert.equal(countLights(), 8, 'visible tender does not add a GPU light or change shader variants');
+    assert.equal(source.intensity, 18);
+    const expected = new THREE.Vector3(0.42, 0.5, -0.23).applyMatrix4(f.root.matrixWorld);
+    assert.ok(source.position.distanceTo(expected) < 1e-9, 'lamp follows the presented root in world space');
+    f.root.visible = false; owner.update();
+    assert.equal(source.intensity, 0);
+    assert.equal(countLights(), 8);
+    f.root.visible = true; f.root.position.x += 3; owner.update();
+    assert.equal(source.intensity, 18);
+    expected.set(0.42, 0.5, -0.23).applyMatrix4(f.root.matrixWorld);
+    assert.ok(source.position.distanceTo(expected) < 1e-9);
+  } finally {
+    owner.dispose();
+    unbindNocturneScene(f.scene, nocturne);
+  }
+  assert.equal(registry.size, 0, 'retiring the tender unregisters its logical light');
 });
 
 test('tender late and missing equipment loads cannot resurrect an owner or manufacture a proxy', async () => {

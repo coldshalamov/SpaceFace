@@ -291,7 +291,10 @@ function recordLinkBlock(ledger, program, ms) {
       stack = String(new Error().stack || '').split(/\r?\n/).slice(2, 14).map((line) => line.trim()).join(' | ');
     } catch (_) { stack = null; }
   }
-  worst.push({ ms, name, atMs: nowMs(), stack });
+  worst.push({ ms, name, atMs: nowMs(), stack,
+    programId: ms >= LINK_BLOCK_STACK_MS && Number.isFinite(program.id) ? program.id : null,
+    cacheKey: ms >= LINK_BLOCK_STACK_MS && typeof program.cacheKey === 'string' ? program.cacheKey.slice(0, 1536) : null,
+  });
   worst.sort((a, b) => b.ms - a.ms);
   if (worst.length > LINK_BLOCK_WORST) worst.length = LINK_BLOCK_WORST;
 }
