@@ -1102,7 +1102,12 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
     grid-area: unset !important;
     pointer-events: none !important;
   }
-  ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit > :not(.sx-sw-circuit__identity) { display: none !important; }
+  ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit > :not(.sx-sw-circuit__identity):not(.sx-sw-lotdesk) { display: none !important; }
+  /* The desk is player action, not a readout. Keep it reachable in the compact low-height layout. */
+  ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit > .sx-sw-lotdesk {
+    display:block !important; pointer-events:auto !important;
+  }
+  ${W}.orr-sw--jig .sx-sw-lotdesk__verbs { flex-wrap:wrap !important; gap:3px 12px !important; }
   ${W}.orr-sw--jig > .sx-sw__side > .sx-sw-circuit { margin: 0 !important; padding: 0 !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity {
     display: flex !important;
@@ -1139,6 +1144,59 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
   ${W}.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:22px 0 50px 0 !important; }
   ${W}.orr-sw--jig > .sx-sw__side { left:calc(190px + 52px) !important; top:4px !important; max-width:calc(100% - 250px) !important; }
   ${W}.orr-sw--jig .sx-sw-circuit__identity { flex-wrap:nowrap !important; white-space:nowrap !important; }
+}
+/* The compact desk uses the native top layer so station header and navigation stay in place. */
+${W} .sx-sw-lot-open[hidden] { display:none !important; }
+${W} .sx-sw-lot-dialog:not([open]) { display:none !important; }
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover) {
+  ${W} .sx-sw-lot-open {
+    position:fixed; right:32px; bottom:76px; z-index:30; pointer-events:auto;
+    padding:9px 16px; border:1px solid rgb(${BONE} / .55); background:rgb(10 12 16 / .96);
+    color:var(--dp-ink, #e8e2d4); font-family:inherit; font-size:14px; line-height:1.2; font-weight:600; cursor:pointer;
+  }
+  ${W} .sx-sw-lot-dialog[open] {
+    position:fixed; inset:0; margin:auto; width:min(560px, calc(100vw - 40px));
+    max-height:calc(100vh - 40px); box-sizing:border-box; overflow:auto;
+    padding:18px 22px; border:1px solid rgb(${BONE} / .5); background:rgb(10 12 16 / .98);
+    color:var(--dp-ink, #e8e2d4); pointer-events:auto;
+  }
+  ${W} .sx-sw-lot-dialog::backdrop { background:rgb(0 0 0 / .7); }
+  ${W} .sx-sw-lot-dialog__head { display:flex; justify-content:space-between; align-items:start; gap:20px; border-bottom:1px solid rgb(${BONE} / .25); padding-bottom:10px; margin-bottom:12px; }
+  ${W} .sx-sw-lot-dialog__head h2 { margin:0; font-size:18px; line-height:1.25; }
+  ${W} .sx-sw-lot-dialog__context { margin:4px 0 0; font-size:13px; line-height:1.4; }
+  ${W} .sx-sw-lot-dialog__head button { padding:6px 10px; border:1px solid rgb(${BONE} / .45); color:inherit; background:transparent; font:inherit; cursor:pointer; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk { display:block !important; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk__who { font-size:13px; line-height:1.4; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk .k-sentence { font-size:14px; line-height:1.45; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk__verbs { display:flex; flex-wrap:wrap; gap:6px 18px; margin:12px 0; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk__verbs .k-word, ${W} .sx-sw-lot-dialog .sx-sw-lotdesk__bid button { min-height:32px; font-size:13px; }
+  ${W} .sx-sw-lot-dialog .sx-sw-lotdesk__bid input { width:100px; min-height:30px; font-size:14px; }
+}
+/* Keep the short berth head scrollable and give Shipworks a real service cell. */
+@media (min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover) {
+html body #screens > .sx-berth.orr-station:has(#sx-panel > .sx-sw:not([hidden])) { grid-template-rows:max-content minmax(0,1fr) max-content !important; }
+html body #screens > .sx-berth.orr-station:has(#sx-panel > .sx-sw:not([hidden])) .sxb-berth.dp-frame__head { min-height:0 !important; max-height:100px !important; overflow-y:auto !important; overflow-x:hidden !important; grid-template-rows:auto minmax(100px,auto) auto !important; }
+html body #screens > .sx-berth.orr-station:has(#sx-panel > .sx-sw:not([hidden])) .sxb-crown { padding-bottom:20px !important; }
+html body #screens > .sx-berth.orr-station:has(#sx-panel > .sx-sw:not([hidden])) .dp-frame__body--station { min-height:0 !important; height:auto !important; }
+html body #screens > .sx-berth.orr-station:has(#sx-panel > .sx-sw:not([hidden])) #sx-panel > .sx-sw.sx-sw--buying { position:relative !important; height:100% !important; min-height:0 !important; grid-template-columns:190px minmax(0,1fr) 210px !important; grid-template-rows:minmax(0,1fr) !important; column-gap:12px !important; overflow:hidden !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying > .sx-sw__rail { grid-area:unset !important; grid-column:1 !important; grid-row:1 !important; min-height:0 !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying > .sx-sw__main { grid-area:unset !important; grid-column:2 !important; grid-row:1 !important; position:relative !important; display:block !important; height:100% !important; max-height:none !important; min-height:0 !important; overflow:auto !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying > .sx-sw__side { grid-area:unset !important; grid-column:3 !important; grid-row:1 !important; position:relative !important; inset:auto !important; width:auto !important; max-width:none !important; min-height:0 !important; height:100% !important; max-height:none !important; overflow:auto !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__main > .sx-sw__stage { position:relative !important; inset:auto !important; width:100% !important; height:145px !important; min-height:145px !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__canvas { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; transform:none !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__rail .sx-seg { display:flex !important; flex-wrap:nowrap !important; margin:0 0 4px !important; gap:0 15px !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__rail .sx-sw__carousel { flex:1 1 0 !important; min-height:0 !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__rail .sx-sw__list { min-height:0 !important; height:100% !important; max-height:none !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__side .sx-sw-side__name { font-size:16px !important; line-height:1.2 !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw__stats, html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw-verbs { position:relative !important; inset:auto !important; width:auto !important; transform:none !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.sx-sw--buying .sx-sw-side__hero .k-hero__n { font-size:24px !important; line-height:1.1 !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__nameplate .sx-sw__name { font-size:16px !important; line-height:1.2 !important; white-space:nowrap !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__main > .sx-sw__stage { inset:30px 0 50px 120px !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__nameplate { left:-120px !important; top:-28px !important; max-width:130px !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig > .sx-sw__side { left:400px !important; top:4px !important; max-width:calc(100% - 410px) !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-seg { display:flex !important; flex-wrap:nowrap !important; margin:0 0 4px !important; gap:0 15px !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-sw__carousel { flex:1 1 0 !important; min-height:0 !important; }
+html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-sw__list { min-height:0 !important; height:100% !important; max-height:none !important; }
 }
 /* 801-1100 wide only: RECORD · PAINT ran past the right edge into UNDOCK (r≈922 on an 844 frame):
    keep the verb row inside the main and wrap TAKE THE HITCH onto its own line. Not at 651-800,

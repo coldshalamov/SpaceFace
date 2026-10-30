@@ -67,6 +67,7 @@ import {
   stationShopOffer,
 } from '../../../systems/ships.js';
 import { classifyBuildIdentity } from '../../../systems/buildIdentity.js';
+import { impoundLotBoard } from '../../../systems/impoundLot.js';
 import { historyWearDead } from '../../../systems/historyWear.js';
 import { livingHullTrinkets } from '../../../core/livingHull.js';
 import { sableVennServiceAvailable } from '../../../data/sableVenn.js';
@@ -504,6 +505,61 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
+  // The short landscape berth needs a separate decision surface: its service column is below
+  // the fold. The native top layer escapes the station's clipping and owns keyboard focus.
+  const lotOpener = document.createElement('button');
+  lotOpener.type = 'button';
+  lotOpener.className = 'sx-sw-lot-open';
+  lotOpener.textContent = 'Lot desk';
+  lotOpener.hidden = true;
+  lotOpener.setAttribute('aria-haspopup', 'dialog');
+  lotOpener.setAttribute('aria-expanded', 'false');
+  const lotDialog = document.createElement('dialog');
+  lotDialog.className = 'sx-sw-lot-dialog';
+  lotDialog.setAttribute('aria-labelledby', 'sx-sw-lot-title');
+  lotDialog.innerHTML = `<header class="sx-sw-lot-dialog__head"><div><h2 id="sx-sw-lot-title">Lot desk</h2><p class="sx-sw-lot-dialog__context"></p></div><button type="button" data-lot-close>Close</button></header><div class="sx-sw-lot-dialog__body"></div>`;
+  el.append(lotOpener, lotDialog);
+  const compactLotMedia = window.matchMedia('(min-width:801px) and (max-width:1100px) and (max-height:460px) and (hover:hover)');
+  function closeLotDesk(restoreFocus = true) {
+    if (!lotDialog.open) return;
+    lotDialog.close();
+    lotOpener.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && lotOpener.isConnected && !lotOpener.hidden) lotOpener.focus({ preventScroll: true });
+  }
+  lotOpener.addEventListener('click', () => {
+    if (!lotDialog.open && !lotOpener.hidden) {
+      lotDialog.showModal();
+      lotOpener.setAttribute('aria-expanded', 'true');
+      lotDialog.querySelector('[data-lot-close]').focus({ preventScroll: true });
+    }
+  });
+  lotDialog.querySelector('[data-lot-close]').addEventListener('click', () => closeLotDesk());
+  lotDialog.addEventListener('cancel', (ev) => { ev.preventDefault(); closeLotDesk(); });
+  function interceptLotKeys(ev) {
+    if (!lotDialog.open) return;
+    // Station listens on window for Escape and shortcuts; native dialog owns them while open.
+    if (ev.key === 'Escape') { ev.stopImmediatePropagation(); ev.preventDefault(); closeLotDesk(); }
+    // The station command palette owns Ctrl/Cmd-K at window capture; do not open it above the desk.
+    else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') { ev.stopImmediatePropagation(); ev.preventDefault(); }
+  }
+  window.addEventListener('keydown', interceptLotKeys, true);
+  const onLotMediaChange = () => { if (stageShown) refresh(); };
+  compactLotMedia.addEventListener('change', onLotMediaChange);
+  function syncCompactLotDesk(hullName) {
+    const desk = sideEl.querySelector('.sx-sw-lotdesk');
+    const compact = compactLotMedia.matches && !!desk;
+    lotOpener.hidden = !compact;
+    if (!compact) {
+      closeLotDesk(false);
+      lotDialog.querySelector('.sx-sw-lot-dialog__body').replaceChildren();
+      return;
+    }
+    lotOpener.textContent = desk.querySelector('[data-lot-verb="acceptRansom"]') ? 'Papers offer' : 'Lot desk';
+    lotDialog.querySelector('.sx-sw-lot-dialog__context').textContent = `${hullName} · ${fmt(Math.max(0, Number(ctx.state.player?.credits) || 0))} cr available`;
+    lotDialog.querySelector('.sx-sw-lot-dialog__body').replaceChildren(desk);
+    for (const btn of desk.querySelectorAll('[data-lot-verb]')) paintKey(btn, 'small');
+    syncKeys(desk);
+  }
   const blackFlagRegistry = createBlackFlagRegistry(ctx, { dockHost: () => host === 'dock' });
   el.querySelector('.sx-sw__rail')?.appendChild(blackFlagRegistry.el);
   const chooserEl = el.querySelector('.sx-sw__chooser');
@@ -622,7 +678,105 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (activate) paintKey(activate, 'primary');
     pinKeyrack(sideEl.querySelector('.sx-sw-rack__verbs'));
     for (const btn of sideEl.querySelectorAll('[data-rack-restock], [data-rack-upgrade]')) paintKey(btn, 'small');
+    for (const btn of sideEl.querySelectorAll('[data-lot-verb]')) paintKey(btn, 'small');
     syncKeys(sideEl);
+  }
+
+  // The impound lot's attendant desk — the berth verbs the lot book has always had (haggle,
+  // the clerk's tip, an earnest-money hold, quieting a filed claim, watching the book, and a
+  // sealed bid on the open block) plus the kin's offer for a marked hull's papers. Every key
+  // emits `impoundLot:deskIntent`; the lot re-checks berth, book and wallet before anything moves.
+  function lotDays(n) {
+    const d = Math.max(0, Math.round(Number(n) || 0));
+    return d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`;
+  }
+
+  function lotDeskHtml(credits) {
+    if (host === 'flight') return '';
+    const board = impoundLotBoard(ctx.state);
+    if (!board.open || !board.atLot) return '';
+    const who = board.attendant && board.attendant.name ? board.attendant.name : 'The lot attendant';
+    const facts = [];
+    if (board.hold) {
+      facts.push(`On hold for you at ${fmt(board.hold.price)} cr until the book reopens.`);
+    } else if (board.auction.open) {
+      facts.push(`On the block — the yard writes the price down every day until someone takes it.`);
+    } else {
+      facts.push(`The auction opens ${lotDays(board.auction.daysToOpen)}. Storage adds ${fmt(board.feePerDay)} cr a day.`);
+    }
+    if (board.tip && board.auction.strike) facts.push(`The quiet bidder tops out at ${fmt(board.auction.strike)} cr.`);
+    if (board.dispute && board.dispute.outcome === 'pending') facts.push(`${board.dispute.claimant} filed a claim on it.`);
+    if (board.redeem) {
+      facts.push(board.redeem.daysToOpen != null
+        ? `${board.redeem.claimant} comes to buy it back ${lotDays(board.redeem.daysToOpen)}.`
+        : `${board.redeem.claimant} may come to buy it back.`);
+    }
+    const key = (verb, label, cost, enabled, why) => {
+      const can = enabled && (!(cost > 0) || cost <= credits);
+      const reason = !enabled ? why : (cost > 0 && cost > credits ? `${fmt(cost - credits)} cr short` : '');
+      const aria = can ? label : `${label}, ${reason}`;
+      return `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="${verb}" ${can ? '' : 'disabled'} aria-label="${escapeHtml(aria)}" data-why="${escapeHtml(can ? label : reason)}">${escapeHtml(label)}${cost > 0 ? ` <small>${fmt(cost)} cr</small>` : ''}</button></li>`;
+    };
+    const verbs = [];
+    if (!board.hold) {
+      verbs.push(key('haggle', board.haggled ? 'Price agreed' : `Haggle (${board.hagglesLeft} left)`, 0,
+        !board.haggled && board.hagglesLeft > 0, board.haggled ? 'already agreed' : 'the attendant is done'));
+      verbs.push(key('hold', 'Hold at this price', board.holdFeeCr, !board.holdDepositPaid, 'deposit already spent'));
+    }
+    verbs.push(key('tip', board.tip ? 'Tip bought' : 'Buy the tip', board.tip ? 0 : board.tipFeeCr, !board.tip, 'already told'));
+    if (board.dispute && board.dispute.outcome === 'pending') {
+      verbs.push(key('quiet', 'Quiet the claim', board.quietFeeCr, true, ''));
+    }
+    verbs.push(`<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="watch" data-lot-on="${board.watched ? 'false' : 'true'}" aria-pressed="${board.watched ? 'true' : 'false'}">${board.watched ? 'Stop watching' : 'Watch the book'}</button></li>`);
+    let bidRow = '';
+    if (board.auction.open && !board.hold) {
+      const suggest = board.tip && board.auction.strike ? board.auction.strike : board.price;
+      const initialBid = Math.max(1, Math.round(suggest));
+      const canBid = initialBid <= credits;
+      const reason = `${fmt(initialBid - credits)} cr short`;
+      const bidLabel = canBid ? 'Place bid' : `Place bid, ${reason}`;
+      bidRow = `<p class="k-sentence sx-sw-lotdesk__bid"><label>Sealed bid <input class="k-input k-input--num" type="number" inputmode="numeric" min="1" step="1" value="${initialBid}" data-lot-bid aria-label="Sealed bid in credits"></label> ` +
+        `<button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="bid" ${canBid ? '' : 'disabled'} aria-label="${escapeHtml(bidLabel)}" data-why="${escapeHtml(canBid ? 'Place bid' : reason)}">Place bid</button></p>`;
+    }
+    return `<div class="sx-sw-lotdesk">` +
+      `<p class="k-t-fine k-38 sx-sw-lotdesk__who">${escapeHtml(who)} · lot desk</p>` +
+      // Claimant names arrive lowercase ("the house that lost …"); each fact opens a sentence.
+      `<p class="k-sentence sx-muted">${escapeHtml(facts.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join(' '))}</p>` +
+      `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">${verbs.join('')}</ul>` +
+      bidRow +
+    `</div>`;
+  }
+
+  function ransomDeskHtml() {
+    if (host === 'flight') return '';
+    const board = impoundLotBoard(ctx.state);
+    const r = board.ransom;
+    if (!r || r.state !== 'offered' || r.resolved) return '';
+    if (!r.stationId || r.stationId !== ctx.state.ui?.dockedStationId) return '';
+    const left = Number.isFinite(r.untilDay) ? Math.max(0, r.untilDay - board.day) : null;
+    const named = r.claimant || 'the former crew';
+    const claimant = named.charAt(0).toUpperCase() + named.slice(1);
+    return `<div class="sx-sw-lotdesk">` +
+      `<p class="k-t-fine k-38 sx-sw-lotdesk__who">Lot attendant · papers offer</p>` +
+      `<p class="k-sentence sx-muted">${escapeHtml(`${claimant} will pay ${fmt(r.amount)} cr for the dead owner's papers on this hull. Sell them and the debt riding it ends. Keep them and their collector stays on schedule.${left != null ? ` The offer stands ${left === 0 ? 'until tomorrow' : `${left + 1} more days`}.` : ''}`)}</p>` +
+      `<ul class="k-words k-words--row sx-sw-lotdesk__verbs">` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="acceptRansom">Sell the papers <small>+${fmt(r.amount)} cr</small></button></li>` +
+        `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--fine" data-lot-verb="declineRansom">Keep the papers</button></li>` +
+      `</ul>` +
+    `</div>`;
+  }
+
+  function updateLotBidAffordance(scope = sideEl) {
+    const input = scope.querySelector('input[data-lot-bid]');
+    const button = scope.querySelector('[data-lot-verb="bid"]');
+    if (!input || !button) return;
+    const amount = Math.round(Number(input.value) || 0);
+    const credits = Math.max(0, Number(ctx.state.player?.credits) || 0);
+    const canBid = amount > 0 && amount <= credits;
+    const reason = amount <= 0 ? 'enter a positive bid' : `${fmt(amount - credits)} cr short`;
+    button.disabled = !canBid;
+    button.setAttribute('aria-label', canBid ? 'Place bid' : `Place bid, ${reason}`);
+    button.setAttribute('data-why', canBid ? 'Place bid' : reason);
   }
 
   function dressChooser() {
@@ -3924,8 +4078,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
             : `<li><button type="button" ${stationControlAttrs('buy-ship')} class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${usedHull ? `data-listing-id="${escapeHtml(usedHull.listingId)}"` : ''} ${canBuy ? '' : 'disabled'} aria-label="${escapeHtml(buyAria)}">${buyLabel}${canBuy ? ` <small>${fmt(price)} cr</small>` : ''}</button></li>` +
               (canBuy ? '' : `<li class="sx-buybar__why" aria-hidden="true">${escapeHtml(whyNot)}</li>`)) +
-        `</ul>`;
+        `</ul>` +
+        (usedHull ? lotDeskHtml(credits) : '');
       dressSide();
+      syncCompactLotDesk(hullLabel);
       drawBuyRim();
       const priceN = sideEl.querySelector('.sx-sw-side__hero .k-hero__n');
       if (priceN && price > 0) rollTo(priceN, price);
@@ -4046,9 +4202,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }).join('')}</ul>` +
         `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
         (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
+        (inspectedIndex === activeIndex ? ransomDeskHtml() : '') +
         rackBlock +
       `</div>`;
     dressSide();
+    syncCompactLotDesk(s.name || def.name);
     // ORRERY: on the jig the six readouts are a ruled ladder under the rack, not a strip under the hull
     if (host === 'dock' && el.classList.contains('orr-sw--jig') && gaugeRackEl) {
       const circuit = sideEl.querySelector('.sx-sw-circuit');
@@ -5114,6 +5272,37 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
   });
 
+  function handleLotClick(ev, scope) {
+    const lotVerb = ev.target.closest('[data-lot-verb]');
+    if (lotVerb) {
+      if (!lotVerb.disabled && ctx.bus) {
+        const verb = lotVerb.getAttribute('data-lot-verb');
+        const intent = { verb };
+        if (verb === 'bid') {
+          const input = scope.querySelector('input[data-lot-bid]');
+          intent.amount = Math.round(Number(input && input.value) || 0);
+        }
+        if (verb === 'watch') intent.on = lotVerb.getAttribute('data-lot-on') !== 'false';
+        lotVerb.disabled = true;
+        ctx.bus.emit('impoundLot:deskIntent', intent);
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+        setTimeout(refresh, 60);
+      }
+      return true;
+    }
+    return false;
+  }
+  lotDialog.addEventListener('click', (ev) => handleLotClick(ev, lotDialog));
+  lotDialog.addEventListener('input', (ev) => {
+    if (ev.target.matches('input[data-lot-bid]')) updateLotBidAffordance(lotDialog);
+  });
+  lotDialog.addEventListener('keydown', (ev) => {
+    // Keep station/game shortcuts behind the modal while leaving native Tab and activation intact.
+    ev.stopPropagation();
+    if (!ev.target.matches('input[data-lot-bid]')) return;
+    if (ev.key === 'Enter') { ev.preventDefault(); lotDialog.querySelector('[data-lot-verb="bid"]')?.click(); }
+  });
+
   sideEl.addEventListener('click', (ev) => {
     const rackCell = ev.target.closest('[data-rack-socket]');
     if (rackCell) { openPayloadChooser(Number(rackCell.getAttribute('data-rack-socket')), rackCell); return; }
@@ -5131,6 +5320,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       return;
     }
+    if (handleLotClick(ev, sideEl)) return;
     const slot = ev.target.closest('[data-slot]');
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); return; }
     const buy = ev.target.closest('[data-buyship]');
@@ -5151,7 +5341,27 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
   });
 
+  sideEl.addEventListener('input', (ev) => {
+    const input = ev.target;
+    if (input && typeof input.matches === 'function' && input.matches('input[data-lot-bid]')) {
+      updateLotBidAffordance();
+    }
+  });
+
   sideEl.addEventListener('keydown', (ev) => {
+    // The sealed-bid field: typing never reaches canvas or station hotkeys; Enter places it.
+    const t = ev.target;
+    const bidInput = !!t && String(t.tagName || '').toUpperCase() === 'INPUT'
+      && typeof t.hasAttribute === 'function' && t.hasAttribute('data-lot-bid');
+    if (bidInput) {
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const place = sideEl.querySelector('[data-lot-verb="bid"]');
+        if (place) place.click();
+      }
+      return;
+    }
     if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
     const rackCell = ev.target.closest('[data-rack-socket]');
     if (!rackCell) return;
@@ -5706,6 +5916,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       watchStageSeat();
     },
     onHide() {
+      closeLotDesk(false);
       stageShown = false;
       pendingPresetRejection = null;
       clearSableDemo(); sableSelection = null;
@@ -5717,6 +5928,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
+      closeLotDesk(false);
+      window.removeEventListener('keydown', interceptLotKeys, true);
+      compactLotMedia.removeEventListener('change', onLotMediaChange);
       blackFlagRegistry.dispose();
       clearSableDemo(); for (const off of sableLifecycleUnsubs) off();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
