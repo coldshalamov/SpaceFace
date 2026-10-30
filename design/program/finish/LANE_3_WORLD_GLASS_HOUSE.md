@@ -18,7 +18,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 
 | # | What a stranger sees | Where | Next step |
 |---|---|---|---|
-| D261 | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 — PARTIALLY LANDED f0b6d842 (dock cue no longer prints over the waypoint card) + bench #alerts host fix ad732f2e; OPEN: truncated words in the phone hull legend ("COLPOR…") |
+| ~~D261~~ | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 — **DONE**: dock cue f0b6d842 + bench #alerts host ad732f2e + legend plate widened so HULL/SHIELD/ARMOR read whole on the phone shot (d108db76, verified on the PNG) |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
 | D-new | Shipworks Buy-mode left rail: the for-sale list prints over the current-hull spec block ("FLEET · FOR SALE" collides with "473 TOP SPEED") — seen on `station-shipworks-impound` shot; verify whether plain Buy mode collides too | `src/ui/station/screens/shipworks.js` (foreign-dirty as of 2026-10-30 — check again when it settles) | packet G2 |
 
@@ -192,7 +192,9 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   817a35bf, Rook receipt names the weighed hull 418c1a64, reds sweep 54f691f5 (escort source-pins
   → behavior, lying fixtures repaired, racing ladder occupancy, accept-hold diagnostics, cohort
   fixture regen). Two reds-batch workers died to the quota wall — their surviving diffs were
-  reviewed and landed in that sweep.
+  reviewed and landed in that sweep. `check:first-hour` repaired a51a5765 (stale source pins
+  re-bound to live seams: `_onboardingOwnsOpeningNav`, per-sector hostile contract, 6 s attract,
+  stamp signature, relocated splash line; rescue-recognition fake bus taught `off`).
   Recorded for later packets: world.js:1553 sector content rng publishes to `state.world.rng`
   (determinism shift — needs its own packet); chart waypoint identity record from missions.js
   (:12291) and `world._onSetCourse` carrying onboarding/presentation fields (:12307); chart
