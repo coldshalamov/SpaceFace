@@ -145,7 +145,7 @@ export async function bootToMenu(page, baseUrl, step) {
 // "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
-async function answerFirstRunPrompt(page, step) {
+export async function answerFirstRunPrompt(page, step = () => {}) {
   const heading = page.locator('#sf-confirm-title').first();
   if (!await heading.isVisible()) return;
   const title = norm(await heading.textContent());

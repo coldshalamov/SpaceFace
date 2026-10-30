@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { answerFirstRunPrompt } from './player-truth/routes.mjs';
 
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./lib/gameServer.cjs');
@@ -202,11 +203,8 @@ async function openNewGameWithKeyboard(page, url = null) {
   await waitForBootOverlayGone(page);
   // A first-ever profile gets the deliberate once-only first-light offer before the menu is
   // reachable; a player answers it. 'Play' keeps the default cut and releases focus to the menu.
-  if (await page.$('#sf-confirm-root:not([hidden])')) {
-    await page.getByRole('button', { name: 'Play', exact: true }).first().click();
-    await page.waitForFunction(() => !document.getElementById('sf-confirm-root')
-      || document.getElementById('sf-confirm-root').hidden === true, null, { timeout: 5000 });
-  }
+  await answerFirstRunPrompt(page);
+  await page.locator('#sf-confirm-root .sf-confirm').waitFor({ state: 'detached', timeout: 5000 });
   await focusButtonWithKeyboard(page, 'New Game');
   await page.keyboard.press('Enter');
   await waitForVisible(page, '[data-screen="newGame"]', 'New Game');
