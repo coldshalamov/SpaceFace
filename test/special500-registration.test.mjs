@@ -18,11 +18,13 @@ import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRu
 import { createRegistry } from '../src/core/registry.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
-import { SPECIAL500 } from '../src/data/special500/index.js';
+import { SPECIAL500, SPECIAL500_ALL } from '../src/data/special500/index.js';
 import { SECTORS } from '../src/data/sectors.js';
 
 const count = (list, id) => list.filter((x) => x === id).length;
-const LIVE = SPECIAL500.filter((e) => !e.dormant);
+// The director sweeps SPECIAL500_ALL (ratified 500 + annex wave); every live row
+// in the sweep set gets the same anchor/template/chain proofs.
+const LIVE = SPECIAL500_ALL.filter((e) => !e.dormant);
 
 test('manifest carries special500 once in both orders on the calendar clock', () => {
   assert.equal(count(PRODUCTION_INIT_ORDER, 'special500'), 1);
@@ -85,7 +87,7 @@ test('every live proximity anchor names a real station/POI and every chain names
     for (const st of s.stations || []) ids.add(st.id);
     for (const p of s.pois || []) ids.add(p.id);
   }
-  const byId = new Map(SPECIAL500.map((e) => [e.id, e]));
+  const byId = new Map(SPECIAL500_ALL.map((e) => [e.id, e]));
   for (const e of LIVE) {
     const t = e.trigger || {};
     if (t.type === 'proximity') assert.ok(ids.has(t.nearStation), `${e.id} anchor ${t.nearStation} resolves`);
@@ -95,7 +97,7 @@ test('every live proximity anchor names a real station/POI and every chain names
     }
     for (const id of e.after || []) assert.ok(byId.get(id) && !byId.get(id).dormant, `${e.id} after ${id} is live`);
   }
-  for (const e of SPECIAL500.filter((x) => x.dormant)) {
+  for (const e of SPECIAL500_ALL.filter((x) => x.dormant)) {
     assert.ok(typeof e.dormantReason === 'string' && e.dormantReason.length > 10, `${e.id} documents why it is dormant`);
   }
 });
