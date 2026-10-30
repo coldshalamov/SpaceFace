@@ -641,7 +641,7 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-browser { column-gap:10px !important; }
   ${MD} .sx-mkt-browser__filters { padding-right:0 !important; }
   ${MD} .sx-mkt-table thead th:nth-child(2) { width:60px !important; }
-  ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:36px !important; }
   ${MD} .sx-mkt-table thead th:nth-child(4) { width:44px !important; }
   ${MD} .sx-mkt-table :is(th, td):nth-child(n+2) { padding-left:4px !important; }
   ${MD} .sx-mkt-table thead th:nth-child(n+2) { letter-spacing:.02em !important; padding-left:0 !important; text-align:right !important; }
@@ -652,6 +652,12 @@ const CSS_TAIL = `
     padding-left:52px !important; padding-right:4px !important; text-indent:-22px; line-height:14px !important; }
   ${MD} .sx-mkt-row .sx-mkt-row__name * { text-indent:0 !important; }
   ${MD} .sx-mkt-row :is(.sx-mkt-row__commodity, .sx-mkt-row__name > .of-commodity-icon) { margin-right:6px !important; }
+}
+/* ≤1100 × ≤800 desktop only (not NARROW_TALL): the SELL head widens 36 → 44px so the 5-digit prices
+   (diamond 26,855, amazonite 39,211) stop clipping at 960×540 / 1100×620. NARROW_TALL keeps master's 36px,
+   where 44px ran the heads together as "SELLSTOCK" at 390×844. */
+@media (max-width:1100px) and (max-height:800px) {
+  ${MD} .sx-mkt-table thead th:nth-child(3) { width:44px !important; }
 }
 /* 641–800px tall (e.g. 1024×768) has the height: the terms wrap instead of losing the armor reading */
 @media (max-width:1100px) and (min-height:641px) and (max-height:800px) {
