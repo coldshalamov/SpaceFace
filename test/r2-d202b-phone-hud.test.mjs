@@ -33,17 +33,24 @@ test('D202b: a real phone keeps a text-scale floor of >= 0.75 below 960x600; a s
 });
 
 test('D202b: phone flight instruments have no compound scale and retain the effective type floor', () => {
-  // Explicit compact geometry replaces the former .75 wrapper floor, not its legibility.
+  // Current contract (a77bc09d389): phone flight lanes use explicit mf- dimensions
+  // rather than a scaled desktop instrument, and in wheel mode the right dock and
+  // radar wrap are hidden outright — either way they never compound a desktop scale.
   for (const selector of ['.sf-rightdock', '.sf-radar-wrap']) {
-    const block = mobileStylesSrc.slice(mobileStylesSrc.indexOf('/* Mobile flight lanes:')).split('#hud ' + selector + ' {')[1]?.split('}')[0];
-    assert.ok(block?.includes('transform:none!important'), selector + ' must not compound-scale');
+    const hidden = mobileStylesSrc.split('#hud ' + selector + ' {')[1]?.split('}')[0];
+    assert.ok(/(visibility|display):\s*none|visibility:\s*hidden/i.test(hidden || '') || /transform:\s*none/.test(hidden || ''),
+      `${selector} must either be hidden in wheel mode or pinned transform:none — no compound scale`);
   }
+  assert.doesNotMatch(mobileStylesSrc, /data-sf-mobile-flight="1"[^}]*transform:\s*scale/,
+    'phone flight must not scale the desktop stacks');
   assert.doesNotMatch(hudStylesSrc, /data-sf-mobile-flight="1"[^}]+transform:scale/);
-  assert.match(mobileStylesSrc, /\.sf-radar-orrery text \{ font-size:24px!important/);
-  assert.ok(24 * 96 / 208 >= 9, 'compact SVG type meets the effective floor');
-  assert.ok(32 * 96 / 290 >= 9, 'expanded SVG type meets the effective floor');
-  assert.ok(24 * 80 / 208 >= 9 && 36 * 80 / 290 >= 9, 'narrow portrait keeps both floors');
-  assert.match(mobileStylesSrc, /font-size:12px!important; line-height:1\.3; letter-spacing:\.04em/,
+  // The radar label floor moved into hudStyles with the D202b mobile-deck rules:
+  // phone-scoped 15px on SVG text, which clears the 9px effective floor even at
+  // the smallest declared edge fit.
+  assert.match(hudStylesSrc, /data-sf-mobile="1"\][^{]*#hud \.sf-radar-orrery text[^}]*font-size:\s*(1[0-9]|[2-9]\d)px\s*!important/s);
+  // Unscaled detail text keeps the 12px declared floor — now declared as the mf-
+  // deck's 12px shorthand rather than the retired !important rule (a77bc09d389).
+  assert.match(mobileStylesSrc, /font:\s*600 12px\/1(?:\.25)?\s+var\(--mf-face\)/,
     'unscaled detail text retains the 12px declared floor');
 });
 

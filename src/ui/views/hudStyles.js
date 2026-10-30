@@ -877,6 +877,10 @@ export function injectHudCss() {
        the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
        keep the whole bottom-right strip instead of printing through the radar. */
     #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
+    /* D261: power-rail sockets print "Pull · Draws in, key 1" — at phone width the
+       verb word truncates to an unreadable stub ("PU… 1"). Keep icon + key cap; the
+       full sentence stays on the socket's accessible name and tip. */
+    #hud .sf-pslot__name { display:none; }
     .sf-target__name { font-size:var(--k-fs-data); }
     .sf-target__meta { font-size:var(--k-fs-data); }
     .sf-radar-wrap { gap:4px; }
