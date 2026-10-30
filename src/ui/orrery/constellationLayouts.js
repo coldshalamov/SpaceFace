@@ -407,6 +407,8 @@ ${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stro
 ${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .58); }
 ${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(12px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
+/* the state words ("not yet earned", "under way") never split: a kicker too long for its column breaks after the dot */
+${A} .con-medal-read__kicker .con-medal-read__state { margin:0; white-space:nowrap; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
 ${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .9); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
@@ -439,6 +441,13 @@ ${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253
 }
 @media (max-width:1400px) {
   ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
+}
+/* a 761–1100 window: the reading column is ~260px, so the kicker tightens its tracking to keep
+   "ADVENTURE · NOT YET EARNED" on one line instead of orphaning EARNED */
+@media (min-width:761px) and (max-width:1100px) {
+  ${A} .con-medal-read__kicker { letter-spacing:.12em; }
+  ${A} .con-medal-read__kicker span { margin:0 .2em; }
+  ${A} .con-medal-read__kicker .con-medal-read__state { margin:0; }
 }
 /* an upright phone or a window under 560px wide: one column. Title, then the medal orrery at full width
    (it stands down under 320px wide), then the chosen medal's reading, then the categories on
