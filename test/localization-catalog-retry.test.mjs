@@ -36,13 +36,15 @@ test('browser readiness retries failed bark translations before enabling non-Eng
 
   const localization = await modulePromise;
   await new Promise((resolve) => setImmediate(resolve));
+  // No top-level await in a worker realm: the retry is driven through the readiness helper.
+  const failedReadiness = localization.ensureLocalizationReady();
+  await new Promise((resolve) => setImmediate(resolve));
   assert.equal(barkCalls, 2, 'the public readiness helper retries the failed bark fetch');
   assert.equal(localization.localizeText('Continue'), 'Continue',
     'ordinary loading/error copy keeps the source fallback while bark translations retry');
   const pipeline = await import('../src/localization/pipeline.js');
   assert.throws(() => pipeline.buildTranslatedCatalog('es-ES'), /Bark translations are not ready/,
     'direct translated-catalog access cannot report a partial catalog as ready');
-  const failedReadiness = localization.ensureLocalizationReady();
   rejectRetryBarks({ ok: false, status: 503 });
   await assert.rejects(failedReadiness, /request failed \(503\)/);
 
