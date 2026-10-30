@@ -5,6 +5,7 @@ import { quoteLoadError } from './environment.mjs';
 
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const firstLightHandlerPages = new WeakSet();
+const firstLightHandlerActivePages = new WeakSet();
 
 export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
   // confirm.js appends an aria-hidden ESC keycap inside the button.
@@ -20,7 +21,15 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
   await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
-    await answerFirstRunPrompt(page, step);
+    try {
+      await answerFirstRunPrompt(page, step);
+    } catch (error) {
+      // A route timeout can close the browser while this auto-handler is still completing its
+      // trusted click. That teardown rejection is already downstream of the route failure; only
+      // suppress it when Playwright confirms the page has closed, and preserve all live-page errors.
+      if (typeof page.isClosed === 'function' && page.isClosed()) return;
+      throw error;
+    }
   }, { noWaitAfter: true });
   firstLightHandlerPages.add(page);
 }
@@ -146,6 +155,19 @@ export async function bootToMenu(page, baseUrl, step) {
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
+  // The Play click is inside the matching dialog, so Playwright can invoke the installed handler
+  // again during this action. Guard the shared answer path so both handler and direct callers let
+  // that nested invocation proceed without answering the same prompt recursively.
+  if (firstLightHandlerActivePages.has(page)) return;
+  firstLightHandlerActivePages.add(page);
+  try {
+    await answerFirstRunPromptOnce(page, step);
+  } finally {
+    firstLightHandlerActivePages.delete(page);
+  }
+}
+
+async function answerFirstRunPromptOnce(page, step) {
   if (!await isActiveFirstLightPrompt(page)) return;
   const title = 'First light';
   const dialog = page.getByRole('dialog', { name: 'First light', exact: true });

@@ -18,6 +18,7 @@ import {
 import { SECTORS } from '../src/data/sectors.js';
 import { CAL_DAY_S } from '../src/data/worldCalendar.js';
 import { special500Director } from '../src/systems/special500Director.js';
+import { rankRacingEntrants } from '../src/missions/racingOpponents.js';
 
 function stubBus() {
   const handlers = new Map();
@@ -63,6 +64,17 @@ test('annex wave 2 is exactly 200 entries, all SPX-E ids, unique inside 750', ()
 test('wave 2 is schema-valid inside the full sweep set and titles stay unique', () => {
   const problems = validateSpecial500(SPECIAL500_ALL);
   assert.deepEqual(problems, [], `schema problems: ${problems.slice(0, 8).join('; ')}`);
+  const raceEntry = {
+    id: 'SPX-E-invalid-race-filter', kind: 'easter-egg', title: 'Invalid Race Filter', sectors: [],
+    trigger: { type: 'receipt', event: 'mission:completed', raceOutcome: 'dnf' },
+    channel: 'memory', payload: { text: 'A schema fixture.' },
+  };
+  assert.ok(validateSpecial500([raceEntry]).some((problem) => problem.includes('unknown race outcome dnf')),
+    'race outcome filters reject unknown values');
+  raceEntry.trigger.raceOutcome = 'finish';
+  raceEntry.trigger.event = 'race:ended';
+  assert.ok(validateSpecial500([raceEntry]).some((problem) => problem.includes('requires a mission:completed receipt')),
+    'race outcome filters only attach to canonical successful mission receipts');
   const titles = new Map();
   for (const e of SPECIAL500_ALL) titles.set(e.title, (titles.get(e.title) || 0) + 1);
   const dups = [...titles].filter(([, c]) => c > 1).map(([t]) => t);
@@ -150,4 +162,86 @@ test('the wave-2 chain holds: the margin withdraws only after answering twice', 
 test('special500ById resolves wave-2 entries', () => {
   assert.equal(special500ById('SPX-E-200')?.title, 'The Registrar\'s Final Stamp');
   assert.equal(special500ById('SPX-E-001')?.kind, 'world-oneoff');
+});
+
+test('finish memories match canonical successful race receipts and last place requires terminal standings', () => {
+  const bus = stubBus();
+  special500Director.init({ bus });
+  const state = fixtureState();
+  const deliver = (payload, at) => {
+    state.simTime = at;
+    bus.deliver('mission:completed', payload);
+    special500Director.update(0.5, state);
+  };
+  const hasFlag = (id) => state.story.flags[`special500.${id}`] != null;
+  const completion = (rows) => {
+    const standings = rankRacingEntrants(rows);
+    const player = standings.find((row) => row.id === 'player' && row.player === true);
+    return {
+      type: 'race', racingContractId: 'contract_ceres_sprint', raceMode: 'race',
+      raceElapsedS: player.elapsedS, racePosition: player.position, raceEntrants: standings.length,
+      raceStandings: standings,
+    };
+  };
+
+  deliver({ type: 'cargo_delivery', racingContractId: 'unrelated', raceElapsedS: 81 }, 10);
+  assert.equal(hasFlag('SPX-E-196'), false, 'unrelated mission completion cannot count as a race finish');
+  const finisher = completion([
+    { id: 'rival-1', status: 'finished', elapsedS: 50, progress: 1 },
+    { id: 'player', player: true, status: 'finished', elapsedS: 60, progress: 1 },
+  ]);
+  deliver(finisher, 11);
+  assert.equal(hasFlag('SPX-E-196'), false, 'the second-finish memory preserves its authored count');
+  deliver(finisher, 12);
+  assert.equal(hasFlag('SPX-E-196'), true, 'two actual successful circuit receipts unlock it');
+
+  const lastPlaceBus = stubBus();
+  special500Director.init({ bus: lastPlaceBus });
+  const lastPlaceState = fixtureState();
+  const lastPlace = completion([
+    { id: 'rival-1', status: 'finished', elapsedS: 40, progress: 1 },
+    { id: 'rival-2', status: 'finished', elapsedS: 50, progress: 1 },
+    { id: 'player', player: true, status: 'finished', elapsedS: 60, progress: 1 },
+  ]);
+  const send = (payload, at) => {
+    lastPlaceState.simTime = at;
+    lastPlaceBus.deliver('mission:completed', payload);
+    special500Director.update(0.5, lastPlaceState);
+  };
+  send(completion([
+    { id: 'player', player: true, status: 'finished', elapsedS: 40, progress: 1 },
+    { id: 'rival-1', status: 'finished', elapsedS: 60, progress: 1 },
+    { id: 'rival-2', status: 'finished', elapsedS: 70, progress: 1 },
+  ]), 10);
+  assert.equal(lastPlaceState.story.flags['special500.SPX-E-074'], undefined,
+    'a non-last successful finish cannot trigger the last-place line');
+  const unfinishedRows = rankRacingEntrants([
+    { id: 'rival-1', status: 'finished', elapsedS: 40, progress: 1 },
+    { id: 'player', player: true, status: 'finished', elapsedS: 60, progress: 1 },
+    { id: 'rival-2', status: 'racing', progress: 0.2 },
+  ]);
+  const unfinished = { ...lastPlace, racePosition: 2, raceEntrants: 3, raceStandings: unfinishedRows };
+  send(unfinished, 11);
+  assert.equal(lastPlaceState.story.flags['special500.SPX-E-074'], undefined,
+    'interim standings cannot claim the player was definitively last');
+  send(lastPlace, 12);
+  assert.ok(lastPlaceState.story.flags['special500.SPX-E-074'] != null,
+    'the canonical terminal last-place finish triggers the line');
+});
+
+test('Rey tuition memory only matches an unsabotaged player win in his relief contest', () => {
+  const bus = stubBus();
+  special500Director.init({ bus });
+  const state = fixtureState();
+  const settle = (payload, at) => {
+    state.simTime = at;
+    bus.deliver('coldburnRey:raceSettled', payload);
+    special500Director.update(0.5, state);
+    return state.story.flags['special500.SP2-074'] != null;
+  };
+  const base = { missionId: 'coldburn-bid:test', captainId: 'captain:coldburn-rey', t: 20 };
+  assert.equal(settle({ ...base, winner: 'rey', sabotaged: false }, 10), false);
+  assert.equal(settle({ ...base, winner: 'player', captainId: 'captain:other', sabotaged: false }, 11), false);
+  assert.equal(settle({ ...base, winner: 'player', sabotaged: true }, 12), false);
+  assert.equal(settle({ ...base, winner: 'player', sabotaged: false }, 13), true);
 });

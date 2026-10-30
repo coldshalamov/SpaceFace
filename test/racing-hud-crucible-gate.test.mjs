@@ -221,6 +221,67 @@ function busStub() {
   };
 }
 
+test('temporary Circuits result auto-opens from the public launch marker without worker WeakMap state', async () => {
+  const dom = installDom();
+  let hud;
+  try {
+    const root = document.createElement('div');
+    const state = flightState();
+    const bus = busStub();
+    const pushed = [];
+    hud = mountRacingHud({ root, state, bus, screens: { pushScreen: (id) => pushed.push(id) } });
+
+    // The worker has registered its corridor in another realm. The main HUD receives only the
+    // public launch event and the forwarded completion payload.
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 38.77,
+      raceLapTimesS: [38.77],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'temporary Circuits completion opens its visible result');
+
+    // A campaign race completion still leaves the player in flight; stale launch state must not
+    // turn its receipt into an interrupting board push.
+    bus.emit('game:new', { seed: 42 });
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 39.25,
+      raceLapTimesS: [39.25],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard']);
+
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('save:restoring', {});
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 40.5,
+      raceLapTimesS: [40.5],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'restore clears any stale temporary-run marker');
+
+    bus.emit('game:new', { racingSession: true });
+    bus.emit('game:exitToMenu', {});
+    bus.emit('mission:completed', {
+      racingContractId: 'practice_level_textile_outbound',
+      raceMode: 'time-trial',
+      raceElapsedS: 41.5,
+      raceLapTimesS: [41.5],
+    });
+    await Promise.resolve();
+    assert.deepEqual(pushed, ['raceBoard'], 'menu exit clears any stale temporary-run marker');
+  } finally {
+    hud?.dispose();
+    dom.restore();
+  }
+});
+
 function actionRow(panel) {
   return panel.children.find((c) => c.className === 'race-tape-actions');
 }

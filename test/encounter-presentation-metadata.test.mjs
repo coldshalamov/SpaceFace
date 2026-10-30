@@ -4,7 +4,8 @@ import test from 'node:test';
 
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { ENCOUNTERS, ENCOUNTER_MODULES } from '../src/data/encounters/index.generated.js';
-import { NAMED_CAPTAINS } from '../src/data/encounters.js';
+import { NAMED_CAPTAINS, FACTION_LABELS } from '../src/data/encounters.js';
+import { NAMED_CAPTAINS as SHARED_CAPTAINS, FACTION_LABELS as SHARED_LABELS } from '../src/data/encounterIdentity.js';
 import {
   ENCOUNTER_PRESENTATION_METADATA as PRESENTATION,
 } from '../src/data/encounters/presentation.generated.js';
@@ -24,6 +25,14 @@ const planningOptions = {
   selfRegisteredEncounterIds,
   namedCaptains: PRESENTATION.namedCaptains,
 };
+
+test('encounter authority and presentation share the same immutable identity data', () => {
+  assert.equal(NAMED_CAPTAINS, SHARED_CAPTAINS);
+  assert.equal(FACTION_LABELS, SHARED_LABELS);
+  assert.equal(Object.isFrozen(NAMED_CAPTAINS), true);
+  assert.equal(Object.isFrozen(NAMED_CAPTAINS[0].escort.archetypes), true);
+  assert.equal(Object.isFrozen(FACTION_LABELS), true);
+});
 
 test('generated presentation metadata preserves every planner field and runtime id', () => {
   assert.equal(PRESENTATION.schemaVersion, 1);

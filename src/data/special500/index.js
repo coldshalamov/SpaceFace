@@ -20,6 +20,8 @@
 //   after    [ids] extra gate: every listed entry must already have fired
 //   notBeforeS  simTime floor ("N days in")
 //   trigger.where / trigger.nth  receipt filter (payload equality) / fire on Nth hit
+//   trigger.raceOutcome  narrow mission:completed receipt predicate: a finished circuit or
+//                        a classified last-place finish with a complete terminal standings row
 //   trigger.min  flag trigger: counter flag must be >= min
 //   payload  channel-shaped: { from, text } comms; { text, kind? } news;
 //            { event? } mail receipt; { text } memory/spectacle flavor line.
@@ -91,6 +93,7 @@ export const SPECIAL500_CHANNELS = Object.freeze([
 export const SPECIAL500_TRIGGER_TYPES = Object.freeze([
   'calendar', 'sectorEntry', 'proximity', 'receipt', 'hashDaily', 'simWindow', 'flag',
 ]);
+export const SPECIAL500_RACE_OUTCOMES = Object.freeze(['finish', 'lastPlace']);
 
 /** Validate the catalog shape; returns a list of human-readable problems (empty = valid). */
 export function validateSpecial500(entries = SPECIAL500) {
@@ -113,6 +116,14 @@ export function validateSpecial500(entries = SPECIAL500) {
     }
     if (t.nth != null && !(Number.isInteger(t.nth) && t.nth >= 1)) problems.push(`${at}: bad nth`);
     if (t.where != null && (typeof t.where !== 'object' || Array.isArray(t.where))) problems.push(`${at}: bad where`);
+    if (t.raceOutcome != null) {
+      if (!SPECIAL500_RACE_OUTCOMES.includes(t.raceOutcome)) {
+        problems.push(`${at}: unknown race outcome ${t.raceOutcome}`);
+      }
+      if (t.type !== 'receipt' || t.event !== 'mission:completed') {
+        problems.push(`${at}: race outcome requires a mission:completed receipt`);
+      }
+    }
     if (e.after != null && !(Array.isArray(e.after) && e.after.every((id) => ids.has(id)))) {
       problems.push(`${at}: after must list existing entry ids`);
     }

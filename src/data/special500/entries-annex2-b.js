@@ -335,7 +335,7 @@ export const ENTRIES_ANNEX2_B = [
     kind: 'comms-event',
     title: 'The Losing Lane\'s Applause',
     sectors: [],
-    trigger: { type: 'receipt', event: 'race:ended' },
+    trigger: { type: 'receipt', event: 'mission:completed', raceOutcome: 'lastPlace' },
     channel: 'commsLog',
     payload: {
       from: 'Race wire',

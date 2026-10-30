@@ -258,7 +258,7 @@ export function readVisibleRaceCue() {
   const direction = bearingDeg !== null
     ? (bearingDeg > 12 ? 'right' : bearingDeg < -12 ? 'left' : 'ahead')
     : directionMatch ? directionMatch[1].toLowerCase() : null;
-  const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*wu\b/i.exec(hintText);
+  const distanceMatch = /(\d[\d,]*(?:\.\d+)?)\s*(?:wu|u)\b/i.exec(hintText);
   if (distanceMatch) distanceWU = Number(distanceMatch[1].replace(/,/g, ''));
   if (!direction) return null;
   if (bearingDeg === null) bearingDeg = direction === 'right' ? 30 : direction === 'left' ? -30 : 0;

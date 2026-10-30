@@ -227,7 +227,7 @@ export const special500Director = {
           break;
         }
         case 'receipt': {
-          const heard = t.event ? receiptMatches(receipts.get(t.event), t.where) : 0;
+          const heard = t.event ? receiptMatches(receipts.get(t.event), t.where, t.raceOutcome) : 0;
           if (!heard) break;
           // nth: fire on the Nth matching receipt (default 1). The running count is a
           // save-carried flag so "third escape" survives Continue.
@@ -308,12 +308,39 @@ function pendingFor(ev) {
 
 // How many of this window's payloads satisfy the declarative `where` filter
 // ({ key: value } shallow equality on the payload). No filter = every receipt counts.
-function receiptMatches(payloads, where) {
+function receiptMatches(payloads, where, raceOutcome = null) {
   if (!payloads || !payloads.length) return 0;
-  if (!where) return payloads.length;
+  const raceMatch = (payload) => {
+    if (!raceOutcome) return true;
+    if (payload?.type !== 'race'
+      || typeof payload.racingContractId !== 'string' || !payload.racingContractId.trim()
+      || !Number.isFinite(payload.raceElapsedS) || payload.raceElapsedS <= 0) return false;
+    if (raceOutcome === 'finish') return true;
+    if (raceOutcome !== 'lastPlace' || !['race', 'cup'].includes(payload.raceMode)) return false;
+    const rows = payload.raceStandings;
+    const entrants = payload.raceEntrants;
+    if (!Array.isArray(rows) || !Number.isInteger(entrants) || entrants < 2
+      || rows.length !== entrants || payload.racePosition !== entrants) return false;
+    const ids = new Set();
+    const positions = new Set();
+    let player = null;
+    for (const row of rows) {
+      if (!row || typeof row.id !== 'string' || !row.id
+        || !Number.isInteger(row.position) || row.position < 1 || row.position > entrants
+        || !['finished', 'dnf'].includes(row.status)
+        || ids.has(row.id) || positions.has(row.position)) return false;
+      ids.add(row.id);
+      positions.add(row.position);
+      if (row.id === 'player' && row.player === true) player = row;
+    }
+    return positions.size === entrants && player?.status === 'finished'
+      && player.position === payload.racePosition;
+  };
+  if (!where) return payloads.reduce((count, payload) => count + (raceMatch(payload) ? 1 : 0), 0);
   let n = 0;
   for (const p of payloads) {
-    if (p && typeof p === 'object' && Object.keys(where).every((k) => p[k] === where[k])) n++;
+    if (p && typeof p === 'object' && raceMatch(p)
+      && Object.keys(where).every((k) => p[k] === where[k])) n++;
   }
   return n;
 }

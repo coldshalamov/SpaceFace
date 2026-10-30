@@ -670,7 +670,7 @@ export const ENTRIES_ANNEX2_D = [
     kind: 'easter-egg',
     title: 'The Standing Ovation of One',
     sectors: [],
-    trigger: { type: 'receipt', event: 'race:ended', nth: 2 },
+    trigger: { type: 'receipt', event: 'mission:completed', raceOutcome: 'finish', nth: 2 },
     channel: 'commsLog',
     payload: {
       from: 'Finish buoy',

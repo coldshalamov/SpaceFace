@@ -1,4 +1,12 @@
 import { normalizeSurveyMemory } from '../data/surveyCartography.js';
+import {
+  compareOccupiedSlotNewestFirst,
+  isUnsafePlainKey,
+  isSaveSlotId as isSaveSlotIdPure,
+  selectLatestOccupiedSlot as selectLatestOccupiedSlotPure,
+  slotMetaBeats,
+  slotMetaScore,
+} from './saveSlotIdentity.js';
 import { validateNativeAttestationTables, compactNativeAttestationTables } from './nativeAttestationTables.js';
 import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
@@ -9676,10 +9684,11 @@ function resumeObjectiveSummary(parts) {
 
 // Profile sidecars share the save namespace, but can never be game-load targets.
 export function isSaveSlotId(slot) {
-  return typeof slot === 'string' && slot.length > 0 && slot !== 'index'
-    && !isUnsafePlainKey(slot)
-    && LS_PREFIX + slot !== ACHIEVEMENTS_STORAGE_KEY
-    && LS_PREFIX + slot !== CRUCIBLE_META_STORAGE_KEY;
+  return isSaveSlotIdPure(slot, {
+    savePrefix: LS_PREFIX,
+    achievementsStorageKey: ACHIEVEMENTS_STORAGE_KEY,
+    crucibleMetaStorageKey: CRUCIBLE_META_STORAGE_KEY,
+  });
 }
 
 function normalizeSlotIndex(idx) {
@@ -9729,22 +9738,6 @@ function hasSlotContext(meta) {
   ));
 }
 
-function isOccupiedSlotMeta(meta) {
-  return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
-}
-
-function slotMetaScore(meta) {
-  const t = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
-  if (t) return t;
-  const playtimeS = Number(meta && meta.playtimeS);
-  return Number.isFinite(playtimeS) ? playtimeS : 0;
-}
-
-function slotPlaytimeScore(meta) {
-  const playtimeS = Number(meta && meta.playtimeS);
-  return Number.isFinite(playtimeS) ? playtimeS : 0;
-}
-
 /**
  * Latest-slot authority for Continue, load('latest'), and New Run+.
  * Higher saved-at time wins. When those times match, higher playtime wins.
@@ -9753,51 +9746,7 @@ function slotPlaytimeScore(meta) {
  * Returns the winning key, or null when no occupied slot is present.
  */
 export function selectLatestOccupiedSlot(slots) {
-  if (!slots || typeof slots !== 'object') return null;
-  let bestKey = null;
-  let bestMeta = null;
-  for (const key of Object.keys(slots)) {
-    if (!isSaveSlotId(key)) continue;
-    const meta = slots[key];
-    if (!isOccupiedSlotMeta(meta)) continue;
-    const candidate = {
-      slot: key,
-      savedAt: meta.savedAt,
-      lastSavedAt: meta.lastSavedAt,
-      playtimeS: meta.playtimeS,
-    };
-    if (bestMeta == null || slotMetaBeats(candidate, bestMeta)) {
-      bestKey = key;
-      bestMeta = candidate;
-    }
-  }
-  return bestKey;
-}
-
-function slotMetaBeats(candidate, incumbent) {
-  const scoreDelta = slotMetaScore(candidate) - slotMetaScore(incumbent);
-  if (scoreDelta !== 0) return scoreDelta > 0;
-  const playDelta = slotPlaytimeScore(candidate) - slotPlaytimeScore(incumbent);
-  if (playDelta !== 0) return playDelta > 0;
-  return String(candidate.slot) > String(incumbent.slot);
-}
-
-function compareOccupiedSlotNewestFirst(a, b) {
-  const left = {
-    slot: String((a && a.slot) || ''),
-    savedAt: a && a.savedAt,
-    lastSavedAt: a && a.lastSavedAt,
-    playtimeS: a && a.playtimeS,
-  };
-  const right = {
-    slot: String((b && b.slot) || ''),
-    savedAt: b && b.savedAt,
-    lastSavedAt: b && b.lastSavedAt,
-    playtimeS: b && b.playtimeS,
-  };
-  if (slotMetaBeats(left, right)) return -1;
-  if (slotMetaBeats(right, left)) return 1;
-  return 0;
+  return selectLatestOccupiedSlotPure(slots, isSaveSlotId);
 }
 
 function liveSlotSummary(slot, envelope, state) {
@@ -10114,10 +10063,6 @@ function normalizeControlBindings(bindings) {
     if (clean.length) out[action] = clean;
   }
   return Object.keys(out).length ? out : null;
-}
-
-function isUnsafePlainKey(key) {
-  return key === '__proto__' || key === 'constructor' || key === 'prototype';
 }
 
 function safeStringify(data) {

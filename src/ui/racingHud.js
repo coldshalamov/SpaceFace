@@ -7,7 +7,6 @@ import { readRacingCoach } from './racingCoach.js';
 import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
 import { createRacingMap, formatRaceTime } from './racingMap.js';
 import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '../systems/racingCareer.js';
-import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
 import { createHudCombatLock } from './hudCombatLock.js';
@@ -75,6 +74,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
     else parent.insertBefore(panel, parent.firstChild);
   };
   let map = null, missionId = null, lastPhase = null, lastTick = -Infinity, lastHolding = false, pulse = '', pulseUntil = -1;
+  // The simulation registers temporary corridor sessions in a realm-local WeakMap. In the
+  // worker lane that registry is not visible to this main-thread HUD, so retain the public
+  // launch option for the result-screen presentation decision.
+  let temporaryCircuitRun = false;
   const offs = [];
   const combatLock = createHudCombatLock({ bus, state });
   let rowLocked = false;
@@ -88,6 +91,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
     if (locked && row.contains?.(document.activeElement)) { try { document.activeElement.blur(); } catch {} }
   };
   const listen = (name,fn) => { const off=bus?.on?.(name,fn); if(typeof off==='function')offs.push(off); };
+  listen('game:new', (opts) => { temporaryCircuitRun = opts?.racingSession === true; });
+  for (const event of ['game:load', 'save:restoring', 'game:exitToMenu']) {
+    listen(event, () => { temporaryCircuitRun = false; });
+  }
   listen('race:toggleView',()=>{toggleSteeringView(state,bus);lastTick=-Infinity;});
   listen('settings:changed',()=>{lastTick=-Infinity;});
   listen('mission:gateCleared',p=>{
@@ -97,7 +104,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
     pulse = `${p.lapCompleted ? 'LAP' : 'GATE'} ${p.gateIndex+1} CLEAR${split}`;
     pulseUntil = (state.simTime||0)+1.6; live.textContent=pulse;
   });
-  const showResult=()=>{if(isRacingCorridorSession(state))queueMicrotask(()=>{if(state.mode==='flight')screens?.pushScreen?.('raceBoard');});};
+  const showResult=()=>{if(temporaryCircuitRun)queueMicrotask(()=>{if(state.mode==='flight')screens?.pushScreen?.('raceBoard');});};
   listen('mission:completed',p=>{ if(p?.racingContractId) {
     rememberRacingResult(p);
     let storage=null;try{storage=globalThis.localStorage;}catch{}
