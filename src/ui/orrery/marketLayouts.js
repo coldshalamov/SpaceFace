@@ -987,7 +987,7 @@ const CSS_TAIL = `
     grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr) !important; grid-template-rows:minmax(232px, 1fr) 0 !important; row-gap:0 !important; column-gap:16px !important; height:auto !important; min-height:100% !important; }
   /* the panel may run taller than a 60px phone-landscape body: the body scrolls it, as on master, so the register keeps
      room for whole rows (rework: at 568x320 a 33px rail under 81px rows left 50 goods unreachable) */
-  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; padding-top:4px !important; }
+  ${MD} > .sx-mkt__list { height:auto !important; max-height:none !important; }
   /* the register: the 'Station exchange' heading with the find box beside it, then the families as one strip over the
      table (it scrolls sideways and fades at its end), so the rows get the whole column */
   ${MD} .sx-mkt-browser { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:auto auto minmax(150px, 1fr) !important; row-gap:2px !important; }
@@ -1012,6 +1012,13 @@ const CSS_TAIL = `
   ${MD} .sx-mkt-browser__rail .sx-mkt-row__price > .sx-mkt-row__tr { display:block !important; }
   ${MD} .sx-mkt-browser__rail .sx-mkt-row > td.sx-mkt-row__name { white-space:normal !important; overflow:visible !important; }
   ${MD} .sx-mkt-browser__rail .sx-mkt-row__none { white-space:normal !important; line-height:14px !important; }
+  /* rework 3: at rest the register shows as many whole rows as master (1/3/2/4 at 568x320/600x380/640x360/650x400):
+     the heading line, the list's top pad and the column heads give back ~19px, and rows are 30px (tap ≥24) */
+  ${MD} > .sx-mkt__list { padding-top:0 !important; }
+  ${MD} .sx-mkt-browser__mode { min-height:0 !important; height:26px !important; max-height:26px !important; overflow:hidden !important; padding-top:0 !important; padding-bottom:0 !important; margin:0 !important; align-items:center !important; }
+  ${MD} .orr-mkt-find { padding:0 !important; }
+  ${MD} .sx-mkt-browser__rail thead th { padding-top:0 !important; padding-bottom:2px !important; line-height:14px !important; height:auto !important; }
+  ${MD} .sx-mkt-browser__rail .sx-mkt-row > td { height:30px !important; padding-top:1px !important; padding-bottom:1px !important; }
   /* the stage is one column: the console first, then the decision and the reading under it in the stage's own scroll */
   ${MD} .sx-mkt__stage.dp-work__stage { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:max-content max-content max-content !important; align-content:start !important; row-gap:10px !important; overflow-y:auto !important; overflow-x:hidden !important; }
   ${MD} .sx-mkt__stage.dp-work__stage > .sx-mkt__console { grid-column:1 !important; grid-row:1 !important; width:auto !important; max-height:none !important; overflow:visible !important; }
