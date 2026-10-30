@@ -25,6 +25,8 @@ import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/pl
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+const FIELD_ONLY = process.argv.includes('--field-only');
+const FIELD_ONLY_COMPLETE = Symbol('station command dock field-only complete');
 // This check asserts the undock autosave mirror reaches the shared player store, so it is
 // store-dependent: the store is mounted, but on an isolated temp dir (D178) — never the
 // machine's real player save drawer.
@@ -40,6 +42,7 @@ const { chromium } = await loadPlaywright();
 let server = null;
 let browser = null;
 let issues = null;
+let immediateMarketField = null;
 
 try {
   server = await startFreshServer();
@@ -223,7 +226,36 @@ try {
   const marketTile = page.locator('[data-screen="station"] .sx-tile[data-nav="market"]');
   const marketBox = await marketTile.boundingBox();
   assert.ok(marketBox, 'Market tile should expose a pointer target for the magnetic field');
+  const pointerTarget = await marketTile.evaluate((tile) => {
+    const dock = tile.closest('.sx-dock');
+    const witness = window.__sfDockPointerWitness = { documentMoves: 0, dockMoves: 0, target: null };
+    document.addEventListener('pointermove', (event) => {
+      witness.documentMoves++;
+      witness.target = event.target?.className?.baseVal || event.target?.className || event.target?.tagName || null;
+    }, true);
+    dock?.addEventListener('pointermove', () => { witness.dockMoves++; });
+    return { x: tile.getBoundingClientRect().x, y: tile.getBoundingClientRect().y,
+      width: tile.getBoundingClientRect().width, height: tile.getBoundingClientRect().height };
+  });
   await page.mouse.move(marketBox.x + marketBox.width / 2, marketBox.y + marketBox.height / 2);
+  immediateMarketField = await page.evaluate(async ({ x, y }) => {
+    const hit = document.elementFromPoint(x, y);
+    const tile = document.querySelector('[data-screen="station"] .sx-tile[data-nav="market"]');
+    const state = window.SF?.state;
+    const { stationMotionAllowed } = await import('/src/ui/station/stationEffects.js');
+    return {
+      at: { x, y },
+      hit: hit ? { tag: hit.tagName, className: String(hit.className?.baseVal || hit.className || '').slice(0, 160),
+        nav: hit.closest?.('[data-nav]')?.getAttribute('data-nav') || null } : null,
+      pointerTarget: window.__sfDockPointerWitness || null,
+      motionAllowed: stationMotionAllowed(state),
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      motionClass: document.documentElement.classList.contains('sf-reduce-motion'),
+      marketScale: tile?.style.getPropertyValue('--dock-scale') || null,
+      marketLift: tile?.style.getPropertyValue('--dock-lift') || null,
+      dockMotion: document.querySelector('[data-screen="station"] .sx-dock')?.closest('[data-so-motion]')?.getAttribute('data-so-motion') || null,
+    };
+  }, { x: marketBox.x + marketBox.width / 2, y: marketBox.y + marketBox.height / 2 });
   // The dock's pointer field is coalesced onto one requested frame (dock.js), and the docked
   // station is event-rendered: on a starved host that frame lands behind any fixed sleep, so a
   // one-shot sample reads whichever field write last ran (e.g. the keyboard field from the
@@ -235,14 +267,35 @@ try {
       && Number(tile.style.getPropertyValue('--dock-scale')) > 1.25
       && parseFloat(tile.style.getPropertyValue('--dock-lift')) <= -2;
   }, null, { timeout: DOCK_TIMEOUT_MS }).catch(async (err) => {
-    const dump = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
-      id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
-      scale: tile.style.getPropertyValue('--dock-scale'),
-      lift: tile.style.getPropertyValue('--dock-lift'),
-      selected: tile.getAttribute('aria-selected'),
-      focused: tile === document.activeElement,
-    })));
-    throw new Error('Timed out waiting for the Market pointer response: ' + err.message + ' :: ' + JSON.stringify(dump));
+    const dump = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const dock = document.querySelector('[data-screen="station"] .sx-dock');
+      return {
+        motion: {
+          mediaReduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          reduceMotionClass: document.documentElement.classList.contains('sf-reduce-motion'),
+          reduceFlashClass: document.documentElement.classList.contains('sf-reduce-flash'),
+          videoMotionReduce: !!state?.settings?.video?.motionReduce,
+          accessibilityFlashReduce: !!state?.settings?.accessibility?.flashReduce,
+          documentHidden: document.hidden,
+        },
+        dock: dock ? {
+          connected: dock.isConnected,
+          pointerEvents: getComputedStyle(dock).pointerEvents,
+          rect: (() => { const r = dock.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; })(),
+        } : null,
+        pointerTarget: window.__sfDockPointerWitness || null,
+        marketRect: (() => { const r = document.querySelector('[data-screen="station"] .sx-tile[data-nav="market"]')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, w: r.width, h: r.height } : null; })(),
+        tiles: [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
+          id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
+          scale: tile.style.getPropertyValue('--dock-scale'),
+          lift: tile.style.getPropertyValue('--dock-lift'),
+          selected: tile.getAttribute('aria-selected'),
+          focused: tile === document.activeElement,
+        })),
+      };
+    });
+    throw new Error('Timed out waiting for the Market pointer response: ' + err.message + ' :: ' + JSON.stringify({ pointerTarget, immediateMarketField, dump }));
   });
   const kinetic = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
     id: tile.getAttribute('data-nav') || tile.getAttribute('data-act'),
@@ -268,6 +321,17 @@ try {
     'magnetic response should yield through neighboring items, got: ' + JSON.stringify(shipworksMotion));
   assert.ok(ledgerMotion && Math.abs(ledgerMotion.scale - 1) < 0.01,
     'far destinations should remain seated, got: ' + JSON.stringify(ledgerMotion));
+  if (FIELD_ONLY) {
+    assert.equal(immediateMarketField?.hit?.nav, 'market',
+      'the real center of Market should hit its own tab: ' + JSON.stringify(immediateMarketField));
+    assert.ok(immediateMarketField?.pointerTarget?.documentMoves > 0
+      && immediateMarketField?.pointerTarget?.dockMoves > 0,
+      'the real pointer event should reach both document and command dock: ' + JSON.stringify(immediateMarketField));
+    assert.equal(immediateMarketField?.motionAllowed, true,
+      'the production station motion policy should allow the field: ' + JSON.stringify(immediateMarketField));
+    console.log('Station command dock production pointer field PASS:', JSON.stringify({ immediateMarketField, marketMotion, shipworksMotion, ledgerMotion }));
+    throw FIELD_ONLY_COMPLETE;
+  }
   await page.mouse.move(5, 5);
   // pointerleave resets the field synchronously, but the input event itself can sit behind a
   // pinned main thread — wait for equilibrium rather than a fixed 80ms.
@@ -449,8 +513,10 @@ try {
   console.log('Station command dock OK: New Game -> dock -> 7 destinations (pointer + keyboard) -> first-dock handoff -> Departure Check -> undock');
   console.log('Dock target:', dockTarget.stationId);
 } catch (err) {
-  if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
-  throw err;
+  if (err !== FIELD_ONLY_COMPLETE) {
+    if (typeof issues !== 'undefined' && issues) console.error('Captured page issues during run:', issues.issues);
+    throw err;
+  }
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();

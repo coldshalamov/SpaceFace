@@ -117,22 +117,29 @@ test('probe settlement follows the accepted instance receipt and exact tracked i
   assert.equal(settled(), false, 'only an active instance settles the acceptance probe');
 });
 
-test('the accept actor sends one intent and distinguishes a pending worker request from readiness denial', () => {
+test('the accept actor only reads the key, and distinguishes a pending worker request from readiness denial', () => {
+  // Accept is a continuous hold: a bare click() can never commit it, so the in-page actor
+  // observes the control and the driver performs the real pointer hold (page.mouse down/up).
   let clicks = 0;
   const key = { disabled: false, isConnected: true, textContent: 'Accept',
     getAttribute: name => { assert.equal(name, 'aria-label'); return 'Accept Probe and bind its route. Ship and account ready.'; },
     click() { clicks++; this.disabled = true; } };
   const h = helpers({ document: { querySelector: selector => selector.endsWith('.k-bad') ? null : key } });
   const first = h.attemptSeededMissionAccept();
-  assert.equal(first.activated, true);
+  assert.equal(first.found, true);
+  assert.equal(first.disabled, false, 'a ready key is reported holdable');
   assert.equal(first.readinessBlocked, false);
-  assert.equal(clicks, 1);
+  assert.equal(first.pending, false);
+  assert.equal(first.connected, true);
+  assert.equal(first.activated, undefined, 'activation belongs to the driver’s pointer hold');
+  assert.equal(clicks, 0, 'the actor never synthesizes a click');
+  key.disabled = true; // the hold committed; the worker RPC is in flight
   const pending = h.attemptSeededMissionAccept();
   assert.equal(pending.disabled, true);
   assert.equal(pending.pending, true, 'the controller retains its ready explanation while awaiting the RPC');
   assert.equal(pending.readinessBlocked, false);
   assert.equal(pending.activated, undefined);
-  assert.equal(clicks, 1, 'a pending intent is never clicked again');
+  assert.equal(clicks, 0, 'a pending intent is never clicked');
 });
 
 test('the accept actor preserves actual readiness reasons and unknown disabled controls fail closed', () => {

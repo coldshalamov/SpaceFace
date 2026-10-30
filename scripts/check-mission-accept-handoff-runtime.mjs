@@ -18,6 +18,7 @@ import { reportStationHandoffFailure, installStationHandoffTimingObserver, start
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
+const HEADED = process.argv.includes('--headed');
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -26,7 +27,7 @@ let acceptTrace = null;
 
 try {
   server = await startFreshServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: !HEADED, ...(HEADED ? { channel: 'chrome' } : {}) });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
   installCspSafePlaywrightPolling(page);
   await page.addInitScript(installStationHandoffTimingObserver);
@@ -78,18 +79,114 @@ try {
     const detail = await page.evaluate(() => {
       const state = window.SF && window.SF.state;
       const render = state && state.render;
+      const renderSystem = window.SF?.registry?.get?.('render');
       const player = state && state.entities && state.entities.get(state.playerId);
+      const validation = (value) => value ? {
+        ok: value.ok ?? null,
+        reason: value.reason ?? null,
+        refusedFrames: value.refusedFrames ?? null,
+        pendingAdmissionHandles: value.pendingAdmissionHandles ?? null,
+        missingProgramBindings: Array.isArray(value.missingProgramBindings)
+          ? value.missingProgramBindings.slice(0, 8) : null,
+        missingProgramKeys: Array.isArray(value.missingProgramKeys)
+          ? value.missingProgramKeys.slice(0, 8) : null,
+      } : null;
+      let pendingPipelineAdmissions = null;
+      try {
+        pendingPipelineAdmissions = typeof render?.pendingPipelineAdmissions === 'function'
+          ? render.pendingPipelineAdmissions() : null;
+      } catch (_) { /* optional failure snapshot */ }
       return {
         launch: window.__sfMissionHandoffLaunch,
         mode: state && state.mode,
         tick: state && state.tick,
         simTime: state && state.simTime,
         player: player ? { id: player.id, alive: player.alive !== false, hull: player.hull } : null,
+        timeScale: state?.timeScale ?? null,
+        timeEffects: window.SF?.timeEffects ? {
+          effectiveScale: window.SF.timeEffects.getEffectiveScale?.() ?? null,
+          requests: window.SF.timeEffects.describeRequests?.() ?? null,
+        } : null,
+        ui: state?.ui ? {
+          screenStack: Array.isArray(state.ui.screenStack) ? state.ui.screenStack.slice() : null,
+          docked: state.ui.docked ?? null,
+          dockedStationId: state.ui.dockedStationId ?? null,
+        } : null,
+        focus: {
+          hasFocus: document.hasFocus?.() ?? null,
+          visibility: document.visibilityState,
+          activeElement: document.activeElement ? {
+            tag: document.activeElement.tagName,
+            id: document.activeElement.id || null,
+            ariaLabel: document.activeElement.getAttribute?.('aria-label') || null,
+            text: String(document.activeElement.textContent || '').trim().slice(0, 120),
+          } : null,
+        },
+        loadingOverlay: (() => {
+          const overlay = document.getElementById('boot-overlay');
+          if (!overlay) return null;
+          const style = getComputedStyle(overlay);
+          return { display: style.display, visibility: style.visibility,
+            opacity: style.opacity, hiddenClass: overlay.classList.contains('hidden'),
+            stage: overlay.dataset.loadingStage || null,
+            startupFailure: overlay.dataset.startupFailure || null };
+        })(),
         flightVeilHoldsSim: render && render.flightVeilHoldsSim,
         firstPlayableFrameAt: render && render.firstPlayableFrameAt != null
           ? render.firstPlayableFrameAt : null,
         firstPicturePhase: render && render.openingFirstPicturePhase != null
           ? render.openingFirstPicturePhase : null,
+        readiness: render ? {
+          openingFirstPictureReady: render.openingFirstPictureReady ?? null,
+          openingFirstPictureOwner: render.openingFirstPictureOwner ? {
+            generation: render.openingFirstPictureOwner.generation ?? null,
+            serial: render.openingFirstPictureOwner.serial ?? null,
+            sector: render.openingFirstPictureOwner.sector ?? null,
+            context: render.openingFirstPictureOwner.context ?? null,
+          } : null,
+          liveSectorGpuAdmission: render.liveSectorGpuAdmission ?? null,
+          sectorShellAdmission: render.sectorShellAdmission ?? null,
+          sectorShellAdmissionSerial: render.sectorShellAdmissionSerial ?? null,
+          openingFirstPresentAdmission: render.openingFirstPresentAdmission ?? null,
+          worldSubmittedFrames: render.worldSubmittedFrames ?? null,
+          presentCount: render.presentCount ?? null,
+          lastPresentDtMs: render.lastPresentDtMs ?? null,
+          openingSubmissionFirstDrawSubmittedAt: render.openingSubmissionFirstDrawSubmittedAt ?? null,
+          rendererFrame: render.renderer?.info?.render?.frame ?? null,
+          preSubmitValidation: validation(render.openingSubmissionPreSubmitValidation),
+          submissionValidation: validation(render.openingSubmissionValidation),
+          pendingPipelineAdmissions,
+          veilLiftReason: render.veilLiftReason ?? null,
+          veilStage: render.veilStage ?? null,
+          dynResScale: render.dynResScale ?? null,
+          dynResAllowed: render.dynResAllowed ?? null,
+        } : null,
+        adaptive: (() => {
+          const system = renderSystem;
+          return system ? {
+            scale: system._adaptive?.getScale?.() ?? null,
+            enabled: system._adaptive?._enabled ?? null,
+            sample: system._adaptiveSample ? { ...system._adaptiveSample } : null,
+            firstPlayablePaintScheduled: system._firstPlayablePaintScheduled ?? null,
+            firstPlayablePaintScheduledAtMs: system._firstPlayablePaintScheduledAtMs ?? null,
+            firstPlayablePaintScheduledAgeMs: Number.isFinite(system._firstPlayablePaintScheduledAtMs)
+              ? Math.max(0, performance.now() - system._firstPlayablePaintScheduledAtMs) : null,
+            firstPlayablePaintRearms: system._firstPlayablePaintRearms ?? null,
+            deferNoncriticalMeshStreaming: system._deferNoncriticalMeshStreaming ?? null,
+          } : null;
+        })(),
+        visibleControls: [...document.querySelectorAll('button,[role="button"],input[type="button"],input[type="submit"]')]
+          .filter((el) => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
+          .slice(0, 24).map((el) => {
+            const r = el.getBoundingClientRect();
+            const x = Math.round(r.left + r.width / 2);
+            const y = Math.round(r.top + r.height / 2);
+            const hit = document.elementFromPoint(x, y);
+            return { tag: el.tagName, text: String(el.textContent || el.value || '').trim().slice(0, 90),
+              disabled: !!el.disabled, x, y,
+              hit: hit ? { tag: hit.tagName, id: hit.id || null, className: String(hit.className || '').slice(0, 120),
+                text: String(hit.textContent || '').trim().slice(0, 90) } : null };
+          }),
       };
     }).catch(() => null);
     throw new Error(`${error.message} :: Mission handoff launch state ${JSON.stringify(detail)} :: page errors ${JSON.stringify(issues.errorIssues())}`);
@@ -213,20 +310,34 @@ try {
   // tracked mission — was working the whole time. The selector is corrected; every downstream
   // assertion below is unchanged, and the disabled-state check is new so a readiness-gated dossier
   // reports "blocked" rather than silently clicking nothing.
-  // Query and activate in one page callback so a repaint cannot detach a pre-queried node.
-  // A valid activation starts the hold and worker request exactly once. The controller disables
-  // its still-labelled "Accept" key while that RPC is pending; this is distinct from an authored
-  // readiness blocker, which says "Cannot accept…" and renders the actual reason.
-  // Browser-process tracing can still finish when a main-thread task prevents
-  // the failure-only page snapshot from running. Keep it to this one handoff.
+  // Observe the live control, then use its public pointer hold. The accept key has required a
+  // continuous hold since the contracts UI change; a bare HTMLElement.click() intentionally
+  // starts and immediately releases that hold.
   acceptTrace = await startStationHandoffTrace(browser);
+  await page.evaluate(() => {
+    window.__missionAcceptPointerEvents = [];
+    for (const type of ['pointermove', 'pointerdown', 'pointerup', 'pointercancel', 'pointerleave']) {
+      document.addEventListener(type, (event) => {
+        const target = event.target?.closest?.('[data-accept="handoff_probe_bulk_trade"]');
+        if (!target || window.__missionAcceptPointerEvents.length >= 20) return;
+        window.__missionAcceptPointerEvents.push({ type, trusted: event.isTrusted,
+          button: event.button, at: Math.round(performance.now()), targetConnected: target.isConnected });
+      }, true);
+    }
+  });
+  const acceptKey = page.locator('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]');
+  // Wait for the live dossier control before reading it. Reading first and reacquiring the
+  // locator afterward races the station mirror repaint, which can replace the selected row.
+  await acceptKey.waitFor({ state: 'visible', timeout: 10000 });
   const commit = await page.evaluate(attemptSeededMissionAccept);
-  // HOLD-COMMIT RACE (probe-robustness, 2026-10-03). A synthetic click on [data-accept] arms the
-  // dossier's assistive-tech auto-hold (450ms + ~260ms retract). On a frame-starved host the hold
-  // fires after this callback; on a live-frame host it may already have fired — acceptMission then
-  // filters the consumed offer off the board and [data-accept] legitimately disappears. Either
-  // outcome proves the control worked, so a missing button must fall back to the accept's own
-  // evidence (the mission is active + tracked) before asserting.
+  if (commit?.found && !commit.disabled && !commit.readinessBlocked) {
+    const box = await acceptKey.boundingBox();
+    assert.ok(box, 'live Accept + Bind Route control should have a visible pointer target');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    try { await page.waitForTimeout(1100); } finally { await page.mouse.up().catch(() => {}); }
+    commit.activated = true;
+  }
   const consumed = !(commit && commit.found) ? await page.evaluate((prev) => {
     const state = window.SF.state;
     const active = (state.missions.active || []).filter((m) => m && m.status === 'active');
@@ -400,9 +511,7 @@ function attemptSeededMissionAccept() {
   const attempt = { found: true, disabled: !!key.disabled, pending, readinessBlocked,
     label: String(key.textContent || '').trim().slice(0, 300), ariaLabel,
     reason: reason || (readinessBlocked ? ariaLabel : null) };
-  if (key.disabled || readinessBlocked) return attempt;
-  key.click();
-  return { ...attempt, activated: true, connected: key.isConnected };
+  return { ...attempt, connected: key.isConnected };
 }
 
 function collectAcceptHandoffSnapshot() {
@@ -433,6 +542,7 @@ function collectAcceptHandoffSnapshot() {
       label: String(key.textContent || '').trim().slice(0, 300),
       ariaLabel: String(key.getAttribute('aria-label') || '').slice(0, 600),
       holdProgress: ring?.style?.getPropertyValue('--sf-hold-p') ?? null } : null,
+    acceptPointerEvents: window.__missionAcceptPointerEvents || [],
   };
 }
 

@@ -269,7 +269,11 @@ test('economyContracts resumes news voice after tutorial completion', () => {
   sys.init({ bus, state, helpers: { voice } });
   bus.emit('dock:docked', { stationId: STATION.id });
 
-  assert.equal(bus.emitLog.filter((e) => e.evt === 'mission:offered').length, 1);
+  // Post-tutorial the teaching row still posts, and AL-STORY-1's authored manifest audit
+  // (eligible once onboarding is present and inactive) joins it on the same dock.
+  const offers = bus.emitLog.filter((e) => e.evt === 'mission:offered').map((e) => e.payload);
+  assert.deepEqual(offers.map((o) => o.source), ['firstTradeContract', 'economyContract']);
+  assert.equal(offers[1].cause.tag, 'mass_scale');
   assert.equal(voice.calls.length, 1, 'news line fires after tutorial completion');
   assert.equal(voice.calls[0].channel, 'news');
   assert.equal(voice.calls[0].kind, 'contract');

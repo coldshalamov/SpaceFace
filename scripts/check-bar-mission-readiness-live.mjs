@@ -265,11 +265,11 @@ try {
 
   assert.equal(await page.evaluate(() => {
     const contacts = [...document.querySelectorAll('[data-screen="station"] .sx-bar-row[data-contact]')];
-    const hunter = contacts.find((button) => /bounty hunter/i.test(button.querySelector('.sx-bar-row__role')?.textContent || ''));
-    if (!hunter) return false;
-    hunter.click();
+    const broker = contacts.find((button) => /bounty broker/i.test(button.querySelector('.sx-bar-row__role')?.textContent || ''));
+    if (!broker) return false;
+    broker.click();
     return true;
-  }), true, 'Bar contact rail should expose its bounty hunter');
+  }), true, 'Bar contact rail should expose its Bounty Broker');
 
   // Choice glyphs decrypt after mount. Their action id and pinned accessible name stay
   // stable while textContent is blank/noise, so the actor follows those same public hooks.
