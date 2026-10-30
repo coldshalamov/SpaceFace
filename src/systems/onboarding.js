@@ -2579,7 +2579,12 @@ export const onboarding = {
       mass: 180,
       hull: 60,
       hullMax: 60,
-      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18) },
+      // The tutorial finish line must not be punt-able (same defect class as the rescue
+      // beacon's mass-1 body): a field-lesson shove into a dynamic rock makes it drift,
+      // and the shelved world record then advances it ballistically — the seam waypoint
+      // chases a body that rematerializes kilometres away forever (stranger run 39:
+      // rock exiled 129wu → 41 416wu while the ship trailed at 15wu/s).
+      physicsBody: { radius: asteroidColliderRadius('ast_common_rock', 18), dynamic: false },
       data: {
         typeId: 'ast_common_rock', oreHP: 60, oreHPMax: 60, yieldU: SEAM_ORE_TARGET,
         onboarding: true, onboardingTraining: true, trainingMining: true,

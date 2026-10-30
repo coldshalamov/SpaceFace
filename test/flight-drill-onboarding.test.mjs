@@ -218,6 +218,8 @@ test('nonlethal trainer and real event receipts complete the hands-on drill', ()
   state.onboarding.beatAction = 'Pulse the scanner.';
   const rock = sys._spawnMiningRock();
   assert.ok(rock && rock.data.trainingMining, 'seam lesson owns a marked mineable rock');
+  assert.equal(rock.physicsBody && rock.physicsBody.dynamic, false,
+    'the tutorial rock is pinned: a field shove or far-lane shelf must not exile the seam waypoint');
   rock.data.scanHighlightUntil = state.simTime + 5;
   bus.emit('scan:completed', { found: { asteroids: 1, wrecks: 0, anomalies: 0 } });
   assert.equal(state.onboarding.beatAction, taughtVerbLine(state, 'seam:scan:hit', 'Beam the bright seams.'));
