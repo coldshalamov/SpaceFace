@@ -393,7 +393,7 @@ export async function runReleaseSoakProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      }, taskId, { baselineSourcePath: baselineSource?.path || null });
+      }, taskId, { baselineSourcePath: baselineSource?.path || null, log: doLog });
       ({
         page,
         electronApp,
@@ -1273,8 +1273,43 @@ async function launchElectron(
   root,
   onOwnership = () => {},
   taskId = 'release-soak-electron',
-  { enableTier1Counters = false, baselineSourcePath = null } = {},
+  { enableTier1Counters = false, baselineSourcePath = null, log = console.log } = {},
 ) {
+  const setupLog = typeof log === 'function' ? log : console.log;
+  const awaitOptionalSetup = async (label, operation, timeoutMs = 10_000) => {
+    setupLog(`electron setup ${label} begin`);
+    let timer = null;
+    let timedOut = false;
+    const work = Promise.resolve().then(operation).then(
+      (value) => {
+        if (timedOut) setupLog(`electron setup ${label} settled after timeout`);
+        return { status: 'complete', value };
+      },
+      (error) => {
+        if (timedOut) setupLog(`electron setup ${label} rejected after timeout: ${String(error?.message || error).slice(0, 180)}`);
+        return { status: 'error', error };
+      },
+    );
+    const result = await Promise.race([
+      work,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ status: 'timeout' }), timeoutMs);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
+    if (result.status === 'timeout') {
+      timedOut = true;
+      setupLog(`electron setup ${label} timed out after ${timeoutMs}ms; continuing with live event tracking`);
+      return { completed: false, timedOut: true };
+    }
+    if (result.status === 'error') {
+      setupLog(`electron setup ${label} failed; continuing with live event tracking: ${String(result.error?.message || result.error).slice(0, 180)}`);
+      return { completed: false, error: result.error };
+    }
+    setupLog(`electron setup ${label} complete`);
+    return { completed: true, value: result.value };
+  };
+
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   // 240 s launch bound: on a host running other lanes' headed checks, the Electron driver
@@ -1292,7 +1327,9 @@ async function launchElectron(
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
+  setupLog('electron setup launch begin');
   const electronApp = await launchIsolatedElectronApplication(electron, isolatedLaunch);
+  setupLog('electron setup launch complete');
   let childProcess = null;
   let processMonitor = null;
   let pageIssueTracker = null;
@@ -1324,14 +1361,18 @@ async function launchElectron(
   // then owns both the runtime and its isolated profile even if setup never returns a launch record.
   publishOwnership();
   assert(childProcess, 'Electron launch must expose its owned child process');
+  setupLog('electron setup first-window begin (90s)');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
+  setupLog('electron setup first-window complete');
   publishOwnership({ page });
   // Playwright's Electron response wrapper can lose request method/identity at the
   // requestfinished -> response boundary. Bind the exact CDP requestId ledger before
   // backfill or later route work so the optional store 404 policy remains fail-closed.
-  await pageIssueTracker.bindNetworkProvenance?.(page);
+  await awaitOptionalSetup('CDP Network provenance', () => pageIssueTracker.bindNetworkProvenance?.(page));
+  setupLog('electron setup frame keepalive begin');
   installCspSafePlaywrightPolling(page);
   await installFrameKeepalive(page);
+  setupLog('electron setup frame keepalive complete');
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
@@ -1343,10 +1384,12 @@ async function launchElectron(
     page,
     canonicalUrlTracker,
   });
-  await pageIssueTracker.bindAndBackfillPage(page);
+  await awaitOptionalSetup('page history backfill', () => pageIssueTracker.bindAndBackfillPage(page));
+  setupLog('electron setup canonical-root wait begin (10s)');
   const rootUrl = assertIsolatedElectronRootUrl(
     await canonicalUrlTracker.waitForCanonicalRoot(10_000),
   );
+  setupLog(`electron setup canonical-root wait complete ${rootUrl}`);
   // The initial BrowserWindow.loadURL() is still owned by Electron main when firstWindow()
   // resolves. Publish its exact listener before any later setup can fail, then wait for the full
   // initial load to settle before an instrumentation reload is allowed to begin.
@@ -1355,7 +1398,9 @@ async function launchElectron(
     canonicalUrlTracker,
     rootUrl,
   });
+  setupLog('electron setup initial load-state wait begin (60s + one 180s retry)');
   await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+  setupLog('electron setup initial load-state wait complete');
   // Arm the read-only GL traps on the live page: without this the Electron route ran every soak
   // with both traps disarmed — they only rode the opt-in tier1-counter reload — which is why the
   // v6 acceptance pair captured 256 dead-handle warnings with zero trapped stacks. launchBrowser
@@ -7483,7 +7528,7 @@ async function runPerformanceAttributionProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      }, taskId, { enableTier1Counters });
+      }, taskId, { enableTier1Counters, log: doLog });
       ({
         page,
         electronApp,
