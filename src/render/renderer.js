@@ -427,6 +427,7 @@ import {
   createGpuResidencyAdmissionTracker,
   createOpeningLoadingAdmission,
   openingFirstPictureIsReady,
+  openingLoadingModeResetAction,
   createPipelineAdmissionTracker,
   prepareMobileOpeningFirstPicture,
   createSlicedYield,
@@ -22576,123 +22577,153 @@ export const render = {
       // the loading MODE command afterward. That same-restore echo cannot retire
       // the cohort. owns() checks the exact player plus world/run/context identity,
       // so a replacement restore or generation still resets the departed owner.
-      if (mode === 'loading'
-          && !this._openingLoadingAdmission?.owns(state.entities?.get(state.playerId))) {
-        state.render.openingFirstPictureReady = false;
-        state.render.openingFirstPictureOwner = null;
-        state.render.openingLiveSectorReady = null;
-        state.render.openingFirstPicturePhase = null;
-        this._openingLoadingAdmission = null;
-        this._openingLoadingMeshesReady = null;
-        const recook = this._sessionLiveSectorCookedId != null
-          && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
-          && this._contextLost !== true;
-        this._sessionRecookKeepGpu = recook === true;
-        // A save/load transition replaces entity objects while commonly reusing their numeric IDs.
-        // Never let the prior flight's glass/runway membership gate the restored world by ID: it
-        // can falsely require unrelated replacement actors and strand Continue in loading.
-        this._activityFrame = null;
-        this._activityFrameTick = null;
-        state.render.activityFrame = null;
-        this._pendingPostOpeningSector = null;
-        this._openingPictureHoldSinceMs = null;
-        this._firstPlayablePaintScheduled = false;
-        this._firstPlayablePaintScheduledAtMs = null;
-        this._firstPlayablePaintRearms = 0;
-        this._firstFlightDeferredHold = true;
-        // A fresh opening owns the absolute first-flight window again. Leaving an arrival deadline
-        // here would make Continue (restored simTime already past it) release on frame one, or a
-        // restored clock behind it hold for the difference.
-        state.render.firstFlightDeferredHoldUntil = null;
-        if (recook) {
-          // Keep the cooked GPU set and opening receipt. Clearing them made F9's
-          // next present an opening first-draw that compiled 37 extra programs.
-          // Latches keyed to the pre-restore sim clock must still reset: a stale
-          // firstFlightResidencyHoldUntil can sit ABOVE the rewound simTime (a save
-          // written ~33 min in restores sim<<until and freezes streaming for the
-          // difference) or below it (the finite stamp then masks the <20 s fallback
-          // and the restored set gets no hold at all). The shell latch armed by an
-          // enter whose listener tail this restore swallowed would otherwise pin
-          // residencyEvict shut for the whole session. The restored sector:enter
-          // re-arms and re-stamps each of these through its proper owners.
-          state.render.firstPlayableFrameAt = null;
-          state.render.firstFlightResidencyHoldUntil = null;
-          state.render.sectorShellAdmission = false;
-          state.render.sectorShellAdmissionSerial = null;
-          // The id set belongs to the world that just left — a superseded cook's late
-          // stamp must not survive into the restore (dead ids resolve null, so it
-          // fails open but still mis-gates first-flight upgrade decisions).
-          state.render.liveSectorFirstFlightIds = null;
-          this._arrivalRosterIds = null;
-          this._arrivalRosterIter = null;
-          // Honor the lane's fault park like the service pump does — a keep-GPU
-          // event inside the same epoch must not re-mint a faulted sweep.
-          if (this._residentReattachFaultEpoch !== serviceFaultEpoch(state)) {
-            mintResidentReattachSweep(this);
+      if (mode === 'loading') {
+        // Worker mode notifications carry their emit-time mode. simLaneMain temporarily
+        // replays that mode while dispatching the event, then restores the reply's live
+        // state. Defer ownership invalidation until that replay has unwound so an old
+        // loading echo cannot revoke a picture that has already entered flight.
+        const resetRender = state.render;
+        const resetWorld = state.world;
+        const resetGeneration = resetRender.admissionRunGeneration;
+        const resetRenderer = resetRender.renderer;
+        const resetContext = state.contextRestoreSeq;
+        const resetReady = resetRender.openingFirstPictureReady;
+        const resetOwner = resetRender.openingFirstPictureOwner;
+        const resetPhase = resetRender.openingFirstPicturePhase;
+        const resetLiveSector = resetRender.openingLiveSectorReady;
+        queueMicrotask(() => {
+          if (state.mode !== 'loading' || state.render !== resetRender || state.world !== resetWorld
+              || resetRender.admissionRunGeneration !== resetGeneration
+              || resetRender.renderer !== resetRenderer || state.contextRestoreSeq !== resetContext) return;
+          // A newer gate may have published while this event waited in the microtask queue.
+          if (resetRender.openingFirstPictureReady !== resetReady
+              || resetRender.openingFirstPictureOwner !== resetOwner
+              || resetRender.openingFirstPicturePhase !== resetPhase
+              || resetRender.openingLiveSectorReady !== resetLiveSector) return;
+          const player = state.entities?.get(state.playerId);
+          const resetAction = openingLoadingModeResetAction(
+            state, this._openingLoadingAdmission, player,
+          );
+          if (resetAction === 'ignore' || resetAction === 'preserve') return;
+          resetRender.openingFirstPictureReady = false;
+          resetRender.openingFirstPictureOwner = null;
+          resetRender.openingLiveSectorReady = null;
+          resetRender.openingFirstPicturePhase = null;
+          if (resetAction === 'clear-receipt') return;
+          if (resetAction === 'retire-cohort') {
+            this._openingLoadingAdmission = null;
+            this._openingLoadingMeshesReady = null;
           }
-          resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
-          if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
-            state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
+          const recook = this._sessionLiveSectorCookedId != null
+            && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
+            && this._contextLost !== true;
+          this._sessionRecookKeepGpu = recook === true;
+          // A save/load transition replaces entity objects while commonly reusing their numeric IDs.
+          // Never let the prior flight's glass/runway membership gate the restored world by ID: it
+          // can falsely require unrelated replacement actors and strand Continue in loading.
+          this._activityFrame = null;
+          this._activityFrameTick = null;
+          state.render.activityFrame = null;
+          this._pendingPostOpeningSector = null;
+          this._openingPictureHoldSinceMs = null;
+          this._firstPlayablePaintScheduled = false;
+          this._firstPlayablePaintScheduledAtMs = null;
+          this._firstPlayablePaintRearms = 0;
+          this._firstFlightDeferredHold = true;
+          // A fresh opening owns the absolute first-flight window again. Leaving an arrival deadline
+          // here would make Continue (restored simTime already past it) release on frame one, or a
+          // restored clock behind it hold for the difference.
+          state.render.firstFlightDeferredHoldUntil = null;
+          if (recook) {
+            // Keep the cooked GPU set and opening receipt. Clearing them made F9's
+            // next present an opening first-draw that compiled 37 extra programs.
+            // Latches keyed to the pre-restore sim clock must still reset: a stale
+            // firstFlightResidencyHoldUntil can sit ABOVE the rewound simTime (a save
+            // written ~33 min in restores sim<<until and freezes streaming for the
+            // difference) or below it (the finite stamp then masks the <20 s fallback
+            // and the restored set gets no hold at all). The shell latch armed by an
+            // enter whose listener tail this restore swallowed would otherwise pin
+            // residencyEvict shut for the whole session. The restored sector:enter
+            // re-arms and re-stamps each of these through its proper owners.
+            state.render.firstPlayableFrameAt = null;
+            state.render.firstFlightResidencyHoldUntil = null;
+            state.render.sectorShellAdmission = false;
+            state.render.sectorShellAdmissionSerial = null;
+            // The id set belongs to the world that just left — a superseded cook's late
+            // stamp must not survive into the restore (dead ids resolve null, so it
+            // fails open but still mis-gates first-flight upgrade decisions).
+            state.render.liveSectorFirstFlightIds = null;
+            this._arrivalRosterIds = null;
+            this._arrivalRosterIter = null;
+            // Honor the lane's fault park like the service pump does — a keep-GPU
+            // event inside the same epoch must not re-mint a faulted sweep.
+            if (this._residentReattachFaultEpoch !== serviceFaultEpoch(state)) {
+              mintResidentReattachSweep(this);
+            }
+            resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
+            if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
+              state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
+            }
+          } else {
+            this._openingEnvFrozen = false;
+            // A foundry HDRI that landed during the frozen first picture is promoted under the
+            // veil — the curated shot kept its env; the live one gets the industrial light. Armed,
+            // not baked here: this listener runs inside the Launch reply (enterLoadingMode's
+            // mode:changed), where the 2K float upload + PMREM convolve held the click for
+            // ~400-900 ms on software GL. The cook seams and the post-opening pass drain it before
+            // the first flight frame; the source differs, so the same-source guard cannot skip it.
+            if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
+              this._foundryEnvPending = true;
+              // Retire it at the head of the veil, out of the Launch reply: once the loading
+              // veil has painted (rAF, then a fresh task). Left to the cook seams alone it could
+              // ride to the flight backstop, whose GPU convolve then landed on the first
+              // presented flight frames (a 2.6-3.7 s program-link stall on software GL).
+              this._scheduleVeiledFoundryEnvDrain?.();
+            }
+            releaseOpeningGraphPublication(this);
+            this._openingFirstPicturePrepared = false;
+            // F9 / Continue waits on authored-visuals BEFORE the live-sector cook.
+            // The first-flight leftover hold must not strand restored hulls at loading:promise.
+            state.render.firstPlayableFrameAt = null;
+            state.render.firstFlightResidencyHoldUntil = null;
+            state.render.sectorShellAdmission = false;
+            state.render.sectorShellAdmissionSerial = null;
+            state.render.liveSectorFirstFlightIds = null;
+            this._arrivalRosterIds = null;
+            this._arrivalRosterIter = null;
+            state.render.openingSubmissionFirstDrawSubmittedAt = null;
+            state.render.openingSubmissionPlan = null;
+            state.render.openingSubmissionReceipt = null;
+            this._openingShadowAdmission = null;
+            this._openingPreSubmitRefusals = 0;
+            state.render.openingFirstVisibleGpuCounts = null;
+            state.render.openingFirstDrawIdentityCensus = null;
+            state.render.openingFirstDrawObservation = null;
+            state.render.openingSubmissionPreSubmitValidation = null;
+            state.render.openingSubmissionValidation = null;
+            this._openingFirstDrawIdentityIter = null;
+            this._openingFirstDrawIdentityResult = undefined;
+            this._openingFirstDrawDiagnosticsDeferred = false;
+            state.render.openingSubmissionReady = null;
+            state.render.firstPlayableContentHashes = null;
+            state.render.firstPlayableContentHashesVerified = false;
+            state.render.firstPlayableGlobalProgramKeys = null;
+            state.render.firstPlayableOpeningProgramKeys = null;
+            state.render.firstPlayableResourceIdentitySets = null;
+            this._deferNoncriticalMeshStreaming = false;
+            state.render.deferNoncriticalMeshStreaming = false;
+            // Drop the previous flight's leftover meshes before authored-visuals
+            // and the live-sector cook. F9 reuses IDs; dirty-only reconcile was
+            // too late and the second whole-scene 1x1 TDR'd Intel. The stepped
+            // pass drains it across the shell's own ticks — running it inline here
+            // paid the whole reconcile inside the mode-change task.
+            this._meshReconcileDirty = true;
+            resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
+            if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
+              state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
+            }
           }
-        } else {
-          this._openingEnvFrozen = false;
-          // A foundry HDRI that landed during the frozen first picture is promoted under the
-          // veil — the curated shot kept its env; the live one gets the industrial light. Armed,
-          // not baked here: this listener runs inside the Launch reply (enterLoadingMode's
-          // mode:changed), where the 2K float upload + PMREM convolve held the click for
-          // ~400-900 ms on software GL. The cook seams and the post-opening pass drain it before
-          // the first flight frame; the source differs, so the same-source guard cannot skip it.
-          if (this._foundryEnvTexture && this._envMapSource !== IBL_SOURCE_FOUNDRY) {
-            this._foundryEnvPending = true;
-            // Retire it at the head of the veil, out of the Launch reply: once the loading
-            // veil has painted (rAF, then a fresh task). Left to the cook seams alone it could
-            // ride to the flight backstop, whose GPU convolve then landed on the first
-            // presented flight frames (a 2.6-3.7 s program-link stall on software GL).
-            this._scheduleVeiledFoundryEnvDrain?.();
-          }
-          releaseOpeningGraphPublication(this);
-          this._openingFirstPicturePrepared = false;
-          // F9 / Continue waits on authored-visuals BEFORE the live-sector cook.
-          // The first-flight leftover hold must not strand restored hulls at loading:promise.
-          state.render.firstPlayableFrameAt = null;
-          state.render.firstFlightResidencyHoldUntil = null;
-          state.render.sectorShellAdmission = false;
-          state.render.sectorShellAdmissionSerial = null;
-          state.render.liveSectorFirstFlightIds = null;
-          this._arrivalRosterIds = null;
-          this._arrivalRosterIter = null;
-          state.render.openingSubmissionFirstDrawSubmittedAt = null;
-          state.render.openingSubmissionPlan = null;
-          state.render.openingSubmissionReceipt = null;
-          this._openingShadowAdmission = null;
-          this._openingPreSubmitRefusals = 0;
-          state.render.openingFirstVisibleGpuCounts = null;
-          state.render.openingFirstDrawIdentityCensus = null;
-          state.render.openingFirstDrawObservation = null;
-          state.render.openingSubmissionPreSubmitValidation = null;
-          state.render.openingSubmissionValidation = null;
-          this._openingFirstDrawIdentityIter = null;
-          this._openingFirstDrawIdentityResult = undefined;
-          this._openingFirstDrawDiagnosticsDeferred = false;
-          state.render.openingSubmissionReady = null;
-          state.render.firstPlayableContentHashes = null;
-          state.render.firstPlayableContentHashesVerified = false;
-          state.render.firstPlayableGlobalProgramKeys = null;
-          state.render.firstPlayableOpeningProgramKeys = null;
-          state.render.firstPlayableResourceIdentitySets = null;
-          this._deferNoncriticalMeshStreaming = false;
-          state.render.deferNoncriticalMeshStreaming = false;
-          // Drop the previous flight's leftover meshes before authored-visuals
-          // and the live-sector cook. F9 reuses IDs; dirty-only reconcile was
-          // too late and the second whole-scene 1x1 TDR'd Intel. The stepped
-          // pass drains it across the shell's own ticks — running it inline here
-          // paid the whole reconcile inside the mode-change task.
-          this._meshReconcileDirty = true;
-          resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
-          if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
-            state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
-          }
-        }
+        });
       }
       if (mode !== 'flight') return;
       this._sessionRecookKeepGpu = false;

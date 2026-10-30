@@ -157,6 +157,16 @@ export function openingFirstPictureIsReady(state) {
     && !gpuContextIsLost(state);
 }
 
+/** Decide how a loading-mode notification affects the currently live opening owner. */
+export function openingLoadingModeResetAction(state, admission, player) {
+  if (state?.mode !== 'loading') return 'ignore';
+  if (admission?.owns(player) === true) {
+    if (openingFirstPictureIsReady(state) || state.render?.openingFirstPictureReady !== true) return 'preserve';
+    return 'clear-receipt';
+  }
+  return 'retire-cohort';
+}
+
 /** The main time-effects owner holds the spawn state until an actual world submit has painted. */
 export function holdOpeningPresentationUntilPaint(state, timeEffects, onFailure, options = {}) {
   const render = state.render;
