@@ -44,6 +44,7 @@ import { ENTRIES_INTERACT_A } from './entries-interact-a.js';
 import { ENTRIES_INTERACT_B } from './entries-interact-b.js';
 import { ENTRIES_INTERACT_C } from './entries-interact-c.js';
 import { ENTRIES_INTERACT_D } from './entries-interact-d.js';
+import { ENTRIES_ANNEX } from './entries-annex.js';
 
 export const SPECIAL500 = Object.freeze([
   ...ENTRIES_SLICE, ...ENTRIES_COMMS_A, ...ENTRIES_EGG_A,
@@ -55,7 +56,13 @@ export const SPECIAL500 = Object.freeze([
 ]);
 export const SPECIAL500_COMPLETE = true; // all 500 ratified entries authored
 
-const BY_ID = new Map(SPECIAL500.map((e) => [e.id, e]));
+// The annex wave: the 20 ratified bench spares (CONSENSUS_500 ranks 501-520) plus
+// 30 new SPX-D proposals, riding the same director and flag/memory schema. The
+// ratified catalog above stays exactly 500; the director sweeps SPECIAL500_ALL.
+export const SPECIAL500_ANNEX = Object.freeze([...ENTRIES_ANNEX]);
+export const SPECIAL500_ALL = Object.freeze([...SPECIAL500, ...SPECIAL500_ANNEX]);
+
+const BY_ID = new Map(SPECIAL500_ALL.map((e) => [e.id, e]));
 export function special500ById(id) {
   return BY_ID.get(id) || null;
 }

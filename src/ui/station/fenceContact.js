@@ -51,7 +51,8 @@ export function fenceBarContact(stationId, state) {
   if (fence.quirk.fixer && wanted) {
     // The scrub cools ONE wanted band per fence per cooldown (heat.js SCRUB_COOL_LEVELS), priced
     // per current level — never the whole record in one ask, and a live net or impound hold is
-    // refused outright. "Clean my record" promised the full clear; the label says the deal.
+    // refused outright. "Clean my record" promised a full clear the desk never offered; the
+    // label says the deal the fixer actually sells.
     choices.push({ id: 'fence_scrub', label: `Cool the record one notch (${fenceScrubCostCr(level, row.trust)} cr)` });
   }
   choices.push({ id: 'fence_bye', label: 'Keep it quiet.' });

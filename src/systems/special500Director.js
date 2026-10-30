@@ -12,7 +12,7 @@
 // time. Evaluation is throttled and early-outs on the fired-flag lookup, so a
 // full catalog costs a few hundred map reads per half-second.
 
-import { SPECIAL500 } from '../data/special500/index.js';
+import { SPECIAL500_ALL as SPECIAL500 } from '../data/special500/index.js';
 import { CAL_DAY_S, CAL_YEAR_DAYS } from '../data/worldCalendar.js';
 import { alive, situationMemory } from './crSituationKit.js';
 

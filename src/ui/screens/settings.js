@@ -36,6 +36,7 @@ import {
   frameCapLabel,
   matchingQualityPreset,
   normalizeFrameCap,
+  qualityModeForVideo,
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
@@ -568,7 +569,7 @@ export const SETTINGS_RESET_PAGES = Object.freeze(Object.keys(RESET_PAGES));
 
 export const SETTINGS_RESET_COPY = Object.freeze({
   Audio: 'Every volume and mute switch on this page returns to how the game shipped.',
-  Video: 'The picture returns to Balanced and every video row to how the game shipped. Motion effects are set under Access and stay as they are.',
+  Video: 'The picture returns to Automatic with Balanced effects and every video row to how the game shipped. Motion effects are set under Access and stay as they are.',
   Gameplay: 'Assists, cameras, autosave and hints return to how the game shipped. Difficulty returns to Standard unless you are on Ironman. Key bindings are not touched.',
   Access: 'Contrast, text size, captions and the rest return to how the game shipped. Your motion choice and your language stay as you set them.',
 });
@@ -809,9 +810,23 @@ export const settingsScreen = {
     // ever gets a suggestion toast), applied through the same contract the Quality mode row uses
     // so every pinned key moves together; the rest of the page follows key by key.
     if (spec.preset) {
+      const previousQualityMode = s.video && s.video.qualityMode;
       const applied = applyQualityPreset(s, DEFAULT_QUALITY_PRESET);
       if (applied) {
-        for (const key of applied.changed) { this._set(ctx, 'video', key, s.video[key]); moved++; }
+        if (applied.changed.includes('qualityMode')) {
+          s.video.qualityMode = defaults.video.qualityMode;
+          if (previousQualityMode !== defaults.video.qualityMode) {
+            this._set(ctx, 'video', 'qualityMode', defaults.video.qualityMode);
+            moved++;
+          }
+        }
+        for (const key of applied.changed) {
+          // Reset selects the shipped Auto policy below; do not transiently publish the preset's
+          // ordinary Manual mode while the same reset is still applying page defaults.
+          if (key === 'qualityMode') continue;
+          this._set(ctx, 'video', key, s.video[key]);
+          moved++;
+        }
       }
     }
     for (const item of settingsPageResetPlan(page, defaults)) write(item.section, item.key, item.value, item.fallback === true);
@@ -899,17 +914,26 @@ export const settingsScreen = {
           }).catch(() => {});
         }
       }
-      // Quality modes (owner 2026-10-13): the three pictures as one press each, so the cost of the
-      // expensive settings can be A/B'd live instead of tuned blind. applyQualityPreset pins every
-      // picture-defining key; the rows below stay the source of truth for advanced edits, and one
-      // hand-tweak truthfully un-presses the mode (Modified note).
+      // Auto is the shipped policy. Named picture choices are explicit manual overrides; the
+      // adaptive controller only changes internal render resolution and never simulation content.
       const matched = matchingQualityPreset(vd);
       const isModePreset = CANONICAL_QUALITY_PRESET_IDS.includes(matched);
+      const qualityMode = qualityModeForVideo(vd);
       build.choice('Quality mode',
-        [['low', 'High performance'], ['medium', 'Balanced'], ['high', 'High quality']],
-        () => (isModePreset ? matched : ''),
-        (value) => this._applyPreset(ctx, value));
-      if (isModePreset) {
+        [['auto', 'Automatic'], ['low', 'High performance'], ['medium', 'Balanced'], ['high', 'High quality']],
+        () => (qualityMode === 'auto' ? 'auto' : (isModePreset ? matched : '')),
+        (value) => {
+          if (value === 'auto') {
+            this._set(ctx, 'video', 'qualityMode', 'auto');
+            this._render(ctx);
+          } else this._applyPreset(ctx, value);
+        });
+      if (qualityMode === 'auto') {
+        build.note('Automatic trials resolution bands during visible flight to fit this display’s frame budget, restoring resolution when a lower band does not help. Game content stays in place.');
+        if (vd.renderGraph === true) {
+          build.note('Automatic uses adaptive bloom. Choose a manual quality mode to use render-graph ambient occlusion.');
+        }
+      } else if (isModePreset) {
         const chosen = QUALITY_PRESETS.find((preset) => preset.id === matched);
         if (chosen && Array.isArray(chosen.stays) && Array.isArray(chosen.substitutes)) {
           build.note(settingsQualityKeepsNote(chosen.stays.join(', '), chosen.substitutes.join(', ')));
@@ -951,9 +975,19 @@ export const settingsScreen = {
       if (vd.renderGraph == null) vd.renderGraph = false;
       rowToggle('Render graph (GTAO + bloom)', () => !!vd.renderGraph, (v) => this._set(ctx, 'video', 'renderGraph', v));
       rowSlider('Render scale', () => vd.renderScale, 0.5, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => this._set(ctx, 'video', 'renderScale', v, persist));
-      // Emergency-only: normal play keeps a stable render size. Structural fixes own performance.
-      if (vd.dynamicResolution == null) vd.dynamicResolution = false;
-      rowToggle('Emergency dynamic resolution', () => vd.dynamicResolution === true, (v) => this._set(ctx, 'video', 'dynamicResolution', v));
+      if (qualityMode === 'auto') {
+        rowToggle('Adaptive resolution', () => true, (enabled) => {
+          if (enabled) this._set(ctx, 'video', 'qualityMode', 'auto');
+          else {
+            this._set(ctx, 'video', 'qualityMode', 'manual');
+            this._set(ctx, 'video', 'dynamicResolution', false);
+          }
+        });
+      } else {
+        if (vd.dynamicResolution == null) vd.dynamicResolution = false;
+        rowToggle('Adaptive resolution', () => vd.dynamicResolution === true,
+          (enabled) => this._set(ctx, 'video', 'dynamicResolution', enabled));
+      }
       rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v, persist) => this._set(ctx, 'video', 'fov', v, persist));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
       rowToggle('Engine trails', () => vd.engineTrails !== false, (v) => this._set(ctx, 'video', 'engineTrails', v));

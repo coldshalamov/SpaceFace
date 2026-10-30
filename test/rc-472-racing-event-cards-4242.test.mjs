@@ -170,9 +170,12 @@ test('seed 4242: every authored contract is a selectable card with its real cour
       assert.equal(svgs.length, 1, `${row.id} carries exactly one course drawing`);
       assert.equal(svgs[0].getAttribute('role'), 'img');
       assert.ok(svgs[0].getAttribute('aria-label'));
+      // ORRERY §3.1: the route is a wide dim bloom under a core stroke — two strokes of ONE path.
       const polylines = findAll(svgs[0], (n) => n.tagName === 'polyline');
-      assert.equal(polylines.length, 1);
-      const points = String(polylines[0].getAttribute('points')).trim().split(/\s+/)
+      assert.equal(polylines.length, 2, `${row.id} draws one route as bloom + core`);
+      assert.equal(polylines[0].getAttribute('points'), polylines[1].getAttribute('points'),
+        'bloom and core trace the same course');
+      const points = String(polylines[1].getAttribute('points')).trim().split(/\s+/)
         .map((pair) => pair.split(',').map(Number));
       assert.ok(points.length >= 2, 'the drawn course is nonempty');
       assert.ok(points.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y)), 'finite XZ course');

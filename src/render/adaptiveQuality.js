@@ -1,15 +1,13 @@
 // src/render/adaptiveQuality.js — GPU capability detection + dynamic-resolution controller.
 //
-// SpaceFace is GPU present-bound: the sim/JS side fits the frame budget, but a weak/integrated GPU
-// (or a browser that has fallen back to SOFTWARE rendering with hardware acceleration off) can't
-// shade the full-res HDR scene + bloom composite in time and drops to a few fps. renderer.js uses
-// this module to (a) identify the real renderer so it can warn the player + pick a per-tier floor,
-// and (b) run a controller that trades INTERNAL resolution (state.render.dynResScale) for a smooth
-// framerate. The controller never touches settings.video, so it fully recovers on a fast context.
+// Resolution can relieve GPU shading cost, while simulation and other CPU work need their own
+// fixes. renderer.js uses this module to identify software rendering, choose a per-tier floor,
+// and trial INTERNAL resolution bands (state.render.dynResScale). A reduction that does not
+// improve frame time is restored. The controller never changes the player's saved effect choices.
 //
 // Contract (consumed by src/render/renderer.js):
 //   detectGpu(renderer) -> { renderer:string, vendor:string, software:bool, tier:string }
-//   createAdaptiveResolution({ floor, apply }) -> { setEnabled(bool), update(frameDt), getScale() }
+//   createAdaptiveResolution({ floor, apply }) -> { setEnabled(bool), update(frameDt, sample), getScale() }
 //     apply(scale) is called only when the live multiplier changes; scale is clamped to [floor, 1].
 //
 // No Three.js import (reads through the passed WebGLRenderer's raw context); no per-frame allocation.
@@ -79,8 +77,8 @@ export function detectGpu(renderer) {
 // maps to an adaptive-quality tier: the internal-resolution posture (dynamic-resolution floor +
 // persisted render scale + pixel-ratio cap) and the optional presentation features that tier may
 // use. A preset NEVER changes simulation content — no actor, spawn, cargo, mission, or economy
-// count is read or written; it only trades rendering quality for headroom. Balanced is the shipped
-// default and matches the gameState video defaults exactly, so a fresh install IS Balanced.
+// count is read or written; it only trades rendering quality for headroom. Fresh installs use
+// Automatic policy with Balanced effect choices; selecting a named preset switches to Manual.
 //
 // Presets deliberately do not disable authored world content (ships, trails, stations): they lower
 // resolution and particle density, not the number of things in the world.
@@ -340,6 +338,7 @@ export function applyQualityPreset(settings, presetId) {
   for (const key of PRESET_VIDEO_KEYS) {
     if (video[key] !== tier[key]) { video[key] = tier[key]; changed.push(key); }
   }
+  if (video.qualityMode !== 'manual') { video.qualityMode = 'manual'; changed.push('qualityMode'); }
   if (video.qualityPreset !== tier.id) { video.qualityPreset = tier.id; changed.push('qualityPreset'); }
   const preset = QUALITY_PRESETS.find((row) => row.id === tier.id);
   if (preset && Number.isFinite(preset.frameCap) && video.frameCap !== preset.frameCap) {
@@ -347,6 +346,51 @@ export function applyQualityPreset(settings, presetId) {
     changed.push('frameCap');
   }
   return { preset: tier.id, tier: tier.id, changed };
+}
+
+/** Resolve automatic/manual policy without changing existing player settings. Older saves have no
+ * policy key: an untouched (possibly older, partial) Balanced profile adopts Auto, while a named
+ * non-default or hand-edited profile remains manual. The former dynamic-resolution opt-in also
+ * remains an explicit choice. */
+export function qualityModeForVideo(video) {
+  if (!video || typeof video !== 'object') return 'auto';
+  if (video.qualityMode === 'auto' || video.qualityMode === 'manual') return video.qualityMode;
+  if (video.dynamicResolution === true) return 'manual';
+  if (video.qualityPreset && video.qualityPreset !== DEFAULT_QUALITY_PRESET) return 'manual';
+  const balanced = qualityTierForPreset(DEFAULT_QUALITY_PRESET);
+  return PRESET_VIDEO_KEYS.every((key) => video[key] == null || video[key] === balanced[key])
+    ? 'auto'
+    : 'manual';
+}
+
+/** Auto adapts render resolution only; Manual honors the explicit dynamicResolution setting. */
+export function adaptiveResolutionEnabledForSettings(gpu, video) {
+  if (!gpu || !dynamicResolutionAllowedForTier(gpu.tier)) return false;
+  return qualityModeForVideo(video) === 'auto' || video?.dynamicResolution === true;
+}
+
+/** Frame budget follows the live cap, then display refresh; uncapped mode uses the 60 fps target. */
+export function adaptiveFrameBudgetMs(render = {}, video = {}) {
+  const liveCap = Number(render.frameCap);
+  if (Number.isFinite(liveCap) && liveCap > 0) return 1000 / clamp(liveCap, 1, 1000);
+  const displayHz = Number(render.displayHz);
+  if (video.vsync !== false && Number.isFinite(displayHz) && displayHz >= 20 && displayHz <= 360) {
+    return 1000 / displayHz;
+  }
+  return 1000 / 60;
+}
+
+/** Auto learns only after the exact opening picture has handed off to playable flight. */
+export function adaptiveResolutionEligibleForState(state, visibilityState = 'visible') {
+  const render = state && state.render;
+  return state?.mode === 'flight'
+    && state.paused !== true
+    && Number(state.timeScale) > 0
+    && render?.openingFirstPictureReady === true
+    && render.flightVeilHoldsSim !== true
+    && render.liveSectorGpuAdmission !== true
+    && Number.isFinite(render.firstPlayableFrameAt)
+    && visibilityState !== 'hidden';
 }
 
 /** True when detectGpu reports an integrated GPU and the player is not already on that preset. */
@@ -377,15 +421,11 @@ export function dynResFloorForTier(tier) {
 }
 
 /**
- * Whether the adaptive-resolution controller may run on this GPU tier. Software (emergency) and
- * integrated machines may, and so may `unknown`: a browser that hides the GPU name could be hiding
- * a weak laptop, and the controller only trades internal resolution under sustained load. It is
- * still gated by `settings.video.dynamicResolution` (shipped off) — this only decides whether
- * that toggle, or the Integrated GPU preset, takes effect on the tier. `discrete` stays off:
- * steady state holds the frame budget at full quality.
+ * Whether this detected GPU class supports automatic internal-resolution adaptation. All known
+ * classes do; their floors differ. Manual mode remains controlled by `dynamicResolution`.
  */
 export function dynamicResolutionAllowedForTier(tier) {
-  return tier === 'software' || tier === 'integrated' || tier === 'unknown';
+  return tier === 'software' || tier === 'integrated' || tier === 'unknown' || tier === 'discrete';
 }
 
 export const SOFTWARE_RENDERER_TOAST = Object.freeze({
@@ -499,31 +539,35 @@ export function createFrameCap({ vsync = true, displayHz = 60, apply } = {}) {
   };
 }
 
-// Frame-time-driven resolution controller. Smooths frame time (EMA) and backs the internal scale down
-// a step when sustained slower than the down-threshold. Recovery is the tricky part: because browser
-// rAF floors frame times at the display refresh (~16.7 ms on a 60 Hz panel), a GPU with tons of
-// headroom looks identical to one that is barely keeping up — you cannot observe "fast frames". So
-// instead of waiting for sub-threshold frames to raise, the controller PROBES UP on a timer
-// (raiseIntervalS); if the higher resolution can't be sustained, the back-off path simply lowers it
-// again. On a healthy GPU the frame time never crosses the down-threshold, so the scale rides at 1.
+// Frame-time-driven resolution controller. It learns only from eligible presented-flight frames,
+// ignores long stalls, and adjusts in visible bands around the current presentation budget. A
+// measured improvement check rejects CPU-bound cases where reducing pixels did not help. Recovery
+// probes upward slowly because rAF is capped by display refresh even when the GPU has headroom.
 export function createAdaptiveResolution(opts = {}) {
   const floor = clamp(Number(opts.floor) || 0.6, 0.2, 1);
   const apply = typeof opts.apply === 'function' ? opts.apply : () => {};
-  const step = clamp(Number(opts.step) || 0.05, 0.01, 0.25);
-  // Dynamic resizing reallocates renderer/bloom targets, which is itself a visible hitch on some
-  // drivers. Treat it as an emergency fallback for sustained bad frames, not routine frame pacing.
-  const downMs = Number(opts.downMs) || 48;
-  const raiseIntervalS = Number(opts.raiseIntervalS) || 20; // probe-up cadence (vsync gotcha)
+  const step = clamp(Number(opts.step) || 0.1, 0.05, 0.25);
+  const downRatio = clamp(Number(opts.downRatio) || 1.16, 1.05, 1.5);
+  const recoveryRatio = clamp(Number(opts.recoveryRatio) || 0.92, 0.6, 0.99);
+  const raiseIntervalS = Number(opts.raiseIntervalS) || 24;
   const slowHoldS = Number(opts.slowHoldS) || 1.5;
-  const SMOOTH = 0.1;             // EMA weight per frame
-  const LOWER_COOLDOWN_S = 4.0;   // resize target reallocs are expensive; do them rarely
+  const trialWindowS = Number(opts.trialWindowS) || 2.5;
+  const noBenefitCooldownS = Number(opts.noBenefitCooldownS) || 30;
+  const outlierMs = Number(opts.outlierMs) || 100;
+  const maxAcceptedMs = Number(opts.maxAcceptedMs) || 250;
+  const SMOOTH = 0.12;
+  const RESIZE_COOLDOWN_S = 5.0;
+  const MIN_BENEFIT = clamp(Number(opts.minBenefit) || 0.06, 0.01, 0.3);
 
   let enabled = true;
-  let scale = 1;
+  let scale = clamp(Number(opts.initialScale) || 1, floor, 1);
   let emaMs = 1000 / 60;
   let lowerCooldown = 0;
   let raiseTimer = 0;
   let slowTimer = 0;
+  let trial = null;
+  let noBenefitCooldown = 0;
+  let slowFrameStreak = 0;
 
   function set(next) {
     const s = clamp(next, floor, 1);
@@ -539,27 +583,68 @@ export function createAdaptiveResolution(opts = {}) {
       lowerCooldown = 0;
       raiseTimer = 0;
       slowTimer = 0;
+      trial = null;
+      noBenefitCooldown = 0;
+      slowFrameStreak = 0;
       if (!enabled) set(1); // restore full internal resolution when disabled
     },
-    update(frameDt) {
+    syncScale(value) {
+      const next = Number(value);
+      scale = clamp(Number.isFinite(next) ? next : 1, floor, 1);
+    },
+    update(frameDt, sample = {}) {
       if (!enabled) return;
-      const dt = Number(frameDt) || 0;
-      const ms = clamp(dt * 1000, 1, 200);
+      const dt = Number(frameDt);
+      const targetMs = clamp(Number(sample.targetMs) || 1000 / 60, 1000 / 360, 1000 / 20);
+      if (sample.eligible === false || !Number.isFinite(dt) || dt <= 0) {
+        slowTimer = 0;
+        raiseTimer = 0;
+        slowFrameStreak = 0;
+        return;
+      }
+      if (dt * 1000 > outlierMs) {
+        slowFrameStreak++;
+        if (slowFrameStreak < 3) return;
+      } else slowFrameStreak = 0;
+      const boundedDt = Math.min(dt, maxAcceptedMs / 1000);
+      const ms = boundedDt * 1000;
       emaMs += (ms - emaMs) * SMOOTH;
-      if (lowerCooldown > 0) lowerCooldown -= dt;
-      raiseTimer += dt;
-      slowTimer = emaMs > downMs ? slowTimer + dt : 0;
-      // Back off only under sustained severe slowness; one-off hitches should not cause a resize
-      // and then create more hitches through render-target reallocation.
-      if (slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
+      if (lowerCooldown > 0) lowerCooldown -= boundedDt;
+      if (noBenefitCooldown > 0) noBenefitCooldown -= boundedDt;
+      raiseTimer += boundedDt;
+      slowTimer = emaMs > targetMs * downRatio ? slowTimer + boundedDt : 0;
+
+      if (trial) {
+        trial.elapsed += boundedDt;
+        if (trial.elapsed >= trialWindowS) {
+          const improved = emaMs <= trial.baselineMs * (1 - MIN_BENEFIT);
+          if (!improved) {
+            set(trial.previousScale);
+            noBenefitCooldown = noBenefitCooldownS;
+          }
+          trial = null;
+          slowTimer = 0;
+          raiseTimer = 0;
+          return;
+        }
+      }
+
+      // A small sustained miss moves down one resolution band. The step is retained only when
+      // the observed frame time improves; CPU/simulation bottlenecks restore the prior band.
+      if (!trial && noBenefitCooldown <= 0 && slowTimer >= slowHoldS && scale > floor && lowerCooldown <= 0) {
+        const previousScale = scale;
         set(scale - step);
-        lowerCooldown = LOWER_COOLDOWN_S;
+        trial = { previousScale, baselineMs: emaMs, elapsed: 0 };
+        lowerCooldown = RESIZE_COOLDOWN_S;
         raiseTimer = 0;
         slowTimer = 0;
         return;
       }
-      // Periodic probe-up (see header: rAF can't reveal headroom on a vsync-capped display).
-      if (raiseTimer >= raiseIntervalS && scale < 1 && emaMs <= downMs && lowerCooldown <= 0) {
+      // Periodic probe-up reveals headroom on a vsync-capped display. A real miss then takes the
+      // same sustained down path; a stable band is kept for the full recovery interval.
+      const recoveryThresholdMs = targetMs * (1 + (1 - recoveryRatio));
+      if (!trial && raiseTimer >= raiseIntervalS && scale < 1
+        && emaMs <= recoveryThresholdMs && lowerCooldown <= 0) {
         set(scale + step);
         raiseTimer = 0;
         slowTimer = 0;

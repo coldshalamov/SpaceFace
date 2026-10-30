@@ -68,7 +68,8 @@ const departureModelSrc = read('src/ui/station/stationDepartureModel.js');
 const stationAppSrc = read('src/ui/station/stationApp.js');
 const controlPromptsSrc = read('src/ui/controlPrompts.js');
 const storySrc = read('src/systems/story.js');
-const missionsSrc = read('src/systems/missions.js');
+const missionsSrc = ['missions', 'missionBoardOps', 'missionObjectiveOps', 'missionSpawningOps', 'missionStoryOps']
+  .map((f) => read(`src/systems/${f}.js`)).join('\n');
 const hudSrc = read('src/ui/hud.js');
 const radarSrc = read('src/ui/radar.js');
 const hudAttentionSrc = read('src/ui/hudAttention.js');
@@ -214,8 +215,10 @@ check('SYNTH: system wrapper surfaces at most one floor via voice:surface', 'SYN
 // ═══════════════════════════════════════════════════════════════════════════════
 check('first-run splash is a single full-screen line then B0 (spec2/03 §3)', 'SOURCE', () => {
   assert.match(newGameSrc, /showFirstRunSplash/, 'NEW GAME must call first-run splash');
+  // The manifest-is-wrong hook moved to onboarding's COLD_OPEN_PREMISE (B0); the splash
+  // carries the location stamp as re-authored in the ORRERY sweep.
   assert.match(newGameSrc,
-    /Helios System\. Third shift\. The manifest is wrong\./,
+    /Helios System · Third Shift Arrival/,
     'first-run splash line must be verbatim');
   assert.match(newGameSrc, /sf-firstrun-splash/, 'splash DOM class must exist');
   assert.match(newGameSrc, /2500/, 'splash hold must be ~2.5s');
@@ -258,9 +261,13 @@ check('active route has one dominant verb + destination + distance + matching ra
   assert.match(missionsSrc, /const destination = station && station\.name \|\| sector && sector\.name \|\| title/,
     'mission waypoint label must resolve to destination, not the mission title');
   assert.match(missionsSrc, /label: destination/, 'radar waypoint must carry the named destination');
-  assert.match(radarSrc, /`◆ AMBER DIAMOND · \$\{wpLabel\}`/,
+  // The key plate serves two modes: while a course is set it prints the amber-diamond
+  // objective (glyph + destination + distance); with no course it shows the semantic
+  // contact key that follows the dial's colorblind remap — never both at once.
+  assert.match(radarSrc, /`◆ \$\{label\} · \$\{distance\}`/,
     'radar key must repeat the same unique glyph/color and current destination');
-  assert.doesNotMatch(radarSrc, /sf-radar-legend/, 'generic multi-color radar legend must stay removed');
+  assert.match(radarSrc, /legendOn \? 'none' : ''/, 'objective readout and contact legend must stay mutually exclusive');
+  assert.match(radarSrc, /setObjectiveKeyMode\('objective'\)/, 'a live waypoint must switch the key plate to objective mode');
 });
 
 check('active objective owns attention without suppressing combat/mining targeting', 'SOURCE', () => {
@@ -341,7 +348,7 @@ check('story/missions yield the opening channel to the tutorial (no parallel col
   assert.match(storySrc, /_coldStartDeferred/, 'story must track deferred cold-start');
   assert.match(storySrc, /_recentTutorialLine/,
     'story must suppress ambient comms near a tutorial line');
-  assert.match(missionsSrc, /_tutorialOwnsOpening\(\)/,
+  assert.match(missionsSrc, /_onboardingOwnsOpeningNav\(\)/,
     'missions must not force story waypoint/toast over the tutorial opening');
 });
 

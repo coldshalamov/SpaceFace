@@ -2234,6 +2234,14 @@ export function injectHudCss() {
      top:13% — 140 px down a 1080 picture, floating in open sky with nothing to belong to. The frame
      runs the same sentence as a header line hard against the top edge. */
   #alerts { top:22px; }
+  /* D261: that header line is a wide-screen placement. At phone widths the centred lane at 22px
+     prints over the top-left waypoint card (the dock cue's lamp and [E] landed on its ETA), and this
+     unscoped rule, being later, silently cancelled the narrow block's top:84px. Re-seat the lane
+     below the card at <=760px. Phone flight keeps its own offset: systems/mobile/styles.js
+     translates the lane 124px down from the 22px line, so it is excluded here. */
+  @media (max-width: 760px) {
+    :root:not([data-sf-mobile-flight="1"]) #alerts { top:calc(84px + var(--sf-safe-inset-top, 0px)); }
+  }
   @media (forced-colors: active) {
     .sf-kit-bar {
       border:1px solid CanvasText; border-image:none; background:Canvas;

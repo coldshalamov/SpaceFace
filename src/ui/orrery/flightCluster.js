@@ -160,8 +160,11 @@ const CSS = `
   .orr-cluster__next { width:calc(172px / var(--orr-cluster-scale, 1));
     font-size:max(12px, calc(12px / var(--orr-cluster-scale, 1))); }
   /* D261: the ring legend's swatch tick prints across the hull/shield/armor values at
-     phone scale. Reserve a fixed value column so the tick and the word never share it. */
-  .orr-cluster__legend { grid-template-columns:14px 4.2ch 1fr; column-gap:6px; }
+     phone scale. Reserve a fixed value column so the tick and the word never share it.
+     The phone label font is pinned at 20px artboard (the 9px rendered floor), so a plain
+     1fr of the 124px box ellipsizes every word — widen the plate until Hull/Shield/Armor
+     read whole; the ellipsis stays only as a last-resort guard. */
+  .orr-cluster__legend { grid-template-columns:14px 4.2ch minmax(0, 1fr); column-gap:6px; width:170px; }
   .orr-cluster__legend svg { width:14px; }
   .orr-cluster__legend .orr-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }

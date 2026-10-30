@@ -90,7 +90,7 @@ async function runViewportProbe(browser, viewport, runIndex) {
   });
   const url = withDebugFlight(baseUrl);
   step('goto');
-  await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded' });
+  await gotoWithRetry(page, url, { waitUntil: 'domcontentloaded', timeout: FLIGHT_START_TIMEOUT_MS });
   step('boot-ready');
   // D224 — the mission-handoff boot allowance applied to the same predicate: headless SwiftShader
   // compiles every THREE program serially on the main thread (no KHR_parallel_shader_compile), so
