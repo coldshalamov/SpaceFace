@@ -21,6 +21,7 @@ import {
   surrenderBarkFor,
   trafficRoleHail,
   tumbleRakeBarkFor,
+  thrownWreckBarkFor,
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
@@ -54,6 +55,9 @@ import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, o
 import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 import { TUMBLE_RAKE_BARK_RANGE } from '../ai/tumbleRake.js';
+
+/** Earshot for the thrown-wreck witness line — the same combat-radio reach as the rake bark. */
+const THROWN_WRECK_BARK_RANGE = TUMBLE_RAKE_BARK_RANGE;
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
 // Reading duration. The arbiter gives queued barks one additional inter-bark gap of
@@ -860,7 +864,9 @@ export const barkDirector = {
       this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
       this.bus.on('economy:oreFlood', this._onOreFlood);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
+      this._onThrownWreck = (payload) => this._speakThrownWreck(payload || {});
       this.bus.on('combat:tumbleRake', this._onTumbleRake);
+      this.bus.on('combat:thrownWreck', this._onThrownWreck);
       // THE WORLD REMEMBERS (U-E): dock control greets a pilot the Record has made known.
       this._onDockDeed = (payload) => this._speakDockDeed(payload || {});
       this.bus.on('dock:docked', this._onDockDeed);
@@ -2298,6 +2304,65 @@ export const barkDirector = {
     return receipt;
   },
 
+  /**
+   * THE RICOCHET GETS NOTICED — a hull died of momentum the player authored (`combat:thrownWreck`,
+   * from deedRecord's impact-link verdict). One surviving wingmate of the dead hull says so, once
+   * per victim: "it was still moving when it hit." Silent when nobody of the victim's side is
+   * left in earshot — the rocks keep the secret.
+   */
+  _speakThrownWreck(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.victimId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || !finitePos(player.pos)) return null;
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const dead = entityAt(state, payload.victimId);
+    const team = dead && dead.team != null ? dead.team : null;
+    const faction = dead && dead.factionId ? dead.factionId : null;
+    // A surviving wingmate speaks — same team or faction, on glass, in earshot.
+    let speaker = null;
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+      if (isPlayerSideHull(state, entity)) continue;
+      if (team != null ? entity.team !== team : (!faction || entity.factionId !== faction)) continue;
+      if (!entity.pos || !finitePos(entity.pos)) continue;
+      if (Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) > THROWN_WRECK_BARK_RANGE) continue;
+      if (!hullOnGlass(state, entity) || speakerRecentlySpoke(own, entity, now)) continue;
+      speaker = entity;
+      break;
+    }
+    if (!speaker) return null;
+    const key = `${payload.victimId}`;
+    if (this._thrownWreckKeys && this._thrownWreckKeys.has(key)) return null;
+    const seed = state.meta && state.meta.seed;
+    const text = thrownWreckBarkFor(hash32(seed == null ? 0 : seed, 'thrownWreck', key));
+    if (!text) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(speaker);
+    const voiceId = `barkDirector:${speaker.id}:thrown-wreck`;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'thrownWreck',
+      ttl: VOICE_TTL_S,
+      id: voiceId,
+      valid: () => speakerStillLive(state, speaker.id),
+      factionId,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_thrownWreckKeys', key)) return null;
+    noteSpeakerSpoke(own, speaker, 'thrown-wreck', now, text);
+    const receipt = {
+      entityId: speaker.id, situation: 'thrown-wreck', text, victimId: payload.victimId,
+      cause: payload.cause || null, t: now, factionId, voiceId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
   _speakEmptyLoad(payload) {
     const state = this.state;
     if (!state || !payload) return null;
@@ -2872,9 +2937,11 @@ export const barkDirector = {
     this._onHaulerRegroup = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
+    this._onThrownWreck = null;
     this._onDockDeed = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
+    this._thrownWreckKeys = null;
     this._haulerRegroupKeys = null;
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;

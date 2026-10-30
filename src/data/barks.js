@@ -2629,6 +2629,23 @@ export function tumbleRakeBarkFor(index) {
   return typeof line === 'string' && line.length ? line : null;
 }
 
+// ── A wreck the player threw kills (the ricochet gets noticed) ────────────────────────────────
+//
+// Spoken by a surviving wingmate of the hull that died of momentum the player authored
+// (`combat:thrownWreck`, barkDirector, once per victim): the "it was still moving when it hit"
+// moment. One register for every faction — the physics did this, not a grudge.
+export const THROWN_WRECK_BARKS = Object.freeze([
+  'It was still tumbling when it hit. You threw it.',
+  'They were already wrecked — you just aimed the wreck!',
+  'Nobody shot them. The hull you sent in did it.',
+  'That collision was yours. You knew it was still moving.',
+]);
+
+export function thrownWreckBarkFor(index) {
+  const line = THROWN_WRECK_BARKS[pickIndex(index, THROWN_WRECK_BARKS.length)] || THROWN_WRECK_BARKS[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── Dock control remembers the pilot (THE WORLD REMEMBERS, U-E) ──────────────────────────────
 //
 // Spoken once on `dock:docked` when the station's faction weighs the Record at or past ±4. The
@@ -3171,6 +3188,7 @@ export default {
   oreFloodBarkFor,
   dockDeedBarkFor,
   tumbleRakeBarkFor,
+  thrownWreckBarkFor,
   lawStepBarkFor,
   lawResponseBarkFor,
   passengerBeatLine,

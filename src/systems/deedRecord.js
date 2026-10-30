@@ -18,6 +18,7 @@
 import { hash32 } from '../core/rng.js';
 import { LAWFUL_STATION_FACTIONS } from '../data/factions/index.js';
 import { wantedTierFor, WANTED_TIER } from './heat.js';
+import { KillCause, classifyImpactResponsibility, impactLinkFromPresentation, killCauseFromPayload } from '../combat/killCausality.js';
 
 export const DEED_RECORD_VERSION = 1;
 export const DEED_CAP = 64;
@@ -53,6 +54,9 @@ export const DEED_KINDS = Object.freeze({
   pod_ransomed:    Object.freeze({ law: -1, street: 1,  weight: 3, label: 'Survivors ransomed' }),
   fence_route:     Object.freeze({ law: 0,  street: 1,  weight: 3, label: 'Fence route run' }),
   heat_scrubbed:   Object.freeze({ law: 0,  street: 1,  weight: 1, label: 'Paper scrubbed' }),
+  // The ricochet the street talks about: a hull died of momentum the player authored. The
+  // underlying kill already recorded its lawful/outlaw weight; this kind is the audacity.
+  kill_thrown:     Object.freeze({ law: 0,  street: 1,  weight: 2, label: 'Thrown wreck' }),
 });
 
 const WANTED_TIER_WEIGHT = Object.freeze({
@@ -475,6 +479,47 @@ export const deedRecord = {
       subject: p.victimClass || null,
       detail: { victimId: p.id != null ? String(p.id) : null, hostile },
     });
+    this._onThrownWreckKill(p);
+  },
+
+  /**
+   * THE RICOCHET GETS NOTICED — a collision kill whose fresh impact link traces to the player's
+   * own earlier impulse (they shoved or threw what hit, or the hull they set moving) is a wreck
+   * the pilot authored with the world's physics. One deed per victim plus the seam event the
+   * bark director's witness speaks on. The verdict is killCausality's own classification —
+   * never re-derived here.
+   */
+  _onThrownWreckKill(p) {
+    const cause = killCauseFromPayload(p);
+    if (cause !== KillCause.SHIP_COLLISION && cause !== KillCause.TERRAIN_COLLISION) return;
+    const link = impactLinkFromPresentation(p.presentation, {
+      impactTick: Number.isInteger(this.state && this.state.tick) ? this.state.tick : null,
+      playerId: this.state ? this.state.playerId : null,
+    });
+    if (!link) return;
+    const verdict = classifyImpactResponsibility({
+      playerId: this.state.playerId,
+      actorId: link.actorId,
+      tag: link.tag,
+      impactTick: link.impactTick,
+      appliedTick: link.appliedTick,
+      holdUntilTick: link.holdUntilTick,
+    });
+    if (!verdict.responsible || verdict.class !== 'indirect') return;
+    recordDeed(this.state, {
+      kind: 'kill_thrown',
+      id: `kill_thrown:${p.id}`,
+      sectorId: this._here(),
+      factionId: p.factionId || null,
+      subject: p.victimClass || null,
+      detail: { victimId: p.id != null ? String(p.id) : null, cause, impactorId: p.impactorId ?? null },
+    });
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('combat:thrownWreck', {
+        victimId: p.id, killerId: p.killerId ?? null, cause,
+        sectorId: this._here(), tick: Number.isInteger(this.state.tick) ? this.state.tick : null,
+      });
+    }
   },
 
   _onBaseDestroyed(p) {
