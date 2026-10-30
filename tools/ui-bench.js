@@ -35,6 +35,8 @@ import {
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
 import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
+import { seedReceiptsShot, unseedReceiptsShot } from './ui-bench-receipts.js';
+import { seedImpoundShot } from './ui-bench-impound.js';
 import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 window.__BENCH_READY = false;
@@ -1064,7 +1066,7 @@ async function goto(rawId) {
       unseedFootprintShot(state);
       unseedDrillShot(state);
       unseedBaseShot(state);
-      hudEl.innerHTML = '';
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
@@ -1076,6 +1078,8 @@ async function goto(rawId) {
       unseedDrillShot(state);
       unseedBaseShot(state);
       screensEl.innerHTML = '';
+      // #alerts lives beside #hud (as in index.html), so a HUD wipe no longer takes it along.
+      document.getElementById('alerts')?.remove();
       state.ui.docked = false;
       state.ui.dockedStationId = null;
       document.body.classList.add('k-screen-top');
@@ -1092,7 +1096,7 @@ async function goto(rawId) {
         await finishShot(shot);
         return;
       }
-      hudEl.innerHTML = '';
+      hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
       screensEl.innerHTML = '';
       document.body.classList.add('k-screen-top');
       document.body.dataset.kScreen = id;
@@ -1126,6 +1130,8 @@ async function goto(rawId) {
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
       // Story-reward readers: a claimed Lost Ledger (bar buyer) or the Cassandra Treaty (faction link).
       seedStoryRewardShot(state, shot.story || null);
+      // `impound: 'lot' | 'ransom'` opens Shipworks over the impound lot's attendant desk (tools/ui-bench-impound.js).
+      seedImpoundShot(state, bus, screenMemory, shot.impound || null);
       // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
       // wears its chip in the shot. Plain shots leave player.hints untouched.
       if (params.get('fitOfferDefId')) {
@@ -1143,6 +1149,8 @@ async function goto(rawId) {
         seedRecordShot(state);
         (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
       } else unseedRecordShot(state);
+      // A mission log shot with `receipts` mounts over settled contracts (tools/ui-bench-receipts.js).
+      if (shot.receipts) seedReceiptsShot(state); else unseedReceiptsShot(state);
       // A gameOver shot mounts over a real buildDefeatReceipt fixture (populated, the default)
       // or a clean slate (`defeat: 'empty'`); every other screen mounted over the baseline above.
       if (id === 'gameOver') seedGameOverShot(state, shot);
@@ -1151,6 +1159,8 @@ async function goto(rawId) {
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
       if (shot.record) screen._focus?.('record:deeds');
+      // ...and opens the receipt list the way a player does, through its own Show toggle.
+      if (shot.receipts) root.querySelector('[aria-controls="sf-mlog-completed-list"]')?.click();
       // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
       if (typeof screen.settled === 'function') await screen.settled();
       // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
@@ -1410,14 +1420,15 @@ async function mountFlightHud(opts = {}) {
     const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
     if (mount && mount.projSpeed === 320) delete mount.projSpeed;
   }
-  // createHud wipes #hud. Alerts have to mount after that wipe or the warn floor has no host.
   const hud = createHud(ctx, null);
-  let alertsRoot = document.getElementById('alerts');
-  if (!alertsRoot) {
-    alertsRoot = document.createElement('div');
-    alertsRoot.id = 'alerts';
-    hudRoot.appendChild(alertsRoot);
-  }
+  // index.html mounts #alerts as a #ui-root child beside #hud, where `#ui-root > div` makes it
+  // absolute and the HUD sheet's `top` places the lane. Nested inside #hud it stayed static, every
+  // `top` was inert, and the lane printed over the top-left waypoint card (D261). A fresh host per
+  // mount keeps earlier createAlerts instances writing to their detached node, as the old wipe did.
+  document.getElementById('alerts')?.remove();
+  const alertsRoot = document.createElement('div');
+  alertsRoot.id = 'alerts';
+  (hudRoot.parentElement || hudRoot).appendChild(alertsRoot);
   const alerts = createAlerts(ctx);
   hudRoot.dataset.threat = hudRoot.dataset.threat || 'contact';
   document.body.classList.remove('sf-swarm-flight');
@@ -1507,7 +1518,7 @@ async function back() {
 
 function showBroken(id, why) {
   screensEl.innerHTML = '';
-  hudEl.innerHTML = '';
+  hudEl.innerHTML = ''; document.getElementById('alerts')?.remove();
   const panel = document.createElement('div');
   panel.id = 'bench-broken';
   panel.innerHTML = `<strong>${id} is not mountable in the bench</strong>${why}. `
