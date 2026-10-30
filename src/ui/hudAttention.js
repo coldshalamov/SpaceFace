@@ -283,6 +283,9 @@ export function tutorialFlightMoment(state) {
   if (state.physicsVenueSession) return false;
   if (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive') return false;
   if (tutorialFlightHintsOff(state)) return false;
+  // The current opening objective is already the one on-screen instruction. Do not spend the
+  // teach-once flight-controls hint while that objective owns attention.
+  if (openingInstructionSolo(state)) return false;
   const ob = state.onboarding;
   if (!ob || ob.active !== true || ob.finished === true) return false;
   if (ob.pace && ob.pace.flownBefore === true) return false;
@@ -318,6 +321,10 @@ export function syncTutorialFlightCard(state, doc, hudLayout = null) {
     && !(state.player && state.player.flags && state.player.flags.docked));
   if (existing && !inFlight) {
     existing.hidden = true;
+    return null;
+  }
+  if (openingInstructionSolo(state)) {
+    if (existing) existing.hidden = true;
     return null;
   }
   if (existing && inFlight && existing.hidden !== true) {

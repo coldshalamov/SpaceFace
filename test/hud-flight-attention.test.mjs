@@ -25,6 +25,7 @@ import {
   shouldShowFirstUseHint,
   shipGlyphBox,
   SHIP_GLYPH_BOX,
+  syncTutorialFlightCard,
   tutorialFlightCardLayout,
   vitalNumericVisible,
 } from '../src/ui/hudAttention.js';
@@ -457,6 +458,33 @@ test('the first two minutes keep exactly one instruction on screen', () => {
   // Defensive: no clock or no state never suppresses.
   assert.equal(openingInstructionSolo({}), false);
   assert.equal(openingInstructionSolo(null), false);
+});
+
+test('the opening objective defers the flight-controls card without spending its teach-once hint', () => {
+  const dom = installToastDom();
+  try {
+    const state = {
+      mode: 'flight',
+      ui: {},
+      simTime: 3.1,
+      player: { hints: {} },
+      onboarding: { active: true, finished: false, startedAt: 0, currentBeat: 0 },
+      nav: { waypoint: { reason: 'Target the marked derelict.' } },
+    };
+
+    assert.equal(openingInstructionSolo(state), true);
+    assert.equal(syncTutorialFlightCard(state), null, 'B0 keeps the HUD tracker as its only instruction');
+    assert.equal(dom.hud.children.length, 0, 'the secondary flight-controls card is not mounted');
+    assert.notEqual(state.player.hints.firstFlight, true, 'the hint remains available for the later quiet moment');
+
+    state.simTime = OPENING_INSTRUCTION_WINDOW_S;
+    const card = syncTutorialFlightCard(state);
+    assert.ok(card, 'the controls card can appear when the existing opening gate expires');
+    assert.match(card.textContent, /thrusts|flies/i);
+    assert.equal(state.player.hints.firstFlight, true, 'the one-time hint is spent only when shown');
+  } finally {
+    dom.restore();
+  }
 });
 
 test('the opening window anchors to the sim clock at game start, never wall time', () => {
