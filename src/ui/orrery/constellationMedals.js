@@ -94,6 +94,8 @@ const CSS = `
   line-height:.86; letter-spacing:-.02em; font-variant-numeric:tabular-nums lining-nums; color:var(--dp-phos, #dfeeff); }
 .con-morr__of { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size:max(12px, var(--mo-of, 12px)); letter-spacing:.24em; text-transform:uppercase;
   color:rgb(${BONE} / .72); white-space:nowrap; }
+.con-morr.is-lone-count .con-morr__of { display:none; }
+.con-morr.is-lone-count .con-morr__count { transform:translate(-50%, -50%); }
 /* the Hand: out from the gauge to the chosen medal */
 .orr-svg .con-morr__arm { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:2.4; stroke-linecap:round; }
 .orr-svg .con-morr__armbloom { fill:none; stroke:var(--dp-hand, #f2b950); stroke-width:10; opacity:.24; stroke-linecap:round; }
@@ -602,7 +604,10 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     host.style.setProperty('--mo-cx', `${f(cx)}px`);
     host.style.setProperty('--mo-cy', `${f(cy)}px`);
     host.style.setProperty('--mo-pool', `${f((R + sizes[sizes.length - 1] / 2 + LM) * 2 + 120)}px`);
-    host.style.setProperty('--mo-num', `${Math.round(Math.max(36, Math.min(116, gaugeR * 1.1)))}px`);
+    // a gauge too small to hold its numeral over "of N" holds the numeral alone (the head already reads "N of M held")
+    const lone = gaugeR < 36;
+    host.classList.toggle('is-lone-count', lone);
+    host.style.setProperty('--mo-num', `${Math.round(lone ? gaugeR * 1.05 : Math.max(36, Math.min(116, gaugeR * 1.1)))}px`);
     host.style.setProperty('--mo-of', `${Math.max(10.5, Math.min(13, gaugeR / 7)).toFixed(1)}px`);
     host.style.setProperty('--mo-rn', `${Math.max(9.5, Math.min(12, R / 34)).toFixed(1)}px`);
     const lpx = Math.max(11, Math.min(13.5, R / 30));
