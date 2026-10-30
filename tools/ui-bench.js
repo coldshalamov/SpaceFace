@@ -122,6 +122,34 @@ function note(line) {
 
 /** The state the screens read. A real GameState from the game's own factory, then seeded with the
  *  situation the screens have to draw (a tracked contract, a waypoint, a save, some cargo). */
+/** `story: 'ledger'` holds an unsold Lost Ledger; `story: 'treaty'` sets the Cassandra Treaty flag.
+ *  Any other shot clears both, so a story fixture never leaks into the next still. */
+function seedStoryRewardShot(state, kind) {
+  const player = state.player || (state.player = {});
+  const flags = player.flags || (player.flags = {});
+  let own = player.uniqueWrecks;
+  if (own && own.storyRewards) {
+    delete own.storyRewards.unique_lost_ledger;
+    delete own.storyRewards.unique_cassandra_treaty;
+  }
+  delete flags['crossRep.choirVaelTreaty'];
+  if (!kind) return;
+  if (!own || typeof own !== 'object') own = player.uniqueWrecks = {};
+  if (!own.storyRewards || typeof own.storyRewards !== 'object') own.storyRewards = {};
+  if (kind === 'ledger') {
+    own.storyRewards.unique_lost_ledger = {
+      wreckId: 'wreck_mts_silver_draft', kind: 'story_commodity', flagKey: 'uniqueWreck.lostLedger',
+      grantedAtS: 0, choices: ['sell_meridian', 'file_concord', 'publish_independent'],
+    };
+  } else if (kind === 'treaty') {
+    own.storyRewards.unique_cassandra_treaty = {
+      wreckId: 'wreck_choir_cassandra', kind: 'story_data', flagKey: 'uniqueWreck.cassandraTreaty',
+      grantedAtS: 0, unlockFlag: 'crossRep.choirVaelTreaty',
+    };
+    flags['crossRep.choirVaelTreaty'] = true;
+  }
+}
+
 function seededState() {
   const state = createGameState(4242);
   state.mode = 'flight';
@@ -1078,7 +1106,7 @@ async function goto(rawId) {
       root.setAttribute('aria-modal', 'true');
       if (shot.screen === 'station') {
         state.ui.docked = true;
-        state.ui.dockedStationId = 'station_helios';
+        state.ui.dockedStationId = shot.dock || 'station_helios';
       } else {
         state.ui.docked = false;
         state.ui.dockedStationId = null;
@@ -1096,6 +1124,8 @@ async function goto(rawId) {
       unseedGameOverShot(state);
       // A footprint shot mounts over a lived-in record (tools/ui-bench-footprint.js); every other shot over none.
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
+      // Story-reward readers: a claimed Lost Ledger (bar buyer) or the Cassandra Treaty (faction link).
+      seedStoryRewardShot(state, shot.story || null);
       // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
       // wears its chip in the shot. Plain shots leave player.hints untouched.
       if (params.get('fitOfferDefId')) {

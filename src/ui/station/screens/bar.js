@@ -235,8 +235,14 @@ export function createBarScreen(ctx) {
     try {
       if (deedSession.stationId !== sid()) deedSession = { stationId: sid(), opener: undefined, told: false };
       const generated = generateContacts(sid(), state, { deedSession }) || [];
+      if (pinnedContact && pinnedContact.pinStationId && pinnedContact.pinStationId !== sid()) pinnedContact = null;
       if (pinnedContact && !generated.some((contact) => contact.id === pinnedContact.id)) {
         return [pinnedContact, ...generated];
+      }
+      // A sold story buyer keeps their closing word even if the sim's settle has not reached
+      // this frame yet (worker transport): the pin replaces the stale offer in place.
+      if (pinnedContact && pinnedContact.storyBuyer) {
+        return generated.map((contact) => (contact.id === pinnedContact.id ? pinnedContact : contact));
       }
       return generated;
     } catch (_) { return pinnedContact ? [pinnedContact] : []; }
@@ -804,6 +810,8 @@ export function createBarScreen(ctx) {
         line: '47-A closed. 47-B pending.',
         choices: [{ id: 'closed', label: 'Safe flying.' }],
       };
+    } else if (result && result.pinContact) {
+      pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
     if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
