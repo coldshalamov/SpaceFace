@@ -8807,16 +8807,18 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   const defId = resolveSavedDefId(out, savedEntity);
   const fittings = resolveSavedFittings(out, savedEntity, defId);
   const needsRepair = needsPlayerEntityRepair(savedEntity);
-  if (!Array.isArray(out.ownedShips) || !out.ownedShips.length) {
-    if (needsRepair) out.ownedShips = [{ defId, fittings }];
-    return out;
-  }
-  if (!Number.isInteger(out.activeShipIndex) || out.activeShipIndex < 0 || out.activeShipIndex >= out.ownedShips.length) {
+  // An empty roster still owes every non-roster normalization below (ledgers, inventory,
+  // efficiency mods): only the per-hull steps need a hull to act on. A coherent entity with an
+  // empty roster is left empty rather than fabricated; a garbage one is repaired to its hull.
+  const hasRoster = Array.isArray(out.ownedShips) && out.ownedShips.length > 0;
+  if (!hasRoster && needsRepair) out.ownedShips = [{ defId, fittings }];
+  const rosterPresent = Array.isArray(out.ownedShips) && out.ownedShips.length > 0;
+  if (rosterPresent && (!Number.isInteger(out.activeShipIndex) || out.activeShipIndex < 0 || out.activeShipIndex >= out.ownedShips.length)) {
     out.activeShipIndex = 0;
   }
   // FB-057/FB-061 — per-hull fields are absent on old saves and stay absent until written. A
   // malformed one is dropped, never repaired into fabricated content.
-  for (const ship of out.ownedShips) {
+  for (const ship of (rosterPresent ? out.ownedShips : [])) {
     if (!ship || typeof ship !== 'object') continue;
     if (ship.name != null && typeof ship.name !== 'string') delete ship.name;
     else if (typeof ship.name === 'string' && !ship.name.trim()) delete ship.name;
@@ -8826,9 +8828,11 @@ function normalizePlayerSaveRecord(player, savedEntity) {
       else delete ship.cargo;
     }
   }
-  const active = out.ownedShips[out.activeShipIndex] || (out.ownedShips[0] = { defId, fittings });
-  if (!active.defId) active.defId = defId;
-  if (!Array.isArray(active.fittings)) active.fittings = fittings;
+  if (rosterPresent) {
+    const active = out.ownedShips[out.activeShipIndex] || (out.ownedShips[0] = { defId, fittings });
+    if (!active.defId) active.defId = defId;
+    if (!Array.isArray(active.fittings)) active.fittings = fittings;
+  }
   if (!Array.isArray(out.moduleInventory)) out.moduleInventory = [];
   if (!Array.isArray(out.researchedNodes)) out.researchedNodes = [];
   if (!out.efficiencyMods || typeof out.efficiencyMods !== 'object' || Array.isArray(out.efficiencyMods)) {
@@ -8890,7 +8894,8 @@ function needsPlayerEntityRepair(saved) {
     && data.defId
     && Number.isFinite(saved.hullMax) && saved.hullMax > 0
     && Number.isFinite(saved.capMax) && saved.capMax > 0
-    && Array.isArray(data.weapons) && data.weapons.length > 0);
+    // A hull may legitimately carry no weapons; only a missing weapons array marks a garbage entity.
+    && Array.isArray(data.weapons));
 }
 
 /**
@@ -9021,6 +9026,9 @@ function normalizeVitals(out, base, repairGarbage = false) {
       ? out.boost.max * Math.min(1, savedEnergy / savedMax)
       : out.boost.max;
     out.boost.drainRate = nonNegativeNumber(out.boost.drainRate, base.boost && base.boost.drainRate);
+    // Base-first is deliberate: `base` is derived from the restored player record, so its
+    // regenRate already carries efficiencyMods.energyRegenMult (ships.js boost derivation).
+    // A stale saved rate must not outlive a respec; the upgrade itself survives via the record.
     out.boost.regenRate = nonNegativeNumber(base.boost && base.boost.regenRate, out.boost.regenRate);
     out.boost.dashImpulse = nonNegativeNumber(out.boost.dashImpulse, base.boost && base.boost.dashImpulse);
     out.boost.dashCd = nonNegativeNumber(out.boost.dashCd, base.boost && base.boost.dashCd);
