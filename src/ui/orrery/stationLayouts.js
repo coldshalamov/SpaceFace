@@ -727,6 +727,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-crown .sxb-purse__value { font-size:20px !important; }
   ${D} .sxb-vital [data-vital-act] { flex-wrap:nowrap !important; white-space:nowrap !important; justify-content:center !important; gap:0 6px !important; letter-spacing:.02em !important; }
   ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] { flex-wrap:wrap !important; row-gap:0 !important; }
+  /* a priced verb never squeezes into its column: the ghost Insure (500 cr) ran 6px wider than the 107px hull column, so flex shrank
+     its verb and cost under their own text and INSURE read flush against 500 CR at 568x320. Words keep their width and the gap. */
+  ${D} .sxb-vital [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { width:max-content !important; max-width:none !important; }
+  ${D} .sxb-vital [data-vital-act] > :is(.orr-act__verb, .orr-act__cost) { flex-shrink:0 !important; }
   ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
   ${D} .sxb-vital [data-vital-act] :is(.orr-act__verb, .orr-act__cost) { letter-spacing:.02em !important; }
   ${D} .sxb-vital--note .orr-vnum.is-word { font-size:12px !important; line-height:1.15 !important; letter-spacing:.04em !important; }
