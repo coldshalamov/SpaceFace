@@ -44,7 +44,12 @@ function createPackageEvictionHandler(entry, loaded, cache, contentHash, assetId
     if (entry.detachManifest) {
       dropPackageDetachManifest(contentHash, entry.detachManifest);
     }
-    entry.admission.abort(new Error(`Render package ${assetId} was evicted mid-decode.`));
+    // Once decode settles, the LoadedRenderPackage may keep its lifecycle entry alive for the
+    // whole resident generation. The decode-only admission must not keep an abort reason and its
+    // ErrorStackData scope on that long-lived entry. Pending decodes still abort on eviction.
+    if (entry.admission) {
+      entry.admission.abort(new Error(`Render package ${assetId} was evicted mid-decode.`));
+    }
   };
 }
 
@@ -309,6 +314,16 @@ export function createRenderPackageLoader(options = {}) {
         ? [decodeConsumerActive]
         : [],
     };
+    // The decoder may report progress after the cache-facing admission has settled on
+    // cancellation. Keep only the callback itself, and release it with the task scope below.
+    let reportDecodeProgress = typeof loadOptions.onFetchProgress === 'function'
+      ? loadOptions.onFetchProgress
+      : null;
+    // Keep decode-time callbacks on a local admission reference. The promise exposed to the
+    // package cache may settle on cancellation before an underlying GLB decode does; those late
+    // callbacks still need a valid admission to no-op/throw the original cancellation reason.
+    // `entry.admission` is detached at settlement so a completed package does not retain it.
+    let decodeAdmission = entry.admission;
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
       decodeWarm,
@@ -318,8 +333,9 @@ export function createRenderPackageLoader(options = {}) {
       .then(() => {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
         return decodeGlb(renderUrl, metadata, () => {
-          entry.admission.touch();
-          if (typeof loadOptions.onFetchProgress === 'function') loadOptions.onFetchProgress();
+          decodeAdmission?.touch();
+          const reportProgress = reportDecodeProgress;
+          if (reportProgress) reportProgress();
         });
       })
       // Package decodes resolve in clusters exactly like source-GLB parses, and this path is the
@@ -348,9 +364,17 @@ export function createRenderPackageLoader(options = {}) {
         return preparePackageTail(decoded);
       }, activeDecodeClass(), entry.promise));
 
+    // The cache-facing wait can reject on cancellation while decodeWork continues. Keep the
+    // admission only until that underlying work (including its compile tail) actually settles,
+    // then clear the shared closure binding so a retained package callback cannot pin it.
+    const decodeCompletion = decodeWork.finally(() => {
+      decodeAdmission = null;
+      reportDecodeProgress = null;
+    });
+
   function preparePackageTail(decoded) {
     return (async () => {
-        try { entry.admission.assertActive(); } catch (error) {
+        try { decodeAdmission.assertActive(); } catch (error) {
           disposeDecodedResources(decoded);
           throw error;
         }
@@ -376,7 +400,7 @@ export function createRenderPackageLoader(options = {}) {
           throw error;
         }
         try {
-          entry.admission.assertActive();
+          decodeAdmission.assertActive();
         } catch (error) {
           disposeDecodedResources(decoded, plan.resources);
           throw error;
@@ -386,7 +410,7 @@ export function createRenderPackageLoader(options = {}) {
           disposeDecodedResources(decoded, plan.resources);
           if (entry.request) entry.request.cancel('superseded-old-generation');
           entry.request = null;
-          entry.admission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
+          decodeAdmission.abort(new Error(`Render package decode for ${metadata.assetId} was superseded.`));
           throw new Error(`Render package decode for ${metadata.assetId} was superseded.`);
         }
         const loaded = createLoadedPackage(metadata, decoded, renderUrl, {
@@ -422,7 +446,7 @@ export function createRenderPackageLoader(options = {}) {
         // already been evicted and its admission aborted. Do not build a detach manifest for
         // that dead generation (it would otherwise outlive the registry entry as an orphan).
         try {
-          entry.admission.assertActive();
+          decodeAdmission.assertActive();
           if (!retained || entry.evicted || cache.get(contentHash) !== entry) {
             throw new Error(`Render package ${metadata.assetId} load was released before decode completed.`);
           }
@@ -448,7 +472,7 @@ export function createRenderPackageLoader(options = {}) {
         return loaded;
       })();
   }
-    entry.promise = entry.admission.wait(decodeWork);
+    entry.promise = decodeAdmission.wait(decodeCompletion);
     cache.set(contentHash, entry);
     const admissionSettled = () => {
       // Consumer predicates keep boundary/entity request state alive. Their only job
@@ -458,8 +482,16 @@ export function createRenderPackageLoader(options = {}) {
       // Persistent package callbacks share this load's closure scope. Drop its
       // settled request bag too, so they cannot pin the creator's callbacks.
       loadOptions = null;
-      entry.admission.finish();
-      activeAdmissions.delete(entry.admission);
+      reportDecodeProgress = null;
+      // A completed package keeps `entry` reachable through LoadedRenderPackage's lifecycle.
+      // Its AbortSignal is only meaningful during decode; detach it now so later cache eviction
+      // cannot attach a cancellation Error/stack closure to an otherwise completed generation.
+      const settledAdmission = entry.admission;
+      entry.admission = null;
+      if (settledAdmission) {
+        settledAdmission.finish();
+        activeAdmissions.delete(settledAdmission);
+      }
     };
     entry.promise.then(admissionSettled, admissionSettled);
     entry.promise.catch(() => {

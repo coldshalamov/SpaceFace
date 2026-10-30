@@ -11757,6 +11757,11 @@ export const render = {
                   ...state.render.bufferResizeDiagnostic, enabled: true, performanceEligible: false,
                   lastBatchedFailure: batchRecord,
                 };
+                if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+                  window.dispatchEvent(new CustomEvent('sf:batched-mesh-failure-diagnostic', {
+                    detail: { ...batchRecord, observedAt: performance.now() },
+                  }));
+                }
               }
             } catch (_) { /* diagnostic failures must never replace the render error */ }
             throw error;

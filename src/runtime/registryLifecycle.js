@@ -178,4 +178,3 @@ export function createSystemLifecycle({
 
   return { init, initAsync, destroy };
 }
-
