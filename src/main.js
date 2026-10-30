@@ -6,7 +6,7 @@ import { createGameState } from './core/gameState.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
-import { createRegistry } from './core/registry.js';
+import { createPresentationRegistry } from './runtime/presentationRegistry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
@@ -172,7 +172,8 @@ async function boot() {
       simLane: simLaneFlags.lane,
     };
 
-    let registry = createRegistry(ctx);
+    const createFullRegistry = async () => (await import('./core/registry.js')).createRegistry(ctx);
+    let registry = ctx.simLane === 'worker' ? createPresentationRegistry(ctx) : await createFullRegistry();
     ctx.registry = registry;
     // Whole-sim worker lane: null on the main lane (zero behavior change);
     // otherwise a createSimulationRunner-compatible lane runner plus the
@@ -208,10 +209,15 @@ async function boot() {
         state.entityList.length = 0;
         ctx.simLane = 'main';
         simLaneRuntime = null;
-        registry = createRegistry(ctx);
+        registry = await createFullRegistry();
         ctx.registry = registry;
         console.warn(`[simLane] worker boot failed — in-process sim serves: ${(error && error.message) || error}`);
       }
+    }
+    if (!simLaneRuntime && ctx.simLane === 'worker') {
+      ctx.simLane = 'main';
+      registry = await createFullRegistry();
+      ctx.registry = registry;
     }
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process

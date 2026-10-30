@@ -183,7 +183,7 @@ Two distinct quantities that specs conflated:
 2. Create `WebGLRenderer`, scene, the bloom render targets (VFX), append `#gl-canvas`.
 3. Construct the empty `GameState` (`src/core/gameState.js → createGameState()`), seeded with `meta.seed` (from `Date.now()` or a loaded save's seed).
 4. Build the **event bus** (`src/core/eventBus.js`).
-5. Build the **system registry** (`src/core/registry.js`): instantiate every system module, call `system.init(ctx)` in registration order (`ctx = { state, bus, three, registry, helpers }`).
+5. Resolve the simulation lane. By default the worker owns simulation and the main thread builds `src/runtime/presentationRegistry.js`; init is sent after the worker's listener-ready boot handshake. Explicit main mode and failed-worker startup asynchronously load the full browser `src/core/registry.js`. Each realm initializes its own manifest owners (`ctx = { state, bus, three, registry, helpers }`).
 6. UI mounts `#ui-root`, shows **Main Menu** (`state.mode='menu'`). No sim runs yet.
 7. On **New Game**: `SaveSystem.newGame(seed)` calls each system's `newGame()` → populates GameState → emits `game:started` → `world:requestJump`/`sector:enter` for the home sector → `state.mode='flight'`.
    On **Continue/Load**: `SaveSystem.load(slot)` (see §4.5) → rebuild scene → `state.mode='flight'`.
@@ -581,19 +581,23 @@ export default {
   mountUI(uiRoot) {}, refreshUI(data) {},
 }
 ```
-- `init` order == registry order. `update` order == the §2.3 spine (a separate explicit list in `registry.js`, NOT registration order, so AI runs before flight etc.).
+- Init and simulation update use their separate orders in `src/runtime/authoritativeSystemManifest.js`; presentation owners initialize in their corresponding manifest order.
 - Systems **never** mutate another system's owned state directly (§0.6). They call exposed helpers or emit intent events.
 - `ctx.helpers` exposes the cross-cutting core helpers (§4.3).
 
-### 4.2 Registry & wiring (`src/core/registry.js`)
+### 4.2 Registry & wiring
 **Source of truth for system IDs and order:** `src/runtime/authoritativeSystemManifest.js`
-(currently ~132 init / ~100 update). `registry.js` materializes that manifest; do not
-duplicate the roster in this doc.
+The full browser registry materializes the simulation orders for main mode. The default worker
+uses its authoritative runtime plus `src/runtime/presentationRegistry.js` on the main thread.
+Direct browser-registry worker callers delegate to that same presentation factory.
 
 - `registry.init()` → init each registered system from the manifest order.
 - `registry.step(dt)` → run the manifest update order, then `core.lifetimeSweep(dt)`.
 - `registry.get(name)` → system lookup (for direct helper calls where an event is overkill).
 - Render/vfx/ui/audio update in `renderFrame`, not the sim step.
+- Worker-owned systems expose mirrored reads and existing intents/RPC through
+  `laneSystemFacades.js`. Shared lifecycle and state binding live in `registryLifecycle.js`
+  and `bindRuntimeToState.js`; presentation imports do not load the Node system factories.
 
 ### 4.3 Core helpers (`ctx.helpers`, provided by core)
 ```
@@ -814,7 +818,8 @@ HUD (`#hud`) is visible **iff** `screenStack.length === 0 && ui.docked === false
 |---|---|---|---|
 | `src/core/gameState.js` | `createGameState()` — the schema (§3), all defaults | `createGameState` | data/saveVersion |
 | `src/core/eventBus.js` | `emit`/`on`/`off`, deferred-event queue, flush | `createBus`/`EventBus` | — |
-| `src/core/registry.js` | system list, init order, UPDATE_ORDER, `step(dt)` | `Registry` | all systems |
+| `src/core/registry.js` | full browser manifest materialization and `step(dt)`; delegates worker callers to presentation | `createRegistry` | browser simulation systems |
+| `src/runtime/presentationRegistry.js` | main-thread presentation lifecycle, facades and render phase for worker mode | `createPresentationRegistry` | presentation owners and read seams |
 | `src/core/loop.js` | rAF loop, fixed-timestep accumulator, render interp alpha | `startLoop` | registry, render |
 | `src/core/timeEffects.js` | per-state transient pause/slow-time arbiter; minimum named request; sole `state.timeScale` writer | `createTimeEffects` | — |
 | `src/core/runTransitionGuard.js` | monotonic async New Game/load ownership; private issued-token identity rejects clones/forgeries; stale readiness completions become no-ops | `createRunTransitionGuard` | — |
