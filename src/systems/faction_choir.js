@@ -40,7 +40,6 @@ import {
   CHOIR_CARRIED_RELIC,
   CHOIR_BELL_HEAD,
   CHOIR_SHRINE,
-  CHOIR_BARKS,
 } from '../data/factions/choir.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -497,7 +496,22 @@ export const choirResonance = {
         this.bus.on('entity:killed', (p) => this._onKilled(p)),
       ];
     }
+    this._bellSpoke = new Set(); // bellIds whose first pulse already spoke the pulse line
     ensureChoirState(this.state);
+  },
+
+  // Save slot: the whole ledger is plain JSON (sanctuary, pilgrim stamps, paid legs,
+  // tithe receipts, blessings, heresy marks) — Continue must not re-arm a "pay once"
+  // latch. Additive: an older save with no Choir bag restores to the fresh default.
+  serialize() {
+    if (!this.state) return {};
+    return JSON.parse(JSON.stringify(ensureChoirState(this.state)));
+  },
+
+  deserialize(data) {
+    if (!this.state) return undefined;
+    this.state.choir = _obj(data) === data && data ? JSON.parse(JSON.stringify(data)) : null;
+    return ensureChoirState(this.state);
   },
 
   /** Hum a crystal: it answers the resonance for `humS`, then lets go. */
@@ -568,16 +582,23 @@ export const choirResonance = {
       if (!e) continue;
       // A dead bell's throttle row is dead weight — prune it as it is seen, and
       // hard-bound the Map so a long session cannot grow it without limit.
-      if (e.alive === false) { this._pulseAt.delete(e.id); continue; }
+      if (!this._bellSpoke) this._bellSpoke = new Set();
+      if (e.alive === false) { this._pulseAt.delete(e.id); this._bellSpoke.delete(e.id); continue; }
       if (e.data?.choirBell !== true) continue;
       // Swept-and-gone ids can outlive their sighting; a hard cap keeps the
       // Map bounded even if prune-on-death never observes them.
       if (this._pulseAt.size > 512) this._pulseAt.clear();
+      if (this._bellSpoke.size > 512) this._bellSpoke.clear();
       const at = this._pulseAt.get(e.id) ?? -1;
       if (state.simTime >= at) {
         this._pulseAt.set(e.id, state.simTime + CHOIR_BELLS.pulsePeriodS);
         this._pulse(state, e.id, e.pos, CHOIR_BELLS.pulseRadius, CHOIR_BELLS.humDurationS, 'bell');
-        this.bus.emit('comms:log', { text: CHOIR_BARKS.home, speaker: 'Ascendant Choir' });
+        // The bell speaks once when it first rings in your presence — not on every 6 s
+        // beat, and never with the relic alarm's "The shrine is home." sentence.
+        if (!this._bellSpoke.has(e.id)) {
+          this._bellSpoke.add(e.id);
+          this.bus.emit('comms:log', { text: CHOIR_BELLS.pulseLine, speaker: 'Ascendant Choir' });
+        }
       }
     }
   },

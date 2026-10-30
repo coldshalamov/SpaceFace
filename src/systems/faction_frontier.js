@@ -52,6 +52,7 @@ import {
   FRONTIER_BARKS,
 } from '../data/factions/free.js';
 import { hash32, drawSeeded } from '../core/rng.js';
+import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
 const touching = (a, b) => dist2(a.pos, b.pos) <= (a.radius + b.radius + 2) ** 2;
@@ -611,7 +612,10 @@ export const frontierHomesteads = {
     const seq = f.siteSeq;
     const ang = frac('frontier-site-ang', sectorId, seq) * Math.PI * 2;
     const ring = FRONTIER_SITE.minR + frac('frontier-site-r', sectorId, seq) * FRONTIER_SITE.spreadR;
-    const px = Math.cos(ang) * ring, pz = Math.sin(ang) * ring;
+    // The ring is sector-local: world positions are galactic-global, so the site plants
+    // around the seeding sector's own origin (Io Reach), not around Helios at {0,0}.
+    const origin = sectorGlobalOrigin(sectorId);
+    const px = origin.x + Math.cos(ang) * ring, pz = origin.z + Math.sin(ang) * ring;
     const siteId = `site:${sectorId}:${seq}`;
     const body = this.helpers.spawnEntity({
       type: 'station', team: 0, factionId: FACTION_ID,
@@ -633,7 +637,14 @@ export const frontierHomesteads = {
       this.helpers.spawnEntity({
         type: 'payload', team: 0, pos: { x: px + Math.cos(pa) * pr, z: pz + Math.sin(pa) * pr },
         radius: 6, mass: 10, hull: 10, hullMax: 10, collides: true,
-        data: { supplyCargo: true, frontierSite: siteId },
+        // Persistent like the frame, so a Continue keeps the site's stores; named so the
+        // delivery the homestead pays for identifies itself on the scan.
+        flags: { persistent: true },
+        data: {
+          supplyCargo: true, frontierSite: siteId,
+          name: 'Homestead Supplies', scannable: true,
+          scanLabel: 'HOMESTEAD SUPPLIES · tow to the frame',
+        },
       });
     }
     this.bus.emit('frontier:sitePlanted', {
@@ -651,6 +662,8 @@ export const frontierHomesteads = {
       type: 'payload', team: 0, factionId: FACTION_ID,
       pos: { x: px + Math.cos(a) * r, z: pz + Math.sin(a) * r },
       radius: m.radius, mass: m.mass, hull: 100, hullMax: 100, collides: true,
+      // Persistent like the frame: a Continue must not drop a half-built quilt.
+      flags: { persistent: true },
       data: { homesteadModule: m.id, name: m.label, frontierSite: siteId },
     });
   },
