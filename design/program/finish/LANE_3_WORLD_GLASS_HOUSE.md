@@ -13,6 +13,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 ## Claimed paths (beyond README §3)
 
 ## Inbox (other lanes append one line: date, lane, path, what/why)
+2026-10-29, Lane 1, `b6673fe1b3c` (`beatStandard`/`factionRegisters`) — refresh the active `fix-spine-vocab` packet and validate `docs/worldbuilding/beats/47a-first-blood.beat.json` before finish: lines 88/94 use `stage_tow`/`corridor_pull`; lines 104/111 cite barks that differ from live text.
 
 ## Defects (this lane's share of the demo defect ledger — delete a row in the commit that fixes it)
 
