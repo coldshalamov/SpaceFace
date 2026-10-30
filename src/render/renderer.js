@@ -257,8 +257,12 @@ import {
   shouldSuggestIntegratedPreset,
   INTEGRATED_PRESET_SUGGESTION,
   DEFAULT_QUALITY_PRESET,
+  adaptiveFrameBudgetMs,
+  adaptiveResolutionEligibleForState,
+  adaptiveResolutionEnabledForSettings,
   dynResFloorForTier,
   dynamicResolutionAllowedForTier,
+  qualityModeForVideo,
   softwareRendererEmergencyProfile,
 } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
@@ -13389,19 +13393,17 @@ export const render = {
     const dynFloor = dynResFloorForTier(gpu.tier);
     this._adaptive = createAdaptiveResolution({
       floor: dynFloor,
+      initialScale: gpu.software === true ? dynFloor : 1,
       apply: (s) => { this.state.render.dynResScale = s; this._applySize(); },
     });
-    // Dynamic resolution is allowed for SOFTWARE (emergency), INTEGRATED and UNKNOWN (a browser that
-    // hides the GPU name; opt-in setting).
-    // Scale changes used to reallocate the whole render-target chain (0.5-1.3s stalls on this
-    // class of hardware — .devshots/perf/hitch-budget-after-lightfix* vs *-nodynres). The bloom
-    // target pool now pre-allocates at max size and renders into viewport sub-rects via
-    // setContentScale — zero realloc on scale change — so integrated can opt in safely.
-    // Discrete stays off: steady-state already holds the frame budget at full quality.
+    this._adaptiveSample = { eligible: false, targetMs: 1000 / 60 };
+    // Auto quality adapts internal resolution on every GPU class; manual settings keep their
+    // explicit dynamicResolution choice. The preallocated bloom pool changes content scale without
+    // render-target reallocations.
     this._dynResAllowed = dynamicResolutionAllowedForTier(gpu.tier);
     // Published for renderGraphDynResBlocked (route selection + buffer sizing read it there).
     state.render.dynResAllowed = this._dynResAllowed;
-    this._adaptive.setEnabled(this._dynResAllowed && !(state.settings && state.settings.video && state.settings.video.dynamicResolution === false));
+    this._adaptive.setEnabled(adaptiveResolutionEnabledForSettings(gpu, state.settings && state.settings.video));
 
     // Hardware acceleration OFF (CPU WebGL: SwiftShader/llvmpipe): no in-game setting makes that
     // fast — apply the software-only emergency profile and tell the player exactly how to fix it.
@@ -21035,12 +21037,14 @@ export const render = {
         this._syncShadowMapEnabled();
         if (shadowSettingWasOff && this._shadowSettingOn === true) this._stageShadowDepthOnSettingEnable();
       }
-      // dynamicResolution flips the graph-route gate (renderGraphDynResBlocked), so the buffer
-      // scale must be re-derived too — not just the adaptive controller's enabled flag.
+      // Auto can flip the graph-route gate just like dynamicResolution; re-derive buffer scale
+      // whenever either policy changes, not just the adaptive controller's enabled flag.
       if (p.key === 'renderScale' || p.key === 'pixelRatioCap' || p.key === 'dynamicResolution'
-        || p.key === 'renderGraph' || p.key == null) this.onResize();
-      if ((p.key === 'dynamicResolution' || p.key == null) && this._adaptive) {
-        this._adaptive.setEnabled(this._dynResAllowed === true && vd.dynamicResolution !== false);
+        || p.key === 'qualityMode' || p.key === 'renderGraph' || p.key == null) this.onResize();
+      if ((p.key === 'dynamicResolution' || p.key === 'qualityMode' || p.key == null) && this._adaptive) {
+        const adaptiveEnabled = adaptiveResolutionEnabledForSettings(state.render.gpu, vd);
+        if (adaptiveEnabled) this._adaptive.syncScale(state.render.dynResScale);
+        this._adaptive.setEnabled(adaptiveEnabled);
       }
       // FOV: the feel system (feel.js) adds a transient punch on top of this base. We update the
       // camera's base fov here; feel.frame() re-derives its cached base from settings when no punch
@@ -31907,10 +31911,17 @@ export const render = {
         if (rebase.changed) this._applyFrameOriginRebase(rebase.dx, rebase.dz);
       });
     }
-    // Dynamic resolution: measure real frame time and nudge the internal render scale to hold a smooth
-    // framerate on weak/software GPUs (adaptiveQuality.js). Cheap; only resizes targets on a change.
+    // Dynamic resolution learns from visible flight only. Menus, pause, loading, background tabs,
+    // opening readiness, and long scheduling stalls must not be mistaken for sustained GPU load.
     if (this._adaptive) {
-      tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt));
+      const adaptiveState = this.state;
+      const video = adaptiveState && adaptiveState.settings && adaptiveState.settings.video;
+      const doc = typeof document !== 'undefined' ? document : null;
+      const eligible = adaptiveResolutionEligibleForState(adaptiveState, doc?.visibilityState);
+      const sample = this._adaptiveSample;
+      sample.eligible = eligible;
+      sample.targetMs = adaptiveFrameBudgetMs(adaptiveState.render, video);
+      tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
     }
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
@@ -36370,7 +36381,7 @@ function afterBrowserPaint(callback, schedule = null) {
 
 // The render graph owns its internal renderScale and ignores state.render.dynResScale — so
 // any configuration where the adaptive-resolution controller can move the scale (the software
-// emergency floor, or an opt-in dynamicResolution on a dyn-res tier) stays on the bloom path,
+// emergency floor, Auto quality, or an opt-in dynamicResolution on a dyn-res tier) stays on bloom,
 // whose content sub-rect honours every scale step. The predicate is shared by _selectPostRoute
 // and applyRendererSize so route selection and buffer sizing can never disagree.
 function renderGraphDynResBlocked(state) {
@@ -36378,7 +36389,7 @@ function renderGraphDynResBlocked(state) {
   const video = (state && state.settings && state.settings.video) || {};
   if (render && render.dynResAllowed !== true) return false;
   if (render && render.gpu && render.gpu.software === true) return true;
-  return video.dynamicResolution !== false;
+  return qualityModeForVideo(video) === 'auto' || video.dynamicResolution === true;
 }
 
 function aspectClassFromSize(size) {

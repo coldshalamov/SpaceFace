@@ -81,6 +81,7 @@ import {
   MASSLINE_BINDING_PROFILE_LEGACY,
   MASSLINE_BINDING_PROFILE_SPACE,
   PROFILE_SETTINGS_KEY,
+  mergeProfileSettings,
   migrateDefaultMutedAudioProfile,
   migrateGameMotionDefault,
   migrateLegacyMasslineBindingProfile,
@@ -1678,7 +1679,7 @@ export const save = {
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     ));
     if (!profile) return false;
-    this.state.settings = sanitizeRestoredSettings(mergePlain(this.state.settings, profile));
+    this.state.settings = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, profile));
     return true;
   },
 
@@ -7989,7 +7990,7 @@ export const save = {
     const saveSettings = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
       migrateLegacyMasslineBindingProfile(clonePlain(d)),
     ));
-    let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, saveSettings));
+    let restored = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, saveSettings));
     // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
     // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
     // restore used to union the incoming map over whatever bindings were already live in
@@ -8012,7 +8013,7 @@ export const save = {
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     ));
     if (profile) {
-      restored = sanitizeRestoredSettings(mergePlain(restored, profile));
+      restored = sanitizeRestoredSettings(mergeProfileSettings(restored, profile));
       // Binding maps are an atomic player profile choice. Deep-merging here would retain keys
       // injected by old-save migration underneath a newer Space-primary profile.
       if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {

@@ -573,6 +573,7 @@ Current save version: `22`
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
 | `$.settings.video.postFx` | boolean | true |
+| `$.settings.video.qualityMode` | string | auto |
 | `$.settings.video.qualityPreset` | string | medium |
 | `$.settings.video.renderGraph` | boolean | false |
 | `$.settings.video.renderScale` | number | 1 |

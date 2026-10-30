@@ -123,6 +123,16 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
 
+  // Older profiles predate qualityMode. Do not let the current default ('auto') mask the old
+  // video values before qualityModeForVideo can distinguish an untouched Balanced profile from a
+  // player's saved custom/preset choice. Explicit Auto/Manual always wins.
+  const incomingVideo = profileSettings && profileSettings.video;
+  if (isPlainObject(incomingVideo)
+    && !Object.prototype.hasOwnProperty.call(incomingVideo, 'qualityMode')
+    && isPlainObject(merged.video)) {
+    delete merged.video.qualityMode;
+  }
+
   // Runtime backend selection is a build contract, not a player-profile choice. Preserve the
   // createGameState defaults even if a hand-edited/legacy profile contains these keys.
   if (!isPlainObject(merged.gameplay)) merged.gameplay = {};

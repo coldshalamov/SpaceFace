@@ -567,6 +567,13 @@ test('dynamic-resolution tiers stay on the bloom path even when the render graph
   assert.equal(dynResDefaultOff.owner._selectPostRoute(), POST_PROCESS_ROUTE.GRAPH,
     'a dyn-res tier with the controller disabled still honours the graph request');
 
+  const automatic = createPostRouteHarness({ renderGraph: true });
+  automatic.owner.state.render.dynResAllowed = true;
+  automatic.owner.state.settings.video.qualityMode = 'auto';
+  automatic.owner.state.settings.video.dynamicResolution = false;
+  assert.equal(automatic.owner._selectPostRoute(), POST_PROCESS_ROUTE.BLOOM,
+    'Auto adapts render resolution even though the manual dynamicResolution toggle is off');
+
   const discreteGraph = createPostRouteHarness({ renderGraph: true });
   discreteGraph.owner.state.render.dynResAllowed = false;
   discreteGraph.owner.state.render.gpu = { tier: 'discrete', software: false };
@@ -1331,10 +1338,11 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'context-restore GPU residency must publish initTexture slices');
   assert.match(source,
-    // The options literal nests `{ sliceMs }` inside createSlicedYield, so the scan must allow
-    // braces — `[^}]*` stopped matching the day the sliced yield landed.
-    /firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
-    'first-picture GPU residency must publish initTexture slices');
+    /const firstPicturePlan = state\.render\.openingSubmissionPlan;[\s\S]*?firstPictureResidencySubjects = collectOpeningResidencySubjects\(firstPicturePlan\);[\s\S]*?if \(firstPictureResidencySubjects\.length > 0\) \{[\s\S]*?firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*firstPictureResidencySubjects,\s*\{[\s\S]*?includeEmpty:\s*true,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'first-picture residency must admit the exact opening-plan subjects, including zero-count pools, and publish initTexture slices');
+  assert.match(source,
+    /reason:\s*'exact opening admission and first-flight cook own residency'/,
+    'an empty opening plan may skip this pass only because exact opening admission and first-flight cook own the remaining residency');
   assert.match(source,
     /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'pipeline admission must publish synchronous compileBatch slices');
@@ -1342,8 +1350,8 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /createGpuResidencyAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'authored GPU residency tracker must publish initTexture slices');
   assert.match(source,
-    /prepareStartupGpuResidency\(renderer,\s*plan\.residencySubjects[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
-    'opening GPU residency must publish initTexture slices');
+    /const openingResidencyLeaves = openingAdmissionSubjects\([\s\S]*?plan\.residencySubjects[\s\S]*?plan\.pooledResourceSubjects[\s\S]*?const openingResidencySubjects = collectOpeningResidencySubjects\(\{[\s\S]*?plan\.textureRefs[\s\S]*?\}\);[\s\S]*?const residency = prepareStartupGpuResidency\(renderer,\s*openingResidencySubjects,\s*\{[\s\S]*?includeEmpty:\s*true,[\s\S]*?includeGeometry:\s*true,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'opening residency must include current-plan pools and texture refs before required uploads');
   assert.match(source,
     /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[\s\S]*?beforeSubmit:\s*assertPictureSealActive,[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'the current-sector picture seal must publish its blocking residency slices');

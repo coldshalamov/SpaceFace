@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { ORBIT_ASSIST_STRENGTH } from '../src/core/flight/orbitAssist.js';
+import { qualityModeForVideo } from '../src/render/adaptiveQuality.js';
 import { bootstrapProfileSettingsBeforeRegistry, PROFILE_SETTINGS_KEY } from '../src/core/graphicsProfileBootstrap.js';
 import { save } from '../src/save/saveSystem.js';
 
@@ -78,6 +79,26 @@ test('a save carrying the key restores it, and the profile wins over a save', ()
   save.init({ state: bare, bus: events, helpers: {}, registry: { get: () => null } });
   save._restoreSettings({ gameplay: { orbitAssistStrength: 'full' } });
   assert.equal(bare.settings.gameplay.orbitAssistStrength, 'full');
+});
+
+test('Continue infers legacy video mode before current defaults can mask the saved choice', () => {
+  const previous = globalThis.localStorage;
+  const storage = local();
+  globalThis.localStorage = storage;
+  try {
+    const state = createGameState(4242);
+    save.init({ state, bus: createBus(), helpers: {}, registry: { get: () => null } });
+    save._restoreSettings({ video: { renderScale: 0.75, qualityPreset: 'low', bloom: false } });
+    assert.equal(qualityModeForVideo(state.settings.video), 'manual',
+      'a pre-Auto save with custom video settings remains under player control');
+
+    save._restoreSettings({ video: { renderScale: 1, qualityPreset: 'medium', bloom: true } });
+    assert.equal(qualityModeForVideo(state.settings.video), 'auto',
+      'an untouched legacy Balanced save can adopt automatic resolution');
+  } finally {
+    if (previous === undefined) delete globalThis.localStorage;
+    else globalThis.localStorage = previous;
+  }
 });
 
 test('out-of-domain values are clamped to the default instead of reaching the kernel', () => {
