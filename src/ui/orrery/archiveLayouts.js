@@ -1267,7 +1267,14 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
 }
 `;
 
-export const ARCHIVE_CSS = HAND + CODEX_CSS + CODEX_PHONE_CSS + MLOG_CSS + SCROLL_EXTENT_CSS;
+/* A desktop window narrower than 640px (split screen, a dragged-in browser) is not flagged data-sf-mobile, so the Codex got
+ *  the desktop grid squeezed to 390: the tab line wrapped one word per row beside the dials, GRAFFITI ran off the right edge
+ *  and the plate sat on the B0-B3 rows. Below 640px it takes the same stacked composition the phone does. */
+const CX_NARROW = 'html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.of-codex.orr-archive.orr-archive';
+const CODEX_NARROW_CSS = `@media (max-width:639px) {${CODEX_PHONE_CSS.replaceAll(CX_PHONE, CX_NARROW)}}
+`;
+
+export const ARCHIVE_CSS = HAND + CODEX_CSS + CODEX_PHONE_CSS + CODEX_NARROW_CSS + MLOG_CSS + SCROLL_EXTENT_CSS;
 
 /** Inject the archive composition once (after the Deckplate and ORRERY sheets). */
 export function injectArchiveLayouts(doc = globalThis.document) {
