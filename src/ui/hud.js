@@ -6083,8 +6083,13 @@ export function createHud(ctx, alerts) {
     let laneWidth = Math.min(lane.width, slot.width);
     let laneLeft = slot.x + (slot.width - laneWidth) / 2;
     setStyle(laneRoot, 'width', `${Math.round(laneWidth)}px`);
-    setStyle(laneRoot, 'maxHeight', 'none');
-    setStyle(laneRoot, 'overflowY', 'visible');
+    // A card's own height does not depend on the lane's max-height, so clear it only when the
+    // lane is scrolling (a scrollbar narrows the cards). Clearing it every slow tick toggled it
+    // none -> px and made the card reads below force a layout each time.
+    if (laneRoot.style.overflowY !== 'visible') {
+      setStyle(laneRoot, 'maxHeight', 'none');
+      setStyle(laneRoot, 'overflowY', 'visible');
+    }
     setStyle(laneRoot, 'pointerEvents', 'none');
     const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
     const receiptGap = typeof getComputedStyle === 'function'
