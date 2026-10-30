@@ -871,7 +871,9 @@ export function createMarketScreen(ctx) {
   const routesEl = el.querySelector('.sx-mkt__routes');
   const decisionEl = el.querySelector('.sx-mkt__decision');
   const papers = createLaunderService({ bus: ctx.bus, getState: () => ctx.state || {}, document });
-  quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
+  // The market frame always parents the quote; a detached frame keeps the papers desk unmounted
+  // rather than failing the whole Market (same guard as the tape anchor below).
+  if (quoteEl && quoteEl.parentNode) quoteEl.parentNode.insertBefore(papers.el, quoteEl.nextSibling);
   let tradeBusy = false;
   let visible = true;
   let disposed = false;
