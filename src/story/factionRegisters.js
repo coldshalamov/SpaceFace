@@ -80,6 +80,12 @@ export function normalizeLine(value) {
     .toLowerCase();
 }
 
+function containsRulePhrase(line, phrase) {
+  if (!line || !phrase) return false;
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}_])${escaped}(?=$|[^\\p{L}\\p{N}_])`, 'u').test(line);
+}
+
 // A tell/forbidden block is one phrase per line. Single-line blocks still work.
 export function parseKeyList(value) {
   return String(value == null ? '' : value)
@@ -247,11 +253,11 @@ export function validateFactionRegister(sheet) {
   if (example && sourceBytes && example === sourceBytes) {
     const normalized = normalizeLine(example);
     const tells = parseKeyList(sheet.register_tell).map(normalizeLine).filter(Boolean);
-    if (tells.length > 0 && !tells.some((tell) => normalized.includes(tell))) {
+    if (tells.length > 0 && !tells.some((tell) => containsRulePhrase(normalized, tell))) {
       issues.push(issue('example_misses_tell', 'example carries none of its own tells', 'register_example'));
     }
     const forbidden = parseKeyList(sheet.register_forbidden).map(normalizeLine).filter(Boolean);
-    const foul = forbidden.find((term) => normalized.includes(term));
+    const foul = forbidden.find((term) => containsRulePhrase(normalized, term));
     if (foul) {
       issues.push(issue('forbidden_in_example', `example uses forbidden term "${foul}"`, 'register_example'));
     }
@@ -267,11 +273,11 @@ export function scoreHouse(sheet, line) {
   const normalized = normalizeLine(line);
   if (!normalized) return -1;
   const forbidden = parseKeyList(sheet && sheet.register_forbidden).map(normalizeLine).filter(Boolean);
-  if (forbidden.some((term) => normalized.includes(term))) return -1;
+  if (forbidden.some((term) => containsRulePhrase(normalized, term))) return -1;
   const tells = parseKeyList(sheet && sheet.register_tell).map(normalizeLine).filter(Boolean);
   let hits = 0;
   for (const tell of tells) {
-    if (normalized.includes(tell)) hits += 1;
+    if (containsRulePhrase(normalized, tell)) hits += 1;
   }
   return hits;
 }
@@ -348,7 +354,7 @@ export function scanHouseTableForForbidden(sheet) {
   return liveHouseLines(sheet && sheet.id)
     .map((row) => {
       const normalized = normalizeLine(row.line);
-      const foul = forbidden.find((term) => normalized.includes(term));
+      const foul = forbidden.find((term) => containsRulePhrase(normalized, term));
       return foul ? { ...row, foul } : null;
     })
     .filter(Boolean);

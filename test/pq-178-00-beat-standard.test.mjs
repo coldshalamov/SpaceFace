@@ -1,7 +1,7 @@
 // PQ-178.00 — beat standard. Headless. No soak. No headed capture.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -11,6 +11,7 @@ import {
   BEAT_SCHEMA,
   BEAT_SHEET_DIR,
   B0_CHAPTER_REL,
+  LEFTOVER_SPINE_LIVE_SETTLE_REL,
   OPENER_47A_ID,
   REQUIRED_47A_ACTORS,
   SCENARIO_47A_REL,
@@ -80,6 +81,16 @@ test('live corpus and leftover 47-A opener pass the standard without B0 collapse
   assert.match(cli.stdout, /check-beat-standard: PASS/);
 });
 
+test('shipped leftover sheets resolve the archived live-settle receipt', () => {
+  assert.ok(existsSync(join(ROOT, LEFTOVER_SPINE_LIVE_SETTLE_REL)), LEFTOVER_SPINE_LIVE_SETTLE_REL);
+  for (const report of validateBeatCorpus()) {
+    assert.ok(
+      !report.issues.some((row) => row.code === 'leftover_source' && row.path === 'leftoverSource.liveSettle'),
+      `${report.rel} cites the existing live-settle receipt path`,
+    );
+  }
+});
+
 test('validator fails prose-only, choice menu, cutscene, single solution, and no physical verb', () => {
   const proseIssues = validateBeatSheet({
     kind: 'prose',
@@ -114,6 +125,13 @@ test('validator fails prose-only, choice menu, cutscene, single solution, and no
   });
   assert.ok(menuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(menuIssues));
   assert.ok(menuIssues.some((row) => row.code === 'no_physical_verb'), JSON.stringify(menuIssues));
+
+  const stringMenuIssues = validateBeatSheet({
+    schema: BEAT_SCHEMA,
+    id: 'beat.bad.string-menu',
+    choices: ['Open the hatch', 'Leave it sealed'],
+  });
+  assert.ok(stringMenuIssues.some((row) => row.code === 'choice_menu'), JSON.stringify(stringMenuIssues));
 
   const cutsceneIssues = validateBeatSheet({
     schema: BEAT_SCHEMA,

@@ -114,8 +114,8 @@ The remaining 26 exact paths and their nearest purpose/consumer are:
 | `src/sports/kineticLeague/gallery.js` | Lane 2 M27: Node PNG baker for schematic arena images. | Tests call it; not part of the live game tick. |
 | `src/sports/kineticLeague/index.js` | Lane 2 M27: public barrel, not the registered system path. | Tests and `play.mjs` import it; production registry uses `system.js`. |
 | `src/sports/kineticLeague/workerEntry.js` | Lane 2 M27: Node `worker_threads` exhibit entry. | Kinetic League tests spawn it; not the browser simulation worker. The live league system is registered. |
-| `src/story/beatStandard.js` | Lane 3 story M01: Node filesystem authoring checker. | Story validation only; no sim-loop caller. |
-| `src/story/factionRegisters.js` | Lane 3 story M01: checker-side bark scoring. | Not called from the sim, HUD, or bark player; live story owners remain elsewhere. |
+| `src/story/beatStandard.js` | Lane 3 story M01: Node filesystem authoring checker. Fixed the missing archive receipt path and string-array choice-menu false negative. | Story validation only; no sim-loop caller. |
+| `src/story/factionRegisters.js` | Lane 3 story M01: checker-side bark scoring. Fixed tell/forbidden matching to respect phrase boundaries. | Not called from the sim, HUD, or bark player; live story owners remain elsewhere. |
 | `src/world/poseTable.js` | World M04 and U062: live tick query/read model. | U062 records actual same-tick world, combat, and mining readers; it is not a missing feature just because the main-page graph omits that edge. |
 | `src/data/swarmFortifyView.js` | Full 42-line read: bounded presentation DTO adapter. | `scripts/lib/simEventBridge.mjs` uses it for the route/probe event bridge; the production paused screen has its own runtime presentation path. |
 
@@ -124,6 +124,13 @@ validator, lived-world count, station glyph table, five-locale facade, 325-line 
 catalog, and Mercy Service barrel. The station glyph table was wired to the map in this pass and is
 now reachable. No unrelated owner files were changed. `borrowedSun.js` is
 currently imported by both the main registry and node factory and is not an orphan in this census.
+
+The initial 26-path gap is now classified in
+[`uncovered-orphan-coverage.md`](../../../.devshots/finish/integration-2026-10-29/uncovered-orphan-coverage.md).
+It reuses the named U/lane reports, classifies all 26 without adding default-route wiring for
+import-count purposes, and records the two checker fixes. The focused beat corpus check also
+exposes separate existing `47a-first-blood.beat.json` method/citation drift, recorded in that note;
+its authored content was not changed by this coverage pass.
 
 ## Acceptance boundary
 

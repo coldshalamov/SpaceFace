@@ -243,3 +243,21 @@ test('bare fragments abstain rather than guess', () => {
     assert.equal(assignRegister(line, houses), null, line);
   }
 });
+
+test('rule phrases match token boundaries while preserving real named-register phrases', () => {
+  const sheet = {
+    id: 'probe',
+    register_tell: 'pattern\naccord\nclauses',
+    register_forbidden: 'clause',
+  };
+  assert.equal(scoreHouse(sheet, 'The pattern holds.'), 1, 'whole tell tokens still score');
+  assert.equal(scoreHouse(sheet, 'Patterns are filed under accordance.'), 0,
+    'tokens inside longer words do not score as tells');
+  assert.equal(scoreHouse(sheet, 'The clause is open.'), -1, 'a whole forbidden token disqualifies');
+  assert.equal(scoreHouse(sheet, 'The clauses remain open.'), 1,
+    'a longer word does not trigger the forbidden token');
+
+  const vael = loadRegisterHouses().find((row) => row.id === 'faction_vael');
+  assert.ok(scoreHouse(vael, 'Clause 4: this-vessel records the accord.') > 0,
+    'the authored legal register still matches its real tokens');
+});

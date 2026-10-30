@@ -71,7 +71,7 @@ export const LEFTOVER_SPINE_CHAPTERS = Object.freeze({
 
 export const LEFTOVER_SPINE_SIDECAR_REL = 'src/story/campaign47a/embodiedMissions.js';
 export const LEFTOVER_SPINE_COMMS_REL = 'src/story/campaign47a/embodiedDialogue.js';
-export const LEFTOVER_SPINE_LIVE_SETTLE_REL = 'design/program/roadmap/receipts/PQ-032.00-REPORT.md';
+export const LEFTOVER_SPINE_LIVE_SETTLE_REL = 'design/archive/program/roadmap/receipts/PQ-032.00-REPORT.md';
 // Leftover PQ-032.00 headless proof. No leftover input tape for beats 1–3.
 export const LEFTOVER_SPINE_SEED = 3200;
 
@@ -174,7 +174,8 @@ const STICK_LOCK_KEYS = Object.freeze([
 
 function choiceListShaped(list) {
   return Array.isArray(list) && list.some((row) => (
-    row && typeof row === 'object' && (row.label || row.next || row.reply || row.choice)
+    (typeof row === 'string' && row.trim().length > 0)
+    || (row && typeof row === 'object' && (row.label || row.next || row.reply || row.choice))
   ));
 }
 
