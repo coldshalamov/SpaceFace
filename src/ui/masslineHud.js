@@ -39,7 +39,7 @@ import { createLineStrainReadout } from './lineStrainReadout.js';
 // INF-078: the throw preview names protected bodies inside the predicted corridor using
 // the law's own protected definition and the release geometry's advisory corridor. Read
 // only on both sides — the cue never touches release authority.
-import { isLawProtectedBody } from '../systems/lawSecurity.js';
+import { isLawProtectedBody } from '../law/protectedBodies.js';
 import { isWreckLike } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';

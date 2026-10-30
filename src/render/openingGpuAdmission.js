@@ -750,6 +750,14 @@ export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
  */
 export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene, options = {}) {
   const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
+  const assertSubjectActive = (item) => {
+    if (!isRetiredRigidOpaqueBatch(item)) return;
+    const error = new Error('Exact-target admission owner became inactive');
+    error.name = 'AbortError';
+    error.code = 'SF_EXACT_TARGET_OWNER_INACTIVE';
+    throw error;
+  };
+  for (const item of subjects) assertSubjectActive(item);
   if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
   }
@@ -861,6 +869,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       node.visible = false;
     }
     for (const item of subjects) {
+      assertSubjectActive(item);
       if (item === lightingScene) continue;
       let underScene = false;
       for (let node = item; node; node = node.parent) {
@@ -922,6 +931,7 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         // Keep refilled chains alive for this bind. A residency release in the
         // same turn would empty them again before texStorage reads mipmaps[0].
         releaseUploadLeases = retainPresentedTextureLeases(collectStartupTextures(drawableSubjects));
+        for (const item of subjects) assertSubjectActive(item);
         renderer.render(lightingScene, camera);
       }, options.drawableSession);
       drawn.push(...drawableSubjects.map((item) => objectLabel(item)));

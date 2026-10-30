@@ -603,7 +603,6 @@ import {
 } from './tabletopPolicy.js';
 import { PRESENTATION_TIER, entityPresenceRadius } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
-import { effectiveLawSecurity } from '../systems/lawSecurity.js';
 import { heatLevelFor, isPlayerWanted } from '../systems/heat.js';
 import { planGateScene } from '../data/gateControl.js';
 import {
@@ -13720,7 +13719,8 @@ export const render = {
     const submitExactSubjectTouch = (subject, isActive = null, urgent = false) => {
       const pace = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
       const submit = () => {
-        if (typeof isActive === 'function' && !isActive(subject)) throw ownerInactiveTouchError();
+        if (isRetiredRigidOpaqueBatch(subject)
+          || (typeof isActive === 'function' && !isActive(subject))) throw ownerInactiveTouchError();
         // The pacer may wait behind another producer. Reveal only inside its synchronous
         // reservation: overlapping root/descendant jobs must never capture each other's
         // temporary visibility/count/range and restore that warm state into live flight.
@@ -13735,7 +13735,8 @@ export const render = {
         // The serial queue can reject a stale owner before running submit. Convert its tagged
         // skip into the same cancellation used by the exact callback so awaited admission owners
         // never mistake an inactive target for a successful exact draw.
-        if (result && result.skipped === true && result.reason === 'owner-inactive') {
+        if (isRetiredRigidOpaqueBatch(subject)
+          || (result && result.skipped === true && result.reason === 'owner-inactive')) {
           throw ownerInactiveTouchError();
         }
         return result;
@@ -14472,6 +14473,7 @@ export const render = {
               && admissionOptions.isActive(subject) !== true) {
             throw ownerInactiveTouchError();
           }
+          if (isRetiredRigidOpaqueBatch(subject)) throw ownerInactiveTouchError();
           // A cpu-detached package texture this draw would force-upload reads an emptied mip
           // chain inside uploadTexture and throws — the touch exists to keep exactly that work
           // out of the presented pass, so re-attach those payloads first (D150).
