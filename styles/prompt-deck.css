@@ -233,11 +233,26 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 @media (max-width: 900px), (max-height: 620px) {
   #sf-prompt-deck {
     top: auto;
-    bottom: 118px;
+    /* Keep the bottom flight instruments and command rail visible. The active card and one-line
+       collapsed prompts live above that reserved band; further decisions remain raisable chips. */
+    bottom: max(224px, 25vh);
     left: 12px;
-    right: 12px;
-    width: auto;
+    right: auto;
+    width: min(392px, calc(100vw - 172px));
     max-height: 44vh;
+  }
+}
+
+/* In short landscape flight the instruments occupy the left side. Keep the decision on the
+   right instead of stretching a sheet across the speed dial and the command rail. */
+@media (min-width: 640px) and (max-height: 620px) {
+  #sf-prompt-deck {
+    top: 112px;
+    bottom: auto;
+    left: auto;
+    right: 12px;
+    width: min(392px, calc(100vw - 350px));
+    max-height: calc(100vh - 144px);
   }
 }
 
