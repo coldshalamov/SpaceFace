@@ -1240,6 +1240,8 @@ async function rehydrateManifest(manifest) {
     if (!donor || !sameGeometryFingerprint(entry.fingerprint, geometryFingerprint(donor))) {
       manifest.totals.mismatches += 1;
       geometryMismatches.push({
+        manifestId: manifest.manifestId,
+        contentHash: manifest.contentHash,
         assetId: manifest.assetId,
         geometryOrdinal: entry.ordinal,
         expected: geometryFingerprintEvidence(entry.fingerprint),
@@ -1327,6 +1329,110 @@ async function rehydrateManifest(manifest) {
     bytes: restoredBytes,
     geometryMismatches,
   };
+}
+
+/** Fail closed when a requested geometry refill did not restore every released source buffer. */
+export function assertPackageGeometryRefillReady(geometries, receipt) {
+  const mismatches = Array.isArray(receipt?.geometryMismatches) ? receipt.geometryMismatches : [];
+  const errors = Array.isArray(receipt?.errors) ? receipt.errors : [];
+  const unresolved = [];
+  for (const geometry of geometries || []) {
+    if (!isPackageGeometryDetached(geometry)) continue;
+    const mark = geometry.userData?.spacefaceCpuDetach;
+    const manifest = mark && manifestForMark(mark);
+    const entry = manifest && manifest.geometryEntries[mark.ordinal];
+    unresolved.push({
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      manifestId: mark.manifestId ?? null,
+      contentHash: mark.contentHash || null,
+      assetId: manifest?.assetId || null,
+      geometryOrdinal: mark.ordinal ?? null,
+      expected: geometryFingerprintEvidence(entry?.fingerprint),
+      current: geometryFingerprintEvidence(geometryFingerprint(geometry)),
+    });
+  }
+  const requestedKeys = new Set((geometries || []).map((geometry) => {
+    const mark = geometry?.userData?.spacefaceCpuDetach;
+    return mark && mark.kind === 'geometry'
+      ? `${mark.manifestId}:${mark.ordinal}` : null;
+  }).filter(Boolean));
+  const requestedAssetIds = new Set(unresolved.map((row) => row.assetId).filter(Boolean));
+  const requestedMismatches = mismatches.filter((row) => requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const unrelatedMismatches = mismatches.filter((row) => !requestedKeys.has(`${row.manifestId}:${row.geometryOrdinal}`));
+  const requestedErrors = errors.filter((row) => requestedAssetIds.has(row.assetId));
+  const unrelatedErrors = errors.filter((row) => !requestedAssetIds.has(row.assetId));
+  if (unresolved.length === 0) {
+    return {
+      ready: true,
+      restoredGeometries: receipt?.geometries || 0,
+      unrelatedEvidence: {
+        geometryMismatches: unrelatedMismatches,
+        errors: unrelatedErrors,
+      },
+    };
+  }
+  const evidence = {
+    errors: requestedErrors,
+    geometryMismatches: requestedMismatches,
+    unresolved,
+    unrelatedEvidence: {
+      geometryMismatches: unrelatedMismatches,
+      errors: unrelatedErrors,
+    },
+  };
+  const error = new Error(`Package geometry CPU refill incomplete: ${JSON.stringify(evidence)}`);
+  error.name = 'PackageGeometryRefillError';
+  error.code = 'SF_PACKAGE_GEOMETRY_REFILL_INCOMPLETE';
+  error.geometryRefill = evidence;
+  throw error;
+}
+
+/** Compact current/manifest geometry shapes for an exact-target VBO upload failure. */
+export function packageGeometryUploadDiagnostics(geometries, { limit = 24 } = {}) {
+  const input = Array.from(geometries || []).filter(isGeometryLike);
+  const rows = input.slice(0, Math.max(0, limit | 0)).map((geometry) => {
+    const mark = geometry.userData?.spacefaceCpuDetach || null;
+    const manifest = mark && manifestForMark(mark);
+    const entry = mark?.kind === 'geometry' && manifest
+      ? manifest.geometryEntries[mark.ordinal] : null;
+    const current = geometryFingerprint(geometry);
+    const currentAttributes = {};
+    for (const [name, attribute] of Object.entries(geometry.attributes || {})) {
+      const record = attribute?.isInterleavedBufferAttribute === true ? attribute.data : attribute;
+      const array = record?.array;
+      currentAttributes[name] = {
+        count: Number(attribute?.count) || 0,
+        itemSize: Number(attribute?.itemSize) || 0,
+        version: Number(record?.version) || 0,
+        length: Number(array?.length) || 0,
+        byteLength: Number(array?.byteLength) || 0,
+        arrayType: array?.constructor?.name || null,
+        stride: attribute?.isInterleavedBufferAttribute === true
+          ? Number(record?.stride) || 0 : null,
+        offset: attribute?.isInterleavedBufferAttribute === true
+          ? Number(attribute?.offset) || 0 : null,
+      };
+    }
+    const markMatches = entry ? sameGeometryFingerprint(entry.fingerprint, current) : null;
+    return {
+      uuid: geometry.uuid || null,
+      name: geometry.name || null,
+      detached: isPackageGeometryDetached(geometry),
+      mark: mark ? {
+        manifestId: mark.manifestId ?? null,
+        contentHash: mark.contentHash || null,
+        assetId: manifest?.assetId || null,
+        geometryOrdinal: mark.ordinal ?? null,
+      } : null,
+      manifestShapeMatches: markMatches,
+      expected: entry ? geometryFingerprintEvidence(entry.fingerprint) : null,
+      current: geometryFingerprintEvidence(current),
+      currentAttributes,
+      indexVersion: Number(geometry.index?.version) || 0,
+    };
+  });
+  return { total: input.length, truncated: input.length > rows.length, rows };
 }
 
 function rehydrateManifestOnce(manifest) {

@@ -488,10 +488,12 @@ import {
 import { createCookQueuePaceDebt, makeGpuQueuePacer } from './gpuQueuePace.js';
 import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPacing.js';
 import {
+  assertPackageGeometryRefillReady,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
   isPackageGeometryDetached,
   noteOrientationDetachedHold,
+  packageGeometryUploadDiagnostics,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
@@ -12037,6 +12039,10 @@ export const render = {
         // Program pins die with the context; let the next admissions re-mint specimens.
         clearCanonicalProgramSpecimens();
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
+        // The depth-admission shadow clones and scratch targets are module-owned, outside the
+        // scene/resource roots below. Abandon their lost-generation handles now so ordinary
+        // renderer destruction after a restore cannot dispatch their stale Three dispose hooks.
+        disposeAdmissionShadowResources(renderer, { disposeGpu: false });
         dynamicBuffers.handleContextLost();
         let vfxRoots = [];
         let vfxResources = [];
@@ -13768,7 +13774,8 @@ export const render = {
     const reattachDetachedSubjectGeometries = async (subjects) => {
       const pending = await detachedSubjectGeometriesPendingAsync(subjects);
       if (pending.length === 0) return null;
-      return rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
+      const receipt = await rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
+      return assertPackageGeometryRefillReady(pending, receipt);
     };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
@@ -14343,10 +14350,20 @@ export const render = {
           // out of the presented pass, so re-attach those payloads first (D150).
           try {
             await reattachDetachedSubjectTextures(subject);
+          } catch (error) {
+            exactTargetReady = false;
+            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
+          }
+          try {
             await reattachDetachedSubjectGeometries(subject);
           } catch (error) {
             exactTargetReady = false;
-            laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
+            laneWarn(this, 'admissionTouch', '[render] admission touch geometry reattach failed', error,
+              error?.geometryRefill || null);
+            // Do not render this newly admitted subject against a detached or incompatible CPU
+            // geometry buffer. The caller must keep its previous authored body/fallback and
+            // surface the typed package/ordinal/attribute-shape receipt instead.
+            throw error;
           }
           try {
             await refillPresentedCompressedUploads(collectStartupTextures(subject), renderer);
@@ -14407,6 +14424,9 @@ export const render = {
                 }
               });
               laneWarn(this, 'admissionTouchDiag', '[render] touch-fail texture diag', JSON.stringify(rows));
+              laneWarn(this, 'admissionTouchDiag', '[render] touch-fail geometry diag', JSON.stringify(
+                packageGeometryUploadDiagnostics(collectStartupGeometries(subject), { limit: 16 }),
+              ));
             } catch (diagError) {
               if (diagError && diagError.message !== 'diag-skipped') {
                 laneWarn(this, 'admissionTouchDiag', '[render] touch-fail diag errored',
@@ -14542,9 +14562,12 @@ export const render = {
           }
           if (detachedPendingGeometry.length > 0) {
             try {
-              await rehydrateDetachedGeometries(detachedPendingGeometry, { yieldToMain: admissionPaceYield });
+              const receipt = await rehydrateDetachedGeometries(detachedPendingGeometry, { yieldToMain: admissionPaceYield });
+              assertPackageGeometryRefillReady(detachedPendingGeometry, receipt);
             } catch (error) {
-              laneWarn(this, 'admissionTouch', '[render] exact-target touch geometry reattach failed', error);
+              laneWarn(this, 'admissionTouch', '[render] exact-target touch geometry reattach failed', error,
+                error?.geometryRefill || null);
+              throw error;
             }
           }
           if (detachedPendingUpload.length > 0) {
