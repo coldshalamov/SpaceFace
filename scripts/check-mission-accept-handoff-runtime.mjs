@@ -16,6 +16,7 @@ import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs'
 import { reportStationHandoffFailure, installStationHandoffTimingObserver, startStationHandoffTrace } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const COLD_SOURCE_MENU_TIMEOUT_MS = 240000;
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
 const HEADED = process.argv.includes('--headed');
@@ -31,22 +32,43 @@ try {
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
   installCspSafePlaywrightPolling(page);
   await page.addInitScript(installStationHandoffTimingObserver);
+  await page.addInitScript(() => {
+    const timer = setInterval(() => {
+      if (!(window.SF && window.SF.state && window.SF.bus && window.SF.ctx)) return;
+      window.__sfMissionHandoffSfReadyAtUnixMs ??= Date.now();
+      clearInterval(timer);
+    }, 250);
+  });
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
   const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
+  const navigationStartedAt = Date.now();
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'mission handoff probe must use the canonical root URL with no query flags');
-  // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
-  // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
-  // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms
-  // headless against this 15,000 ms budget — an 80% margin that any load at all tips over, and
-  // it did, intermittently, across five checks. A real GPU HAS the extension (verified), so
-  // this is an environment allowance, not a behavioural assertion being loosened. Everything
-  // these checks actually assert happens after boot and is untouched.
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 30000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  // Public menu readiness is the functional route boundary. Source boot can remain on its public
+  // loading screen well past 30s on a cold headless start; the context-seam check below starts
+  // only after the New Game control is visible and keeps its original strict 30s limit.
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((button) => {
+    const label = String(button.textContent || '').replace(/\s+/g, ' ').trim();
+    const style = getComputedStyle(button), rect = button.getBoundingClientRect();
+    return label === 'New Game' && !button.disabled && style.display !== 'none'
+      && style.visibility !== 'hidden' && Number(style.opacity) !== 0
+      && rect.width > 20 && rect.height > 10;
+  }), null, { timeout: COLD_SOURCE_MENU_TIMEOUT_MS, polling: 250 });
+  const publicMenuElapsedMs = Date.now() - navigationStartedAt;
+  console.log(`[mission-handoff] navigation-to-public-New-Game-control-ms: ${publicMenuElapsedMs}`);
+
+  await page.waitForFunction(() => {
+    const ready = !!(window.SF && window.SF.state && window.SF.bus && window.SF.ctx);
+    if (ready && !Number.isFinite(window.__sfMissionHandoffSfReadyAtUnixMs)) {
+      window.__sfMissionHandoffSfReadyAtUnixMs = Date.now();
+    }
+    return ready;
+  }, null, { timeout: 30000, polling: 250 });
+  const sfReadyAt = await page.evaluate(() => window.__sfMissionHandoffSfReadyAtUnixMs || Date.now());
+  console.log(`[mission-handoff] navigation-to-SF-context-ms: ${Math.max(0, sfReadyAt - navigationStartedAt)}`);
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game first-session rail');
   await page.evaluate(() => {
@@ -235,28 +257,50 @@ try {
       destStationId: dest ? dest.stationId : null,
       params: { cmdtyId, qty: 6 },
     };
-    // The canonical worker owns the board. A transport acknowledgement and a successful
-    // method dispatch wrap the posting owner's verdict; neither alone proves it took the row.
-    // A facade mutation after refusal would only fabricate the UI half of this handoff.
-    const rpc = { op: 'missionsCall', args: { method: 'postBoardOffer', offer } };
+    // The worker exposes a finite missionsCall allowlist. If worker startup fell back, use the
+    // actual registry owner directly: the in-process lane intentionally has no generic RPC sink.
+    const lane = sf.ctx?.simLane ?? null;
+    const missionsOwner = sf.registry?.get?.('missions') || null;
+    const useMainOwner = lane === 'main'
+      || (lane == null && typeof missionsOwner?.postBoardOffer === 'function');
+    const rpc = useMainOwner ? null : { op: 'missionsCall', args: { method: 'postBoardOffer', offer } };
     let response = null;
     let error = null;
-    try {
-      if (typeof sf.laneRpc !== 'function') throw new Error('laneRpc unavailable');
-      response = await sf.laneRpc(rpc.op, rpc.args);
-    } catch (cause) { error = String(cause?.message || cause).slice(0, 600); }
+    let ownerResult = null;
+    if (useMainOwner) {
+      try {
+        if (typeof missionsOwner?.postBoardOffer !== 'function') {
+          throw new Error('main-lane missions owner postBoardOffer unavailable');
+        }
+        ownerResult = await missionsOwner.postBoardOffer(offer);
+      } catch (cause) { error = String(cause?.message || cause).slice(0, 600); }
+    } else {
+      try {
+        if (typeof sf.laneRpc !== 'function') throw new Error('worker-lane laneRpc unavailable');
+        response = await sf.laneRpc(rpc.op, rpc.args);
+      } catch (cause) { error = String(cause?.message || cause).slice(0, 600); }
+    }
     const result = response?.result?.result;
-    const posted = response?.ok === true && response.result?.ok === true
-      && result?.ok === true && result.offerId === offer.id;
+    const posted = useMainOwner
+      ? ownerResult?.ok === true && ownerResult.offerId === offer.id
+      : response?.ok === true && response.result?.ok === true
+        && result?.ok === true && result.offerId === offer.id;
     let diag = null;
     try { diag = typeof sf.simLaneDiag === 'function' ? sf.simLaneDiag() : null; }
     catch (_) { /* Optional observation cannot replace the posting owner's verdict. */ }
-    return { ok: posted, stationId, cmdtyId, posted, rpc: {
-      ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null, error,
-    }, lane: diag ? { lane: diag.lane, replyCount: diag.replyCount,
+    return { ok: posted, stationId, cmdtyId, posted, lane: lane || diag?.lane || 'unknown',
+      posting: useMainOwner ? { method: 'registry.get(missions).postBoardOffer',
+        result: JSON.stringify(ownerResult)?.slice(0, 1000) ?? null }
+        : { method: rpc.args.method, response: JSON.stringify(response)?.slice(0, 1600) ?? null },
+      rpc: rpc ? { ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null, error } : null,
+      ownerError: useMainOwner ? error : null,
+      laneDiagnostics: diag ? { lane: diag.lane, replyCount: diag.replyCount,
       missionDomainApplied: Object.fromEntries(Object.entries(diag.domainAppliedKeys || {})
         .filter(([key]) => /^missions(?:\.|$)/.test(key)).slice(0, 32)) } : null };
   });
+  seeded.workerInitFallback = issues.warningIssues()
+    .find((issue) => /\[simLane\] worker boot failed/.test(issue.text || ''))?.text.slice(0, 500) || null;
+  console.log(`[mission-handoff] seed lane: ${seeded.lane}; worker-init fallback: ${seeded.workerInitFallback || 'none'}`);
   assert.equal(seeded.ok, true,
     'missions owner should post a commodity contract on the docked board: ' + JSON.stringify(seeded));
 
@@ -273,9 +317,19 @@ try {
     // Failure-only read: distinguish an absent authoritative offer from a late facade mirror.
     // The failed deadline remains the verdict even if this RPC's reply publishes the board.
     let observationTimer;
-    const authoritativeBoard = await Promise.race([page.evaluate(async (stationId) => {
+    const authoritativeBoard = await Promise.race([page.evaluate(async ({ stationId, lane }) => {
       let timer;
       const rpc = { op: 'missionsCall', args: { method: 'boardSlots', stationId } };
+      if (lane === 'main') {
+        try {
+          const owner = window.SF?.registry?.get?.('missions');
+          if (typeof owner?.boardSlots !== 'function') throw new Error('main-lane missions owner boardSlots unavailable');
+          const slots = owner.boardSlots(stationId);
+          return { lane, source: 'registry missions owner',
+            hasSeededOffer: Array.isArray(slots) ? slots.includes('handoff_probe_bulk_trade') : null,
+            slots: Array.isArray(slots) ? slots.slice(0, 24) : null };
+        } catch (cause) { return { lane, source: 'registry missions owner', error: String(cause?.message || cause).slice(0, 600) }; }
+      }
       try {
         const response = await Promise.race([
           window.SF.laneRpc(rpc.op, rpc.args),
@@ -284,11 +338,11 @@ try {
           }),
         ]);
         const slots = response?.result?.result;
-        return { ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null,
+        return { lane, ...rpc, response: JSON.stringify(response)?.slice(0, 1600) ?? null,
           hasSeededOffer: Array.isArray(slots) ? slots.includes('handoff_probe_bulk_trade') : null };
-      } catch (cause) { return { ...rpc, error: String(cause?.message || cause).slice(0, 600) }; }
+      } catch (cause) { return { lane, ...rpc, error: String(cause?.message || cause).slice(0, 600) }; }
       finally { clearTimeout(timer); }
-    }, seeded.stationId), new Promise((resolve) => {
+    }, { stationId: seeded.stationId, lane: seeded.lane }), new Promise((resolve) => {
       observationTimer = setTimeout(() => resolve({ error: 'boardSlots page observation exceeded 2000ms' }), 2000);
     })]).catch((cause) => ({ error: String(cause?.message || cause).slice(0, 600) }))
       .finally(() => clearTimeout(observationTimer));
@@ -324,11 +378,49 @@ try {
           button: event.button, at: Math.round(performance.now()), targetConnected: target.isConnected });
       }, true);
     }
+    const bus = window.SF?.bus;
+    const events = window.__missionAcceptBusEvents = [];
+    const unsubs = [];
+    const record = (row) => {
+      if (events.length >= 16) events.shift();
+      events.push({ ...row, at: Math.round(performance.now()) });
+    };
+    if (typeof bus?.on === 'function') {
+      unsubs.push(bus.on('audio:cue', (payload) => {
+        if (payload?.id === 'ui_accept' || payload?.id === 'ui_deny') {
+          record({ event: 'audio:cue', id: payload.id });
+        }
+      }));
+      unsubs.push(bus.on('mission:accepted', (payload) => {
+        if (payload?.sourceOfferId === 'handoff_probe_bulk_trade') {
+          record({ event: 'mission:accepted', sourceOfferId: payload.sourceOfferId,
+            missionId: typeof payload.missionId === 'string' ? payload.missionId.slice(0, 160) : null,
+            type: typeof payload.type === 'string' ? payload.type.slice(0, 100) : null });
+        }
+      }));
+      unsubs.push(bus.on('toast', (payload) => {
+        record({ event: 'toast', kind: typeof payload?.kind === 'string' ? payload.kind.slice(0, 40) : null,
+          text: typeof payload?.text === 'string' ? payload.text.slice(0, 320) : null });
+      }));
+    }
+    const stop = () => {
+      for (const off of unsubs.splice(0)) { try { if (typeof off === 'function') off(); } catch (_) {} }
+      window.removeEventListener('pagehide', stop);
+      window.removeEventListener('beforeunload', stop);
+    };
+    window.__missionAcceptBusObserverStop = stop;
+    window.addEventListener('pagehide', stop, { once: true });
+    window.addEventListener('beforeunload', stop, { once: true });
   });
   const acceptKey = page.locator('[data-screen="station"] .sx-dossier [data-accept="handoff_probe_bulk_trade"]');
   // Wait for the live dossier control before reading it. Reading first and reacquiring the
   // locator afterward races the station mirror repaint, which can replace the selected row.
-  await acceptKey.waitFor({ state: 'visible', timeout: 10000 });
+  await acceptKey.waitFor({ state: 'visible', timeout: 10000 }).catch(async (error) => {
+    let commit;
+    try { commit = await page.evaluate(attemptSeededMissionAccept); }
+    catch (cause) { commit = { observationError: String(cause?.message || cause).slice(0, 500) }; }
+    return reportAcceptHandoffFailure(page, { before, seeded, commit }, issues, error);
+  });
   const commit = await page.evaluate(attemptSeededMissionAccept);
   if (commit?.found && !commit.disabled && !commit.readinessBlocked) {
     const box = await acceptKey.boundingBox();
@@ -367,6 +459,12 @@ try {
   }, before, { timeout: 10000 }).catch((error) =>
     reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error))
     .finally(() => acceptTrace.stop());
+  const acceptBusEvents = await page.evaluate(() => {
+    const events = (window.__missionAcceptBusEvents || []).slice(-16);
+    window.__missionAcceptBusObserverStop?.();
+    return events;
+  });
+  console.log('[mission-handoff] accept action bus:', JSON.stringify(acceptBusEvents));
 
   // Plot a trade course for the tracked commodity (what tracking a cargo job does in flight); the
   // Market must then flag it. Run the shipped helper in the page realm so its laneSetNavWaypoint
@@ -522,11 +620,23 @@ function collectAcceptHandoffSnapshot() {
   const active = Array.isArray(state?.missions?.active) ? state.missions.active : [];
   const offer = posted.find((row) => row?.id === 'handoff_probe_bulk_trade');
   const selected = document.querySelector('[data-screen="station"] .sx-ct-row[aria-selected="true"]');
+  const selectedOfferId = selected?.getAttribute('data-mid') ?? null;
+  const selectedOffer = posted.find((row) => row?.id === selectedOfferId);
   const key = document.querySelector('[data-screen="station"] .sx-dossier [data-accept]');
+  const keyStyle = key ? getComputedStyle(key) : null;
+  const keyRect = key?.getBoundingClientRect();
+  const gate = document.querySelector('[data-screen="station"] .sx-dossier__gate.k-bad');
+  const stationRoot = document.querySelector('[data-screen="station"]');
+  const stationStyle = stationRoot ? getComputedStyle(stationRoot) : null;
   const ring = key?.querySelector('.dp-holdring');
   return {
     mode: state?.mode ?? null, tick: state?.tick ?? null, simTime: state?.simTime ?? null,
     docked: state?.ui?.docked ?? null, dockedStationId: stationId ?? null,
+    screenStack: Array.isArray(state?.ui?.screenStack) ? state.ui.screenStack.slice(0, 12) : null,
+    stationUi: stationRoot ? { operation: stationRoot.getAttribute('data-operation'),
+      view: stationRoot.getAttribute('data-view'), hidden: stationRoot.hidden,
+      display: stationStyle?.display ?? null, visibility: stationStyle?.visibility ?? null,
+      opacity: stationStyle?.opacity ?? null } : null,
     trackedMissionId: state?.ui?.trackedMissionId ?? null,
     activeCount: active.filter((row) => row?.status === 'active').length,
     active: active.slice(0, 32).map((row) => ({ id: row?.id ?? null,
@@ -536,13 +646,26 @@ function collectAcceptHandoffSnapshot() {
     offer: offer ? { id: offer.id, type: offer.type, reward: offer.reward,
       collateral: offer.collateral ?? null, destStationId: offer.destStationId ?? null,
       requirementUnmet: offer.requirementUnmet ?? null, lockedReason: offer.lockedReason ?? null } : null,
-    selectedOfferId: selected?.getAttribute('data-mid') ?? null,
+    selectedOfferId,
+    selectedOffer: selectedOffer ? { id: selectedOffer.id, type: selectedOffer.type,
+      title: selectedOffer.title ?? null, reward: selectedOffer.reward ?? selectedOffer.reward_cr ?? null,
+      collateral: selectedOffer.collateral ?? selectedOffer.collateral_cr ?? null,
+      factionId: selectedOffer.factionId ?? null, destStationId: selectedOffer.destStationId ?? null,
+      params: selectedOffer.params ?? null, cargo: selectedOffer.cargo ?? null } : null,
+    dossierText: String(document.querySelector('[data-screen="station"] .sx-dossier')?.textContent || '')
+      .replace(/\s+/g, ' ').trim().slice(0, 1200),
+    gateText: String(gate?.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600),
     acceptKey: key ? { missionId: key.getAttribute('data-accept'), connected: key.isConnected,
       disabled: key.disabled, holding: key.classList.contains('is-holding'),
+      visibleRects: key.getClientRects?.().length ?? null,
+      display: keyStyle?.display ?? null, visibility: keyStyle?.visibility ?? null,
+      opacity: keyStyle?.opacity ?? null,
+      rect: keyRect ? { x: keyRect.x, y: keyRect.y, width: keyRect.width, height: keyRect.height } : null,
       label: String(key.textContent || '').trim().slice(0, 300),
       ariaLabel: String(key.getAttribute('aria-label') || '').slice(0, 600),
       holdProgress: ring?.style?.getPropertyValue('--sf-hold-p') ?? null } : null,
     acceptPointerEvents: window.__missionAcceptPointerEvents || [],
+    acceptBusEvents: (window.__missionAcceptBusEvents || []).slice(-16),
   };
 }
 

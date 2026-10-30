@@ -219,17 +219,31 @@ test('acceptance snapshot observes current board, selection, receipt and hold pr
     missions: { boards: { station_ceres: { slots: [offer] } },
       active: [{ id: 'm_2', sourceOfferId: 'previous_offer', status: 'active' }] } };
   const before = JSON.stringify(state);
+  const stationRoot = { hidden: false, getAttribute: name => name === 'data-operation' ? 'contracts' : 'board' };
   const key = { isConnected: true, disabled: false, textContent: 'Accept + Bind Route',
     getAttribute: name => {
       if (name === 'aria-label') return 'Accept Probe and bind its route. Ship and account ready.';
       assert.equal(name, 'data-accept'); return offer.id;
     },
     classList: { contains: name => name === 'is-holding' },
+    getBoundingClientRect: () => ({ x: 10, y: 20, width: 120, height: 40 }),
     querySelector: selector => { assert.equal(selector, '.dp-holdring'); return {
       style: { getPropertyValue: name => { assert.equal(name, '--sf-hold-p'); return '0.375'; } },
     }; } };
-  const h = helpers({ window: { SF: { state } }, document: { querySelector: selector =>
-    selector.includes('aria-selected') ? { getAttribute: () => offer.id } : key } });
+  const h = helpers({ window: { SF: { state } },
+    getComputedStyle: el => {
+      assert.ok(el === key || el === stationRoot);
+      return { display: 'flex', visibility: 'visible', opacity: '1' };
+    },
+    // The acceptance collector reads the live key's rect and computed style as visibility evidence.
+    // Keep this fixture deliberately small; these values do not influence its read-only assertions.
+    document: { querySelector: selector => {
+      if (selector.includes('aria-selected')) return { getAttribute: () => offer.id };
+      if (selector === '[data-screen="station"]') return stationRoot;
+      if (selector.includes('.sx-dossier__gate')) return null;
+      if (selector.includes('.sx-dossier') && !selector.includes('[data-accept]')) return { textContent: 'Offer detail' };
+      return key;
+    } } });
   const snapshot = JSON.parse(JSON.stringify(h.collectAcceptHandoffSnapshot()));
   assert.equal(snapshot.activeCount, 1);
   assert.deepEqual(snapshot.active, [{ id: 'm_2', status: 'active', sourceOfferId: 'previous_offer' }]);

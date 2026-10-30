@@ -1192,13 +1192,15 @@ export function createContractsScreen(ctx) {
     const dt = Math.max(0, t - hold.last);
     hold.last = t;
     if (hold.source === 'pad' && hold.dir > 0 && !padHeld()) hold.dir = -1;
-    // filling runs at the hold's pace; a released hold falls back twice as fast
-    hold.frac += (dt / hold.ms) * (hold.dir > 0 ? 1 : -2);
-    if (hold.frac >= 1) {
-      // Input holds use elapsed time, not a minimum number of rendered frames.
-      // Carry the actual threshold time so a delayed frame also catches up the retract.
-      const completedAt = t - (hold.frac - 1) * hold.ms;
-      hold.frac = 1; paintHold(); fireHold(completedAt); return;
+    if (hold.dir > 0) {
+      // Progress is elapsed monotonic press time; rAF only paints it. If frames stall while the
+      // input remains down, the first later frame still sees the full hold duration.
+      const elapsed = Math.max(0, t - hold.startedAt);
+      hold.frac = Math.min(1, elapsed / hold.ms);
+      if (elapsed >= hold.ms) { paintHold(); fireHold(hold.startedAt + hold.ms); return; }
+    } else {
+      // A released short hold falls back twice as fast; keep the spring frame-driven visually.
+      hold.frac = Math.max(0, hold.frac - (dt / hold.ms) * 2);
     }
     // reduced motion shows the end state at once: no retract travel, the light simply goes out
     if (hold.frac <= 0 && hold.dir < 0) { endHold(); return; }
@@ -1213,18 +1215,43 @@ export function createContractsScreen(ctx) {
     if (terms == null) return;
     if (hold && (hold.missionId !== missionId || hold.terms !== terms)) endHold();
     if (hold && hold.done) return;
-    if (!hold) hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: holdClock(),
-      frame: 0, done: false, missionId, terms };
-    else { hold.dir = 1; hold.source = source; }
+    if (!hold) {
+      const startedAt = holdClock();
+      hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: startedAt,
+        startedAt, frame: 0, done: false, missionId, terms };
+    }
+    else {
+      const resumedAt = holdClock();
+      hold.dir = 1;
+      hold.source = source;
+      // Preserve the visible spring position on a quick re-arm without counting the released gap.
+      hold.startedAt = resumedAt - hold.frac * hold.ms;
+      hold.last = resumedAt;
+    }
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
     else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
   }
   function releaseHold(source) {
     if (!hold || hold.done || hold.source === 'auto') return;
     if (source && hold.source !== source) return;
+    // Capture/bubble listeners and document fallbacks can report the same release twice. Once
+    // the first short release starts retracting, later events must not reuse the original press.
+    if (hold.dir <= 0) return;
+    const releasedAt = holdClock();
+    const elapsed = Math.max(0, releasedAt - hold.startedAt);
+    if (elapsed >= hold.ms) {
+      hold.frac = 1;
+      paintHold();
+      fireHold(hold.startedAt + hold.ms);
+      return;
+    }
     if (reducedMotion()) { endHold(); return; }
     hold.dir = -1;
+    hold.last = releasedAt;
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
+  }
+  function cancelHold() {
+    if (hold && !hold.done) endHold();
   }
   function fireHold(completedAt = holdClock()) {
     if (!hold || hold.done) return;
@@ -1506,9 +1533,17 @@ export function createContractsScreen(ctx) {
   // a bare activation with nothing held (assistive tech) runs the hold through on its own.
   const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
   el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+  el.addEventListener('pointerup', (ev) => {
+    if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+  }, true);
+  for (const type of ['pointercancel', 'pointerleave']) {
     el.addEventListener(type, (ev) => {
-      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+      if (type === 'pointerleave') {
+        const accept = onAccept(ev);
+        if (accept && ev.relatedTarget
+          && (accept === ev.relatedTarget || accept.contains?.(ev.relatedTarget))) return;
+      }
+      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); cancelHold(); }
     }, true);
   }
   el.addEventListener('keydown', (ev) => {
@@ -1531,13 +1566,35 @@ export function createContractsScreen(ctx) {
     if (hold?.source !== 'pointer') return;
     pointerAt = holdClock(); releaseHold('pointer');
   };
+  const onPointerCancelled = () => {
+    if (hold?.source !== 'pointer') return;
+    pointerAt = holdClock(); cancelHold();
+  };
   const onKeyReleased = (ev) => {
     if (hold?.source !== 'key' || (ev.key !== 'Enter' && ev.key !== ' ')) return;
     keyAt = holdClock(); releaseHold('key');
   };
+  const cancelInteraction = () => { cancelPendingCommit(); cancelHold(); };
+  const onEscape = (ev) => { if (ev.key === 'Escape') cancelInteraction(); };
+  const onHidden = () => { if (document.visibilityState === 'hidden') cancelInteraction(); };
   releaseTarget?.addEventListener?.('pointerup', onPointerReleased, true);
-  releaseTarget?.addEventListener?.('pointercancel', onPointerReleased, true);
+  releaseTarget?.addEventListener?.('pointercancel', onPointerCancelled, true);
   releaseTarget?.addEventListener?.('keyup', onKeyReleased, true);
+  releaseTarget?.addEventListener?.('keydown', onEscape, true);
+  releaseTarget?.addEventListener?.('visibilitychange', onHidden, true);
+  const lifecycleTarget = globalThis.window;
+  const onWindowBlur = (ev) => {
+    // Window capture also sees bubbling blur events from focused descendants. Those are normal
+    // during pointer interaction (for example, when focus moves to the held control).
+    if (ev?.target !== lifecycleTarget) return;
+    cancelInteraction();
+  };
+  const onAcceptFocusOut = (ev) => {
+    if (hold?.source === 'key' && onAccept(ev)) cancelInteraction();
+  };
+  el.addEventListener('focusout', onAcceptFocusOut, true);
+  lifecycleTarget?.addEventListener?.('blur', onWindowBlur, true);
+  lifecycleTarget?.addEventListener?.('pagehide', cancelInteraction, true);
 
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
@@ -1582,8 +1639,13 @@ export function createContractsScreen(ctx) {
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
       releaseTarget?.removeEventListener?.('pointerup', onPointerReleased, true);
-      releaseTarget?.removeEventListener?.('pointercancel', onPointerReleased, true);
+      releaseTarget?.removeEventListener?.('pointercancel', onPointerCancelled, true);
       releaseTarget?.removeEventListener?.('keyup', onKeyReleased, true);
+      releaseTarget?.removeEventListener?.('keydown', onEscape, true);
+      releaseTarget?.removeEventListener?.('visibilitychange', onHidden, true);
+      el.removeEventListener('focusout', onAcceptFocusOut, true);
+      lifecycleTarget?.removeEventListener?.('blur', onWindowBlur, true);
+      lifecycleTarget?.removeEventListener?.('pagehide', cancelInteraction, true);
       for (const stop of stopDecrypt.splice(0)) stop();
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
       cancelPendingCommit();

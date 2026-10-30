@@ -12,7 +12,7 @@ import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
 test('the handoff seed requires the actual posting verdict and never fabricates a facade row', async () => {
   const source = readFileSync(new URL('../scripts/check-mission-accept-handoff-runtime.mjs', import.meta.url), 'utf8');
   const start = source.indexOf('async () => {', source.indexOf('const seeded = await page.evaluate('));
-  const end = source.indexOf('\n  });\n  assert.equal(seeded.ok', start);
+  const end = source.indexOf('\n  });', start);
   assert.ok(start >= 0 && end > start);
   const successful = { ok: true, result: { ok: true,
     result: { ok: true, offerId: 'handoff_probe_bulk_trade' } } };
@@ -41,6 +41,35 @@ test('the handoff seed requires the actual posting verdict and never fabricates 
     assert.equal(result.rpc.args.method, 'postBoardOffer');
     assert.deepEqual(Object.keys(boards), [], `${label} leaves the read-only board untouched`);
     if (response instanceof Error) assert.match(result.rpc.error, /worker closed/);
+  }
+});
+
+test('the handoff seed uses the canonical main owner after worker fallback', async () => {
+  const source = readFileSync(new URL('../scripts/check-mission-accept-handoff-runtime.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('async () => {', source.indexOf('const seeded = await page.evaluate('));
+  const end = source.indexOf('\n  });', start);
+  assert.ok(start >= 0 && end > start);
+  for (const accepted of [true, false]) {
+    const boards = Object.freeze({});
+    let posted = 0;
+    const owner = { postBoardOffer(offer) {
+      posted++;
+      assert.equal(offer.stationId, 'station_helios');
+      return accepted ? { ok: true, offerId: offer.id } : { ok: false, reason: 'bad_offer' };
+    } };
+    const sf = { ctx: { simLane: 'main' },
+      state: { ui: { dockedStationId: 'station_helios' }, missions: { boards },
+        economy: { markets: { station_helios: { cmdty_ore_iron: {} } } } },
+      registry: { get(name) { assert.equal(name, 'missions'); return owner; } },
+      laneRpc() { assert.fail('main fallback must use its real owner instead of a worker-only RPC'); },
+      bus: { emit() { assert.fail('the seed cannot fabricate facade publication'); } },
+    };
+    const seed = runInNewContext(`(${source.slice(start, end)}\n})`, { window: { SF: sf } });
+    const result = await seed();
+    assert.equal(posted, 1);
+    assert.equal(result.ok, accepted);
+    assert.equal(result.rpc, null);
+    assert.deepEqual(Object.keys(boards), []);
   }
 });
 
