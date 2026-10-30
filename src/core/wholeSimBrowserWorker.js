@@ -29,6 +29,7 @@ import {
 } from '../../scripts/lib/simWorkerHost.mjs';
 import { nowNs } from '../../scripts/lib/simRealm.mjs';
 import { loadModelTruthCensus } from '../data/modelTruth.js';
+import { ensureEnglishCatalogLoaded, ensureBarkTranslationsLoaded } from '../localization/pipeline.js';
 import {
   bindSabEnvelopeChannel,
   encodeReplyForSab,
@@ -886,7 +887,11 @@ async function handleLocalClockCommand(msg) {
 async function dispatchDirective(msg) {
   try {
     if (msg.kind === 'init') {
-      await loadModelTruthCensus(msg.modelTruthCensusUrl);
+      await Promise.all([
+        loadModelTruthCensus(msg.modelTruthCensusUrl),
+        ensureEnglishCatalogLoaded(),
+        ensureBarkTranslationsLoaded(),
+      ]);
       const result = await init(msg);
       localClock.enabled = msg.clockMode === 'worker-local';
       localClock.stopped = false;
