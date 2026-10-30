@@ -697,7 +697,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* …and a phone-landscape window (≤650 × ≤400, e.g. 568×320 or 640×360): the ≤600 head above still drew 100px and the
    foot 130px (rail, its rule, then COMMS and a two-line UNDOCK), so a 320px window left the tab a 78px strip and the dials'
    verbs sat under the mechanic's note. The name and credits share one line, the five dials take the full width with their
-   verbs on one line (Draw and Rearm put the price under the verb), the notes scroll under them, the ad boards step aside,
+   verbs on one line (Draw and Rearm put the price under the verb), the notes and the ad boards scroll under them,
    and the foot is two short rows: the tab gets 122px at 568×320 and 162px at 640×360. */
 @media (max-width:650px) and (max-height:400px) {
   ${D} { padding-top:8px !important; }
@@ -711,7 +711,16 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-crown > .sxb-vitals { grid-area:vitals !important; }
   ${D} .sxb-berth.dp-frame__head > .sxb-tape { grid-area:tape !important; grid-column:1 / -1 !important; }
   ${D} .sxb-berth.dp-frame__head > .sxb-handoff { grid-area:handoff !important; grid-column:1 / -1 !important; }
-  ${D} .sxb-berth.dp-frame__head > .sxb-signs { display:none !important; }
+  /* the Bay screen and the Station wire stay in the head's scroll, under the handoff, as two short signs side by side */
+  ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:1 / -1 !important; display:flex !important; gap:0 20px !important;
+    align-items:flex-start !important; min-width:0 !important; }
+  ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:2px 0 0 !important;
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden !important; line-height:16px !important; }
+  ${D} .sxb-signs .sx-adboard > * { display:inline !important; margin:0 !important; }
+  ${D} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; opacity:.74; }
+  ${D} .sxb-signs .sx-adboard__sponsor { font-weight:600 !important; }
+  ${D} .sxb-signs .sx-adboard__sponsor::after { content:"."; }
+  ${D} .sxb-signs .sx-adboard__text::before { content:" "; }
   ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:trig !important; position:static !important; justify-self:end !important; }
   ${D} .sxb-berth .so-station-title .dp-title__name { font-size:20px !important; }
   ${D} .sxb-berth .so-station-title .dp-title__rule { display:none !important; }
