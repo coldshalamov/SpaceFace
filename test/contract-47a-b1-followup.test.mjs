@@ -73,7 +73,8 @@ test('47-A settlement dispatches the sealed alloy run — §34.7 Book 1 first po
   const mission = activeB1();
   assert.ok(mission, 'undock dispatches the book’s first Honest Work contract');
   assert.equal(mission.type, 'cargo_delivery');
-  assert.equal(mission.title, 'Weigh-In — sealed alloys for Tycho');
+  // the receiving berth is Tethys (destStationId), so the title names the job, not a station
+  assert.equal(mission.title, 'Weigh-In — sealed alloy delivery');
   assert.equal(mission.preloadedCargo, true, 'the crate is sealed aboard');
   assert.equal(mission.params.silentRecat, true);
   assert.equal(h.state.ui.trackedMissionId, mission.id);

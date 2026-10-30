@@ -131,6 +131,22 @@ at the opening, +2.7 ms at close zoom and +14.6 ms (25%) at the trade hub. Discr
 on (`video.shadows`). Depth on integrated comes from the contour, the split shadow colour and
 occlusion authored into the models.
 
+## Automatic resolution (2026-10-30)
+
+Automatic quality trials internal-resolution bands during visible, unpaused flight after opening
+admission and the loading veil have released. It retains a lower band only when frame time improves;
+otherwise it restores the previous band. Named presets select Manual, and legacy custom settings
+remain Manual. Actor counts, authored materials, models and effects settings are not reduced by the
+controller. Auto uses the scale-aware bloom renderer; render-graph ambient occlusion remains a
+Manual option, explained when both are selected.
+
+The same-flight Intel D3D11 check exercised the public Balanced/Automatic controls, observed the
+1.0 and 0.9 bands and restoration, and inspected the Tethys flight picture at gameplay camera.
+The ship, rock surfaces, lights and trails remain readable. The 34-second comparison varied in
+workload and therefore establishes no isolated frame-rate gain or whole-game performance bar.
+Screenshots and cadence are retained in the local integration artifacts under
+`prompt-deck-live-corrected/`; long-session acceptance remains separate.
+
 ## Rules for new work
 
 - A new look constant is a Look value in `lookMoods.js`, never a literal in a shader.

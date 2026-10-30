@@ -381,6 +381,7 @@ test('seed 4242: the live rail keeps its help line, and the board shows the coun
   assert.match(standing.textContent, /2 of 3 tow recovery/);
   const note = screen.el.querySelector('.orr-lampkey__note');
   assert.ok(note, 'the Accept key shows a hold note');
-  assert.equal(note.textContent, 'hold');
+  // the yes/no signal is contractAcceptHoldNote (pinned above); the visible note names the gesture
+  assert.equal(note.textContent, 'hold to accept');
   screen.dispose();
 });

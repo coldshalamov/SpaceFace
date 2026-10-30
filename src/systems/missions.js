@@ -136,6 +136,7 @@ import {
   TWIST_MUTATIONS,
   QUIET_APPROACH_RANGE_WU,
 } from '../data/missionConditions.js';
+import { failReasonWord } from '../data/missionFailReasons.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
 import {
@@ -782,53 +783,7 @@ const MISSION_MUTATIONS = Object.freeze({
   ]))),
 });
 export const ESCORT_TURN_DELAY_S = 12;
-// NXI-149: a plainly settled failure names the condition that actually failed — the title alone
-// is not a reason. Unknown reasons fall back to nothing (the title still carries the name).
-const FAIL_REASON_WORD = Object.freeze({
-  abandoned: 'the job was abandoned',
-  escort_abandoned: 'the convoy was left behind',
-  escortee_lost: 'the convoy lead went down',
-  pods_lost: 'the load went down with the run',
-  core_lost: 'the core broke up in transit',
-  ship_lost: 'your ship went down with the manifest',
-  deadline: 'the window lapsed',
-  seed_asset_lost: 'the seed asset was lost',
-  target_lost: 'the mark is gone',
-  failed_external: 'the objective went down to someone else',
-  busted: 'the lot was seized',
-  heist_failed: 'the job fell apart',
-  failed: 'the contract could not be completed',
-  wake_missed: 'the hauler left the lane',
-  wake_unmatched: 'the crate was taken off the wake',
-  wake_refused: 'the hold refused the crate',
-  // Race DNFs name the cause: jumping the lane, calling the run off (abort or menu), the hull.
-  race_left_course: 'you left the course',
-  race_aborted: 'the run was called off',
-  race_pilot_lost: 'your ship went down mid-run',
-  race_bad_phase: 'the course record could not be read',
-  race_bad_course: 'the course record could not be read',
-  race_wake_incomplete: 'you did not hold the wake long enough',
-  speed_payload_lost: 'the payload did not survive the run',
-  payload_destroyed: 'the payload was destroyed',
-  hull_destroyed: 'the hull was destroyed',
-  all_lots_lost: 'every lot was lost',
-  passenger_transport_destroyed: 'the transport was destroyed',
-  target_unavailable: 'the mark could not be found',
-  obligation_already_settled: 'the obligation was already settled',
-  receiver_refused: 'the receiver refused the delivery',
-});
-function failReasonWord(reason) {
-  const text = reason == null ? '' : String(reason);
-  if (FAIL_REASON_WORD[text]) return FAIL_REASON_WORD[text];
-  if (text.startsWith('clause_broken:') || text.startsWith('condition_broken:')) {
-    // Name the term the board printed, not a generic clause line.
-    const id = text.slice(text.indexOf(':') + 1);
-    const def = id ? missionConditionById(id) : null;
-    const label = def && def.label ? String(def.label).trim() : '';
-    return label ? `the contract term "${label}" was broken` : 'a contract clause was broken';
-  }
-  return null;
-}
+// NXI-149: failure words live in data/missionFailReasons.js (shared with the mission log).
 const MUTATION_TOAST = Object.freeze({
   salvage: (title) => `Convoy lost — the wreck is still out there. Salvage contract live: ${title}.`,
   restitution: (title) => `Contract broken — the manifest is now a debt. Restitution job live: ${title}.`,

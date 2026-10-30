@@ -123,3 +123,25 @@ test('D261: the drive tape and right dock ride a reserved lane above the cluster
   assert.match(hudSrc, /@media \(max-width: 1279px\), \(max-height: 719px\)\s*\{[^}]*right:calc\(var\(--sf-dock-w/s,
     'the ≤1279 dock-anchored vtape rule must be preserved');
 });
+
+test('D261: at phone widths the alert lane (dock cue) sits below the top-left waypoint card; desktop keeps the 22px header line', async () => {
+  // Pre-change defect: the unscoped `#alerts { top:22px }` header rule came after the <=760px block
+  // and cancelled its top:84px, so at 390x844 the centred "[E] DOCK AT STATION" lamp and key printed
+  // over the waypoint card's "457 u · ETA 13s" line (card spans ~y20-48 at phone width).
+  const header = hudStylesSrc.indexOf('#alerts { top:22px; }');
+  assert.ok(header > 0, 'the wide-screen 22px alert header line must remain (desktop unchanged)');
+  const phone = /@media \(max-width: 760px\)\s*\{\s*:root:not\(\[data-sf-mobile-flight="1"\]\) #alerts \{ top:calc\((\d+)px \+ var\(--sf-safe-inset-top, 0px\)\); \}/.exec(hudStylesSrc);
+  assert.ok(phone, 'a <=760px rule must re-seat #alerts below the waypoint card');
+  assert.ok(phone.index > header, 'the phone re-seat must come after the unscoped 22px rule, or it is cancelled again');
+  assert.ok(Number(phone[1]) >= 72, `phone alert lane top (${phone[1]}px) must clear the waypoint card band`);
+  // Phone flight keeps its own lane offset (translateY from the 22px line) in the mobile sheet.
+  assert.match(mobileStylesSrc, /\[data-sf-mobile-flight="1"\] #alerts \{ transform:translateY\(calc\(124px/,
+    'mobile flight still owns its alert-lane offset');
+  // Live game: placeFlightReadouts pins the dock cue to flightInstrumentRects().dockPrompt.
+  const { flightInstrumentRects } = await import('../src/ui/hudAttention.js');
+  for (const [w, h] of [[390, 844], [360, 740]]) {
+    const dock = flightInstrumentRects(w, h).dockPrompt;
+    assert.ok(dock.y >= 72, `${w}x${h}: live dock cue top ${dock.y} must clear the waypoint card band`);
+    assert.ok(dock.x >= 0 && dock.x + dock.width <= w, `${w}x${h}: live dock cue stays on screen`);
+  }
+});

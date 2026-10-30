@@ -78,6 +78,7 @@ export default defineFlavorPack({
         { id: 'concord_62', text: 'The Lost Freight Apron remains in transit. The destination berth remains under review.' },
         { id: 'concord_63', text: 'Shift Bell Three is not a navigation aid. Its ring remains mandatory.' },
         { id: 'concord_64', text: 'Checkpoint Niner recorded zero incidents. The lamp recorded the same.' },
+        { id: 'concord_65', text: 'The mole in Records was located by the mole in Auditing. Both retain clearance pending review.' },
       ],
     },
     {
@@ -147,6 +148,9 @@ export default defineFlavorPack({
         { id: 'margin_60', text: 'Proof of life is filed quarterly. Late filing voids the life.' },
         { id: 'margin_61', text: 'Sker Bazaar sold the same berth to four crews. All four paid. None docked.' },
         { id: 'margin_62', text: 'A Haven shrine plate lists donors by what they owed, not who they were.' },
+        { id: 'margin_63', text: 'A freighter written off as sinking berthed herself a week later. Her crew had already filed the loss. The ledger kept the original.' },
+        { id: 'margin_64', text: 'A Ceres clerk confessed to a manifest theft his own ledger had already cleared. He asked for the sentence in writing. He is still asking.' },
+        { id: 'margin_65', text: 'A Drift desk sells a grain that will not reseed. Every sowing is a first purchase. The desk calls it yield.' },
       ],
     },
     {
@@ -224,6 +228,9 @@ export default defineFlavorPack({
         // S-03: heckling the junction's new furniture by name.
         { id: 'static_68', text: 'Marshal Nine counts your hulls so you do not have to. Count them again anyway.' },
         { id: 'static_69', text: 'The Re-filed Hull has been HELD longer than most crews hold a job.' },
+        { id: 'static_70', text: 'A pale giant runs the cut game behind the Bazaar. He says he will never die. The pot keeps taking challengers.' },
+        { id: 'static_71', text: 'The stone changed pockets nine times dockside in one night. It left in the tool roll of a man who still thinks he won it.' },
+        { id: 'static_72', text: 'A loan man called Chili took a deckhand\u2019s coat on the vig. The coat fit better than the debt.' },
       ],
     },
     {

@@ -527,7 +527,10 @@ function runLotDay(state, ctx, lot, day, now) {
     // (round(4*0.88) === 4), which would pin a tiny-price book above its floor
     // and strike forever — the block never closes and the single lot wedges
     // every future post. Force a credit of progress while above the floor.
-    lot.ask = Math.max(lot.auction.floor, Math.min(lot.ask - 1, Math.round(lot.ask * ECON.auctionStep)));
+    // A markdown only ever writes the price down: a haggled ask already under the floor
+    // stays where the attendant agreed it, never climbs back to the floor overnight.
+    lot.ask = Math.min(lot.ask,
+      Math.max(lot.auction.floor, Math.min(lot.ask - 1, Math.round(lot.ask * ECON.auctionStep))));
     lot.auction.steps += 1;
     emitLot(state, ctx, 'impoundLot:markdown', { lossId: lot.lossId, ask: lot.ask, step: lot.auction.steps, day });
     if (lot.ask <= lot.auction.strike) {
@@ -677,7 +680,10 @@ export function impoundInsiderTip(state, ctx) {
   };
   emitLot(state, ctx, 'impoundLot:tip', { lossId: lot.lossId, ...tip, fee });
   const att = impoundAttendantFor(lot.stationId);
-  const redeemText = tip.redeem ? ` And ${tip.redeem.claimant} comes for it around day ${tip.redeem.opensDay}.` : '';
+  // The clerk speaks in days from today — the book's internal day index is not a date.
+  const redeemIn = tip.redeem ? Math.max(0, tip.redeem.opensDay - dayOf(state.simTime)) : 0;
+  const redeemWhen = redeemIn <= 0 ? 'any day now' : redeemIn === 1 ? 'tomorrow' : `in about ${redeemIn} days`;
+  const redeemText = tip.redeem ? ` And ${tip.redeem.claimant} comes for it ${redeemWhen}.` : '';
   speakLot(state, ctx, att ? att.name : 'Lot attendant',
     `Between us: the quiet paper tops out at ${tip.npcStrike.toLocaleString('en-US')}.${redeemText}`);
   return { ok: true, fee, tip };
@@ -951,6 +957,11 @@ export function impoundLotBoard(state) {
   board.haggled = lot.haggled;
   board.hagglesLeft = Math.max(0, ECON.haggleMaxAttempts - lot.haggles);
   board.historyLine = lot.historyLine || null;
+  // The desk's own prices, computed by the same formulas its verbs charge.
+  board.tipFeeCr = Math.max(ECON.tipFeeMinCr, Math.round(lot.listPrice * ECON.tipFeePct));
+  board.holdFeeCr = Math.max(ECON.holdDepositMinCr, Math.round(lot.ask * ECON.holdDepositPct));
+  board.quietFeeCr = Math.max(ECON.quietFeeMinCr, Math.round(lot.listPrice * ECON.quietFeePct));
+  board.holdDepositPaid = lot.holdDepositPaid;
   board.hold = lot.hold ? { ...lot.hold } : null;
   board.bid = lot.bid ? { ...lot.bid } : null;
   board.auction = {
@@ -1085,6 +1096,55 @@ export function ensureImpoundLotWiring(state, ctx) {
   bus.on('dock:docked', (p) => noteImpoundLotDocked(state, host, p));
   bus.on('save:loaded', () => noteImpoundLotSaveLoaded(state, host));
   bus.on('ship:purchased', (p) => noteImpoundLotShipPurchased(state, host, p));
+  // The attendant's desk on the Shipworks screen answers with this one intent; the verbs
+  // re-check the berth, the book and the wallet before anything moves.
+  bus.on('impoundLot:deskIntent', (p) => runImpoundDeskIntent(state, host, p));
+}
+
+// Why the desk said no, in the attendant's words. A verb that speaks its own refusal
+// line (haggle, losing bid) needs no second receipt.
+const DESK_REFUSALS = Object.freeze({
+  no_lot: 'The lot is empty — that hull has already left the book.',
+  not_at_lot: 'That desk is at the yard holding the hull. Dock there to deal.',
+  held: 'The hull is already on hold — the book is frozen until it lapses.',
+  already: 'The desk has already done that for this hull.',
+  attendant_done: 'The attendant is done haggling over this hull.',
+  not_auctioned: 'The block is not open yet — sealed bids wait for the auction.',
+  bad_amount: 'That is not a bid the desk can write down.',
+  thin_wallet: 'Not enough credits for that at the desk.',
+  no_dispute: 'No filed claim is pending on this hull.',
+  no_marked_hull: 'The hull you are flying carries no dead owner\'s papers.',
+  already_closed: 'The papers on this hull are already settled.',
+  no_offer: 'Nobody is offering for these papers right now.',
+  lapsed: 'The offer lapsed — the kin stopped waiting.',
+  wrong_berth: 'The kin left word at another yard. Answer them there.',
+  collector_active: 'Not while their collector is still out there hunting this hull.',
+});
+
+/** Route one desk intent to its verb. Returns the verb's own result. */
+export function runImpoundDeskIntent(state, ctx, p) {
+  const verb = p && typeof p.verb === 'string' ? p.verb : '';
+  let out;
+  switch (verb) {
+    case 'haggle': out = impoundHaggle(state, ctx); break;
+    case 'bid': out = impoundPlaceBid(state, ctx, p.amount); break;
+    case 'hold': out = impoundHoldDeposit(state, ctx); break;
+    case 'tip': out = impoundInsiderTip(state, ctx); break;
+    case 'quiet': out = impoundQuietClaim(state, ctx); break;
+    case 'watch': out = impoundWatchLot(state, ctx, p.on !== false); break;
+    case 'acceptRansom': out = impoundAcceptRansom(state, ctx); break;
+    case 'declineRansom': out = impoundDeclineRansom(state, ctx); break;
+    default: return null;
+  }
+  if (out && out.ok === false && out.reason !== 'refused' && out.reason !== 'outbid') {
+    toastLot(state, ctx, DESK_REFUSALS[out.reason] || 'The desk turned that down.', 'warn', 4);
+  } else if (out && out.ok && verb === 'hold') {
+    toastLot(state, ctx, `Hold placed — the hull waits at ${Number(out.hold && out.hold.price || 0).toLocaleString('en-US')} credits for ${ECON.holdDays} days.`);
+  } else if (out && out.ok && verb === 'watch') {
+    toastLot(state, ctx, out.watched ? 'The wire will warn you before anyone redeems this hull.' : 'You stopped watching the book.');
+  }
+  emitLot(state, ctx, 'impoundLot:deskAnswered', { verb, ok: !!(out && out.ok), reason: out && out.reason || null });
+  return out;
 }
 
 /** Stamp the economy fields on a fresh listing — the durable twin of

@@ -93,17 +93,17 @@
       "career": "hauler",
       "minutes": 90,
       "seed": 3232800769,
-      "credits": 99546,
-      "netWorth": 134546,
-      "earnedValue": 129546,
-      "creditsPerMin": 1439.4,
+      "credits": 103634,
+      "netWorth": 138634,
+      "earnedValue": 133634,
+      "creditsPerMin": 1484.82,
       "completedLoops": 1,
-      "completedContracts": 53,
+      "completedContracts": 54,
       "failedContracts": 5,
       "shipId": "ship_mule",
       "phase": "mule",
-      "travelS": 4461.7,
-      "actionS": 880,
+      "travelS": 4484.7,
+      "actionS": 896,
       "bottlenecks": [
         {
           "code": "contract_accept_refused",
@@ -112,18 +112,10 @@
         {
           "code": "contract_serve_failed",
           "detail": "settle_incomplete"
-        },
-        {
-          "code": "spread_collapse",
-          "detail": "Route cmdty_ore_iron→station_helios collapsed"
-        },
-        {
-          "code": "market_exhaustion",
-          "detail": "All early routes cooling while live stock recovers"
         }
       ],
       "adaptersUsed": [],
-      "authorityReceipts": 109,
+      "authorityReceipts": 111,
       "ok": true,
       "assertionFails": [],
       "assertionWarns": []
@@ -468,12 +460,12 @@
       "90": {
         "ok": true,
         "horizonMin": 90,
-        "endingCapital": 99546,
-        "earnedValue": 129546,
-        "creditsPerMin": 1439.4,
-        "netWorth": 134546,
+        "endingCapital": 103634,
+        "earnedValue": 133634,
+        "creditsPerMin": 1484.82,
+        "netWorth": 138634,
         "completedLoops": 1,
-        "completedContracts": 53,
+        "completedContracts": 54,
         "failedContracts": 5,
         "shipId": "ship_mule",
         "phase": "mule",
@@ -490,12 +482,12 @@
           }
         ],
         "time": {
-          "simS": 5400,
-          "travelS": 4461.7,
-          "actionS": 880,
+          "simS": 5380.7,
+          "travelS": 4484.7,
+          "actionS": 896,
           "dockS": 0,
           "recoveryS": 0,
-          "idleS": 58.3
+          "idleS": 0
         },
         "bottlenecks": [
           {
@@ -505,14 +497,6 @@
           {
             "code": "contract_serve_failed",
             "detail": "settle_incomplete"
-          },
-          {
-            "code": "spread_collapse",
-            "detail": "Route cmdty_ore_iron→station_helios collapsed"
-          },
-          {
-            "code": "market_exhaustion",
-            "detail": "All early routes cooling while live stock recovers"
           }
         ],
         "adaptersUsed": [],
@@ -916,7 +900,7 @@
     "fails": [],
     "warns": [
       "extreme_cross_disparity_30m ratio=6.66",
-      "extreme_cross_disparity_90m ratio=9.13"
+      "extreme_cross_disparity_90m ratio=9.42"
     ],
     "disparity": {
       "30": {
@@ -931,8 +915,8 @@
       },
       "90": {
         "min": 157.57,
-        "max": 1439.4,
-        "ratio": 9.13
+        "max": 1484.82,
+        "ratio": 9.42
       }
     }
   },
@@ -1144,16 +1128,6 @@
       "area": "bottleneck:hauler",
       "status": "measured",
       "detail": "contract_serve_failed"
-    },
-    {
-      "area": "bottleneck:hauler",
-      "status": "measured",
-      "detail": "spread_collapse"
-    },
-    {
-      "area": "bottleneck:hauler",
-      "status": "measured",
-      "detail": "market_exhaustion"
     },
     {
       "area": "bottleneck:hunter",

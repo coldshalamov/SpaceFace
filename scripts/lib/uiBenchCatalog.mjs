@@ -36,6 +36,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'codex-record', screen: 'codex', backdrop: 'title', record: true },
   { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
   { id: 'missionLog', screen: 'missionLog', backdrop: 'title' },
+  // Settled receipts open: a voided failure's refund, a race DNF, a forfeit, an expiry (tools/ui-bench-receipts.js).
+  { id: 'mission-log-receipts', screen: 'missionLog', backdrop: 'title', receipts: true },
   { id: 'credits', screen: 'credits', backdrop: 'title' },
   { id: 'achievements', screen: 'achievements', backdrop: 'title' },
   { id: 'statistics', screen: 'statistics', backdrop: 'title' },
@@ -99,6 +101,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'station-dock', screen: 'station', backdrop: 'shell' },
   { id: 'station-market', screen: 'station', tab: 'market', backdrop: 'shell' },
   { id: 'station-shipworks', screen: 'station', tab: 'shipworks', backdrop: 'shell' },
+  { id: 'station-shipworks-impound', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'lot' },
+  { id: 'station-shipworks-ransom', screen: 'station', tab: 'shipworks', backdrop: 'shell', impound: 'ransom' },
   { id: 'station-industry', screen: 'station', tab: 'industry', backdrop: 'shell' },
   { id: 'station-contracts', screen: 'station', tab: 'contracts', backdrop: 'shell' },
   { id: 'station-factions', screen: 'station', tab: 'factions', backdrop: 'shell' },

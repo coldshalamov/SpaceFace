@@ -60,6 +60,10 @@ function attachMissionEvents(h) {
     // authored-race hooks so the fixture exercises its real no-op guard instead of
     // pretending the method does not exist.
     _resolveContract47aSkimForDock(stationId) { return missions._resolveContract47aSkimForDock.call(this, stationId); },
+    // W5 relief gratitude and W-BOOKS-3-4 seam weld joined the same dock handler; delegate them
+    // too so their real guards run (no captain cycles / no seam here means a no-op).
+    _settleCaptainGratitude(stationId) { return missions._settleCaptainGratitude.call(this, stationId); },
+    _resolveVarianceSeamWeld(stationId) { return missions._resolveVarianceSeamWeld.call(this, stationId); },
     _storyTrigger() {},
     _refreshNavigation() {},
   });
