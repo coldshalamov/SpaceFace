@@ -12,7 +12,9 @@ export function redKiteGateCrossing(from, to, index, radius) {
   if (!gate || !from || !to || ![from.x, from.z, to.x, to.z].every(Number.isFinite)) return false;
   const before = (from.x - gate.pos.x) * gate.nx + (from.z - gate.pos.z) * gate.nz;
   const after = (to.x - gate.pos.x) * gate.nx + (to.z - gate.pos.z) * gate.nz;
-  if (!(before <= 0 && after > 0 && after - before >= 0.02)) return false;
+  // Any forward crossing scores, however slow: a per-tick minimum would strand a shallow pass
+  // that ends past the plane, because the next tick starts on the far side and never retries.
+  if (!(before <= 0 && after > 0 && after > before)) return false;
   const t = -before / (after - before);
   const x = from.x + (to.x - from.x) * t - gate.pos.x, z = from.z + (to.z - from.z) * t - gate.pos.z;
   return Math.abs(x * -gate.nz + z * gate.nx) <= radius;

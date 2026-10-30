@@ -102,6 +102,13 @@ export function shepherd12ShyLine(strays, template = SHEPHERD12.flockShy) {
   return String(template).replace('{strays}', String(strays));
 }
 
-export function shepherd12HomeLine(strays, template = SHEPHERD12.strayHome) {
-  return String(template).replace('{strays}', String(strays));
+/** The return line: how many crossed home on this census and how many are still out.
+ *  One home reads ONE HOME; two or more say their number — the count is never rounded down. */
+const HOME_WORDS = ['NONE', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN'];
+export function shepherd12HomeLine(strays, home = 1) {
+  const n = Math.max(1, Math.floor(Number(home)) || 1);
+  if (n === 1) return String(SHEPHERD12.strayHome).replace('{strays}', String(strays));
+  return String(SHEPHERD12.strayHomeMany)
+    .replace('{home}', HOME_WORDS[n] || String(n))
+    .replace('{strays}', String(strays));
 }

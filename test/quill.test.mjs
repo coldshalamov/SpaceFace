@@ -167,8 +167,10 @@ test('drift-home: a shoved drone walks back through the impulse membrane', () =>
 });
 
 test('pure rules: copyable gate, page index, drift-home', () => {
-  const logged = { alive: true, type: 'wreck', pos: { ...QUILL.post }, vel: { x: 0, z: 0 }, data: { markerId: 'm1' } };
+  const logged = { alive: true, type: 'wreck', pos: { ...QUILL.post }, vel: { x: 0, z: 0 }, data: { scanRevealed: { discovery: 'hulk' }, markerId: 'm1' } };
   assert.equal(quillCopyable(logged), true);
+  assert.equal(quillCopyable({ ...logged, data: { markerId: 'm1' } }), false,
+    'a birth-stamped aftermath marker is not a scanner read');
   assert.equal(quillCopyable({ ...logged, data: { quillCopied: true } }), false);
   assert.equal(quillCopyable({ ...logged, type: 'debris' }), false, 'only wrecks are logs');
   assert.equal(quillCopyable({ ...logged, data: {} }), false, 'unscanned is not a log');

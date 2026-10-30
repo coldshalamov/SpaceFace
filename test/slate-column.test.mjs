@@ -118,10 +118,15 @@ test('the column\'s lines are honest: predicting under four, reciting at and pas
   assert.equal(slateWeldSpike(null), false);
   assert.equal(slateColumnInRange(POS), true);
   assert.equal(slateColumnInRange(AWAY), false);
-  assert.ok(slateColumnLine(0).includes('0 weld-spike'));
+  assert.ok(slateColumnLine(0).includes('0 weld-spikes'), 'zero takes the plural');
+  assert.ok(slateColumnLine(1).includes('1 weld-spike on'));
   assert.ok(slateColumnLine(2).includes('2 weld-spikes'));
-  assert.ok(slateColumnLine(4).includes('went at four'), 'at four the column recites, not predicts');
-  assert.ok(slateColumnLine(7).includes('went at four'));
+  // Welds alone never open the hull: the seam-went line needs the story's real failure.
+  assert.ok(!slateColumnLine(4).includes('went at four'), 'four welds file the entry, not a blown seam');
+  assert.ok(slateColumnLine(4).includes('entry is filed'));
+  assert.ok(slateColumnLine(7).includes('7 weld-spikes'));
+  assert.ok(slateColumnLine(4, { seamWent: true }).includes('went at four'), 'a real seam failure recites');
+  assert.ok(slateColumnLine(0, { seamWent: true }).includes('went at four'));
 });
 
 test('destroy clears listeners, providers, and the beacon; re-init is clean', () => {
