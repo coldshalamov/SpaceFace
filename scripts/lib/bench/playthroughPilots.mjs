@@ -1378,20 +1378,13 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
             // Run the pod home: the towed pod crosses the ring trailing the hull, and the
-            // predicate is pod-inside-radius only — proximity, no speed proof.
-            const dB = dist(p.pos, beacon.pos);
-            // Fly ONTO the beacon and winch — with a speed cap that scales with the run
-            // left: the turn circle must always fit inside the remaining distance or the
-            // ship settles into a stable orbit just outside the brake band (run 7 sat at
-            // dB≈420, v≈240 forever). v ≤ dB/4 keeps every correction able to land in the
-            // 60-radius ring.
-            const vNow = speedOf(p);
-            const vCap = Math.max(15, dB / 4);
-            input.aimAngle = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
-            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
-            input.brake = vNow > vCap;
-            input.moveZ = (!input.brake && dB > 25) ? 1 : 0;
-            input.boost = energyFull(p) && dB > 800 && vNow < vCap * 0.8;
+            // predicate is pod-inside-radius only — proximity, no speed proof. Fly the
+            // beacon like any rendezvous: flyTo already owns the turn-radius coupling
+            // (v ≤ d/5) and only thrusts while facing — a hand-rolled "aim + burn"
+            // pumped tangential velocity at 90° misalignment and orbited the ring
+            // forever (runs 7–8 circled at dB≈120–420). hold:true threads through the
+            // ring center instead of braking at its edge so the trailing pod enters.
+            flyTo(input, beacon.pos, { arrive: 12, hold: true, boost: energyFull(p) });
             cmd.lineControl = true;
             cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
             return;
