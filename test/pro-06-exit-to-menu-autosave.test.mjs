@@ -413,21 +413,30 @@ test('PRO-06: a backgrounded tab is not a finished session and does not autosave
 });
 
 test('PRO-06: an unload handler that throws does not block the exit', () => {
-  installStorage();
-  withFakeWindow((fake) => {
-    const h = boot(flightState());
-    const errors = [];
-    const prevError = console.error;
-    console.error = (...args) => errors.push(args[0]);
-    try {
-      // Make the save itself throw, as a corrupt serializer would.
-      save.serialize = () => { throw new Error('boom'); };
-      assert.doesNotThrow(() => fake.fire('pagehide'),
-        'a failed final save must never cancel the unload');
-      assert.equal(errors.length, 1, 'and it is reported once, not swallowed');
-    } finally {
-      console.error = prevError;
-      h.restore();
-    }
-  });
+  const store = installStorage();
+  // `save` is the process-wide system singleton: the throwing serializer must not outlive this
+  // test, or every later suite sharing the module (one-process runs) serializes into 'boom'.
+  const hadOwnSerialize = Object.hasOwn(save, 'serialize');
+  const prevSerialize = save.serialize;
+  try {
+    withFakeWindow((fake) => {
+      const h = boot(flightState());
+      const errors = [];
+      const prevError = console.error;
+      console.error = (...args) => errors.push(args[0]);
+      try {
+        // Make the save itself throw, as a corrupt serializer would.
+        save.serialize = () => { throw new Error('boom'); };
+        assert.doesNotThrow(() => fake.fire('pagehide'),
+          'a failed final save must never cancel the unload');
+        assert.equal(errors.length, 1, 'and it is reported once, not swallowed');
+      } finally {
+        console.error = prevError;
+        if (hadOwnSerialize) save.serialize = prevSerialize; else delete save.serialize;
+        h.restore();
+      }
+    });
+  } finally {
+    store.restore();
+  }
 });
