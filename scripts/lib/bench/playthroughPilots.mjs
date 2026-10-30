@@ -906,7 +906,8 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let strokeTicks = 0;
   let escapeFrom = null;         // {x,z} the wanted-escape runs away from
   let nearBreakUntil = -1;       // ease the winch when the line warns it is near break
-  let grabBraking = false;       // orbit-escape latch for the beacon run
+  let grabBraking = false;       // full-stop latch that kills the beacon orbit cycle
+  let grabCreep = false;         // after the stop, cap the rest of the run at creep speed
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
@@ -1379,22 +1380,22 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
             // Run the pod home: the towed pod crosses the ring trailing the hull, and the
-            // predicate is pod-inside-radius only — proximity, no speed proof. The hull's
-            // v<d/5 coupling is margin-zero: it parks an orbit at exactly d once circling
-            // (runs 7–9 held dB≈120–420). Brake on a latch — well below the coupling
-            // point — so the turn circle lands inside the run before thrust resumes,
-            // and only thrust while facing so the burn can't feed the tangent.
+            // predicate is pod-inside-radius only — proximity, no speed proof. Any cap
+            // that leaves tangential speed alive keeps the limit cycle (runs 7–10 pinned
+            // at dB≈113–420). One full stop kills the circle for good: brake to near
+            // zero once over the coupling speed, then creep the rest of the way — v
+            // capped at dB/8 keeps the turn circle inside the run at every distance.
             const dB = dist(p.pos, beacon.pos);
             const vNow = speedOf(p);
-            if (!grabBraking && vNow > Math.max(12, dB / 5)) grabBraking = true;
-            else if (grabBraking && vNow < Math.max(8, dB / 12)) grabBraking = false;
+            if (!grabBraking && !grabCreep && vNow > Math.max(10, dB / 6)) grabBraking = true;
+            if (grabBraking && vNow < 2.5) { grabBraking = false; grabCreep = true; }
             const aimB = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
             const errB = wrapAngle(aimB - (p.rot || 0));
             input.aimAngle = aimB;
             input.turnIntent = Math.max(-1, Math.min(1, errB / 0.6));
-            input.brake = grabBraking;
-            input.moveZ = (!grabBraking && Math.abs(errB) < 0.5 && dB > 25) ? 1 : 0;
-            input.boost = energyFull(p) && dB > 800 && !grabBraking && Math.abs(errB) < 0.5;
+            input.brake = grabBraking || vNow > Math.max(6, dB / 8);
+            input.moveZ = (!input.brake && Math.abs(errB) < 0.35 && dB > 20) ? 1 : 0;
+            input.boost = false;
             cmd.lineControl = true;
             cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
             return;
