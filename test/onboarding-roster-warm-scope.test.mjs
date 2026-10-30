@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { onboarding } from '../src/systems/onboarding.js';
 import { render } from '../src/render/renderer.js';
+import { wreckVisualExemplarSpecs } from '../src/render/visualFactory.js';
+
+const onboardingWreckIds = () => new Set(wreckVisualExemplarSpecs('onboarding-roster-prewarm:wreck:').map((spec) => spec.id));
 
 function scriptedPayload() {
   let payload;
@@ -110,8 +113,12 @@ test('the intro warms its exact hull twins and weapons without the global catalo
     .map((weapon) => weapon.defId || weapon.id));
   const projectiles = h.builds.filter((spec) => spec.type === 'projectile');
   assert.deepEqual(new Set(projectiles.map((spec) => spec.data.weaponId)), weapons);
-  assert.equal(h.builds.length, payload.specs.length * 2 + weapons.size,
-    'no unrelated wreck, spawnable, or asteroid exemplar joins the intro request');
+  // The packaged wreck family rides the intro request (the opening aftermath wreck owns the shared
+  // forge-v1 program); spawnable and asteroid exemplars still do not.
+  const wrecks = h.builds.filter((spec) => typeof spec.id === 'string' && spec.id.startsWith('onboarding-roster-prewarm:wreck:'));
+  assert.deepEqual(new Set(wrecks.map((spec) => spec.id)), onboardingWreckIds());
+  assert.equal(h.builds.length - wrecks.length, payload.specs.length * 2 + weapons.size,
+    'no unrelated spawnable or asteroid exemplar joins the intro request');
   assert.equal(h.catalogs.length, 0);
   assert.notEqual(h.owner._rosterPrewarmLeafWarmed, true);
   assert.notEqual(h.owner._rosterPrewarmCatalogAttempted, true);
@@ -145,7 +152,7 @@ test('coalesced intro requests retain their narrow scope and requested hulls', a
   assert.equal(h.builds.filter((spec) => spec === late).length, 2);
   assert.equal(h.catalogs.length, 0);
   assert.deepEqual(new Set(h.builds.filter((spec) => spec.type !== 'projectile').map((spec) => spec.id)),
-    new Set([...payload.specs.map((spec) => spec.id), late.id]));
+    new Set([...payload.specs.map((spec) => spec.id), late.id, ...onboardingWreckIds()]));
   assert.notEqual(h.owner._rosterPrewarmCatalogAttempted, true);
 });
 

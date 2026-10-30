@@ -9816,19 +9816,41 @@ export function mountPackagePoolCandidateInstancedTwins(root) {
   if (!root || typeof root.traverse !== 'function') return null;
   const twins = [];
   const seenPairs = new Set();
+  const pairKeyOf = (geometry, material) => `${geometry.uuid}:${Array.isArray(material)
+    ? material.map((entry) => entry && entry.uuid).join('/')
+    : material.uuid}`;
   root.traverse((object) => {
-    if (object.isMesh !== true) return;
-    if (!object.userData || object.userData.spacefacePackagePoolCandidate !== true) return;
+    if (object.name === 'SF_PoolCandidate_InstanceTwin' || object.name === 'SF_PoolMember_DirectTwin') return;
+    const ud = object.userData || {};
     const geometry = object.geometry;
     const material = object.material;
     if (!geometry || !material) return;
+    // Pooled members (a promoted proxy, or the pool chunk's own InstancedMesh) only ever
+    // compile the USE_INSTANCING variant here. The plain variant of the same (geometry,
+    // material) pair is shared with single-owner draws elsewhere — e.g. the opening wreck's
+    // Forge_bastion_gunmetal program is the one Forge_ore_barge_paint first binds — so once a
+    // prewarm exemplar pushes the wreck onto a pool chunk, nothing links the plain variant
+    // before lift and it links in flight (1.9-3.0 s, perf lane oc1v26/oc1v27). Mount a detached
+    // direct-mesh twin so both variants link inside this admission.
+    const pooled = ud.spacefaceRenderPackagePooled === true
+      || (object.isInstancedMesh === true && ud.spacefacePackageAdmissionPending === true);
+    const candidate = object.isMesh === true && ud.spacefacePackagePoolCandidate === true;
+    if (!pooled && !candidate) return;
     // Geometry feeds the program key too (vertexTangents/uv defines), so dedupe on the same
     // (geometry, material) pair identity the pool chunks key on — not on material alone.
-    const pairKey = `${geometry.uuid}:${Array.isArray(material)
-      ? material.map((entry) => entry && entry.uuid).join('/')
-      : material.uuid}`;
+    const pairKey = `${pooled ? 'direct' : 'instanced'}:${pairKeyOf(geometry, material)}`;
     if (seenPairs.has(pairKey)) return;
     seenPairs.add(pairKey);
+    if (pooled) {
+      const twin = new THREE.Mesh(geometry, material);
+      twin.visible = true;
+      twin.frustumCulled = false;
+      twin.castShadow = object.castShadow === true;
+      twin.receiveShadow = object.receiveShadow === true;
+      twin.name = 'SF_PoolMember_DirectTwin';
+      twins.push(twin);
+      return;
+    }
     const twin = new THREE.InstancedMesh(geometry, material, 1);
     twin.count = 0;
     twin.visible = true;
@@ -16433,6 +16455,106 @@ function visibleProxyChainReachesOwner(proxy, owner) {
   return false;
 }
 
+/**
+ * A pool chunk only ever links the USE_INSTANCING variant of its (geometry, material) pair, and a
+ * promoted proxy stops drawing directly — so once two owners share a key behind the veil (the
+ * onboarding wreck exemplar plus the opening aftermath wreck), nothing links the PLAIN variant
+ * before lift. That plain forge-v1 program is shared with single-owner surfaces (Forge_bastion_
+ * gunmetal, Forge_ore_barge_paint, ...) and linked in flight for 1.9-3.0 s (perf lane oc1v26/27).
+ * Each chunk carries one direct-mesh child over a zero-length draw range view of the same
+ * attributes: every compile/census/draw walk that reaches the chunk also binds the plain program
+ * (and its shadow-depth twin), and the witness itself rasterizes nothing.
+ */
+function attachPoolChunkDirectVariantWitness(chunkMesh, pool) {
+  try {
+    const source = pool && pool.geometry;
+    const material = pool && pool.material;
+    if (!source || !material || !source.attributes) return null;
+    const view = new THREE.BufferGeometry();
+    for (const name of Object.keys(source.attributes)) view.setAttribute(name, source.attributes[name]);
+    if (source.index) view.setIndex(source.index);
+    for (const name of Object.keys(source.morphAttributes || {})) view.morphAttributes[name] = source.morphAttributes[name];
+    view.morphTargetsRelative = source.morphTargetsRelative === true;
+    view.setDrawRange(0, 0);
+    const witness = new THREE.Mesh(view, material);
+    witness.name = 'SF_PoolChunk_DirectVariantWitness';
+    witness.frustumCulled = false;
+    witness.castShadow = chunkMesh.castShadow;
+    witness.receiveShadow = chunkMesh.receiveShadow;
+    witness.layers.mask = chunkMesh.layers.mask;
+    witness.raycast = () => {};
+    witness.matrixAutoUpdate = false;
+    // Shares the pool's GPU buffers: never dispose this view (that would drop the shared attributes).
+    witness.userData = { spacefacePoolDirectVariantWitness: true };
+    installPoolWitnessStats(witness);
+    chunkMesh.add(witness);
+    return witness;
+  } catch {
+    return null;
+  }
+}
+
+// Opt-in debug counter (#667 review point 2). Set globalThis.__sfPoolWitnessStats = {} before boot
+// and every witness draw is counted: main-pass draws, shadow-pass draws, and the gl.useProgram calls
+// three issued while binding the witness (three caches the bound program, so each call is a real
+// program switch into the plain variant). Off by default: no callbacks are installed.
+function poolWitnessStats() {
+  const stats = globalThis.__sfPoolWitnessStats;
+  return stats && typeof stats === 'object' ? stats : null;
+}
+
+function countingUseProgram(renderer, stats) {
+  const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (!gl || typeof gl.useProgram !== 'function') return null;
+  if (!gl.__sfUseProgramCounted) {
+    const inner = gl.useProgram;
+    gl.__sfUseProgramCounted = { calls: 0 };
+    const counter = gl.__sfUseProgramCounted;
+    gl.useProgram = function countedUseProgram(program) { counter.calls += 1; return inner.call(this, program); };
+  }
+  stats.glUseProgram = gl.__sfUseProgramCounted;
+  return gl.__sfUseProgramCounted;
+}
+
+export function installPoolWitnessStats(witness) {
+  const stats = poolWitnessStats();
+  if (!stats) return;
+  stats.witnesses = (stats.witnesses || 0) + 1;
+  let before = 0;
+  witness.onBeforeRender = (renderer) => {
+    const counter = countingUseProgram(renderer, stats);
+    stats.draws = (stats.draws || 0) + 1;
+    before = counter ? counter.calls : 0;
+  };
+  witness.onAfterRender = (renderer) => {
+    const counter = countingUseProgram(renderer, stats);
+    if (counter) stats.programSwitchesIn = (stats.programSwitchesIn || 0) + (counter.calls - before);
+  };
+  witness.onBeforeShadow = () => { stats.shadowDraws = (stats.shadowDraws || 0) + 1; };
+}
+
+// Chunk teardown: the witness view shares the pool's attribute objects, and three's geometry
+// dispose deletes the GL buffers of every attribute still attached. Strip the shared attributes
+// first, then dispose, so three drops only the view's own state (its WebGLGeometries entry and the
+// per-program VAOs in WebGLBindingStates) and the pool's buffers stay alive.
+export function disposePoolChunkDirectVariantWitness(chunkMesh) {
+  if (!chunkMesh || !Array.isArray(chunkMesh.children)) return 0;
+  let disposed = 0;
+  for (const child of chunkMesh.children.slice()) {
+    if (!child || !child.userData || child.userData.spacefacePoolDirectVariantWitness !== true) continue;
+    const view = child.geometry;
+    child.removeFromParent();
+    if (view && typeof view.dispose === 'function') {
+      view.attributes = {};
+      view.index = null;
+      view.morphAttributes = {};
+      view.dispose();
+      disposed += 1;
+    }
+  }
+  return disposed;
+}
+
 function createInstanceChunk(scene, pool, ordinal, options = {}) {
   const mesh = new THREE.InstancedMesh(pool.geometry, pool.material, INSTANCE_CHUNK_SIZE);
   mesh.name = `GLTFKit_InstancePool_${pool.label}_${ordinal}`;
@@ -16445,6 +16567,7 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
   mesh.userData.spacefaceInstancePoolChunk = ordinal;
+  attachPoolChunkDirectVariantWitness(mesh, pool);
   stampOpeningSubmissionPackage(mesh, {
     schema: 'spaceface.authoredInstancePoolProducer.v1',
     producer: 'parts-library-authored-instance-pool',
@@ -16622,6 +16745,7 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   }
   if (chunk.meshDisposed !== true) {
     attempt(() => {
+      disposePoolChunkDirectVariantWitness(chunk.mesh);
       chunk.mesh.dispose();
       chunk.meshDisposed = true;
     });

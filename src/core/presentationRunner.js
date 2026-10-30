@@ -1180,6 +1180,19 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return presentationMs;
   }
 
+  // Warm sim steps behind the veil (see advanceSimulation): one per presented frame, at most
+  // VEIL_WARM_MAX_STEPS per hold. Reset whenever the hold is re-armed.
+  const VEIL_WARM_MAX_STEPS = 8;
+  const veilWarm = { count: 0, sawHold: false };
+  function shouldTakeVeilWarmStep() {
+    if (veilWarm.count >= VEIL_WARM_MAX_STEPS) return false;
+    if (shouldSkipFullTickSystems(state)) return false;
+    if (!(Number(state.timeScale) > 0)) return false;
+    const r = state.render;
+    if (!r || !Number.isFinite(r.firstPlayableFrameAt)) return false;
+    return true;
+  }
+
   function advanceSimulation(frameDt, restoring, stepCap, perf) {
     const simFrameStart = measureNow();
     // The worker lane owns a monotonic timer so a busy renderer cannot stop authoritative
@@ -1189,11 +1202,30 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     // The flight reveal veil (loadingPresenter) also holds the main-lane sim at its spawn state
     // until the world is on screen.
     const veilHeld = flightVeilHeld();
+    if (veilHeld && !veilWarm.sawHold) veilWarm.count = 0;
+    veilWarm.sawHold = veilHeld;
     bindFlightVeilHook();
     syncFlightVeilClock();
-    const stepResult = restoring || workerPumpOwnsClock || veilHeld
-      ? simulationRunner.prepareWithoutAdvance()
-      : simulationRunner.advance(frameDt, state.timeScale, stepCap);
+    const warmEligible = !restoring && veilHeld && shouldTakeVeilWarmStep();
+    const warmStep = warmEligible && !workerPumpOwnsClock;
+    // Worker lane: the veil pauses the worker clock (syncFlightVeilClock), so the same bounded warm
+    // is queued as one explicit worker step per presented frame; rAF still only flushes/presents.
+    const workerWarmStep = warmEligible && workerPumpOwnsClock
+      && typeof simulationRunner.stepOnce === 'function' && simulationRunner.stepOnce() !== false;
+    if (warmStep || workerWarmStep) {
+      // Veil warm steps: one fixed step per presented frame behind the opaque veil (up to
+      // VEIL_WARM_MAX_STEPS, ending with the hold) once the first playable frame is on screen, so
+      // the cold first step and the first interval ticks of slower systems land behind the veil
+      // instead of in the first seconds the player sees. After release, normal catch-up applies.
+      veilWarm.count++;
+      diagnostics.veilWarmSteps = (diagnostics.veilWarmSteps || 0) + 1;
+    }
+    const warmDt = Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT;
+    const stepResult = warmStep
+      ? simulationRunner.advance(warmDt, 1, 1)
+      : restoring || workerPumpOwnsClock || veilHeld
+        ? simulationRunner.prepareWithoutAdvance()
+        : simulationRunner.advance(frameDt, state.timeScale, stepCap);
     if (!restoring && !workerPumpOwnsClock && stepCap === HITCH_CATCHUP_STEPS) {
       diagnostics.hitchCappedFrameCount++;
     }
