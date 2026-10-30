@@ -563,6 +563,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   const unsubs = [
     bus.on('game:loadingProgress', (stage) => {
+      // Progress owns the loading shell only until the committed flight handoff. A queued or
+      // generation-less receipt landing afterward must not re-show the veil and cancel the
+      // bounded first-flight reveal (which also owns the worker sim hold).
+      if (state?.mode === 'flight') return;
       if (!startupFailure && eventMatchesCurrentGeneration(stage)) show(stage);
     }),
     bus.on('mode:changed', ({ mode } = {}) => {
