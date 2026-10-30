@@ -236,6 +236,10 @@ Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VIS
   `saveSystem.js` (10,040: migrations / import / slots / serialize / storage), the largest screen files.
 - **G5 — UI cost.** Per-frame DOM reads and forced layouts in HUD paths (the caption and callout
   fixes of 2026-10-27/28 are the pattern); every HUD write batched per frame.
+  Audit 2026-10-30: `hud.js` clean — zero `getComputedStyle`, every `getBoundingClientRect`/
+  `offsetWidth` is event-driven (resize/ResizeObserver, cargo-buy animation), stale-flagged
+  (`objectiveEdgeBoxes` re-measures only on invalidate), or explicitly bounded to one forced
+  layout per frame. No per-frame layout reads found.
 
 ### Wave W2 — an economy you can play and a long game that lasts
 - **Row 544 W-ECONOMY** — travel ≤ 50 % of time, a play-changing purchase every 15–25 minutes, pay by the tonne.
