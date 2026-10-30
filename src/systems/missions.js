@@ -1527,19 +1527,37 @@ function campaign47aEmbodiedEvidence(state) {
   return false;
 }
 
+/** The Book 2 register contract (`campaign47a:b2:elroy`) is the one live writer of
+ * `elroy_outcome` that is not a legacy stamp. It records its `elroy` step in the sidecar
+ * BEFORE it stamps the token, and a legacy bounty B2 stamps `elroy_outcome_legacy` instead —
+ * so a token plus a beat-2 `elroy` step record is positive proof the token came from the
+ * embodied register, not from a pinned old save. */
+function campaign47aRegisterResolved(state) {
+  const steps = state && state.story && state.story.campaign47a && state.story.campaign47a.stepProgress;
+  const bucket = steps && typeof steps === 'object' ? steps['2'] : null;
+  return !!(bucket && Array.isArray(bucket.completed) && bucket.completed.includes('elroy'));
+}
+
 export function campaign47aRouteKind(state) {
   const flags = (state && state.story && state.story.flags) || {};
   if (flags.elroy_outcome_legacy) return 'legacy';
-  if (flags.elroy_outcome) return 'pinned';
+  // The live register stamps the token too; it must not pin Pick a Side to one door —
+  // Beat 4 names all three and the player chooses (see campaign47aRegisterResolved).
+  if (flags.elroy_outcome) return campaign47aRegisterResolved(state) ? 'live' : 'pinned';
   return campaign47aEmbodiedEvidence(state) ? 'live' : 'legacy';
 }
 
-/** The old-vocabulary token ('custody'|'force') the live route derives from the B4 door:
- * the patrol door carries the custody flavour; traders and free read the force one. */
+/** The old-vocabulary token ('custody'|'force') the program/operation tables read.
+ * Pinned and legacy saves keep their stamped token. The live route derives it from the door
+ * the player actually took (patrol carries custody; traders and free read force) so a later
+ * branch is never shadowed by the register's token; before a door exists the register's
+ * token (if any) is the only signal there is. */
 export function campaign47aOutcomeKey(state) {
   const flags = (state && state.story && state.story.flags) || {};
-  if (flags.elroy_outcome === 'custody' || flags.elroy_outcome === 'force') return flags.elroy_outcome;
-  return (state && state.story && state.story.branch) === 'patrol' ? 'custody' : 'force';
+  const token = flags.elroy_outcome === 'custody' || flags.elroy_outcome === 'force' ? flags.elroy_outcome : null;
+  const branch = state && state.story && state.story.branch;
+  if (token && !(branch && campaign47aRouteKind(state) === 'live')) return token;
+  return branch === 'patrol' ? 'custody' : 'force';
 }
 
 export const missions = {

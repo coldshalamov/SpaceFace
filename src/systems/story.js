@@ -1596,7 +1596,7 @@ export const story = {
 
   _onPostEndingSignal(signal, payload) {
     const s = this.state && this.state.story;
-    if (!s || !s.postEnding || !s.endgameResolved) return false;
+    if (!s || !s.postEnding || !(s.endgameResolved || this._leftoverContinuityLive())) return false;
     // Native target scans may omit sectorId. Qualify them at the live boundary with the actual
     // region, never the ambiguous string "current" (entity ids may repeat in another region).
     const observed = signal === 'scan:completed' && !payload.sectorId
@@ -2480,12 +2480,26 @@ export const story = {
     this._noteStoryRoute('combat');
   },
 
+  /**
+   * A New Game Plus run carries a FRESH continuity directive of the previous ending
+   * (_applyLeftoverWorldFacts) while its own campaign is still unresolved. The directive
+   * must progress, but the run is NOT an ended run: endgameResolved/endgameChoice stay
+   * false/null so the new campaign still reaches its own endgame and story entry.
+   */
+  _leftoverContinuityLive() {
+    const s = this.state && this.state.story;
+    return !!(s && s.newGamePlus && s.postEnding && !s.endgameResolved);
+  },
+
   _onContinuationMission(payload) {
     const s = this.state && this.state.story;
-    if (!s || !s.endgameResolved || !s.endgameChoice) return false;
-    const permitted = continuationJobPermitted(s.endgameChoice, payload);
+    if (!s) return false;
+    const leftover = !s.endgameResolved && this._leftoverContinuityLive();
+    const choice = leftover ? s.postEnding.choiceId : (s.endgameResolved ? s.endgameChoice : null);
+    if (!choice) return false;
+    const permitted = continuationJobPermitted(choice, payload);
     this.bus.emit('story:continuationAccess', {
-      choice: s.endgameChoice,
+      choice,
       type: payload && payload.type || null,
       missionId: payload && payload.missionId || null,
       permitted,

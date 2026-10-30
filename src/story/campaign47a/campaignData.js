@@ -104,6 +104,9 @@ export const CAMPAIGN_BEATS = Object.freeze([
         id: 'dock',
         order: 2,
         accept: Object.freeze(['dock:docked']),
+        // The B0 recovery contract delivers to Helios (missionStoryOps _installContract47aColdStart
+        // destStationId) — a berth anywhere else must not close Cold Start.
+        match: Object.freeze({ stationId: 'station_helios' }),
         label: 'Dock at the Pit — payment withheld',
         requiresPrior: Object.freeze(['mine', 'skim']),
       }),
@@ -131,7 +134,8 @@ export const CAMPAIGN_BEATS = Object.freeze([
     setPiece: 'weighing + infested hauler furnace disposal',
     steps: Object.freeze([
       Object.freeze({
-        // §34.7 Book 1: the sealed alloy run to Tycho — the manifest re-categorizes silent.
+        // §34.7 Book 1: the sealed alloy run to the Tycho Relay (the receiving berth is
+        // station_tethys, Tethys Junction) — the manifest re-categorizes silent.
         id: 'alloy_run',
         order: 0,
         accept: Object.freeze(['mission:completed']),

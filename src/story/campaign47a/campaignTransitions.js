@@ -155,8 +155,23 @@ export function recordBeatStep(state, signal, payload = {}, simTime = 0) {
 
   // Recovery path: certain signals re-arm failed beats without advancing spine.
   if (own.beatStatus === BEAT_STATUS.FAILED) {
-    return tryRecoverFromSignal(state, own, signal, t);
+    const recovered = tryRecoverFromSignal(state, own, signal, t);
+    if (!recovered.ok) return recovered;
+    // The signal that re-armed the beat (the Helios dock, the seed deploy) is also real
+    // work: record it now instead of discarding it, so the player does not have to repeat
+    // it. A signal that names no step (mission:failed, a bare re-arm) keeps the recovery
+    // result unchanged.
+    const stepped = dispatchBeatStep(state, own, def, canon, signal, payload, t);
+    return stepped && stepped.ok && stepped.stepId
+      ? { ...stepped, recovered: recovered.receipt || true }
+      : recovered;
   }
+
+  return dispatchBeatStep(state, own, def, canon, signal, payload, t);
+}
+
+function dispatchBeatStep(state, own, def, canon, signal, payload, t) {
+  const beatIndex = canon.beatIndex;
 
   // B7 is observe-only — never complete via sidecar steps.
   if (def.observeOnly || beatIndex === 7) {
@@ -383,19 +398,23 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
   pushChoiceLog(own, { kind: 'branch_intro_observed', branch, type: payload.type }, simTime);
   pushCampaignHistory(own, { kind: 'branch_intro_accept', branch }, simTime);
 
+  // The intro accept is only the door; Spine Break / the Weighing / Barn Raising still
+  // has to run. Reporting the beat complete here closed an open Book 4 miss early.
+  const def4 = beatDefAt(4);
+  const introStepsComplete = !!def4 && (def4.steps || []).every((st) => st.optional === true || bucket.completed.includes(st.id));
   const stepReceipt = buildStepProgressReceipt({
     beatIndex: 4,
     stepId: 'branch_intro_accept',
     signal,
     completedSteps: bucket.completed,
-    stepsComplete: true,
+    stepsComplete: introStepsComplete,
     simTime,
     attempt: own.attempt,
     physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, stepReceipt);
   noteSpineStep(state, own, {
-    beat: 4, stepId: 'branch_intro_accept', payload, simTime, stepsComplete: true,
+    beat: 4, stepId: 'branch_intro_accept', payload, simTime, stepsComplete: introStepsComplete,
   });
 
   return {
@@ -403,7 +422,7 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
     own,
     stepId: 'branch_intro_accept',
     branch,
-    stepsComplete: true,
+    stepsComplete: introStepsComplete,
     completedSteps: bucket.completed.slice(),
     receipt,
     intents: receipt.intents.concat(stepReceipt.intents),
@@ -617,7 +636,9 @@ export function completeBeatStepsForLegacy(state, beatIndex, simTime = 0, note =
   const t = Number(simTime) || 0;
   const bucket = getOrCreateStepBucket(own, def.beat, t);
   for (const step of def.steps) {
-    if (step && !bucket.completed.includes(step.id)) bucket.completed.push(step.id);
+    // Optional steps (the Kepler/Nereid/Io gate-audit welds) are evidence of a weld that
+    // happened; a pre-book save never welded, so the fill must not record one.
+    if (step && step.optional !== true && !bucket.completed.includes(step.id)) bucket.completed.push(step.id);
   }
   bucket.updatedAtS = t;
   own.beatStatus = BEAT_STATUS.TRACKING;
