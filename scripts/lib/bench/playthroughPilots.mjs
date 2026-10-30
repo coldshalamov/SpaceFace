@@ -907,6 +907,9 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
   let escapeFrom = null;         // {x,z} the wanted-escape runs away from
   let nearBreakUntil = -1;       // ease the winch when the line warns it is near break
   let grabBraking = false;       // stops a circling beacon approach dead before the creep
+  let grabParking = false;       // delivery-ratchet: hull parked, pod gliding toward the ring
+  let grabParkAt = -1;           // simTime the current park began (timeout guard)
+  let grabBiteUntil = -1;        // simTime end of the current ratchet bite
   let latchedTargetId = null;    // the body this policy intends to hold
   let needWinch = true;          // every fresh latch must be winched tight before a swing
   let raidWall = null;           // cached throw-target rock (static, so position is stable)
@@ -1395,16 +1398,48 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             const errB = wrapAngle(aimB - (p.rot || 0));
             input.aimAngle = aimB;
             input.turnIntent = Math.max(-1, Math.min(1, errB / 0.6));
-            input.brake = grabBraking || vNow > Math.max(6, dB / 10);
-            input.moveZ = (!input.brake && Math.abs(errB) < 0.4 && dB > 20) ? 1 : 0;
             input.boost = false;
+            const podSpeed = pod.vel ? Math.hypot(pod.vel.x || 0, pod.vel.z || 0) : 0;
+            if (dB < 100) {
+              // Delivery ratchet: the pod only needs to graze the 60-ring while the
+              // line holds, and its tow momentum carries it ~line-length forward of
+              // the hull whenever the hull stops. Park — let it glide — bite a few
+              // wu closer — park again. Each cycle puts the pod ~18wu nearer; no
+              // precision station-keeping against tether tension required (runs
+              // 7–14 parked the hull in stable circles or dithered off the mark).
+              if (grabParking) {
+                input.brake = true;
+                input.moveZ = 0;
+                if (vNow < 1.5 && podSpeed < 1.5) {
+                  grabParking = false;
+                  grabBiteUntil = (state.simTime || 0) + 2.2;
+                } else if ((state.simTime || 0) - grabParkAt > 8) {
+                  // Tether jitter can hold the pod above the settle threshold —
+                  // never let a park become a wall.
+                  grabParking = false;
+                  grabBiteUntil = (state.simTime || 0) + 2.2;
+                }
+              } else if ((state.simTime || 0) < grabBiteUntil) {
+                input.brake = false;
+                input.moveZ = Math.abs(errB) < 0.4 ? 1 : 0;
+              } else {
+                grabParking = true;
+                grabParkAt = state.simTime || 0;
+                input.brake = true;
+                input.moveZ = 0;
+              }
+            } else {
+              grabParking = false;
+              input.brake = grabBraking || vNow > Math.max(6, dB / 10);
+              input.moveZ = (!input.brake && Math.abs(errB) < 0.4 && dB > 20) ? 1 : 0;
+            }
             // Keep the pod reeled to the hull for delivery — a slack line let it sail
             // 390wu off on its own momentum (run 13) and the predicate needs IT in
             // the ring, not the hull.
             cmd.lineControl = true;
             cmd.lineLength = -0.35;
             if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} v=${Math.round(vNow)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} latched=${r.podLatched}`);
+              console.log(`    [grab] t=${Math.round(state.simTime)} dPod=${Math.round(dist(p.pos, pod.pos))} dB=${Math.round(dB)} v=${Math.round(vNow)} podV=${Math.round(podSpeed)} closing=${Math.round(closing)} err=${errB.toFixed(2)} brk=${input.brake} mz=${input.moveZ} park=${grabParking} latched=${r.podLatched}`);
             }
             return;
           }
