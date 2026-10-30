@@ -1,0 +1,41 @@
+{
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTree": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "capability": "unknown",
+  "input": "remote immutable tree only; no local dirty-state input",
+  "checks": {
+    "command": "node --test test/pro-nacre-sluice.test.mjs",
+    "passed": 19,
+    "failed": 0,
+    "runtimeSyntax": "node --check src/features/nacre-sluice/runtime.js passed"
+  },
+  "notExecuted": [
+    "native Rapier simulation",
+    "headed gameplay",
+    "authored asset loading",
+    "performance benchmark",
+    "canonical mission/reward integration",
+    "canonical attachment save rebind"
+  ],
+  "limits": {
+    "bodies": 20,
+    "fixedBodies": 14,
+    "servoBodies": 3,
+    "jetQueriesPerTick": 2,
+    "queryCandidatesPerJet": 64,
+    "projectiles": 0,
+    "markerMeshes": 6,
+    "signs": 5,
+    "lampRecords": 12
+  },
+  "initialTestFailures": [
+    {
+      "case": "exact accumulated floating boundary",
+      "resolution": "check first step beyond 8 seconds; cycle boundaries retain continuous simulation time"
+    },
+    {
+      "case": "pressure force witness",
+      "resolution": "place measured pilot inside actual jet rectangle before asserting a force; empty volumes correctly exert none"
+    }
+  ]
+}

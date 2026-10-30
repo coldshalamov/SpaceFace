@@ -1,0 +1,49 @@
+{
+  "id": "nacreSluice",
+  "status": "candidate_unintegrated",
+  "baseSha": "871c27854bb2acff09a80595844d9731d33b037a",
+  "baseTree": "a3bb1bb7b8cccca0ab280f53bd6035f5f92124b4",
+  "resultBranch": "codex/pro-nacre-sluice",
+  "modelCapability": "unknown",
+  "schemaVersion": 1,
+  "saveKey": "nacreSluice",
+  "factory": {
+    "path": "src/features/nacre-sluice/runtime.js",
+    "export": "createNacreSluice",
+    "nodeSafe": true,
+    "updateBefore": "physics"
+  },
+  "integration": "src/features/nacre-sluice/INTEGRATION.md",
+  "testCommand": "node --test test/pro-nacre-sluice.test.mjs",
+  "changedFiles": [
+    "src/features/nacre-sluice/INTEGRATION.md",
+    "src/features/nacre-sluice/adapter.mjs",
+    "src/features/nacre-sluice/evidence.json",
+    "src/features/nacre-sluice/layout.mjs",
+    "src/features/nacre-sluice/model.mjs",
+    "src/features/nacre-sluice/presentation.mjs",
+    "src/features/nacre-sluice/runtime.js",
+    "test/pro-nacre-sluice.test.mjs",
+    "src/features/nacre-sluice/manifest.json"
+  ],
+  "sha256": {
+    "src/features/nacre-sluice/INTEGRATION.md": "52e7fe44a6bd599a6f45a067a5d72de7dde250571b302df9a1bb558f8c6fbfe9",
+    "src/features/nacre-sluice/adapter.mjs": "a88fe18e74d53665e1aa255865346121d512116e0715a7b2bb387326d6e2bf5c",
+    "src/features/nacre-sluice/evidence.json": "05ab9377938fc6ce9f4d47b892ea90288976ed8438c0f369eb7b74983db4077f",
+    "src/features/nacre-sluice/layout.mjs": "f6f18eb4382f072f6c41b001d588b515afcb5c646152ad9276072138b2dfdee2",
+    "src/features/nacre-sluice/model.mjs": "c85a6cf00b875f6db12972a947ef40e4c924e2ca7543020e29f9f1f37ee70173",
+    "src/features/nacre-sluice/presentation.mjs": "5916604de9018bbe9b20124993511539cd610fead176f86113f2d2b5b01af603",
+    "src/features/nacre-sluice/runtime.js": "99fe34bee2677bd9a158a6eafc0dde26d3e721b6deda570c701f919d2cdf0290",
+    "test/pro-nacre-sluice.test.mjs": "4e03cd1b5aa0a1886524ead2c986ab3b86cbb6dfbfe5f6f389e2cb114ec2dfe9"
+  },
+  "selfHash": "excluded to avoid recursive digest",
+  "dependencies": [],
+  "requiredOwnerQueries": [
+    "helpers.spawnEntity",
+    "helpers.removeEntity",
+    "helpers.queryRadius",
+    "registry.get(physics)._sg02.records",
+    "getCombatKernel(ctx).attachments"
+  ],
+  "requiredNewEvents": []
+}
