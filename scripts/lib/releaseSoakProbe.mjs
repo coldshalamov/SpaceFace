@@ -84,6 +84,10 @@ import {
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+export const DEFAULT_POST_CONTEXT_OBSERVE_MS = 10_000;
+export const MIN_POST_CONTEXT_OBSERVE_MS = 10_000;
+export const MAX_POST_CONTEXT_OBSERVE_MS = 6 * 60 * 60 * 1000;
+const POST_CONTEXT_WARMUP_MS = 5_000;
 // Optional lifecycle diagnostic bound. The ordinary soak never enables this mode; when
 // requested, its measured cycle loop performs one public save followed by a small number of
 // public quick-load round-trips against that same untouched slot.
@@ -94,6 +98,19 @@ export const POST_GC_OWNER_ROW_LIMIT = 256;
 // Six hours — the acceptance soak is two hours; the bound catches a dropped
 // or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
 export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
+
+export function resolvePostContextObservationWindow(observeMs = DEFAULT_POST_CONTEXT_OBSERVE_MS) {
+  assert(
+    Number.isSafeInteger(observeMs)
+      && observeMs >= MIN_POST_CONTEXT_OBSERVE_MS
+      && observeMs <= MAX_POST_CONTEXT_OBSERVE_MS,
+    `postContextObserveMs must be an integer in [${MIN_POST_CONTEXT_OBSERVE_MS}, ${MAX_POST_CONTEXT_OBSERVE_MS}]`,
+  );
+  return {
+    warmupMs: POST_CONTEXT_WARMUP_MS,
+    sampleMs: observeMs - POST_CONTEXT_WARMUP_MS,
+  };
+}
 
 // One public save must own immutable warmups, the heap baseline, and every measured
 // restore. Ordinary soaks still let each cycle create its own fresh quick-save.
@@ -233,6 +250,7 @@ export async function runReleaseSoakProbe({
   dockTimeoutMs = 90_000,
   cycleTimeoutMs = 300_000,
   minDurationMs = 0,
+  postContextObserveMs = DEFAULT_POST_CONTEXT_OBSERVE_MS,
   cycleScreenshots = true,
   immutableSaveCycles = 0,
   bufferResizeDiagnostic = process.env.SF_BUFFER_RESIZE_DIAG === '1',
@@ -245,6 +263,7 @@ export async function runReleaseSoakProbe({
     Number.isInteger(minDurationMs) && minDurationMs >= 0 && minDurationMs <= MAX_MIN_DURATION_MS,
     `minDurationMs must be an integer in [0, ${MAX_MIN_DURATION_MS}]`,
   );
+  const postContextObservationWindow = resolvePostContextObservationWindow(postContextObserveMs);
   assert(
     Number.isInteger(immutableSaveCycles)
       && (immutableSaveCycles === 0
@@ -711,8 +730,7 @@ export async function runReleaseSoakProbe({
     try {
       recoveryWindow = await sampleRafWindow(page, {
         phaseTag: 'context_recover_steady',
-        warmupMs: 5_000,
-        sampleMs: 5_000,
+        ...postContextObservationWindow,
         enableGpuTimers: true,
       });
     } catch (recoveryError) {

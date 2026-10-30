@@ -29,6 +29,7 @@ import {
   POST_GC_OWNER_ROW_LIMIT,
   postGcOwnerEvaluateArgument,
   readReleaseSoakBaselineMemory,
+  resolvePostContextObservationWindow,
   summarizeImmutableSavePopulation,
   summarizeRestorePopulation,
   summarizeSaveEnvelope,
@@ -643,13 +644,39 @@ test('parser locks the wrapper runtime and rejects acceptance bypass flags', () 
   assert.deepEqual(parsed.viewport, { width: 1600, height: 900 });
   assert.equal(parsed.taskId, 'browser-contract');
   assert.equal(parsed.immutableSaveCycles, 0);
+  assert.equal(parsed.postContextObserveMs, 10_000, 'default keeps the prior 5s warmup + 5s sample');
   assert.equal(parsed.outputRoot, path.resolve(process.cwd(), '.devshots/spec2/custom-soak'));
+
+  const observed = parseReleaseSoakArgs(['--post-context-observe-ms=120000'], {
+    runtime: 'electron',
+    root: process.cwd(),
+  });
+  assert.equal(observed.postContextObserveMs, 120_000);
+  assert.deepEqual(resolvePostContextObservationWindow(observed.postContextObserveMs), {
+    warmupMs: 5_000,
+    sampleMs: 115_000,
+  }, 'the full requested window reaches the existing recovered-flight sampler');
+  assert.throws(
+    () => parseReleaseSoakArgs(['--post-context-observe-ms=9999'], { runtime: 'electron', root: process.cwd() }),
+    /post-context-observe-ms must be >= 10000/,
+  );
+  assert.throws(
+    () => parseReleaseSoakArgs(['--post-context-observe-ms=21600001'], { runtime: 'electron', root: process.cwd() }),
+    /must be <= 21600000/,
+  );
 
   const immutable = parseReleaseSoakArgs(['--immutable-save-cycles=2'], {
     runtime: 'browser',
     root: process.cwd(),
   });
   assert.equal(immutable.immutableSaveCycles, 2);
+});
+
+test('post-context observation duration keeps existing default and enforces sampling bounds', () => {
+  assert.deepEqual(resolvePostContextObservationWindow(), { warmupMs: 5_000, sampleMs: 5_000 });
+  assert.deepEqual(resolvePostContextObservationWindow(120_000), { warmupMs: 5_000, sampleMs: 115_000 });
+  assert.throws(() => resolvePostContextObservationWindow(9_999), /postContextObserveMs must be an integer/);
+  assert.throws(() => resolvePostContextObservationWindow(21_600_001), /postContextObserveMs must be an integer/);
 });
 
 test('parser validates a fenced source overlay and returns compact identity metadata', async (t) => {
