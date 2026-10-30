@@ -1400,6 +1400,8 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   o.travelDrive = undefined;
   o.velocityVectoring = undefined;
   o.unvectoredCruiseSteering = undefined;
+  // Job guidance uses the existing bounded moving-frame controller, never a pose writer.
+  o.rendezvous = !isPlayer && raw.rendezvous ? raw.rendezvous : undefined;
   o.physicsEarnedMomentum = undefined;
   o.earnedMomentumDecayTauS = undefined;
   o.earnedMomentumAssistScale = undefined;
@@ -2323,6 +2325,14 @@ export function npcFlightNeedsCommand(entity) {
 function npcIntentIsLive(entity, intent) {
   if (!intent || typeof intent !== 'object') return false;
   if (intent.boost || intent.fire) return true;
+  const rendezvous = intent.rendezvous;
+  if (rendezvous && Number.isFinite(rendezvous.velocity?.x)
+    && Number.isFinite(rendezvous.velocity?.z) && Number.isFinite(rendezvous.heading)) {
+    const vx = rendezvous.velocity.x - finite(entity.vel?.x);
+    const vz = rendezvous.velocity.z - finite(entity.vel?.z);
+    if (vx * vx + vz * vz > 1e-8
+      || Math.abs(wrapAngle(rendezvous.heading - finite(entity.rot))) > 0.01) return true;
+  }
   const mx = Number(intent.moveX) || 0;
   const mz = Number(intent.moveZ) || 0;
   const turn = Number(intent.turnIntent) || 0;

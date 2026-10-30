@@ -393,7 +393,7 @@ export async function runReleaseSoakProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      }, taskId, { baselineSourcePath: baselineSource?.path || null });
+      }, taskId, { baselineSourcePath: baselineSource?.path || null, log: doLog });
       ({
         page,
         electronApp,
@@ -690,12 +690,38 @@ export async function runReleaseSoakProbe({
     // WebGL teardown gap is not charged to the game.
     const soakWindow = await stopSoakRecorder(page, { startedAt: soakStartedAt });
     const contextLoss = await probeWebGlContextLoss(page, { outputDir, log: doLog });
-    const recoveryWindow = await sampleRafWindow(page, {
-      phaseTag: 'context_recover_steady',
-      warmupMs: 5_000,
-      sampleMs: 5_000,
-      enableGpuTimers: true,
-    });
+    let recoveryWindow;
+    try {
+      recoveryWindow = await sampleRafWindow(page, {
+        phaseTag: 'context_recover_steady',
+        warmupMs: 5_000,
+        sampleMs: 5_000,
+        enableGpuTimers: true,
+      });
+    } catch (recoveryError) {
+      const runtime = await readContextRecoveryFailureState(page).catch((snapshotError) => ({
+        unavailable: String(snapshotError?.message || snapshotError).slice(0, 500),
+      }));
+      const consoleErrors = (pageIssueTracker?.issues || [])
+        .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
+        .slice(-32)
+        .map((issue) => ({
+          type: issue.type,
+          text: String(issue.text || '').slice(0, 1_000),
+          at: issue.at || null,
+          location: issue.location || null,
+        }));
+      const contextRecoveryFailure = {
+        schema: 'spaceface.contextRecoveryFailure.v1',
+        phase: 'context_recover_steady',
+        error: { name: recoveryError?.name || 'Error', message: String(recoveryError?.message || recoveryError).slice(0, 2_000) },
+        runtime,
+        consoleErrors,
+      };
+      await writeFile(path.join(outputDir, 'context-recovery-failure.json'), `${JSON.stringify(contextRecoveryFailure, null, 2)}\n`, 'utf8');
+      doLog(`context-recovery-failure ${JSON.stringify(contextRecoveryFailure)}`);
+      throw recoveryError;
+    }
     const recoverySamples = recoveryWindow.samples;
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
@@ -974,6 +1000,83 @@ export async function runReleaseSoakProbe({
     // ordinary cleanup can publish the same caller snapshot; this never calls teardown.
     await armPostTeardownGlDeleteTrap().catch(() => {});
     if (page && !page.isClosed()) {
+      const runtimeFailure = await page.evaluate(() => {
+        const state = window.SF?.state || null;
+        const render = state?.render || null;
+        const overlay = document.getElementById('boot-overlay');
+        const admission = render?.requiredPackageAdmission || null;
+        const owner = render?.lastGpuResidencyOwnerInactive || null;
+        return {
+          document: {
+            visibilityState: document.visibilityState,
+            failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_200),
+          },
+          state: state ? {
+            mode: state.mode || null,
+            tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+            simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+            admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration))
+              ? Number(render.admissionRunGeneration) : null,
+            contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq))
+              ? Number(state.contextRestoreSeq) : null,
+            world: {
+              enterSerial: state.world?.enterSerial ?? null,
+              currentSectorId: state.world?.currentSectorId ?? null,
+            },
+          } : null,
+          opening: render ? {
+            firstPictureReady: render.openingFirstPictureReady === true,
+            firstPicturePhase: render.openingFirstPicturePhase ? {
+              stage: render.openingFirstPicturePhase.stage || null,
+              outcome: render.openingFirstPicturePhase.outcome || null,
+              ms: Number.isFinite(Number(render.openingFirstPicturePhase.ms))
+                ? Number(render.openingFirstPicturePhase.ms) : null,
+            } : null,
+            firstPictureOwner: render.openingFirstPictureOwner ? {
+              generation: render.openingFirstPictureOwner.generation ?? null,
+              serial: render.openingFirstPictureOwner.serial ?? null,
+              sector: render.openingFirstPictureOwner.sector ?? null,
+              context: render.openingFirstPictureOwner.context ?? null,
+            } : null,
+            liveSectorGpuAdmission: render.liveSectorGpuAdmission === true,
+            requiredPackageAdmission: admission ? {
+              status: admission.status || null,
+              packageId: admission.packageId || null,
+              reason: admission.reason || null,
+              generation: admission.generation ?? null,
+            } : null,
+            currentSectorFailure: render.openingCurrentSectorFailure || null,
+            gpuResidencyOwnerInactive: owner ? {
+              subjectName: owner.subjectName || null,
+              owner: owner.owner || null,
+            } : null,
+            cookLedgerTail: Array.isArray(render.openingCookLedger)
+              ? render.openingCookLedger.slice(-12).map((row) => ({
+                step: row?.step || null,
+                outcome: row?.outcome || null,
+                ms: Number.isFinite(Number(row?.ms)) ? Number(row.ms) : null,
+                reason: row?.reason || null,
+                fail: row?.fail || null,
+              }))
+              : [],
+          } : null,
+        };
+      }).catch((snapshotError) => ({ unavailable: String(snapshotError?.message || snapshotError).slice(0, 500) }));
+      const issues = (pageIssueTracker?.issues || [])
+        .filter((issue) => ['error', 'pageerror', 'warning'].includes(issue?.type))
+        .slice(-24)
+        .map((issue) => ({
+          type: issue.type,
+          text: String(issue.text || '').slice(0, 800),
+          at: issue.at || null,
+          location: issue.location || null,
+        }));
+      await writeFile(path.join(outputDir, 'failure-runtime-snapshot.json'), `${JSON.stringify({
+        schema: 'spaceface.releaseSoakFailureRuntime.v1',
+        error: { name: error?.name || 'Error', message: String(error?.message || error).slice(0, 1_500) },
+        runtime: runtimeFailure,
+        issues,
+      }, null, 2)}\n`, 'utf8').catch(() => {});
       await page.screenshot({ path: path.join(outputDir, 'failure-screenshot.png'), type: 'png', animations: 'allow' }).catch(() => {});
     }
     throw error;
@@ -1170,8 +1273,43 @@ async function launchElectron(
   root,
   onOwnership = () => {},
   taskId = 'release-soak-electron',
-  { enableTier1Counters = false, baselineSourcePath = null } = {},
+  { enableTier1Counters = false, baselineSourcePath = null, log = console.log } = {},
 ) {
+  const setupLog = typeof log === 'function' ? log : console.log;
+  const awaitOptionalSetup = async (label, operation, timeoutMs = 10_000) => {
+    setupLog(`electron setup ${label} begin`);
+    let timer = null;
+    let timedOut = false;
+    const work = Promise.resolve().then(operation).then(
+      (value) => {
+        if (timedOut) setupLog(`electron setup ${label} settled after timeout`);
+        return { status: 'complete', value };
+      },
+      (error) => {
+        if (timedOut) setupLog(`electron setup ${label} rejected after timeout: ${String(error?.message || error).slice(0, 180)}`);
+        return { status: 'error', error };
+      },
+    );
+    const result = await Promise.race([
+      work,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve({ status: 'timeout' }), timeoutMs);
+      }),
+    ]);
+    if (timer) clearTimeout(timer);
+    if (result.status === 'timeout') {
+      timedOut = true;
+      setupLog(`electron setup ${label} timed out after ${timeoutMs}ms; continuing with live event tracking`);
+      return { completed: false, timedOut: true };
+    }
+    if (result.status === 'error') {
+      setupLog(`electron setup ${label} failed; continuing with live event tracking: ${String(result.error?.message || result.error).slice(0, 180)}`);
+      return { completed: false, error: result.error };
+    }
+    setupLog(`electron setup ${label} complete`);
+    return { completed: true, value: result.value };
+  };
+
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
   // 240 s launch bound: on a host running other lanes' headed checks, the Electron driver
@@ -1189,7 +1327,9 @@ async function launchElectron(
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
+  setupLog('electron setup launch begin');
   const electronApp = await launchIsolatedElectronApplication(electron, isolatedLaunch);
+  setupLog('electron setup launch complete');
   let childProcess = null;
   let processMonitor = null;
   let pageIssueTracker = null;
@@ -1221,14 +1361,18 @@ async function launchElectron(
   // then owns both the runtime and its isolated profile even if setup never returns a launch record.
   publishOwnership();
   assert(childProcess, 'Electron launch must expose its owned child process');
+  setupLog('electron setup first-window begin (90s)');
   const page = await electronApp.firstWindow({ timeout: 90_000 });
+  setupLog('electron setup first-window complete');
   publishOwnership({ page });
   // Playwright's Electron response wrapper can lose request method/identity at the
   // requestfinished -> response boundary. Bind the exact CDP requestId ledger before
   // backfill or later route work so the optional store 404 policy remains fail-closed.
-  await pageIssueTracker.bindNetworkProvenance?.(page);
+  await awaitOptionalSetup('CDP Network provenance', () => pageIssueTracker.bindNetworkProvenance?.(page));
+  setupLog('electron setup frame keepalive begin');
   installCspSafePlaywrightPolling(page);
   await installFrameKeepalive(page);
+  setupLog('electron setup frame keepalive complete');
   const canonicalUrlTracker = createElectronCanonicalUrlTracker(page, {
     bootstrapTimeoutMs: 10_000,
     pollIntervalMs: 75,
@@ -1240,10 +1384,12 @@ async function launchElectron(
     page,
     canonicalUrlTracker,
   });
-  await pageIssueTracker.bindAndBackfillPage(page);
+  await awaitOptionalSetup('page history backfill', () => pageIssueTracker.bindAndBackfillPage(page));
+  setupLog('electron setup canonical-root wait begin (10s)');
   const rootUrl = assertIsolatedElectronRootUrl(
     await canonicalUrlTracker.waitForCanonicalRoot(10_000),
   );
+  setupLog(`electron setup canonical-root wait complete ${rootUrl}`);
   // The initial BrowserWindow.loadURL() is still owned by Electron main when firstWindow()
   // resolves. Publish its exact listener before any later setup can fail, then wait for the full
   // initial load to settle before an instrumentation reload is allowed to begin.
@@ -1252,7 +1398,9 @@ async function launchElectron(
     canonicalUrlTracker,
     rootUrl,
   });
+  setupLog('electron setup initial load-state wait begin (60s + one 180s retry)');
   await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
+  setupLog('electron setup initial load-state wait complete');
   // Arm the read-only GL traps on the live page: without this the Electron route ran every soak
   // with both traps disarmed — they only rode the opt-in tier1-counter reload — which is why the
   // v6 acceptance pair captured 256 dead-handle warnings with zero trapped stacks. launchBrowser
@@ -1453,8 +1601,12 @@ export async function readGlProgramQueryTrap(page) {
 // separate candidate ring preserves these pre-delete predicate failures with a deeper owner
 // stack; it is explicitly labelled candidate evidence because an unbound or already-deleted
 // handle can produce the same predicate result.
-export function armGlDeleteTrapInPage() {
-  if (globalThis.__SF_GL_DELETE_TRAP__) return;
+export function armGlDeleteTrapInPage({ attributeErrors = false } = {}) {
+  if (globalThis.__SF_GL_DELETE_TRAP__) {
+    const priorAttribution = globalThis.__SF_GL_DELETE_TRAP__.__sfErrorAttribution;
+    if (attributeErrors === true && priorAttribution) priorAttribution.enabled = true;
+    return;
+  }
   const deletes = [];
   const seen = new Map();
   const order = [];
@@ -1468,6 +1620,15 @@ export function armGlDeleteTrapInPage() {
   const candidateMeta = { evicted: 0, dropped: 0 };
   const CAP = 128;
   const CANDIDATE_CAP = 64;
+  const ERROR_ATTRIBUTION_CAP = 256;
+  const errorAttribution = {
+    enabled: attributeErrors === true,
+    entries: [],
+    attributableEntries: [],
+    attributableDropped: 0,
+    evicted: 0,
+    dropped: 0,
+  };
   const pairs = [
     ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
     ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
@@ -1577,7 +1738,73 @@ export function armGlDeleteTrapInPage() {
             }
           }
         } catch (_) { /* trap bookkeeping must never break the delete path */ }
-        return original.call(this, handle);
+        if (errorAttribution.enabled !== true || typeof this.getError !== 'function') {
+          return original.call(this, handle);
+        }
+        // Opt-in diagnostic mode only. WebGL getError consumes the current error, so capture
+        // both sides of every wrapped delete and retain a bounded record. The call is attributable
+        // only when a clean pre-state becomes INVALID_OPERATION after this exact native delete.
+        let beforeError = null;
+        let afterError = null;
+        let errorName = null;
+        const stack = (new Error('sf-gl-delete-error-attribution')).stack || '';
+        const startedAt = Math.round(performance.now());
+        const noError = typeof this.NO_ERROR === 'number' ? this.NO_ERROR : 0;
+        const invalidOperation = typeof this.INVALID_OPERATION === 'number' ? this.INVALID_OPERATION : 0x0502;
+        const generation = (() => {
+          try {
+            const state = globalThis.SF?.state;
+            const value = state?.render?.contextRecovery?.generation
+              ?? state?.contextRecovery?.generation
+              ?? state?.contextRestoreSeq;
+            return Number.isFinite(Number(value)) ? Number(value) : null;
+          } catch (_) { return null; }
+        })();
+        try { beforeError = this.getError(); } catch (_) { /* retain null as unavailable */ }
+        let result;
+        let thrown = null;
+        try { result = original.call(this, handle); }
+        catch (error) { thrown = error; }
+        try { afterError = this.getError(); } catch (_) { /* retain null as unavailable */ }
+        const errorNames = new Map([
+          [noError, 'NO_ERROR'],
+          [invalidOperation, 'INVALID_OPERATION'],
+          [0x0500, 'INVALID_ENUM'],
+          [0x0501, 'INVALID_VALUE'],
+          [0x0505, 'OUT_OF_MEMORY'],
+          [0x0506, 'INVALID_FRAMEBUFFER_OPERATION'],
+          [0x9242, 'CONTEXT_LOST_WEBGL'],
+        ]);
+        errorName = (value) => value == null ? null : (errorNames.get(value) || `0x${Number(value).toString(16)}`);
+        const entry = {
+          api: del,
+          beforeError,
+          beforeErrorName: errorName(beforeError),
+          afterError,
+          afterErrorName: errorName(afterError),
+          attributable: beforeError === noError && afterError === invalidOperation,
+          contextGeneration: generation,
+          at: Math.round(performance.now()),
+          durationMs: Math.max(0, Math.round(performance.now()) - startedAt),
+          stack: stack.slice(0, 6000),
+          nativeError: thrown ? String(thrown?.message || thrown).slice(0, 500) : null,
+        };
+        // Valid cleanup can immediately follow a bad delete in large numbers. Keep a separate
+        // bounded failure ring so that cleanup cannot evict the callsite we enabled this to find.
+        if (entry.attributable) {
+          if (errorAttribution.attributableEntries.length < ERROR_ATTRIBUTION_CAP) {
+            errorAttribution.attributableEntries.push(entry);
+          } else errorAttribution.attributableDropped += 1;
+        }
+        if (errorAttribution.entries.length < ERROR_ATTRIBUTION_CAP) {
+          errorAttribution.entries.push(entry);
+        } else {
+          errorAttribution.entries.shift();
+          errorAttribution.entries.push(entry);
+          errorAttribution.evicted += 1;
+        }
+        if (thrown) throw thrown;
+        return result;
       };
       wrapped.__sfGlDeleteTrap = true;
       proto[del] = wrapped;
@@ -1611,6 +1838,12 @@ export function armGlDeleteTrapInPage() {
     enumerable: false,
     writable: false,
   });
+  Object.defineProperty(deletes, '__sfErrorAttribution', {
+    value: errorAttribution,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
 }
 
 export async function installGlDeleteTrap(target) {
@@ -1626,10 +1859,10 @@ export async function installGlDeleteTrap(target) {
 // storm fires. Arm the same read-only wraps on the live page instead: the storm class happens
 // late (context-loss recovery), so a post-boot arm covers it without touching boot-to-menu
 // evidence. Idempotent per document; a tier1 reload after this re-arms via the init scripts.
-export async function installGlTrapsOnLivePage(page) {
+export async function installGlTrapsOnLivePage(page, { attributeDeleteErrors = false } = {}) {
   assert(page && typeof page.evaluate === 'function', 'live-page gl traps require an evaluate seam');
   await page.evaluate(armGlProgramQueryTrapInPage);
-  await page.evaluate(armGlDeleteTrapInPage);
+  await page.evaluate(armGlDeleteTrapInPage, { attributeErrors: attributeDeleteErrors === true });
 }
 
 // Returns { entries, evicted, dropped }: the saturation meta travels with the evidence so a
@@ -1640,6 +1873,7 @@ export async function readGlDeleteTrap(page) {
       const armed = globalThis.__SF_GL_DELETE_TRAP__;
       if (!Array.isArray(armed)) return { entries: [], evicted: 0, dropped: 0 };
       const meta = armed.__sfSaturation || {};
+      const errorMeta = armed.__sfErrorAttribution || { enabled: false, entries: [], evicted: 0, dropped: 0 };
       return {
         entries: armed.slice(),
         evicted: Number(meta.evicted) || 0,
@@ -1647,6 +1881,14 @@ export async function readGlDeleteTrap(page) {
         candidates: Array.isArray(armed.__sfCandidates) ? armed.__sfCandidates.slice() : [],
         candidateEvicted: Number(armed.__sfCandidateSaturation?.evicted) || 0,
         candidateDropped: Number(armed.__sfCandidateSaturation?.dropped) || 0,
+        errorAttribution: {
+          enabled: errorMeta.enabled === true,
+          entries: Array.isArray(errorMeta.entries) ? errorMeta.entries.slice() : [],
+          attributableEntries: Array.isArray(errorMeta.attributableEntries) ? errorMeta.attributableEntries.slice() : [],
+          attributableDropped: Number(errorMeta.attributableDropped) || 0,
+          evicted: Number(errorMeta.evicted) || 0,
+          dropped: Number(errorMeta.dropped) || 0,
+        },
       };
     });
   } catch (_) {
@@ -2032,6 +2274,14 @@ export function summarizeSaveEnvelope(raw, { slot = 'quick' } = {}) {
       available: true,
       slot: slot || null,
       serializedIdentity,
+      playerSnapshot: player ? {
+        pos: player.pos ? { x: Number(player.pos.x), z: Number(player.pos.z) } : null,
+        speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        economy: {
+          credits: Number(envelope?.data?.player?.credits),
+          cargoItems: Object.fromEntries(Object.entries(envelope?.data?.cargo?.items || {}).sort(([a], [b]) => a.localeCompare(b))),
+        },
+      } : null,
       envelopeIdentity: {
         fmt: envelope?.fmt ?? null,
         version: envelope?.version ?? envelope?.data?.version ?? null,
@@ -2060,6 +2310,22 @@ async function readSaveEnvelopeSnapshot(page, slot = 'quick') {
     try { return localStorage.getItem(`sf.save.${saveSlot}`); } catch (_) { return null; }
   }, slot).catch(() => null);
   return summarizeSaveEnvelope(raw, { slot });
+}
+
+async function readSaveEnvelopeSnapshots(page) {
+  const rawBySlot = await page.evaluate(() => {
+    const snapshots = {};
+    try {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (typeof key === 'string' && key.startsWith('sf.save.')) {
+          snapshots[key.slice('sf.save.'.length)] = localStorage.getItem(key);
+        }
+      }
+    } catch (_) { /* caller records unavailable snapshots as such */ }
+    return snapshots;
+  }).catch(() => ({}));
+  return Object.fromEntries(Object.entries(rawBySlot).map(([slot, raw]) => [slot, summarizeSaveEnvelope(raw, { slot })]));
 }
 
 function populationIdentityRows(rows) {
@@ -2121,7 +2387,22 @@ async function runSoakCycle(page, {
   const samples = [];
   const mark = (name, detail = {}) => {
     marks.push({ name, at: new Date().toISOString(), ...detail });
-    log(`[cycle ${index}] ${name}`);
+    const logDetail = name === 'pre-load-save-sources' || name === 'pre-load-divergence' ? detail
+      : name === 'load-observed' ? {
+        selectedSlotBeforeF9: detail.selectedSlotBeforeF9,
+        selectedSourceBeforeF9: detail.selectedSourceBeforeF9,
+        selectedSourceIdentityBeforeF9: detail.selectedSourceIdentityBeforeF9,
+        selectedSourceIdentityAtSaveLoaded: detail.selectedSourceIdentityAtSaveLoaded,
+        selectedSourcePoseAtSaveLoaded: detail.selectedSourcePoseAtSaveLoaded,
+        loadedPayloadSummary: detail.loadedPayloadSummary,
+        loadedAtEvent: detail.loadedAtEvent,
+        loaded: detail.loaded,
+        elapsedAfterSaveLoaded: detail.elapsedAfterSaveLoaded,
+        restoredDistance: detail.restoredDistance,
+        divergedDistance: detail.divergedDistance,
+        postLoadAdvanceDistance: detail.postLoadAdvanceDistance,
+      } : null;
+    log(`[cycle ${index}] ${name}${logDetail ? ` ${JSON.stringify(logDetail)}` : ''}`);
   };
   const transition = async (name, opts) => setSoakTransition(page, name, opts);
 
@@ -2237,11 +2518,39 @@ async function runSoakCycle(page, {
     });
   }
 
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(650);
-  await page.keyboard.up('KeyW');
-  const diverged = await readPlayerSnapshot(page);
-  assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
+  const minRestoreDivergenceWu = 50;
+  const maxRestoreDivergenceInputMs = 8_000;
+  let divergenceInputMs = 0;
+  let quickBeforeInput = await readSaveEnvelopeSnapshot(page, 'quick');
+  let diverged = await readPlayerSnapshot(page);
+  while (quickBeforeInput.playerSnapshot?.pos
+      && distance(quickBeforeInput.playerSnapshot.pos, diverged.pos) < minRestoreDivergenceWu
+      && divergenceInputMs < maxRestoreDivergenceInputMs) {
+    const inputWindowMs = Math.min(500, maxRestoreDivergenceInputMs - divergenceInputMs);
+    // Public flight input creates a meaningful, measured separation from the exact Quick pose.
+    // Add yaw on alternating pulses so a hull brushing station structure can turn clear without
+    // injecting position, velocity, health, or simulation state into the restore experiment.
+    await page.keyboard.down('KeyW');
+    if (Math.floor(divergenceInputMs / 500) % 2 === 1) await page.keyboard.down('KeyD');
+    await page.waitForTimeout(inputWindowMs);
+    await page.keyboard.up('KeyD').catch(() => {});
+    await page.keyboard.up('KeyW');
+    divergenceInputMs += inputWindowMs;
+    diverged = await readPlayerSnapshot(page);
+    quickBeforeInput = await readSaveEnvelopeSnapshot(page, 'quick');
+  }
+  const preLoadEnvelopes = await readSaveEnvelopeSnapshots(page);
+  const quickSourceBeforeF9 = preLoadEnvelopes.quick?.playerSnapshot;
+  const quickSourceDivergenceWu = quickSourceBeforeF9?.pos ? distance(quickSourceBeforeF9.pos, diverged.pos) : null;
+  assert(quickSourceDivergenceWu >= minRestoreDivergenceWu,
+    `ordinary pre-load flight input must separate Quick save pose by at least ${minRestoreDivergenceWu} WU within ${maxRestoreDivergenceInputMs} ms: ${JSON.stringify({ divergenceInputMs, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged })}`);
+  mark('pre-load-save-sources', Object.fromEntries(Object.entries(preLoadEnvelopes).map(([slot, envelope]) => [slot, {
+    available: envelope.available,
+    serializedIdentity: envelope.serializedIdentity,
+    playerSnapshot: envelope.playerSnapshot,
+    envelopeIdentity: envelope.envelopeIdentity,
+  }])));
+  mark('pre-load-divergence', { divergenceInputMs, minRestoreDivergenceWu, quickSourceDivergenceWu, quickSource: quickSourceBeforeF9, diverged });
   await transition('load-restore');
   await page.keyboard.press('F9');
   // The loaded-game visual gate legitimately owns up to ~180s of authored-visual staging on a
@@ -2290,13 +2599,15 @@ async function runSoakCycle(page, {
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
+  const loadedPayloadSummary = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedPayloadSummary || null);
+  const loadedEnvelopeAtEventRaw = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedEnvelopeRaw || null);
+  const loadedEnvelopeAtEvent = summarizeSaveEnvelope(loadedEnvelopeAtEventRaw, { slot: loadedSlot || 'unknown' });
+  const preLoadSelectedEnvelope = loadedSlot ? preLoadEnvelopes[loadedSlot] : null;
   assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
-  // F9 resolves 'latest' — a docking-triggered chunked autosave can land between the quick
-  // save and the quick load, and the public load then legitimately restores the autosave.
-  // The worker owns the save bytes, while save:started/save:loaded are replayed onto the
-  // presentation mirror. The mirror can be a few replies behind at either event boundary, so
-  // the envelope for the slot actually loaded is the authoritative restore reference. Keep the
-  // event snapshots as diagnostics, but never compare them as if they were worker-owned bytes.
+  // The public F9 load resolves a slot, then continued play/autosave can replace its current
+  // localStorage bytes before this probe samples them. Compare against the selected slot's
+  // immutable bytes captured immediately before F9; retain the event-time and post-load bytes
+  // as diagnostics so worker/presentation lag and legitimate post-restore movement stay visible.
   const loadedEnvelope = await page.evaluate((slot) => {
     const compactEntity = (entity) => entity ? {
       id: entity.id ?? null,
@@ -2343,7 +2654,9 @@ async function runSoakCycle(page, {
   loadedEnvelope.serializedIdentity = loadedEnvelopeSnapshot.serializedIdentity || null;
   loadedEnvelope.envelopeIdentity = loadedEnvelopeSnapshot.envelopeIdentity || null;
   loadedEnvelope.slot = loadedSlot || loadedEnvelopeSnapshot.slot || null;
-  const restoreReference = loadedEnvelope?.available === true ? loadedEnvelope : saved;
+  const restoreReference = preLoadSelectedEnvelope?.available === true
+    ? preLoadSelectedEnvelope.playerSnapshot
+    : null;
   assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
   const restorePopulation = summarizeRestorePopulation({
     loadedSlot,
@@ -2352,25 +2665,41 @@ async function runSoakCycle(page, {
     postLoadEntities: loadedEnvelope?.postLoadEntities || [],
   });
   const loadedEconomy = await readEconomySnapshot(page);
-  const divergedDistance = distance(saved.pos, diverged.pos);
+  const divergedDistance = distance(restoreReference.pos, diverged.pos);
   const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', {
+  const restoreWitness = {
     saved,
+    divergenceInputMs,
+    minRestoreDivergenceWu,
+    quickSourceDivergenceWu,
+    selectedSlotBeforeF9: loadedSlot,
+    selectedSourceBeforeF9: preLoadSelectedEnvelope?.playerSnapshot || null,
+    selectedSourceIdentityBeforeF9: preLoadSelectedEnvelope?.serializedIdentity || null,
+    selectedSourceIdentityAtSaveLoaded: loadedEnvelopeAtEvent.serializedIdentity || null,
+    selectedSourcePoseAtSaveLoaded: loadedEnvelopeAtEvent.playerSnapshot || null,
+    loadedPayloadSummary,
     loadedSlot,
     diverged,
     loadedAtEvent,
     loaded,
+    elapsedAfterSaveLoaded: {
+      wallMs: Number.isFinite(loadedAtEvent?.observedAtPerformanceNow) && Number.isFinite(loaded?.observedAtPerformanceNow)
+        ? loaded.observedAtPerformanceNow - loadedAtEvent.observedAtPerformanceNow : null,
+      ticks: Number.isFinite(loadedAtEvent?.tick) && Number.isFinite(loaded?.tick) ? loaded.tick - loadedAtEvent.tick : null,
+      simTime: Number.isFinite(loadedAtEvent?.simTime) && Number.isFinite(loaded?.simTime) ? loaded.simTime - loadedAtEvent.simTime : null,
+    },
     divergedDistance,
     restoredDistance,
     postLoadAdvanceDistance,
     fixedSaveUnchanged,
     serializedIdentity: loadedEnvelope.serializedIdentity,
     restorePopulation,
-  });
+  };
+  mark('load-observed', restoreWitness);
   assert(
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
-    `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
+    `load position restore exceeded tolerance: ${JSON.stringify(restoreWitness)}`,
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
   mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance, restorePopulation });
@@ -2766,6 +3095,8 @@ async function armSaveLoadObservers(page) {
       saveStartedSnapshot: null,
       loadedSnapshot: null,
       loadedSlot: null,
+      loadedEnvelopeRaw: null,
+      loadedPayloadSummary: null,
       errors: [],
       dock: [],
     };
@@ -2927,11 +3258,13 @@ async function armSaveLoadObservers(page) {
       const state = window.SF?.state;
       const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
       const items = state?.player?.cargo?.items || {};
+      const slot = payload?.slot || null;
       window.__M6_RELEASE_SOAK_EVENTS__.loadedSnapshot = player ? {
         tick: Number(state.tick),
         simTime: Number(state.simTime),
         pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        observedAtPerformanceNow: performance.now(),
         // Economy at the event instant — grants that land after restore but before the
         // next probe read (resuming salvage drains, pickups, restore settlements) are
         // legitimate in-flight mutations, not envelope corruption.
@@ -2940,7 +3273,13 @@ async function armSaveLoadObservers(page) {
           cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
         },
       } : null;
-      window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = payload?.slot || null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = slot;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedEnvelopeRaw = slot ? localStorage.getItem(`sf.save.${slot}`) : null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedPayloadSummary = payload ? {
+        keys: Object.keys(payload).slice(0, 16),
+        slot,
+        hasPlayerPose: !!payload?.data?.entities?.player?.pos,
+      } : null;
       window.__M6_RELEASE_SOAK_EVENTS__.loaded = true;
     });
   });
@@ -3596,6 +3935,58 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
   const result = { ...start, ...end, recovered: end.lostEvent && end.restoredEvent && end.meshResourceReady && end.pixelProof && end.frameAdvanced && end.after === false };
   log(`context-loss ${JSON.stringify(result)}`);
   return result;
+}
+
+async function readContextRecoveryFailureState(page) {
+  return page.evaluate(() => {
+    const sf = window.SF || {};
+    const state = sf.state || null;
+    const render = state?.render || null;
+    const recovery = render?.contextRecovery || null;
+    let loop = null;
+    try { loop = sf.loop?.getDiagnostics?.() || null; } catch (_) { /* loop may already be closed */ }
+    const stall = loop?.presentationStallEvidence || null;
+    const overlay = document.getElementById('boot-overlay');
+    return {
+      document: {
+        visibilityState: document.visibilityState,
+        failurePresenterText: String(overlay?.innerText || overlay?.textContent || '').slice(0, 1_500),
+      },
+      state: state ? {
+        mode: state.mode || null,
+        tick: Number.isFinite(Number(state.tick)) ? Number(state.tick) : null,
+        simTime: Number.isFinite(Number(state.simTime)) ? Number(state.simTime) : null,
+        timeScale: Number.isFinite(Number(state.timeScale)) ? Number(state.timeScale) : null,
+        docked: state.ui?.docked === true,
+        contextRestoreSeq: Number.isFinite(Number(state.contextRestoreSeq)) ? Number(state.contextRestoreSeq) : null,
+        admissionRunGeneration: Number.isFinite(Number(render?.admissionRunGeneration)) ? Number(render.admissionRunGeneration) : null,
+        rendererGeneration: Number.isFinite(Number(render?.rendererGeneration)) ? Number(render.rendererGeneration) : null,
+      } : null,
+      contextRecovery: recovery ? {
+        losses: Number(recovery.losses) || 0,
+        restores: Number(recovery.restores) || 0,
+        generation: Number(recovery.generation) || 0,
+        pending: recovery.pending === true,
+        terminal: recovery.terminal === true,
+        lastError: recovery.lastError ? String(recovery.lastError).slice(0, 1_000) : null,
+        retryCount: Number(recovery.retryCount) || 0,
+        forcedNewContext: recovery.forcedNewContext === true,
+      } : null,
+      loop: loop ? {
+        lastFrameError: loop.lastFrameError ? String(loop.lastFrameError).slice(0, 1_000) : null,
+        consecutiveFrameErrors: Number(loop.consecutiveFrameErrors) || 0,
+        presentationStalled: loop.presentationStalled === true,
+        presentationStallCount: Number(loop.presentationStallCount) || 0,
+        presentationFailure: loop.presentationFailure || null,
+        simulationFailure: loop.simulationFailure || null,
+        stallEvidence: stall ? {
+          closeCauseSite: stall.closeCauseSite || null,
+          timeEffectRequests: stall.timeEffectRequests || null,
+          graphicsContext: stall.graphicsContext || null,
+        } : null,
+      } : null,
+    };
+  });
 }
 
 /**
@@ -5212,6 +5603,7 @@ async function readPlayerSnapshot(page) {
       mode: state.mode || null,
       pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
       speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+      observedAtPerformanceNow: performance.now(),
       autopilot: autopilot ? {
         active: autopilot.active === true,
         status: autopilot.status || null,
@@ -7230,7 +7622,7 @@ async function runPerformanceAttributionProbe({
         page = owned.page || page;
         canonicalUrlTracker = owned.canonicalUrlTracker || canonicalUrlTracker;
         rootUrl = owned.rootUrl || rootUrl;
-      }, taskId, { enableTier1Counters });
+      }, taskId, { enableTier1Counters, log: doLog });
       ({
         page,
         electronApp,

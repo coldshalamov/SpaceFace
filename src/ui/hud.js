@@ -5443,8 +5443,8 @@ export function createHud(ctx, alerts) {
       _glocFraction = gLocFraction;
       if (glocVignette) {
         if (gLocFraction > 0) {
-          if (_glocHideTimer) { clearTimeout(_glocHideTimer); _glocHideTimer = null; }
           setStyle(glocVignette, 'display', 'block');
+          if (_glocHideTimer) { clearTimeout(_glocHideTimer); _glocHideTimer = null; }
           setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
         } else {
           setOpacity(glocVignette, '0');

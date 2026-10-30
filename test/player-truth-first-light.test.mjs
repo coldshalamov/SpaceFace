@@ -16,7 +16,7 @@ test('the public settings actor only accepts the known First light choices', () 
 function fixture({ title = 'First light', visible = true, cancel = 'Use first light', confirm = 'Play',
   cancelVisible = true, confirmText = confirm, clickError = null } = {}) {
   const clicks = [], events = [];
-  let handler, registrations = 0;
+  let handler, handlerOptions, registrations = 0;
   const control = (name, raw, shown = true) => ({
     name, raw, shown,
     first() { return this; },
@@ -50,9 +50,14 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       assert.deepEqual(options, { name: 'First light', exact: true });
       return dialog;
     },
-    async addLocatorHandler(_locator, callback) { registrations++; handler = callback; },
+    async addLocatorHandler(_locator, callback, options) {
+      registrations++;
+      handlerOptions = options;
+      handler = callback;
+    },
   };
   return { page, clicks, events, get registrations() { return registrations; },
+    get handlerOptions() { return handlerOptions; },
     install: () => installFirstLightPromptHandler(page, (...row) => events.push(row)),
     answer: () => handler() };
 }
@@ -70,6 +75,15 @@ test('the actor selects the accessible Play name rather than decorated raw text'
   const f = fixture({ confirmText: 'Play ENTER' });
   await f.install(); await f.answer();
   assert.deepEqual(f.clicks, ['Play']);
+});
+
+test('the locator handler does not wait for its title to hide inside another action deadline', async () => {
+  const f = fixture();
+  await f.install();
+  await f.answer();
+  assert.deepEqual(f.clicks, ['Play']);
+  assert.deepEqual(f.handlerOptions, { noWaitAfter: true });
+  assert.equal(f.events.length, 1, 'the settings choice is recorded once');
 });
 
 test('Play takes precedence when legacy Keep my settings is also present', async () => {

@@ -1028,7 +1028,7 @@ test('paused Crucible launch drains setting, mode, and boot RPC after the first 
   assert.equal(f.lane.getDiagnostics().workerClockCommandInFlight, false);
 });
 
-test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { timeout: 60000 }, async () => {
+test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { timeout: 60000 }, async (t) => {
   // Exercise the actual browser-worker module through a real Node worker-thread
   // postMessage boundary. The main lane must consume the worker's
   // `clockSequence` field; fabricating a reply would let the old clockSeq typo
@@ -1039,6 +1039,34 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
   let receive = null;
   let holdReplies = false;
   const heldReplies = [];
+  let lane = null;
+  t.after(() => {
+    const error = lane?.getDiagnostics().error;
+    if (!error?.includes('clock command stalled')) return;
+    console.error('[local-clock-wire watchdog]', JSON.stringify({
+      error,
+      diagnostics: lane.getDiagnostics(),
+      recentCommands: mainPosts.filter((entry) => entry?.kind === 'clockCommand').slice(-8).map((entry) => ({
+        commandSequence: entry.commandSequence,
+        seq: entry.seq,
+        steps: entry.steps,
+        timeScale: entry.timeScale,
+        commands: entry.commands?.map((command) => ({
+          type: command?.t,
+          path: command?.p?.path,
+          operation: command?.p?.op,
+          dataType: command?.p?.d?.type,
+        })),
+      })),
+      recentReplies: workerReplies.filter((reply) => reply?.kind === 'clockTick').slice(-8).map((reply) => ({
+        seq: reply.seq,
+        clockSequence: reply.clockSequence,
+        commandSequence: reply.commandSequence,
+        stateTick: reply.stateTick,
+        diagnostics: reply.clockDiagnostics,
+      })),
+    }));
+  });
   const worker = new Worker(
     new URL('./fixtures/whole-sim-browser-worker-thread.mjs', import.meta.url),
     { type: 'module' },
@@ -1086,7 +1114,6 @@ test('browser worker clock reply wire settles paused ACKs and Crucible RPCs', { 
       queueMicrotask(() => { if (receive) receive(message); });
     },
   };
-  let lane = null;
   try {
     worker.on('message', workerSelf.postMessage);
     worker.on('error', (error) => {

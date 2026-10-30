@@ -332,8 +332,10 @@ test('immutable save diagnostic binds repeated materialization to one serialized
     version: 15,
     data: {
       meta: { tick: 42, simTime: 0.7, savedAt: '2026-10-15T00:00:00.000Z' },
+      player: { credits: 125 },
+      cargo: { items: { ore: 3 } },
       entities: {
-        player: { id: 'player-1', type: 'ship' },
+        player: { id: 'player-1', type: 'ship', pos: { x: 12.5, z: -7 }, vel: { x: 3, z: 4 } },
         persistent: [{ id: 'wreck-1', type: 'wreck', data: { worldRecordId: 'wreck:1' } }],
       },
     },
@@ -342,6 +344,11 @@ test('immutable save diagnostic binds repeated materialization to one serialized
   assert.equal(base.available, true);
   assert.equal(base.serializedIdentity.bytes, Buffer.byteLength(raw));
   assert.equal(base.envelopeIdentity.tick, 42);
+  assert.deepEqual(base.playerSnapshot, {
+    pos: { x: 12.5, z: -7 },
+    speed: 5,
+    economy: { credits: 125, cargoItems: { ore: 3 } },
+  });
   assert.deepEqual(base.envelopeEntities.map((row) => row.id), ['player-1', 'wreck-1']);
 
   const population = summarizeImmutableSavePopulation({

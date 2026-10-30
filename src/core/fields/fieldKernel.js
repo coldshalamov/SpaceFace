@@ -185,6 +185,9 @@ export function fieldAffectsBody(field, bodyProfile) {
   const filters = field.filters;
   if (filters) {
     if (Array.isArray(filters.types) && !filters.types.includes(bodyProfile.type)) return false;
+    if (filters.includeId != null && bodyProfile.id !== filters.includeId) return false;
+    if (Number.isSafeInteger(filters.includeGeneration)
+      && bodyProfile.occupantGeneration !== filters.includeGeneration) return false;
     if (filters.excludeId != null && bodyProfile.id === filters.excludeId) return false;
     if (Array.isArray(filters.excludeIds) && filters.excludeIds.includes(bodyProfile.id)) return false;
     if (Array.isArray(filters.excludeTeams) && bodyProfile.team != null

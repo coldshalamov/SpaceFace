@@ -427,6 +427,9 @@ const EMITTED_CUES = {
   // recipe target) — each is its own authored recipe played by literal id.
   sfx_discovery_plate_note: { distinct: true },
   sfx_travel_interdiction: { distinct: true },
+  // Acceleration tier transition: heroManeuvers' dash voice and audioSystem's boost/sprint
+  // changeover both emit the literal recipe id — the authored transition motif, never a click.
+  sfx_accel_transition: { distinct: true },
 };
 
 for (const [cue, spec] of Object.entries(EMITTED_CUES)) {

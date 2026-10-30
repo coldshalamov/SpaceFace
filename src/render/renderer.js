@@ -490,6 +490,7 @@ import { whenBootOverlayRetired, bootOverlayRetired } from '../core/bootShellPac
 import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  isPackageGeometryDetached,
   noteOrientationDetachedHold,
   rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
@@ -8015,8 +8016,19 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   const queuedTouches = recovery.pendingExactTargetTouches;
   recovery.pendingExactTargetTouches = null;
   if (queuedTouches && queuedTouches.size && typeof recovery.runQueuedExactTargetTouch === 'function') {
-    for (const subject of queuedTouches) {
-      try { recovery.runQueuedExactTargetTouch(subject); }
+    const entries = queuedTouches instanceof Map
+      ? queuedTouches.entries()
+      : Array.from(queuedTouches, (subject) => [subject, null]);
+    for (const [subject, options] of entries) {
+      // Owners can retire while recovery is rebuilding. A queued touch is only a request to
+      // warm a still-live subject; replaying a stale subject can draw disposed optional batch
+      // twins after their BatchedMesh resources have been released.
+      let active = true;
+      if (typeof options?.isActive === 'function') {
+        try { active = options.isActive(subject) === true; } catch (_) { active = false; }
+      }
+      if (!active) continue;
+      try { recovery.runQueuedExactTargetTouch(subject, options || {}); }
       catch (error) {
         if (typeof console !== 'undefined') {
           console.warn('[render] queued exact-target touch failed after context restore', error);
@@ -8295,6 +8307,31 @@ export function syncContactShadowPool(pool, frameOrRecords, meshes) {
     }
     if (dirty) pool.mesh.instanceMatrix.needsUpdate = true;
   }
+}
+
+export function queueContextRecoveryExactTargetTouch(recovery, subject, options = {}) {
+  if (!recovery || !subject) return false;
+  if (typeof options.isActive === 'function') {
+    try {
+      if (options.isActive(subject) !== true) return false;
+    } catch (_) {
+      return false;
+    }
+  }
+  let queued = recovery.pendingExactTargetTouches;
+  if (!(queued instanceof Map)) {
+    const next = new Map();
+    // Preserve any entries produced by an older Set-shaped caller in this session.
+    if (queued instanceof Set) for (const pending of queued) next.set(pending, {});
+    recovery.pendingExactTargetTouches = queued = next;
+  }
+  // Map.set replaces an older request for the same subject with its latest owner predicate,
+  // so an obsolete cancellation cannot shadow a newer active admission.
+  queued.set(subject, {
+    isActive: typeof options.isActive === 'function' ? options.isActive : null,
+    strict: options.strict === true,
+  });
+  return true;
 }
 
 const SHIELD_POOL_VERT = /* glsl */`
@@ -10184,10 +10221,16 @@ export function preparePipelineSubjectResidency(tracker, subject, admissionOptio
     ? tracker.pendingFor(subject)
     : null;
   if (outstanding) return outstanding;
+  const isActive = typeof admissionOptions.isActive === 'function'
+    ? () => admissionOptions.isActive(subject) === true
+    : undefined;
+  // Preserve a first-picture owner's diagnostic through this subject-bound wrapper so a
+  // superseded residency rejection can report which captured/current owner bit changed.
+  if (isActive && typeof admissionOptions.isActive.ownerSnapshot === 'function') {
+    isActive.ownerSnapshot = admissionOptions.isActive.ownerSnapshot;
+  }
   return tracker.prepare(subject, {
-    isActive: typeof admissionOptions.isActive === 'function'
-      ? () => admissionOptions.isActive(subject) === true
-      : undefined,
+    isActive,
     unSliced: urgent === true,
   });
 }
@@ -12231,11 +12274,34 @@ export const render = {
             // Re-fetch is a force-cache disk hit on the content-hash-immutable render.glb; the
             // serial per-package decode is deliberately sequential, not a decode storm.
             try {
-              await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+              const packageRehydrate = await rehydrateDetachedPackages({ yieldToMain: yieldToBrowser });
+              const remainingDetachedGeometry = [];
+              scene.traverse((object) => {
+                if (!isPackageGeometryDetached(object && object.geometry)) return;
+                const mark = object.geometry.userData && object.geometry.userData.spacefaceCpuDetach;
+                remainingDetachedGeometry.push({
+                  contentHash: mark && mark.contentHash || null,
+                  geometryOrdinal: Number.isInteger(mark?.ordinal) ? mark.ordinal : null,
+                  objectName: object.name || null,
+                });
+              });
+              if (remainingDetachedGeometry.length > 0) {
+                const geometryMismatches = packageRehydrate.geometryMismatches || [];
+                const packageErrors = packageRehydrate.errors || [];
+                const failure = {
+                  remainingDetachedGeometryCount: remainingDetachedGeometry.length,
+                  remainingDetachedGeometry: remainingDetachedGeometry.slice(0, 8),
+                  geometryMismatchCount: geometryMismatches.length,
+                  geometryMismatches: geometryMismatches.slice(0, 8),
+                  packageErrors: packageErrors.slice(0, 8),
+                };
+                throw new Error(`context restore left authored package geometry detached: ${JSON.stringify(failure)}`);
+              }
             } catch (rehydrateError) {
               if (typeof console !== 'undefined') {
                 console.warn('[render] context-restore package rehydrate failed', rehydrateError);
               }
+              throw rehydrateError;
             }
             const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
             // Dummy catalog precompile is illegal mid-flight, including restore.
@@ -13938,8 +14004,21 @@ export const render = {
         // Owner-inactive is the admission design's expected-supersede class: AbortError is how
         // observePipelineAdmission and the appearance failure record tell a cancelled owner
         // apart from a real GPU failure. Guard and rejection itself are unchanged.
+        const ownerSnapshot = typeof admissionOptions.isActive.ownerSnapshot === 'function'
+          ? admissionOptions.isActive.ownerSnapshot()
+          : null;
+        if (state.render) {
+          state.render.lastGpuResidencyOwnerInactive = {
+            subjectName: subject && (subject.name || subject.userData?.name) || null,
+            owner: ownerSnapshot,
+          };
+        }
+        if (ownerSnapshot && typeof console !== 'undefined') {
+          console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+        }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');
         error.name = 'AbortError';
+        error.code = 'GPU_RESIDENCY_OWNER_INACTIVE';
         throw error;
       }
     };
@@ -14439,9 +14518,7 @@ export const render = {
         // would present with its bloom variant cold. Queue the subject into the recovery
         // completion instead: runWebGlContextRestoreRebuild drains it on the same tick that
         // clears pending, before any presented frame can interleave.
-        const queued = recovery.pendingExactTargetTouches
-          || (recovery.pendingExactTargetTouches = new Set());
-        queued.add(subject);
+        queueContextRecoveryExactTargetTouch(recovery, subject, admissionOptions);
         return { skipped: true, reason: 'context-recovery-queued' };
       }
       // The seam runs inside a paced admission leg, so the pending scan rides the
@@ -14522,8 +14599,8 @@ export const render = {
     // The restore drain re-enters the public touch so the queued subject gets the same
     // reveal/park/cull treatment — and re-queues itself if a second loss lands mid-drain.
     if (this._contextRecovery) {
-      this._contextRecovery.runQueuedExactTargetTouch = (subject) => {
-        state.render.touchSubjectExactTarget(subject);
+      this._contextRecovery.runQueuedExactTargetTouch = (subject, admissionOptions = {}) => {
+        state.render.touchSubjectExactTarget(subject, admissionOptions);
       };
     }
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {

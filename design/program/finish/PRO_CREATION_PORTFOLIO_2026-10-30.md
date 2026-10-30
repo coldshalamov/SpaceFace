@@ -9,9 +9,10 @@ through integratedBrowser only. Browser runtime reported that local browser use 
 Work settings; that was not authorization to use ChatGPT Work instead. No further Work prompts or
 Work creation are authorized for this Pro request.
 
-All five Work chats were archived through native controls. Their chat IDs below are retained only as
-cleanup/audit references, not as active jobs or integration requirements. Actual running-turn
-cancellation is unconfirmed. Archiving does not establish cancellation or billing status.
+All five Work chats were archived through native controls. A later native read confirmed every
+turn completed and every chat is idle; no generation remains active in them. Their chat IDs below
+are retained only as cleanup references, not as jobs or integration requirements. They were not
+cancelled, and completion/archiving establishes no refund or reversal of their past cost.
 
 The five prepared briefs remain **unsent Pro candidates**. They were designed with disjoint proposed
 scopes under `src/features/<id>/**` and `test/pro-<id>*`, using base
