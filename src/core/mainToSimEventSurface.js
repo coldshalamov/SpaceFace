@@ -52,11 +52,13 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'game:load',
   'game:new',
   'game:save',
+  'helix:docketChoice',
   'hud:layoutChanged',
   'ilexArk:accept',
   'ilexArk:course',
   'ilexArk:deliver',
   'ilexArk:finish',
+  'impoundLot:deskIntent',
   'industrialDisasters:command',
   'industrialDisasters:presentationReady',
   'industrialDisasters:requirePresentation',
@@ -312,4 +314,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=165 dynamic=39 legacy=18 excluded=6 total=200 knownUnforwarded=79
+// provenance: census=167 dynamic=39 legacy=18 excluded=6 total=202 knownUnforwarded=79
