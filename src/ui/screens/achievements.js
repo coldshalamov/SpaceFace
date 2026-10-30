@@ -359,7 +359,7 @@ export const achievementsScreen = {
     read.dataset.state = state;
     read.innerHTML = `
       <div class="con-medal-read__dial${art ? ' has-art' : ''}${art && art.glyph ? ' has-glyph' : ''}" data-state="${state}"><span class="con-medal__body"></span>${medalDialSvg(k, { focusRing: false })}${art ? `<img class="con-medal__art" src="${art.url}" alt="" draggable="false" decoding="async">` : ''}<span class="con-medal__glyph">${glyphFor(row, 44)}</span>${rimHtml(day ? 'earned · ' + day : '')}</div>
-      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))}${stateWord ? ` <span aria-hidden="true">·</span> ${esc(stateWord)}` : ''}</p>
+      <p class="con-medal-read__kicker">${esc(categoryLabel(row.category))}${stateWord ? ` <span aria-hidden="true">·</span> <span class="con-medal-read__state">${esc(stateWord)}</span>` : ''}</p>
       <h2 class="con-medal-read__name">${esc(row.name)}</h2>
       <p class="con-medal-read__line">${esc(row.description)}</p>
       ${counted && !row.unlocked ? `<div class="con-medal-read__figure"><span class="con-medal-read__n" data-n>0</span><span class="con-medal-read__of">of ${esc(Number(row.target).toLocaleString('en-US'))}</span></div>` : ''}
