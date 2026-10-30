@@ -182,6 +182,18 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   genuinely skips stick drills + power ladder + first-flight card while the rail stays; situation
   lines honor the rail's silence gate (stroke no longer starved). 21/21 + rc-458 12/12.
 - **Row 454 GOLD-M1** — the integration pass: play the first hour on the real route, fix until every first-hour system is gold or names its missing file.
+  **Run 1 (stranger s4242 1h, `.devshots/actual-game/stranger-seed4242-1h.json`):** clean sim
+  (216k ticks, no death/freeze/wrap) and the rail engaged — attach +1 s, five powerSituation
+  lessons, momentumKill `throw` +513 s, wantedBeat `reportDenied` +518 s (the designed
+  no-wall path), 45 tutorial lines, 13 milestones, 8 verbs, 4 pursuits resolved, 3 kills,
+  heat peak 0.1425. **But docks/sales/missions = 0:** the rescue `grab` beat never
+  completed, and the gate chain (grab gates seam; the missing-three rail — never started,
+  `firsthour:started` absent — also holds seam via the `|| 'seam'` fallback) kept
+  seam→dock→choice unreachable. Mechanism: scripted-pilot choreography under emergent
+  physics (191 broken lines, 623 latch denials). **Pilot recovery `4f1816bb7d3c`:** the
+  extracted twin's evolved mechanics (drift-reel winch, orbit-side sweep, press-onto-ring
+  grab, direct-away burns) ported into the harness copy — rc-458 lands momentumKill at
+  135 s (was 513 s). Run 2 launched on the ported pilot; verdict follows its ledger.
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,
@@ -281,9 +293,15 @@ Every verb has a voice, the mix has a hierarchy, silence exists (`FINISH_LANES.m
 `src/audio/**`). Audit first: list verbs with no sound or a placeholder, then fix in batches.
 Audit state 2026-10-30: the cue contract suite is green — `check:audio-identity` (91 semantic
 cues resolve; `sfx_accel_transition` was uncovered, listed `1b500b762e7`), `check:first-hour-audio`
-(audible/blocked trace green), asteroid routing, beam-verb truth table, mining signatures. Still
-owed under lane 8: live audition of mix hierarchy / room tone / silence placement — a runtime
-listen, not a check.
+(audible/blocked trace green), asteroid routing, beam-verb truth table, mining signatures.
+**Live audition done `scripts/capture-wave-s-audition.mjs`** (real headed boot, analyser taps on
+the live buses, webm artifact + JSON in `.devshots/audio/`): master floor 0.0002 RMS at idle
+drift pre- and post-dock (silence exists), 24 distinct non-click recipes over the walk
+(combat verbs each answer with their own voice), the music bus dipped 0.00154→0.0005 on the
+duck:true danger cue and recovered (hierarchy ducks predictably), `stationHum` loop lived
+while docked and released on undock (the place answers). Residual honesty: audible distinctness
+is judged from the artifact, not a metric; ambient peak under the hum is quiet (0.0003) — the
+loop's structural presence is the measured leg.
 
 ### H1 — The full razor (last, when the other lanes no longer cite old docs)
 README §7 end state: `AGENTS.md` ≤ 150 lines, `build_map.md` ≤ 600 lines, one perf document, one
