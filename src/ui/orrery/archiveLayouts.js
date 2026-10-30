@@ -848,6 +848,10 @@ ${ML} .sf-mlog-side { grid-column:2 !important; grid-row:1 / span 7; display:fle
 ${ML} .sf-mlog-side > .sf-mlog-btns { margin:74px 0 0 !important; }
 ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { flex-direction:column; align-items:center; gap:14px; }
 ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:center; }
+/* centered under the dial: a verb's sub-line (LOCAL MAP) sits under its verb, not 14px right of it,
+   and the story-spine note is a quiet sentence-case caption instead of three tracked caps lines */
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:0 !important; text-align:center; }
+${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note.sf-mlog-story-note.sf-mlog-story-note { ${BODY} font-weight:400 !important; font-style:italic !important; font-size:13px !important; line-height:1.4 !important; color:rgb(${BONE} / .72) !important; max-width:22ch; text-wrap:balance; margin-top:6px !important; }
 ${ML} .sf-mlog-card > .ml-route-host { grid-column:1 !important; align-self:start; margin-top:clamp(30px, 4.8vh, 58px); }
 ${ML} .sf-mlog-card.is-empty > .sf-mlog-empty { grid-row:2; }
 ${ML} .sf-mlog-kicker { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .86) !important; }
@@ -1174,6 +1178,8 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row {
     flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:12px; }
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:14px !important; text-align:left; }
+  html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note { margin-left:0 !important; }
 }
 @media (min-width:640px) and (max-width:700px) {
   html:root:not([data-sf-mobile="1"]) body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog { --ml-dial:132px; }
@@ -1203,6 +1209,8 @@ ${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !i
   ${ML} .sf-mlog-side > .sf-mlog-btns { margin:0 !important; }
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { align-items:flex-start; gap:8px; }
   ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:flex-start; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .k-word-sub { margin-left:14px !important; text-align:left; }
+  ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li > .sf-mlog-story-note { margin-left:0 !important; }
   ${ML} .orr-mdial__clock-read { bottom:-20px; }
   ${ML} .orr-mdial__trace-read { bottom:-38px; }
   ${ML} .ml-clock__of { display:none; }
