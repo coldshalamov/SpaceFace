@@ -15,6 +15,8 @@ const T = 'html body #screens > .sx-berth.orr-station';
 const BONE = '236 230 216';
 // one class deeper than stationTabsLayouts.js selectors, so same-property overrides win ties
 const TAB = `${T} .k-panel.sx-ct`;
+// the same tab in a desktop window (a phone's mobile sheet owns its own one-scroll column)
+const DTAB = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.orr-station .k-panel.sx-ct';
 
 const CSS = `
 /* the commit under its terms: in flow, unplated, nothing over-paints the reading */
@@ -26,6 +28,13 @@ ${TAB} .sx-dossier__foot { position: static !important; bottom: auto !important;
   ${TAB} .orr-ct-scales { margin-top: 8px !important; }
   ${TAB} .sx-dossier__terms > li { padding: 5px 0 !important; }
   ${TAB} .sx-dossier__foot { margin-top: 12px !important; }
+}
+/* a narrow desktop window 601–660 tall (420×601) leaves the board 66px: the 22px ladder gap under POSTED HERE and the 16px
+   fade left the only job row in view half-faded. The gap closes to 4px and the fade to 6px, so that row reads whole */
+@media (max-width:480px) and (min-height:601px) and (max-height:660px) {
+  ${DTAB} .sx-ct__hang > .sx-ct__board { padding-top: 4px !important; }
+  ${DTAB} .sx-ct__hang { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important;
+    mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent) !important; }
 }
 /* the consequence scales' unpainted parts (the svg carries classes only, no colour literals):
    the risk band is the bone track under the lit stretch; the blade is bone, threat-red at the
