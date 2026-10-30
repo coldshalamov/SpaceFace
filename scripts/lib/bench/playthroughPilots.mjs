@@ -1297,60 +1297,70 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
           const scout = rescueEntity('scout');
           const wall = rescueEntity('asteroid');
           if (scout && wall) {
-            if (!decided.shoveAim) {
-              decided.shoveAim = true;
-              ledger.recordDecision({
-                situation: 'shove: push the scout from here or reposition behind him',
-                options: [
-                  { id: 'push_from_here', tradeoff: 'instant, rougher angle' },
-                  { id: 'reposition', tradeoff: 'clean line into the rock, seconds lost' },
-                ],
-                chosen: 'reposition',
-              });
-            }
-            // Take the firing position BEHIND the scout on the scout→asteroid line, then push.
-            const dx = wall.pos.x - scout.pos.x;
-            const dz = wall.pos.z - scout.pos.z;
-            const dd = Math.hypot(dx, dz) || 1;
-            const behind = { x: scout.pos.x - (dx / dd) * 220, z: scout.pos.z - (dz / dd) * 220 };
-            const dBehind = dist(p.pos, behind);
-            if (dBehind < 2400 && speedOf(p) > Math.max(12, dBehind / 25)) {
-              // Same settle-brake math as the latch: bleed speed or the approach slides past.
-              flyTo(input, behind, { arrive: 60 });
-              input.moveZ = 0;
-              input.brake = true;
-              return;
-            }
-            const aligned = dBehind < 160;
-            const toScout = Math.atan2(scout.pos.z - p.pos.z, scout.pos.x - p.pos.x);
-            const err = Math.abs(wrapAngle(toScout - (p.rot || 0)));
-            const dScout = dist(p.pos, scout.pos);
-            if (!aligned) {
-              flyTo(input, behind, { arrive: 60, boost: energyFull(p) });
-              return;
-            }
-            // Hold fire when the escape pod sits downrange — killing it restages the beat.
-            const podEnt = r.ids.pod != null ? state.entities.get(r.ids.pod) : null;
-            let podDownrange = false;
-            if (podEnt && podEnt.pos) {
-              const pdx = podEnt.pos.x - p.pos.x;
-              const pdz = podEnt.pos.z - p.pos.z;
-              const pd = Math.hypot(pdx, pdz);
-              if (pd < dScout) {
-                const along = (pdx * Math.cos(toScout) + pdz * Math.sin(toScout)) / (pd || 1);
-                const off = Math.abs(-pdx * Math.sin(toScout) + pdz * Math.cos(toScout));
-                podDownrange = along > 0 && off < 60;
+            // The scout is a live drone that flees the ship: no firing lane holds against a
+            // runner and chasing only leads the pair off the wall's line. The taught verb
+            // finishes it — put a line on him (he cannot run tethered), then throw him at
+            // the rock, exactly like the raider tow.
+            if (lineAttached && latchedId === scout.id) {
+              if (needWinch && (state.simTime || 0) >= winchUntil) needWinch = false;
+              if (needWinch) {
+                input.brake = false;
+                input.moveZ = 0;
+                cmd.lineControl = true;
+                cmd.lineLength = (state.simTime || 0) < nearBreakUntil ? 0.5 : -0.35;
+                return;
               }
+              const toWall = { x: wall.pos.x - scout.pos.x, z: wall.pos.z - scout.pos.z };
+              const toWallD = Math.hypot(toWall.x, toWall.z) || 1;
+              const scSpeed = speedOf(scout);
+              const scDot = scout.vel
+                ? (scout.vel.x * toWall.x + scout.vel.z * toWall.z) / ((scSpeed || 1) * toWallD) : 0;
+              swingStartTick = swingStartTick || state.tick;
+              // Burn at the wall with him in tow; cut when he truly flies at it — the same
+              // release the swing beat lands on the wreck.
+              const wallA = Math.atan2(wall.pos.z - p.pos.z, wall.pos.x - p.pos.x);
+              input.aimAngle = wallA;
+              input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(wallA - (p.rot || 0)) / 0.5));
+              input.moveZ = 1;
+              input.boost = energyFull(p);
+              cmd.lineControl = true;
+              cmd.lineLength = -0.35;
+              // He resumes fleeing the moment the line goes — and away-from-player now
+              // points off the wall. Release close enough that 20+ wu/s carries him to the
+              // rock before the dodge can bleed it off.
+              if ((scSpeed >= 20 && scDot > 0.9 && toWallD < 300) || state.tick - swingStartTick > 2400) {
+                input.tetherCut = true;
+                cmd.cut = true;
+                unhook();
+                swingStartTick = 0;
+                return;
+              }
+              return;
             }
-            flyTo(input, behind, { arrive: 60 });
-            input.aimAngle = toScout;
-            input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(toScout - (p.rot || 0)) / 0.5));
-            // Any impulse-class hit on the scout counts — fire whenever roughly on line.
-            input.fire = err < 0.3 && dScout < 520 && energyReady(p) && !podDownrange;
-            input.fireGroup = 1;
+            if (lineAttached) {
+              // Whatever else holds the line (claimed salvage, a loose scrap box) is not the
+              // lesson — let it go and take the body the verb names.
+              input.tetherCut = true;
+              cmd.cut = true;
+              unhook();
+              swingStartTick = 0;
+              return;
+            }
             if (process.env.STRANGER_PILOT_TRACE && (state.tick % 120) === 0) {
-              console.log(`    [shove] t=${Math.round(state.simTime)} aligned=${aligned} err=${err.toFixed(2)} d=${Math.round(dScout)} fire=${input.fire} cap=${p.capMax ? Math.round((p.cap / p.capMax) * 100) : '?'}% scoutToWall=${Math.round(dd)}`);
+              console.log(`    [shove] t=${Math.round(state.simTime)} dScout=${Math.round(dist(p.pos, scout.pos))} scoutToWall=${Math.round(dist(scout.pos, wall.pos))} v=${Math.round(speedOf(p))}`);
             }
+            // Run him down — fly the intercept lead, not his tail: tryLatch's own approach
+            // throttle bleeds arrival speed on a fleeing drone forever, while the led point
+            // keeps the closing vector honest. Same id so the reticle still names him.
+            const scLead = 1.0;
+            tryLatch(input, cmd, {
+              id: scout.id,
+              pos: {
+                x: scout.pos.x + (scout.vel ? scout.vel.x * scLead : 0),
+                z: scout.pos.z + (scout.vel ? scout.vel.z * scLead : 0),
+              },
+            }, 'rescue-scout');
+            swingStartTick = 0;
             return;
           }
         } else if (r.current === 'grab') {

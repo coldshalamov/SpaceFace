@@ -10,6 +10,7 @@ import {
 } from '../src/onboarding/flightDrill.js';
 import { flybyFocus, pickFlybyTarget } from '../src/systems/flybyFocus.js';
 import { onboarding, BEATS as ROUTE_BEATS, taughtVerbLine } from '../src/systems/onboarding.js';
+import { freshRescueState, RESCUE_ESCAPE_WU } from '../src/onboarding/rescueOpening.js';
 
 // The route table is authored in onboarding.js; drive the FSM by key so the test tracks the
 // lesson content, not the production order (the order audits live in check-first-hour).
@@ -275,6 +276,97 @@ test('a spent flyby pass restages instead of walling the focus beat', () => {
   sys._resolveProximityDone();
   assert.deepEqual({ x: trainer.pos.x, z: trainer.pos.z }, posBefore,
     'a pass still closing on the player is not restaged');
+});
+
+test('a pocket the pilot left behind restages whole instead of churning fails', () => {
+  const bus = createBus();
+  const state = makeState();
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = makeEntity(spec);
+      entity.id = state.nextEntityId++;
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+    removeEntity(id) {
+      const entity = state.entities.get(id);
+      if (entity) entity.alive = false;
+    },
+  };
+  const sys = Object.create(onboarding);
+  sys.init({ state, bus, helpers, registry: null });
+  state.onboarding = freshOnboarding();
+  state.onboarding.rescue = freshRescueState();
+  const rescue = state.onboarding.rescue;
+  const player = state.entities.get(state.playerId);
+
+  // Shove stage current with the authored cast staged around the pilot.
+  rescue.current = 'shove';
+  rescue.beats.shove.state = 'current';
+  sys._spawnRescueCast();
+  const staleScoutId = rescue.ids.scout;
+  assert.ok(state.entities.get(staleScoutId));
+  assert.ok(state.entities.get(rescue.ids.asteroid));
+
+  // The drills carried the pilot far away: the scout AND the standing wall sit beyond
+  // the escape envelope. Respawning only the scout on the far wall's line would land it
+  // out of reach again — the fail/restage pair would loop forever. The whole tableau
+  // restages near the pilot instead, quietly (the commute is not a missed attempt).
+  player.pos.x = 5000;
+  player.pos.z = 5000;
+  sys._resolveRescueDone();
+  assert.equal(rescue.beats.shove.fails, 0,
+    'restaging a carried-away pocket is not charged as a player fail');
+  assert.equal(state.entities.get(staleScoutId).alive, false, 'stale cast removed');
+  const restagedScout = state.entities.get(rescue.ids.scout);
+  assert.ok(restagedScout && restagedScout.alive !== false);
+  assert.ok(Math.hypot(restagedScout.pos.x - player.pos.x, restagedScout.pos.z - player.pos.z)
+    <= RESCUE_ESCAPE_WU, 'the restaged scout lands within reach of the pilot');
+
+  // Counter-case: the wall stands within reach and only the scout escaped — a real
+  // missed attempt counts one fail, and the retry lands on the standing wall's line.
+  const wall = state.entities.get(rescue.ids.asteroid);
+  const runner = state.entities.get(rescue.ids.scout);
+  runner.pos.x = player.pos.x + 4000;
+  runner.pos.z = player.pos.z;
+  sys._resolveRescueDone();
+  assert.equal(rescue.beats.shove.fails, 1, 'a true escape still counts a fail');
+  const retryScout = state.entities.get(rescue.ids.scout);
+  assert.notEqual(retryScout.id, runner.id, 'the escaped scout is replaced');
+  assert.ok(Math.hypot(retryScout.pos.x - player.pos.x, retryScout.pos.z - player.pos.z)
+    <= RESCUE_ESCAPE_WU, 'the retry lands within reach on the standing wall\'s line');
+  assert.ok(Math.hypot(retryScout.pos.x - wall.pos.x, retryScout.pos.z - wall.pos.z)
+    < RESCUE_ESCAPE_WU, 'the retry holds the authored scout→wall line');
+
+  // The chase variant: a fleeing scout stays inside the pilot's envelope while the pair
+  // drifts past the wall's — no player-escape fires, yet the push can never arrive. The
+  // wall anchor catches the spent tableau (wall also far → quiet whole-tableau restage).
+  const chased = state.entities.get(rescue.ids.scout);
+  const farWall = state.entities.get(rescue.ids.asteroid);
+  chased.pos.x = player.pos.x + 200;
+  chased.pos.z = player.pos.z;
+  farWall.pos.x = player.pos.x + 4000;
+  farWall.pos.z = player.pos.z;
+  sys._resolveRescueDone();
+  assert.equal(rescue.beats.shove.fails, 1,
+    'a runaway chase is a restage, not a charged fail');
+  const fresh = state.entities.get(rescue.ids.scout);
+  assert.notEqual(fresh.id, chased.id, 'the drifted-out scout is replaced');
+  assert.ok(Math.hypot(fresh.pos.x - player.pos.x, fresh.pos.z - player.pos.z) <= RESCUE_ESCAPE_WU,
+    'the tableau reopens within reach of the pilot');
+
+  // Counter-case: scout in the pilot's envelope AND the wall in reach — a live attempt.
+  const liveScout = state.entities.get(rescue.ids.scout);
+  const liveWall = state.entities.get(rescue.ids.asteroid);
+  liveScout.pos.x = player.pos.x + 300;
+  liveScout.pos.z = player.pos.z;
+  liveWall.pos.x = player.pos.x + 600;
+  liveWall.pos.z = player.pos.z;
+  sys._resolveRescueDone();
+  assert.equal(rescue.beats.shove.fails, 1, 'no fail on an attemptable tableau');
+  assert.equal(state.entities.get(rescue.ids.scout).id, liveScout.id,
+    'a scout still in reach of both pilot and wall is left alone');
 });
 
 test('weapon heat helper ignores invalid/no-heat mounts', () => {

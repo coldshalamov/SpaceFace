@@ -214,9 +214,26 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
   and every census returned early on `player.tether.active` (zero flyby events for the rest of
   the run). While a line is out, acquisition isn't running, so a lease's latch bias is inert:
   only the flagged trainer may now lease while tethered; refused hostiles stay refused.
-  **Run 5 evidence (in flight):** `flybyFocus:start` on the trainer `match=true` at t=308 while
+  **Run 5 evidence:** `flybyFocus:start` on the trainer `match=true` at t=308 while
   tethered — beat done, rail advanced to `burst`. The hour continues: burst → disengage →
   seam → dock → choice, with the rescue `shove` stage live alongside.
+  **Run 5 named the rescue-wall defect (fixed, commit follows probe):** the run parked at
+  `resc=shove` ("Put the scout into the asteroid") for ~800 sim-s. Live cast dump: the scout
+  is a *fleeing* drone and the escape predicate measured only scout→pilot distance — a chased
+  scout stays in the pilot's envelope while the pair drifts kilometres off the wall's line:
+  no escape fires, no fail, and the push can never arrive. Earlier in the same window the
+  fail/restage pair could also churn (~3 `scout escaped` fails/s) whenever the standing wall
+  itself sat beyond the pilot's reach, because a respawned scout re-anchors on the far wall's
+  line and lands out of reach again — the same loop the missing-piece comment already warns
+  about. Production fix: all three rescue drift branches (swing rock >1800, shove scout
+  escape, grab pod >3000) now restage the whole tableau near the pilot when the *standing
+  anchor* is also out of reach (quiet — a carried-away pocket is not a charged miss), and the
+  shove escape check anchors to the wall as well as the pilot so a runaway chase is a spent
+  tableau, not an invisible wall. Pilot fix: the shove branch now uses the taught verb —
+  latch the scout (it cannot run tethered), winch tight, burn at the wall, cut when it flies
+  true — instead of tail-chasing a fleeing drone and firing. Regression test pins the
+  whole-tableau restage, the charged single-fail retry on a near wall, and the wall-anchor
+  runaway case (7/7 flight-drill green).
 - **Audit-fix packets landed 2026-10-29/30:** encounter bookkeeping `37e1ebe0d24`, heat victim
   `d79feb41121`, mining/careers `bfa9ec3b6a9`, save restore `7b4cced23e8`, unique-wreck persistence
   `bd978111178`, special500 registered in production `6ca62459ba5`, c47a truth `97283ecd9c1`,

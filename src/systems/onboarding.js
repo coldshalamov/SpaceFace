@@ -102,6 +102,7 @@ import {
   RESCUE_SHOVE_PROOF_SPEED_WU,
   buildRangeOpenedFunnelEvent,
   buildRescueCompleteEvent,
+  RESCUE_ESCAPE_WU,
   buildRescueFunnelEvent,
   buildRescueStartedEvent,
   freshRescueState,
@@ -3260,7 +3261,14 @@ export const onboarding = {
       const playerPos = this.state.entities.get(this.state.playerId);
       if (playerPos && playerPos.pos
         && Math.hypot(rock.pos.x - playerPos.pos.x, rock.pos.z - playerPos.pos.z) > 1800) {
-        this._rescueFail('swing', 'rock drifted out of reach');
+        // If the standing wreck is also beyond reach, a respawned rock lands on its line
+        // still out of reach and the fail/restage pair loops forever. Restage the whole
+        // tableau near the pilot — the same recovery a missing standing piece takes.
+        if (Math.hypot(derelict.pos.x - playerPos.pos.x, derelict.pos.z - playerPos.pos.z) > 1800) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('swing', 'rock drifted out of reach');
+        }
         return;
       }
       if (!rescue.rockReleasedAfterReel) return;
@@ -3282,7 +3290,22 @@ export const onboarding = {
       const asteroid = this._rescueActor('asteroid');
       if (!asteroid) { this._spawnRescueCast(); return; }
       if (!scout) { this._rescueFail('shove', 'scout lost'); return; }
-      if (rescueScoutEscaped(scout, player.pos)) { this._rescueFail('shove', 'scout escaped'); return; }
+      // The escape envelope anchors to the pilot AND to the wall: a chased scout stays in
+      // the pilot's reach while the pair drifts kilometres off the wall's line — no escape
+      // fires, no fail, and the push can never arrive. Either way the tableau is spent.
+      if (rescueScoutEscaped(scout, player.pos)
+        || Math.hypot(scout.pos.x - asteroid.pos.x, scout.pos.z - asteroid.pos.z) > RESCUE_ESCAPE_WU) {
+        // The retry stages the scout on the STANDING wall's line: when the drills have
+        // carried the pilot beyond the wall's own reach, every respawn lands out of reach
+        // and the fail/restage pair loops forever. Restage the tableau near the pilot —
+        // the same recovery a missing standing piece takes.
+        if (Math.hypot(asteroid.pos.x - player.pos.x, asteroid.pos.z - player.pos.z) > RESCUE_ESCAPE_WU) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('shove', 'scout escaped');
+        }
+        return;
+      }
       if (rescueScoutAtAsteroid(scout, asteroid, RESCUE_SHOVE_PROOF_SPEED_WU)) {
         this._emitRescueShove(scout.id);
         this._rescueDone('shove');
@@ -3295,7 +3318,14 @@ export const onboarding = {
       // A pod punted clear of the pocket (ram, stray shot) is unrecoverable where it is:
       // restage it near the pilot — retry, never a wall.
       if (Math.hypot(pod.pos.x - player.pos.x, pod.pos.z - player.pos.z) > 3000) {
-        this._rescueFail('grab', 'pod drifted out of reach');
+        // If the standing beacon is also beyond reach, a respawned pod lands on its line
+        // still out of reach and the fail/restage pair loops forever. Restage the whole
+        // tableau near the pilot — the same recovery a missing standing piece takes.
+        if (Math.hypot(beacon.pos.x - player.pos.x, beacon.pos.z - player.pos.z) > 3000) {
+          this._spawnRescueCast();
+        } else {
+          this._rescueFail('grab', 'pod drifted out of reach');
+        }
         return;
       }
       const latched = rescue.podLatched
