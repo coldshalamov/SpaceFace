@@ -27,6 +27,7 @@ import {
   isBeatStepsComplete,
   readCanonicalStory,
 } from '../src/story/campaign47a/index.js';
+import { plantFirstPlayerGrowth, plantNestOutcome } from './story-campaign47a-fixtures.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -241,11 +242,30 @@ function playBookBeat1(h) {
   bus.emit('sector:enter', { sectorId: infested.destSectorId });
   h.missions.spawnTargetsForSector(infested.destSectorId);
   h.missions._ensureMissionTargets(infested);
-  for (const id of [...infested.targetEntityIds]) {
-    bus.emit('entity:killed', { id, killerId: state.playerId });
-  }
-  for (let i = 0; i < (infested.params.furnaceFeedsNeeded || 0); i++) {
-    bus.emit('furnace:fed', { entityId: 9700 + i });
+  // furnaceWorksiteVersion 1: the four suture mites belong to the closed-refinery
+  // ecology (data.ecology.speciesId/faunaKey) — the headless harness cannot run that
+  // system, so plant the same durable records the ecology owner writes on death:
+  // the per-site deadFauna ledger the clearance reconciler reads, then re-sync so the
+  // worksite recounts cleared sites before the disposal lots are fed.
+  state.world.alienEcology = state.world.alienEcology || { sites: {} };
+  state.world.alienEcology.sites = state.world.alienEcology.sites || {};
+  state.world.alienEcology.sites.closed_refinery = {
+    deadFauna: {
+      'closed_refinery:suture_mite:0': true,
+      'closed_refinery:suture_mite:1': true,
+      'closed_refinery:suture_mite:2': true,
+      'closed_refinery:suture_mite:3': true,
+    },
+  };
+  h.missions._ensureMissionTargets(infested);
+  for (const lot of infested.params.furnaceLots || []) {
+    const body = state.entities.get(lot.entityId);
+    if (!body) continue;
+    body._furnaceTaken = true;
+    bus.emit('furnace:fed', {
+      sectorId: lot.sectorId, missionId: infested.id,
+      lotSlot: lot.slot, entityId: lot.entityId,
+    });
   }
 }
 
@@ -259,14 +279,19 @@ function playBookBeat2(h, outcome = 'force') {
   for (const id of [...cinder.targetEntityIds]) {
     bus.emit('entity:killed', { id, killerId: state.playerId });
   }
-  for (let i = 0; i < (cinder.params.rookDeliveryNeeded || 0); i++) {
-    bus.emit('rookWreck:delivered', { entityId: 9800 + i });
+  // The Rook delivery is a verified booth receipt now (acceptCinderRookReceipt): it
+  // needs an aftermath-bound marked wreck the real rookBooth system claims at the pad.
+  // This harness runs no booth/aftermath systems — the physical drive is covered by
+  // campaign47a-b2-rescue-experience — so settle through the public completion path.
+  const cinderIndex = state.missions.active.indexOf(cinder);
+  if (cinderIndex >= 0 && cinder.status === 'active') {
+    h.missions._completeMission(cinder, cinderIndex);
   }
   assert.equal(state.story.beatIndex, 2, 'the cinder board alone cannot close First Blood');
-  bus.emit('understory:gardenFed', { byPlayer: true, gardenId: 'g_live', fedMass: 20 });
-  bus.emit('encounter:resolved', {
-    shape: 'the_nest', encounterId: 'enc_nest_live', sectorId: 'sector_charon_expanse',
-  });
+  // The reconcilers verify the owners' persisted receipts — plant the real
+  // first-growth row and terminal Nest outcome before emitting the live signals.
+  bus.emit('understory:playerGrowth', plantFirstPlayerGrowth(state));
+  bus.emit('encounter:resolved', plantNestOutcome(state));
   const elroy = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
   state.world.currentSectorId = elroy.destSectorId;
   bus.emit('sector:enter', { sectorId: elroy.destSectorId });
@@ -1020,10 +1045,14 @@ check('live route: the register outcome pins exactly one B4 door', () => {
     const row = openBoard.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
     assert.ok(row, `${outcome}: the ${open[1]} intro must post at ${open[0]}`);
     assert.equal(row.type, open[2]);
+    // PQ-032.02 live-route contract: the register verdict earns its door but does NOT
+    // pin Pick a Side — all three introductions stay open until the player chooses.
+    // Only pinned/legacy saves suppress the other doors.
     for (const [stationId] of closed) {
       const board = h.missions.ensureBoard(stationId);
-      const blocked = board.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
-      assert.equal(blocked, undefined, `${outcome}: ${stationId} must not post an intro`);
+      const other = board.slots.find((o) => String(o.storyTag || '').startsWith(STORY_BRANCH_INTRO_TAG));
+      assert.ok(other, `${outcome}: the live route keeps ${stationId}'s door open until the player chooses`);
+      assert.equal(other.storyStake, undefined, `${outcome}: no live-route door carries a pinned stake`);
     }
     assertLiveRouteClean(h, `${outcome} door`, outcome);
   }
