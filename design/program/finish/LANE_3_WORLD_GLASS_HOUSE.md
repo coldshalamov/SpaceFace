@@ -20,7 +20,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 |---|---|---|---|
 | ~~D261~~ | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 — **DONE**: dock cue f0b6d842 + bench #alerts host ad732f2e + legend plate widened so HULL/SHIELD/ARMOR read whole on the phone shot (d108db76, verified on the PNG) |
 | D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 |
-| D-new | Shipworks Buy-mode left rail: the for-sale list prints over the current-hull spec block ("FLEET · FOR SALE" collides with "473 TOP SPEED") — seen on `station-shipworks-impound` shot; verify whether plain Buy mode collides too | `src/ui/station/screens/shipworks.js` (foreign-dirty as of 2026-10-30 — check again when it settles) | packet G2 |
+| D-new | Shipworks Buy-mode left rail: the for-sale list prints over the current-hull spec block ("FLEET · FOR SALE" collides with "473 TOP SPEED") — **verified fixed in working tree 2026-10-30**: the foreign impound-desk wiring (+115 lines, still uncommitted) re-seated the rail; both `station-shipworks` and `station-shipworks-impound` measure clean and read correctly on the PNGs. Re-verify once their edit lands | `src/ui/station/screens/shipworks.js` | packet G2 |
 
 ## Day-one reviews (from `LANDED_REVIEW.md`; hand them to Codex as one batch, fix what it finds, delete each row there)
 
@@ -41,14 +41,13 @@ Batch verdicts in (`.devshots/finish/lane3/batch-{a,b,c}/RECEIPT.md`):
   proof escalates a vengeful debt with `moralMemory:escalated` on the bus. Row deleted.
   **710f1e1 FIXED 6b470a4eb45** — bounded `v.returns` ledger in `state.verge` rides the
   vergeCourt slot; repro test proves a sector-unloaded warden re-claims and walks home. Row deleted.
-- **R-c1225fa — IN PROGRESS** (presentation craft: palette skin, market SOLD OUT, bar rail bands,
-  HC focus signal): bar rail verified clean at 1300px and 800px (NEW ARRIVAL badges whole, board
-  foot clears). Market SOLD OUT verified via new `?soldout=<cmdtyId>` bench fixture — hero/row
-  print SOLD OUT + Restock ~30s, BUY disabled with the honest reason. That shot exposed a real
-  defect, **fixed `3e37b0b6d1d`**: at ≤880px height the hold arc sat in a 2-col grid beside the
-  total, so "Unavailable" crushed "HOLD 1 / 40 u" into clipped fragments — now spans the row
-  under the total, verified on both sold-out and in-stock PNGs + a 24-control walk. Ctrl+K
-  palette fixture (`?cmdk=1`) added; HC-focus + remaining palette shots still owed.
+- **R-c1225fa — DONE.** Every surface verified on real shots: bar rail clean at 1300px/800px;
+  market SOLD OUT via new `?soldout=` fixture (hero + row + disabled BUY with honest reason);
+  Ctrl+K palette verified via `?cmdk=1` real-keystroke fixture (Unfold layer, etched ladder,
+  underline focus, key hints); SAVE FIT wears the amber Lamp Key; FIND A SERVICE flattened to a
+  caps word. One real defect found + **fixed `3e37b0b6d1d`**: at ≤880px the hold arc sat beside
+  the total in a 2-col grid, so "Unavailable" crushed "HOLD 1 / 40 u" into clipped fragments —
+  now spans the row under the total; sold-out + in-stock PNGs and a 24-control walk verified.
 - **8962e68 ORRERY row — surveyed** (batch-a2 RECEIPT.md): 23 title findings are the designed
   first-light modal (FP); REAL = shipworks receipt-over-verbs + delta off-1920 edge, crucible-door
   tile sliver, comms+wingman radial crest svg overflow (helix x≈-3); LIKELY-FP = tech-tree
