@@ -14115,7 +14115,17 @@ export const render = {
           };
         }
         if (ownerSnapshot && typeof console !== 'undefined') {
-          console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          const retiredAuthoredBoundary = ownerSnapshot.ownerType === 'authored-boundary'
+            && ownerSnapshot.entityAlive === false
+            && ownerSnapshot.entityIsCurrent === false
+            && ownerSnapshot.entityStillRequired === false;
+          if (retiredAuthoredBoundary) {
+            console.info(
+              `[render] authored GPU residency cancelled for retired boundary ${String(ownerSnapshot.entityId ?? 'unknown')}`,
+            );
+          } else {
+            console.warn('[render] authored GPU residency owner became inactive', ownerSnapshot);
+          }
         }
         const error = new Error('Authored GPU residency owner became inactive before texture upload');
         error.name = 'AbortError';
