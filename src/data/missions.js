@@ -175,7 +175,7 @@ export const MISSION_STANDING_LADDER = [
     maxRisk: 4,
     name: 'Allied Retainers',
     short: 'Allied+',
-    unlocks: 'the Drift allied retainer haul, posted on Collective desks',
+    unlocks: 'the Drift allied retainer quota, posted on Collective desks',
     aspirational: true,
   },
 ];
@@ -213,7 +213,7 @@ const ALLIED_RETAINER_FACTION = 'faction_dmc';
 const RANK_CONTRACT_FACTIONS = Object.freeze([
   ['faction_scn', 'Concord cleared escort', 'escort'],
   ['faction_mts', 'Meridian known haul', 'cargo_delivery'],
-  ['faction_dmc', 'Drift shift haul', 'mining_quota'],
+  ['faction_dmc', 'Drift shift quota', 'mining_quota'],
   ['faction_reach', 'Reach crew run', 'bounty_hunt'],
   ['faction_quiet', 'Quiet known exchange', 'smuggling_run'],
   ['faction_vael', 'Vael noticed survey', 'recon_scan'],
@@ -233,7 +233,7 @@ export const RANK_GATED_CONTRACTS = Object.freeze(RANK_CONTRACT_FACTIONS.map(([f
     id: `rank_contract_${factionId}`,
     factionId,
     type,
-    title: allied ? 'Drift allied retainer haul' : title,
+    title: allied ? 'Drift allied retainer quota' : title,
     minRankStep: RANK_STEP_BY_FACTION[factionId] || 1,
     minRep: allied ? 400 : -29,
     rankGated: true,
@@ -2240,8 +2240,12 @@ export const CAPITAL_BOSS = Object.freeze({
     turrets: 'subsystem_weapon',
     bays: 'subsystem_tether_spool',
   }),
+  // One event/role pair per method (the first match wins in authoredMethodFor): thrown and
+  // whipped mass is the throw solution's credit, the hull dying is the gunnery solution's. A
+  // capital that dies after mass landed still settles as a throw through the hit ledger in
+  // _completeCapitalBossFromKill; the hook table must not claim 'kill' for both.
   methodHooks: Object.freeze({
-    throw_the_capital: Object.freeze({ on: Object.freeze(['whip', 'throw', 'kill']), role: 'capital_hull' }),
+    throw_the_capital: Object.freeze({ on: Object.freeze(['whip', 'throw']), role: 'capital_hull' }),
     outgun_the_capital: Object.freeze({ on: Object.freeze(['kill']), role: 'capital_hull' }),
   }),
 });

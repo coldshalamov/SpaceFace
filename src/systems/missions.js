@@ -580,6 +580,10 @@ function authoredMethodDebriefPhrase(method) {
     slip_the_locker: 'reeling the locker out quietly',
     breach_the_seal: 'breaking the locker seal with thrown mass',
   };
+  // A missing method has no phrase — the debrief drops the "closed by" clause instead of
+  // inventing one ("physics"). Every catalog method is listed above (sfq-b072 checks it); an
+  // unlisted future method still reads as words rather than an id.
+  if (!method) return null;
   return phrases[method] || String(method).replace(/_/g, ' ');
 }
 
@@ -735,9 +739,21 @@ const MISSION_MUTATIONS = Object.freeze({
     }),
   }),
   // The pods went down with the run → recover what the wreck left.
-  pods_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // The 'recovery' tag keeps the salvage leg; the toast and brief name what was actually lost
+  // (the tag's default copy is the rescue_priority story).
+  pods_lost: Object.freeze({
+    type: 'salvage_retrieval',
+    tag: 'recovery',
+    toast: (title) => `The pods went down with the run — the wreck can still be recovered. Contract live: ${title}.`,
+    brief: (homeName) => `The pods went down with the run. What the wreck left still pays at ${homeName}.`,
+  }),
   // The towed slag core broke up → the scatter still pays at the yard.
-  core_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  core_lost: Object.freeze({
+    type: 'salvage_retrieval',
+    tag: 'recovery',
+    toast: (title) => `The core broke up in transit — the scatter still pays. Recovery contract live: ${title}.`,
+    brief: (homeName) => `The slag core broke up on the line. The scatter still pays at ${homeName}.`,
+  }),
   // FB-068 — another crew (or the rocks) took the objective down. The contract voids fairly
   // (deposit back, no penalty — handled by the 'failed_external' branch in _failMission) and
   // the objective's wreck still pays as a recovery leg: the loss is an outcome, not a dead end.
@@ -747,6 +763,7 @@ const MISSION_MUTATIONS = Object.freeze({
     // Names the cause the failing contract stamped (gunnery / an explosive / the rocks) — the
     // player hears WHAT took the objective down, not just that a follow-up exists.
     toast: (title, m) => `${(m && m.params && m.params.externalCauseLabel) || 'The objective went down to someone else'} — its wreck can still be recovered: ${title}.`,
+    brief: (homeName) => `Someone else took the objective down. What is left of it still pays at ${homeName}.`,
   }),
   // BP-01.1: the ship went down WITH the contract manifest → the player's own wreck still holds
   // the lost units. keepManifest keeps the failed contract's commodity on the successor; the
@@ -784,12 +801,31 @@ const FAIL_REASON_WORD = Object.freeze({
   wake_missed: 'the hauler left the lane',
   wake_unmatched: 'the crate was taken off the wake',
   wake_refused: 'the hold refused the crate',
+  // Race DNFs name the cause: jumping the lane, calling the run off (abort or menu), the hull.
+  race_left_course: 'you left the course',
+  race_aborted: 'the run was called off',
+  race_pilot_lost: 'your ship went down mid-run',
+  race_bad_phase: 'the course record could not be read',
+  race_bad_course: 'the course record could not be read',
+  race_wake_incomplete: 'you did not hold the wake long enough',
+  speed_payload_lost: 'the payload did not survive the run',
+  payload_destroyed: 'the payload was destroyed',
+  hull_destroyed: 'the hull was destroyed',
+  all_lots_lost: 'every lot was lost',
+  passenger_transport_destroyed: 'the transport was destroyed',
+  target_unavailable: 'the mark could not be found',
+  obligation_already_settled: 'the obligation was already settled',
+  receiver_refused: 'the receiver refused the delivery',
 });
 function failReasonWord(reason) {
   const text = reason == null ? '' : String(reason);
   if (FAIL_REASON_WORD[text]) return FAIL_REASON_WORD[text];
   if (text.startsWith('clause_broken:') || text.startsWith('condition_broken:')) {
-    return 'a contract clause was broken';
+    // Name the term the board printed, not a generic clause line.
+    const id = text.slice(text.indexOf(':') + 1);
+    const def = id ? missionConditionById(id) : null;
+    const label = def && def.label ? String(def.label).trim() : '';
+    return label ? `the contract term "${label}" was broken` : 'a contract clause was broken';
   }
   return null;
 }
@@ -1236,7 +1272,17 @@ export function markCorridorFirstDock(state, stationId = null, simTime = 0) {
   return true;
 }
 
-const CONTRACT_47A_REWARD_CR = 400;
+// The Cold Start contract itself pays nothing (payment withheld, status pending); the credits
+// the dock posts are the beat-0 story grant (`story:cold_start`, missionStoryOps._advanceStory).
+// Read the figure from that grant so the receipt and copy cannot drift from what actually lands.
+const CONTRACT_47A_REWARD_CR = Math.max(0, Math.round(Number(
+  STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0));
+const contract47aBalanceNote = (cr) =>
+  `Contract pay withheld — status pending. ${Math.max(0, Math.round(Number(cr) || 0)).toLocaleString('en-US')} cr posted for balance.`;
+// A yield within this radius of the 47-A fix is the sample (missionObjectiveOps._onMiningYield).
+const CONTRACT_47A_SAMPLE_MATCH_WU = 80;
+// Standing this close to the fix means its rocks are loaded; only then can a missing rock re-mark.
+const CONTRACT_47A_SITE_LOADED_WU = 400;
 export const CONTRACT_47A_B2_SCAN_RADIUS_WU = 1200;
 export const CONTRACT_47A_B2_CUSTODY_REEL_WU = 60;
 
@@ -2171,8 +2217,11 @@ export const missions = {
     if (def.onBreach === 'fail') {
       const index = this.state.missions.active.indexOf(m);
       const twist = isTwistCondition(def);
-      if (!twist) this.bus.emit('toast', { text: line, kind: 'error', ttl: 4 });
-      this._failMission(m, index, twist ? `clause_broken:${def.id}` : `condition_broken:${def.id}`);
+      const reason = twist ? `clause_broken:${def.id}` : `condition_broken:${def.id}`;
+      // A twist that posts a follow-up job speaks through that job's toast; one that does not
+      // must still say the authored breach sentence, or the player never learns what broke.
+      if (!twist || !missionMutationFor(reason)) this.bus.emit('toast', { text: line, kind: 'error', ttl: 4 });
+      this._failMission(m, index, reason);
       return;
     }
     this._sayConditionLine(line);
@@ -2279,7 +2328,15 @@ export const missions = {
         return false;
       }
     }
-    if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) return false;
+    if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) {
+      // A signal row whose cause no longer holds comes down with a word, not a dead click.
+      if (board && Array.isArray(board.slots)) {
+        board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+      }
+      this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+      this.bus.emit('toast', { text: 'That signal lead has gone cold — the board took it down', kind: 'warn', ttl: 4 });
+      return false;
+    }
     // NXI-169 — a shortage-backed offer is only as live as the starvation that posted it. A row
     // planned while the yard's hopper ran empty must not pay the scarcity premium for a delivery
     // the station no longer requested: re-read the posted need at accept and retire the stale row.
@@ -2291,8 +2348,13 @@ export const missions = {
       }
       this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
       const yard = stationInfoFor(this.state, offer.destStationId);
+      const yardName = (yard && yard.name) || 'the station';
       this.bus.emit('toast', {
-        text: `That relief run is stale — ${(yard && yard.name) || offer.destStationId} no longer needs the feedstock`,
+        // A gate-parts repair and a starved-yard relief run retire through the same read; each
+        // says what it was for, and a missing name never prints a raw station id.
+        text: isShortageGateRepair(offer)
+          ? `That repair job is stale — ${yardName} no longer needs the parts`
+          : `That relief run is stale — ${yardName} no longer needs the feedstock`,
         kind: 'warn',
         ttl: 4,
       });
@@ -2480,6 +2542,12 @@ export const missions = {
     let changed = false;
     const kept = [];
     for (const offer of board.slots) {
+      // A gate-parts repair row comes down with the same read that refuses its accept, so the
+      // board never shows a job the click will reject.
+      if (offer && isShortageGateRepair(offer) && this._shortageOfferStale(offer)) {
+        changed = true;
+        continue;
+      }
       if (!offer || offer.source !== 'economyContract' || offer.type !== 'cargo_delivery'
         || !offer.cause || offer.cause.tag !== 'industry_starved'
         || !offer.params || !offer.params.cmdtyId || !offer.destStationId) {
@@ -2521,14 +2589,14 @@ export const missions = {
   /** Re-derive a starvation row's title/summary/cause line from live names + need. */
   _rewriteStarvedOfferText(offer, destInfo, markets) {
     if (!offer || !offer.params) return;
-    const destName = (destInfo && destInfo.name) || offer.destStationId;
+    const destName = (destInfo && destInfo.name) || 'the yard';
     const commodity = this._cmdtyName(offer.params.cmdtyId);
     const rivalId = offer.cause && offer.cause.rivalStationId;
     let rivalName = null;
     let rivalStillHungry = true;
     if (rivalId) {
       const rivalInfo = stationInfoFor(this.state, rivalId);
-      rivalName = (rivalInfo && rivalInfo.name) || rivalId;
+      rivalName = (rivalInfo && rivalInfo.name) || 'a rival yard';
       const rivalSector = rivalInfo && SECTOR_BY_ID.get(rivalInfo.sectorId);
       const rivalMarket = markets && markets[rivalId];
       const rivalNeed = rivalInfo && rivalSector && rivalMarket
@@ -3264,7 +3332,11 @@ export const missions = {
           ...base,
           label: '47-A Recovery Site',
           stationId: null,
-          sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId,
+          // A held fix (no live rock in view) is still in the contract's sector, not wherever
+          // the player happens to be flying.
+          sectorId: source.type === 'sample_site'
+            ? (m.destSectorId || (this.state.world && this.state.world.currentSectorId))
+            : (this.state.world && this.state.world.currentSectorId || m.destSectorId),
           pos: { x: source.pos.x, z: source.pos.z },
         };
       }
@@ -3722,24 +3794,42 @@ export const missions = {
   _resolveContract47aSampleSource(m) {
     if (!m || m.storyTag !== CONTRACT_47A_B0_TAG) return null;
     const p = m.params || (m.params = {});
-    const saved = p.samplePos;
+    const saved = p.samplePos && Number.isFinite(Number(p.samplePos.x)) && Number.isFinite(Number(p.samplePos.z))
+      ? { x: Number(p.samplePos.x), z: Number(p.samplePos.z) } : null;
+    const player = this.state.entities.get(this.state.playerId);
+    const playerPos = player && player.pos ? player.pos : { x: 0, z: 0 };
+    // The first fix is chosen near the player; once fixed, distance is measured from the fix so a
+    // re-mark (below) lands on the rock nearest the site, never on whatever the player is beside.
+    const anchor = saved || playerPos;
     let nearest = null;
     let nearestD2 = Infinity;
     for (const entity of missionIndexedEntities(this.state, 'mineables', 'asteroids')) {
       if (!entity || entity.alive === false || entity.type !== 'asteroid' || !entity.pos) continue;
-      if (saved) {
-        const dx = entity.pos.x - saved.x;
-        const dz = entity.pos.z - saved.z;
-        if (dx * dx + dz * dz <= 80 * 80) return entity;
-      }
-      const player = this.state.entities.get(this.state.playerId);
-      const dx = entity.pos.x - (player && player.pos ? player.pos.x : 0);
-      const dz = entity.pos.z - (player && player.pos ? player.pos.z : 0);
+      const dx = entity.pos.x - anchor.x;
+      const dz = entity.pos.z - anchor.z;
       const d2 = dx * dx + dz * dz;
+      if (saved && d2 <= CONTRACT_47A_SAMPLE_MATCH_WU * CONTRACT_47A_SAMPLE_MATCH_WU) return entity;
       if (d2 < nearestD2) { nearestD2 = d2; nearest = entity; }
     }
-    if (nearest) p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
-    return nearest;
+    if (!saved) {
+      if (nearest) p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+      return nearest;
+    }
+    // The site the board marked is the site. A sector change, a cold or emptied index, or a rock
+    // that simply has not streamed in must not move it: report the fix itself so the waypoint
+    // and the yield match stay on it. Only when the player is standing at the fix in the
+    // contract's own sector — so the area is certainly loaded — and the marked rock is gone is
+    // the site re-marked, onto the rock nearest the old fix.
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const inContractSector = !m.destSectorId || !sectorId || sectorId === m.destSectorId;
+    const px = playerPos.x - saved.x;
+    const pz = playerPos.z - saved.z;
+    const playerAtFix = px * px + pz * pz <= CONTRACT_47A_SITE_LOADED_WU * CONTRACT_47A_SITE_LOADED_WU;
+    if (nearest && inContractSector && playerAtFix) {
+      p.samplePos = { x: nearest.pos.x, z: nearest.pos.z };
+      return nearest;
+    }
+    return { id: null, type: 'sample_site', pos: saved };
   },
 
   _nearestBulkChunk() {
@@ -3836,15 +3926,15 @@ export const missions = {
         const mass = n => Number(n.toFixed(1)).toString();
         const nextStage = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > biomass);
         const growthFeed = nextStage ? Math.ceil((nextStage.massFloor - biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : null;
-        const growth = growthFeed == null ? 'First player growth still needs an owner receipt.'
+        const growth = growthFeed == null ? 'The garden is at its last stage; no further growth can show.'
           : `Retained growth ${mass(biomass)} biomass; ${mass(growthFeed)}t feed reaches the next visible stage.`;
         const run = saved.compostRunComplete === true
           ? `Run paid once at ${mass(fed)}t; no repeat payment.`
           : `Your run ${mass(fed)}/${target}t; ${mass(Math.max(0, target - fed))}t remain. No pay before ${target}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
         const regrowth = receiver.status === 'destroyed'
-          ? 'The destroyed receiver can regrow only from new feed: 100t from zero to stage 2, no replacement 52 biomass. ' : '';
+          ? 'The receiver was destroyed; it regrows only from new feed — 100t from zero to reach stage 2. ' : '';
         return { ...base, label: `Compost Run — ${UNDERSTORY_RECEIVER.name} west outside-mouth approach`,
-          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. If no Cinder hull remains, in Charon mine and collect ordinary iron, then jettison 17u near the receiver: 13.6t contents in a 20t tow body. No cargo is provided; only remaining contents count. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
+          reason: `${regrowth}${growth} ${run} First visible growth opens the Nest. No feed is supplied: tow a Cinder hull in, or mine ordinary iron in Charon and jettison 17u near the receiver (13.6t of feed). Only what reaches the mouth counts. Approach and feed from Rook on the west side; keep the load close and steer around loose clutter before the final approach. Use the Line and keep your cockpit outside the mouth.`,
           stationId: null, sectorId: UNDERSTORY_RECEIVER.sectorId,
           sectorName: SECTOR_BY_ID.get(UNDERSTORY_RECEIVER.sectorId)?.name || null,
           // The location is deliberately not bound to the hull's centre: selection and
@@ -3915,7 +4005,7 @@ export const missions = {
       return {
         ...base,
         label: `Proving Ground ${step}/${count}`,
-        reason: `Accept and complete ${branch} leg ${step}/${count}`,
+        reason: `Accept and complete ${BRANCH_CHAIN_LEG_LABEL[branch] || 'faction chain'} leg ${step}/${count}`,
         stationId: route && route.stationId || null,
         sectorId: route && route.sectorId || currentSectorId,
         sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
@@ -3925,14 +4015,21 @@ export const missions = {
     if (beat.beat === 6) {
       const program = getEmpireSeedProgram(campaign47aOutcomeKey(state));
       const pending = state.story && state.story.flags && state.story.flags.empire_seed_pending_id;
-      const asteroid = this._nearestAsteroid();
+      // Name the program the player picks (its label), never the drone template id. Pin the
+      // deployed drone when it is live; a mining program may pin the rock it will work; a guard
+      // program has no place to pin before the drone exists.
+      const drone = pending != null && state.entities ? state.entities.get(pending) : null;
+      const liveDrone = drone && drone.alive !== false && drone.pos ? drone : null;
+      const asteroid = !liveDrone && program.templateId === 'mine_to_depot' ? this._nearestAsteroid() : null;
+      const pin = liveDrone || asteroid;
       return {
         ...base,
         label: program.label,
         reason: pending
-          ? `Assign ${program.templateId.replace(/_/g, ' ')} to the deployed drone`
-          : `Deploy a drone, then assign ${program.templateId.replace(/_/g, ' ')}`,
-        pos: asteroid && asteroid.pos ? { x: asteroid.pos.x, z: asteroid.pos.z } : null,
+          ? `Assign the ${program.label} program to the deployed drone`
+          : `Deploy a drone, then assign it the ${program.label} program`,
+        ...(liveDrone ? { targetEntityId: liveDrone.id } : {}),
+        pos: pin ? { x: pin.pos.x, z: pin.pos.z } : null,
       };
     }
     if (beat.beat === 7 && state.story && state.story.flags && !state.story.flags.deep_reach_operation_complete) {
@@ -4396,7 +4493,9 @@ export const missions = {
         gateIndex: event.gateIndex, elapsedS: measuredElapsed, lap: event.lap,
         splitDeltaS: params.lastSplitDeltaS, ghostDeltaS: ghostDelta, lapCompleted: event.lapCompleted });
       if (event.lapCompleted && !event.finished) this.bus.emit('toast', {
-        text: `Lap ${params.lap + 1}/${params.laps} · ${event.lapTimeS.toFixed(2)}s split`, kind: 'info', ttl: 2,
+        // event.lap is the 0-based lap this crossing just finished (advanceCircuit has already
+        // moved params.lap on), so the split is labeled with the lap it timed.
+        text: `Lap ${(event.lap | 0) + 1}/${params.laps} · ${event.lapTimeS.toFixed(2)}s split`, kind: 'info', ttl: 2,
       });
       if (event.finished) finish = event;
     }
@@ -4609,6 +4708,19 @@ export const missions = {
         const ok = this._escorteeArrivedOk(m);
         if (ok) { this._settleEscortConvoyPay(m); this._completeMission(m, i); }
         else this.bus.emit('toast', { text: 'Escort: wait for the convoy to dock', kind: 'warn', ttl: 3 });
+        continue;
+      }
+
+      // Quiet passage settles when the transport clears the checkpoint (_driveQuietPassage), not
+      // when the player berths at Customs. A dock before the transport is through pays nothing.
+      if (t === 'passenger_transport' && m.params && m.params.quietPassage) {
+        if (!m.params.quietPassage.passedCheckpoint) {
+          this.bus.emit('toast', {
+            text: 'Quiet passage: the transport has not cleared the checkpoint yet',
+            kind: 'warn',
+            ttl: 3,
+          });
+        }
         continue;
       }
 
@@ -4944,6 +5056,11 @@ export const missions = {
     }
     switch (m && m.type) {
       case 'cargo_delivery':
+        // Custody restitution is not written off: the unreturned units stay owed on the custody
+        // ledger (custodyConsequences keeps the line open), matching the delivery toast.
+        if (p.completionMethod === 'partial_delivery' && m.source === 'custodyRecovery') {
+          return `Partial restitution signed at ${dest} — ${p.deliveredUnits || 0}u returned, ${p.shortfallUnits || 0}u still owed.`;
+        }
         return p.completionMethod === 'partial_delivery'
           ? `Short manifest signed at ${dest} — ${p.deliveredUnits || 0}u accepted, ${p.shortfallUnits || 0}u written off the bill. The client paid on what arrived.`
           : 'Manifest sealed at ' + dest + '. ' + cargo + ' cleared the dock and the client released payment.';
@@ -4970,6 +5087,10 @@ export const missions = {
         }
         return 'Tag closed near ' + dest + '. The board will update before the rumor does.';
       case 'escort':
+        // _settleEscortConvoyPay stamps convoy_short when hulls were lost on the way in.
+        if (p.completionMethod === 'convoy_short') {
+          return 'Convoy arrived at ' + dest + ' short of hulls. The client paid for the ones that made it.';
+        }
         return 'Convoy arrived at ' + dest + ' intact. That is all the client wanted written down.';
       case 'patrol_clear':
         return 'Lane report is clean. Hostile signatures cleared, trade traffic can pretend it was always safe.';
@@ -5004,7 +5125,12 @@ export const missions = {
           ? 'Corridor opened. Pods reeled out of the field near ' + dest + '.'
           : 'Pod towed out of the field and signed in at ' + dest + '.';
       case AUTHORED_SET_PIECE_TYPE:
-        return (m.title || 'Set piece') + ' closed by ' + authoredMethodDebriefPhrase(p.completionMethod || 'physics') + ' near ' + dest + '.';
+        {
+          const phrase = authoredMethodDebriefPhrase(p.completionMethod);
+          return phrase
+            ? (m.title || 'Set piece') + ' closed by ' + phrase + ' near ' + dest + '.'
+            : (m.title || 'Set piece') + ' closed near ' + dest + '.';
+        }
       case CAPITAL_BOSS_TYPE:
         return p.completionMethod === 'throw_the_capital'
           ? 'Capital came down to thrown mass near ' + dest + '. Guns never had to speak.'
@@ -5059,7 +5185,9 @@ export const missions = {
       ttl: success ? 8 : 7,
       note: success ? (zeroPayLandmark
         ? 'Field record filed; no credits issued.'
-        : this._missionPaydayNote(m, rewardCr, settlement)) : null,
+        : m.storyTag === CONTRACT_47A_B0_TAG
+          ? contract47aBalanceNote(rewardCr)
+          : this._missionPaydayNote(m, rewardCr, settlement)) : null,
     });
   },
 
@@ -5492,9 +5620,14 @@ export const missions = {
         }
         : {}),
     }));
+    const rpSuffix = researchPoints > 0 ? ` +${researchPoints} RP` : '';
+    // 47-A: the PAYMENT WITHHELD beat above is true of the contract; the credits that land are
+    // the balance posting. Say both so the toast never reads as the withheld pay arriving.
     const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
       ? `Mission complete: ${m.title} — field record filed; no credits issued.`
-      : `Mission complete: ${m.title} +${displayRewardCr} cr${researchPoints > 0 ? ` +${researchPoints} RP` : ''}`;
+      : m.storyTag === CONTRACT_47A_B0_TAG
+        ? `Mission complete: ${m.title} — contract pay withheld; +${displayRewardCr} cr posted for balance${rpSuffix}`
+        : `Mission complete: ${m.title} +${displayRewardCr} cr${rpSuffix}`;
     this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     // GF-4: a bigger celebratory ring + light burst at the player on completion (the triumphant
     // chord + music duck fire from audioSystem's mission:completed subscription). 'branch' lane
@@ -5679,7 +5812,9 @@ export const missions = {
             : keepManifest
               ? `Your wreck holds the manifest — recover it for ${homeName}`
               : `Recover what the wreck left — ${homeName}`,
-        brief: descriptor.tag === 'salvage'
+        brief: typeof descriptor.brief === 'function'
+          ? descriptor.brief(homeName)
+          : descriptor.tag === 'salvage'
           ? `The convoy is gone. Its wreck is still on the drift with an unstable core; tow it clear, vent it, or strip it before it bursts — ${homeName} pays for what comes back.`
           : descriptor.tag === 'cooked'
             ? `The lot vented. What is left still pays at ${homeName}.`
@@ -5892,6 +6027,8 @@ export const missions = {
     this._recordMissionReceipt(m, 'failed', reason || 'failed', {
       rewardCr: 0,
       collateralLostCr: voided ? 0 : m.collateral_cr || 0,
+      // A voided contract returned its deposit above; the receipt says so instead of "No payout".
+      collateralRefundCr: voided ? Math.max(0, Math.round(Number(m.collateral_cr) || 0)) : 0,
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
@@ -6532,18 +6669,20 @@ export const STORY_SIGNAL_BY_KIND = {
 
 // Per-branch B5 chain requirements (spec B5).
 export const BRANCH_CHAIN_TYPE = { traders: 'bulk_trade', patrol: 'patrol_clear', free: 'smuggling_run' };
+// Player-facing name of one Proving Ground leg per branch (the internal branch id is not copy).
+const BRANCH_CHAIN_LEG_LABEL = { traders: 'Meridian trade', patrol: 'Concord patrol', free: 'Free Captain smuggling' };
 export const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 
 // Direction hints shown when a beat becomes current (Captain's Log north star).
 export const BEAT_HINT = {
-  0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
+  0: 'Cold Start: Contract 47-A — sample the 12.4t mass discrepancy, then dock at Helios. Payment is withheld; status pending.',
   1: 'Honest Work: the book posts the alloy run first — the Scale 4 weigh and the furnace detail follow.',
   2: 'First Blood: dock at Tethys Junction and accept Cinder marks from the mission board. Then fly to Charon; the Compost Run, the Nest, and the register follow in order.',
   3: 'Bigger Boat: take delivery of VARIANCE ADJUSTMENT at Slate\u2019s berth — the maw and the Foreman follow.',
   4: 'Pick a Side: accept an intro contract, then run the door\u2019s operation on the board.',
   5: 'Proving Ground: complete your faction\'s mission chain.',
   6: 'Empire Seed: deploy your first passive asset (drone, trader, or outpost).',
-  7: 'The Deep Reach: reach Ashfall and choose through its board, ledger, or wormhole.',
+  7: 'The Deep Reach: run your side\u2019s operation — the blockade, the siege, or the evidence tow — or bring the ledger, then settle at the Ash Cache desk.',
 };
 
 function storyBeatTitle(beat) {
@@ -6581,7 +6720,23 @@ function sameNavWaypoint(a, b) {
   if ((a.sectorId || null) !== (b.sectorId || null)) return false;
   if ((a.label || '') !== (b.label || '')) return false;
   if ((a.reason || '') !== (b.reason || '')) return false;
+  // The identity bind is what throw, tether, and the chart resolve; a bind that appears or
+  // changes under an unchanged id/position is a different waypoint and must be published.
+  if (!sameStableBind(a.stable, b.stable)) return false;
   return sameNavPos(a.pos, b.pos);
+}
+
+function sameStableBind(a, b) {
+  if (!a || !b) return !a && !b;
+  if ((a.key ?? null) !== (b.key ?? null)) return false;
+  if ((a.entityId ?? null) !== (b.entityId ?? null)) return false;
+  if (!!a.durable !== !!b.durable) return false;
+  const sa = a.stamp || null;
+  const sb = b.stamp || null;
+  if (!sa || !sb) return !sa && !sb;
+  const keys = new Set([...Object.keys(sa), ...Object.keys(sb)]);
+  for (const key of keys) if ((sa[key] ?? null) !== (sb[key] ?? null)) return false;
+  return true;
 }
 
 function sameNavPos(a, b) {
