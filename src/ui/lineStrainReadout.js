@@ -37,15 +37,17 @@ export function createLineStrainReadout(host) {
   track.className = 'sf-line-strain__track'; fill.className = 'sf-line-strain__fill'; track.appendChild(fill);
   root.appendChild(title); root.appendChild(detail); root.appendChild(track); host.appendChild(root);
   const profile = {}, query = { x: 0, y: 0, z: 0 };
+  // Re-setting [hidden] on an already hidden root still invalidates style every frame.
+  const hide = () => { if (!root.hidden) root.hidden = true; };
   return {
     root,
     update(state, player, project) {
       readLineVisualProfile(state, profile);
       if (state.mode !== 'flight' || state.ui?.docked || !player?.alive || typeof project !== 'function'
-          || (!profile.active && profile.heat <= .02)) { root.hidden = true; return; }
+          || (!profile.active && profile.heat <= .02)) { hide(); return; }
       query.x = player.pos.x; query.z = player.pos.z;
       const center = project(query);
-      if (!center || center.onScreen === false || !Number.isFinite(center.x) || !Number.isFinite(center.y)) { root.hidden = true; return; }
+      if (!center || center.onScreen === false || !Number.isFinite(center.x) || !Number.isFinite(center.y)) { hide(); return; }
       const x = center.x, y = center.y;
       query.x += Math.max(1, Number(player.radius) || 8);
       const edge = project(query);
@@ -62,7 +64,7 @@ export function createLineStrainReadout(host) {
       fill.style.transform = `scaleX(${profile.heat})`;
       root.hidden = false;
     },
-    hide() { root.hidden = true; },
+    hide,
     destroy() {
       if (typeof root.remove === 'function') root.remove();
       else root.parentNode?.removeChild?.(root);
