@@ -606,8 +606,13 @@ import { getActivityFrame } from '../core/worldActivityManager.js';
 import { effectiveLawSecurity } from '../systems/lawSecurity.js';
 import { heatLevelFor, isPlayerWanted } from '../systems/heat.js';
 import { planGateScene } from '../data/gateControl.js';
-import { PURSUIT_RESOLVE_S, planAuthoredEncounterItem, sectorSecurityOf } from '../systems/encounterDirector.js';
-import { planUniqueWreckEncounter } from '../systems/uniqueWrecks.js';
+import {
+  planAuthoredEncounterItem,
+  planUniqueWreckEncounter,
+  PURSUIT_RESOLVE_S,
+  sectorSecurityOf,
+} from '../data/encounters/planning.js';
+import { ENCOUNTER_PRESENTATION_METADATA } from '../data/encounters/presentation.generated.js';
 import {
   DEPOT_PATROL_ANCHOR_FRAC,
   DEPOT_PATROL_ID_PREFIX,
@@ -615,7 +620,10 @@ import {
   DEPOT_PATROL_ZONE_RADIUS_WU,
 } from '../systems/claims.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
-import { ENCOUNTERS } from '../data/encounters/index.generated.js';
+
+const PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS = new Set(
+  ENCOUNTER_PRESENTATION_METADATA.selfRegisteredEncounterIds,
+);
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -7225,7 +7233,7 @@ function warmUniqueWreckComplicationDecode(owner) {
     if (!def || !bearing) continue;
     const sectorId = record.sectorId || bearing.sectorId || def.sectorId;
     if (sectorId !== currentSectorId) continue;
-    const shape = ENCOUNTERS[record.encounterId];
+    const shape = ENCOUNTER_PRESENTATION_METADATA.encounters[record.encounterId];
     if (!shape) continue;
     const memo = plans.get(record);
     let ships = null;
@@ -7241,6 +7249,8 @@ function warmUniqueWreckComplicationDecode(owner) {
         sectorId,
         simTime: state.simTime,
         shape,
+        selfRegisteredEncounterIds: PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS,
+        namedCaptains: ENCOUNTER_PRESENTATION_METADATA.namedCaptains,
       });
       ships = [];
       files = [];
@@ -7290,6 +7300,9 @@ function plannedAuthoredEncounterWarm(owner, payload) {
     state,
     payload,
     playerPos: player && player.pos,
+    encounters: ENCOUNTER_PRESENTATION_METADATA.encounters,
+    selfRegisteredEncounterIds: PRESENTATION_SELF_REGISTERED_ENCOUNTER_IDS,
+    namedCaptains: ENCOUNTER_PRESENTATION_METADATA.namedCaptains,
   });
   const item = planned && planned.item;
   if (!item) return null;
@@ -11709,7 +11722,7 @@ export const render = {
     // history or success-path allocation. The outer render wrapper catches WebGLObjects.update
     // failures that occur in projectObject before renderBufferDirect receives the failing geometry.
     if ((query && query.get('bufferResizeDiag') === '1') || globalThis.__SF_BUFFER_RESIZE_DIAG__ === true) {
-      installBatchedMeshFailureDiagnostic(THREE.BatchedMesh);
+      installBatchedMeshFailureDiagnostic(THREE.BatchedMesh, isRetiredRigidOpaqueBatch);
       const resizeDiagnostic = createBufferResizeDiagnostic();
       const contextGeneration = () => state.render?.contextRecovery?.generation
         ?? state.contextRestoreSeq

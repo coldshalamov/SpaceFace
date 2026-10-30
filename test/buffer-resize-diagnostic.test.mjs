@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as THREE from 'three';
 import { createBufferResizeDiagnostic, installBatchedMeshFailureDiagnostic, captureBatchedMeshFailure } from '../src/render/bufferResizeDiagnostic.js';
+import { createRetainedRigidOpaqueBatchController, isRetiredRigidOpaqueBatch } from '../src/render/rigidOpaqueBatch.js';
 
 function taggedSizeError(attribute, expectedByteLength, actualByteLength) {
   const error = new Error("THREE.WebGLAttributes: The size of the buffer attribute's array buffer does not match the original size. Resizing buffer attributes is not supported.");
@@ -93,7 +94,7 @@ test('finds an instanced mesh matrix buffer outside geometry attributes', () => 
 
 
 test('native disposed BatchedMesh reports its primitive identity and rethrows the original error', () => {
-  assert.equal(installBatchedMeshFailureDiagnostic(THREE.BatchedMesh), true);
+  assert.equal(installBatchedMeshFailureDiagnostic(THREE.BatchedMesh, isRetiredRigidOpaqueBatch), true);
   assert.equal(installBatchedMeshFailureDiagnostic(THREE.BatchedMesh), false);
   const parent = new THREE.Group(); parent.name = 'Owned parent';
   const mesh = new THREE.BatchedMesh(1, 3, 3, new THREE.MeshBasicMaterial());
@@ -110,8 +111,43 @@ test('native disposed BatchedMesh reports its primitive identity and rethrows th
   assert.equal(record.parents[0].name, 'Owned parent');
   assert.equal(record.indirectTextureNull, true);
   assert.equal(record.matricesTextureNull, true);
+  assert.equal(record.retirement, null, 'ordinary batches do not acquire rigid retirement tracking');
   assert.equal(record.contextGeneration, 7);
   assert.equal(captureBatchedMeshFailure(thrown, 7), null);
   assert.equal(JSON.stringify(record).includes('Owned parent'), true);
   mesh.material.dispose();
+});
+
+test('real rigid retirement and reattachment preserve caller evidence after teardown', async () => {
+  const scene = new THREE.Scene(); scene.name = 'Original scene';
+  const root = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial();
+  const geometry = new THREE.BoxGeometry();
+  root.add(new THREE.Mesh(geometry, material), new THREE.Mesh(geometry, material));
+  scene.add(root); scene.updateMatrixWorld(true);
+  const controller = createRetainedRigidOpaqueBatchController({ scene, prepare: () => ({ ready: true }) });
+  try {
+    await controller.sync(root);
+    const batch = scene.children.find(child => child.userData?.spacefaceRigidOpaqueBatch);
+    assert.ok(batch);
+    function retireFromOwner() { controller.rollback('diagnostic-test'); }
+    function restoreSavedHome() { scene.add(batch); }
+    retireFromOwner();
+    assert.equal(isRetiredRigidOpaqueBatch(batch), true);
+    restoreSavedHome();
+    let thrown;
+    try { batch.onBeforeRender(null, null, new THREE.PerspectiveCamera(), batch.geometry, batch.material); }
+    catch (error) { thrown = error; }
+    const dto = captureBatchedMeshFailure(thrown, 2);
+    scene.remove(batch);
+    controller.dispose();
+    assert.equal(dto.retirement.canonicalRetired, true);
+    assert.match(dto.retirement.stack, /retireFromOwner/);
+    assert.match(dto.retirement.reattachment.stack, /restoreSavedHome/);
+    assert.equal(dto.retirement.reattachment.parents[0].uuid, scene.uuid);
+    assert.equal(dto.contextGeneration, 2);
+    assert.doesNotThrow(() => JSON.stringify(dto));
+  } finally {
+    controller.dispose(); geometry.dispose(); material.dispose();
+  }
 });

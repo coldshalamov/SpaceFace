@@ -125,11 +125,51 @@ export function createBufferResizeDiagnostic() {
 const BATCH_FAILURE_PROPERTY = '__sfBatchedMeshFailureDiagnostic';
 const BATCH_HOOK_MARK = Symbol.for('spaceface.batchedFailureDiagnostic.installed');
 
-export function installBatchedMeshFailureDiagnostic(BatchedMesh) {
+export function installBatchedMeshFailureDiagnostic(BatchedMesh, isRetiredRigidBatch = null) {
   const prototype = BatchedMesh?.prototype;
   if (!prototype || prototype[BATCH_HOOK_MARK]) return false;
   const original = prototype.onBeforeRender;
+  const originalDispose = prototype.dispose;
   if (typeof original !== 'function') return false;
+  // The keys are weak and the values contain only bounded primitives. The one-shot
+  // added listener lives on the mesh itself, never in a global strong registry.
+  const retirements = new WeakMap();
+  function parentChain(object) {
+    const parents = [];
+    for (let node = object?.parent; node && parents.length < 8; node = node.parent) {
+      parents.push(objectSummary(node));
+    }
+    return parents;
+  }
+  function observedReattachment(event) {
+    try {
+      const mesh = event?.target;
+      const record = mesh && retirements.get(mesh);
+      if (!record || record.reattachment) return;
+      record.reattachment = { parents: parentChain(mesh),
+        stack: boundedText(new Error('Rigid batch reattached').stack, 3000) };
+      mesh.removeEventListener('added', observedReattachment);
+    } catch (_) { /* observation never changes the original add */ }
+  }
+  if (typeof originalDispose === 'function') {
+    prototype.dispose = function diagnosticDispose(...args) {
+      let record = null;
+      try {
+        if (this.userData?.spacefaceRigidOpaqueBatch === true && !retirements.has(this)) {
+          record = { parents: parentChain(this),
+            canonicalRetired: typeof isRetiredRigidBatch === 'function'
+              ? isRetiredRigidBatch(this) === true : null,
+            stack: boundedText(new Error('Rigid batch disposed').stack, 3000), reattachment: null };
+        }
+      } catch (_) { /* observation never changes disposal */ }
+      const result = originalDispose.apply(this, args);
+      if (record) try {
+        retirements.set(this, record);
+        this.addEventListener('added', observedReattachment);
+      } catch (_) { /* observation never changes disposal */ }
+      return result;
+    };
+  }
   function diagnosticOnBeforeRender(...args) {
     try { return original.apply(this, args); }
     catch (error) {
@@ -137,14 +177,11 @@ export function installBatchedMeshFailureDiagnostic(BatchedMesh) {
         const indirectNull = this._indirectTexture == null;
         const matricesNull = this._matricesTexture == null;
         if ((indirectNull || matricesNull) && /(?:reading|read properties of).*image/i.test(String(error?.message || ''))) {
-          const parents = [];
-          for (let node = this.parent; node && parents.length < 8; node = node.parent) {
-            parents.push(objectSummary(node));
-          }
           Object.defineProperty(error, BATCH_FAILURE_PROPERTY, { configurable: true, value: {
-            object: objectSummary(this), geometry: geometrySummary(this.geometry), parents,
+            object: objectSummary(this), geometry: geometrySummary(this.geometry), parents: parentChain(this),
             indirectTextureNull: indirectNull, matricesTextureNull: matricesNull,
             colorsTextureNull: this._colorsTexture == null,
+            retirement: retirements.get(this) || null,
           } });
         }
       } catch (_) { /* observation must preserve the original exception */ }

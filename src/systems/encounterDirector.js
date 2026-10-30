@@ -62,6 +62,15 @@ import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
 } from '../data/sectorCoordinates.js';
+import {
+  addEncounterSquad,
+  planAuthoredEncounterItem as planAuthoredEncounterItemPure,
+  planEncounterShape as planEncounterShapePure,
+  resolveEncounterShape,
+  PURSUIT_RESOLVE_S,
+  sectorSecurityOf,
+} from '../data/encounters/planning.js';
+export { PURSUIT_RESOLVE_S, sectorSecurityOf };
 import { makeEnemySpawnSpec } from './combat.js';
 import {
   ENCOUNTER_REPETITION_DAY_SECONDS,
@@ -178,7 +187,6 @@ export const ENCOUNTER_FIRE_READY = new Map(
 export const FIRE_READY_HOLD_S = 60;
 
 // ── hostile pursuit resolution (the touchable anti-pest valve) ──────────────────────────────────
-export const PURSUIT_RESOLVE_S = 60; // a hostile sitting on a non-fighting player resolves
 const PURSUIT_RADIUS = 1600;         // radar/engagement distance to track
 const PURSUIT_RADIUS_SQ = PURSUIT_RADIUS * PURSUIT_RADIUS;
 
@@ -4109,269 +4117,35 @@ export function planEncountersDay(seed, sectorId, dayIndex, zones, ecologyState 
   return out;
 }
 
-/** Resolve ONE shape on a chosen zone into a schedule item — exported for the check harness so
- *  tests can force-fire a specific shape without re-implementing squad resolution. */
-export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
-  return resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng);
-}
-
-/**
- * The deterministic plan requestAuthoredEncounter fires: authored-zone lookup, anchor
- * fallback chain, zone assembly, and the 'authored-encounter' rng stream — all keyed on the
- * payload fields plus (meta.seed, simTime). Exported so the renderer's decode warm can replay
- * the exact roster an announced request will spawn instead of re-implementing the assembly.
- * Pure: reads state.meta/state.simTime only; returns {item, zone, anchor} or null.
- */
-export function planAuthoredEncounterItem({ state, payload, playerPos }) {
-  const shape = ENCOUNTERS[payload && payload.shapeId];
-  if (!shape) return null;
-  const requestedZone = payload.zoneId
-    ? zonesForSector(payload.sectorId).find((candidate) => candidate.id === payload.zoneId)
-    : null;
-  const anchor = payload.anchor
-    || (requestedZone && sectorLocalToGlobalForSector(requestedZone.center, payload.sectorId))
-    || playerPos
-    || { x: 0, z: 0 };
-  const local = globalToSectorLocalForSector(anchor, payload.sectorId);
-  const zone = {
-    ...(requestedZone || {}),
-    id: payload.zoneId || (requestedZone && requestedZone.id) || `authored:${shape.id}`,
-    name: payload.zoneName || (requestedZone && requestedZone.name) || shape.title || shape.id,
-    type: payload.zoneType || (requestedZone && requestedZone.type)
-      || (shape.zoneTypes && shape.zoneTypes[0]) || 'authored',
-    center: { x: local.x, z: local.z },
-    radius: Math.max(80, Number(payload.zoneRadius) || (requestedZone && requestedZone.radius) || 520),
-    threat: Number.isFinite(payload.threat)
-      ? payload.threat
-      : (Number.isFinite(requestedZone && requestedZone.threat) ? requestedZone.threat : 1),
-  };
-  const rng = mulberry32(hash32(
-    (state.meta && state.meta.seed) || 0,
-    payload.encounterId,
-    shape.id,
-    'authored-encounter',
-  ));
-  const item = resolveEncounter(
-    shape,
-    zone,
-    payload.sectorId,
-    Math.floor((state.simTime || 0) / DAY_SECONDS),
-    0,
-    rng,
-  );
-  if (!item) return null;
-  return { item, zone, anchor };
-}
-
-// Resolve one encounter shape on a chosen zone into a schedule item (composition + anchor).
-function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
-  const squadId = `enc_${sectorId}_${dayIndex}_${enc.id}_${seq}`;
-  const levelBand = zoneLevelBand(zone);
-  // Authored zone centers are sector-local, while every live entity/world anchor is galactic-global.
-  // Compose once at the planner boundary so squad jitter, proximity gates, telegraphs, and wrecks all
-  // share the same authoritative coordinate space off Helios.
-  const globalZone = {
-    ...zone,
-    center: sectorLocalToGlobalForSector(zone.center, sectorId),
-  };
-  const ships = [];
-  // Civilian route life flies the LOCAL flag (a hauler out of Sker is a Reach press-gang run, not
-  // an MTS liner); combat shapes keep their authored faction identity.
-  const localCivilian = enc.deck === 'civilian' && (enc.script === 'convoy' || enc.script === 'traderRun');
-  let factionId = (localCivilian && zone.factionId) ? zone.factionId : enc.factionId;
-  let variantKind = null;
-
-  if (enc.variant === 'distress') {
-    // High-sec cores (Helios-class): never plan bait — a "mayday" that springs Reach guns
-    // in Concord space breaks the professional first-hour pocket. Genuine distress still rolls.
-    const secDefForDistress = SECTORS.find((s) => s.id === sectorId);
-    const secForDistress = secDefForDistress && Number.isFinite(secDefForDistress.security)
-      ? secDefForDistress.security : 0.5;
-    let genuine = rng() < (Number.isFinite(enc.genuineChance) ? enc.genuineChance : 0.6);
-    if (secForDistress >= 0.85) genuine = true;
-    const branch = genuine ? enc.genuine : enc.bait;
-    factionId = branch.factionId;
-    variantKind = genuine ? 'distress_genuine' : 'distress_bait';
-    addSquad(ships, branch.squad, branch.factionId, branch.context, globalZone, levelBand, rng, genuine ? 'victim' : 'bait');
-    if (genuine && branch.threat) {
-      addSquad(ships, branch.threat, branch.threat.factionId, branch.threat.context, globalZone, levelBand, rng, 'threat');
-    }
-  } else if (enc.script === 'namedHunter') {
-    // Composition is resolved at fire time from the live named-captain roster (grudges evolve).
-  } else {
-    const authoredPredation = (enc.civilian && enc.squad)
-      || (enc.script === 'convoy' && enc.predation && enc.predation.enabled === true && enc.civilian);
-    if (authoredPredation) {
-      // Carrier first means the three-slot admission floor always yields the physical premise:
-      // one manifest-bearing civilian, one readable PD curtain, and one offensive raider. Ordinary
-      // convoy/trader definitions retain their long-standing single-squad composition path below.
-      addSquad(
-        ships,
-        enc.civilian,
-        enc.civilian.factionId || zone.factionId || 'faction_free',
-        enc.civilian.context || 'civilian',
-        globalZone,
-        levelBand,
-        rng,
-        enc.predation?.carrierRole || 'hauler',
-      );
-      addSquad(
-        ships,
-        enc.squad,
-        factionId,
-        enc.context,
-        globalZone,
-        levelBand,
-        rng,
-        enc.predation?.raiderRole || 'raider',
-      );
-    } else {
-      const mainRole = (enc.script === 'convoy' || enc.script === 'traderRun') ? 'hauler' : 'squad';
-      addSquad(ships, enc.squad, factionId, enc.context, globalZone, levelBand, rng, mainRole);
-    }
-    if (enc.escort) addSquad(ships, enc.escort, enc.escort.factionId, enc.escort.context || 'patrol', globalZone, levelBand, rng, 'escort');
-  }
-
+function canonicalEncounterPlanOptions() {
   return {
-    encounterId: squadId,
-    shapeId: enc.id,
-    // Self-registering modules are resolved by shapeId at runtime. Keep a legacy script id on the
-    // schedule item so older planner/check tooling can still validate and inspect the schedule
-    // without needing to understand the module runtime extension point.
-    script: SELF_REGISTERED_RUNTIME_BY_ID.has(enc.id) ? (enc.fallbackScript || 'whisper') : enc.script,
-    tier: enc.tier,
-    deck: enc.deck,
-    squadId,
-    zoneId: zone.id,
-    zoneName: zone.name,
-    zoneType: zone.type || null,
-    zoneCenter: { x: globalZone.center.x, z: globalZone.center.z },
-    zoneRadius: zone.radius || 400,
-    factionId,
-    bark: enc.bark,
-    motive: enc.motive || null,
-    engagementTrigger: enc.engagementTrigger || null,
-    variantKind,
-    levelBand,
-    delay: 0,
-    ships,
-    // Packaged bodies the fire path will spawn that share no hull archetype — scripted
-    // cargo-pod spills, authored props. Declared on the encounter body, carried on the
-    // pending item so the decode runway warms them before telegraph resolves.
-    warmAssets: Array.isArray(enc.warmAssets) && enc.warmAssets.length ? enc.warmAssets.slice() : null,
-    // Hull archetypes the fire path mounts outside plan.ships — the ambush claim victim
-    // spawns beside the fight and a player_in_range trigger can land engagement while it
-    // is still on-glass. Warm-only: never feeds the spawn list (spawnClaimVictim owns it).
-    warmShips: enc.script === 'namedHunter'
-      // The captain pool resolves at fire time from the live roster (grudges evolve),
-      // so plan.ships stays empty — but every hull it can pick is known now: the three
-      // seed archetypes plus each captain's escort pool. Warm the union so whichever
-      // pool entry fires is already decoded when the entrance lands on-glass.
-      ? NAMED_CAPTAINS.flatMap((cap) => [cap.archetype, ...((cap.escort && cap.escort.archetypes) || [])])
-          .filter((a, i, arr) => typeof a === 'string' && a && arr.indexOf(a) === i)
-          .map((archetype) => ({ archetype, factionId, role: 'captain' }))
-      : (enc.claimVictim && typeof enc.claimVictim.archetype === 'string' && enc.claimVictim.archetype
-        ? [{
-          archetype: enc.claimVictim.archetype,
-          factionId: enc.claimVictim.factionId || 'faction_dmc',
-          role: 'claim',
-        }]
-        : null),
-    // WF-02 terrain lee: authored squads may declare `terrain: 'lee'` to spawn behind the best
-    // rock near their anchor (applied at spawnShips time, once per encounter).
-    terrain: enc.squad && enc.squad.terrain === 'lee' ? 'lee' : null,
-    predation: enc.predation && enc.predation.enabled === true
-      ? { ...enc.predation }
-      : null,
+    selfRegisteredEncounterIds: SELF_REGISTERED_RUNTIME_BY_ID,
+    namedCaptains: NAMED_CAPTAINS,
   };
 }
 
-// Append `size`-many ships from a squad template onto `ships`, clustered on the zone.
+function resolveEncounter(enc, zone, sectorId, dayIndex, seq, rng) {
+  return resolveEncounterShape(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+/** Resolve one shape with the canonical runtime and named-captain composition. */
+export function planEncounterShape(enc, zone, sectorId, dayIndex, seq, rng) {
+  return planEncounterShapePure(enc, zone, sectorId, dayIndex, seq, rng, canonicalEncounterPlanOptions());
+}
+
+export function planAuthoredEncounterItem({ state, payload, playerPos }) {
+  return planAuthoredEncounterItemPure({
+    state,
+    payload,
+    playerPos,
+    encounters: ENCOUNTERS,
+    ...canonicalEncounterPlanOptions(),
+  });
+}
+
 function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) {
-  if (!squad || !squad.archetypes || !squad.archetypes.length) return;
-  const [lo, hi] = Array.isArray(squad.size) && squad.size.length === 2 ? squad.size : [1, 2];
-  const n = Math.max(1, Math.round(lo + rng() * Math.max(0, hi - lo)));
-  const hasIdentityAnchor = typeof squad.anchorArchetype === 'string' && squad.anchorArchetype.length > 0;
-  const clusterR = Number.isFinite(squad.clusterRadius)
-    ? squad.clusterRadius
-    : Math.min(zone.radius || 260, 260);
-  const minSep = Number.isFinite(squad.minSeparation) ? squad.minSeparation : 0;
-  const squadCenterZone = zone;
-  const squadPositions = [];
-  for (let i = 0; i < n; i++) {
-    // Authored swarm packets guarantee exactly one identity/controller anchor. It is first so a
-    // partial cap grant preserves faction readability; every remaining slot draws from the light
-    // pool deterministically. Choir may use the same native hull for both roles—the role marker,
-    // not a foreign silhouette, distinguishes its chorus lead.
-    const isAnchor = i === 0 && hasIdentityAnchor;
-    const archetype = isAnchor
-      ? squad.anchorArchetype
-      : squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
-    const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
-    let pos = jitter(squadCenterZone, rng, clusterR);
-    if (minSep > 0 && squadPositions.length > 0) {
-      for (let attempt = 0; attempt < 24; attempt++) {
-        const tooClose = squadPositions.some(
-          (p) => Math.hypot(p.x - pos.x, p.z - pos.z) < minSep,
-        );
-        if (!tooClose) break;
-        pos = jitter(squadCenterZone, rng, clusterR);
-      }
-    }
-    squadPositions.push(pos);
-    ships.push({
-      archetype,
-      ...(hasIdentityAnchor ? { compositionRole: isAnchor ? 'identity_anchor' : 'light' } : {}),
-      combatDoctrineId: ENEMY_BY_ID.get(archetype)?.combatDoctrineId || null,
-      level,
-      pos,
-      factionId,
-      context,
-      doctrine: squad.doctrine,
-      formation: squad.formation,
-      team: squad.team,
-      passive: squad.passive == null ? undefined : squad.passive === true,
-      roe: squad.roe,
-      role: role || 'squad',
-      factionPresenceDoctrine: squad.factionPresenceDoctrine,
-      cultureId: squad.cultureId,
-      cohortRecipe: squad.cohortRecipe,
-      // Authored frame choreography: squadRecipe puts the whole squad on one director;
-      // squadSockets[i] pins this member's socket (lead/left/right/rear) when the author
-      // wants a specific ship on a specific corner.
-      squadRecipe: squad.squadRecipe,
-      squadSocket: Array.isArray(squad.squadSockets) ? squad.squadSockets[i] : undefined,
-    });
-  }
-  // A squad may name archetypes that must appear at least once — a teaching raid that needs
-  // a throwable wasp cannot leave its light pool to the draw. Deterministic and rng-free:
-  // the earliest non-anchor slots yield to missing guaranteed archetypes in authored order,
-  // after the i.i.d. draw so the stream stays aligned.
-  if (Array.isArray(squad.guaranteeArchetypes) && squad.guaranteeArchetypes.length) {
-    const added = ships.slice(ships.length - n);
-    const claimed = new Set();
-    for (const g of squad.guaranteeArchetypes) {
-      if (added.some((s) => s.archetype === g)) continue;
-      let idx = -1;
-      for (let i = hasIdentityAnchor ? 1 : 0; i < added.length; i++) {
-        if (!claimed.has(i) && !squad.guaranteeArchetypes.includes(added[i].archetype)) { idx = i; break; }
-      }
-      if (idx < 0) break;
-      claimed.add(idx);
-      added[idx].archetype = g;
-      added[idx].combatDoctrineId = ENEMY_BY_ID.get(g)?.combatDoctrineId || null;
-    }
-  }
+  return addEncounterSquad(ships, squad, factionId, context, zone, levelBand, rng, role);
 }
-
-// A deterministic clustered position inside a zone (tight so the squad forms one formation).
-function jitter(zone, rng, clusterR) {
-  const c = zone.center || { x: 0, z: 0 };
-  const ang = rng() * Math.PI * 2;
-  const r = Math.sqrt(rng()) * clusterR;
-  return { x: c.x + Math.cos(ang) * r, z: c.z + Math.sin(ang) * r };
-}
-
 /** Terrain-lee spawn placement (WF-02). Pure and rng-free: the same batch, player pose and rock
  * field always resolve the same shift, so encounters stay deterministic. Returns the rigid offset
  * that parks the batch behind the best cover rock relative to the player's bearing — or null when
@@ -4483,14 +4257,6 @@ function pickWeighted(list, rng, weightOf = (entry) => entry.weight) {
     if (r <= 0) return e;
   }
   return list[list.length - 1];
-}
-
-// A [lo,hi] level band for a zone from its readability threat tier.
-function zoneLevelBand(zone) {
-  const threat = zoneThreat(zone);
-  const lo = Math.max(1, threat);
-  const hi = Math.max(lo + 1, threat + 3);
-  return [lo, hi];
 }
 
 function freightPickupPhysicalSpec(commodityId, qty) {
@@ -5503,16 +5269,6 @@ function isAuthoredGuaranteeItem(item) {
 function isWanted(state) {
   const h = state.player && state.player.heat;
   return typeof h === 'number' ? h >= 0.15 : false;    // mirrors heat.WANTED_THRESHOLD (read-only)
-}
-
-// Exported so presentation-side warm gates can consult the exact baseline the resolver
-// applies — the static SECTORS def, not the drifted live sector record.
-export function sectorSecurityOf(state) {
-  const sid = state.world && state.world.currentSectorId;
-  if (!sid) return 0.5;
-  const def = SECTORS.find((s) => s.id === sid);
-  const baseline = def && Number.isFinite(def.security) ? def.security : 0.5;
-  return effectiveRegionalSecurity(state, sid, baseline);
 }
 
 function finiteEscalationNumber(value) {
