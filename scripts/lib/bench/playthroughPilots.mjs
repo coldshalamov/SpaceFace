@@ -1400,8 +1400,12 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             input.moveZ = (aMag > 1.5 && Math.abs(errB) < 0.5) ? 1 : 0;
             input.brake = false;
             input.boost = false;
+            // A fully winched line makes the ship+pod a dumbbell — the line's tension
+            // is an unmeasured force no guidance law can see, and every scheme parked
+            // in the same circle (runs 7–12). Pay the line out to slack instead: the
+            // ship steers free and the trailing pod sweeps the ring on the same track.
             cmd.lineControl = true;
-            cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
+            cmd.lineLength = dist(p.pos, pod.pos) < 80 ? 1 : 0;
             return;
           }
         }
