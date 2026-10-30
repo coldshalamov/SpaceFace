@@ -47,6 +47,7 @@ function parseArgs(argv = process.argv.slice(2)) {
     if (value === '--out') args.out = argv[++index];
     else if (value === '--flight-timeout-ms') args.flightTimeoutMs = Number(argv[++index]);
     else if (value === '--task-id') args.taskId = String(argv[++index] || TASK_ID);
+    else if (value === '--attribute-delete-errors') args.attributeDeleteErrors = true;
     else if (value === '--help' || value === '-h') args.help = true;
     else throw new Error(`unknown argument: ${value}`);
   }
@@ -269,6 +270,7 @@ export function buildContextRecoveryReceipt({
   postRecoveryFlightStable = false,
   contextLoss = null,
   liveGlDeleteTrap = null,
+  attributeDeleteErrors = false,
   postTeardown = null,
   postTeardownInstall = null,
   cleanupReport = null,
@@ -309,6 +311,10 @@ export function buildContextRecoveryReceipt({
         snapshot: postTeardown,
       }),
     },
+    diagnosticMode: {
+      deleteErrorAttributionEnabled: attributeDeleteErrors === true,
+      performanceClaimsEligible: attributeDeleteErrors !== true,
+    },
     teardown: {
       closeCallCount: Number(closeCallCount) || 0,
       cleanup,
@@ -333,6 +339,7 @@ export async function runContextRecoveryElectronDiagnostic({
   outputDir,
   taskId = TASK_ID,
   flightTimeoutMs = positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000),
+  attributeDeleteErrors = false,
 } = {}) {
   const normalizedTaskId = safeTaskId(taskId);
   const resolvedOutputDir = path.resolve(outputDir || runDirectory(DEFAULT_OUTPUT_ROOT, normalizedTaskId));
@@ -442,9 +449,16 @@ export async function runContextRecoveryElectronDiagnostic({
     );
     // Arm only after the real registry exists. The wrappers are read-only and the post-teardown
     // wrapper captures the ordinary destroy result without initiating a second teardown.
-    await installGlTrapsOnLivePage(page);
+    await installGlTrapsOnLivePage(page, { attributeDeleteErrors });
+    if (attributeDeleteErrors === true) {
+      log('DIAGNOSTIC ONLY: per-delete gl.getError attribution enabled; error queue is sampled/drained; do not use this run for FPS or performance claims');
+    }
     postTeardownInstall = await installPostTeardownGlDeleteTrapCapture(page);
-    mark('teardown-observer-armed', postTeardownInstall);
+    mark('teardown-observer-armed', {
+      ...postTeardownInstall,
+      deleteErrorAttributionEnabled: attributeDeleteErrors === true,
+      performanceClaimsEligible: attributeDeleteErrors !== true,
+    });
     preRecovery = await readPageState(page);
     contextLoss = await probeWebGlContextLoss(page, {
       outputDir: resolvedOutputDir,
@@ -531,6 +545,7 @@ export async function runContextRecoveryElectronDiagnostic({
       contextLoss,
       postRecoveryFlightStable,
       liveGlDeleteTrap,
+      attributeDeleteErrors,
       postTeardown,
       postTeardownInstall,
       cleanupReport,
@@ -574,12 +589,13 @@ function isEntrypoint() {
 if (isEntrypoint()) {
   const args = parseArgs();
   if (args.help) {
-    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID]');
+    console.log('Usage: node scripts/probe-context-recovery-electron.mjs [--out DIR] [--flight-timeout-ms N] [--task-id ID] [--attribute-delete-errors]');
   } else {
     const report = await runContextRecoveryElectronDiagnostic({
       outputDir: args.out ? path.resolve(ROOT, args.out) : undefined,
       taskId: args.taskId || TASK_ID,
       flightTimeoutMs: positiveInteger(args.flightTimeoutMs, positiveInteger(process.env.SF_CONTEXT_RECOVERY_FLIGHT_TIMEOUT_MS, 240_000)),
+      attributeDeleteErrors: args.attributeDeleteErrors === true,
     });
     if (report.pass !== true) process.exitCode = 1;
   }

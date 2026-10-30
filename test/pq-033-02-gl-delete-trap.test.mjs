@@ -109,6 +109,51 @@ test('arming is idempotent per document and never double-wraps a delete', async 
   assert.equal(entries[0].count, 1);
 });
 
+test('opt-in attribution preserves the native delete and retains its error through later valid cleanup', () => {
+  const context = createGlSandbox();
+  runIn(context, `
+    globalThis.__error = 0;
+    globalThis.__errorReads = 0;
+    globalThis.__nativeFailure = new Error('native delete failed');
+    WebGL2RenderingContext.prototype.getError = function () {
+      globalThis.__errorReads++;
+      const error = globalThis.__error;
+      globalThis.__error = 0;
+      return error;
+    };
+    WebGL2RenderingContext.prototype.deleteTexture = function (handle) {
+      globalThis.__deleted.push(handle);
+      if (handle.fail) throw globalThis.__nativeFailure;
+      if (handle.foreign) globalThis.__error = 0x0502;
+      return 'native result';
+    };
+  `);
+  runIn(context, `(${armGlDeleteTrapInPage.toString()})()`);
+  assert.equal(runIn(context, `new WebGL2RenderingContext().deleteTexture({})`), 'native result');
+  assert.equal(runIn(context, '__errorReads'), 0, 'the default observer never samples the error queue');
+
+  runIn(context, `(${armGlDeleteTrapInPage.toString()})({ attributeErrors: true })`);
+  runIn(context, `
+    const gl = new WebGL2RenderingContext();
+    gl.deleteTexture({ foreign: true });
+    for (let i = 0; i < 300; i++) gl.deleteTexture({ id: i });
+    globalThis.__error = 0x0500;
+    gl.deleteTexture({});
+  `);
+  const report = runIn(context, '__SF_GL_DELETE_TRAP__.__sfErrorAttribution');
+  assert.equal(report.entries.length, 256, 'routine call history remains bounded');
+  assert.equal(report.attributableEntries.length, 1, 'valid cleanup cannot evict the offending call');
+  assert.equal(report.attributableEntries[0].api, 'deleteTexture');
+  assert.equal(report.attributableEntries[0].beforeError, 0);
+  assert.equal(report.attributableEntries[0].afterError, 0x0502);
+  assert.match(report.attributableEntries[0].stack, /sf-gl-delete-error-attribution/);
+  assert.equal(report.entries.at(-1).attributable, false, 'a pre-existing error is not blamed on this delete');
+  assert.equal(runIn(context, '__deleted.length'), 303, 'each requested native call ran exactly once');
+  assert.equal(runIn(context, `
+    (() => { try { gl.deleteTexture({ fail: true }); } catch (error) { return error === __nativeFailure; } })()
+  `), true, 'the original native exception is preserved');
+});
+
 test('the delete trap covers the whole wrapped API surface, including VAOs', async () => {
   const context = vm.createContext({ performance: { now: () => 1 } });
   vm.runInContext(`

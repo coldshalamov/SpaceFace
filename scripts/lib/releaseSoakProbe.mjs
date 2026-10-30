@@ -1601,8 +1601,12 @@ export async function readGlProgramQueryTrap(page) {
 // separate candidate ring preserves these pre-delete predicate failures with a deeper owner
 // stack; it is explicitly labelled candidate evidence because an unbound or already-deleted
 // handle can produce the same predicate result.
-export function armGlDeleteTrapInPage() {
-  if (globalThis.__SF_GL_DELETE_TRAP__) return;
+export function armGlDeleteTrapInPage({ attributeErrors = false } = {}) {
+  if (globalThis.__SF_GL_DELETE_TRAP__) {
+    const priorAttribution = globalThis.__SF_GL_DELETE_TRAP__.__sfErrorAttribution;
+    if (attributeErrors === true && priorAttribution) priorAttribution.enabled = true;
+    return;
+  }
   const deletes = [];
   const seen = new Map();
   const order = [];
@@ -1616,6 +1620,15 @@ export function armGlDeleteTrapInPage() {
   const candidateMeta = { evicted: 0, dropped: 0 };
   const CAP = 128;
   const CANDIDATE_CAP = 64;
+  const ERROR_ATTRIBUTION_CAP = 256;
+  const errorAttribution = {
+    enabled: attributeErrors === true,
+    entries: [],
+    attributableEntries: [],
+    attributableDropped: 0,
+    evicted: 0,
+    dropped: 0,
+  };
   const pairs = [
     ['deleteTexture', 'isTexture'], ['deleteBuffer', 'isBuffer'],
     ['deleteProgram', 'isProgram'], ['deleteShader', 'isShader'],
@@ -1725,7 +1738,73 @@ export function armGlDeleteTrapInPage() {
             }
           }
         } catch (_) { /* trap bookkeeping must never break the delete path */ }
-        return original.call(this, handle);
+        if (errorAttribution.enabled !== true || typeof this.getError !== 'function') {
+          return original.call(this, handle);
+        }
+        // Opt-in diagnostic mode only. WebGL getError consumes the current error, so capture
+        // both sides of every wrapped delete and retain a bounded record. The call is attributable
+        // only when a clean pre-state becomes INVALID_OPERATION after this exact native delete.
+        let beforeError = null;
+        let afterError = null;
+        let errorName = null;
+        const stack = (new Error('sf-gl-delete-error-attribution')).stack || '';
+        const startedAt = Math.round(performance.now());
+        const noError = typeof this.NO_ERROR === 'number' ? this.NO_ERROR : 0;
+        const invalidOperation = typeof this.INVALID_OPERATION === 'number' ? this.INVALID_OPERATION : 0x0502;
+        const generation = (() => {
+          try {
+            const state = globalThis.SF?.state;
+            const value = state?.render?.contextRecovery?.generation
+              ?? state?.contextRecovery?.generation
+              ?? state?.contextRestoreSeq;
+            return Number.isFinite(Number(value)) ? Number(value) : null;
+          } catch (_) { return null; }
+        })();
+        try { beforeError = this.getError(); } catch (_) { /* retain null as unavailable */ }
+        let result;
+        let thrown = null;
+        try { result = original.call(this, handle); }
+        catch (error) { thrown = error; }
+        try { afterError = this.getError(); } catch (_) { /* retain null as unavailable */ }
+        const errorNames = new Map([
+          [noError, 'NO_ERROR'],
+          [invalidOperation, 'INVALID_OPERATION'],
+          [0x0500, 'INVALID_ENUM'],
+          [0x0501, 'INVALID_VALUE'],
+          [0x0505, 'OUT_OF_MEMORY'],
+          [0x0506, 'INVALID_FRAMEBUFFER_OPERATION'],
+          [0x9242, 'CONTEXT_LOST_WEBGL'],
+        ]);
+        errorName = (value) => value == null ? null : (errorNames.get(value) || `0x${Number(value).toString(16)}`);
+        const entry = {
+          api: del,
+          beforeError,
+          beforeErrorName: errorName(beforeError),
+          afterError,
+          afterErrorName: errorName(afterError),
+          attributable: beforeError === noError && afterError === invalidOperation,
+          contextGeneration: generation,
+          at: Math.round(performance.now()),
+          durationMs: Math.max(0, Math.round(performance.now()) - startedAt),
+          stack: stack.slice(0, 6000),
+          nativeError: thrown ? String(thrown?.message || thrown).slice(0, 500) : null,
+        };
+        // Valid cleanup can immediately follow a bad delete in large numbers. Keep a separate
+        // bounded failure ring so that cleanup cannot evict the callsite we enabled this to find.
+        if (entry.attributable) {
+          if (errorAttribution.attributableEntries.length < ERROR_ATTRIBUTION_CAP) {
+            errorAttribution.attributableEntries.push(entry);
+          } else errorAttribution.attributableDropped += 1;
+        }
+        if (errorAttribution.entries.length < ERROR_ATTRIBUTION_CAP) {
+          errorAttribution.entries.push(entry);
+        } else {
+          errorAttribution.entries.shift();
+          errorAttribution.entries.push(entry);
+          errorAttribution.evicted += 1;
+        }
+        if (thrown) throw thrown;
+        return result;
       };
       wrapped.__sfGlDeleteTrap = true;
       proto[del] = wrapped;
@@ -1759,6 +1838,12 @@ export function armGlDeleteTrapInPage() {
     enumerable: false,
     writable: false,
   });
+  Object.defineProperty(deletes, '__sfErrorAttribution', {
+    value: errorAttribution,
+    configurable: false,
+    enumerable: false,
+    writable: false,
+  });
 }
 
 export async function installGlDeleteTrap(target) {
@@ -1774,10 +1859,10 @@ export async function installGlDeleteTrap(target) {
 // storm fires. Arm the same read-only wraps on the live page instead: the storm class happens
 // late (context-loss recovery), so a post-boot arm covers it without touching boot-to-menu
 // evidence. Idempotent per document; a tier1 reload after this re-arms via the init scripts.
-export async function installGlTrapsOnLivePage(page) {
+export async function installGlTrapsOnLivePage(page, { attributeDeleteErrors = false } = {}) {
   assert(page && typeof page.evaluate === 'function', 'live-page gl traps require an evaluate seam');
   await page.evaluate(armGlProgramQueryTrapInPage);
-  await page.evaluate(armGlDeleteTrapInPage);
+  await page.evaluate(armGlDeleteTrapInPage, { attributeErrors: attributeDeleteErrors === true });
 }
 
 // Returns { entries, evicted, dropped }: the saturation meta travels with the evidence so a
@@ -1788,6 +1873,7 @@ export async function readGlDeleteTrap(page) {
       const armed = globalThis.__SF_GL_DELETE_TRAP__;
       if (!Array.isArray(armed)) return { entries: [], evicted: 0, dropped: 0 };
       const meta = armed.__sfSaturation || {};
+      const errorMeta = armed.__sfErrorAttribution || { enabled: false, entries: [], evicted: 0, dropped: 0 };
       return {
         entries: armed.slice(),
         evicted: Number(meta.evicted) || 0,
@@ -1795,6 +1881,14 @@ export async function readGlDeleteTrap(page) {
         candidates: Array.isArray(armed.__sfCandidates) ? armed.__sfCandidates.slice() : [],
         candidateEvicted: Number(armed.__sfCandidateSaturation?.evicted) || 0,
         candidateDropped: Number(armed.__sfCandidateSaturation?.dropped) || 0,
+        errorAttribution: {
+          enabled: errorMeta.enabled === true,
+          entries: Array.isArray(errorMeta.entries) ? errorMeta.entries.slice() : [],
+          attributableEntries: Array.isArray(errorMeta.attributableEntries) ? errorMeta.attributableEntries.slice() : [],
+          attributableDropped: Number(errorMeta.attributableDropped) || 0,
+          evicted: Number(errorMeta.evicted) || 0,
+          dropped: Number(errorMeta.dropped) || 0,
+        },
       };
     });
   } catch (_) {
