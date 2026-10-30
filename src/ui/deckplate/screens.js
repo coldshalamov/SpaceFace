@@ -1227,7 +1227,9 @@ ${CX} .k-hang .k-row { min-height:0; padding-block:5px; }
 ${CX} .k-hang .k-row .k-row__name { font-size:15px; line-height:1.25; }
 ${CX} .k-hang .k-row .k-row__sub { margin-top:1px; font-size:12px; line-height:1.25; }
 ${CX} .sf-codex-entry { min-height:0; max-width:min(920px, 100%); padding-bottom:4px; }
-${CX} .sf-codex-entry:has(> .cx-reader__mark) > :not(.cx-reader__mark):not(.cx-reader__turn):not(img) { margin-right:calc(140px * var(--dp-s) + 28px); }
+/* No reader builds .cx-reader__mark any more, so its old margin rule (.sf-codex-entry:has(> .cx-reader__mark) > :not(…))
+   is gone. Its universal subject made Blink's shared :has() invalidation set restyle all of BODY (~850 elements)
+   on every toast or HUD node insertion in flight. Keep :has() subjects feature-bearing (a class or tag). */
 ${CX} .sf-codex-entry > img { display:block; width:100%; object-fit:cover; margin-bottom:14px; }
 ${CX} .cx-reader__filed { margin:0 0 10px; ${ETCH} color:var(--dp-ink-mute); }
 ${CX} .cx-reader__mark { position:absolute; top:10px; right:14px; }
