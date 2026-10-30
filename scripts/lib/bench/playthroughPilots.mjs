@@ -1386,7 +1386,7 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
             const vx = (p.vel && Number(p.vel.x)) || 0;
             const vz = (p.vel && Number(p.vel.z)) || 0;
             const vNow = Math.hypot(vx, vz);
-            const closing = -((vx * (beacon.pos.x - p.pos.x)) + (vz * (beacon.pos.z - p.pos.z))) / (dB || 1);
+            const closing = ((vx * (beacon.pos.x - p.pos.x)) + (vz * (beacon.pos.z - p.pos.z))) / (dB || 1);
             if (!grabBraking && (vNow > Math.max(10, dB / 6) || (vNow > 4 && closing < vNow * 0.4))) {
               grabBraking = true;
             }
