@@ -36,6 +36,19 @@ test('entityNeedsFlightStep shelves abstract/dormant/aggregate unless intent is 
   assert.equal(entityNeedsFlightStep(dormant), true, 'wake-edge intent still steps');
 });
 
+test('a new moving-frame approach wakes a sleeping NPC without waking a matched stationary hold', () => {
+  const entity = { alive: true, physicsSleeping: true, rot: 0, vel: { x: 0, z: 0 },
+    data: { intent: { rendezvous: { velocity: { x: 0, z: 0 }, heading: 0 } } } };
+  assert.equal(npcFlightNeedsCommand(entity), false, 'settled berth does not request redundant forces');
+  entity.data.intent.rendezvous.velocity.x = 20;
+  assert.equal(npcFlightNeedsCommand(entity), true, 'a receding berth requires physical thrust');
+  entity.data.intent.rendezvous.velocity.x = 0;
+  entity.data.intent.rendezvous.heading = Math.PI / 2;
+  assert.equal(npcFlightNeedsCommand(entity), true, 'new approach heading requires a physical turn');
+  entity.data.intent.rendezvous = { velocity: { x: NaN, z: 0 }, heading: 0 };
+  assert.equal(npcFlightNeedsCommand(entity), false, 'invalid packets are not live movement commands');
+});
+
 test('legacy flight.update skips continuous drag on dormant ships', () => {
   const dormant = {
     id: 2,
