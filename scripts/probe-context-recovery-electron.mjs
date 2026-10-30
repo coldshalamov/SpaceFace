@@ -78,10 +78,25 @@ function serializeError(error) {
   };
 }
 
-function compactIssues(issues) {
+function phaseForIssue(at, windows) {
+  const timestamp = Date.parse(at);
+  if (!Number.isFinite(timestamp)) return null;
+  for (let index = (windows || []).length - 1; index >= 0; index -= 1) {
+    const window = windows[index];
+    const start = Date.parse(window.startedAt);
+    const end = window.endedAt ? Date.parse(window.endedAt) : Infinity;
+    if (Number.isFinite(start) && timestamp >= start && timestamp <= end) return window.phase;
+  }
+  return null;
+}
+
+function compactIssues(issues, phaseWindows = []) {
   return (Array.isArray(issues) ? issues : []).slice(-24).map((issue) => ({
     source: issue?.source || null,
     level: issue?.level || null,
+    at: issue?.at || null,
+    phase: issue?.phase || phaseForIssue(issue?.at, phaseWindows),
+    location: issue?.location || null,
     text: String(issue?.text || '').slice(0, 500),
   }));
 }
@@ -270,6 +285,7 @@ export function buildContextRecoveryReceipt({
   postRecoveryFlightStable = false,
   contextLoss = null,
   liveGlDeleteTrap = null,
+  liveGlDeleteTrapCapture = null,
   attributeDeleteErrors = false,
   postTeardown = null,
   postTeardownInstall = null,
@@ -278,6 +294,7 @@ export function buildContextRecoveryReceipt({
   profileCleanup = false,
   primaryError = null,
   pageIssues = [],
+  phaseWindows = [],
   milestones = [],
   runtime = {},
 } = {}) {
@@ -305,6 +322,7 @@ export function buildContextRecoveryReceipt({
     contextLoss,
     glDeleteTrap: {
       live: liveGlDeleteTrap,
+      liveCapture: liveGlDeleteTrapCapture,
       postTeardown: buildPostTeardownGlDeleteTrapDiagnostic({
         runtimeKind: 'electron',
         install: postTeardownInstall,
@@ -314,13 +332,14 @@ export function buildContextRecoveryReceipt({
     diagnosticMode: {
       deleteErrorAttributionEnabled: attributeDeleteErrors === true,
       performanceClaimsEligible: attributeDeleteErrors !== true,
+      phaseWindows,
     },
     teardown: {
       closeCallCount: Number(closeCallCount) || 0,
       cleanup,
       isolatedProfileRemoved: profileCleanup === true,
     },
-    issues: compactIssues(pageIssues),
+    issues: compactIssues(pageIssues, phaseWindows),
     error: serializeError(primaryError),
     artifacts: {
       receipt: path.relative(ROOT, path.join(outputDir || ROOT, 'receipt.json')).replace(/\\/g, '/'),
@@ -374,18 +393,43 @@ export async function runContextRecoveryElectronDiagnostic({
   let postRecoveryFlightStable = false;
   let contextLoss = null;
   let liveGlDeleteTrap = null;
+  let liveGlDeleteTrapCapture = null;
   let postTeardownInstall = null;
   let postTeardown = null;
   let cleanupReport = null;
   let profileCleanup = false;
   const consoleMessages = [];
+  const phaseWindows = [];
+  let activePhase = { phase: 'startup-route', startedAt: new Date().toISOString(), endedAt: null };
+  phaseWindows.push(activePhase);
+  const setCapturePhase = (phase) => {
+    const now = new Date().toISOString();
+    if (activePhase) activePhase.endedAt = now;
+    activePhase = { phase, startedAt: now, endedAt: null };
+    phaseWindows.push(activePhase);
+  };
   const postTeardownConsoleHandler = (message) => {
     const snapshot = readPostTeardownGlDeleteTrapConsoleMessage(message);
     if (snapshot && postTeardown == null) postTeardown = snapshot;
     if (consoleMessages.length < 24) {
       const type = typeof message?.type === 'function' ? message.type() : null;
       const text = typeof message?.text === 'function' ? message.text() : String(message || '');
-      if (type === 'error' || type === 'warning') consoleMessages.push({ type, text: String(text).slice(0, 500) });
+      if (type === 'error' || type === 'warning') {
+        let location = null;
+        try {
+          const raw = message?.location?.();
+          if (raw && (raw.url || raw.lineNumber || raw.columnNumber)) {
+            location = { url: raw.url || '', line: raw.lineNumber ?? raw.line ?? 0, column: raw.columnNumber ?? raw.column ?? 0 };
+          }
+        } catch (_) { /* console location is best-effort */ }
+        consoleMessages.push({
+          type,
+          at: new Date().toISOString(),
+          phase: activePhase?.phase || null,
+          location,
+          text: String(text).slice(0, 500),
+        });
+      }
     }
   };
 
@@ -460,11 +504,11 @@ export async function runContextRecoveryElectronDiagnostic({
       performanceClaimsEligible: attributeDeleteErrors !== true,
     });
     preRecovery = await readPageState(page);
+    setCapturePhase('forced-context-loss-and-restore');
     contextLoss = await probeWebGlContextLoss(page, {
       outputDir: resolvedOutputDir,
       log,
     });
-    liveGlDeleteTrap = await readGlDeleteTrap(page);
     mark('context-recovery-complete', {
       recovered: contextLoss?.recovered === true,
       restores: contextLoss?.contextRecovery?.restores ?? null,
@@ -472,6 +516,7 @@ export async function runContextRecoveryElectronDiagnostic({
     if (contextLoss?.recovered !== true) {
       throw new Error(`controlled WebGL context recovery did not pass: ${JSON.stringify(contextLoss)}`);
     }
+    setCapturePhase('post-restore-flight-observation');
     const recoveryFlightObserveMs = 120_000;
     const recoveryFlightStartedAt = Date.now();
     let nextProgressAt = 30_000;
@@ -508,13 +553,27 @@ export async function runContextRecoveryElectronDiagnostic({
       simTime: postRecovery?.simTime ?? null,
       contextRecoveryGeneration: postRecovery?.contextRecovery?.generation ?? null,
     });
+    liveGlDeleteTrap = await readGlDeleteTrap(page);
+    liveGlDeleteTrapCapture = {
+      phase: activePhase?.phase || 'post-restore-flight-observation',
+      at: new Date().toISOString(),
+    };
   } catch (error) {
     primaryError = error;
     log(`FAIL ${error?.message || error}`);
   } finally {
     if (page && !page.isClosed()) {
       preRecovery ||= await readPageState(page).catch(() => null);
+      if (liveGlDeleteTrap == null) {
+        liveGlDeleteTrap = await readGlDeleteTrap(page).catch(() => null);
+        liveGlDeleteTrapCapture = {
+          phase: activePhase?.phase || 'pre-destroy-partial',
+          at: new Date().toISOString(),
+          partial: true,
+        };
+      }
     }
+    setCapturePhase('ordinary-destroy');
     try {
       cleanupReport = await closeOnce.invoke();
     } catch (error) {
@@ -535,7 +594,10 @@ export async function runContextRecoveryElectronDiagnostic({
     page?.off?.('console', postTeardownConsoleHandler);
     electronApp?.off?.('console', postTeardownConsoleHandler);
     const issues = pageIssueTracker?.stop?.() || [];
-    issues.push(...consoleMessages.map((entry) => ({ source: 'diagnostic-console', level: entry.type, text: entry.text })));
+    issues.push(...consoleMessages.map((entry) => ({
+      source: 'diagnostic-console', level: entry.type, at: entry.at, phase: entry.phase,
+      location: entry.location, text: entry.text,
+    })));
     const receipt = buildContextRecoveryReceipt({
       outputDir: resolvedOutputDir,
       taskId: normalizedTaskId,
@@ -545,6 +607,7 @@ export async function runContextRecoveryElectronDiagnostic({
       contextLoss,
       postRecoveryFlightStable,
       liveGlDeleteTrap,
+      liveGlDeleteTrapCapture,
       attributeDeleteErrors,
       postTeardown,
       postTeardownInstall,
@@ -553,6 +616,7 @@ export async function runContextRecoveryElectronDiagnostic({
       profileCleanup,
       primaryError,
       pageIssues: issues,
+      phaseWindows,
       milestones,
       runtime: { rootUrl, pid: childProcess?.pid ?? null, isolated: true },
     });

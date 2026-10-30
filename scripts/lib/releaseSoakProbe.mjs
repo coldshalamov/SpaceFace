@@ -1937,20 +1937,34 @@ export async function installPostTeardownGlDeleteTrapCapture(page) {
       const armed = globalThis.__SF_GL_DELETE_TRAP__;
       const meta = armed?.__sfSaturation || {};
       const candidateMeta = armed?.__sfCandidateSaturation || {};
+      const errorMeta = armed?.__sfErrorAttribution || {};
       const entries = Array.isArray(armed)
         ? armed.map((entry) => Object.freeze({ ...entry }))
         : [];
       const candidates = Array.isArray(armed?.__sfCandidates)
         ? armed.__sfCandidates.map((entry) => Object.freeze({ ...entry }))
         : [];
+      const errorAttribution = Object.freeze({
+        enabled: errorMeta.enabled === true,
+        entries: Object.freeze(Array.isArray(errorMeta.entries)
+          ? errorMeta.entries.map((entry) => Object.freeze({ ...entry })) : []),
+        attributableEntries: Object.freeze(Array.isArray(errorMeta.attributableEntries)
+          ? errorMeta.attributableEntries.map((entry) => Object.freeze({ ...entry })) : []),
+        attributableDropped: Number(errorMeta.attributableDropped) || 0,
+        evicted: Number(errorMeta.evicted) || 0,
+        dropped: Number(errorMeta.dropped) || 0,
+      });
       const snapshot = Object.freeze({
         armed: Array.isArray(armed),
+        capturedAt: new Date().toISOString(),
+        capturePhase: 'ordinary-destroy-after-registry-destroy',
         entries: Object.freeze(entries),
         evicted: Number(meta.evicted) || 0,
         dropped: Number(meta.dropped) || 0,
         candidates: Object.freeze(candidates),
         candidateEvicted: Number(candidateMeta.evicted) || 0,
         candidateDropped: Number(candidateMeta.dropped) || 0,
+        errorAttribution,
       });
       try {
         Object.defineProperty(globalThis, marker, {
