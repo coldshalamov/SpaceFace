@@ -1428,6 +1428,8 @@ export const swarmArena = {
             massU: 0,
             bulkCore: false,
             commodityId: null,
+            count: SWARM_DEBRIS_REMNANTS,
+            pos: { x: Number(rock.pos?.x) || 0, z: Number(rock.pos?.z) || 0 },
           });
         }
       }

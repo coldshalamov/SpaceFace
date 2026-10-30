@@ -2818,6 +2818,21 @@ export const audio = {
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_asteroid_depleted', { position: p && p.pos, gain: 0.7 }));
+    // The body splitting alive is a different voice from the body ending: the brittle split at
+    // the split's position, one per parent per tick (a break spawns several chunks at once),
+    // graded a touch louder the more pieces the parent came apart into.
+    bus.on('asteroid:chunked', (p) => {
+      if (!p || p.parentId == null) return;
+      const book = this.rt._chunkVoiceBook || (this.rt._chunkVoiceBook = Object.create(null));
+      const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : 0;
+      const key = String(p.parentId);
+      if (book[key] === tick) return;
+      book[key] = tick;
+      const count = Math.max(1, Math.floor(Number(p.count) || 1));
+      this.play('sfx_mining_fracture_break', {
+        position: p.pos, gain: Math.min(0.7, 0.35 + count * 0.06),
+      });
+    });
     bus.on('cloak:faded', () => this.play(combatVerbRecipe('cloak:faded'), { gain: 0.32 }));
     bus.on('cloak:dropped', () => this.play(combatVerbRecipe('cloak:dropped'), { gain: 0.45 }));
     // cloak:burned already toasts the player. The fade is that burn, pitched

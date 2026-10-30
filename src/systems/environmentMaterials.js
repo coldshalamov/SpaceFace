@@ -185,7 +185,7 @@ export const environmentMaterials = {
           oreHP: Math.max(30, num(body.hullMax) / count), oreHPMax: Math.max(30, num(body.hullMax) / count),
           materialCondition: { heat: 0, reacted: true }, asteroidSlotId: `${d.asteroidSlotId ?? body.id}:shard:${i}`,
           worldRecordId: undefined, resourceBodyId: undefined, despawnAt: num(this.state.simTime) + 90 }) });
-      if (child) { ids.push(child.id); this.bus?.emit('asteroid:chunked', { parentId: body.id, chunkId: child.id, massU: 0 }); }
+      if (child) { ids.push(child.id); this.bus?.emit('asteroid:chunked', { parentId: body.id, chunkId: child.id, massU: 0, count, pos: { x: num(body.pos?.x), z: num(body.pos?.z) } }); }
     }
     d.fractured = true; d.destroyed = true; d.oreHP = 0; d.yieldRemainingU = 0;
     body.hull = 0; body.alive = false;
