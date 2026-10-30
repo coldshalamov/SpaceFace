@@ -19,7 +19,7 @@ Status words: `OPEN`, `ACTIVE`, `LANDED <sha>`, `SKIPPED (<reason>)`.
 | # | What a stranger sees | Where | Next step |
 |---|---|---|---|
 | ~~D261~~ | Phone 390 flight HUD: TOP SPEED crosses the hull-ring text; crescent/lock instruments collide | `node scripts/ui-bench.mjs --phone`; speed/travel HUD owners | packet G1 — **DONE**: dock cue f0b6d842 + bench #alerts host ad732f2e + legend plate widened so HULL/SHIELD/ARMOR read whole on the phone shot (d108db76, verified on the PNG) |
-| D222 | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 — full headed recapture running 2026-10-30 |
+| ~~D222~~ | CI `static (2)` red: UI budget digest drifted (333 files) | `scripts/check-ui-budgets.mjs`, `test/ui-frame-references/budgets.json` | packet G1 — **DONE `d59a80207513`**: full headed recapture, 38 surfaces + 2 named gaps, digest rebound, `check:ui:budgets` PASS. Caveat: frame costs are contention-inflated (capture ran beside the first-hour playthrough); a quiet recapture is the follow-up, grammar debt stays named |
 | ~~D267~~ | Flight HUD projection-count + G-LOC vignette reds | `test/hud-contact-roster-visibility.test.mjs`, `test/inst-05-resting-flight-sheet.test.mjs` | **DONE** — roster tests green on current master; G-LOC red was a brittle pin vs the fade-out timer: `'block'` reordered ahead of the timer-cancel, zero behavior change (`e8a50c236d4`, 10/10 green) |
 | D-new | Shipworks Buy-mode left rail: the for-sale list prints over the current-hull spec block ("FLEET · FOR SALE" collides with "473 TOP SPEED") — **verified fixed in working tree 2026-10-30**: the foreign impound-desk wiring (+115 lines, still uncommitted) re-seated the rail; both `station-shipworks` and `station-shipworks-impound` measure clean and read correctly on the PNGs. Re-verify once their edit lands | `src/ui/station/screens/shipworks.js` | packet G2 |
 
@@ -221,9 +221,10 @@ Rows are the spec (`build_map.md` §31–§32; read each row's prose before brie
 - **Save writelane landed `1fc335672aa`** — D1/D2/D3/D4/D5/D7 fixed (mirror deltas, gzip recovery
   rotation, prepared-envelope cache, redundant worker validate removed, serialized player key
   order, superseded pending marker); 4 new tests; schema+fuzz green.
-- **D222 UI budget** — full headed `capture-ui-matrix --budgets-out` running (PID live, ~400
-  frames written as of 2026-10-30 ~01:45); grammar debt (chart 6.3ms, flight 1713 DOM, range
-  3.4ms) stays named, not hidden. Validate `check:ui:budgets` when the capture lands.
+- **D222 UI budget — CLOSED `d59a80207513`** — full headed `capture-ui-matrix --budgets-out`
+  landed: 38 surfaces measured, 2 named gaps, `check:ui:budgets` PASS. Frame costs are
+  contention-inflated (ran beside the stranger playthrough) — quiet recapture is the follow-up;
+  grammar debt stays named, not hidden.
 
 ### Wave G — the glass (every 2D surface; DeepSeek via OpenCode builds, Claude Sonnet reviews every ~5)
 Direction: `design/frontend/ORRERY.md`, `ORRERY_RUBRIC.md`; method: `docs/UI_VISUAL_ITERATION.md`
