@@ -1377,18 +1377,21 @@ export function createStrangerPilot({ state, bus, ledger, services }) {
               return;
             }
             if (!latched) { tryLatch(input, cmd, pod, 'rescue-pod'); return; }
-            // Run the pod home: cruise far out, then SWEEP THROUGH the beacon ring at speed —
-            // the towed pod crosses the ring trailing the hull, and a creep would just pin
-            // the pod against the beacon's hull at 2 wu/s (below the run-speed proof).
+            // Run the pod home: the towed pod crosses the ring trailing the hull, and the
+            // predicate is pod-inside-radius only — proximity, no speed proof.
             const dB = dist(p.pos, beacon.pos);
-            // Fly ONTO the beacon and winch — but bleed first: at ~190 wu/s the turn circle
-            // carries every pass 40+ wu wide of the 60-radius ring and the towed pod never
-            // enters it. Slow the final leg until the aim line actually crosses the ring.
+            // Fly ONTO the beacon and winch — with a speed cap that scales with the run
+            // left: the turn circle must always fit inside the remaining distance or the
+            // ship settles into a stable orbit just outside the brake band (run 7 sat at
+            // dB≈420, v≈240 forever). v ≤ dB/4 keeps every correction able to land in the
+            // 60-radius ring.
+            const vNow = speedOf(p);
+            const vCap = Math.max(15, dB / 4);
             input.aimAngle = Math.atan2(beacon.pos.z - p.pos.z, beacon.pos.x - p.pos.x);
             input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(input.aimAngle - (p.rot || 0)) / 0.5));
-            input.brake = dB < 420 && speedOf(p) > Math.max(25, dB / 6);
+            input.brake = vNow > vCap;
             input.moveZ = (!input.brake && dB > 25) ? 1 : 0;
-            input.boost = energyFull(p) && dB > 420;
+            input.boost = energyFull(p) && dB > 800 && vNow < vCap * 0.8;
             cmd.lineControl = true;
             cmd.lineLength = -1; // full winch: haul the pod home to the hull on the ring
             return;
