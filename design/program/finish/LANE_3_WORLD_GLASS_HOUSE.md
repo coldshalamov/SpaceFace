@@ -248,29 +248,16 @@ INFERENCE law (fold `INFERENCE_LANES.md` + `design/inference-workflows/` + `INFE
 `NOW.md`/`FINISH_LANES.md`/`FINISH_THE_GAME.md` folded or archived, every nested `AGENTS.md` still true.
 Write the new front door so the next agent after this program knows where the game stands.
 
-## Systems review — every system you own, to a studio bar (README §5.7; runs alongside the waves from day one)
+## Source coverage and material defects
 
-**Critical systems — each gets a Codex deep review, then packets:** the economy and markets
-(`economy.js`, `src/economy/**`, trade), missions and contracts (`missions.js`, `src/missions/**`,
-`src/contracts/**`), the world and sector simulation (`world.js`, `src/world/**`, `traffic.js`,
-`npcJobsRuntime.js`), law and heat (`lawSecurity.js`), the encounter director (`encounterDirector.js`),
-story, factions, characters and careers (`src/story/**`, `src/characters/**`, `src/careers/**`),
-onboarding and the first hour (`onboarding.js`), save and migrations (`src/save/saveSystem.js`), the
-HUD and UI root (`hud.js`, `uiRoot.js`, the ORRERY library `src/ui/orrery/`), the galaxy map
-(`galaxyMap.js`), station screens, audio (`src/audio/audioSystem.js`), localization (`src/localization/**`).
-**Then everything else you own**, ranked by how much a player touches it. Keep the list here with a
-status per system: `UNREVIEWED → REVIEWED (<n> findings) → AT BAR <sha>`.
-
-## The audit — read every line you own
-
-Split your owned paths (`src/ui/**`, `styles/**`, the world/economy/story systems, `src/world/**`,
-`src/story/**`, `src/careers/**`, `src/economy/**`, `src/missions/**`, `src/characters/**`,
-`src/localization/**`, `src/audio/**`, `src/save/**`) into modules of ≤ ~3k lines and hand them evenly
-to Grok and Gemini (`TOOLS.md`): each run reads every line and writes
-`.devshots/finish/lane3/audit/<module>.md` — bugs, facts written and never read (`build_map.md` §31.0
-fault 1: *no new fact lands without a simulation reader the player can fly into*), stand-ins counted as
-done, internal ids leaking to screens, save-compat risks, dead code, and the three cheapest wins.
-Turn real findings into packets below this line.
+Completed reads and their explicit coverage gaps are recorded in
+[`SOURCE_COVERAGE_2026-10-29.md`](./SOURCE_COVERAGE_2026-10-29.md); current player outcomes, open
+defects and accepted limits are in [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md). Reuse
+those records instead of repeating completed reads or creating per-system review rows. For an
+unclosed material claim, inspect the live owner and the smallest relevant route or behavior; when a
+concrete defect is present, fix its cause and directly check the result. Preserve the quality bars
+and architecture contracts in the Finish README. Record a distinct material defect in the owning
+lane's Defects section or Inbox, with its owner and next step; do not create a second audit queue.
 
 ## INFERENCE (seed ≈ 45 lines in the brainstorm packet, README §6)
 

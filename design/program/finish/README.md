@@ -12,7 +12,7 @@ references (a lane board names a build-map row; the row's prose in `build_map.md
 |---|---|
 | this README | the diagnosis, the owner rulings, the path-ownership map, the shared protocol, the finish line |
 | [`INTEGRATION_COVERAGE.md`](./INTEGRATION_COVERAGE.md) | 2026-10-29 whole-game integration coverage, repairs, current verification limits and final review scope |
-| [`TOOLS.md`](./TOOLS.md) | verified terminal commands for Codex, Grok, Gemini, OpenCode and Claude (smoke-tested 2026-10-28) |
+| [`TOOLS.md`](./TOOLS.md) | optional terminal CLI examples last smoke-tested 2026-10-28 |
 | [`LANE_1_MACHINE_AND_PICTURE.md`](./LANE_1_MACHINE_AND_PICTURE.md) | **high-complexity lane, needs taste, gets the agent with the most usage**: performance, the renderer, loading, assets, VFX, the look |
 | [`LANE_2_FIGHT_AND_SIM.md`](./LANE_2_FIGHT_AND_SIM.md) | medium lane: combat, Crucible/Swarm, the Hand, AI, physics, simulation cost, code and test consolidation |
 | [`LANE_3_WORLD_GLASS_HOUSE.md`](./LANE_3_WORLD_GLASS_HOUSE.md) | medium lane: Adventure world, economy, story, every 2D screen and the HUD, audio, and the document razor |
@@ -227,6 +227,7 @@ or rotation quota.
   into one ≤ 150-line law).
 - **Never** touch `design/program/vm-drop/`. Never move a file a lane prompt or board in this folder
   still cites until that lane's board stops citing it.
-- **End state:** `AGENTS.md` ≤ 150 lines, `build_map.md` ≤ 600 lines (history in the archive), one
-  perf document, one INFERENCE law, `npm` scripts ≤ 150 behind a manifest runner (Lane 2), and every
-  link checker green.
+- **End state:** one current front door makes the game's state and next work easy to find; active
+  documents point to the right owners and outcomes; the performance and INFERENCE guidance has one
+  clear home each; and the relevant compatibility checks for changed documentation pass. Line,
+  file, and script counts are maintenance signals, not game-completion outcomes.
