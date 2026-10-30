@@ -155,6 +155,7 @@ import {
 } from '../onboarding/verbSpeech.js';
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
+import { isPlayerWanted } from './heat.js';
 import { lawfulPatrolOnGlass } from './lawSecurity.js';
 import {
   ActivityKind,
@@ -1618,11 +1619,18 @@ export const onboarding = {
     const claimed = ob.claimed;
     let claimedRestaged = false;
     if (claimed && claimed.resolved !== true) {
-      ob.active = true;
-      claimed.active = true;
-      this._spawnClaimedCast();
-      claimedRestaged = true;
-      resumed = true;
+      if (ob.beatDoneAt.claimed == null) {
+        ob.active = true;
+        claimed.active = true;
+        this._spawnClaimedCast();
+        claimedRestaged = true;
+        resumed = true;
+      } else {
+        // The beat already resolved without closing the record — seal it instead of
+        // spawning a tableau for a lesson that is done.
+        claimed.resolved = true;
+        claimed.active = false;
+      }
     }
     const three = ob.missingThree;
     if (three && three.active === true && three.completed !== true) {
@@ -1651,7 +1659,12 @@ export const onboarding = {
         // rebuild (and reset) the record the restore just preserved.
         const subrailStaged = (beat.key === 'raid' && raidRestaged)
           || (beat.key === 'claimed' && claimedRestaged);
-        if (!subrailStaged) this._enterBeat(beat);
+        if (!subrailStaged) {
+          // The restaged derelict is a fresh body — a saved reel flag described a
+          // wreck the restore could not keep, so the lesson asks for the reel again.
+          if (beat.key === 'tether') ob.tetherReeled = false;
+          this._enterBeat(beat);
+        }
         if (!ob.beatAction) ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
         speakMainBeat = true;
       } else {
@@ -1707,7 +1720,14 @@ export const onboarding = {
       this._removeMissingThreeActors();
       this._removeRaidActors();
       this._removeClaimedActors();
+      // Props only — the record keeps its active slot: save:loaded restores powerSit
+      // BEFORE this teardown, and the ghost check in _tickPowerSituations requeues a
+      // prop-less setup for the next window (the Continue path must re-stage, not skip).
+      this._despawnPowerSituation(null);
     }
+    // Prop ids are session-local: even an actor-preserving teardown (a world swap whose
+    // fresh ids may already collide) must forget them so the situation requeues cleanly.
+    this._powerSitIds = null;
     if (ob && ob.raid) ob.raid.active = false;
     if (ob && ob.claimed) ob.claimed.active = false;
     this._trainerId = this._derelictId = this._miningRockId = null;
@@ -2170,6 +2190,7 @@ export const onboarding = {
     this._removeMissingThreeActors();
     this._removeRaidActors();
     this._removeClaimedActors();
+    this._despawnPowerSituation(ob.powerSit);
     if (ob.rescue) ob.rescue.active = false;
     if (ob.missingThree) ob.missingThree.active = false;
     if (ob.raid) ob.raid.active = false;
@@ -2581,7 +2602,9 @@ export const onboarding = {
       this.state.onboarding._trainerId = null;
       this.state.onboarding._miningRockId = null;
     }
-    this._despawnPowerSituation();
+    // Power-situation props are not training actors: a trainer restage must leave the
+    // staged setup standing. Their record self-heals in _tickPowerSituations if the
+    // props genuinely vanished; only _teardown/_finish despawn them.
   },
 
   // ── Row 546 (W-TEACH): teach by situation, not by lock ──────────────────────────────────
@@ -3201,7 +3224,10 @@ export const onboarding = {
     if (key === 'swing') {
       const rock = this._rescueActor('rock');
       const derelict = this._rescueActor('derelict');
-      if (!rock || !derelict) { this._rescueFail('swing', 'rock lost'); return; }
+      // A missing standing piece restages the whole authored tableau — respawning only
+      // the working slot would loop forever on a wreck or wall that is never coming back.
+      if (!derelict) { this._spawnRescueCast(); return; }
+      if (!rock) { this._rescueFail('swing', 'rock lost'); return; }
       // A rock punted clear of the pocket (a wild release, a chance collision) is gone for
       // good at these speeds: restage it near the pilot — retry, never a wall.
       const playerPos = this.state.entities.get(this.state.playerId);
@@ -3227,7 +3253,8 @@ export const onboarding = {
     } else if (key === 'shove') {
       const scout = this._rescueActor('scout');
       const asteroid = this._rescueActor('asteroid');
-      if (!scout || !asteroid) { this._rescueFail('shove', 'scout lost'); return; }
+      if (!asteroid) { this._spawnRescueCast(); return; }
+      if (!scout) { this._rescueFail('shove', 'scout lost'); return; }
       if (rescueScoutEscaped(scout, player.pos)) { this._rescueFail('shove', 'scout escaped'); return; }
       if (rescueScoutAtAsteroid(scout, asteroid, RESCUE_SHOVE_PROOF_SPEED_WU)) {
         this._emitRescueShove(scout.id);
@@ -3236,7 +3263,8 @@ export const onboarding = {
     } else if (key === 'grab') {
       const pod = this._rescueActor('pod');
       const beacon = this._rescueActor('beacon');
-      if (!pod || !beacon) { this._rescueFail('grab', 'pod lost'); return; }
+      if (!beacon) { this._spawnRescueCast(); return; }
+      if (!pod) { this._rescueFail('grab', 'pod lost'); return; }
       // A pod punted clear of the pocket (ram, stray shot) is unrecoverable where it is:
       // restage it near the pilot — retry, never a wall.
       if (Math.hypot(pod.pos.x - player.pos.x, pod.pos.z - player.pos.z) > 3000) {
@@ -3881,10 +3909,14 @@ export const onboarding = {
     this._stepRaidWing();
     const raider = this._raidActor('raider');
     if (!raider) {
-      // Kill handling stays event-driven (_onRaidKilled), but a slot that is simply
-      // EMPTY — a Continue wiped the ids, or the cast never landed — restages the
-      // lesson instead of returning forever. A done beat never restages.
-      if (ob.beatDoneAt.raid == null && raid.ids && raid.ids.raider == null) {
+      // Kill handling stays event-driven (_onRaidKilled) and its emits are synchronous:
+      // a slot with no LIVE occupant after them — emptied by a Continue's id wipe, a
+      // sweep that never killed, or a cast that never landed — restages the lesson
+      // instead of returning forever. A done beat never restages.
+      const slotId = raid.ids && raid.ids.raider;
+      const occupant = slotId != null && this.state.entities
+        ? this.state.entities.get(slotId) : null;
+      if (ob.beatDoneAt.raid == null && !(occupant && occupant.alive !== false)) {
         this._respawnRaidRaider();
       }
       return;
@@ -3986,7 +4018,9 @@ export const onboarding = {
       z: player.pos.z + Math.sin(ang + bearing) * range,
     });
     const despawnAt = (st.simTime || 0) + CLAIMED_WINDOW_S + 90;
-    for (let i = 0; i < CLAIMED_PICKUP_COUNT; i++) {
+    // A restage (fail recovery or a Continue) re-dresses the witness but never re-spills
+    // cargo the pilot already took — taken pickups stay aboard, not duplicated in space.
+    for (let i = 0; !claimed.taken && i < CLAIMED_PICKUP_COUNT; i++) {
       const ang2 = onboardingRandom(st) * TAU;
       const pos = at(150 + i * 14, (i - 1) * 0.12);
       const pickup = this.helpers.spawnEntity({
@@ -4078,6 +4112,9 @@ export const onboarding = {
     if (!Number.isFinite(level)) return;
     if (level > 0) {
       if (!claimed.wantedFired) claimed.wantedFired = true;
+      // A flicker back INTO wanted un-arms the clear clock — the grace exists to prove
+      // the escape held, and a re-escalation proves it did not.
+      claimed.clearSince = null;
       return;
     }
     // Level 0: the search ring cleared. Hold a short grace so a flicker cannot fake the escape.
@@ -4111,13 +4148,22 @@ export const onboarding = {
       // Continue restored mid-report) resolves on the same clock from the take — the cargo
       // is already aboard, so the scene stands down rather than waiting out a ring that
       // can never come.
+      // Ancient or hand-cut records can lack either stamp; a missing clock re-opens the
+      // full window rather than hanging the tableau on NaN.
       const idleSince = claimed.taken
-        ? (Number.isFinite(claimed.takenAt) ? claimed.takenAt : claimed.enteredAt)
-        : claimed.enteredAt;
+        ? (Number.isFinite(claimed.takenAt) ? claimed.takenAt
+          : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now))
+        : (Number.isFinite(claimed.enteredAt) ? claimed.enteredAt : now);
       if (now - idleSince >= CLAIMED_WINDOW_S) {
         this._finishClaimed(claimed.taken ? 'noEscalation' : 'declined');
       }
       return;
+    }
+    // The level-0 edge is event-driven, but a restored record can outlive the event that
+    // would close it: if the sim already reads clear, re-arm the grace clock from the
+    // live wanted state rather than waiting on an emit that may never come.
+    if (claimed.clearSince == null && !isPlayerWanted(this.state)) {
+      claimed.clearSince = now;
     }
     if (claimed.clearSince != null && now - claimed.clearSince >= CLAIMED_CLEAR_GRACE_S) {
       this._finishClaimed('cleared');
@@ -4179,14 +4225,16 @@ export const onboarding = {
     }
     // The thesis-first route runs the raid + claimed beats between the rescue grab and the
     // movement trio: the wanted consequence is the spine, the missing three follow it.
+    // A slice with no rescue rail has no spine either — the claimed-beat wait would hold
+    // forever on a tableau that can never enter, so both gates dissolve together.
     const ob = this.state.onboarding;
-    if (ob && ob.beatDoneAt.claimed == null) return;
+    const rescue = ob && ob.rescue;
+    if (rescue && ob.beatDoneAt.claimed == null) return;
     const prereq = MISSING_THREE_PREREQ[next];
     if (prereq === 'grab') {
       // No rescue rail (scenario slices, stripped records): the grab prereq dissolves —
       // an absent rail has no grab to wait on, and the drills downstream still owe
       // the player their lessons.
-      const rescue = this.state.onboarding && this.state.onboarding.rescue;
       if (rescue && rescue.beats && rescue.beats.grab && rescue.beats.grab.state !== 'done') return;
     } else if (!three.beats[prereq] || three.beats[prereq].state !== 'done') {
       return;
@@ -4904,12 +4952,13 @@ export const onboarding = {
     }
 
     // Range pointer affordance (PQ-163.01 — "The Range is the door").
-    // After the first latch, onboarding points at the Range (F4).
+    // After the first latch, onboarding points at the Range (F4). The panel is
+    // pointer-events:none with no click path — the chip is a label, never a button,
+    // so it carries no data-action for a dead affordance to advertise.
     if (ob.rangePromptActive) {
       if (!this._rangePromptEl && this._bodyEl) {
         this._rangePromptEl = document.createElement('div');
         this._rangePromptEl.className = 'sf-ob-range-prompt';
-        this._rangePromptEl.setAttribute('data-action', 'range');
         this._bodyEl.appendChild(this._rangePromptEl);
       }
       const promptText = ob.rangePrompt || RANGE_POINTER_LINE;
