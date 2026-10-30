@@ -2212,6 +2212,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:4px !important; padding-bottom:4px !important; }
   ${D} .sx-ledger .st-ledger-cycle { font-size:12px !important; letter-spacing:.1em !important; white-space:normal !important; overflow-wrap:anywhere !important; }
   ${D} .sx-ledger .st-ledger-line { font-size:12.5px !important; }
+  /* with no entry open the reading hides and the tape spans both rows, but the purse's min-height:0 above left the grid
+     nothing to stand on: tape and purse fell to ~40px, the axis figures printed on each other and BOUGHT / SOLD were cut.
+     The purse keeps the 150px the 960 class gives it, so the tape stands with it. */
+  ${D} .sx-ledger__right:has(> .sx-ledger__row > .sx-ledger__read[hidden]) > .sx-ledger__row > .orr-ledger-purse { min-height:150px !important; }
 }
 
 /* After a trade, the TRADE CLEARED line (~480px) stood over the comms words, ~340px from the right edge,
