@@ -436,12 +436,23 @@ export class SpaceRenderGraph {
       // override material changes in this window. With AO off there is no second pass —
       // render plainly and skip the capture allocations entirely.
       if (this.options.ao) {
-        const captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
+        const canReplay = typeof renderer.renderAndCaptureList === 'function'
+          && typeof renderer.renderCapturedList === 'function';
+        let captured = null;
+        if (canReplay) {
+          captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
+        } else {
+          renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
+        }
         scene.overrideMaterial = this.normalMaterial;
         renderer.setRenderTarget(this.normalTarget);
         renderer.clear(true, true, true);
         try {
-          renderWithoutAutoClear(renderer, () => renderer.renderCapturedList(scene, camera, captured));
+          if (canReplay) {
+            renderWithoutAutoClear(renderer, () => renderer.renderCapturedList(scene, camera, captured));
+          } else {
+            renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
+          }
         } finally {
           scene.overrideMaterial = previousOverride;
         }
