@@ -715,7 +715,7 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-berth.dp-frame__head > .sxb-signs { grid-area:signs !important; grid-column:1 / -1 !important; display:flex !important; gap:0 20px !important;
     align-items:flex-start !important; min-width:0 !important; }
   ${D} .sxb-signs > .sx-adboard { flex:1 1 0 !important; min-width:0 !important; margin:0 !important; padding:2px 0 0 !important;
-    display:block !important; overflow:visible !important; line-height:16px !important; }
+    display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden !important; line-height:16px !important; }
   ${D} .sxb-signs .sx-adboard > * { display:inline !important; margin:0 !important; }
   ${D} .sxb-signs .sx-adboard__k { font-size:12px !important; letter-spacing:.14em !important; text-transform:uppercase; opacity:.74; }
   ${D} .sxb-signs .sx-adboard__sponsor { font-weight:600 !important; }
@@ -727,11 +727,17 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-crown .sxb-purse__value { font-size:20px !important; }
   ${D} .sxb-vital [data-vital-act] { flex-wrap:nowrap !important; white-space:nowrap !important; justify-content:center !important; gap:0 6px !important; letter-spacing:.02em !important; }
   ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] { flex-wrap:wrap !important; row-gap:0 !important; }
-  /* a priced verb never squeezes into its column: the ghost Insure (500 cr) ran 6px wider than the 107px hull column, so flex shrank
-     its verb and cost under their own text and INSURE read flush against 500 CR at 568x320. Words keep their width and the gap. */
-  ${D} .sxb-vital [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { width:max-content !important; max-width:none !important; }
   ${D} .sxb-vital [data-vital-act] > :is(.orr-act__verb, .orr-act__cost) { flex-shrink:0 !important; }
   ${D} .sxb-vital:is(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  /* every priced verb puts its price under the word (max-content ran DRAW 21px into the munitions box, and the hull's REPAIR and
+     INSURE shrank to 16px-tall text lines stacked under the gauge). The hull's two verbs sit side by side at Draw's 30px height,
+     in a column widened by the dials that carry no verb (fuel, hold). */
+  ${D} .sxb-vital [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { width:auto !important; max-width:100% !important; min-height:24px !important; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) [data-vital-act]:is(.sxb-vital__act, .sxb-vital__act--ghost) { flex-wrap:wrap !important; row-gap:0 !important; width:auto !important; min-width:0 !important; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) [data-vital-act] .orr-act__cost { flex:1 0 100%; text-align:center; }
+  ${D} .sxb-vital:not(.sxb-vital--note, .sxb-vital--muni) .sxb-vital__acts { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important; justify-items:center !important; width:100% !important; gap:0 8px !important; }
+  ${D} .sxb-vitals > .sxb-vital:not(:has([data-vital-act])) { flex:.85 1 0 !important; }
+  ${D} .sxb-vitals > .sxb-vital:has([data-vital-act]):not(.sxb-vital--note, .sxb-vital--muni) { flex:1.3 1 0 !important; }
   ${D} .sxb-vital [data-vital-act] :is(.orr-act__verb, .orr-act__cost) { letter-spacing:.02em !important; }
   ${D} .sxb-vital--note .orr-vnum.is-word { font-size:12px !important; line-height:1.15 !important; letter-spacing:.04em !important; }
   /* the foot closes to two short rows: the destination words (their rule and indicator step aside), then COMMS,
