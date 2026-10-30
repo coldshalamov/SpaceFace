@@ -164,7 +164,10 @@ export function syncCaptainStandingOrders(host, info, board) {
       time_limit_s: 1800, duration_s: 1800,
       params: { cmdtyId: shape.cmdtyId, qty: shape.qty, taskTime: 20, fValue: 1 },
       title: `${captain.name} — standing relief run${runNo}`,
-      summary: `${captain.name} remembers your rescue. Carry two units of ${goods} to ${destination.name}. This client will keep a route open for you.`,
+      // The offer speaks in the giver's own voice (W1): the captain who was rescued writes the
+      // line, first person, with the route promise that makes it a standing order.
+      summary: `${captain.name}: "You pulled my crew out of the black, so the route stays yours. `
+        + `Haul two units of ${goods} to ${destination.name} for me — the standing rate, every cycle."`,
       cause: { tag: 'remembered_captain', captainId: captain.id },
     });
   }
@@ -175,7 +178,10 @@ export function syncCaptainStandingOrders(host, info, board) {
     candidates.push({ ...clone(row.template), id: `${row.id}:${row.cycle}`, source: 'captainStandingOrder',
       stationId: info.id, giverId: `desk:${info.id}:${row.type}`, clientId: `desk:${info.id}:${row.type}`,
       title: `${clientName} — standing ${typeLabel}`,
-      summary: `${clientName} keeps a ${typeLabel} desk at ${info.name}. Three finished runs earned the next one.`,
+      // The desk regular speaks too: three finished runs is a working relationship, and the
+      // line reads as theirs, not the board's.
+      summary: `${clientName}: "Three runs finished — that is a working relationship. `
+        + `Keep the ${typeLabel} run and I keep the desk open for you."`,
       cause: { tag: 'standing_client', standingOrderId: row.id },
     });
   }
