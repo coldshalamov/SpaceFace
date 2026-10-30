@@ -256,6 +256,15 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
   }
 }
 
+@media (max-width: 420px) {
+  #sf-prompt-deck .sf-prompt__choice span {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sf-prompt, .sf-prompt__choice, .sf-prompt-chip { transition: none !important; }
 }
