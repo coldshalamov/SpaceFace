@@ -228,18 +228,33 @@ if (process.env.STRANGER_PILOT_TRACE) {
 const enter = registry.get('world').enterSector('sector_helios_prime', {});
 log(`boot ok: sector enter ${enter ? 'ok' : 'null'}; systems ${registry.systems.length}; ticks ${totalTicks}`);
 
-// Player death handling: the M3 contract restores on player:respawn. If the sim does not restore
-// the hull, the harness resurrects beside the remembered station and records a note — the session
-// continues so long-run shape stays measurable.
+// Player death handling: combat.kill routes the player through beginPlayerDefeat → player:death +
+// game:over (recoverable); entity:killed is never emitted for the player hull. The headed game's
+// after-action "Continue" calls combat.recoverPendingPlayer() → player:respawn — the headless
+// harness plays the same public contract after a short beat. Death paths that bypass
+// beginPlayerDefeat still get the old hand-restore fallback so the session continues.
 let resurrects = 0;
 const respawnBinder = () => {
-  bus.on('entity:killed', (data) => {
-    if (!data || data.id !== state.playerId) return;
+  let pending = false;
+  const schedule = () => {
+    if (pending) return;
+    pending = true;
     setTimeoutSim(3, () => {
+      pending = false;
       const p = state.entities.get(state.playerId);
-      if (!p) return;
-      if (!p.alive || (p.hull || 0) <= 0) {
+      if (!p || p.alive) return;
+      const combat = registry.get('combat');
+      const res = combat && typeof combat.recoverPendingPlayer === 'function'
+        ? combat.recoverPendingPlayer({ source: 'harness_respawn' })
+        : null;
+      if (res && res.ok) {
+        resurrects++;
+        ledger.recordNote(`harness resurrect #${resurrects} via recoverPendingPlayer at ${res.stationName || res.stationId || 'dock'}`);
+        return;
+      }
+      if ((p.hull || 0) <= 0 || p.alive === false) {
         p.alive = true;
+        p.flags = p.flags || {}; p.flags.defeated = false;
         p.hull = p.hullMax || p.hull;
         p.shield = p.shieldMax || p.shield || 0;
         const stations = (state.entityIndex && state.entityIndex.dockStations) || [];
@@ -250,7 +265,9 @@ const respawnBinder = () => {
         ledger.recordNote(`harness resurrect #${resurrects} beside ${home ? home.id : 'sector center'}`);
       }
     });
-  });
+  };
+  bus.on('player:death', (d) => { if (!d || d.recoverable !== false) schedule(); });
+  bus.on('entity:killed', (data) => { if (data && data.id === state.playerId) schedule(); });
 };
 // Minimal deterministic timeout wheel (no wall clock).
 const timers = [];
