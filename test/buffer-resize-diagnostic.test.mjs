@@ -206,4 +206,3 @@ test('late byte-length mismatch outranks normal version-only changes', () => {
   assert.equal(failure.candidates[0].previous.version, 0);
   assert.equal(failure.candidates[0].current.version, 1);
 });
-

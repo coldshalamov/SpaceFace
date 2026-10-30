@@ -229,4 +229,3 @@ export function createBufferResizeDiagnostic({ maxCandidates = MAX_CHANGED_CANDI
     captureFailure,
   });
 }
-
